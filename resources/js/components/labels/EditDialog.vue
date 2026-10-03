@@ -29,18 +29,26 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
+const closeDialog = (): void => {
+    open.value = false;
+};
+
 const form = useForm({
     name: '',
     color: '',
 });
 
-watch(() => props.label, (label) => {
-    if (label) {
-        form.name = label.name;
-        form.color = label.color;
-        form.clearErrors();
-    }
-}, { immediate: true });
+watch(
+    [() => props.label, open],
+    ([label, isOpen]) => {
+        if (label && isOpen) {
+            form.name = label.name;
+            form.color = label.color;
+            form.clearErrors();
+        }
+    },
+    { immediate: true },
+);
 
 const submit = () => {
     if (!props.label) return;
@@ -54,7 +62,7 @@ const submit = () => {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="sm:max-w-lg">
+        <DialogContent data-testid="edit-label-dialog" class="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>{{ $t('labels.edit.title') }}</DialogTitle>
                 <DialogDescription>
@@ -67,28 +75,47 @@ const submit = () => {
                     <Input
                         id="edit-name"
                         v-model="form.name"
+                        data-testid="edit-label-name"
                         :placeholder="trans('labels.edit.name_placeholder')"
                         :class="{ 'border-destructive': form.errors.name }"
                     />
-                    <p v-if="form.errors.name" class="text-sm text-destructive">
+                    <p v-if="form.errors.name" class="text-sm text-destructive-text">
                         {{ form.errors.name }}
                     </p>
                 </div>
 
                 <div class="space-y-2">
-                    <Label for="edit-color">{{ $t('labels.edit.color') }}</Label>
+                    <Label for="edit-color">{{
+                        $t('labels.edit.color')
+                    }}</Label>
                     <HexColorInput v-model="form.color" name="color" />
-                    <p v-if="form.errors.color" class="text-sm text-destructive">
+                    <p
+                        v-if="form.errors.color"
+                        class="text-sm text-destructive-text"
+                    >
                         {{ form.errors.color }}
                     </p>
                 </div>
 
                 <DialogFooter>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? $t('labels.edit.submitting') : $t('labels.edit.submit') }}
-                    </Button>
-                    <Button type="button" variant="secondary" @click="open = false">
+                    <Button
+                        type="button"
+                        variant="ghost"
+                        data-testid="cancel-edit-label"
+                        @click="closeDialog"
+                    >
                         {{ $t('common.cancel') }}
+                    </Button>
+                    <Button
+                        type="submit"
+                        data-testid="submit-edit-label"
+                        :disabled="form.processing"
+                    >
+                        {{
+                            form.processing
+                                ? $t('labels.edit.submitting')
+                                : $t('labels.edit.submit')
+                        }}
                     </Button>
                 </DialogFooter>
             </form>

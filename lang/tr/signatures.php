@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 return [
     'title' => 'İmzalar',
-    'description' => 'Gönderilerinize hızlıca eklemek için yeniden kullanılabilir imzalar oluşturun',
+    'description' => 'Gönderileriniz için hazır metinler.',
+    'save_failed' => 'İmza kaydedilemedi. Lütfen tekrar deneyin.',
     'search' => 'İmza ara...',
     'new' => 'Yeni imza',
     'empty_title' => 'Henüz imza yok',
@@ -17,6 +18,7 @@ return [
         'created_at' => 'Oluşturuldu',
     ],
 
+    'row_actions' => 'İmza işlemleri',
     'actions' => [
         'edit' => 'İmzayı düzenle',
         'delete' => 'İmzayı sil',
@@ -24,24 +26,22 @@ return [
 
     'create' => [
         'title' => 'İmza oluştur',
-        'description' => 'İmzanıza bir ad ve eklenecek içeriği verin (hashtag\'ler, bağlantılar, özel metin — yeniden kullandığınız her şey).',
+        'description' => 'Gönderilerine sık eklediğin metinleri kaydet: hashtag, bağlantı veya kapanış notu.',
         'name' => 'Ad',
         'name_placeholder' => 'örn. Pazarlama, Seyahat, Marka kapanışı',
         'content' => 'İçerik',
         'content_placeholder' => "#pazarlama #sosyalmedya\nDaha fazla bilgi: https://markaniz.com",
-        'content_hint' => 'Hashtag\'ler, bağlantılar, özel girişler, kapanışlar — gönderilere eklediğiniz her şey.',
         'submit' => 'İmza oluştur',
         'submitting' => 'Oluşturuluyor...',
     ],
 
     'edit' => [
         'title' => 'İmzayı düzenle',
-        'description' => 'Bu imzanın adını ve içeriğini güncelleyin.',
+        'description' => 'Bu imzanın adını veya gönderilerine eklediği metni değiştir.',
         'name' => 'Ad',
         'name_placeholder' => 'örn. Pazarlama, Seyahat, Marka kapanışı',
         'content' => 'İçerik',
         'content_placeholder' => "#pazarlama #sosyalmedya\nDaha fazla bilgi: https://markaniz.com",
-        'content_hint' => 'Hashtag\'ler, bağlantılar, özel girişler, kapanışlar — gönderilere eklediğiniz her şey.',
         'submit' => 'Değişiklikleri kaydet',
         'submitting' => 'Kaydediliyor...',
     ],
@@ -51,11 +51,5 @@ return [
         'description' => 'Bu imzayı silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
         'confirm' => 'Sil',
         'cancel' => 'İptal',
-    ],
-
-    'flash' => [
-        'created' => 'İmza oluşturuldu.',
-        'updated' => 'İmza güncellendi.',
-        'deleted' => 'İmza silindi.',
     ],
 ];

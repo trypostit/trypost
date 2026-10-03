@@ -7,6 +7,8 @@ namespace App\Http\Controllers\App;
 use App\Actions\Label\CreateLabel;
 use App\Actions\Label\DeleteLabel;
 use App\Actions\Label\UpdateLabel;
+use App\Http\Requests\App\Label\StoreLabelRequest;
+use App\Http\Requests\App\Label\UpdateLabelRequest;
 use App\Models\WorkspaceLabel;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +28,7 @@ class WorkspaceLabelController extends Controller
         $this->authorize('createPost', $workspace);
 
         $labels = $workspace->labels()
+            ->withCount('posts')
             ->when($request->input('search'), fn ($query, $search) => $query->whereLike('name', "%{$search}%"))
             ->latest()
             ->paginate(config('app.pagination.default'));
@@ -33,13 +36,14 @@ class WorkspaceLabelController extends Controller
         return Inertia::render('labels/Index', [
             'workspace' => $workspace,
             'labels' => Inertia::scroll(fn () => $labels),
+            'hasData' => $workspace->labels()->exists(),
             'filters' => [
                 'search' => $request->input('search', ''),
             ],
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(StoreLabelRequest $request): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -49,20 +53,12 @@ class WorkspaceLabelController extends Controller
 
         $this->authorize('createPost', $workspace);
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'color' => ['required', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        ]);
+        $label = CreateLabel::execute($workspace, $request->validated());
 
-        CreateLabel::execute($workspace, $validated);
-
-        session()->flash('flash.banner', __('labels.flash.created'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return redirect()->route('app.labels.index');
+        return Inertia::flash('createdLabel', $label->only(['id', 'name', 'color']))->back();
     }
 
-    public function update(Request $request, WorkspaceLabel $label): RedirectResponse
+    public function update(UpdateLabelRequest $request, WorkspaceLabel $label): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -76,17 +72,9 @@ class WorkspaceLabelController extends Controller
             abort(404);
         }
 
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'color' => ['required', 'string', 'max:7', 'regex:/^#[0-9A-Fa-f]{6}$/'],
-        ]);
+        UpdateLabel::execute($label, $request->validated());
 
-        UpdateLabel::execute($label, $validated);
-
-        session()->flash('flash.banner', __('labels.flash.updated'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return redirect()->route('app.labels.index');
+        return back();
     }
 
     public function destroy(Request $request, WorkspaceLabel $label): RedirectResponse
@@ -105,9 +93,6 @@ class WorkspaceLabelController extends Controller
 
         DeleteLabel::execute($label);
 
-        session()->flash('flash.banner', __('labels.flash.deleted'));
-        session()->flash('flash.bannerStyle', 'success');
-
-        return redirect()->route('app.labels.index');
+        return back();
     }
 }

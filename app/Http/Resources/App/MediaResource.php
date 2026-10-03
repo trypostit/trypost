@@ -23,6 +23,7 @@ class MediaResource extends JsonResource
             'original_filename' => $this->original_filename,
             'size' => $this->size,
             'meta' => $this->meta,
+            'upload_token' => $this->upload_token,
             'created_at' => $this->created_at->toISOString(),
         ];
     }

@@ -3,7 +3,7 @@ import { IconChevronDown, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
-import HeadingSmall from '@/components/HeadingSmall.vue';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -24,7 +24,7 @@ interface AdvancedMcpClient {
     name: string;
     description: string;
     logo: string;
-    tileClass: string;
+    logoClass?: string;
     httpType: boolean;
     configRoot: McpConfigRoot;
 }
@@ -35,7 +35,7 @@ const advancedClients: AdvancedMcpClient[] = [
         name: 'mcp.clients.cursor_name',
         description: 'mcp.clients.cursor',
         logo: '/images/ai/cursor.svg',
-        tileClass: 'bg-white -rotate-1',
+        logoClass: 'dark:invert',
         httpType: false,
         configRoot: 'mcpServers',
     },
@@ -44,7 +44,6 @@ const advancedClients: AdvancedMcpClient[] = [
         name: 'mcp.clients.vscode_name',
         description: 'mcp.clients.vscode',
         logo: '/images/ai/vscode.svg',
-        tileClass: 'bg-sky-100 rotate-2',
         httpType: true,
         configRoot: 'servers',
     },
@@ -53,7 +52,6 @@ const advancedClients: AdvancedMcpClient[] = [
         name: 'mcp.clients.claude_code_name',
         description: 'mcp.clients.claude_code',
         logo: '/images/ai/claude.svg',
-        tileClass: 'bg-orange-100 rotate-1',
         httpType: true,
         configRoot: 'mcpServers',
     },
@@ -62,7 +60,6 @@ const advancedClients: AdvancedMcpClient[] = [
         name: 'mcp.clients.other_name',
         description: 'mcp.clients.other',
         logo: '/images/ai/other-clients.svg',
-        tileClass: 'bg-amber-100 -rotate-2',
         httpType: false,
         configRoot: 'mcpServers',
     },
@@ -94,78 +91,75 @@ const copy = (value: string): void => {
 </script>
 
 <template>
-    <div class="space-y-4">
-        <HeadingSmall
-            :title="$t('mcp.other_clients_title')"
-            :description="$t('mcp.other_clients_description')"
-        />
-
-        <div class="flex flex-col gap-4 pb-1">
+    <SettingsSection
+        :title="$t('mcp.other_clients_title')"
+        :description="$t('mcp.other_clients_description')"
+    >
+        <div class="flex flex-col gap-2">
             <Collapsible
                 v-for="client in advancedClients"
                 :key="client.key"
+                class="overflow-hidden rounded-xl border border-border bg-card"
                 :open="openClient === client.key"
-                class="overflow-hidden rounded-xl border-2 border-foreground bg-card shadow-2xs"
                 @update:open="(open) => setClientOpen(client.key, open)"
             >
                 <CollapsibleTrigger
-                    class="flex w-full items-start justify-between gap-4 rounded-md px-5 py-4 text-left text-sm font-medium outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50"
+                    class="flex w-full cursor-pointer items-center gap-3 p-4 text-start transition-control outline-none hover:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
                     :data-testid="`mcp-advanced-client-${client.key}`"
                 >
-                    <span class="flex items-center gap-4 text-start">
+                    <span
+                        class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
+                    >
+                        <img
+                            :src="client.logo"
+                            :alt="$t(client.name)"
+                            :class="['size-5 object-contain', client.logoClass]"
+                        />
+                    </span>
+                    <span class="flex min-w-0 flex-1 flex-col gap-1">
                         <span
-                            class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border-2 border-foreground shadow-sm"
-                            :class="client.tileClass"
+                            class="truncate text-sm leading-tight font-emphasis text-foreground"
                         >
-                            <img
-                                :src="client.logo"
-                                :alt="$t(client.name)"
-                                class="size-6 object-contain"
-                            />
+                            {{ $t(client.name) }}
                         </span>
-                        <span class="min-w-0">
-                            <span class="block font-bold">
-                                {{ $t(client.name) }}
-                            </span>
-                            <span
-                                class="mt-0.5 block text-sm text-foreground/70"
-                            >
-                                {{ $t(client.description) }}
-                            </span>
+                        <span class="text-sm text-muted-foreground">
+                            {{ $t(client.description) }}
                         </span>
                     </span>
                     <IconChevronDown
-                        class="pointer-events-none size-4 shrink-0 translate-y-0.5 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none"
+                        class="pointer-events-none size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none"
                         :class="openClient === client.key ? 'rotate-180' : ''"
                     />
                 </CollapsibleTrigger>
 
                 <CollapsibleContent
-                    class="overflow-hidden px-5 pt-1 pb-5 text-sm data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
+                    class="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
                 >
-                    <div class="space-y-5">
-                        <p class="text-sm font-medium text-foreground/70">
+                    <div
+                        class="flex flex-col gap-6 border-t border-border bg-muted/40 p-4"
+                    >
+                        <p class="text-sm text-muted-foreground">
                             {{ $t('mcp.step_add') }}
                         </p>
 
-                        <div class="grid gap-2">
-                            <p class="font-bold">
+                        <div class="flex flex-col gap-2">
+                            <p class="text-sm font-medium text-foreground">
                                 {{ $t('mcp.name_label') }}
                             </p>
-                            <div
-                                class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
-                            >
+                            <div class="flex min-w-0 items-center gap-2">
                                 <code
                                     dir="ltr"
-                                    class="min-w-0 flex-1 truncate px-2 text-left font-mono text-sm"
+                                    class="flex h-8 min-w-0 flex-1 items-center overflow-hidden rounded-md border border-input bg-card px-2 font-mono text-sm text-foreground dark:bg-input/30"
                                 >
-                                    {{ connectorName }}
+                                    <span class="block min-w-0 truncate">{{
+                                        connectorName
+                                    }}</span>
                                 </code>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="icon"
-                                    class="size-9 shrink-0"
+                                    class="shrink-0 text-muted-foreground"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.name_label')}`"
                                     @click="copy(connectorName)"
                                 >
@@ -174,24 +168,24 @@ const copy = (value: string): void => {
                             </div>
                         </div>
 
-                        <div class="grid gap-2">
-                            <p class="font-bold">
+                        <div class="flex flex-col gap-2">
+                            <p class="text-sm font-medium text-foreground">
                                 {{ $t('mcp.url_label') }}
                             </p>
-                            <div
-                                class="flex items-center gap-2 rounded-xl border-2 border-foreground bg-background p-2 shadow-2xs"
-                            >
+                            <div class="flex min-w-0 items-center gap-2">
                                 <code
                                     dir="ltr"
-                                    class="min-w-0 flex-1 truncate px-2 text-left font-mono text-sm"
+                                    class="flex h-8 min-w-0 flex-1 items-center overflow-hidden rounded-md border border-input bg-card px-2 font-mono text-sm text-foreground dark:bg-input/30"
                                 >
-                                    {{ mcpUrl }}
+                                    <span class="block min-w-0 truncate">{{
+                                        mcpUrl
+                                    }}</span>
                                 </code>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="icon"
-                                    class="size-9 shrink-0"
+                                    class="shrink-0 text-muted-foreground"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.url_label')}`"
                                     @click="copy(mcpUrl)"
                                 >
@@ -200,21 +194,21 @@ const copy = (value: string): void => {
                             </div>
                         </div>
 
-                        <div class="grid gap-2">
-                            <p class="font-bold">
+                        <div class="flex flex-col gap-2">
+                            <p class="text-sm font-medium text-foreground">
                                 {{ $t('mcp.config_label') }}
                             </p>
                             <div class="relative">
                                 <pre
                                     dir="ltr"
-                                    class="overflow-x-auto rounded-xl border-2 border-foreground bg-background p-3 pe-14 text-left font-mono text-xs shadow-2xs"
+                                    class="overflow-x-auto rounded-md border border-input bg-card px-3 py-2.5 pe-12 text-left font-mono text-xs leading-5 text-foreground dark:bg-input/30"
                                     :data-testid="`mcp-config-${client.key}`"
                                 ><code>{{ configSnippet(client) }}</code></pre>
                                 <Button
                                     type="button"
-                                    variant="outline"
+                                    variant="ghost"
                                     size="icon"
-                                    class="absolute inset-e-2 top-2 size-9"
+                                    class="absolute inset-e-1.5 top-1.5 text-muted-foreground"
                                     :aria-label="`${$t('common.actions.copy')} ${$t('mcp.config_label')}`"
                                     @click="copy(configSnippet(client))"
                                 >
@@ -226,5 +220,5 @@ const copy = (value: string): void => {
                 </CollapsibleContent>
             </Collapsible>
         </div>
-    </div>
+    </SettingsSection>
 </template>

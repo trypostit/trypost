@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Enums\Webhook\EventType;
 use App\Models\User;
 use App\Models\Webhook;
@@ -55,18 +54,21 @@ test('webhook index hides the signing secret', function () {
         );
 });
 
-test('authenticated users can create a webhook', function () {
-    $this->actingAs($this->user)
+test('creating a webhook from the index dialog opens its page', function () {
+    $response = $this->actingAs($this->user)
+        ->from(route('app.webhooks.index'))
         ->post(route('app.webhooks.store'), [
             'endpoint' => 'https://example.com/webhooks',
             'events' => [EventType::PostPublished->value, EventType::PostFailed->value],
-        ])
-        ->assertRedirect();
+        ]);
 
-    $this->assertDatabaseHas('webhooks', [
-        'workspace_id' => $this->workspace->id,
-        'endpoint' => 'https://example.com/webhooks',
-    ]);
+    $webhook = Webhook::query()
+        ->where('workspace_id', $this->workspace->id)
+        ->where('endpoint', 'https://example.com/webhooks')
+        ->sole();
+
+    $response->assertRedirect(route('app.webhooks.show', $webhook))
+        ->assertSessionMissing('flash.banner');
 });
 
 test('generateSigningSecret prefixes a 32 character random string', function () {
@@ -598,7 +600,7 @@ test('users cannot delete webhooks from other workspaces', function () {
 });
 
 test('workspace admins can manage webhooks', function () {
-    $admin = teammateForWebhookWorkspace(Role::Admin);
+    $admin = teammateForWebhookWorkspace('admin');
 
     $this->actingAs($admin)
         ->get(route('app.webhooks.index'))
@@ -648,7 +650,7 @@ test('workspace admins can manage webhooks', function () {
         ->assertRedirect(route('app.webhooks.index'));
 });
 
-test('members and viewers cannot manage webhooks', function (Role $role) {
+test('members who are not admins cannot manage webhooks', function (string $role) {
     $user = teammateForWebhookWorkspace($role);
     $webhook = Webhook::factory()->create([
         'workspace_id' => $this->workspace->id,
@@ -702,14 +704,14 @@ test('members and viewers cannot manage webhooks', function (Role $role) {
         'endpoint' => 'https://member.example.com/webhooks',
     ]);
 })->with([
-    Role::Member,
-    Role::Viewer,
+    'member',
+    'approval',
 ]);
 
-function teammateForWebhookWorkspace(Role $role): User
+function teammateForWebhookWorkspace(string $role): User
 {
     $user = User::factory()->create(['account_id' => test()->user->account_id]);
-    test()->workspace->members()->attach($user->id, ['role' => $role->value]);
+    test()->workspace->members()->attach($user->id, membershipPivot($role));
     $user->update(['current_workspace_id' => test()->workspace->id]);
 
     return $user->fresh();

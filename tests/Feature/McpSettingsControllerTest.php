@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -17,7 +16,7 @@ beforeEach(function (): void {
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $this->user->refresh();
 
@@ -51,7 +50,7 @@ it('shows the mcp settings page without a subscription in self-hosted mode', fun
 
 it('lists only the current users oauth clients as connected, excluding personal access tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $ownerClientId = mcpOauthClient('Owner Agent');
@@ -84,18 +83,18 @@ it('excludes unscoped oauth grants from connected clients', function (): void {
         ->assertInertia(fn ($page) => $page->where('connectedClients', []));
 });
 
-it('lists viewer own oauth grants as connected clients', function (): void {
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+it('lists the own oauth grants of a member who needs approval as connected clients', function (): void {
+    $requester = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $this->workspace->id]);
 
-    mcpAccessToken($viewer, mcpOauthClient('Viewer Agent'), $this->workspace);
+    mcpAccessToken($requester, mcpOauthClient('Requester Agent'), $this->workspace);
 
-    $this->actingAs($viewer->fresh())
+    $this->actingAs($requester->fresh())
         ->get(route('app.mcp.index'))
         ->assertInertia(fn ($page) => $page
             ->has('connectedClients', 1)
-            ->where('connectedClients.0.name', 'Viewer Agent')
+            ->where('connectedClients.0.name', 'Requester Agent')
             ->where('connectedClients.0.can_disconnect', true));
 });
 
@@ -178,7 +177,7 @@ it('does not flash success when disconnecting an unknown client', function (): v
 
 it('does not list a teammates mcp connection', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     mcpAccessToken($this->user, mcpOauthClient('Owner Agent'), $this->workspace);
@@ -191,7 +190,7 @@ it('does not list a teammates mcp connection', function (): void {
 
 it('allows workspace members to view and disconnect their own mcp clients', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $clientId = mcpOauthClient('Member Agent');
@@ -212,24 +211,24 @@ it('allows workspace members to view and disconnect their own mcp clients', func
     expect($token->fresh()->revoked)->toBeTrue();
 });
 
-it('allows workspace viewers to view and disconnect their own mcp clients', function (): void {
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+it('allows members who need approval to view and disconnect their own mcp clients', function (): void {
+    $requester = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $this->workspace->id]);
 
-    $clientId = mcpOauthClient('Viewer Agent');
-    $token = mcpAccessToken($viewer, $clientId, $this->workspace);
+    $clientId = mcpOauthClient('Requester Agent');
+    $token = mcpAccessToken($requester, $clientId, $this->workspace);
 
-    $this->actingAs($viewer->fresh())
+    $this->actingAs($requester->fresh())
         ->get(route('app.mcp.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('settings/workspace/Mcp')
             ->has('connectedClients', 1)
-            ->where('connectedClients.0.name', 'Viewer Agent')
+            ->where('connectedClients.0.name', 'Requester Agent')
             ->where('connectedClients.0.can_disconnect', true));
 
-    $this->actingAs($viewer->fresh())
+    $this->actingAs($requester->fresh())
         ->delete(route('app.mcp.disconnect', ['client' => $clientId]))
         ->assertRedirect()
         ->assertSessionHas('flash.success');
@@ -239,7 +238,7 @@ it('allows workspace viewers to view and disconnect their own mcp clients', func
 
 it('does not revoke another users mcp client tokens', function (): void {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $clientId = mcpOauthClient('Owner Agent');
@@ -272,7 +271,7 @@ it('lists only mcp connections for the current workspace', function (): void {
         'user_id' => $this->user->id,
         'name' => 'Workspace B',
     ]);
-    $workspaceB->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $workspaceB->members()->attach($this->user->id, membershipPivot('admin'));
 
     $clientId = mcpOauthClient('Claude');
     mcpAccessToken($this->user, $clientId, $this->workspace);
@@ -356,7 +355,7 @@ it('disconnects a client only on the current workspace', function (): void {
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $workspaceB->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $workspaceB->members()->attach($this->user->id, membershipPivot('admin'));
 
     $clientId = mcpOauthClient('Claude');
     $onA = mcpAccessToken($this->user, $clientId, $this->workspace);

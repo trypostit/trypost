@@ -6,6 +6,9 @@ namespace App\Enums\SocialAccount;
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Enums\YouTube\Category;
+use App\Support\Hashtags;
+use Illuminate\Support\Str;
 
 enum Platform: string
 {
@@ -32,6 +35,38 @@ enum Platform: string
             self::Instagram, self::InstagramFacebook => 'instagram',
             default => $this->value,
         };
+    }
+
+    /** Whether the network lays published posts out as a profile grid TryPost can approximate. */
+    public function hasProfileGrid(): bool
+    {
+        return $this->network() === self::Instagram->network();
+    }
+
+    public function isIncludedInAnalytics(): bool
+    {
+        return match ($this) {
+            self::LinkedIn, self::LinkedInPage, self::Telegram,
+            self::Discord, self::GoogleBusiness => false,
+            default => true,
+        };
+    }
+
+    public function reportsPublicationFollows(): bool
+    {
+        return match ($this) {
+            self::Instagram, self::InstagramFacebook => true,
+            default => false,
+        };
+    }
+
+    /** @return list<string> */
+    public static function analyticsValues(): array
+    {
+        return array_values(array_map(
+            fn (self $platform): string => $platform->value,
+            array_filter(self::cases(), fn (self $platform): bool => $platform->isIncludedInAnalytics()),
+        ));
     }
 
     /**
@@ -162,15 +197,14 @@ enum Platform: string
      * means the post can't be published. Values are the documented API maxes:
      *
      *  - LinkedIn UGC: 3000 (`commentary` field)
-     *  - X standard tweet: 280 (X Premium accepts 25K — ignored, conservative)
+     *  - X standard post: 280; an account with long posts gets 25000 through
+     *    `SocialAccount::maxContentLength()`
      *  - TikTok caption: 2200
-     *  - YouTube Shorts: content supplies the title, capped at 100 characters
-     *    (publisher derives it from the first line via `buildTitle`). Optional
-     *    meta.description is separate plain text, capped at 5000 UTF-8 bytes;
-     *    absent descriptions fall back to content.
+     *  - YouTube Shorts: content is the video description, 5000 (also capped at
+     *    5000 UTF-8 bytes by `YouTubeDescription`). The title is meta.title, or
+     *    `YouTubeMetadata::title()` derives it from the first line of content.
      *  - Facebook text status: 10000 (API allows 63206; we cap below
-     *    that — 63k-char posts are unrealistic and emoji-heavy content
-     *    risks overflowing the TEXT column's 65535-byte ceiling)
+     *    that — 63k-char posts are unrealistic)
      *  - Instagram feed caption: 2200
      *  - Threads: 500
      *  - Pinterest pin description: 800 (title is 100, not modeled here)
@@ -186,7 +220,7 @@ enum Platform: string
             self::LinkedIn, self::LinkedInPage => 3000,
             self::X => 280,
             self::TikTok => 2200,
-            self::YouTube => 100,
+            self::YouTube => 5000,
             self::Facebook => 10000,
             self::Instagram, self::InstagramFacebook => 2200,
             self::Threads => 500,
@@ -205,9 +239,40 @@ enum Platform: string
      * length checks — used both at schedule-validation time and at publish
      * time itself so the two paths can never drift apart.
      */
-    public function contentOverflow(string $content): int
+    public function contentOverflow(string $content, int $reserved = 0): int
     {
-        return max(0, mb_strlen($content) - $this->maxContentLength());
+        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
+    }
+
+    /**
+     * Characters a network counts against the post limit besides its text:
+     * Mastodon counts the content warning.
+     *
+     * @param  array<string, mixed>|null  $meta
+     */
+    public function reservedLength(?array $meta): int
+    {
+        $warning = data_get($meta, 'spoiler_text');
+
+        return $this === self::Mastodon && is_string($warning) ? mb_strlen(Str::trim($warning)) : 0;
+    }
+
+    /**
+     * Hashtags the network accepts per post, or null when it sets no cap we enforce.
+     */
+    public function maxHashtags(): ?int
+    {
+        return match ($this) {
+            self::Instagram, self::InstagramFacebook => 5,
+            default => null,
+        };
+    }
+
+    public function hashtagOverflow(string $content): int
+    {
+        $limit = $this->maxHashtags();
+
+        return $limit === null ? 0 : max(0, Hashtags::count($content) - $limit);
     }
 
     /**
@@ -234,9 +299,9 @@ enum Platform: string
             self::Pinterest => 200,
             // TikTok caption — the video carries the story
             self::TikTok => 150,
-            // YouTube Shorts — fits within the 100-char title (with " #Shorts"
-            // suffix taking 8 chars) so the same string works as title + desc
-            self::YouTube => 80,
+            // YouTube Shorts — the content is the description; the first lines
+            // show under the video, so keep it short
+            self::YouTube => 300,
             // Telegram channel posts — short announcements read best
             self::Telegram => 400,
             // Discord — conversational community posts read best when concise
@@ -269,6 +334,15 @@ enum Platform: string
             self::Discord => [],
             self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
         };
+    }
+
+    /**
+     * Whether a repurpose may publish to this platform. A repurpose always
+     * carries a video, so a platform whose posts cannot carry one never can.
+     */
+    public function acceptsRepurposeDestination(): bool
+    {
+        return $this !== self::GoogleBusiness;
     }
 
     public function supportsTextOnly(): bool
@@ -462,7 +536,7 @@ enum Platform: string
     }
 
     /**
-     * @return list<array{value: string, label: string, network: string, connect_methods?: list<string>}>
+     * @return list<array{value: string, label: string, network: string, analytics: bool, text_only: bool, media_types: list<string>, connect_methods?: list<string>}>
      */
     public static function connectableOptions(): array
     {
@@ -474,6 +548,9 @@ enum Platform: string
                     'value' => $platform->value,
                     'label' => $platform->label(),
                     'network' => $platform->network(),
+                    'analytics' => $platform->isIncludedInAnalytics(),
+                    'text_only' => $platform->supportsTextOnly(),
+                    'media_types' => array_map(fn (MediaType $type): string => $type->value, $platform->allowedMediaTypes()),
                 ];
 
                 if ($platform === self::Instagram) {
@@ -500,7 +577,52 @@ enum Platform: string
                 'musicUsageConfirmationUrl' => 'https://www.tiktok.com/legal/page/global/music-usage-confirmation/en',
                 'brandedContentPolicyUrl' => 'https://www.tiktok.com/legal/page/global/bc-policy/en',
             ],
+            self::YouTube => [
+                'categoryOptions' => Category::options(),
+                'defaultCategoryId' => Category::DEFAULT->value,
+            ],
             default => [],
         };
+    }
+
+    /**
+     * Recommended posting windows for this network, best first, as [day, hour]
+     * pairs (day 0 = Sunday, local to the channel time zone). Built from a
+     * ranked day order and four ranked hours, rotated so the first week does not
+     * repeat one hour: block r (0..3) gives every day one window at
+     * hours[(r + dayRank) % 4]. Day and hour rankings follow the published
+     * "best time to post" industry studies
+     * (2024-2025 editions) for each network.
+     *
+     * @return list<array{0: int, 1: int}>
+     */
+    public function recommendedPostingWindows(): array
+    {
+        [$days, $hours] = match ($this->network()) {
+            'linkedin' => [[2, 3, 4, 1, 5, 6, 0], [8, 12, 10, 17]],
+            'x' => [[2, 3, 4, 1, 5, 6, 0], [9, 12, 15, 18]],
+            'instagram' => [[2, 3, 4, 1, 5, 6, 0], [11, 19, 13, 9]],
+            'facebook' => [[2, 3, 4, 1, 5, 6, 0], [9, 13, 11, 15]],
+            'threads' => [[2, 3, 4, 1, 5, 6, 0], [9, 12, 18, 20]],
+            'tiktok' => [[2, 4, 5, 3, 1, 6, 0], [19, 12, 16, 21]],
+            'youtube' => [[5, 6, 0, 4, 3, 2, 1], [15, 17, 12, 19]],
+            'pinterest' => [[5, 6, 0, 4, 3, 2, 1], [20, 14, 21, 15]],
+            'bluesky' => [[2, 3, 4, 1, 5, 6, 0], [9, 12, 17, 20]],
+            'mastodon' => [[2, 3, 4, 1, 5, 6, 0], [10, 13, 16, 19]],
+            'telegram' => [[1, 2, 3, 4, 5, 6, 0], [9, 12, 18, 20]],
+            'discord' => [[5, 6, 0, 4, 3, 2, 1], [18, 20, 15, 21]],
+            'google_business' => [[1, 2, 3, 4, 5, 6, 0], [9, 11, 14, 16]],
+            default => [[2, 3, 4, 1, 5, 6, 0], [9, 12, 15, 18]],
+        };
+
+        $windows = [];
+
+        foreach (range(0, 3) as $block) {
+            foreach ($days as $rank => $day) {
+                $windows[] = [$day, $hours[($block + $rank) % 4]];
+            }
+        }
+
+        return $windows;
     }
 }

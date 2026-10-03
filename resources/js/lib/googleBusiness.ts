@@ -3,9 +3,10 @@
  * panel, the preview, and the publish compliance gate.
  */
 
+import date from '@/date';
+import dayjs from '@/dayjs';
 import {
     GOOGLE_BUSINESS_CTA_ACTION_VALUES,
-    GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
     GoogleBusinessCtaAction,
     GoogleBusinessTopicType,
     googleBusinessCtaActionLabelKey,
@@ -47,6 +48,43 @@ export const GOOGLE_BUSINESS_TOPIC_TYPES: readonly GoogleBusinessTopicTypeOption
     { value: GoogleBusinessTopicType.Event, labelKey: googleBusinessTopicTypeLabelKey[GoogleBusinessTopicType.Event] },
 ];
 
+/** Event and Offer start today and run a week in the user's time zone, like the reference. */
+const seededSchedule = (event: Record<string, any> | null | undefined): Record<string, any> => {
+    const today = dayjs().tz(date.getUserTimezone());
+
+    return {
+        ...event,
+        start_date: event?.start_date ?? today.format('YYYY-MM-DD'),
+        end_date: event?.end_date ?? today.add(7, 'day').format('YYYY-MM-DD'),
+    };
+};
+
+/** Meta after switching the Local Post type. An Offer has no times or button. */
+export const googleBusinessTopicMeta = (
+    meta: Record<string, any>,
+    topicType: GoogleBusinessTopicTypeValue,
+): Record<string, any> => {
+    if (topicType === GoogleBusinessTopicType.Standard) {
+        return { ...meta, topic_type: topicType, event: null, offer: null };
+    }
+
+    if (topicType === GoogleBusinessTopicType.Event) {
+        return { ...meta, topic_type: topicType, event: seededSchedule(meta.event), offer: null };
+    }
+
+    return {
+        ...meta,
+        topic_type: topicType,
+        call_to_action: null,
+        event: { ...seededSchedule(meta.event), start_time: null, end_time: null },
+        offer: {
+            ...meta.offer,
+            redeem_online_url:
+                meta.offer?.redeem_online_url ?? meta.call_to_action?.url ?? null,
+        },
+    };
+};
+
 /** Google ignores `callToAction` on OFFER posts. */
 export const googleBusinessAllowsCallToAction = (topicType?: string | null): boolean =>
     resolveGoogleBusinessTopicType(topicType) !== GoogleBusinessTopicType.Offer;
@@ -65,37 +103,6 @@ export const GOOGLE_BUSINESS_CTA_OPTIONS: readonly GoogleBusinessCtaOption[] =
         value,
         labelKey: googleBusinessCtaActionLabelKey[value],
     }));
-
-/**
- * Combine stored event date + time for the DatePicker (`YYYY-MM-DD` or
- * `YYYY-MM-DDTHH:mm:00`). The editor DatePicker always writes a time (default
- * 09:00). API/MCP may omit it — Google then treats the schedule as the start
- * of the day at the location.
- */
-export const googleBusinessEventDateTimeValue = (date?: string | null, time?: string | null): string => {
-    if (!date) {
-        return '';
-    }
-
-    return time ? `${date}T${time}:00` : date;
-};
-
-/**
- * Split a DatePicker value back into the `event.start_date` / `event.start_time`
- * (or end) meta fields the API, MCP, and publisher persist.
- */
-export const googleBusinessEventDateTimeParts = (value: string | null): { date: string | null; time: string | null } => {
-    if (!value?.trim()) {
-        return { date: null, time: null };
-    }
-
-    const match = /^(?<date>\d{4}-\d{2}-\d{2})(?:T(?<time>\d{2}:\d{2}))?/.exec(value);
-
-    return {
-        date: match?.groups?.date ?? null,
-        time: match?.groups?.time ?? null,
-    };
-};
 
 export interface GoogleBusinessEventSchedule {
     start_date?: string | null;

@@ -28,13 +28,6 @@ class TikTokAnalytics
     private const int VIDEO_LIST_MAX_PAGES = 5;
 
     /**
-     * `published_at` is stamped after TikTok finishes processing, which can trail
-     * the video's `create_time` by up to the status-poll window (~1 h). A day of
-     * slack keeps our own video inside the scan on slow publishes.
-     */
-    private const int PUBLISH_CLOCK_SLACK_SECONDS = 86400;
-
-    /**
      * @var array<string, string>
      */
     private const array POST_METRICS = [
@@ -184,7 +177,8 @@ class TikTokAnalytics
     /**
      * `video/list` is sorted by `create_time` desc, so scanning stops at the
      * first video older than the publish — anything past it cannot be ours, and
-     * an older repost with the same caption must never be claimed.
+     * an older repost with the same caption must never be claimed. Allow one
+     * day because our `published_at` can lag TikTok's `create_time` during review.
      */
     private function matchVideoFromRecentList(PostPlatform $postPlatform): ?string
     {
@@ -200,7 +194,7 @@ class TikTokAnalytics
             return null;
         }
 
-        $notBefore = ($postPlatform->published_at ?? now())->getTimestamp() - self::PUBLISH_CLOCK_SLACK_SECONDS;
+        $notBefore = ($postPlatform->published_at ?? now())->copy()->utc()->subDay()->getTimestamp();
         $cursor = null;
 
         for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {

@@ -62,7 +62,7 @@ test('platform has correct max content length', function () {
     expect(Platform::LinkedIn->maxContentLength())->toBe(3000);
     expect(Platform::X->maxContentLength())->toBe(280);
     expect(Platform::TikTok->maxContentLength())->toBe(2200);
-    expect(Platform::YouTube->maxContentLength())->toBe(100);
+    expect(Platform::YouTube->maxContentLength())->toBe(5000);
     expect(Platform::Facebook->maxContentLength())->toBe(10000);
     expect(Platform::Instagram->maxContentLength())->toBe(2200);
     expect(Platform::Threads->maxContentLength())->toBe(500);
@@ -416,4 +416,13 @@ test('google business can be disabled via config', function () {
 
 test('tiktok publish config privacy options come from the privacy level enum', function () {
     expect(Platform::TikTok->publishConfig()['privacyLevelOptions'])->toBe(PrivacyLevel::values());
+});
+
+test('youtube publish config exposes only the fixed categories and the default', function () {
+    $config = Platform::YouTube->publishConfig();
+
+    expect(array_keys($config))->toBe(['categoryOptions', 'defaultCategoryId'])
+        ->and($config['categoryOptions'])->toHaveCount(15)
+        ->and($config['categoryOptions'][0])->toBe(['value' => '2', 'labelKey' => 'posts.form.youtube.categories.autos_and_vehicles'])
+        ->and($config['defaultCategoryId'])->toBe('22');
 });

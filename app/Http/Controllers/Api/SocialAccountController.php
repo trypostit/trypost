@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Actions\SocialAccount\ListDiscordChannels;
 use App\Actions\SocialAccount\ListPinterestBoards;
-use App\Actions\SocialAccount\ToggleSocialAccount;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
@@ -23,18 +22,9 @@ class SocialAccountController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $accounts = $request->user()->currentWorkspace->socialAccounts()->orderBy('platform')->get();
+        $accounts = $request->user()->currentWorkspace->socialAccounts()->get();
 
         return SocialAccountResource::collection($accounts);
-    }
-
-    public function toggle(Request $request, SocialAccount $account): SocialAccountResource
-    {
-        $this->authorize('view', $account);
-
-        ToggleSocialAccount::execute($account);
-
-        return new SocialAccountResource($account);
     }
 
     public function boards(Request $request, SocialAccount $account): JsonResponse

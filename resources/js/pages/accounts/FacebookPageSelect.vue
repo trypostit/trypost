@@ -49,7 +49,7 @@ const pageUrl = (username: string | null): string | null =>
             <div class="flex items-center gap-3">
                 <img src="/images/accounts/facebook.png" alt="Facebook" class="h-10 w-10" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.facebook.title') }}</h1>
+                    <h1 class="font-heading text-xl font-medium tracking-tight">{{ $t('accounts.facebook.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.facebook.description') }}</p>
                 </div>
             </div>

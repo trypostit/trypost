@@ -2,14 +2,23 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\Analytics\DispatchAccountDailyAnalytics;
+use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
+use App\Console\Commands\Analytics\DispatchPublicationMetrics;
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
 use App\Console\Commands\ProcessScheduledPosts;
+use App\Console\Commands\PruneExpiredPostHistoryCommand;
+use App\Console\Commands\PruneTemporaryUploadsCommand;
 use App\Console\Commands\PruneWebhookLogs;
 use App\Console\Commands\ReconcileGoogleBusinessPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
 use App\Console\Commands\Repurpose\PollRepurposes;
+use App\Console\Commands\RssFeed\PollRssFeeds;
+use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
+use App\Support\Analytics\DiscoverySchedule;
 use Illuminate\Support\Facades\Schedule;
 
 Schedule::command(ProcessScheduledPosts::class)->everyMinute()->withoutOverlapping()->onOneServer();
@@ -19,4 +28,39 @@ Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutO
 Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverlapping()->onOneServer();
+Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(PollRssFeeds::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(DispatchAccountDailyAnalytics::class)
+    ->dailyAt('02:00')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command(DispatchPublicationDiscovery::class, ['--except-platform' => Platform::X->value])
+    ->cron(DiscoverySchedule::cron((int) config('trypost.analytics.discovery_interval_hours')))
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command(DispatchPublicationDiscovery::class, ['--platform' => Platform::X->value])
+    ->cron(DiscoverySchedule::cron((int) config('trypost.analytics.x_discovery_interval_hours')))
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command(DispatchPublicationMetrics::class)
+    ->dailyAt('03:00')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::job(new FinalizeAccountDailySnapshots)
+    ->name('analytics:finalize-account-daily')
+    ->dailyAt('23:30')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::job(new FinalizeAccountDailySnapshots(daysAgo: 1))
+    ->name('analytics:finalize-account-daily-recovery')
+    ->dailyAt('00:30')
+    ->timezone('UTC')
+    ->withoutOverlapping()
+    ->onOneServer();

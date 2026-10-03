@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\User\Locale;
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -13,7 +12,7 @@ test('the app renders in the user locale right after logging in', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $page = visit(route('login'));
@@ -24,6 +23,6 @@ test('the app renders in the user locale right after logging in', function () {
 
     $page->script('(async () => { for (let i = 0; i < 150; i++) { if (location.pathname !== "/login") return; await new Promise((r) => setTimeout(r, 50)); } })();');
 
-    $page->assertSee(__('sidebar.posts.all', [], 'ja'))
-        ->assertDontSee(__('sidebar.posts.all', [], 'en'));
+    $page->assertSee(__('sidebar.groups.posts', [], 'ja'))
+        ->assertDontSee(__('sidebar.groups.posts', [], 'en'));
 });

@@ -4,13 +4,19 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\Post;
 
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\CreatePosts;
+use App\Actions\Post\HostInlineMedia;
 use App\Enums\Post\CreatedVia;
 use App\Enums\PostPlatform\ContentType;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
+use App\Mcp\Concerns\DescribesPostMedia;
+use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeMatchesPlatform;
+use App\Rules\PostContentFitsMaxLength;
+use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Validation\Rule;
@@ -20,10 +26,11 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Create a draft post in the current workspace. Accepts content, scheduled_at, label_ids, and a list of platforms (social accounts to publish on, with their content_type). Use list-content-types-tool to discover valid content_types per platform.')]
+#[Description('Create one post for one social account in the current workspace. Use create-posts-tool to create a batch. Use list-content-types-tool to discover valid content_types.')]
 class CreatePostTool extends Tool
 {
     use AuthorizesMcpTool;
+    use DescribesPostMedia;
 
     public function handle(Request $request): Response|ResponseFactory
     {
@@ -39,17 +46,17 @@ class CreatePostTool extends Tool
 
         $validated = $request->validate(
             [
-                'content' => ['nullable', 'string', 'max:10000'],
-                'scheduled_at' => ['nullable', 'date', 'after:now'],
+                'content' => ['nullable', 'string', new PostContentFitsMaxLength],
+                ...PostMediaRules::rules(),
+                'scheduled_at' => ['nullable', 'date', 'after:now', 'before:2038-01-19'],
                 'label_ids' => ['sometimes', 'array'],
-                'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)],
-                'platforms' => ['sometimes', 'array'],
+                'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $workspace->id)->withoutTrashed()],
+                'platforms' => ['required', 'array', 'size:1'],
                 'platforms.*.social_account_id' => [
                     'required',
                     'uuid',
                     Rule::exists('social_accounts', 'id')
-                        ->where('workspace_id', $workspace->id)
-                        ->where('is_active', true),
+                        ->where('workspace_id', $workspace->id),
                 ],
                 'platforms.*.content_type' => ['required', 'string', Rule::in(array_column(ContentType::cases(), 'value')), new ContentTypeMatchesPlatform],
                 ...PostPlatformMetaRules::rules(),
@@ -58,9 +65,21 @@ class CreatePostTool extends Tool
             PostPlatformMetaRules::attributes(),
         );
 
-        $validated['created_via'] = CreatedVia::Mcp;
+        $platform = SocialAccount::query()->whereKey($validated['platforms'][0]['social_account_id'])->value('platform');
 
-        $post = CreatePost::execute($workspace, $request->user(), $validated);
+        $post = CreatePosts::execute($workspace, $request->user(), [
+            'status' => 'draft',
+            'content' => $validated['content'] ?? '',
+            'media' => HostInlineMedia::execute(
+                $workspace,
+                Post::allowedMediaTypesFor(collect([$platform])),
+                $validated['media'] ?? [],
+            ),
+            'scheduled_at' => $validated['scheduled_at'] ?? null,
+            'label_ids' => $validated['label_ids'] ?? [],
+            'created_via' => CreatedVia::Mcp,
+            'destinations' => [$validated['platforms'][0]],
+        ])->sole();
 
         $post->load(['postPlatforms.socialAccount', 'labels']);
 
@@ -71,6 +90,7 @@ class CreatePostTool extends Tool
     {
         return [
             'content' => $schema->string()->description('The post caption/text body. Optional — can be edited later.'),
+            'media' => $this->mediaSchema($schema, 'Media for the post.'),
             'scheduled_at' => $schema->string()->description('Optional ISO 8601 datetime in the future (e.g. 2026-05-10T15:30:00Z). Omit it or pass null to create an unscheduled draft.'),
             'label_ids' => $schema->array()
                 ->items($schema->string())
@@ -79,9 +99,10 @@ class CreatePostTool extends Tool
                 ->items($schema->object(fn ($p) => [
                     'social_account_id' => $p->string()->required()->description('UUID of the connected social account.'),
                     'content_type' => $p->string()->required()->description('Format for this platform (e.g. linkedin_post, x_post, instagram_feed).'),
-                    'meta' => $p->object()->description('Per-platform metadata. Instagram/Facebook: aspect_ratio (1:1|4:5|16:9|original). TikTok: privacy_level PUBLIC_TO_EVERYONE|MUTUAL_FOLLOW_FRIENDS|FOLLOWER_OF_CREATOR|SELF_ONLY (required to publish) + flags (allow_comments, allow_duet, allow_stitch, disclose, brand_content_toggle, brand_organic_toggle, is_aigc, auto_add_music). SELF_ONLY cannot be combined with brand_content_toggle. Pinterest: board_id (required to publish — call ListPinterestBoardsTool first), title (≤100), link (destination URL). Pin description comes from the post content. Discord: channel_id (required to publish — call ListDiscordChannelsTool first), mentions ([{token,label}]), embeds ([{title,description,url,image,color}]). YouTube Shorts: description (optional plain text, at most 5000 bytes). Post content remains the title source, limited to 100 characters. Omit description or pass null to use the post content as description.'),
+                    'meta' => $p->object()->description(PostPlatformMetaRules::documentation()),
                 ]))
-                ->description('Platforms to publish on. Accounts not listed remain available but disabled.'),
+                ->required()
+                ->description('Exactly one social account. Use create-posts-tool for multiple accounts.'),
         ];
     }
 }

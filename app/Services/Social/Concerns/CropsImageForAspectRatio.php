@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 trait CropsImageForAspectRatio
 {
-    private const CROP_DIRECTORY = 'social-crops';
+    public const CROP_DIRECTORY = 'social-crops';
 
     /**
      * Crop the image to the user-selected aspect ratio and return a public URL

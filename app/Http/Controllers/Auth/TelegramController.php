@@ -36,6 +36,9 @@ class TelegramController extends SocialController
             'code' => $code,
             'nonce' => data_get(TelegramConnectCode::decode($code), 'nonce'),
             'bot_username' => config('trypost.platforms.telegram.bot_username'),
+            'bot_url' => filled(config('trypost.platforms.telegram.bot_username'))
+                ? rtrim((string) config('trypost.platforms.telegram.deep_link'), '/').'/'.config('trypost.platforms.telegram.bot_username')
+                : null,
             'expires_at' => $expiresAt->toIso8601String(),
         ]);
     }

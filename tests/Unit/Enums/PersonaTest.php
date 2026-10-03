@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\User\Persona;
-use App\Enums\Workspace\ContentLanguage;
 
 test('persona values are stable', function () {
     expect(array_map(fn (Persona $persona): string => $persona->value, Persona::cases()))
@@ -16,4 +16,4 @@ test('every persona has a welcome label in every locale', function (string $loca
 
         expect(__($key, [], $locale))->not->toBe($key);
     }
-})->with(ContentLanguage::values());
+})->with(Locale::values());

@@ -23,14 +23,14 @@ const state = computed<RepurposeHealthValue | null>(() => {
 
     const source = props.accounts.find((account) => account.id === props.repurpose.source_social_account_id);
 
-    if (!source || !source.is_active || source.status !== SocialAccountStatus.Connected) {
+    if (!source || source.status !== SocialAccountStatus.Connected) {
         return RepurposeHealth.SourceUnusable;
     }
 
     const usable = props.repurpose.destinations.filter((destination) => {
         const account = props.accounts.find((item) => item.id === destination.social_account_id);
 
-        return account !== undefined && account.is_active;
+        return account !== undefined;
     });
 
     return usable.length === 0 ? RepurposeHealth.NoDestinations : RepurposeHealth.Ready;

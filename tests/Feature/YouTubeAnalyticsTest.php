@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
-use App\Enums\UserWorkspace\Role;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Account;
+use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Http;
 beforeEach(function () {
     $this->user = User::factory()->create([]);
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_test_'.fake()->uuid(),
@@ -34,7 +34,6 @@ beforeEach(function () {
         'refresh_token' => 'refresh_token_123',
         'token_expires_at' => now()->addHours(2),
         'status' => AccountStatus::Connected,
-        'is_active' => true,
         'meta' => [
             'channel_id' => 'UC_test_channel_123',
             'google_user_id' => 'google_user_123',
@@ -196,55 +195,54 @@ test('youtube analytics throws exception on token refresh failure', function () 
     $analytics->getMetrics($this->youtubeAccount);
 })->throws(TokenExpiredException::class);
 
-test('youtube is in supported analytics platforms', function () {
+test('youtube follower facts appear in the workspace analytics report', function () {
     config(['trypost.self_hosted' => true]);
+    $this->travelTo('2026-09-30 12:00 UTC');
 
-    $response = $this->actingAs($this->user)
-        ->get(route('app.analytics'));
-
-    $response->assertOk();
-
-    $accounts = $response->original->getData()['page']['props']['accounts'];
-    $youtubeAccount = collect($accounts)->firstWhere('platform', Platform::YouTube->value);
-
-    expect($youtubeAccount)->not->toBeNull()
-        ->and($youtubeAccount['id'])->toBe($this->youtubeAccount->id)
-        ->and($youtubeAccount)->toHaveKeys(['display_label']);
-});
-
-test('youtube analytics show endpoint returns metrics', function () {
-    config(['trypost.self_hosted' => true]);
-
-    Http::fake([
-        'https://youtubeanalytics.googleapis.com/v2/reports*' => Http::response([
-            'columnHeaders' => [
-                ['name' => 'views'],
-                ['name' => 'likes'],
-            ],
-            'rows' => [
-                [500, 30],
-            ],
-        ], 200),
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $this->youtubeAccount->id,
+        'social_account_key' => $this->youtubeAccount->id,
+        'platform' => Platform::YouTube,
+        'network' => Platform::YouTube->network(),
+        'platform_user_id' => $this->youtubeAccount->platform_user_id,
+        'date' => '2026-09-23',
+        'followers_count' => 50,
     ]);
 
     $response = $this->actingAs($this->user)
-        ->getJson(route('app.analytics.show', $this->youtubeAccount));
+        ->get(route('app.insights'));
 
-    $response->assertOk()
-        ->assertJsonStructure(['metrics'])
-        ->assertJsonCount(2, 'metrics');
+    $response->assertOk();
+
+    $report = $response->original->getData()['page']['props']['report'];
+
+    expect($report['summary']['followers']['value'])->toBe(50)
+        ->and($report['followers']['accounts'][0]['social_account_key'])->toBe($this->youtubeAccount->id);
 });
 
-test('youtube analytics show endpoint rejects other workspace accounts', function () {
+test('youtube analytics dashboard never calls the provider on read', function () {
+    config(['trypost.self_hosted' => true]);
+    Http::fake();
+
+    $response = $this->actingAs($this->user)
+        ->get(route('app.insights'));
+
+    $response->assertOk();
+    Http::assertNothingSent();
+});
+
+test('youtube facts in another workspace do not leak into the report', function () {
     config(['trypost.self_hosted' => true]);
 
     $otherUser = User::factory()->create([]);
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
-    $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($otherUser->id, membershipPivot('member'));
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
 
     $response = $this->actingAs($otherUser)
-        ->getJson(route('app.analytics.show', $this->youtubeAccount));
+        ->get(route('app.insights'));
 
-    $response->assertForbidden();
+    $response->assertOk();
+    expect($response->original->getData()['page']['props']['report']['summary']['followers']['value'])->toBeNull();
 });

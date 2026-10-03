@@ -48,8 +48,8 @@ return [
             'networks_all_tooltip' => 'Bu ağların hepsinde paylaşım yapabilirsiniz.',
             'accounts_unlimited' => 'Sınırsız sosyal hesaplar',
             'accounts_unlimited_tooltip' => 'İstediğiniz kadar hesap bağlayın, aynı ağdan birkaç tane bile. Örneğin üç Instagram.',
-            'calendar' => 'Takvim: aylık, haftalık ve günlük görünüm',
-            'calendar_tooltip' => 'Tüm ayınızı tek bakışta görün: planlanan, zamanlanan ve yayımlanmış olanlar. Ayrıntı gerektiğinde hafta veya gün görünümüne geçin.',
+            'calendar' => 'Takvim: aylık ve haftalık görünüm',
+            'calendar_tooltip' => 'Tüm ayınızı tek bakışta görün: planlanan, zamanlanan ve yayımlanmış olanlar. Ayrıntı gerektiğinde hafta görünümüne geçin.',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => 'Gönderi yazmak ve gözden geçirmek için yapay zeka asistanınız.',
             'mcp' => 'MCP: Claude, ChatGPT veya Grok ile paylaşın',
@@ -81,6 +81,7 @@ return [
         'title' => 'Faturalar',
         'description' => 'Geçmiş faturalarınızı indirin.',
         'paid' => 'Ödendi',
+        'download' => 'Faturayı indir',
     ],
 
     'flash' => [

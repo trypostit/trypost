@@ -1,18 +1,30 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
-import { IconExternalLink, IconPlugConnected } from '@tabler/icons-vue';
+import {
+    IconDotsVertical,
+    IconExternalLink,
+    IconPlugConnected,
+    IconTrash,
+} from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import HeadingSmall from '@/components/HeadingSmall.vue';
+import EmptyState from '@/components/EmptyState.vue';
 import McpAdvancedClients from '@/components/mcp/McpAdvancedClients.vue';
 import McpPrimarySetup from '@/components/mcp/McpPrimarySetup.vue';
-import PageHeader from '@/components/PageHeader.vue';
-import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
+import SettingsListRow from '@/components/settings/SettingsListRow.vue';
+import SettingsRow from '@/components/settings/SettingsRow.vue';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
-import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Separator } from '@/components/ui/separator';
 import date from '@/date';
-import AppLayout from '@/layouts/AppLayout.vue';
+import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
 interface ConnectedClient {
@@ -28,7 +40,6 @@ defineProps<{
 }>();
 
 const docsUrl = 'https://docs.trypost.it/ai/introduction';
-const tabs = useWorkspaceSettingsTabs();
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 usePoll(1000, {
@@ -46,115 +57,101 @@ const confirmDisconnect = (client: ConnectedClient): void => {
 <template>
     <Head :title="$t('mcp.title')" />
 
-    <AppLayout>
-        <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
+    <SettingsLayout
+        :title="$t('mcp.title')"
+        :description="$t('mcp.subtitle')"
+    >
+        <div class="flex flex-col gap-10">
+            <McpPrimarySetup
+                :mcp-url="mcpUrl"
+                :copied-message="$t('mcp.copied')"
             />
 
-            <SettingsTabsNav :tabs="tabs" active="mcp" />
+            <Separator />
 
-            <div class="flex max-w-3xl flex-col gap-10">
-                <HeadingSmall
-                    :title="$t('mcp.title')"
-                    :description="$t('mcp.subtitle')"
-                />
+            <McpAdvancedClients :mcp-url="mcpUrl" />
 
-                <section class="space-y-6">
-                    <McpPrimarySetup
-                        :mcp-url="mcpUrl"
-                        :copied-message="$t('mcp.copied')"
-                    />
-                    <McpAdvancedClients :mcp-url="mcpUrl" />
-                </section>
+            <Separator />
 
-                <section class="space-y-4">
-                    <HeadingSmall
-                        :title="$t('mcp.connected_title')"
-                        :description="$t('mcp.connected_description')"
-                    />
-
-                    <div
-                        v-if="connectedClients.length === 0"
-                        class="rounded-xl border-2 border-dashed border-foreground/25 bg-card/40 px-4 py-6 text-center text-sm font-medium text-foreground/60"
-                        data-testid="mcp-connected-empty"
+            <SettingsSection
+                :title="$t('mcp.connected_title')"
+                :description="$t('mcp.connected_description')"
+            >
+                <ul
+                    v-if="connectedClients.length > 0"
+                    class="flex flex-col gap-2"
+                >
+                    <SettingsListRow
+                        v-for="client in connectedClients"
+                        :key="client.client_id"
+                        :icon="IconPlugConnected"
+                        :data-testid="`mcp-connected-client-${client.client_id}`"
                     >
-                        {{ $t('mcp.connected_empty') }}
-                    </div>
-
-                    <div v-else class="space-y-3">
-                        <div
-                            v-for="client in connectedClients"
-                            :key="client.client_id"
-                            class="flex items-center gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs"
-                            :data-testid="`mcp-connected-client-${client.client_id}`"
+                        <p
+                            class="truncate text-sm leading-tight font-emphasis text-foreground"
                         >
-                            <div
-                                class="inline-flex size-10 -rotate-2 flex-shrink-0 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
-                            >
-                                <IconPlugConnected
-                                    class="size-5 text-foreground"
-                                    stroke-width="2"
-                                />
-                            </div>
-                            <div class="min-w-0 flex-1 space-y-0.5">
-                                <div class="truncate text-sm font-bold text-foreground">
-                                    {{ client.name }}
-                                </div>
-                                <div
-                                    class="flex items-center gap-1.5 text-xs font-medium text-foreground/60"
-                                >
-                                    <span class="relative flex size-2">
-                                        <span
-                                            class="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/60"
-                                        />
-                                        <span
-                                            class="relative inline-flex size-2 rounded-full bg-emerald-500"
-                                        />
-                                    </span>
-                                    <span>
-                                        {{ $t('mcp.last_used') }}:
-                                        {{
-                                            client.last_used_at
-                                                ? date.diffForHumans(
-                                                      client.last_used_at,
-                                                  )
-                                                : $t('mcp.never')
-                                        }}
-                                    </span>
-                                </div>
-                            </div>
-                            <Button
-                                v-if="client.can_disconnect"
-                                variant="outline"
-                                size="sm"
-                                class="shrink-0"
-                                @click="confirmDisconnect(client)"
-                            >
-                                {{ $t('mcp.disconnect') }}
-                            </Button>
-                        </div>
-                    </div>
-                </section>
+                            {{ client.name }}
+                        </p>
+                        <p class="text-sm text-muted-foreground">
+                            {{ $t('mcp.last_used') }}:
+                            {{
+                                client.last_used_at
+                                    ? date.diffForHumans(client.last_used_at)
+                                    : $t('mcp.never')
+                            }}
+                        </p>
+                        <template v-if="client.can_disconnect" #actions>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger as-child>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
+                                        :aria-label="client.name"
+                                        :data-testid="`mcp-connected-menu-${client.client_id}`"
+                                    >
+                                        <IconDotsVertical class="size-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem
+                                        variant="destructive"
+                                        :data-testid="`mcp-disconnect-${client.client_id}`"
+                                        @click="confirmDisconnect(client)"
+                                    >
+                                        <IconTrash class="size-4" />
+                                        {{ $t('mcp.disconnect') }}
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </template>
+                    </SettingsListRow>
+                </ul>
 
-                <section class="space-y-4">
-                    <HeadingSmall
-                        :title="$t('mcp.documentation_title')"
-                        :description="$t('mcp.documentation_description')"
+                <div
+                    v-else
+                    class="rounded-xl border border-dashed border-border-strong"
+                    data-testid="mcp-connected-empty"
+                >
+                    <EmptyState
+                        :icon="IconPlugConnected"
+                        :title="$t('mcp.connected_empty_title')"
+                        :description="$t('mcp.connected_empty')"
                     />
-                    <Button
-                        as="a"
-                        variant="outline"
-                        size="sm"
-                        target="_blank"
-                        :href="docsUrl"
-                    >
-                        <IconExternalLink class="size-4" />
-                        {{ $t('mcp.view_docs') }}
-                    </Button>
-                </section>
-            </div>
+                </div>
+            </SettingsSection>
+
+            <Separator />
+
+            <SettingsRow
+                :title="$t('mcp.documentation_title')"
+                :description="$t('mcp.documentation_description')"
+            >
+                <Button as="a" variant="outline" target="_blank" :href="docsUrl">
+                    <IconExternalLink class="size-4" />
+                    {{ $t('mcp.view_docs') }}
+                </Button>
+            </SettingsRow>
         </div>
 
         <ConfirmDeleteModal
@@ -164,5 +161,5 @@ const confirmDisconnect = (client: ConnectedClient): void => {
             :description="$t('mcp.disconnect_confirm')"
             :action="$t('mcp.disconnect')"
         />
-    </AppLayout>
+    </SettingsLayout>
 </template>

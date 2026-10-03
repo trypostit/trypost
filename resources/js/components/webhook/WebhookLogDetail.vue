@@ -5,13 +5,13 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
 import JsonViewer from '@/components/JsonViewer.vue';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import date from '@/date';
 import { replay } from '@/routes/app/webhooks';
 import type { WebhookLog } from '@/types/webhook';
 
 import { webhookEventLabel } from './webhook-events';
+import WebhookDeliveryBadge from './WebhookDeliveryBadge.vue';
 
 const props = defineProps<{
     webhookId: string;
@@ -24,20 +24,10 @@ const httpReasonCodes = new Set([
     200, 201, 202, 204, 400, 401, 403, 404, 408, 422, 429, 500, 502, 503, 504,
 ]);
 
-const formatStatusCode = (code: number | null): string => {
-    if (!code) {
-        return trans('webhooks.show.no_response');
-    }
-
-    const reason = httpReasonCodes.has(code)
+const httpReason = (code: number): string =>
+    httpReasonCodes.has(code)
         ? trans(`webhooks.http_reasons.${code}`)
         : trans('webhooks.http_reasons.unknown');
-
-    return trans('webhooks.show.status_code', {
-        code: String(code),
-        reason,
-    });
-};
 
 const parsedResponseBody = computed((): unknown => {
     if (!props.log.response_body) {
@@ -51,7 +41,7 @@ const parsedResponseBody = computed((): unknown => {
     }
 });
 
-const replayLog = () => {
+const replayLog = (): void => {
     replaying.value = true;
     router.post(
         replay.url({ webhook: props.webhookId, webhookLog: props.log.id }),
@@ -67,17 +57,28 @@ const replayLog = () => {
 </script>
 
 <template>
-    <div class="overflow-y-auto lg:col-span-2">
-        <div class="space-y-6 p-5 sm:p-6">
-            <div class="flex items-center justify-between gap-3">
-                <Badge variant="default">
-                    {{ webhookEventLabel(log.event_type) }}
-                </Badge>
+    <section
+        class="min-h-0 min-w-0 flex-1 lg:overflow-y-auto lg:overscroll-contain"
+        data-testid="webhook-log-detail"
+    >
+        <div class="flex flex-col gap-6 px-4 py-4 md:px-8 md:py-6">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <h2
+                        class="truncate text-base leading-5 font-emphasis text-foreground"
+                        data-testid="webhook-log-title"
+                    >
+                        {{ webhookEventLabel(log.event_type) }}
+                    </h2>
+                    <p class="mt-1 text-sm text-muted-foreground">
+                        {{ date.formatDateTime(log.created_at) }}
+                    </p>
+                </div>
                 <Button
                     variant="outline"
-                    size="sm"
+                    class="shrink-0"
                     data-testid="replay-log"
-                    :disabled="replaying"
+                    :loading="replaying"
                     @click="replayLog"
                 >
                     <IconRefresh class="size-4" />
@@ -85,55 +86,70 @@ const replayLog = () => {
                 </Button>
             </div>
 
-            <div class="grid gap-4 sm:grid-cols-3">
-                <div class="rounded-xl border-2 border-foreground bg-background p-3 shadow-2xs">
-                    <p class="text-sm font-bold text-foreground">
+            <dl
+                class="grid grid-cols-2 gap-x-6 gap-y-4 rounded-xl border border-border bg-card p-4 text-sm sm:grid-cols-3"
+                data-testid="webhook-log-meta"
+            >
+                <div class="min-w-0">
+                    <dt class="text-xs text-muted-foreground">
                         {{ $t('webhooks.show.http_status') }}
-                    </p>
-                    <p class="mt-1 text-sm font-medium text-foreground/80">
-                        {{ formatStatusCode(log.response_status) }}
-                    </p>
+                    </dt>
+                    <dd
+                        class="mt-1 flex min-w-0 items-center gap-1.5 text-foreground"
+                    >
+                        <WebhookDeliveryBadge :log="log" />
+                        <span
+                            v-if="log.response_status"
+                            class="truncate text-muted-foreground"
+                            >{{ httpReason(log.response_status) }}</span
+                        >
+                    </dd>
                 </div>
-                <div class="rounded-xl border-2 border-foreground bg-background p-3 shadow-2xs">
-                    <p class="text-sm font-bold text-foreground">
+                <div class="min-w-0">
+                    <dt class="text-xs text-muted-foreground">
                         {{ $t('webhooks.show.attempts') }}
-                    </p>
-                    <p class="mt-1 text-sm font-medium text-foreground/80">
+                    </dt>
+                    <dd class="mt-1 font-medium text-foreground">
                         {{ log.attempts }}
-                    </p>
+                    </dd>
                 </div>
-                <div class="rounded-xl border-2 border-foreground bg-background p-3 shadow-2xs">
-                    <p class="text-sm font-bold text-foreground">
+                <div class="min-w-0">
+                    <dt class="text-xs text-muted-foreground">
                         {{ $t('webhooks.show.delivered_at') }}
-                    </p>
-                    <p class="mt-1 text-sm font-medium text-foreground/80">
-                        {{
-                            log.delivered_at
-                                ? date.formatDateTime(log.delivered_at)
-                                : $t('webhooks.never')
-                        }}
-                    </p>
+                    </dt>
+                    <dd class="mt-1 truncate font-medium text-foreground">
+                        <template v-if="log.delivered_at">
+                            {{ date.formatDateTime(log.delivered_at) }}
+                        </template>
+                        <span v-else class="text-muted-foreground">
+                            {{ $t('webhooks.never') }}
+                        </span>
+                    </dd>
                 </div>
+            </dl>
+
+            <div class="min-w-0 space-y-2" data-testid="webhook-log-payload">
+                <h3 class="text-sm font-emphasis text-foreground">
+                    {{ $t('webhooks.show.payload') }}
+                </h3>
+                <JsonViewer :value="log.payload" />
             </div>
 
-            <div class="space-y-2">
-                <p class="text-sm font-bold text-foreground">
+            <div class="min-w-0 space-y-2" data-testid="webhook-log-response">
+                <h3 class="text-sm font-emphasis text-foreground">
                     {{ $t('webhooks.show.response_body') }}
-                </p>
-                <div v-if="log.response_body">
-                    <JsonViewer :value="parsedResponseBody" />
-                </div>
-                <p v-else class="text-sm text-foreground/60">
+                </h3>
+                <JsonViewer
+                    v-if="log.response_body"
+                    :value="parsedResponseBody"
+                />
+                <p
+                    v-else
+                    class="rounded-lg border border-dashed border-border px-3 py-2.5 text-sm text-muted-foreground"
+                >
                     {{ $t('webhooks.show.no_response_body') }}
                 </p>
             </div>
-
-            <div class="space-y-2">
-                <p class="text-sm font-bold text-foreground">
-                    {{ $t('webhooks.show.payload') }}
-                </p>
-                <JsonViewer :value="log.payload" />
-            </div>
         </div>
-    </div>
+    </section>
 </template>

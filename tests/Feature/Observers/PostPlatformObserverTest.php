@@ -3,10 +3,12 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\Status;
+use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
@@ -55,13 +57,26 @@ test('non-published status changes do not queue an account activity sync', funct
 
 test('account activity sync is not queued when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
-    $postPlatform = PostPlatform::factory()->recycle($this->post)->create();
-
     Queue::fake();
+    $socialAccount = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
+    $postPlatform = PostPlatform::factory()->x()->recycle($this->post)->create([
+        'social_account_id' => $socialAccount->id,
+    ]);
 
     $postPlatform->markAsPublished('remote-post-id');
 
     Queue::assertNotPushed(SyncAccountPublishingActivity::class);
+    Queue::assertPushed(SyncTryPostPublication::class);
+});
+
+test('excluded platform does not queue an analytics publication sync', function () {
+    config(['services.posthog.enabled' => false]);
+    $postPlatform = PostPlatform::factory()->linkedin()->recycle($this->post)->create();
+    Queue::fake();
+
+    $postPlatform->markAsPublished('remote-post-id');
+
+    Queue::assertNotPushed(SyncTryPostPublication::class);
 });
 
 test('updating an already published platform does not queue another sync', function () {

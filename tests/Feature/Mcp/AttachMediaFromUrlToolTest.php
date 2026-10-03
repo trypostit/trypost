@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Models\Media;
@@ -19,7 +18,7 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->post = Post::factory()->create([
@@ -47,7 +46,7 @@ test('attaches an image from url and creates a media row', function () {
 
     $response->assertOk();
 
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect($this->post->ownedMedia()->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
 });
 
@@ -110,7 +109,7 @@ test('reports failures and successes separately', function () {
     $response->assertOk()
         ->assertSee(['example.com/missing.png']);
 
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect($this->post->ownedMedia()->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
 });
 
@@ -233,4 +232,17 @@ test('rejects more than 10 urls per call', function () {
         ]);
 
     $response->assertHasErrors();
+});
+
+test('requests the url uncompressed so a compressed bomb cannot expand on disk', function () {
+    Http::fake(['example.com/photo.jpg' => Http::response(gzencode(str_repeat('0', 4096)), 200, ['Content-Type' => 'image/jpeg', 'Content-Encoding' => 'gzip'])]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ]);
+
+    Http::assertSent(fn ($request) => $request->hasHeader('Accept-Encoding', 'identity'));
+    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });

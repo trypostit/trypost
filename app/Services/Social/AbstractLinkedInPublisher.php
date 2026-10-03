@@ -11,7 +11,7 @@ use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\LinkCard\LinkCardFetcher;
@@ -108,7 +108,7 @@ abstract class AbstractLinkedInPublisher
             return $this->publishCarousel($content, $media);
         }
 
-        return $this->publishPost($content, $media);
+        return $this->publishPost($content, $media, $postPlatform->attachesLinkPreview());
     }
 
     private function retryWithRefresh(PostPlatform $postPlatform, ?string $content, TokenExpiredException $originalException): array
@@ -133,7 +133,7 @@ abstract class AbstractLinkedInPublisher
         }
     }
 
-    private function publishPost(?string $content, $media): array
+    private function publishPost(?string $content, $media, bool $attachArticle): array
     {
         $payload = $this->basePayload($content);
 
@@ -147,7 +147,7 @@ abstract class AbstractLinkedInPublisher
                     'altText' => $item->isImage() ? $item->altTextFor($this->platform()) : null,
                 ], fn ($v) => $v !== null)];
             }
-        } else {
+        } elseif ($attachArticle) {
             $article = $this->articleContent($content);
 
             if ($article !== null) {
@@ -231,17 +231,11 @@ abstract class AbstractLinkedInPublisher
     {
         $maxBytes = MediaType::Image->maxSizeInBytes();
 
-        $response = app(SafeHttpFetcher::class)
-            ->guardedRequest($url, followRedirects: false)
-            ->timeout(self::ARTICLE_THUMB_TIMEOUT_SECONDS)
+        $safeHttp = app(SafeHttpFetcher::class);
+
+        $response = $safeHttp
+            ->limitTransfer($safeHttp->guardedRequest($url, followRedirects: false), $maxBytes, timeoutSeconds: self::ARTICLE_THUMB_TIMEOUT_SECONDS)
             ->sink($tempFile)
-            ->withOptions([
-                'progress' => static function ($total, $downloaded) use ($maxBytes): void {
-                    if ($total > $maxBytes || $downloaded > $maxBytes) {
-                        throw new RuntimeException('og:image exceeds the maximum image size');
-                    }
-                },
-            ])
             ->get($url);
 
         if (! $response->successful()) {

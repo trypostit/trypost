@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Collega assistenti IA al tuo workspace TryPost. Usano le stesse autorizzazioni di ogni utente connesso.',
+    'subtitle' => 'Collega assistenti IA al tuo workspace.',
     'copy_step' => 'Copia l’URL del server TryPost',
     'open_step' => 'Apri il tuo assistente IA',
     'copy' => 'Copia URL',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'App collegate',
     'connected_description' => 'Assistenti a cui hai effettuato l’accesso. Puoi disconnettere quelli che non usi più.',
-    'connected_empty' => 'Nessuna connessione ancora. Usa Claude, ChatGPT o un altro client sopra.',
+    'connected_empty_title' => 'Nessuna app connessa',
+    'connected_empty' => 'Usa Claude, ChatGPT o un altro client sopra.',
     'disconnect' => 'Scollega',
     'disconnect_title' => 'Scollega app',
     'disconnect_confirm' => 'Questo scollega l’app da TryPost. Dovrà riconnettersi prima di usare di nuovo MCP.',

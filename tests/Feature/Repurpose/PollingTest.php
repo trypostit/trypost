@@ -7,6 +7,8 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Repurpose\PollRepurposeSource;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
@@ -18,6 +20,11 @@ use App\Models\Workspace;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 function fakeInstagramMedia(array $rows): void
 {
@@ -311,7 +318,7 @@ test('a skipped poll reschedules without erasing the recorded error', function (
     $workspace = Workspace::factory()->create();
     $source = SocialAccount::factory()->for($workspace)->create([
         'platform' => Platform::Instagram,
-        'is_active' => false,
+        'disconnected_at' => now(),
     ]);
 
     $repurpose = Repurpose::factory()->active()->create([
@@ -373,4 +380,21 @@ test('polling the same video twice queues it only once', function () {
 
     Bus::assertDispatchedTimes(ProcessRepurposeItem::class, 1);
     expect(RepurposeItem::query()->count())->toBe(1);
+});
+
+test('a post imported from the network does not count as published through trypost', function () {
+    Bus::fake();
+    fakeInstagramMedia([mediaRow('imported-1')]);
+
+    $account = instagramAccount();
+    $repurpose = activeRepurposeOn($account);
+
+    $post = Post::factory()->imported()->create(['workspace_id' => $account->workspace_id]);
+    PostPlatform::factory()->for($post)->create(['platform_post_id' => 'imported-1']);
+
+    poll($account);
+
+    expect($repurpose->items()->sole()->reason)->toBeNull();
+
+    Bus::assertDispatched(ProcessRepurposeItem::class);
 });

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ beforeEach(function () {
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $this->user->refresh();
 });
@@ -69,7 +68,9 @@ it('cannot delete a workspace-bound mcp oauth grant through api keys', function 
 it('creates an api key', function () {
     $this->actingAs($this->user)
         ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
-        ->assertRedirect();
+        ->assertRedirect()
+        ->assertSessionHas('flash.plainToken')
+        ->assertSessionMissing('flash.success');
 
     $tokens = AccessToken::where('user_id', $this->user->id)
         ->where('workspace_id', $this->workspace->id)
@@ -162,6 +163,91 @@ it('revokes an api key', function () {
     expect($token->refresh()->revoked)->toBeTrue();
 });
 
+it('regenerates an api key with the same name and expiry', function () {
+    $token = makeWorkspaceToken($this->user, $this->workspace);
+    $expiresAt = now()->addMonth()->endOfDay();
+    $token->forceFill(['expires_at' => $expiresAt])->saveQuietly();
+
+    $response = $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertRedirect()
+        ->assertSessionHas('flash.plainToken')
+        ->assertSessionMissing('flash.success');
+
+    $replacement = AccessToken::where('user_id', $this->user->id)
+        ->where('workspace_id', $this->workspace->id)
+        ->where('revoked', false)
+        ->sole();
+
+    expect($token->refresh()->revoked)->toBeTrue()
+        ->and($replacement->id)->not->toBe($token->id)
+        ->and($replacement->name)->toBe('Existing')
+        ->and($replacement->expires_at->toDateTimeString())->toBe($expiresAt->toDateTimeString());
+});
+
+it('regenerating an expired api key issues a key that never expires', function () {
+    $token = makeWorkspaceToken($this->user, $this->workspace);
+    $token->forceFill(['expires_at' => now()->subDay()])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertRedirect();
+
+    $replacement = AccessToken::where('user_id', $this->user->id)
+        ->where('revoked', false)
+        ->sole();
+
+    expect($replacement->expires_at)->toBeNull();
+});
+
+it('cannot regenerate a revoked api key', function () {
+    $token = makeWorkspaceToken($this->user, $this->workspace);
+    $token->forceFill(['revoked' => true])->saveQuietly();
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertNotFound();
+});
+
+it('cannot regenerate an api key from another workspace', function () {
+    $otherUser = User::factory()->create();
+    $otherWorkspace = Workspace::factory()->create([
+        'account_id' => $otherUser->account_id,
+        'user_id' => $otherUser->id,
+    ]);
+    $token = makeWorkspaceToken($otherUser, $otherWorkspace);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertNotFound();
+
+    expect($token->refresh()->revoked)->toBeFalse();
+});
+
+it('cannot regenerate a workspace-bound mcp oauth grant through api keys', function () {
+    $oauth = mcpAccessToken($this->user, mcpOauthClient('Claude'), $this->workspace);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.regenerate', $oauth->id))
+        ->assertNotFound();
+
+    expect($oauth->fresh()->revoked)->toBeFalse();
+});
+
+it('member cannot regenerate api key', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+
+    $token = makeWorkspaceToken($this->user, $this->workspace);
+
+    $this->actingAs($member)
+        ->post(route('app.api-keys.regenerate', $token->id))
+        ->assertForbidden();
+
+    expect($token->refresh()->revoked)->toBeFalse();
+});
+
 it('cannot delete api key from another workspace', function () {
     $otherUser = User::factory()->create();
     $otherWorkspace = Workspace::factory()->create([
@@ -177,7 +263,7 @@ it('cannot delete api key from another workspace', function () {
 
 it('member cannot create api key', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($member)
@@ -187,7 +273,7 @@ it('member cannot create api key', function () {
 
 it('member cannot delete api key', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $token = makeWorkspaceToken($this->user, $this->workspace);
@@ -199,4 +285,27 @@ it('member cannot delete api key', function () {
 
 it('api keys page requires authentication', function () {
     $this->get(route('app.api-keys.index'))->assertRedirect(route('login'));
+});
+
+it('marks each api key as active, expiring soon or expired', function () {
+    $this->travelTo(now()->startOfDay()->addHours(12));
+
+    $never = makeWorkspaceToken($this->user, $this->workspace);
+    $never->forceFill(['expires_at' => null])->saveQuietly();
+    $later = makeWorkspaceToken($this->user, $this->workspace);
+    $later->forceFill(['expires_at' => now()->addDays(30), 'created_at' => now()->subMinute()])->saveQuietly();
+    $soon = makeWorkspaceToken($this->user, $this->workspace);
+    $soon->forceFill(['expires_at' => now()->addDays(3), 'created_at' => now()->subMinutes(2)])->saveQuietly();
+    $expired = makeWorkspaceToken($this->user, $this->workspace);
+    $expired->forceFill(['expires_at' => now()->subDay(), 'created_at' => now()->subMinutes(3)])->saveQuietly();
+
+    $tokens = collect($this->actingAs($this->user)
+        ->get(route('app.api-keys.index'))
+        ->viewData('page')['props']['apiTokens'])
+        ->pluck('status', 'id');
+
+    expect($tokens[$never->id])->toBe('active')
+        ->and($tokens[$later->id])->toBe('active')
+        ->and($tokens[$soon->id])->toBe('expiring_soon')
+        ->and($tokens[$expired->id])->toBe('expired');
 });

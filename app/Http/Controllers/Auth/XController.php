@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Models\SocialAccount;
+use App\Services\Social\ConnectionVerifier;
 use Illuminate\Http\Request;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -37,5 +39,12 @@ class XController extends SocialController
     public function callback(Request $request): InertiaResponse
     {
         return $this->handleCallback($request, $this->driver);
+    }
+
+    protected function connectedCallback(SocialAccount $account, ?SocialAccount $reconnect): InertiaResponse
+    {
+        rescue(fn (): bool => app(ConnectionVerifier::class)->verifyAccessToken($account), report: false);
+
+        return parent::connectedCallback($account, $reconnect);
     }
 }

@@ -20,7 +20,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Create a repurpose. It starts as a draft and only replicates videos published after it is activated. Source must be an Instagram or Facebook account, the only networks that allow downloading the video. Each destination picks the format it publishes as, so a Story can land as a Reel.')]
+#[Description('Create a repurpose. It starts as a draft and only replicates videos published after it is activated. Source must be an Instagram or Facebook account, the only networks that allow downloading the video. Each destination picks the format it publishes as, so a Story can land as a Reel. Google Business cannot be a destination.')]
 class CreateRepurposeTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -64,7 +64,7 @@ class CreateRepurposeTool extends Tool
             'source_social_account_id' => $schema->string()->required()->description('Instagram or Facebook account to watch.'),
             'source_format' => $schema->string()->description('Which video format to watch: reel, video or story. Defaults to reel.'),
             'publish_mode' => $schema->string()->description('publish to schedule each replicated video straight away, or draft to leave it in TryPost for review. Defaults to publish.'),
-            'destinations' => $schema->array()->description('Accounts to republish to, each with a content_type that accepts video and optional per-platform meta.'),
+            'destinations' => $schema->array()->description('Accounts to republish to, each with a content_type that accepts video and optional per-platform meta. Google Business accounts are rejected.'),
         ];
     }
 }

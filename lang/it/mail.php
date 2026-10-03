@@ -34,13 +34,6 @@ return [
         'ignore' => 'Se non hai creato un account, puoi ignorare questa email.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name ti ha menzionato su TryPost',
-        'title' => ':name ti ha menzionato',
-        'intro' => ':name ti ha menzionato nel commento a un post.',
-        'button' => 'Visualizza commento',
-    ],
-
     'password_reset' => [
         'subject' => 'Reimposta la tua password',
         'preview' => 'Reimposta la tua password.',
@@ -55,9 +48,55 @@ return [
         'title' => 'I post potrebbero non essere pubblicati',
         'heading' => 'I post potrebbero non essere pubblicati',
         'intro' => 'I seguenti account nello spazio di lavoro :workspace devono essere ricollegati prima che questi post pianificati possano essere pubblicati:',
-        'posts_label' => '{1} :count post pianificato: :times UTC|[0,*] :count post pianificati: :times UTC',
+        'posts_label' => '{1} :count post pianificato: :times (:timezone)|[0,*] :count post pianificati: :times (:timezone)',
         'reconnect_cta' => 'Ricollega subito questi account per non perdere i post pianificati.',
         'button' => 'Ricollega account',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author ha aggiunto una nota a un post',
+        'title' => 'Nuova nota da :author',
+        'heading' => 'Nuova nota su un post',
+        'body' => ':author ha aggiunto una nota a un post nello spazio di lavoro :workspace.',
+        'post_title' => 'Post',
+        'post_without_text' => 'Questo post non ha ancora testo.',
+        'button' => 'Vedi nota',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name ti ha chiesto di approvare un post',
+        'title' => 'Un post richiede la tua approvazione',
+        'preview' => ':name ha chiesto un\'approvazione in :workspace.',
+        'heading' => 'Un post richiede la tua approvazione',
+        'body' => ':name (:email) ha chiesto un\'approvazione nel workspace :workspace.',
+        'channels' => 'Canali',
+        'requested_time' => 'Orario richiesto',
+        'next_queue_slot' => 'Prossimo slot della coda',
+        'as_soon_as_approved' => 'Appena viene approvato',
+        'post_without_text' => 'Questo post non ha ancora testo.',
+        'button' => 'Vedi i post in attesa di approvazione',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name ha approvato il tuo post',
+        'title' => 'Il tuo post è stato approvato',
+        'preview' => ':name ha approvato il tuo post in :workspace.',
+        'heading' => 'Il tuo post è stato approvato',
+        'body' => ':name ha approvato il tuo post nel workspace :workspace.',
+        'channels' => 'Canali',
+        'goes_out' => 'Verrà pubblicato',
+        'channel_time' => ':channel: :time',
+        'publishing_now' => 'Pubblicazione in corso',
+        'button' => 'Vedi nella coda',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name non ha approvato il tuo post',
+        'title' => 'Il tuo post non è stato approvato',
+        'preview' => ':name ha riportato il tuo post nelle bozze.',
+        'heading' => 'Il tuo post non è stato approvato',
+        'body' => ':name ha riportato il tuo post del workspace :workspace nelle bozze.',
+        'channels' => 'Canali',
+        'button' => 'Vedi nelle bozze',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => 'Sei stato invitato!',
         'intro' => 'Sei stato invitato a collaborare nello spazio di lavoro <strong>:account</strong>.',
         'role' => 'Sei stato invitato come <strong>:role</strong>.',
+        'roles' => ['admin' => 'Amministratore', 'member' => 'Membro', 'needs_approval' => 'Membro (i post richiedono approvazione)'],
         'button' => 'Accetta invito',
         'expiry' => 'Questo invito scade tra 7 giorni.',
     ],

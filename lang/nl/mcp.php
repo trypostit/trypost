@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Koppel AI-assistenten aan je TryPost-workspace. Ze gebruiken dezelfde rechten als elke ingelogde gebruiker.',
+    'subtitle' => 'Koppel AI-assistenten aan je workspace.',
     'copy_step' => 'Kopieer je TryPost-server-URL',
     'open_step' => 'Open je AI-assistent',
     'copy' => 'URL kopiëren',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Gekoppelde apps',
     'connected_description' => 'Assistenten waarmee je bent ingelogd. Koppel apps los die je niet meer gebruikt.',
-    'connected_empty' => 'Nog niets gekoppeld. Gebruik Claude, ChatGPT of een andere client hierboven.',
+    'connected_empty_title' => 'Geen gekoppelde apps',
+    'connected_empty' => 'Gebruik Claude, ChatGPT of een andere client hierboven.',
     'disconnect' => 'Ontkoppelen',
     'disconnect_title' => 'App ontkoppelen',
     'disconnect_confirm' => 'Dit logt de app uit bij TryPost. Hij moet opnieuw verbinden om MCP weer te gebruiken.',

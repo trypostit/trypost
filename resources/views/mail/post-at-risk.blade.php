@@ -84,7 +84,7 @@
                             <strong style="color: #18181b">{{ $group['account']->platform->label() }}</strong>
                             <span style="color: #71717a"> - {{ $group['account']->accountDisplayName() }}</span>
                             <div style="font-size: 14px; margin-top: 4px; color: #71717a">
-                              {{ trans_choice('mail.post_at_risk.posts_label', $group['postCount'], ['count' => $group['postCount'], 'times' => $group['times']]) }}
+                              {{ trans_choice('mail.post_at_risk.posts_label', $group['postCount'], ['count' => $group['postCount'], 'times' => $group['times'], 'timezone' => $timezone]) }}
                             </div>
                           </div>
                         </div>

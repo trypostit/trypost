@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -17,9 +16,6 @@ const props = defineProps<{
 }>();
 
 const form = useForm({ persona: props.selected ?? '' });
-
-const personaLabel = (value: string): string =>
-    trans(`welcome.personas.${value}`);
 
 const select = (value: string): void => {
     form.persona = value;
@@ -42,11 +38,11 @@ const submit = (): void => {
         :description="$t('welcome.description')"
         step="persona"
     >
-        <div class="flex flex-wrap gap-2.5">
+        <div class="flex flex-wrap gap-2">
             <WelcomeChoicePill
                 v-for="persona in personas"
                 :key="persona"
-                :label="personaLabel(persona)"
+                :label="$t(`welcome.personas.${persona}`)"
                 :meta="welcomeOptionMeta(personaMeta, persona)"
                 :selected="form.persona === persona"
                 :testid="`welcome-persona-${persona}`"

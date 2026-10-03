@@ -13,15 +13,12 @@ return [
     ],
 
     'publish_mode' => [
-
         'title' => 'Publikowanie',
 
         'description' => 'Co się dzieje, gdy pojawia się nowy post.',
-
     ],
 
     'publish_modes' => [
-
         'publish' => 'Publikuj automatycznie',
 
         'publish_hint' => 'Każdy nowy post jest planowany zaraz po znalezieniu.',
@@ -29,7 +26,6 @@ return [
         'draft' => 'Utwórz jako wersję roboczą',
 
         'draft_hint' => 'Każdy nowy post trafia tu jako wersja robocza do sprawdzenia i publikacji.',
-
     ],
 
     'formats' => [
@@ -58,8 +54,6 @@ return [
     ],
 
     'table' => [
-        'flow' => 'Przepływ',
-        'status' => 'Status',
         'published' => 'Zreplikowane',
         'last_polled' => 'Ostatnie sprawdzenie',
     ],
@@ -97,7 +91,6 @@ return [
     ],
 
     'destinations' => [
-        'paused_note' => 'Wyłączone i pomijane do czasu ponownego włączenia: :accounts',
         'title' => 'Cele',
         'description' => 'Wybierz konta, które go otrzymają. Każde publikuje w wybranym przez ciebie formacie.',
         'hint' => 'Opis jest dostosowywany do sieci tylko wtedy, gdy przekracza jej limit.',
@@ -150,9 +143,7 @@ return [
     ],
 
     'menu' => [
-
         'label' => 'Więcej akcji',
-
     ],
 
     'danger' => [
@@ -175,6 +166,7 @@ return [
         'source_unusable' => 'Połącz ponownie monitorowane konto przed uruchomieniem tej automatyzacji.',
         'destinations_required' => 'Wybierz co najmniej jeden cel przed aktywacją.',
         'destination_needs_video' => 'Ten format nie przyjmuje filmu.',
+        'destination_not_supported' => 'Google Business nie może być miejscem docelowym: jego posty nie obsługują wideo.',
         'only_paused_resumes' => 'Wznowić można tylko wstrzymany repurpose.',
         'only_active_pauses' => 'Tylko aktywny repurpose można wstrzymać.',
         'only_running_disables' => 'Tylko działający repurpose można wyłączyć.',

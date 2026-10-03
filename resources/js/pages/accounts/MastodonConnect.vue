@@ -21,7 +21,7 @@ const onSubmit = () => form.post(authorizeMastodon.url());
             <div class="flex items-center gap-3 mb-6">
                 <img src="/images/accounts/mastodon.png" alt="Mastodon" class="h-10 w-10" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.mastodon.title') }}</h1>
+                    <h1 class="font-heading text-xl font-medium tracking-tight">{{ $t('accounts.mastodon.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.mastodon.description') }}</p>
                 </div>
             </div>

@@ -26,7 +26,8 @@ class PostPolicy
 
     /**
      * Authorize updating a post: tenancy guard (404 across tenants) then the
-     * role gate — viewers are read-only (403).
+     * `createPost` gate (any member). Whether the change needs approval is
+     * decided by PostApproval when it is saved.
      */
     public function update(User $user, Post $post): bool|Response
     {
@@ -39,7 +40,7 @@ class PostPolicy
 
     /**
      * Authorize deleting a post: tenancy guard (404 across tenants) then the
-     * same role gate as `update` — viewers are read-only (403).
+     * same `createPost` gate as `update`.
      */
     public function delete(User $user, Post $post): bool|Response
     {
@@ -63,5 +64,18 @@ class PostPolicy
         }
 
         return $user->can('createPost', $user->currentWorkspace);
+    }
+
+    /**
+     * Authorize approving or rejecting a pending post: tenancy guard (404 across
+     * tenants) then the approver gate (members who publish directly).
+     */
+    public function approve(User $user, Post $post): bool|Response
+    {
+        if ($post->workspace_id !== $user->current_workspace_id) {
+            return Response::denyAsNotFound();
+        }
+
+        return $user->can('approvePosts', $user->currentWorkspace);
     }
 }

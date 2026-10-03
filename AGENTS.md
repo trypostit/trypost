@@ -204,6 +204,61 @@ Vue components must have a single root element.
 
 # Project-Specific Rules
 
+## Frontend (Vue/TypeScript)
+
+- Always use arrow functions in Vue components and TypeScript files. Never use `function` declarations.
+- Template event handlers call a named function (`@click="openCreateDialog"`), never an inline statement that mutates state (`@click="isCreateDialogOpen = true"`). Opening something usually grows a second step later (reset a form, focus, track an event), and a named function is where that goes. Passing an argument through is fine: `@click="openEditDialog(label)"`.
+
+## Inertia SSR
+
+- This project does **not** run Inertia SSR. `config/inertia.php` defaults `ssr.enabled` to `false` and nothing in the repo sets `INERTIA_SSR_ENABLED`.
+- Keep it off. With it on, every test rendering an Inertia page issues a real HTTP request to the SSR endpoint, which fails silently and falls back to client rendering — slow, and it hides missing `Http::fake()` stubs.
+- The build wiring is still shipped (`resources/js/ssr.ts`, `vite.config.ts`, `npm run build:ssr` in `docker/Dockerfile`). Turning SSR on means building that bundle and running `inertia:start-ssr` alongside the app, not just flipping the env.
+
+## Dialog and slide-over actions
+
+In dialogs and slide-overs with Cancel and a primary action, render **Cancel first, primary action last** in the DOM and visually. On desktop, Cancel belongs to the left of the primary action; on mobile, the primary action remains last. Apply this to destructive confirmations as well. Do not reverse the order only with CSS, because keyboard and screen-reader order must match what users see. If there are other secondary actions, place them between Cancel and the primary action.
+
+## Delete confirmations (type-to-confirm)
+
+**Typing to confirm is reserved for critical actions.** Everything else — posts, ideas, templates and other everyday content — uses a plain confirmation dialog (title, description, Cancel, destructive action) with no typing. The dialog states what will be removed and nothing more: there is no generic "This action cannot be undone" line.
+
+Critical means losing it breaks something outside the item itself or cannot be rebuilt by the user in a minute. Only these ask the user to type:
+
+- **The resource's name or identity:** deleting a workspace (its name), removing a member or invitation (their email) and removing an MCP client (its name).
+- **A fixed keyword:** deleting or regenerating an API key (`REGENERATE` for the latter), because integrations stop working at once, and disconnecting a channel (`DISCONNECT`), because its queue and automations stop.
+
+Do not add typing to a new dialog unless it meets that bar; when in doubt, ask.
+
+Typing the exact name is the stronger guard for the identity-bound ones, on purpose; do not switch those to the keyword. When the keyword is used:
+
+- The keyword is translated and **always fully uppercase** in every locale (`DELETE`, `EXCLUIR`, `ELIMINAR`, …), shown uppercase in the helper text, and compared **case-sensitively** after trimming: `delete` or `excluir` must not confirm.
+- It comes from one shared lang key in all 16 locales — never a literal, and never a per-feature copy of the word.
+- Resolve it with `$t` in the template, not `trans()` in script (see `.ai/rules/js.md`).
+- Regenerating an API key uses its own keyword, `settings.api_keys.regenerate_modal.keyword` (`REGENERATE`, `REGENERAR`, …), under the same rules.
+- **Exception — disconnecting a channel** (`DisconnectChannelDialog`, user decision October 2026): its keyword, `channels.disconnect_modal.keyword`, is translated and **lowercase** (`disconnect`, `desconectar`, …), shown as the input placeholder and in `Type "disconnect" to confirm.`, and still compared case-sensitively after trimming (`DISCONNECT` must not confirm). The dialog ends its description with a bold `This cannot be undone.` and offers **Refresh connection** before disconnecting. Do not carry either into the other dialogs.
+
+## Translated copy must fit its UI slot
+
+Every lang string is rendered in all 16 locales, and the longest one decides the layout. Menu items, buttons, tabs, badges and other single-line controls must not wrap onto a second line in any locale.
+
+- When adding or changing a key, check the longest translations (French, German, Ukrainian, Russian, Polish and Portuguese usually run longest) against the slot, and shorten the copy in that locale rather than letting it wrap. A shorter natural phrase beats a literal one (`Ajustes do workspace`, not `Configurações do workspace`).
+- Never fix a wrap by truncating the text or widening one locale's layout; the label has to stay readable everywhere.
+- Cover dense menus with a browser test that renders every `Locale` case and fails on wrapped items — `tests/Browser/SidebarMenuTest.php` ("no sidebar menu item wraps onto a second line in any language") is the pattern.
+- A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action. When adding a settings page with a description, add it to the dataset in `tests/Browser/SettingsDescriptionTest.php`, which measures all 16 translations in place.
+
+## AI agents (`app/Ai/Agents`)
+
+- **Never** embed prompts in PHP (`<<<PROMPT`, heredocs, or long string literals in `instructions()`).
+- Put system/instruction text in Blade under `resources/views/prompts/` (e.g. `prompts.post_content.assistant`, `prompts.post_image.alt_text`).
+- In `instructions()`, return `view('prompts....', [...])->render()` and pass only the variables the Blade file needs — same pattern as `PostWritingAssistant` and `MediaAltTextGenerator`.
+
+## AI language
+
+- There is no workspace language. Every AI prompt receives `{{ $language }}` from `Locale::promptLanguage()` of the user the call runs for: the requesting user on the web, the post author for Google Business `languageCode` (`bcp47()`), the repurpose creator for Repurpose. Fall back to `Locale::DEFAULT` when that user is gone.
+- A rewrite of existing text (shorten, rephrase, tone) keeps the text's own language; only new text is written in `{{ $language }}`.
+- AI is web only: no REST API endpoint and no MCP tool calls an AI agent.
+
 ## Stripe Checkout (env knobs)
 
 Checkout options are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
@@ -223,7 +278,7 @@ Standing constraints:
 - Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
 - First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
 - Welcome checkout (`app.welcome.plan`) is monthly only. Yearly stays on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
-- Prefer documenting durable billing decisions here (and in `CLAUDE.md`) — do **not** create a `.ai/` rules folder for this project.
+- Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
 
@@ -263,9 +318,10 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `customer.subscription.created` / `updated` webhook writes on `active` /
   `trialing`, **clears** on `unpaid` / `canceled` / `incomplete_expired`, and
   leaves `past_due` / `incomplete` alone. `deleted` always clears.
-- **There is no AI credit ceiling.** `AiUsageLog` / `RecordAiUsage` still record
-  every AI call for cost visibility, but nothing meters or blocks a user.
-  `AccountPolicy::useAi` checks app access and nothing else.
+- **AI usage is not recorded or metered.** There are no credits, no usage log
+  (`workspace_ai_usages` was dropped in September 2026) and no ceiling.
+  `AccountPolicy::useAi` checks app access and nothing else. Do not
+  reintroduce per-call usage recording.
 
 ## Multiple social accounts per network
 
@@ -285,115 +341,118 @@ not reintroduce either. What still holds:
  in the lang files because `NetworkAlreadyConnectedException` still uses the key
  for a reconnect that collides on the unique identity index.
 
-## Database engines (PostgreSQL + MySQL)
+## Queue slots
 
-TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hosted install may pick either. Every query, migration, and test must work on both — the suite is expected to be green on each.
+A queued post keeps its slot. The queue is **not** packed into the first free
+slots any more (user decision 2026-10-02: a post dropped on a slot on the channel
+page must stay there). The rule lives in `ReflowChannelQueue` (`handleLocked()` and
+`isFreeSlot()`) and `Post::scopeOccupyingSlotsOn`:
 
-- **What the app supports is the intersection of the two engines, never the superset of one.** When they differ, take the narrower behaviour — a feature that only holds on PostgreSQL is a feature TryPost does not have.
-- Never use an engine-specific operator or function. Search uses `whereLike()` (Laravel handles the case-insensitive form per driver), never `ilike` or a raw `LOWER(...)` comparison.
-- Traps that only surface on MySQL:
-    - **JSON object key order is not preserved.** MySQL reorders object keys on storage (by length, then lexicographically); PostgreSQL keeps insertion order. Assert JSON read back from the database with `toEqual` (recursive, order-independent), never `toBe`/`assertSame`. Array *element* order is preserved on both.
-    - **`$table->timestamp()` tops out at 2038-01-19.** PostgreSQL has no such limit, so 2038-01-19 is the app's ceiling: nothing written to a `timestamp()` column may go past it — scheduled posts, expiry sentinels and test fixtures alike. `2037-12-31` reads as "far future" and works on both. Do not widen a column to escape the limit without a deliberate decision; it changes what self-hosted MySQL installs can store.
-    - **Raw query-builder reads carry no Eloquent cast**, so the driver's native shape leaks through: `DB::table(...)->value('some_bool')` is `true` on PostgreSQL and `1` on MySQL. Read through the model, or use `assertDatabaseHas`.
-    - **Identifier quoting differs** — PostgreSQL emits `"post_platforms"`, MySQL emits backticks. Never match logged SQL (`DB::listen`) against a quoted identifier.
-    - **MySQL refuses to drop the only index backing a foreign key** (SQLSTATE `1553`). A migration `down()` that drops a unique whose leftmost prefix is an FK column must create a standalone index for that column first.
-    - **DDL implicitly commits**, which defeats `RefreshDatabase`'s rollback: schema changes made inside a test leak into the tests that follow. Keep them idempotent.
+- A queued post stays while its instant is still a slot of the channel's posting
+  schedule and more than a minute out. Nothing moves it implicitly.
+- Next takes the **first free** slot (gaps first). Top takes the first slot not
+  held by a custom post and shifts the contiguous run of queued posts behind it
+  to the next gap only.
+- Reordering (drag one queued post onto another, Move up/down) swaps the posts
+  among the instants they already hold.
+- Deleting, drafting, publishing now or re-timing a queued post leaves its slot
+  free; there is no pull-forward reflow.
+- A schedule change re-places only posts whose slot vanished, into the first
+  free slots in order. A time zone change first gives every queued post the slot
+  at its same local clock time in the new zone (even when its old instant is
+  another slot there), then the first free slots in order; pending holders follow the same rule. With
+  no slot left a queued post becomes custom at its time.
+- Any scheduled post (custom too) on a slot instant occupies it: no "+ New" there
+  and the queue never double-books it.
+- A queue request pending approval that holds an instant (a queued post edited, or a
+  "+ New" slot post saved, by a member who needs approval) keeps reserving that slot for
+  placement, reflow, move-to-slot, "+ New" and the composer shortcuts
+  (`Post::scopeOccupyingSlotsOn`). Approving keeps it there while the slot still
+  exists and is free (`ReflowChannelQueue::isFreeSlot`), else it takes the first
+  free slot; rejecting or deleting frees it.
+- The Queue timeline shows a reserved pending holder as its post card at that
+  instant (`queue.pending`, visibility per `Post::scopeVisiblePendingApprovalsFor`):
+  approve/reject for approvers, edit for the requester, never draggable. A viewer
+  who may not see the request sees a gap there, never "+ New".
+- "+ New" on a free slot (queue list and calendar chips) opens the composer at that
+  slot's instant; saving it unchanged (same single channel, same instant) sends
+  `queue_slot`, and `CreatePosts` stores it in that slot as a queue post under the
+  channel lock, failing with `queue_slot` when `ReflowChannelQueue::isFreeSlot()`
+  says it is taken. Changing the time or channels falls back to the normal rules.
 
-## Social Platform API Documentation (official sources)
+## Disconnecting a channel deletes its posts
 
-**Always consult the official docs below before implementing or changing OAuth, publishing, deletion, rate-limit, or any other platform-specific behavior — never guess endpoints, scopes, rate limits, or capabilities from memory.** APIs shift over time; a behavior confirmed in a past session may no longer hold. One entry per social network we integrate with:
+`SocialController@disconnect` runs `DeleteChannelPosts::forAccount()` before it
+deletes the account: every post of that channel (drafts, scheduled, pending
+approval, failed, sent and imported) goes with its media. There is no orphaned
+history — a post without a channel is a history that no longer exists.
 
-- **Facebook / Instagram / Threads (Meta)**: all three share the Graph API error format (`error.code`, `error.type`).
-    - General error handling / codes 1, 2, 4, 17, 190: https://developers.facebook.com/docs/graph-api/guides/error-handling/
-    - Rate limiting — Platform Rate Limits (app/user tokens, codes 4/17) vs. Business Use Case (BUC) Rate Limits (Page/system-user tokens, codes 80000–80014 — e.g. `80001` Pages API, `80002` Instagram Platform; BUC rejections come back as plain HTTP 400, not 429): https://developers.facebook.com/docs/graph-api/overview/rate-limiting/
-    - Instagram content-publishing error codes: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/error-codes/
-    - Instagram media reference (incl. `DELETE`): https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/
-    - Threads API: https://developers.facebook.com/docs/threads — reuses the Graph API error format; no separate Threads-specific error code table exists. Delete posts (needs the separate `threads_delete` permission, 100 deletes/day/account): https://developers.facebook.com/docs/threads/posts/delete-posts/
-    - Our `App\Services\Social\Meta\GraphError` (used by `ConnectionVerifier`'s verify/refresh calls) has the full rationale and code table in its class docblock — check there before changing transient-vs-confirmed-rejection classification.
-    - `Facebook`/`InstagramFacebook` `SocialAccount`s use a Facebook Page access token (BUC-limited); `Instagram` (direct login) and `Threads` use a user access token (Platform Rate Limit-limited). This affects which rate-limit codes apply to which platform.
-- **X (Twitter)**: API v2 — https://docs.x.com/x-api ; Post management (create/delete) — https://docs.x.com/x-api/posts/manage-tweets/introduction
-- **LinkedIn**: Posts API (create/update/delete, member + organization) — https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api (replaces the deprecated `ugcPosts` API)
-- **Mastodon**: Statuses API — https://docs.joinmastodon.org/methods/statuses/
-- **Pinterest**: API v5 reference — https://developers.pinterest.com/docs/api/v5/
-- **YouTube**: Data API v3 — https://developers.google.com/youtube/v3/docs
-- **TikTok**: Content Posting API — https://developers.tiktok.com/doc/content-posting-api-reference-direct-post — **no delete/unpublish endpoint exists**; a published post can only be removed manually inside the TikTok app
-- **Bluesky / AT Protocol**: official lexicons — https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto/repo ; HTTP API reference — https://docs.bsky.app
-- **Discord**: Webhook resource (used for our webhook-based publishing) — https://docs.discord.com/developers/resources/webhook
-- **Telegram**: Bot API — https://core.telegram.org/bots/api
+- Quiet: no `post.deleted` webhook or notification per post.
+- A legacy post with another live, enabled target keeps that target and loses
+  only this one (a Publishing post is re-settled through `FinalizePostPublication`).
+- Analytics publications stay and are only unlinked, never dismissed, so
+  reconnecting the same identity re-imports its recent posts once.
+- Orphans left by disconnects before this rule are removed once by the release
+  script (`release:trypost-2`, step `posts:purge-orphaned`, in
+  `app/Console/Commands/Scripts/`), through the same action.
 
-## X link defusing (env knob)
+## Member permissions and post approvals
 
-X bills a post containing a URL at **$0.20** vs **$0.015** for a plain post (13x), and its algorithm demotes link posts. So on Cloud the `ContentSanitizer` rewrites every URL in the X version of a post into a non-clickable form — `https://example.com/post` becomes `example(.)com/post`.
+A workspace membership (`user_workspace`) and an invite carry two flags:
+`is_admin` (manages members, settings, channels) and `requires_approval` (the
+member's posts need approval; always `false` for admins). There are no roles any
+more (Admin / Member / Viewer) — `App\Enums\UserWorkspace\Role` was removed in
+October 2026; do not reintroduce it. The account owner is always an admin and
+publishes directly.
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `X_DEFUSE_LINKS` | `trypost.platforms.x.defuse_links` | `false` | `true`: URLs in the X version of a post are rewritten non-clickable (scheme and `www.` dropped, **every** dot of the host replaced with `(.)`). `false`: the X content is published unchanged. Only affects `Platform::X` — every other network keeps the URL intact. |
-
-Standing constraints:
-- The transform lives in ONE place: the `Platform::X` arm of `App\Services\Social\ContentSanitizer::sanitize()`. Never re-implement it in a publisher or add a `$defuseLinks` parameter to `sanitize()` — a per-call-site flag gets forgotten at the next entry point and we silently start paying again. Because `PostPreviewer` also goes through `ContentSanitizer`, the app/API/MCP previews show the defused text for free.
-- **Every** dot of the host must be broken. Defusing only the dot before the TLD leaves `blog.example.com` in `blog.example.com(.)br`, which X still detects and bills.
-- A URL carrying `https://`, `http://` or `www.` is defused on sight. A **bare** host is only a link when its last label is a delegated TLD — that check is the one thing separating `acme.com` from `Node.js`, and it goes through `App\Support\LinkTlds`, which mirrors the full IANA root zone rather than a hand-picked subset. Never replace it with "any 2+ letters after a dot", and never trim it back to a curated list: whatever X links is what X bills, so the two must stay in step. `README.md` and `backup.zip` are defused on purpose — `.md` and `.zip` are real TLDs and X links them too.
-- Off by default everywhere. Cloud opts in; self-hosted installs publish through their own X app and pay their own bill, so they only turn it on if they want to.
-- Character limits are measured against the **sanitized** content — the string the publisher actually sends — in both `App\Rules\ContentFitsPlatformLimits` (save/schedule) and `HasSocialHttpClient::validateContentLength()` (publish). The editor stores HTML and per-platform rules change the length again, so measuring the raw draft blocks saving posts that publish fine and lets through posts the network rejects. Keep the two in step.
-- Tests enable it explicitly with `config()->set('trypost.platforms.x.defuse_links', true)` rather than pinning an env, so the suite runs against the shipped default.
-- The editor counts characters and renders the X preview client-side, so the rewrite is mirrored in `resources/js/lib/defuseXLinks.ts`. The TLD list is NOT duplicated there: `PostController@edit` sends `App\Support\LinkTlds::all()` as the `xLinkTlds` page prop, and only when defusing is on — an empty set means the feature is off, since without the list a bare host cannot be told from `Node.js`. Do not move it to the Inertia shared props; only the editor needs it. Two tests keep the mirror honest: `XLinkDefusingParityTest` runs a shared corpus through both engines over the same list and diffs the output, and `tests/Browser/XLinkDefusingTest.php` drives the real editor.
-- Neither expression may use lookbehind. Safari only understands it from 16.4, esbuild cannot transpile it, and a `SyntaxError` there takes down the whole chunk — the character before a candidate URL is consumed and put back instead.
-
-## Repurpose account health
-
-A repurpose depends on social accounts it does not own the lifecycle of. Three
-decisions govern how it reacts, and each exists because the obvious alternative
-was tried and was wrong.
-
-- **A switched-off destination is skipped, never an error.** Deactivating an
-  account means "don't post here", which `ProcessRepurposeItem` already honours.
-  So `ActivateRepurpose::assertDestinationsPublishable()` requires **one** usable
-  destination, not all of them, and the destination rule in the repurpose
-  FormRequests carries **no** `is_active` clause. Requiring either is what used
-  to block editing *and* resuming any repurpose that listed a paused account.
-  Keep the `workspace_id` clause — that is tenancy, not health. The
-  `source_social_account_id` rules stay strict: a source genuinely must work.
-- **`repurposes.paused_reason` is not UI copy.** NULL means the user paused it.
-  Its only two jobs are deciding the watermark on resume (a system pause starts
-  from `now()`, a user pause keeps its place) and deciding whether the system may
-  auto-resume. Banners derive from current account health instead, so they can
-  say "ready to resume" once the cause is fixed. **Never clear it in
-  `UpdateRepurpose`** — that destroys the record that the pause was systemic, and
-  the next Resume replays the entire backlog.
-- **Source and destination are deliberately asymmetric.** A dead source stops the
-  automation; a dead destination keeps flowing to the publisher, which fails the
-  post visibly and lets the user retry it after reconnecting. Skipping a
-  destination at job time would be permanent for that item, since items are never
-  retried.
-
-`RepurposeAccountSync` runs from `SocialAccountObserver` and must never throw:
-`deleting` runs inside `$account->delete()`, and `persistIdentity()` wraps a
-reconnect in a transaction, so an exception there would 500 a disconnect or roll
-back a reconnect. It reads account health **from the database**, not from the
-model it was handed — `is_active` is absent from `SocialAccountFactory`, and
-strict mode exempts recently-created models from the missing-attribute
-exception, so a healthy account read back as `null` and silently skipped
-auto-resume.
-
-No email is sent when a repurpose stops. `markAsTokenExpired()` and
-`VerifyWorkspaceConnections` already email about the account, and reconnecting is
-what auto-resumes the repurpose; deleting or switching an account off is
-something the user just did, so the flash on the accounts page reports the count
-instead.
-
-`VerifyWorkspaceConnections` is the **only** thing that promotes an account back
-to `Connected`, because it does so after a real `verify()` call. A successful
-token refresh is not that proof — the refresh token being valid says nothing
-about whether publishing still works — so `RefreshSocialToken` must not promote,
-even though it would let a paused repurpose resume sooner.
+- Read abilities through `User::isWorkspaceAdmin()`, `requiresApprovalIn()`,
+  `canPublishDirectlyIn()` and the `WorkspacePolicy` abilities (`createPost` =
+  any member, `publishDirectly` / `approvePosts` = owner or member who publishes
+  directly). On the client, `useWorkspaceAbilities()`.
+- `App\Support\PostApproval` is the only approval rule. `CreatePosts`,
+  `UpdatePost` and `ProcessRepurposeItem` decide through
+  `PostApproval::isRequired()` with the acting user and store
+  `Status::PendingApproval` instead of scheduling, queueing or publishing;
+  `CreateChannelPost` stores the status its caller decided. `ApprovePost` replays
+  the request through `UpdatePost`; `RejectPost` writes `Draft` with
+  `PostApproval::transition()`. Media attached by the MCP/API attach tools goes
+  through `AppendPostMedia`, which sends an approved, scheduled post back through
+  `UpdatePost` when `PostApproval::isRequired()` says so. Never add a second check
+  in a controller, API or MCP tool. System callers (`ScheduleNextOccurrence`, recovery) pass no actor and are
+  never gated, so an approved recurring series keeps publishing.
+- `posts.approval_requested_by` records who asked, which is not always the author
+  (a member who needs approval editing someone else's approved post). It is set
+  and cleared only by `PostApproval::transition()`; read it through
+  `Post::approvalRequester()` / `scopeApprovalRequestedBy()`, which fall back to
+  `posts.user_id` when it is null. Requesters see only their own requests in the
+  Approvals tab and the calendar (`scopeVisiblePendingApprovalsFor()`), and the
+  decision email goes to the requester.
+- Approving, rejecting and any `UpdatePost` of a pending post run under the
+  post's approval lock (`PostApproval::whilePending()`), which re-reads the post
+  and fails with `posts.approvals.errors.not_pending` when it is no longer pending.
+  `AppendPostMedia` takes the same lock for every post (`PostApproval::locked()`,
+  no status requirement) and decides from the status re-read there. The lock is
+  re-entrant within one process, so `ApprovePost` can call `UpdatePost`.
+- A pending queue request has `schedule_mode = queue`, no `scheduled_at` and its
+  position in `approval_queue_position`; it is placed in the queue only when
+  approved. Approving replays the stored request through `UpdatePost` as the
+  approver (`ApprovePost`), which records `approved_by` / `approved_at`.
+- A repurpose item created by a member who requires approval stays marked
+  Published while its posts are pending approval: the item records the hand-off to
+  the queue, not the network publication.
+- Approval emails go through `SendNotification` with `Type::Collaboration`.
+  Requests email every approver except the requester, list only the posts still
+  pending when the job runs and are dropped when none is; decisions are grouped
+  per `post_group_id`, approver and requester by `NotifyApprovalDecision`
+  (cache + one unique delayed job).
 
 ## UI locale (`users.locale`)
 
 The user's UI language lives in the database, on `users.locale`, cast to
 `App\Enums\User\Locale`. That enum is the single source of truth for the
 supported locales — there is no `config/languages.php` any more, and a case is
-only valid if `lang/<value>` exists (`LocalizationParityTest` enforces both that
-and parity with `ContentLanguage`).
+only valid if `lang/<value>` exists (`tests/Unit/Enums/User/LocaleTest.php`
+enforces that).
 
 - **There is no `locale` cookie.** The app stored the locale in the database
   until March 2026, moved it to a forever cookie, and moved it back here. Do not
@@ -417,6 +476,76 @@ and parity with `ContentLanguage`).
   to English on each login. Forgot and reset password do not send it at all.
 - Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
   OAuth callback tells you nothing reliable about the person.
+
+## User preferences (`/settings/preferences`)
+
+Theme, time zone, time format, start of week and the composer's default posting
+action live on `users` (`theme`, `timezone`, `time_format`, `week_starts_on`,
+`default_post_action`, cast to the enums in `App\Enums\User`). Language is edited
+on the same page but still goes through `ProfileController@updateLanguage` so
+`SyncUser` keeps firing. Each control saves on its own (`PATCH`
+`app.settings.preferences.update`, every rule `sometimes`).
+`/settings/profile/notifications` follows the same rule: each switch `PATCH`es
+only its field, there is no Save button, no success toast, and a failed save
+rolls the switch back and toasts.
+
+- **Three zones.** The channel zone (`social_accounts.timezone`) decides when a
+  post publishes: queue slots and recurrence (see "Queue slots"). The user zone
+  (`users.timezone`) is the default display zone, the composer zone for mixed
+  channels, the zone of Insights ranges and of every email, and the default for a
+  newly connected channel. The display zone (`?tz` → `publish.tz` → user zone) is
+  only what the list and calendar show. The browser zone never shows or takes a
+  time; it is only the suggested value at signup.
+- **Frontend zone.** `@/date`'s `getUserTimezone()` returns `auth.user.timezone`
+  (the `userTimezone` ref in `resources/js/preferences.ts`); "now" comes from
+  `userNow()`, never the browser clock. Times shown next to display-zone cards go
+  through `useViewTimezone()`: the page's display zone where a picker exists
+  (publish list and calendar call `provideViewTimezone()`), the user zone
+  elsewhere.
+- **Composer zone** (`useComposerTimezone()`): all selected channels share one
+  zone → that zone; mixed zones or no channel → the user zone. The zone label sits
+  next to the time input. The composer keeps the UTC instant as its state
+  (`scheduledInstant`) and shows it as a wall clock in the composer zone
+  (`utcToWallClock()`), so a selection change never moves the instant; it sends a
+  UTC instant (the backend contract is unchanged). Wall clocks handed to the
+  composer (`initialDate`, edit pre-fill, drafts) are in the user zone, and the
+  custom pre-fill is `date.nextFullHour` of the composer zone. With exactly one
+  channel the picker offers that channel's posting slots for the picked day,
+  disabling those already held by a scheduled post (`taken_slots`, composer
+  props only, like `posting_schedule`).
+  Calendar clicks pass the clicked instant (a day click is 09:00 of the display
+  zone). Approving with a new time uses the post's channel zone.
+- **Time format:** `users.time_format` is NOT NULL and only `12h` or `24h`;
+  `TimeFormat::DEFAULT` is 12h. There is no language-following state: signup
+  stores the browser's hour cycle, else `TimeFormat::forLocale()`. Every
+  displayed time goes through `@/date` (`timeToken()`, `formatHourOption()`, …),
+  which reads it from `resources/js/preferences.ts`; never format a clock time
+  with `LT`, `LLL` or a literal `HH:mm` in a component. Hour selects keep
+  `00`–`23` as values and only change the labels.
+- **Start of week:** only Sunday and Monday exist. `preferences.ts` applies it to
+  every loaded dayjs locale, so `startOf('week')` follows it; the Reka calendars
+  default to it; the posting-schedule grid orders its columns with
+  `orderedWeekdays()`; `BuildCalendarPageProps` passes
+  `WeekStart::firstDay()/lastDay()` to Carbon. The weekly posting goal
+  (`CountPostsSentThisWeek`) and the Insights weekly buckets (`PeriodBuckets`)
+  follow the **viewing** user's `week_starts_on`, never Monday or the UI language.
+- **Signup detection:** email, Google and GitHub signups store the browser zone,
+  the week start (`Intl.Locale` week info, else the Sunday-first zone list in
+  `resources/js/lib/detectPreferences.ts`) and the hour cycle. OAuth sends them as
+  query params on the start route and `PreservesSignupPreferences` keeps them in
+  the session; `CreateUser` validates each one. Fallbacks: UTC, Monday, the
+  language clock.
+- **Emails** render every time with `App\Support\Mail\RecipientTime`: the
+  recipient's zone, their clock, and the zone name.
+- **Channel zone change** on the channel settings page asks for confirmation
+  first (Cancel first, no typing); queued posts reflow into the new zone's slots,
+  custom-time posts keep their instant.
+- **Theme:** the root Blade renders `data-theme` and the `dark` class, and an
+  inline script resolves `system` before first paint and follows OS changes.
+  Guests always get light.
+- **Default posting action:** a queue default (`next`/`top`) only applies when
+  every selected channel has posting times; otherwise the composer falls back
+  as before. `custom` pre-fills the next full hour of the composer zone.
 
 ## PostHog person properties
 
@@ -501,3 +630,269 @@ locales, write a Mailable that passes data plus the three metadata strings, send
 with `Mail::to($user)`, run the Maizzle build, and cover it with a render test —
 `tests/Feature/Mail/MailRenderingTest.php` exists because copy moving into the
 view turns a forgotten variable into a runtime-only failure.
+
+## Icons (@tabler/icons-vue)
+
+- This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
+- All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.
+- Import icons from `@tabler/icons-vue`: `import { IconCheck, IconX } from '@tabler/icons-vue'`.
+- Browse available icons at https://tabler.io/icons
+
+## Dates
+
+- For date manipulation, always use `@/dayjs` (pre-configured dayjs instance with utc, timezone, relativeTime plugins).
+- For formatting dates for display (formatDate, formatDateTime, formatTime, diffForHumans), always use `@/date` which centralizes all formatting logic with proper timezone handling.
+- Never use raw `new Date()` for date calculations — use dayjs.
+
+## Routing (Wayfinder)
+
+- This project uses Laravel Wayfinder for type-safe frontend routing.
+- ALWAYS use Wayfinder-generated route helpers in Vue pages (e.g. `register()`, `login()`, `dashboard()`). NEVER hardcode URL strings like `href="/register"`.
+- After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
+- Import routes from `@/routes/...` (e.g. `import { store } from '@/routes/login'`).
+
+## Pagination
+
+- Always use normal pagination (`->paginate()`). NEVER use cursor pagination (`->cursorPaginate()`).
+- All paginated lists must use Inertia's scroll pagination (`Inertia::scroll()` on the backend with `<InfiniteScroll>` on the frontend). NEVER use traditional page-based pagination with page links/buttons.
+- The page size ALWAYS comes from `config('app.pagination.default')` — never a magic number, and never a `perPage`/`per_page` value supplied by the request or frontend. Action/service list methods must NOT accept a `$perPage` parameter; call `->paginate((int) config('app.pagination.default'))` directly.
+    - **This includes the public REST API** (`app/Http/Controllers/Api`). It used to pin its own page size of 15 as a stable contract; that exception is gone, so a list endpoint reads the same config as everything else. Changing `app.pagination.default` therefore changes the API's page size too — deliberate, and the reason a list response always carries `meta.per_page` for clients to read rather than assume.
+
+## Empty states on list pages
+
+A list page answers two different questions, and each needs its own data:
+
+- **Is there anything at all?** The controller sends `hasData`, read from the database without the search or filters (`$workspace->labels()->exists()`). `false` shows the first-use empty state: illustration and create button only, with no header or search (`SettingsLayout :centered`).
+- **Did this search or page return anything?** The paginated list decides it. Empty while `hasData` is `true` means no results: header and search stay, and the empty state shows the same illustration without the create button.
+
+Never derive the first-use state from the list or from the search box. A paginator's `total()` counts the filtered query, the scroll metadata carries no total at all, and the search input changes before the reload arrives, so any of them flashes or shows the wrong state while a search is active. `labels/Index.vue` is the reference.
+
+## Form Validation
+
+- NEVER use HTML5 validation attributes (`required`, `minlength`, `pattern`, etc.) on form inputs. Always rely solely on backend validation.
+
+## Backend Validation
+
+- Validation rules always live in a dedicated `Illuminate\Foundation\Http\FormRequest` subclass under `app/Http/Requests/App/<Group>/`. Controller actions must type-hint the FormRequest as the parameter — NEVER call `$request->validate([...])` inline in the controller.
+- Naming: `<Verb><Resource>Request.php` (e.g. `StorePostRequest`, `UpdatePostRequest`, `LinkPreviewRequest`).
+
+## Database engines (PostgreSQL + MySQL)
+
+TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hosted install may pick either. Every query, migration, and test must work on both — the suite is expected to be green on each.
+
+- **What the app supports is the intersection of the two engines, never the superset of one.** When they differ, take the narrower behaviour — a feature that only holds on PostgreSQL is a feature TryPost does not have.
+- Never use an engine-specific operator or function. Search uses `whereLike()` (Laravel handles the case-insensitive form per driver), never `ilike` or a raw `LOWER(...)` comparison.
+- Traps that only surface on MySQL:
+    - **JSON object key order is not preserved.** MySQL reorders object keys on storage (by length, then lexicographically); PostgreSQL keeps insertion order. Assert JSON read back from the database with `toEqual` (recursive, order-independent), never `toBe`/`assertSame`. Array *element* order is preserved on both.
+    - **`$table->timestamp()` tops out at 2038-01-19.** PostgreSQL has no such limit, so 2038-01-19 is the app's ceiling: nothing written to a `timestamp()` column may go past it — scheduled posts, expiry sentinels and test fixtures alike. `2037-12-31` reads as "far future" and works on both. Do not widen a column to escape the limit without a deliberate decision; it changes what self-hosted MySQL installs can store.
+    - **Raw query-builder reads carry no Eloquent cast**, so the driver's native shape leaks through: `DB::table(...)->value('some_bool')` is `true` on PostgreSQL and `1` on MySQL. Read through the model, or use `assertDatabaseHas`.
+    - **Identifier quoting differs** — PostgreSQL emits `"post_platforms"`, MySQL emits backticks. Never match logged SQL (`DB::listen`) against a quoted identifier.
+    - **MySQL refuses to drop the only index backing a foreign key** (SQLSTATE `1553`). A migration `down()` that drops a unique whose leftmost prefix is an FK column must create a standalone index for that column first.
+    - **DDL implicitly commits**, which defeats `RefreshDatabase`'s rollback: schema changes made inside a test leak into the tests that follow. Keep them idempotent.
+
+## Per-Platform Post Meta (`PostPlatform.meta`)
+
+- All `platforms.*.meta` validation (the parent array rule AND every per-platform sub-key: `aspect_ratio`, TikTok `privacy_level`/flags, Pinterest `board_id`, Discord `channel_id`/`mentions`/`embeds`, etc.) lives in ONE place: `App\Support\PostPlatformMetaRules`.
+    - Every post create/update entry point — web (`App\Http\Requests\App\Post\UpdatePostRequest`), public API (`App\Http\Requests\Api\Post\{Store,Update}PostRequest`), and MCP (`App\Mcp\Tools\Post\{Create,Update}PostTool`) — spreads `...PostPlatformMetaRules::rules()`. NEVER add a per-platform meta rule inline to a single request/tool.
+    - Why: `FormRequest::validated()` (and MCP `$request->validate()`) STRIPS any key without a rule. A meta field defined in only one entry point is silently dropped everywhere else — which is exactly how Discord/Pinterest/TikTok meta was lost via API/MCP before this was centralized.
+- Required-on-publish (meta a platform needs to publish, e.g. Discord `channel_id`) also lives there: `addRequiredOnPublishErrors()` for request-driven flows (web/API update `withValidator`), `assertStoredPostPublishable()` for flows that publish stored state without resubmitting platforms (MCP `PublishPostTool`). Add new required-meta rules to `requiredMetaViolation()`, not inline.
+- When adding a new platform's meta field, add it (and any publish requirement) to `PostPlatformMetaRules` ONLY, and cover it in `tests/Feature/Api/PostApiPlatformMetaTest.php` + `tests/Feature/Mcp/PostPlatformMetaToolTest.php`.
+- `PostPlatformMetaRules::formatViolation()` holds meta no post may store, even as a draft (a YouTube title with `<` or `>`). Every create and update path (web, API, MCP, repurpose) goes through `App\Support\PostCompositionValidator`, which runs it and, once the post is scheduled or published, the content limits below.
+
+## Content limits
+
+- **Per account, not per platform.** Read the cap through `SocialAccount::maxContentLength()`. It is the platform's `Platform::maxContentLength()`, except an X account with long posts (`hasXLongPosts()`: a `Basic`, `Premium` or `PremiumPlus` subscription, or `verified_type=business`), which gets 25000. The tier lives in the account meta and is written by `SyncXSubscription`, called from `ConnectionVerifier` on connect and on the daily `social:check-connections`.
+- `Post::CONTENT_MAX_LENGTH` (25000 characters of plain text) is the ceiling of any post, enforced by `PostContentFitsMaxLength`.
+- `Platform::reservedLength()` counts what the network adds to the text: the Mastodon content warning (trimmed like `Str::trim`) counts toward the 500.
+- `Platform::maxHashtags()` is 5 on Instagram (both platforms). It is a **save-time** rule (web, API, MCP), never a publish-time failure: a post stored with more still publishes. Repurpose captions are trimmed to the first 5 by `CaptionAdapter` through `Hashtags::keepFirst()`. Hashtags are counted by `App\Support\Hashtags`, mirrored by `resources/js/lib/hashtags.ts` and kept identical by `HashtagParityTest`.
+- A captionless content type (`ContentType::isCaptionless()`: Instagram and Facebook Stories, mirrored by `CAPTIONLESS_CONTENT_TYPES`) sends no text, so it is measured for neither length nor hashtags, at save, at publish or in the composer.
+- `App\Rules\ContentFitsPlatformLimits` (save) and `HasSocialHttpClient::validateContentLength()` (publish) measure the same thing; keep them in step. Every counter counts code points (`mb_strlen`; `characterCount()` in `resources/js/lib/characters.ts`), so an emoji is one.
+
+## Thread replies
+
+- Bluesky and Mastodon only (`App\Support\ThreadReplies`), up to 24 replies in `meta.thread_replies`. X threads are not built yet.
+- Each segment already live is checkpointed in `post_platforms.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
+- `post_platforms.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
+
+## Composer steps
+
+- Step 1 is one shared editor. "Customize for each network" opens one card per network, in channel-list order, grouped by `platform`; each card starts as a copy of the shared text.
+- Going back to step 1 discards every per-network override, including post type and settings.
+- Settings in `ACCOUNT_SCOPED_SETTINGS` (Pinterest, Discord, TikTok) stay per account; every other meta fans out to all accounts of the network.
+
+## Link preview card
+
+- `meta.link_preview === false` (the × on the card) is honoured only by the Facebook post, Bluesky and LinkedIn publishers, through `PostPlatform::attachesLinkPreview()`. Threads has no ×: its API always cards the first link.
+- "Replace link preview with media" goes through `LinkPreviewMediaController`.
+
+## YouTube
+
+- Without `meta.title`, the title is the first non-empty line of the post's plain text, with `<` and `>` removed, cut to 100 code points, and no ` #Shorts` (`YouTubeMetadata::title()`); `YouTubeSettings.vue` fills the Title field with the same rule.
+- Categories are a fixed list, `App\Enums\YouTube\Category`; the composer reads it from `Platform::publishConfig()` (`categoryOptions`, `defaultCategoryId`). Do not copy it into TypeScript.
+
+## Media Types (image / video / document)
+
+- A media item is one of exactly three types: **image**, **video**, **document** (PDF). There is no standalone "audio" media type (audio exists only as a video voiceover input).
+- Media-type detection lives in ONE place per side — NEVER hand-write `type === 'image'`, `mime_type === 'application/pdf'`, `mime.startsWith('video/')`, or extension checks inline.
+    - Backend: `App\Enums\Media\Type` — `classify()`, `fromMime()`, `fromExtension()`, `isGif()`, plus the `allowedMimeTypes()` / `extensions()` allow-lists. Use these, never a raw MIME/extension comparison.
+    - Frontend: `resources/js/lib/mediaType.ts` — the mirror of the backend enum: the `MediaType` union, `classify()`, `fromMimeType()` (for a browser `File.type`), `fromExtension()`, `isImage()`/`isVideo()`/`isDocument()`/`isGif()`. `@/composables/useMedia` re-exports `isImageMedia`/`isVideoMedia`/`isDocumentMedia` aliases for legacy call sites.
+    - Detection trusts the explicit `type` first, then the MIME, then the filename extension — so an item with only a MIME (e.g. AI/Unsplash/Giphy media without a `type`) still classifies correctly. A bare `item.type === 'image'` (with a `v-else` video) silently mis-renders those.
+- The `type` field on every media-ish interface is the `MediaType` union, never `string` — `MediaItem`, and any sibling shape (an upload result, an autosaved item, etc.).
+- The upload `accept` attribute for "everything we allow" comes from `acceptAttribute()` (frontend) / `Media\Type::allowedMimeTypes()` (backend) — never a hardcoded MIME list. Per-capability `accept` builders driven by content-type rules (e.g. `image/*,video/*`) are fine; those aren't detection.
+
+## Pest / Feature Tests
+
+- ALWAYS use named routes via the `route()` helper in feature tests. NEVER hardcode URL strings like `'/posts/ai/create'`.
+    - Example: `$this->postJson(route('app.posts.store'))` instead of `$this->postJson('/posts')`.
+    - With params: `route('app.posts.ai.create.finalize', $creationId)`.
+
+## Browser Tests (Pest + Playwright)
+
+Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` driving Playwright. **Laravel Dusk is not installed** — there is no `DuskTestCase`, no `$browser` object, and no `browse()`. Do not add `dusk="..."` attributes; they select nothing.
+
+- ALWAYS use named routes via `route()`. NEVER hardcode URLs like `'https://trypost.test/login'`.
+    - Example: `visit(route('login'))`.
+- ALWAYS target elements by `data-testid`. NEVER use CSS classes (`.text-red-600`), tag names, or text strings.
+    - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
+    - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
+- Assertions do NOT auto-wait on SPA paint. Wait for the element to mount and lay out first — see the `waitFor*TestId()` helper at the top of `tests/Browser/WelcomeConnectTest.php` and copy the pattern under a file-unique name (these helpers are global functions; a duplicated name collides across test files).
+- **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
+- `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
+- End page assertions with `->assertNoJavaScriptErrors()`.
+- CI runs them un-parallelised (`php artisan test tests/Browser --compact`) against `npm run build` output, so keep them independent of a running dev server.
+
+## Array Data Access
+
+- In Action classes and similar service classes, ALWAYS use Laravel's `data_get()` helper instead of direct array access.
+    - Example: `data_get($data, 'name')` instead of `$data['name']`.
+    - Use the third parameter for fallback values: `data_get($data, 'username', $sender->username)` instead of `$data['username'] ?? $sender->username`.
+
+## Eloquent Models & Morph Map
+
+- EVERY Eloquent model in `app/Models` MUST be registered in `Relation::enforceMorphMap([...])` inside `AppServiceProvider::configureMorphMap()`, keyed by a camelCase alias (e.g. `'postPlatform' => PostPlatform::class`).
+- When you add a new model, add it to the morph map in the same change. `tests/Unit/MorphMapTest.php` fails if any model is missing.
+- The alias is persisted in polymorphic columns, so never rename or remove an existing alias for a model that has stored rows.
+
+## Imports
+
+- NEVER use inline class references (e.g., `\DB::listen`, `\Str::uuid()`). ALWAYS import classes at the top of the file with a `use` statement.
+    - PHP: `use Illuminate\Support\Facades\DB;` then `DB::listen(...)`
+    - TypeScript/Vue: `import { ref } from 'vue'` then `ref(...)`
+
+## API Response Status Codes
+
+- When returning JSON responses with explicit status codes, always use `Symfony\Component\HttpFoundation\Response` constants instead of magic numbers.
+    - Example: `Response::HTTP_CREATED` instead of `201`, `Response::HTTP_NO_CONTENT` instead of `204`.
+
+## String Interpolation
+
+- When injecting variables into strings, prefer **double-quoted interpolation** with curly braces over concatenation with `.`.
+    - PHP: `"workspace.{$workspace->id}"` instead of `'workspace.'.$workspace->id`.
+    - Use curly braces `{}` even for simple variables to keep the boundary explicit and to allow object/array access without ambiguity.
+    - Single quotes are still preferred when the string has no interpolation.
+
+## External Service URLs
+
+- NEVER hardcode third-party API hosts, OAuth endpoints, or per-platform service URLs (e.g. `https://api.x.com/2`, `https://www.linkedin.com/oauth/v2/accessToken`, `https://bsky.social`). They live in `config/trypost.php` under `platforms.<name>` with a matching `env(...)` default, so self-hosted users can override them and we have a single source of truth.
+    - Production code: `config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken'`, never the literal URL.
+    - Tests: use the same `config(...)` value in `Http::fake([...])` — `Http::fake([config('trypost.platforms.x.api').'/oauth2/token' => ...])`. Tests with hardcoded URLs drift silently when the config changes.
+    - Path/route segments after the host (e.g. `/oauth/v2/accessToken`, `/xrpc/com.atproto.server.refreshSession`) are part of the provider's protocol spec — those stay inline next to the call. Only the host comes from config.
+
+## Social Platform API Documentation (official sources)
+
+**Always consult the official docs below before implementing or changing OAuth, publishing, deletion, rate-limit, or any other platform-specific behavior — never guess endpoints, scopes, rate limits, or capabilities from memory.** APIs shift over time; a behavior confirmed in a past session may no longer hold. One entry per social network we integrate with:
+
+- **Facebook / Instagram / Threads (Meta)**: all three share the Graph API error format (`error.code`, `error.type`).
+    - General error handling / codes 1, 2, 4, 17, 190: https://developers.facebook.com/docs/graph-api/guides/error-handling/
+    - Rate limiting — Platform Rate Limits (app/user tokens, codes 4/17) vs. Business Use Case (BUC) Rate Limits (Page/system-user tokens, codes 80000–80014 — e.g. `80001` Pages API, `80002` Instagram Platform; BUC rejections come back as plain HTTP 400, not 429): https://developers.facebook.com/docs/graph-api/overview/rate-limiting/
+    - Instagram content-publishing error codes: https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/error-codes/
+    - Instagram media reference (incl. `DELETE`): https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/
+    - Threads API: https://developers.facebook.com/docs/threads — reuses the Graph API error format; no separate Threads-specific error code table exists. Delete posts (needs the separate `threads_delete` permission, 100 deletes/day/account): https://developers.facebook.com/docs/threads/posts/delete-posts/
+    - Our `App\Services\Social\Meta\GraphError` (used by `ConnectionVerifier`'s verify/refresh calls) has the full rationale and code table in its class docblock — check there before changing transient-vs-confirmed-rejection classification.
+    - `Facebook`/`InstagramFacebook` `SocialAccount`s use a Facebook Page access token (BUC-limited); `Instagram` (direct login) and `Threads` use a user access token (Platform Rate Limit-limited). This affects which rate-limit codes apply to which platform.
+- **X (Twitter)**: API v2 — https://docs.x.com/x-api ; Post management (create/delete) — https://docs.x.com/x-api/posts/manage-tweets/introduction
+- **LinkedIn**: Posts API (create/update/delete, member + organization) — https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api (replaces the deprecated `ugcPosts` API)
+- **Mastodon**: Statuses API — https://docs.joinmastodon.org/methods/statuses/
+- **Pinterest**: API v5 reference — https://developers.pinterest.com/docs/api/v5/
+- **YouTube**: Data API v3 — https://developers.google.com/youtube/v3/docs
+- **TikTok**: Content Posting API — https://developers.tiktok.com/doc/content-posting-api-reference-direct-post — **no delete/unpublish endpoint exists**; a published post can only be removed manually inside the TikTok app
+- **Bluesky / AT Protocol**: official lexicons — https://github.com/bluesky-social/atproto/tree/main/lexicons/com/atproto/repo ; HTTP API reference — https://docs.bsky.app
+- **Discord**: Webhook resource (used for our webhook-based publishing) — https://docs.discord.com/developers/resources/webhook
+- **Telegram**: Bot API — https://core.telegram.org/bots/api
+- **Google Business Profile**: Business Information API, Account Management API, Business Profile Performance API — https://developers.google.com/my-business/reference/rest ; legacy but still-active Local Posts v4 API (the only endpoint for creating/updating/deleting Local Posts) — https://developers.google.com/my-business/reference/rest/v4/accounts.locations.localPosts
+
+## TryPost.it Documentation
+
+- All our documentation to final user it's under https://docs.trypost.it
+
+## X link defusing (env knob)
+
+X bills a post containing a URL at **$0.20** vs **$0.015** for a plain post (13x), and its algorithm demotes link posts. So on Cloud the `ContentSanitizer` rewrites every URL in the X version of a post into a non-clickable form — `https://example.com/post` becomes `example(.)com/post`.
+
+| Env | Config | Default | Effect |
+| --- | --- | --- | --- |
+| `X_DEFUSE_LINKS` | `trypost.platforms.x.defuse_links` | `false` | `true`: URLs in the X version of a post are rewritten non-clickable (scheme and `www.` dropped, **every** dot of the host replaced with `(.)`). `false`: the X content is published unchanged. Only affects `Platform::X` — every other network keeps the URL intact. |
+
+Standing constraints:
+- The transform lives in ONE place: the `Platform::X` arm of `App\Services\Social\ContentSanitizer::sanitize()`. Never re-implement it in a publisher or add a `$defuseLinks` parameter to `sanitize()` — a per-call-site flag gets forgotten at the next entry point and we silently start paying again. Because `PostPreviewer` also goes through `ContentSanitizer`, the app/API/MCP previews show the defused text for free.
+- **Every** dot of the host must be broken. Defusing only the dot before the TLD leaves `blog.example.com` in `blog.example.com(.)br`, which X still detects and bills.
+- A URL carrying `https://`, `http://` or `www.` is defused on sight. A **bare** host is only a link when its last label is a delegated TLD — that check is the one thing separating `acme.com` from `Node.js`, and it goes through `App\Support\LinkTlds`, which mirrors the full IANA root zone rather than a hand-picked subset. Never replace it with "any 2+ letters after a dot", and never trim it back to a curated list: whatever X links is what X bills, so the two must stay in step. `README.md` and `backup.zip` are defused on purpose — `.md` and `.zip` are real TLDs and X links them too.
+- Off by default everywhere. Cloud opts in; self-hosted installs publish through their own X app and pay their own bill, so they only turn it on if they want to.
+- Character limits are measured against the **sanitized** content — the string the publisher actually sends — against the **account's** limit plus the reserved length (see Content limits), in both `App\Rules\ContentFitsPlatformLimits` (save/schedule) and `HasSocialHttpClient::validateContentLength()` (publish). The editor stores HTML and per-platform rules change the length again, so measuring the raw draft blocks saving posts that publish fine and lets through posts the network rejects. Keep the two in step.
+- Tests enable it explicitly with `config()->set('trypost.platforms.x.defuse_links', true)` rather than pinning an env, so the suite runs against the shipped default.
+- The editor counts characters and renders the X preview client-side, so the rewrite is mirrored in `resources/js/lib/defuseXLinks.ts`. The TLD list is NOT duplicated there: `PostController@edit` sends `App\Support\LinkTlds::all()` as the `xLinkTlds` page prop, and only when defusing is on — an empty set means the feature is off, since without the list a bare host cannot be told from `Node.js`. Do not move it to the Inertia shared props; only the editor needs it. Two tests keep the mirror honest: `XLinkDefusingParityTest` runs a shared corpus through both engines over the same list and diffs the output, and `tests/Browser/XLinkDefusingTest.php` drives the real editor.
+- Neither expression may use lookbehind. Safari only understands it from 16.4, esbuild cannot transpile it, and a `SyntaxError` there takes down the whole chunk — the character before a candidate URL is consumed and put back instead.
+
+## Git
+
+- NEVER add `Co-Authored-By` lines to commit messages.
+- NEVER commit, push, or open PRs unless explicitly asked by the user.
+- Always create a new branch for feature work before making changes.
+- **Exception — TryPost 2.0:** while the checked-out branch is `codex/independent-social-posts`, every change belongs to TryPost 2.0 and stays on that branch. Do not create new branches or worktrees for features, fixes or follow-ups there. This exception ends when that branch is merged into `main`; from then on the rule above applies again.
+
+## Repurpose account health
+
+A repurpose depends on social accounts it does not own the lifecycle of. Three
+decisions govern how it reacts, and each exists because the obvious alternative
+was tried and was wrong.
+
+- **A destination is only checked for tenancy.** There is no switched-off
+  state: an account is either in the workspace or it is not.
+  `ActivateRepurpose::assertDestinationsPublishable()` requires **one** usable
+  destination, not all of them, and the destination rule in the repurpose
+  FormRequests carries only the `workspace_id` clause — that is tenancy, not
+  health. `ProcessRepurposeItem` skips a destination that no longer resolves in
+  the workspace. The `source_social_account_id` rules stay strict: a source
+  genuinely must work.
+- **`repurposes.paused_reason` is not UI copy.** NULL means the user paused it.
+  Its only two jobs are deciding the watermark on resume (a system pause starts
+  from `now()`, a user pause keeps its place) and deciding whether the system may
+  auto-resume. Banners derive from current account health instead, so they can
+  say "ready to resume" once the cause is fixed. **Never clear it in
+  `UpdateRepurpose`** — that destroys the record that the pause was systemic, and
+  the next Resume replays the entire backlog.
+- **Source and destination are deliberately asymmetric.** A dead source stops the
+  automation; a dead destination keeps flowing to the publisher, which fails the
+  post visibly and lets the user retry it after reconnecting. Skipping a
+  destination at job time would be permanent for that item, since items are never
+  retried.
+
+`RepurposeAccountSync` runs from `SocialAccountObserver` and must never throw:
+`deleting` runs inside `$account->delete()`, and `persistIdentity()` wraps a
+reconnect in a transaction, so an exception there would 500 a disconnect or roll
+back a reconnect. It reads account health **from the database**, not from the
+model it was handed — strict mode exempts recently-created models from the
+missing-attribute exception, so an attribute absent from the factory read back
+as `null` and silently skipped auto-resume.
+
+No email is sent when a repurpose stops. `markAsTokenExpired()` and
+`VerifyWorkspaceConnections` already email about the account, and reconnecting is
+what auto-resumes the repurpose; deleting an account is
+something the user just did, so the flash on the accounts page reports the count
+instead.
+
+`VerifyWorkspaceConnections` is the **only** thing that promotes an account back
+to `Connected`, because it does so after a real `verify()` call. A successful
+token refresh is not that proof — the refresh token being valid says nothing
+about whether publishing still works — so `RefreshSocialToken` must not promote,
+even though it would let a paused repurpose resume sooner.

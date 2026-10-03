@@ -24,10 +24,6 @@ class WorkspaceFactory extends Factory
         return [
             'user_id' => User::factory(),
             'name' => fake()->company(),
-            'content_language' => 'en',
-            'brand_voice_traits' => ['balanced', 'direct'],
-            'brand_font' => 'Inter',
-            'image_style' => 'cinematic',
         ];
     }
 

@@ -2,7 +2,8 @@
 
 return [
     'title' => 'Firme',
-    'description' => 'Crea firme riutilizzabili da aggiungere rapidamente ai tuoi post',
+    'description' => 'Testi riutilizzabili per i tuoi post.',
+    'save_failed' => 'Impossibile salvare la firma. Riprova.',
     'search' => 'Cerca firme...',
     'new' => 'Nuova firma',
     'empty_title' => 'Ancora nessuna firma',
@@ -15,6 +16,7 @@ return [
         'created_at' => 'Creata',
     ],
 
+    'row_actions' => 'Azioni della firma',
     'actions' => [
         'edit' => 'Modifica firma',
         'delete' => 'Elimina firma',
@@ -22,24 +24,22 @@ return [
 
     'create' => [
         'title' => 'Crea firma',
-        'description' => 'Dai un nome alla tua firma e il contenuto da aggiungere (hashtag, link, testo personalizzato — tutto ciò che riutilizzi).',
+        'description' => 'Salva il testo che aggiungi spesso ai post, come hashtag, link o una firma.',
         'name' => 'Nome',
         'name_placeholder' => 'es. Marketing, Viaggi, Saluto del brand',
         'content' => 'Contenuto',
         'content_placeholder' => "#marketing #socialmedia\nScopri di più: https://iltuobrand.com",
-        'content_hint' => 'Hashtag, link, introduzioni personalizzate, saluti — tutto ciò che aggiungi ai post.',
         'submit' => 'Crea firma',
         'submitting' => 'Creazione in corso...',
     ],
 
     'edit' => [
         'title' => 'Modifica firma',
-        'description' => 'Aggiorna il nome e il contenuto di questa firma.',
+        'description' => 'Modifica il nome o il testo che questa firma aggiunge ai tuoi post.',
         'name' => 'Nome',
         'name_placeholder' => 'es. Marketing, Viaggi, Saluto del brand',
         'content' => 'Contenuto',
         'content_placeholder' => "#marketing #socialmedia\nScopri di più: https://iltuobrand.com",
-        'content_hint' => 'Hashtag, link, introduzioni personalizzate, saluti — tutto ciò che aggiungi ai post.',
         'submit' => 'Salva modifiche',
         'submitting' => 'Salvataggio in corso...',
     ],
@@ -49,11 +49,5 @@ return [
         'description' => 'Vuoi davvero eliminare questa firma? Questa azione non può essere annullata.',
         'confirm' => 'Elimina',
         'cancel' => 'Annulla',
-    ],
-
-    'flash' => [
-        'created' => 'Firma creata.',
-        'updated' => 'Firma aggiornata.',
-        'deleted' => 'Firma eliminata.',
     ],
 ];

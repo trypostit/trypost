@@ -1,35 +1,46 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { IconEye, IconTrash, IconWebhook } from '@tabler/icons-vue';
-import { trans, transChoice } from 'laravel-vue-i18n';
+import {
+    IconDotsVertical,
+    IconEye,
+    IconPlus,
+    IconTrash,
+    IconWebhook,
+} from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
-import PageHeader from '@/components/PageHeader.vue';
-import { Badge } from '@/components/ui/badge';
+import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import { Button } from '@/components/ui/button';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import CreateWebhookDialog from '@/components/webhook/CreateWebhookDialog.vue';
+import WebhooksEmptyIllustration from '@/components/webhooks/WebhooksEmptyIllustration.vue';
 import date from '@/date';
-import AppLayout from '@/layouts/AppLayout.vue';
+import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { destroy, show } from '@/routes/app/webhooks';
-import type { Webhook } from '@/types/webhook';
-import { webhookStatusVariant } from '@/types/webhook-status';
+import { webhookEndpointParts, type Webhook } from '@/types/webhook';
+import { webhookStatusDot } from '@/types/webhook-status';
 
 defineProps<{
     webhooks: Webhook[];
 }>();
 
 const createDialogOpen = ref(false);
-const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+
+const openCreateDialog = (): void => {
+    createDialogOpen.value = true;
+};
+
+const confirmDeleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(
+    null,
+);
 
 const openWebhook = (webhook: Webhook) => {
     router.visit(show.url(webhook));
@@ -38,7 +49,6 @@ const openWebhook = (webhook: Webhook) => {
 const handleDelete = (webhook: Webhook) => {
     confirmDeleteModal.value?.open({
         url: destroy.url(webhook),
-        confirmText: trans('common.confirm_modal.delete_keyword'),
     });
 };
 </script>
@@ -46,104 +56,149 @@ const handleDelete = (webhook: Webhook) => {
 <template>
     <Head :title="$t('webhooks.title')" />
 
-    <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader
-                :title="$t('webhooks.title')"
-                :description="$t('webhooks.description')"
-            />
+    <SettingsLayout
+        :title="$t('webhooks.title')"
+        :description="$t('webhooks.description')"
+        :centered="webhooks.length === 0"
+    >
+        <template #actions>
+            <Button
+                data-testid="create-webhook-button"
+                @click="openCreateDialog"
+            >
+                <IconPlus class="size-4" />
+                {{ $t('webhooks.new') }}
+            </Button>
+        </template>
 
-            <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-                <Button data-testid="create-webhook-button" @click="createDialogOpen = true">
+        <EmptyState
+            v-if="webhooks.length === 0"
+            :title="$t('webhooks.empty_title')"
+            :description="$t('webhooks.empty_description')"
+            data-testid="webhooks-empty"
+        >
+            <template #illustration>
+                <WebhooksEmptyIllustration />
+            </template>
+            <template #action>
+                <Button
+                    data-testid="webhooks-empty-create"
+                    @click="openCreateDialog"
+                >
+                    <IconPlus class="size-4" />
                     {{ $t('webhooks.new') }}
                 </Button>
-            </div>
+            </template>
+        </EmptyState>
 
-            <EmptyState
-                v-if="webhooks.length === 0"
-                :icon="IconWebhook"
-                :title="$t('webhooks.empty_title')"
-                :description="$t('webhooks.empty_description')"
-            />
+        <ul
+            v-else
+            id="webhooks-body"
+            class="flex flex-col gap-2"
+            data-testid="webhooks-scroll"
+        >
+            <SettingsListRow
+                v-for="webhook in webhooks"
+                :key="webhook.id"
+                interactive
+                :data-testid="`webhook-row-${webhook.id}`"
+                @click="openWebhook(webhook)"
+            >
+                <template #media>
+                    <span
+                        class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+                    >
+                        <IconWebhook class="size-5" />
+                        <span
+                            :class="[
+                                'absolute -end-0.5 -bottom-0.5 size-3 rounded-full ring-2 ring-card',
+                                webhookStatusDot(webhook.status),
+                            ]"
+                            :data-testid="`webhook-status-dot-${webhook.id}`"
+                        />
+                    </span>
+                </template>
+                <p
+                    class="truncate text-sm leading-tight"
+                    :title="webhook.endpoint"
+                    :data-testid="`webhook-endpoint-${webhook.id}`"
+                >
+                    <span class="font-emphasis text-foreground">{{
+                        webhookEndpointParts(webhook.endpoint).host
+                    }}</span
+                    ><span class="text-muted-foreground">{{
+                        webhookEndpointParts(webhook.endpoint).path
+                    }}</span>
+                </p>
+                <p
+                    class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
+                >
+                    <span
+                        :data-testid="`webhook-status-${webhook.id}`"
+                        >{{ $t(`webhooks.status.${webhook.status}`) }}</span
+                    >
+                    <span aria-hidden="true">·</span>
+                    <span>{{
+                        $tChoice(
+                            'webhooks.events_count',
+                            webhook.events.length,
+                            { count: String(webhook.events.length) },
+                        )
+                    }}</span>
+                    <span aria-hidden="true">·</span>
+                    <span>
+                        {{ $t('webhooks.table.last_sent') }}:
+                        {{
+                            webhook.last_sent_at
+                                ? date.diffForHumans(webhook.last_sent_at)
+                                : $t('webhooks.never')
+                        }}
+                    </span>
+                </p>
+                <template #actions>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
+                                :aria-label="$t('webhooks.row_actions')"
+                                data-testid="row-actions-trigger"
+                                @click.stop
+                            >
+                                <IconDotsVertical class="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" @click.stop>
+                            <DropdownMenuItem
+                                :data-testid="`view-webhook-${webhook.id}`"
+                                @click="openWebhook(webhook)"
+                            >
+                                <IconEye class="size-4" />
+                                {{ $t('webhooks.actions.view') }}
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                                variant="destructive"
+                                data-testid="delete-webhook-button"
+                                @click="handleDelete(webhook)"
+                            >
+                                <IconTrash class="size-4" />
+                                {{ $t('webhooks.actions.delete') }}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </template>
+            </SettingsListRow>
+        </ul>
+    </SettingsLayout>
 
-            <div v-else>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>{{ $t('webhooks.table.endpoint') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.events') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.status') }}</TableHead>
-                            <TableHead>{{ $t('webhooks.table.last_sent') }}</TableHead>
-                            <TableHead class="text-right" />
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        <TableRow
-                            v-for="webhook in webhooks"
-                            :key="webhook.id"
-                            class="cursor-pointer"
-                            @click="openWebhook(webhook)"
-                        >
-                            <TableCell class="max-w-[160px] font-medium sm:max-w-md">
-                                <p class="truncate">{{ webhook.endpoint }}</p>
-                            </TableCell>
-                            <TableCell>
-                                {{
-                                    transChoice(
-                                        'webhooks.events_count',
-                                        webhook.events.length,
-                                        { count: String(webhook.events.length) },
-                                    )
-                                }}
-                            </TableCell>
-                            <TableCell>
-                                <Badge :variant="webhookStatusVariant(webhook.status)">
-                                    {{ $t(`webhooks.status.${webhook.status}`) }}
-                                </Badge>
-                            </TableCell>
-                            <TableCell>
-                                <span v-if="webhook.last_sent_at">{{
-                                    date.diffForHumans(webhook.last_sent_at)
-                                }}</span>
-                                <span v-else>{{ $t('webhooks.never') }}</span>
-                            </TableCell>
-                            <TableCell class="text-right" @click.stop>
-                                <div class="flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        class="size-8"
-                                        :aria-label="$t('webhooks.actions.view')"
-                                        data-testid="row-actions-trigger"
-                                        @click="openWebhook(webhook)"
-                                    >
-                                        <IconEye class="size-4" />
-                                    </Button>
-                                    <Button
-                                        variant="outline"
-                                        size="icon"
-                                        class="size-8 bg-rose-100 hover:bg-rose-200"
-                                        :aria-label="$t('webhooks.actions.delete')"
-                                        data-testid="delete-webhook-button"
-                                        @click="handleDelete(webhook)"
-                                    >
-                                        <IconTrash class="size-4 text-rose-700" />
-                                    </Button>
-                                </div>
-                            </TableCell>
-                        </TableRow>
-                    </TableBody>
-                </Table>
-            </div>
-
-            <CreateWebhookDialog v-model:open="createDialogOpen" />
-            <ConfirmDeleteModal
-                ref="confirmDeleteModal"
-                :title="$t('webhooks.delete.title')"
-                :description="$t('webhooks.delete.description')"
-                :action="$t('webhooks.delete.confirm')"
-                :cancel="$t('webhooks.delete.cancel')"
-            />
-        </div>
-    </AppLayout>
+    <CreateWebhookDialog v-model:open="createDialogOpen" />
+    <ConfirmDeleteModal
+        ref="confirmDeleteModal"
+        :title="$t('webhooks.delete.title')"
+        :description="$t('webhooks.delete.description')"
+        :action="$t('webhooks.delete.confirm')"
+        :cancel="$t('webhooks.delete.cancel')"
+    />
 </template>

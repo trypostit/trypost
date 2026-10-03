@@ -4,7 +4,9 @@ import { IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { ref, watch } from 'vue';
 
-import ImageCropperDialog from '@/components/ImageCropperDialog.vue';
+import MediaEditorDialog, {
+    type MediaEditChange,
+} from '@/components/posts/composer/MediaEditorDialog.vue';
 import { Avatar } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import {
@@ -13,6 +15,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import type { MediaItem } from '@/types/media';
 
 type Props = {
     photoUrl: string | null;
@@ -36,13 +39,11 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const uploading = ref(false);
 
 const cropOpen = ref(false);
-const cropSrc = ref<string | null>(null);
-const cropFileName = ref('image.png');
-const cropMime = ref('image/png');
+const cropItems = ref<MediaItem[]>([]);
 
 watch(cropOpen, (isOpen) => {
     if (!isOpen) {
-        cropSrc.value = null;
+        cropItems.value = [];
     }
 });
 
@@ -75,12 +76,17 @@ const handleFileChange = (event: Event) => {
         return;
     }
 
-    cropFileName.value = file.name || 'image.png';
-    cropMime.value = file.type || 'image/png';
-
     const reader = new FileReader();
     reader.onload = () => {
-        cropSrc.value = reader.result as string;
+        cropItems.value = [
+            {
+                id: 'photo',
+                url: reader.result as string,
+                type: 'image',
+                mime_type: file.type || 'image/png',
+                original_filename: file.name || 'image.png',
+            },
+        ];
         cropOpen.value = true;
     };
     reader.readAsDataURL(file);
@@ -90,7 +96,13 @@ const handleFileChange = (event: Event) => {
     }
 };
 
-const uploadCropped = (file: File) => {
+const uploadCropped = (changes: MediaEditChange[]) => {
+    const file = changes[0]?.file;
+
+    if (!file) {
+        return;
+    }
+
     uploading.value = true;
 
     router.post(
@@ -166,12 +178,12 @@ const handleDelete = () => {
             </p>
         </div>
 
-        <ImageCropperDialog
+        <MediaEditorDialog
             v-model:open="cropOpen"
-            :src="cropSrc"
-            :file-name="cropFileName"
-            :mime-type="cropMime"
-            @cropped="uploadCropped"
+            :items="cropItems"
+            :content-types="[]"
+            mode="photo"
+            @apply="uploadCropped"
         />
     </div>
 </template>

@@ -53,11 +53,7 @@ class DeleteWorkspace
 
             self::pruneInvitesForWorkspace($workspace);
 
-            // Capture paths inside the lock so uploads that raced into the
-            // transaction are included in post-commit filesystem cleanup.
-            $mediaPaths = PurgeWorkspace::execute($workspace);
-
-            $settlement = new StrandedSettlement(mediaPaths: $mediaPaths);
+            PurgeWorkspace::execute($workspace);
 
             if ($account) {
                 $settlement = $settlement->merge(

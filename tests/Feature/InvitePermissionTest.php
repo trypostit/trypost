@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -19,7 +18,7 @@ beforeEach(function () {
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -29,7 +28,7 @@ test('owner can invite members regardless of count', function () {
     ]);
 
     foreach ($members as $member) {
-        $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+        $this->workspace->members()->attach($member->id, membershipPivot('member'));
     }
 
     expect($this->user->can('inviteMember', $this->workspace))->toBeTrue();
@@ -37,7 +36,7 @@ test('owner can invite members regardless of count', function () {
 
 test('a non-admin member cannot invite members', function () {
     $member = User::factory()->create(['account_id' => $this->account->id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($member->can('inviteMember', $this->workspace))->toBeFalse();
 });

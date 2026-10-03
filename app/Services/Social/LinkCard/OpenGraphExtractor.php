@@ -10,8 +10,6 @@ use Symfony\Component\DomCrawler\UriResolver;
 /**
  * Deterministic OpenGraph reader for link preview cards. Pulls og:title /
  * og:description / og:image with <title> and meta-description fallbacks.
- * Deliberately separate from HomepageMetaExtractor, which is brand-tuned and
- * intentionally excludes og:image.
  */
 final class OpenGraphExtractor
 {

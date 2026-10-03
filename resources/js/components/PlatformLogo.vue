@@ -3,19 +3,51 @@ import { computed } from 'vue';
 
 import {
     getPlatformLabel,
-    getPlatformTheme,
+    getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+
+type PlatformLogoRing = 'background' | 'card' | 'popover' | 'sidebar';
 
 const props = withDefaults(
     defineProps<{
         platform: string;
-        size?: 'xs' | 'sm' | 'md' | 'lg';
-        tilt?: boolean;
+        size?: 'xs' | 'sm' | 'md' | 'lg' | number;
+        ring?: PlatformLogoRing | null;
         plain?: boolean;
         title?: string | null;
     }>(),
-    { size: 'md', tilt: true, plain: false, title: undefined },
+    { size: 'md', ring: null, plain: false, title: undefined },
 );
+
+const NAMED_SIZES: Record<'xs' | 'sm' | 'md' | 'lg', number> = {
+    xs: 24,
+    sm: 40,
+    md: 48,
+    lg: 64,
+};
+
+const RING_CLASSES: Record<PlatformLogoRing, string> = {
+    background: 'border-background bg-background',
+    card: 'border-card bg-card',
+    popover: 'border-popover bg-popover',
+    sidebar: 'border-sidebar bg-sidebar',
+};
+
+const pixels = computed(() =>
+    typeof props.size === 'number' ? props.size : NAMED_SIZES[props.size],
+);
+
+const radiusClass = computed(() => {
+    if (props.plain || props.ring) {
+        return 'rounded-full';
+    }
+
+    if (pixels.value >= 24) {
+        return 'rounded-lg';
+    }
+
+    return pixels.value >= 16 ? 'rounded-md' : 'rounded-sm';
+});
 
 const nativeTitle = computed(() =>
     props.title === undefined
@@ -23,65 +55,27 @@ const nativeTitle = computed(() =>
         : (props.title ?? undefined),
 );
 
-const theme = computed(() => getPlatformTheme(props.platform));
-
-const boxClass = computed(
-    () =>
-        ({
-            xs: 'size-6 rounded-md',
-            sm: 'size-10 rounded-xl',
-            md: 'size-12 rounded-xl',
-            lg: 'size-16 rounded-2xl',
-        })[props.size],
-);
-
-const imageClass = computed(
-    () =>
-        ({
-            xs: 'size-3.5 rounded-sm',
-            sm: 'size-5 rounded-sm',
-            md: 'size-7 rounded-md',
-            lg: 'size-9 rounded-lg',
-        })[props.size],
-);
-
-const plainImageClass = computed(
-    () =>
-        ({
-            xs: 'size-5',
-            sm: 'size-6',
-            md: 'size-8',
-            lg: 'size-10',
-        })[props.size],
-);
+const boxStyle = computed(() => ({
+    width: `${pixels.value}px`,
+    height: `${pixels.value}px`,
+}));
 </script>
 
 <template>
-    <span class="inline-flex shrink-0">
+    <span
+        :class="[
+            'inline-flex shrink-0 overflow-hidden',
+            radiusClass,
+            ring ? ['border', RING_CLASSES[ring]] : '',
+        ]"
+        :style="boxStyle"
+        :title="nativeTitle"
+    >
         <img
-            v-if="plain"
-            :src="theme.image"
+            :src="getPlatformLogo(platform)"
             :alt="getPlatformLabel(platform)"
-            :title="nativeTitle"
-            :class="['rounded-full object-cover', plainImageClass]"
+            :class="['size-full object-cover', radiusClass]"
             loading="lazy"
         />
-        <span
-            v-else
-            :class="[
-                theme.bg,
-                tilt ? theme.rotate : '',
-                boxClass,
-                'inline-flex items-center justify-center border-2 border-foreground shadow-sm transition-transform group-hover:!rotate-0',
-            ]"
-            :title="nativeTitle"
-        >
-            <img
-                :src="theme.image"
-                :alt="getPlatformLabel(platform)"
-                :class="imageClass"
-                loading="lazy"
-            />
-        </span>
     </span>
 </template>

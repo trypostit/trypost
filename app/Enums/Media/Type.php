@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Enums\Media;
 
+use App\Support\HeicConverter;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -35,6 +36,9 @@ enum Type: string
      * would transcode it. Without server-side transcoding, accepting
      * WebM would just produce platform-specific publish failures.
      *
+     * Image adds HEIC/HEIF only while HeicConverter can decode it; the
+     * upload is stored as JPEG.
+     *
      * Document accepts PDF only — the swipeable LinkedIn document
      * (carousel) format. PPTX/DOCX are also valid LinkedIn documents
      * but are converted server-side by LinkedIn and lose fonts, so we
@@ -45,7 +49,13 @@ enum Type: string
     public function allowedMimeTypes(): array
     {
         return match ($this) {
-            self::Image => ['image/jpeg', 'image/png', self::GIF_MIME, 'image/webp'],
+            self::Image => [
+                'image/jpeg',
+                'image/png',
+                self::GIF_MIME,
+                'image/webp',
+                ...(HeicConverter::available() ? HeicConverter::MIME_TYPES : []),
+            ],
             self::Video => ['video/mp4', self::MOV_MIME],
             self::Document => [self::PDF_MIME],
         };
@@ -60,7 +70,14 @@ enum Type: string
     public function extensions(): array
     {
         return match ($this) {
-            self::Image => ['jpg', 'jpeg', 'png', 'gif', 'webp'],
+            self::Image => [
+                'jpg',
+                'jpeg',
+                'png',
+                'gif',
+                'webp',
+                ...(HeicConverter::available() ? HeicConverter::EXTENSIONS : []),
+            ],
             self::Video => ['mp4', 'mov'],
             self::Document => ['pdf'],
         };

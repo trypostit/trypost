@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
+use App\Rules\ContentTypeCompatibleWithMedia;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Shared post status helpers — edit/delete gates plus the `scheduled_at`
@@ -14,6 +17,8 @@ use Illuminate\Validation\Rule;
  */
 class PostStatusRules
 {
+    public const QUEUE_DESCRIPTION = "Queue position: 'next' adds the post after the channel's queued posts, 'top' puts it first. The channel must have posting times (see has_posting_schedule). Do not combine with scheduled_at.";
+
     private const EDIT_BLOCKED_MESSAGE_KEY = 'posts.cannot_edit_finalized';
 
     /**
@@ -73,10 +78,10 @@ class PostStatusRules
      *
      * @return list<mixed>
      */
-    public static function scheduledAtRules(?Post $post, mixed $status): array
+    public static function scheduledAtRules(?Post $post, mixed $status, bool $queued = false): array
     {
         return [
-            Rule::requiredIf(fn (): bool => self::requiresExplicitSchedule($post, $status)),
+            Rule::requiredIf(fn (): bool => ! $queued && self::requiresExplicitSchedule($post, $status)),
             'nullable',
             'date',
             Rule::when(
@@ -84,5 +89,42 @@ class PostStatusRules
                 ['after:now'],
             ),
         ];
+    }
+
+    /**
+     * Validation rules for `queue` (web, API, MCP): a queue position replaces an explicit time.
+     *
+     * @return list<mixed>
+     */
+    public static function queueRules(): array
+    {
+        return [
+            'nullable',
+            Rule::enum(QueuePosition::class),
+            'prohibited_unless:status,scheduled',
+            'prohibits:scheduled_at',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function queueMessages(): array
+    {
+        return ['queue.prohibits' => __('posts.errors.queue_with_scheduled_at')];
+    }
+
+    /**
+     * Guards publishing a post's stored state without resubmitting its platforms
+     * (MCP publish, the "publish now" queue card action).
+     */
+    public static function assertStoredPostPublishable(Post $post): void
+    {
+        if (! $post->postPlatforms()->enabled()->exists()) {
+            throw ValidationException::withMessages(['platforms' => __('validation.required', ['attribute' => 'platforms'])]);
+        }
+
+        PostPlatformMetaRules::assertStoredPostPublishable($post);
+        ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
     }
 }

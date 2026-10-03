@@ -27,3 +27,12 @@ test('failed email falls back to the page display name when facebook has no user
     $mail->assertSeeInHtml('Facebook Page (@InboxPlacement.io)');
     $mail->assertDontSeeInHtml('Facebook Page (@)');
 });
+
+test('failed email links to the post in the sent tab', function () {
+    $post = Post::factory()->failed()->create();
+
+    $mail = new PostPublishFailed($post);
+
+    $mail->assertSeeInHtml(route('app.posts.index', ['tab' => 'sent', 'post' => $post->id]));
+    $mail->assertDontSeeInHtml(route('app.posts.edit', $post), false);
+});

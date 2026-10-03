@@ -1,176 +1,177 @@
 <script setup lang="ts">
-import { router, usePage } from '@inertiajs/vue3';
-import { IconClock, IconDots, IconEye, IconShield, IconTrash, IconUser } from '@tabler/icons-vue';
+import { usePage } from '@inertiajs/vue3';
+import {
+    IconClock,
+    IconDotsVertical,
+    IconShield,
+    IconTrash,
+} from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
-import HeadingSmall from '@/components/HeadingSmall.vue';
+import EditMemberDialog from '@/components/members/EditMemberDialog.vue';
 import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
+import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { destroy as destroyInvite } from '@/routes/app/invites';
-import { remove as removeMemberRoute, updateRole } from '@/routes/app/members';
-import { WorkspaceRole } from '@/types/workspace-role';
+import { remove as removeMemberRoute } from '@/routes/app/members';
+import {
+    memberAccessLabelKey,
+    type WorkspaceInvitation,
+    type WorkspaceMember,
+} from '@/types/members';
 
-interface Member {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-}
-
-interface Invitation {
-    id: string;
-    email: string;
-    role: string;
-}
-
-interface Role {
-    value: string;
-    label: string;
-}
-
-defineProps<{
-    members: Member[];
-    invitations: Invitation[];
-    roles: Role[];
+const props = defineProps<{
+    members: WorkspaceMember[];
+    invitations: WorkspaceInvitation[];
+    ownerId: string | null;
 }>();
-
-const roleIcon = (role: string) => {
-    if (role === WorkspaceRole.Admin) {
-        return IconShield;
-    }
-
-    if (role === WorkspaceRole.Viewer) {
-        return IconEye;
-    }
-
-    return IconUser;
-};
 
 const page = usePage();
 const currentUserId = computed(() => page.props.auth.user.id);
 
-const { canManageTeam } = useWorkspaceRole();
+const { canManageTeam } = useWorkspaceAbilities();
 
-const inviteDialogOpen = ref(false);
+const inviteOpen = defineModel<boolean>('inviteOpen', { default: false });
+const editOpen = ref(false);
+const editing = ref<WorkspaceMember | null>(null);
 const removeMemberModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const cancelInvitationModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
-const handleInviteClick = () => {
-    inviteDialogOpen.value = true;
-};
+const isManageable = (member: WorkspaceMember): boolean =>
+    canManageTeam.value &&
+    member.id !== currentUserId.value &&
+    member.id !== props.ownerId;
 
-const changeRole = (member: Member, role: string) => {
-    router.put(updateRole.url(member.id), { role });
+const editMember = (member: WorkspaceMember): void => {
+    editing.value = member;
+    editOpen.value = true;
 };
 </script>
 
 <template>
-    <div class="flex flex-col space-y-6">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <HeadingSmall
-                :title="$t('settings.workspace.members_heading')"
-                :description="$t('settings.workspace.members_description')"
-            />
-
-            <Button v-if="canManageTeam" @click="handleInviteClick">
-                {{ $t('settings.members.invite.submit') }}
-            </Button>
-        </div>
-
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    <TableHead>{{ $t('settings.workspace.name') }}</TableHead>
-                    <TableHead>{{ $t('settings.members.invite.email') }}</TableHead>
-                    <TableHead>{{ $t('settings.members.invite.role') }}</TableHead>
-                    <TableHead class="w-10" />
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                <TableRow v-for="member in members" :key="member.id">
-                    <TableCell>{{ member.name }}</TableCell>
-                    <TableCell>{{ member.email }}</TableCell>
-                    <TableCell>
-                        <Badge :variant="member.role === WorkspaceRole.Admin ? 'default' : 'secondary'">
-                            {{ member.role }}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <DropdownMenu v-if="canManageTeam && member.id !== currentUserId">
-                            <DropdownMenuTrigger as-child>
-                                <Button variant="outline" size="icon" class="size-9">
-                                    <IconDots class="size-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                    v-for="role in roles.filter((r) => r.value !== member.role)"
-                                    :key="role.value"
-                                    @click="changeRole(member, role.value)"
-                                >
-                                    <component :is="roleIcon(role.value)" class="size-4" />
-                                    {{ $t('settings.members.make_role', { role: $t(`settings.members.roles.${role.value}`) }) }}
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    variant="destructive"
-                                    @click="removeMemberModal?.open({ url: removeMemberRoute.url(member.id), confirmText: member.email })"
-                                >
-                                    <IconTrash class="size-4" />
-                                    {{ $t('settings.members.remove') }}
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </TableCell>
-                </TableRow>
-                <TableRow v-for="invitation in invitations" :key="`inv-${invitation.id}`">
-                    <TableCell class="text-foreground/60">
-                        <div class="flex items-center gap-2">
-                            <IconClock class="size-4" />
-                            <span class="italic">{{ $t('settings.members.pending.title') }}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell class="text-foreground/60">
-                        {{ invitation.email }}
-                    </TableCell>
-                    <TableCell>
-                        <Badge variant="outline">
-                            {{ invitation.role }}
-                        </Badge>
-                    </TableCell>
-                    <TableCell>
-                        <Button
-                            v-if="canManageTeam"
-                            variant="outline"
-                            size="icon"
-                            class="size-8 bg-rose-100 hover:bg-rose-200"
-                            :aria-label="$t('settings.members.cancel_invite_modal.action')"
-                            @click="cancelInvitationModal?.open({ url: destroyInvite.url(invitation.id), confirmText: invitation.email })"
+    <div class="flex flex-col">
+        <ul class="flex flex-col gap-2">
+            <li
+                v-for="member in members"
+                :key="member.id"
+                class="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+                :data-testid="`member-row-${member.id}`"
+            >
+                <Avatar
+                    :src="member.photo_url"
+                    :name="member.name"
+                    class="size-12 rounded-lg"
+                    fallback-class="bg-sidebar-accent text-sidebar-accent-foreground"
+                />
+                <div class="flex min-w-0 flex-1 flex-col gap-1">
+                    <div class="flex min-w-0 flex-wrap items-center gap-2">
+                        <p
+                            class="truncate text-sm leading-tight font-emphasis text-foreground"
                         >
-                            <IconTrash class="size-4 text-rose-700" />
+                            {{ member.name }}
+                        </p>
+                        <Badge
+                            variant="secondary"
+                            :data-testid="`member-badge-${member.id}`"
+                        >
+                            {{ $t(memberAccessLabelKey(member, member.id === ownerId)) }}
+                        </Badge>
+                    </div>
+                    <p class="truncate text-sm text-muted-foreground">
+                        {{ member.email }}
+                    </p>
+                </div>
+                <DropdownMenu v-if="isManageable(member)">
+                    <DropdownMenuTrigger as-child>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="shrink-0 text-muted-foreground data-[state=open]:bg-accent"
+                            :aria-label="member.name"
+                            :data-testid="`member-menu-${member.id}`"
+                        >
+                            <IconDotsVertical class="size-4" />
                         </Button>
-                    </TableCell>
-                </TableRow>
-            </TableBody>
-        </Table>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                            :data-testid="`member-edit-${member.id}`"
+                            @click="editMember(member)"
+                        >
+                            <IconShield class="size-4" />
+                            {{ $t('settings.members.edit.action') }}
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            variant="destructive"
+                            @click="
+                                removeMemberModal?.open({
+                                    url: removeMemberRoute.url(member.id),
+                                    confirmText: member.email,
+                                })
+                            "
+                        >
+                            <IconTrash class="size-4" />
+                            {{ $t('settings.members.remove') }}
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+            </li>
+            <li
+                v-for="invitation in invitations"
+                :key="`inv-${invitation.id}`"
+                class="flex items-center gap-4 rounded-xl border border-border bg-card p-4"
+            >
+                <span
+                    class="inline-flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
+                >
+                    <IconClock class="size-5" />
+                </span>
+                <div class="flex min-w-0 flex-1 flex-col gap-1">
+                    <div class="flex min-w-0 flex-wrap items-center gap-2">
+                        <p
+                            class="truncate text-sm leading-tight font-emphasis text-foreground"
+                        >
+                            {{ invitation.email }}
+                        </p>
+                        <Badge variant="secondary">
+                            {{ $t(memberAccessLabelKey(invitation)) }}
+                        </Badge>
+                    </div>
+                    <p class="text-sm text-muted-foreground">
+                        {{ $t('settings.members.pending.title') }}
+                    </p>
+                </div>
+                <Button
+                    v-if="canManageTeam"
+                    variant="ghost"
+                    size="icon"
+                    class="shrink-0 text-destructive-text"
+                    :aria-label="$t('settings.members.cancel_invite_modal.action')"
+                    @click="
+                        cancelInvitationModal?.open({
+                            url: destroyInvite.url(invitation.id),
+                            confirmText: invitation.email,
+                        })
+                    "
+                >
+                    <IconTrash class="size-4" />
+                </Button>
+            </li>
+        </ul>
 
-        <InviteMemberDialog v-model:open="inviteDialogOpen" />
+        <InviteMemberDialog v-model:open="inviteOpen" />
+        <EditMemberDialog v-model:open="editOpen" :member="editing" />
 
         <ConfirmDeleteModal
             ref="removeMemberModal"

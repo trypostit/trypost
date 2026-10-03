@@ -69,6 +69,11 @@ watch(() => filterState.search, () => {
   filterItems()
 })
 
+watch(() => allItems.value.size, () => {
+  if (filterState.search)
+    filterItems()
+})
+
 provideCommandContext({
   allItems,
   allGroups,

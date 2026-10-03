@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => '投稿の作成、予約、予約解除、公開、失敗をリアルタイムで通知します。',
+    'description' => '投稿の変化をリアルタイムで通知します。',
     'new' => 'Webhookを作成',
     'empty_title' => 'Webhookはまだありません',
     'empty_description' => 'Webhookを作成すると、イベント通知をリアルタイムで受け取れます。',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => '購読中',
         'status' => 'ステータス',
         'last_sent' => '最終送信',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => '無効',
         'paused' => '一時停止中',
     ],
+    'row_actions' => 'Webhookの操作',
     'actions' => [
         'view' => '詳細を見る',
-        'copy_id' => 'Webhook IDをコピー',
         'delete' => '削除',
         'edit' => 'Endpointを編集',
         'enable' => 'Endpointを有効化',
@@ -40,11 +38,9 @@ return [
         'description' => '通知を受け取るEndpointを設定します。',
         'endpoint' => 'Endpoint URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'このURLにJSONペイロードを含むPOSTリクエストを送信します。',
         'events' => 'イベント',
-        'events_placeholder' => 'イベントを選択...',
-        'events_selected' => '{1} :count件のイベントを選択|[2,*] :count件のイベントを選択',
-        'search_events' => 'イベントを検索...',
-        'no_events' => 'イベントが見つかりません',
+        'events_count_selected' => ':total件中:count件を選択',
         'submit' => 'Webhookを作成',
         'cancel' => 'キャンセル',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => '署名シークレット',
-        'last_sent' => '最終送信 :time',
-        'listening_for' => '購読中',
+        'edit' => '編集',
         'http_status' => 'HTTPステータス',
         'status_code' => ':code - :reason',
         'attempts' => '試行回数',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'レスポンス本文なし',
         'no_response' => 'レスポンスなし',
         'payload' => 'メッセージのペイロード',
-        'empty_title' => 'イベントはまだありません',
-        'empty_description' => '投稿が作成、予約、予約解除、公開されると、Webhookイベントがここに表示されます。',
+    ],
+    'deliveries' => [
+        'title' => '配信',
+        'empty_title' => 'まだ配信はありません',
+        'empty_description' => 'テストイベントを送信すると、ここに表示されます。',
+        'pending' => '保留中',
     ],
     'events' => [
         'group_posts' => '投稿',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => '一部公開',
         'post_failed' => '投稿に失敗',
         'post_deleted' => '投稿を削除',
+    ],
+    'event_descriptions' => [
+        'post_created' => '新しい投稿が作成されたとき。',
+        'post_scheduled' => '投稿の公開が予約されたとき。',
+        'post_unscheduled' => '予約済みの投稿が下書きに戻ったとき。',
+        'post_published' => '投稿がチャンネルで公開されたとき。',
+        'post_partially_published' => '一部のチャンネルで公開され、他が失敗したとき。',
+        'post_failed' => '投稿の公開に失敗したとき。',
+        'post_deleted' => '投稿が削除されたとき。',
     ],
     'http_reasons' => [
         'unknown' => '不明',
@@ -111,7 +119,6 @@ return [
         '504' => 'ゲートウェイタイムアウト',
     ],
     'copied' => [
-        'id' => 'Webhook IDをクリップボードにコピーしました',
         'secret' => '署名シークレットをクリップボードにコピーしました',
         'response' => 'レスポンス本文をコピーしました',
         'payload' => 'ペイロードをコピーしました',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'EndpointがHTTP :statusを返しました。',
     ],
     'flash' => [
-        'created' => 'Webhookを作成しました。',
         'updated' => 'Webhookを更新しました。',
         'deleted' => 'Webhookを削除しました。',
         'secret_rotated' => '署名シークレットを更新しました。',

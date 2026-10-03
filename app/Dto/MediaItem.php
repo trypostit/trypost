@@ -139,6 +139,38 @@ class MediaItem
     }
 
     /**
+     * The frame, in milliseconds from the start, the user picked as this video's cover.
+     */
+    public function coverOffsetMs(): ?int
+    {
+        $offset = data_get($this->meta, 'cover_offset_ms');
+
+        return is_numeric($offset) && $offset >= 0 ? (int) $offset : null;
+    }
+
+    /**
+     * People tagged on this image, as Instagram's `user_tags` entries: a public
+     * username plus x/y offsets from the top-left corner, each between 0 and 1.
+     *
+     * @return list<array{username: string, x: float, y: float}>
+     */
+    public function userTags(): array
+    {
+        return collect(data_get($this->meta, 'user_tags', []))
+            ->filter(fn (mixed $tag): bool => is_array($tag)
+                && is_string(data_get($tag, 'username'))
+                && is_numeric(data_get($tag, 'x'))
+                && is_numeric(data_get($tag, 'y')))
+            ->map(fn (array $tag): array => [
+                'username' => ltrim($tag['username'], '@'),
+                'x' => min(1.0, max(0.0, (float) $tag['x'])),
+                'y' => min(1.0, max(0.0, (float) $tag['y'])),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * The alt text truncated to the given platform's cap, or null when no alt
      * text is set or the platform doesn't support it. Single place that applies
      * the per-platform cap so publishers don't each repeat the truncation.

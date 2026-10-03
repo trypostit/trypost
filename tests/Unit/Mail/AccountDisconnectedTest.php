@@ -39,7 +39,7 @@ test('account disconnected mail has correct content', function () {
     expect($content->with['platformName'])->toBe('LinkedIn');
     expect($content->with['accountName'])->toBe('John Doe');
     expect($content->with['workspaceName'])->toBe('Test Team');
-    expect($content->with['url'])->toBe(route('app.accounts'));
+    expect($content->with['url'])->toBe(route('app.workspace.channels'));
 });
 
 test('account disconnected mail uses username when display name is null', function () {

@@ -9,7 +9,7 @@ use App\Events\Webhook\LogUpdated;
 use App\Mail\WebhookPausedMail;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Services\WebhookService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -17,7 +17,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -26,6 +25,8 @@ use Throwable;
 class DispatchWebhook implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    private const int RESPONSE_BODY_BYTES = 2000;
 
     public bool $deleteWhenMissingModels = true;
 
@@ -90,58 +91,16 @@ class DispatchWebhook implements ShouldQueue
         }
 
         try {
-            $safeHttp->guardAgainstSsrf($this->webhook->endpoint);
-        } catch (RuntimeException $e) {
-            $log->update([
-                'failed_at' => now(),
-                'response_body' => $e->getMessage(),
-            ]);
-
-            $log->refresh();
-            LogUpdated::dispatch($log);
-
-            throw $e;
-        }
-
-        try {
-            $response = Http::timeout(10)
+            $response = $safeHttp->guardedRequest($this->webhook->endpoint, followRedirects: false)
+                ->timeout(10)
                 ->withUserAgent(config('trypost.user_agent'))
-                ->withOptions(['allow_redirects' => false])
                 ->asJson()
                 ->withHeaders([
                     'X-Webhook-Signature' => $signature,
                 ])
+                ->withOptions(['stream' => true])
                 ->post($this->webhook->endpoint, $body);
-
-            $responseBody = substr($response->body(), 0, 2000);
-
-            if ($response->successful()) {
-                $log->update([
-                    'response_status' => $response->status(),
-                    'response_body' => $responseBody,
-                    'delivered_at' => now(),
-                ]);
-
-                $this->webhook->update(['last_sent_at' => now()]);
-                $this->webhook->resetConsecutiveFailures();
-
-                $log->refresh();
-                LogUpdated::dispatch($log);
-
-                return;
-            }
-
-            $log->update([
-                'response_status' => $response->status(),
-                'response_body' => $responseBody,
-                'failed_at' => now(),
-            ]);
-
-            $log->refresh();
-            LogUpdated::dispatch($log);
-
-            throw new RuntimeException("Webhook delivery failed with status: {$response->status()}");
-        } catch (ConnectionException $e) {
+        } catch (ConnectionException|RuntimeException $e) {
             $log->update([
                 'failed_at' => now(),
                 'response_body' => $e->getMessage(),
@@ -152,6 +111,35 @@ class DispatchWebhook implements ShouldQueue
 
             throw $e;
         }
+
+        $responseBody = mb_scrub(str_replace("\0", '', $safeHttp->bodyPrefix($response, self::RESPONSE_BODY_BYTES)), 'UTF-8');
+
+        if ($response->successful()) {
+            $log->update([
+                'response_status' => $response->status(),
+                'response_body' => $responseBody,
+                'delivered_at' => now(),
+            ]);
+
+            $this->webhook->update(['last_sent_at' => now()]);
+            $this->webhook->resetConsecutiveFailures();
+
+            $log->refresh();
+            LogUpdated::dispatch($log);
+
+            return;
+        }
+
+        $log->update([
+            'response_status' => $response->status(),
+            'response_body' => $responseBody,
+            'failed_at' => now(),
+        ]);
+
+        $log->refresh();
+        LogUpdated::dispatch($log);
+
+        throw new RuntimeException("Webhook delivery failed with status: {$response->status()}");
     }
 
     public function failed(?Throwable $exception): void

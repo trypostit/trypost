@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\Invite;
 
-use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Invite;
 use App\Models\Workspace;
@@ -20,7 +19,8 @@ class CreateInvite
             'account_id' => $workspace->account_id,
             'invited_by' => $inviter->id,
             'email' => data_get($data, 'email'),
-            'role' => WorkspaceRole::from(data_get($data, 'role')),
+            'is_admin' => (bool) data_get($data, 'is_admin'),
+            'requires_approval' => (bool) data_get($data, 'requires_approval'),
             'workspaces' => [$workspace->id],
         ]);
 

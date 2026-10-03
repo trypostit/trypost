@@ -905,3 +905,104 @@ test('threads publisher keeps links intact', function () {
         && ! str_contains($request->url(), 'threads_publish')
         && data_get($request->data(), 'text') === 'New post: https://acme.com/blog');
 });
+
+function fakeThreadsContainerFlow(): void
+{
+    $base = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$base}/123456789/threads" => Http::response(['id' => 'container-1']),
+        "{$base}/123456789/threads_publish" => Http::response(['id' => 'post-1']),
+        "{$base}/post-1*" => Http::response(['permalink' => 'https://www.threads.net/@testuser/post/A']),
+        "{$base}/container-1*" => Http::response(['status' => 'FINISHED']),
+    ]);
+}
+
+test('a ghost post is a text container flagged as ghost and nothing else', function () {
+    $this->postPlatform->update([
+        'content_type' => ContentType::ThreadsGhostPost,
+        'meta' => ['topic_tag' => 'laravel'],
+    ]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/123456789/threads')
+        && data_get($request->data(), 'media_type') === 'TEXT'
+        && data_get($request->data(), 'is_ghost_post') === 'true'
+        && ! array_key_exists('topic_tag', $request->data()));
+});
+
+test('a ghost post with media fails before calling threads', function () {
+    $this->postPlatform->update(['content_type' => ContentType::ThreadsGhostPost]);
+    $this->post->update(['media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(ThreadsPublishException::class);
+    Http::assertNothingSent();
+});
+
+test('a ghost post without text fails before calling threads', function () {
+    $this->postPlatform->update(['content_type' => ContentType::ThreadsGhostPost]);
+    $this->post->update(['content' => null]);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(ThreadsPublishException::class);
+    Http::assertNothingSent();
+});
+
+test('the threads topic tag reaches the text container without its hash', function () {
+    $this->postPlatform->update(['meta' => ['topic_tag' => '#laravel']]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/123456789/threads')
+        && data_get($request->data(), 'topic_tag') === 'laravel'
+        && ! array_key_exists('is_ghost_post', $request->data()));
+});
+
+test('the threads topic tag reaches an image container', function () {
+    $this->post->update(['media' => [['id' => 'm', 'type' => 'image', 'path' => 'm.jpg', 'url' => 'https://example.com/m.jpg', 'mime_type' => 'image/jpeg']]]);
+    $this->postPlatform->update(['meta' => ['topic_tag' => 'laravel']]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'media_type') === 'IMAGE'
+        && data_get($request->data(), 'topic_tag') === 'laravel');
+});
+
+test('the threads topic tag reaches the carousel container and never its children', function () {
+    $this->post->update(['media' => [
+        ['id' => 'a', 'type' => 'image', 'path' => 'a.jpg', 'url' => 'https://example.com/a.jpg', 'mime_type' => 'image/jpeg'],
+        ['id' => 'b', 'type' => 'image', 'path' => 'b.jpg', 'url' => 'https://example.com/b.jpg', 'mime_type' => 'image/jpeg'],
+    ]]);
+    $this->postPlatform->update(['meta' => ['topic_tag' => 'laravel']]);
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'media_type') === 'CAROUSEL'
+        && data_get($request->data(), 'topic_tag') === 'laravel');
+    Http::assertNotSent(fn ($request): bool => data_get($request->data(), 'is_carousel_item') === 'true'
+        && array_key_exists('topic_tag', $request->data()));
+});
+
+test('a threads post without a topic sends only text', function () {
+    fakeThreadsContainerFlow();
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request): bool => str_ends_with($request->url(), '/123456789/threads')
+        && array_keys($request->data()) === ['media_type', 'text', 'access_token']);
+});
+
+test('a ghost post with a link fails before calling threads', function () {
+    $this->postPlatform->update(['content_type' => ContentType::ThreadsGhostPost]);
+    $this->post->update(['content' => 'Read https://example.com/article']);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(ThreadsPublishException::class, __('posts.form.warnings.text_only'));
+    Http::assertNothingSent();
+});

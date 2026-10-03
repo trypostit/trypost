@@ -12,14 +12,19 @@ use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
+use Illuminate\Support\Facades\Queue;
 use Symfony\Component\HttpFoundation\Response;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     ['plain_token' => $this->token, 'workspace' => $this->workspace] = createApiTestToken();
 
     $this->source = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
@@ -350,22 +355,6 @@ test('the api exposes why a repurpose stopped and refuses to resume it while bro
         ->assertJsonValidationErrors('source_social_account_id');
 });
 
-test('the api accepts a switched-off account as a destination', function () {
-    $repurpose = Repurpose::factory()->for($this->workspace)->create([
-        'source_social_account_id' => $this->source->id,
-    ]);
-
-    $this->tiktok->update(['is_active' => false]);
-
-    $this->withHeaders(apiHeaders($this->token))
-        ->putJson(route('api.repurposes.update', $repurpose), [
-            'destinations' => [tiktokDestinationPayload($this->tiktok)],
-        ])
-        ->assertOk();
-
-    expect($repurpose->fresh()->destinations)->toHaveCount(1);
-});
-
 test('the api activity list carries each replicated post status', function () {
     $repurpose = Repurpose::factory()->for($this->workspace)->create([
         'source_social_account_id' => $this->source->id,
@@ -395,4 +384,19 @@ test('the source formats a repurpose can watch are listed', function () {
         ->assertOk()
         ->assertJsonCount(count(SourceFormat::cases()), 'data')
         ->assertJsonPath('data.0.value', SourceFormat::Reel->value);
+});
+
+test('google business is rejected as a destination', function () {
+    $googleBusiness = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::GoogleBusiness]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.store'), [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+            ]],
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['destinations.0.social_account_id' => __('repurposes.errors.destination_not_supported')]);
 });

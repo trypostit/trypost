@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'Connections',
-    'page_title' => 'Social Accounts',
-    'description' => 'Overview of all your connected social accounts',
-    'connect_cta' => 'Connect',
-    'connect_another' => 'Connect another',
-    'actions' => 'Account actions',
-    'activate' => 'Turn on',
-    'deactivate' => 'Turn off',
-    'active' => 'Active',
-    'paused' => 'Off',
-    'accounts_count' => ':count account|:count accounts',
-
-    'variants' => [
-        'linkedin-page' => 'Page',
-        'instagram-facebook' => 'via Facebook',
-    ],
-
-    'not_connected' => 'Not connected',
-    'connect' => 'Connect',
-    'connection_lost' => 'Connection lost',
-    'reconnect' => 'Reconnect',
-    'reconnect_account' => 'Reconnect account',
-    'view_profile' => 'View profile',
-    'disconnect' => 'Disconnect',
-
-    'descriptions' => [
-        'linkedin' => 'Connect your LinkedIn profile or company page',
-        'linkedin-page' => 'Connect a LinkedIn company page',
-        'x' => 'Connect your X (Twitter) account',
-        'tiktok' => 'Connect your TikTok account',
-        'youtube' => 'Connect a YouTube channel',
-        'facebook' => 'Connect a Facebook page',
-        'instagram' => 'Connect via Instagram Login or Facebook Pages',
-        'instagram-facebook' => 'Connect Instagram via Facebook page',
-        'threads' => 'Connect your Threads account',
-        'pinterest' => 'Connect your Pinterest account',
-        'bluesky' => 'Connect your Bluesky account',
-        'mastodon' => 'Connect your Mastodon account',
-        'telegram' => 'Connect a Telegram channel or group',
-        'discord' => 'Connect a Discord server',
-        'google_business' => 'Connect a Google Business Profile location',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Disconnect Account',
-        'description' => 'Are you sure you want to disconnect this account? You can reconnect it at any time.',
-        'confirm' => 'Disconnect',
-        'cancel' => 'Cancel',
-    ],
-
     'bluesky' => [
         'title' => 'Connect Bluesky',
         'description' => 'Enter your credentials to connect',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Connect Telegram',
         'description' => 'Link a channel or group',
+        'steps' => 'Steps',
         'step_admin' => 'Add :bot as an administrator to your Telegram channel or group.',
+        'open_bot' => 'Open in Telegram',
         'step_command' => 'Post this command in the channel or group:',
         'waiting' => 'Waiting for the channel to connect…',
-        'connected' => 'Channel connected!',
-        'connected_toast' => 'Telegram channel connected successfully!',
-        'copied_toast' => 'Command copied to clipboard',
-        'copy_tooltip' => 'Copy command',
-        'expired' => 'This code has expired. Generate a new one to try again.',
-        'new_code' => 'Generate a new code',
-        'retry' => 'Try again',
+        'copy_command' => 'Copy command',
+        'expired' => 'This command has expired. Generate a new one to try again.',
+        'new_command' => 'Generate new command',
         'error_generic' => 'Could not start the connection. Please try again.',
         'network_taken' => 'This workspace already has a Telegram channel connected. Disconnect it first.',
         'wrong_chat' => 'Post the command in the channel you are reconnecting.',
         'busy' => 'Another connection is still finishing. Post the command again in a moment.',
+        'help' => [
+            'channel_admins' => 'Add administrators to a channel',
+            'group_admins' => 'Add administrators to a group',
+            'bot_privacy' => 'What bots can read in groups',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Connect Instagram',
-        'description' => 'Choose how you want to connect your Instagram account',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Sign in with your Instagram professional account',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Connect an Instagram account linked to a Facebook Page',
+        'title' => 'How would you like to connect your Instagram account?',
+        'description' => 'Features depend on the type of Instagram account you have and the connection you choose.',
+        'professional_title' => 'Professional',
+        'professional_types' => '(Business & Creator)',
+        'badge' => 'Automatic posting',
+        'features' => [
+            'automatic' => [
+                'title' => 'Automatic posting',
+                'description' => 'You schedule and we\'ll post',
+            ],
+            'metrics' => [
+                'title' => 'Sent post metrics',
+                'description' => 'View past post performance',
+            ],
+        ],
+        'connect' => 'Connect to Instagram',
+        'convert_hint' => 'Instagram will prompt you to easily convert to a professional account if needed.',
+        'facebook_link' => 'Connect Instagram through Facebook',
+        'facebook_suffix' => 'if your Instagram account is currently linked to Facebook.',
+        'help' => [
+            'account_type' => 'Finding your Instagram account type',
+            'convert' => 'Converting your Instagram account to a Professional account',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Connect Instagram through Facebook',
+        'subtitle' => 'Here\'s what you need to know 👇',
+        'heading' => 'Requirements',
+        'items' => [
+            'account_type' => [
+                'lead' => 'Business or Creator',
+                'rest' => 'Instagram, not a Personal Instagram profile.',
+            ],
+            'page' => [
+                'lead' => 'Linked to a Facebook page,',
+                'rest' => 'not a Facebook profile. Need to link Instagram to Facebook on Meta?',
+            ],
+            'admin' => [
+                'lead' => 'Logged in as Facebook Page admin',
+                'rest' => 'with “full control”.',
+            ],
+            'permissions' => [
+                'lead' => 'All permissions selected for all Pages and Instagram accounts',
+                'rest' => 'when connecting, even ones you won\'t connect to TryPost.',
+            ],
+        ],
+        'learn_how' => 'Learn how.',
+        'note' => 'The connection won\'t work if any of these requirements aren\'t met.',
+        'connect' => 'Connect through Facebook',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Account switched on. :count automation resumed.|Account switched on. :count automations resumed.',
         'disconnected_paused_repurposes' => 'Account disconnected. :count automation paused.|Account disconnected. :count automations paused.',
-        'deactivated_paused_repurposes' => 'Account switched off. :count automation paused.|Account switched off. :count automations paused.',
         'disconnected' => 'Account disconnected successfully!',
-        'connected' => 'Account connected successfully!',
         'session_expired' => 'Session expired. Please try again.',
         'workspace_not_found' => 'Workspace not found.',
-        'activated' => 'Account activated!',
-        'deactivated' => 'Account deactivated!',
         'already_connected' => 'This platform is already connected.',
         'no_youtube_channels' => 'No YouTube channels found. Please create a channel first.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Connected',
         'title_error' => 'Error',
         'closing' => 'This window will close automatically...',
         'manual_close' => 'You can close this window.',
         'popup_blocked' => 'Could not open the connection window. Please allow popups and try again.',
-        'connected' => 'Account connected!',
-        'reconnected' => 'Account reconnected!',
         'error_connecting' => 'Error connecting account. Please try again.',
         'network_taken' => 'This workspace already has an account for this network. Disconnect it first.',
         'wrong_account' => 'That is a different account. Authorize the one you are reconnecting.',

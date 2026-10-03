@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Models\Workspace;
 
 /**
  * Inject a real image into the hidden file input and dispatch `change`, driving
@@ -68,18 +69,56 @@ function recordUpload(mixed $page): void
     JS);
 }
 
-test('cropping a selected photo dispatches a valid 512x512 avatar upload', function () {
-    $this->actingAs(User::factory()->create());
+/**
+ * Polls from the page until `$condition` holds (never sleep(): the test server
+ * only ticks while Pest awaits Playwright).
+ */
+function waitForImageCrop(mixed $page, string $condition): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if ({$condition}) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+}
 
-    $page = visit(route('app.profile.edit'));
+function waitForCropSelection(mixed $page): void
+{
+    waitForImageCrop($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
+}
 
-    selectPhoto($page);
-    recordUpload($page);
+/**
+ * The selection overlay's on-screen size.
+ *
+ * @return array{width: float, height: float, radius: string}
+ */
+function cropSelectionBox(mixed $page): array
+{
+    return json_decode((string) $page->script(<<<'JS'
+        (() => {
+            const selection = document.querySelector('[data-testid="media-editor-selection"]');
+            const box = selection.getBoundingClientRect();
+            return JSON.stringify({
+                width: box.width,
+                height: box.height,
+                radius: getComputedStyle(selection).borderRadius,
+            });
+        })();
+    JS), true);
+}
 
-    $page->click('@crop-save')
-        ->assertNoJavaScriptErrors();
-
-    $request = json_decode((string) $page->script(<<<'JS'
+/**
+ * Waits for the recorded upload and decodes it, sampling the centre of each
+ * quadrant of the 512px output.
+ *
+ * @return array<string, mixed>|null
+ */
+function decodedUpload(mixed $page): ?array
+{
+    return json_decode((string) $page->script(<<<'JS'
         (async () => {
             for (let attempt = 0; attempt < 80 && !window.__uploadRequest; attempt++) {
                 await new Promise((resolve) => setTimeout(resolve, 100));
@@ -107,25 +146,157 @@ test('cropping a selected photo dispatches a valid 512x512 avatar upload', funct
             });
         })();
     JS), true);
+}
+
+function isQuadrantColour(array $pixel, array $rgb): bool
+{
+    return abs($pixel[0] - $rgb[0]) <= 24
+        && abs($pixel[1] - $rgb[1]) <= 24
+        && abs($pixel[2] - $rgb[2]) <= 24
+        && $pixel[3] >= 250;
+}
+
+/**
+ * What the editor offers in photo mode: its tabs, crop presets and thumbnails.
+ *
+ * @return array{presets: int, segments: bool, altTab: bool, tagsTab: bool, thumbs: int, appearance: bool, apply: string}
+ */
+function photoEditorChrome(mixed $page): array
+{
+    return json_decode((string) $page->script(<<<'JS'
+        (() => JSON.stringify({
+            presets: document.querySelectorAll('[data-testid^="crop-aspect-"]').length,
+            segments: Boolean(document.querySelector('[data-testid="media-editor-segments"]')),
+            altTab: Boolean(document.querySelector('[data-testid="media-editor-alt-tab"]')),
+            tagsTab: Boolean(document.querySelector('[data-testid="media-editor-tags-tab"]')),
+            thumbs: document.querySelectorAll('[data-testid^="media-editor-thumb-"]').length,
+            appearance: Boolean(document.querySelector('[data-testid="media-editor-appearance-section"]')),
+            apply: document.querySelector('[data-testid="media-editor-apply"]').textContent.trim(),
+        }))();
+    JS), true);
+}
+
+test('a profile photo opens the media editor locked to a square 1:1 crop and saves a 512x512 avatar', function () {
+    $this->actingAs(User::factory()->create());
+
+    $page = visit(route('app.profile.edit'));
+
+    selectPhoto($page);
+    waitForCropSelection($page);
+    recordUpload($page);
+
+    $selection = cropSelectionBox($page);
+
+    expect($selection['radius'])->toBe('0px')
+        ->and($selection['width'])->toEqualWithDelta($selection['height'], 1)
+        ->and(photoEditorChrome($page))->toBe([
+            'presets' => 0,
+            'segments' => false,
+            'altTab' => false,
+            'tagsTab' => false,
+            'thumbs' => 0,
+            'appearance' => true,
+            'apply' => 'Save',
+        ]);
+
+    $page->drag('@media-editor-handle-nw', '@media-editor-stage');
+
+    $resized = cropSelectionBox($page);
+
+    expect($resized['width'])->toEqualWithDelta($resized['height'], 1);
+
+    $page->click('@media-editor-reset');
+    waitForImageCrop($page, "document.querySelector('[data-testid=\"media-editor-reset\"]').disabled");
+
+    $page->click('@media-editor-apply')
+        ->assertNoJavaScriptErrors();
+
+    $request = decodedUpload($page);
 
     expect($request)->not->toBeNull()
         ->and($request['method'])->toBe('POST')
         ->and($request['url'])->toContain(route('app.profile.upload-photo', absolute: false))
         ->and($request['keys'])->toContain('photo')
-        ->and($request['size'])->toBeGreaterThan(0)
         ->and($request['type'])->toBe('image/png')
         ->and($request['width'])->toBe(512)
+        ->and($request['height'])->toBe(512)
+        ->and(isQuadrantColour($request['pixels']['topLeft'], [255, 0, 0]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['topRight'], [0, 255, 0]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['bottomLeft'], [0, 0, 255]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['bottomRight'], [255, 255, 0]))->toBeTrue();
+
+    waitForImageCrop($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+
+    expect($page->script("Boolean(document.querySelector('[data-testid=\"media-editor\"]'))"))->toBeFalse();
+});
+
+test('rotating the photo turns the uploaded avatar', function () {
+    $this->actingAs(User::factory()->create());
+
+    $page = visit(route('app.profile.edit'));
+
+    selectPhoto($page);
+    waitForCropSelection($page);
+    recordUpload($page);
+
+    $page->click('@media-editor-rotate-right')
+        ->click('@media-editor-apply')
+        ->assertNoJavaScriptErrors();
+
+    $request = decodedUpload($page);
+
+    expect($request['width'])->toBe(512)
+        ->and(isQuadrantColour($request['pixels']['topLeft'], [0, 0, 255]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['topRight'], [255, 0, 0]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['bottomLeft'], [255, 255, 0]))->toBeTrue()
+        ->and(isQuadrantColour($request['pixels']['bottomRight'], [0, 255, 0]))->toBeTrue();
+});
+
+test('cancelling the editor discards the photo without uploading', function () {
+    $this->actingAs(User::factory()->create());
+
+    $page = visit(route('app.profile.edit'));
+
+    selectPhoto($page);
+    waitForCropSelection($page);
+    recordUpload($page);
+
+    $page->click('@media-editor-cancel');
+    waitForImageCrop($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
+
+    expect($page->script("Boolean(document.querySelector('[data-testid=\"media-editor\"]'))"))->toBeFalse()
+        ->and($page->script('window.__uploadRequest'))->toBeNull();
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the workspace logo opens the same editor with a square 1:1 crop', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.settings'));
+
+    selectPhoto($page);
+    waitForCropSelection($page);
+    recordUpload($page);
+
+    $selection = cropSelectionBox($page);
+
+    expect($selection['radius'])->toBe('0px')
+        ->and($selection['width'])->toEqualWithDelta($selection['height'], 1)
+        ->and(photoEditorChrome($page)['presets'])->toBe(0)
+        ->and(photoEditorChrome($page)['altTab'])->toBeFalse();
+
+    $page->click('@media-editor-apply')
+        ->assertNoJavaScriptErrors();
+
+    $request = decodedUpload($page);
+
+    expect($request)->not->toBeNull()
+        ->and($request['url'])->toContain(route('app.workspace.upload-logo', absolute: false))
+        ->and($request['width'])->toBe(512)
         ->and($request['height'])->toBe(512);
-
-    $isColour = function (array $pixel, array $rgb): bool {
-        return abs($pixel[0] - $rgb[0]) <= 24
-            && abs($pixel[1] - $rgb[1]) <= 24
-            && abs($pixel[2] - $rgb[2]) <= 24
-            && $pixel[3] >= 250;
-    };
-
-    expect($isColour($request['pixels']['topLeft'], [255, 0, 0]))->toBeTrue()
-        ->and($isColour($request['pixels']['topRight'], [0, 255, 0]))->toBeTrue()
-        ->and($isColour($request['pixels']['bottomLeft'], [0, 0, 255]))->toBeTrue()
-        ->and($isColour($request['pixels']['bottomRight'], [255, 255, 0]))->toBeTrue();
 });

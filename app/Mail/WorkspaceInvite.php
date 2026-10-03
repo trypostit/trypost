@@ -30,7 +30,6 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $accountName = $this->invite->account->name;
-        $roleLabel = $this->invite->role?->label() ?? '';
 
         return new Content(
             view: 'mail.workspace-invite',
@@ -38,7 +37,8 @@ class WorkspaceInvite extends Mailable implements ShouldQueue
                 'title' => __('mail.workspace_invite.title', ['account' => $accountName]),
                 'previewText' => __('mail.workspace_invite.preview', ['account' => $accountName]),
                 'accountName' => $accountName,
-                'roleLabel' => $roleLabel,
+                'isAdmin' => (bool) $this->invite->is_admin,
+                'requiresApproval' => (bool) $this->invite->requires_approval,
                 'url' => route('app.invites.show', $this->invite),
             ],
         );

@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useXLinkDefuser } from '@/composables/useXLinkDefuser';
 import type { MediaItem } from '@/types/media';
+import { THREAD_PLATFORMS } from '@/types/network-options';
 
 import BlueskyPreview from './BlueskyPreview.vue';
 import DiscordPreview from './DiscordPreview.vue';
@@ -16,22 +17,13 @@ import PinterestPreview from './PinterestPreview.vue';
 import TelegramPreview from './TelegramPreview.vue';
 import ThreadsPreview from './ThreadsPreview.vue';
 import TikTokPreview from './TikTokPreview.vue';
+import type { PreviewAccount } from './types';
 import XPreview from './XPreview.vue';
 import YouTubePreview from './YouTubePreview.vue';
 
-interface SocialAccount {
-    id: string;
-    platform: string;
-    display_name: string;
-    username: string;
-    display_label: string;
-    handle_label: string;
-    avatar_url: string | null;
-}
-
 interface Props {
     platform: string;
-    socialAccount: SocialAccount | null | undefined;
+    socialAccount: PreviewAccount | null | undefined;
     content: string;
     media: MediaItem[];
     contentType?: string;
@@ -51,7 +43,16 @@ const { contentFor } = useXLinkDefuser();
  */
 const previewContent = computed((): string => contentFor(props.content, props.platform));
 
-const resolvedSocialAccount = computed((): SocialAccount => props.socialAccount ?? {
+const threadReplies = computed((): string[] =>
+    THREAD_PLATFORMS.includes(props.platform) &&
+    Array.isArray(props.meta?.thread_replies)
+        ? props.meta.thread_replies.filter(
+              (reply: string) => reply.trim() !== '',
+          )
+        : [],
+);
+
+const resolvedSocialAccount = computed((): PreviewAccount => props.socialAccount ?? {
     id: '',
     platform: props.platform,
     display_name: '',
@@ -98,13 +99,40 @@ const previewComponent = computed(() => {
 </script>
 
 <template>
-    <component
-        :is="previewComponent"
-        :social-account="resolvedSocialAccount"
-        :content="previewContent"
-        :media="media"
-        :content-type="contentType"
-        :meta="meta"
-        :posted-at="postedAt"
-    />
+    <div
+        class="overflow-hidden rounded-lg border bg-card text-card-foreground"
+    >
+        <div
+            :data-testid="threadReplies.length ? 'preview-thread' : undefined"
+        >
+            <component
+                :is="previewComponent"
+                :social-account="resolvedSocialAccount"
+                :content="previewContent"
+                :media="media"
+                :content-type="contentType"
+                :meta="meta"
+                :posted-at="postedAt"
+                :thread-position="threadReplies.length ? 'first' : undefined"
+            />
+            <div
+                v-for="(reply, index) in threadReplies"
+                :key="index"
+                :data-testid="`preview-thread-reply-${index}`"
+            >
+                <component
+                    :is="previewComponent"
+                    :social-account="resolvedSocialAccount"
+                    :content="contentFor(reply, platform)"
+                    :media="[]"
+                    :content-type="contentType"
+                    :meta="{ spoiler_text: meta?.spoiler_text }"
+                    :posted-at="postedAt"
+                    :thread-position="
+                        index === threadReplies.length - 1 ? 'last' : 'middle'
+                    "
+                />
+            </div>
+        </div>
+    </div>
 </template>

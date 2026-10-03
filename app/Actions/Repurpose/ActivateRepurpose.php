@@ -47,7 +47,7 @@ class ActivateRepurpose
             ]);
         }
 
-        if (! $account->is_active || $account->status !== AccountStatus::Connected) {
+        if ($account->status !== AccountStatus::Connected) {
             throw ValidationException::withMessages([
                 'source_social_account_id' => __('repurposes.errors.source_unusable'),
             ]);
@@ -95,7 +95,6 @@ class ActivateRepurpose
     {
         return SocialAccount::query()
             ->where('workspace_id', $repurpose->workspace_id)
-            ->where('is_active', true)
             ->findMany(array_map(
                 fn (array $destination): mixed => data_get($destination, 'social_account_id'),
                 $repurpose->destinations,

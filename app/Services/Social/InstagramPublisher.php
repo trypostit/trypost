@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\Instagram\ContainerStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -117,6 +118,8 @@ class InstagramPublisher
             $params['alt_text'] = $alt;
         }
 
+        $params = [...$params, ...$this->userTagsParam($media->userTags()), ...$this->sharedOptions()];
+
         $containerId = $this->createContainer($instagramId, $params, 'container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
@@ -129,6 +132,9 @@ class InstagramPublisher
             'caption' => $content,
             'media_type' => 'REELS',
             'access_token' => $accessToken,
+            ...$this->thumbOffsetParam($media),
+            ...$this->sharedOptions(),
+            ...$this->reelOptions(),
         ], 'reel container');
 
         return $this->finishContainer($instagramId, $accessToken, $containerId);
@@ -148,6 +154,10 @@ class InstagramPublisher
         } else {
             $dimensions = ContentType::InstagramStory->aiImageDimensions();
             $params['image_url'] = $this->fitImageToCanvas($media->url, data_get($dimensions, 'width'), data_get($dimensions, 'height'));
+            $params = [...$params, ...$this->userTagsParam(array_map(
+                fn (array $tag): array => ['username' => $tag['username']],
+                $media->userTags(),
+            ))];
         }
 
         $containerId = $this->createContainer($instagramId, $params, 'story container');
@@ -172,6 +182,7 @@ class InstagramPublisher
             if ($isVideo) {
                 $params['video_url'] = $media->url;
                 $params['media_type'] = 'VIDEO';
+                $params = [...$params, ...$this->thumbOffsetParam($media)];
             } else {
                 $params['image_url'] = $this->cropImageForAspectRatio($media->url, $aspectRatio);
 
@@ -180,6 +191,8 @@ class InstagramPublisher
                 if ($alt !== null) {
                     $params['alt_text'] = $alt;
                 }
+
+                $params = [...$params, ...$this->userTagsParam($media->userTags())];
             }
 
             $containerResponse = $this->socialHttp()->post("{$this->baseUrl}/{$instagramId}/media", $params);
@@ -218,6 +231,62 @@ class InstagramPublisher
     }
 
     /**
+     * Instagram reads `user_tags` as a JSON array. Stories place the mention
+     * without a sticker, so their entries carry only the username.
+     *
+     * @param  list<array<string, string|float>>  $tags
+     * @return array<string, string>
+     */
+    private function userTagsParam(array $tags): array
+    {
+        return $tags === [] ? [] : ['user_tags' => (string) json_encode($tags)];
+    }
+
+    /**
+     * Options Instagram accepts on a feed image, reel or carousel parent. A story
+     * takes none of them, and carousel children never get the AI label.
+     *
+     * @return array<string, string>
+     */
+    private function sharedOptions(): array
+    {
+        if ($this->postPlatform->content_type === ContentType::InstagramStory) {
+            return [];
+        }
+
+        return array_filter([
+            'is_ai_generated' => data_get($this->postPlatform->meta, 'is_ai_generated') === true ? 'true' : null,
+        ], fn (?string $value): bool => $value !== null);
+    }
+
+    /**
+     * Reel-only options. A feed video is also sent as REELS, so these apply only
+     * when the user picked the Reel content type.
+     *
+     * @return array<string, string>
+     */
+    private function reelOptions(): array
+    {
+        if ($this->postPlatform->content_type !== ContentType::InstagramReel) {
+            return [];
+        }
+
+        return [
+            'share_to_feed' => data_get($this->postPlatform->meta, 'share_to_feed', true) ? 'true' : 'false',
+        ];
+    }
+
+    /**
+     * @return array{thumb_offset?: int}
+     */
+    private function thumbOffsetParam(MediaItem $media): array
+    {
+        $offset = $media->coverOffsetMs();
+
+        return $offset === null ? [] : ['thumb_offset' => $offset];
+    }
+
+    /**
      * @param  list<string>  $childContainers
      * @param  list<string>  $processingChildContainers
      */
@@ -238,6 +307,7 @@ class InstagramPublisher
             'caption' => $content,
             'children' => implode(',', $childContainers),
             'access_token' => $accessToken,
+            ...$this->sharedOptions(),
         ], 'carousel container');
 
         return $this->finishContainer($instagramId, $accessToken, $carouselId);

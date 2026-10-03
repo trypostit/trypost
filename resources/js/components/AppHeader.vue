@@ -4,13 +4,15 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 
 <template>
     <header
-        class="flex h-14 shrink-0 items-center justify-between gap-2 border-b-2 border-foreground bg-card px-4"
+        class="flex shrink-0 items-center justify-between gap-2 bg-card px-4 pt-4 md:px-8 md:pt-6"
     >
-        <div class="flex items-center gap-2">
-            <SidebarTrigger class="-ml-1" />
+        <div class="flex h-12 min-w-0 flex-1 items-center gap-2">
+            <SidebarTrigger
+                class="-ms-1 md:hidden md:group-has-data-[collapsible=offcanvas]/sidebar-wrapper:inline-flex"
+            />
             <slot name="left" />
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex shrink-0 items-center gap-2">
             <slot name="right" />
         </div>
     </header>

@@ -2,19 +2,20 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
+    Storage::fake();
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->post = Post::factory()->create([
@@ -23,10 +24,10 @@ beforeEach(function () {
     ]);
 
     $this->token = (string) Str::uuid();
-    $this->media = Media::factory()->create([
+    $this->media = Media::factory()->stored()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
-        'collection' => 'assets',
+        'collection' => 'uploads',
         'upload_token' => $this->token,
     ]);
 });
@@ -55,10 +56,10 @@ test('attaches an uploaded Media with alt text stored in meta', function () {
 });
 
 test('does not store alt text on a non-image upload', function () {
-    $video = Media::factory()->video()->create([
+    $video = Media::factory()->stored()->video()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $this->workspace->id,
-        'collection' => 'assets',
+        'collection' => 'uploads',
         'upload_token' => (string) Str::uuid(),
     ]);
 
@@ -91,10 +92,10 @@ test('rejects a token from a different workspace', function () {
     $otherWs = Workspace::factory()->create(['user_id' => $other->id]);
 
     $foreignToken = (string) Str::uuid();
-    Media::factory()->create([
+    Media::factory()->stored()->create([
         'mediable_type' => (new Workspace)->getMorphClass(),
         'mediable_id' => $otherWs->id,
-        'collection' => 'assets',
+        'collection' => 'uploads',
         'upload_token' => $foreignToken,
     ]);
 

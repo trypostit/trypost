@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Enums\Webhook\EventType;
 use App\Jobs\DispatchWebhook;
 use App\Models\User;
@@ -50,7 +49,7 @@ test('workspace members cannot replay a webhook log', function () {
     Queue::fake();
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $webhook = Webhook::factory()->create([

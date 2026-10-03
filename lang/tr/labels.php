@@ -4,21 +4,24 @@ declare(strict_types=1);
 
 return [
     'title' => 'Etiketler',
-    'description' => 'Gönderilerinizi düzenlemek ve kategorilere ayırmak için etiketler oluşturun',
+    'description' => 'Gönderilerinizi etiketlerle düzenleyin.',
     'search' => 'Etiket ara...',
     'new_label' => 'Yeni Etiket',
     'no_labels_yet' => 'Henüz etiket yok',
     'no_search_results' => 'Aramanızla eşleşen etiket yok',
     'try_different_search' => 'Farklı bir anahtar kelime deneyin veya aramayı temizleyin.',
     'create_first_label' => 'İlk etiketinizi oluşturun',
-    'table' => [
-        'name' => 'Ad',
-        'created_at' => 'Oluşturuldu',
+
+    'meta' => [
+        'posts' => '{0} Gönderi yok|[1,*] :count gönderi',
     ],
 
     'actions' => [
         'edit' => 'Etiketi düzenle',
         'delete' => 'Etiketi sil',
+        'more' => 'Diğer işlemler',
+        'view_posts' => 'Gönderileri görüntüle',
+        'open_reporting' => 'Raporları aç',
     ],
 
     'create' => [
@@ -46,11 +49,5 @@ return [
         'description' => 'Bu etiketi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
         'confirm' => 'Sil',
         'cancel' => 'İptal',
-    ],
-
-    'flash' => [
-        'created' => 'Etiket başarıyla oluşturuldu!',
-        'updated' => 'Etiket başarıyla güncellendi!',
-        'deleted' => 'Etiket başarıyla silindi!',
     ],
 ];

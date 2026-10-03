@@ -4,9 +4,11 @@ import type { HTMLAttributes } from "vue"
 import { Primitive } from "reka-ui"
 import { cn } from "@/lib/utils"
 
-const props = defineProps<PrimitiveProps & {
+const props = withDefaults(defineProps<PrimitiveProps & {
   class?: HTMLAttributes["class"]
-}>()
+}>(), {
+  as: "button",
+})
 </script>
 
 <template>
@@ -15,8 +17,9 @@ const props = defineProps<PrimitiveProps & {
     data-sidebar="group-action"
     :as="as"
     :as-child="asChild"
+    :type="as === 'button' && !asChild ? 'button' : undefined"
     :class="cn(
-      'text-sidebar-foreground ring-sidebar-ring hover:bg-sidebar-accent hover:text-sidebar-accent-foreground absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
+      'ring-sidebar-ring text-muted-foreground hover:text-sidebar-foreground absolute top-3.5 right-3 flex aspect-square w-6 items-center justify-center rounded-md p-0 outline-hidden transition-transform focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
       'after:absolute after:-inset-2 md:after:hidden',
       'group-data-[collapsible=icon]:hidden',
       props.class,

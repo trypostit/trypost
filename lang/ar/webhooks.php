@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'تلقَّ إشعارات فورية عند إنشاء المنشورات أو جدولتها أو إلغاء جدولتها أو نشرها أو فشلها.',
+    'description' => 'تحديثات فورية عند تغيّر منشوراتك.',
     'new' => 'إنشاء ويب هوك',
     'empty_title' => 'لا توجد ويب هوكس بعد',
     'empty_description' => 'أنشئ ويب هوكًا لتلقي إشعارات الأحداث فور حدوثها.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'يستمع إلى',
         'status' => 'الحالة',
         'last_sent' => 'آخر إرسال',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'معطّل',
         'paused' => 'متوقف مؤقتًا',
     ],
+    'row_actions' => 'إجراءات الويب هوك',
     'actions' => [
         'view' => 'عرض التفاصيل',
-        'copy_id' => 'نسخ معرّف الويب هوك',
         'delete' => 'حذف',
         'edit' => 'تعديل الـ endpoint',
         'enable' => 'تفعيل الـ endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'اضبط endpoint لتلقي إشعارات الويب هوك.',
         'endpoint' => 'رابط الـ endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'سنرسل طلب POST يحتوي على JSON إلى هذا الرابط.',
         'events' => 'الأحداث',
-        'events_placeholder' => 'اختر الأحداث...',
-        'events_selected' => '{1} حدث واحد محدد|[2,*] :count أحداث محددة',
-        'search_events' => 'البحث في الأحداث...',
-        'no_events' => 'لم يُعثر على أحداث',
+        'events_count_selected' => 'تم تحديد :count من :total',
         'submit' => 'إنشاء ويب هوك',
         'cancel' => 'إلغاء',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'سر التوقيع',
-        'last_sent' => 'آخر إرسال :time',
-        'listening_for' => 'يستمع إلى',
+        'edit' => 'تعديل',
         'http_status' => 'حالة HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'المحاولات',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'لا يوجد نص استجابة',
         'no_response' => 'لا توجد استجابة',
         'payload' => 'حمولة الرسالة',
-        'empty_title' => 'لا توجد أحداث بعد',
-        'empty_description' => 'عند إنشاء المنشورات أو جدولتها أو إلغاء جدولتها أو نشرها، ستظهر أحداث الويب هوك هنا.',
+    ],
+    'deliveries' => [
+        'title' => 'عمليات التسليم',
+        'empty_title' => 'لا توجد عمليات تسليم بعد',
+        'empty_description' => 'أرسل حدثًا تجريبيًا لتراه هنا.',
+        'pending' => 'قيد الانتظار',
     ],
     'events' => [
         'group_posts' => 'المنشورات',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'نُشر المنشور جزئيًا',
         'post_failed' => 'فشل المنشور',
         'post_deleted' => 'تم حذف المنشور',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'عند إنشاء منشور جديد.',
+        'post_scheduled' => 'عند جدولة منشور للنشر.',
+        'post_unscheduled' => 'عند إعادة منشور مجدول إلى المسودات.',
+        'post_published' => 'عند نشر منشور على قناة.',
+        'post_partially_published' => 'عند نجاح النشر في بعض القنوات وفشله في أخرى.',
+        'post_failed' => 'عند فشل نشر منشور.',
+        'post_deleted' => 'عند حذف منشور.',
     ],
     'http_reasons' => [
         'unknown' => 'غير معروف',
@@ -111,7 +119,6 @@ return [
         '504' => 'انتهت مهلة البوابة',
     ],
     'copied' => [
-        'id' => 'تم نسخ معرّف الويب هوك إلى الحافظة',
         'secret' => 'تم نسخ سر التوقيع إلى الحافظة',
         'response' => 'تم نسخ نص الاستجابة',
         'payload' => 'تم نسخ الحمولة',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'أعاد الـ endpoint رمز HTTP :status.',
     ],
     'flash' => [
-        'created' => 'تم إنشاء الويب هوك.',
         'updated' => 'تم تحديث الويب هوك.',
         'deleted' => 'تم حذف الويب هوك.',
         'secret_rotated' => 'تم تدوير سر التوقيع.',

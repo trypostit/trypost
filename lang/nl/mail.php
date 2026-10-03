@@ -34,13 +34,6 @@ return [
         'ignore' => 'Als je geen account hebt aangemaakt, kun je deze e-mail negeren.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name heeft je genoemd op TryPost',
-        'title' => ':name heeft je genoemd',
-        'intro' => ':name heeft je genoemd in een reactie op een post.',
-        'button' => 'Reactie bekijken',
-    ],
-
     'password_reset' => [
         'subject' => 'Stel je wachtwoord opnieuw in',
         'preview' => 'Stel je wachtwoord opnieuw in.',
@@ -55,9 +48,55 @@ return [
         'title' => 'Posts kunnen mislukken',
         'heading' => 'Posts kunnen mislukken',
         'intro' => 'De volgende accounts in de werkruimte :workspace moeten opnieuw worden verbonden voordat deze ingeplande posts kunnen worden gepubliceerd:',
-        'posts_label' => '{1} :count post ingepland: :times UTC|[0,*] :count posts ingepland: :times UTC',
+        'posts_label' => '{1} :count post ingepland: :times (:timezone)|[0,*] :count posts ingepland: :times (:timezone)',
         'reconnect_cta' => 'Verbind deze accounts nu opnieuw zodat je ingeplande posts niet worden gemist.',
         'button' => 'Accounts opnieuw verbinden',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author heeft een notitie aan een bericht toegevoegd',
+        'title' => 'Nieuwe notitie van :author',
+        'heading' => 'Nieuwe notitie bij een bericht',
+        'body' => ':author heeft een notitie toegevoegd aan een bericht in de werkruimte :workspace.',
+        'post_title' => 'Bericht',
+        'post_without_text' => 'Dit bericht heeft nog geen tekst.',
+        'button' => 'Notitie bekijken',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name vraagt je een bericht goed te keuren',
+        'title' => 'Een bericht wacht op je goedkeuring',
+        'preview' => ':name vraagt om goedkeuring in :workspace.',
+        'heading' => 'Een bericht wacht op je goedkeuring',
+        'body' => ':name (:email) vraagt om goedkeuring in de workspace :workspace.',
+        'channels' => 'Kanalen',
+        'requested_time' => 'Gevraagd tijdstip',
+        'next_queue_slot' => 'Volgende plek in de wachtrij',
+        'as_soon_as_approved' => 'Zodra het is goedgekeurd',
+        'post_without_text' => 'Dit bericht heeft nog geen tekst.',
+        'button' => 'Berichten bekijken die op goedkeuring wachten',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name heeft je bericht goedgekeurd',
+        'title' => 'Je bericht is goedgekeurd',
+        'preview' => ':name heeft je bericht in :workspace goedgekeurd.',
+        'heading' => 'Je bericht is goedgekeurd',
+        'body' => ':name heeft je bericht in de workspace :workspace goedgekeurd.',
+        'channels' => 'Kanalen',
+        'goes_out' => 'Wordt gepubliceerd',
+        'channel_time' => ':channel: :time',
+        'publishing_now' => 'Wordt nu gepubliceerd',
+        'button' => 'Bekijken in de wachtrij',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name heeft je bericht niet goedgekeurd',
+        'title' => 'Je bericht is niet goedgekeurd',
+        'preview' => ':name heeft je bericht teruggezet naar concepten.',
+        'heading' => 'Je bericht is niet goedgekeurd',
+        'body' => ':name heeft je bericht in de workspace :workspace teruggezet naar concepten.',
+        'channels' => 'Kanalen',
+        'button' => 'Bekijken in concepten',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => 'Je bent uitgenodigd!',
         'intro' => 'Je bent uitgenodigd om samen te werken in de werkruimte <strong>:account</strong>.',
         'role' => 'Je bent uitgenodigd als <strong>:role</strong>.',
+        'roles' => ['admin' => 'Beheerder', 'member' => 'Lid', 'needs_approval' => 'Lid (berichten vereisen goedkeuring)'],
         'button' => 'Uitnodiging accepteren',
         'expiry' => 'Deze uitnodiging verloopt over 7 dagen.',
     ],

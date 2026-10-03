@@ -1216,6 +1216,19 @@ test('facebook publisher keeps links intact', function () {
         && $request['link'] === 'https://acme.com/blog');
 });
 
+test('facebook publisher sends no link when the user dropped the link preview', function () {
+    $this->post->update(['content' => 'New post: https://acme.com/blog']);
+    $this->postPlatform->update(['meta' => ['link_preview' => false]]);
+
+    Http::fake(['*/page_123/feed' => Http::response(['id' => 'page_123_post_456'], 200)]);
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/page_123/feed')
+        && $request['message'] === 'New post: https://acme.com/blog'
+        && ! array_key_exists('link', $request->data()));
+});
+
 test('facebook publisher retries a text post without the link when the scrape fails', function () {
     $this->post->update(['content' => 'Read https://example.com/post today']);
 

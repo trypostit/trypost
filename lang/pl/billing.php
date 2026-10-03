@@ -46,8 +46,8 @@ return [
             'networks_all_tooltip' => 'Możesz publikować we wszystkich tych sieciach.',
             'accounts_unlimited' => 'Nielimitowane konta społecznościowe',
             'accounts_unlimited_tooltip' => 'Podłącz tyle kont, ile chcesz, także kilka z tej samej sieci. Na przykład trzy Instagramy.',
-            'calendar' => 'Kalendarz: widok miesiąca, tygodnia i dnia',
-            'calendar_tooltip' => 'Zobacz cały miesiąc na jednym ekranie: co zaplanowane, ustawione w kolejce i już opublikowane. Przełącz na tydzień lub dzień, gdy potrzebujesz szczegółów.',
+            'calendar' => 'Kalendarz: widok miesiąca i tygodnia',
+            'calendar_tooltip' => 'Zobacz cały miesiąc na jednym ekranie: co zaplanowane, ustawione w kolejce i już opublikowane. Przełącz na tydzień, gdy potrzebujesz szczegółów.',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => 'Twój asystent AI do pisania i poprawiania postów.',
             'mcp' => 'MCP: publikuj z Claude, ChatGPT lub Grok',
@@ -79,6 +79,7 @@ return [
         'title' => 'Faktury',
         'description' => 'Pobierz swoje wcześniejsze faktury.',
         'paid' => 'Opłacona',
+        'download' => 'Pobierz fakturę',
     ],
 
     'flash' => [

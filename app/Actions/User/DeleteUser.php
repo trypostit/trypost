@@ -73,20 +73,16 @@ class DeleteUser
             return StrandedSettlement::none();
         }
 
-        $settlement = StrandedSettlement::none();
-
         Workspace::query()
             ->where('account_id', $account->id)
             ->get()
-            ->each(function (Workspace $workspace) use ($owner, &$settlement): void {
+            ->each(function (Workspace $workspace) use ($owner): void {
                 ReassignCurrentWorkspace::awayFromWorkspace(
                     $workspace,
                     exceptUserId: $owner->id,
                 );
 
-                $settlement = $settlement->merge(new StrandedSettlement(
-                    mediaPaths: PurgeWorkspace::execute($workspace),
-                ));
+                PurgeWorkspace::execute($workspace);
             });
 
         $owner->workspaces()->detach();
@@ -94,9 +90,7 @@ class DeleteUser
         Invite::query()->where('account_id', $account->id)->delete();
 
         // Every non-owner member of this account is deleted with it.
-        $settlement = $settlement->merge(
-            SettleStrandedMember::forAccountMembers($account, exceptUserId: $owner->id),
-        );
+        $settlement = SettleStrandedMember::forAccountMembers($account, exceptUserId: $owner->id);
 
         $owner->update(['account_id' => null]);
 

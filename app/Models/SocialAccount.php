@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\Notification\Channel;
+use App\Actions\Analytics\DispatchAccountAnalytics;
+use App\Actions\SocialAccount\ApplyChannelDefaults;
+use App\Casts\PostingScheduleCast;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
@@ -13,11 +15,13 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
+use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\SocialAccountObserver;
 use App\Support\GoogleBusinessResourceName;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
+use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -31,10 +35,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy(SocialAccountObserver::class)]
+#[ScopedBy(SocialAccountOrderScope::class)]
 class SocialAccount extends Model
 {
     /** @use HasFactory<SocialAccountFactory> */
     use HasFactory, HasUuids;
+
+    public const int X_LONG_POST_LENGTH = 25000;
+
+    /**
+     * @var list<string>
+     */
+    public const array X_LONG_POST_SUBSCRIPTIONS = ['Basic', 'Premium', 'PremiumPlus'];
 
     protected $fillable = [
         'workspace_id',
@@ -49,11 +61,13 @@ class SocialAccount extends Model
         'scopes',
         'meta',
         'status',
-        'is_active',
         'error_message',
         'disconnected_at',
         'last_used_at',
         'last_verified_at',
+        'timezone',
+        'posting_goal',
+        'posting_schedule',
     ];
 
     protected $hidden = [
@@ -72,7 +86,6 @@ class SocialAccount extends Model
         return [
             'platform' => SocialPlatform::class,
             'status' => Status::class,
-            'is_active' => 'boolean',
             'access_token' => 'encrypted',
             'refresh_token' => 'encrypted',
             'token_expires_at' => 'datetime',
@@ -81,12 +94,40 @@ class SocialAccount extends Model
             'last_verified_at' => 'datetime',
             'scopes' => 'array',
             'meta' => 'array',
+            'position' => 'integer',
+            'posting_goal' => 'integer',
+            'posting_schedule' => PostingScheduleCast::class,
         ];
     }
 
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);
+    }
+
+    /**
+     * Whether this X account may publish posts longer than 280 characters:
+     * any paid subscription, or a verified organization.
+     */
+    public function hasXLongPosts(): bool
+    {
+        return $this->platform === SocialPlatform::X
+            && (in_array(data_get($this->meta, 'x_subscription_type'), self::X_LONG_POST_SUBSCRIPTIONS, true)
+                || data_get($this->meta, 'x_verified_type') === 'business');
+    }
+
+    /**
+     * The hard character cap for this account's posts. Same as the platform's,
+     * except an X account with long posts.
+     */
+    public function maxContentLength(): int
+    {
+        return $this->hasXLongPosts() ? self::X_LONG_POST_LENGTH : $this->platform->maxContentLength();
+    }
+
+    public function contentOverflow(string $content, int $reserved = 0): int
+    {
+        return max(0, mb_strlen($content) + $reserved - $this->maxContentLength());
     }
 
     /**
@@ -108,7 +149,7 @@ class SocialAccount extends Model
         // Two popups finishing at once for the same network must not interleave
         // a reconnect's update-and-realign transaction with a fresh insert.
         try {
-            return Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
+            $account = Cache::lock("social_connect:{$workspace->id}:{$platform->network()}", 10)
                 ->block(5, fn (): self => static::persistIdentity(
                     $workspace,
                     $platform,
@@ -116,6 +157,13 @@ class SocialAccount extends Model
                     $values,
                     $reconnect,
                 ));
+
+            if ((! $account->wasRecentlyCreated || $reconnect?->id === $account->id)
+                && ! $account->wasChanged('status')) {
+                app(DispatchAccountAnalytics::class)->handle($account);
+            }
+
+            return $account;
         } catch (LockTimeoutException) {
             throw NetworkAlreadyConnectedException::connectInProgress($platform);
         }
@@ -165,13 +213,30 @@ class SocialAccount extends Model
         }
 
         try {
-            return $workspace->socialAccounts()->updateOrCreate($identity, $values);
+            $account = $workspace->socialAccounts()->updateOrCreate($identity, $values);
         } catch (UniqueConstraintViolationException) {
             $account = $workspace->socialAccounts()->where($identity)->firstOrFail();
             $account->update($values);
 
             return $account;
         }
+
+        if ($account->wasRecentlyCreated) {
+            static::applyChannelDefaults($account, $workspace);
+        }
+
+        return $account;
+    }
+
+    /**
+     * A new channel starts in its connector's time zone (the workspace owner's
+     * when connected by webhook, UTC as a last resort) with a three-a-week goal
+     * and the network's recommended slots, so it has a usable schedule even if
+     * the post-connect goal dialog is dismissed.
+     */
+    private static function applyChannelDefaults(self $account, Workspace $workspace): void
+    {
+        ApplyChannelDefaults::execute($account, auth()->user()?->timezone ?? $workspace->owner?->timezone);
     }
 
     /**
@@ -213,6 +278,11 @@ class SocialAccount extends Model
     public function postPlatforms(): HasMany
     {
         return $this->hasMany(PostPlatform::class);
+    }
+
+    public function analyticsSyncStates(): HasMany
+    {
+        return $this->hasMany(AnalyticsSyncState::class);
     }
 
     protected function isTokenExpired(): Attribute
@@ -287,25 +357,45 @@ class SocialAccount extends Model
     }
 
     /**
-     * "@handle" for notification bodies — the more specific identifier
-     * (username) wins over the friendlier display name when both are set.
-     * Connectors normally populate at least one of username/display_name
-     * (TikTok Login Kit still returns display_name via user.info.basic;
-     * username needs user.info.profile, which self-hosters may trim).
-     * The platform label is a last-resort fallback, not an expected path.
-     */
-    public function handle(): string
-    {
-        return '@'.($this->username ?: $this->display_name ?: $this->platform->label());
-    }
-
-    /**
      * Friendly label for email templates — the display name wins over the
      * username when both are set.
      */
     public function accountDisplayName(): string
     {
         return $this->display_name ?: $this->username ?: $this->platform->label();
+    }
+
+    /**
+     * The channel identity a new PostPlatform keeps, so the post still shows
+     * who it went to after the account is renamed or disconnected.
+     *
+     * @return array{platform_name: string, platform_username: ?string, platform_avatar: ?string}
+     */
+    public function channelSnapshot(): array
+    {
+        return [
+            'platform_name' => $this->accountDisplayName(),
+            'platform_username' => $this->username,
+            'platform_avatar' => $this->getRawOriginal('avatar_url'),
+        ];
+    }
+
+    /**
+     * Base URL of the Mastodon instance this account lives on, without a
+     * trailing slash.
+     */
+    public function mastodonInstance(): string
+    {
+        return rtrim((string) data_get($this->meta, 'instance', config('trypost.platforms.mastodon.default_instance')), '/');
+    }
+
+    /**
+     * Whether the token may read the account's statuses, private ones
+     * included; without it only public statuses are readable, unauthenticated.
+     */
+    public function canReadMastodonStatuses(): bool
+    {
+        return count(array_intersect(['read', 'read:statuses'], $this->scopes ?? [])) > 0;
     }
 
     /**
@@ -320,8 +410,13 @@ class SocialAccount extends Model
     }
 
     /**
-     * Frontend-facing mirror of handle() without the "@" prefix — templates
-     * that render their own "@" (e.g. platform previews) use this instead.
+     * Account handle without the "@" prefix — the more specific identifier
+     * (username) wins over the friendlier display name when both are set.
+     * Templates that render their own "@" (e.g. platform previews) use this.
+     * Connectors normally populate at least one of username/display_name
+     * (TikTok Login Kit still returns display_name via user.info.basic;
+     * username needs user.info.profile, which self-hosters may trim).
+     * The platform label is a last-resort fallback, not an expected path.
      */
     protected function handleLabel(): Attribute
     {
@@ -346,19 +441,9 @@ class SocialAccount extends Model
                 ]);
 
                 if ($wasConnected && $this->workspace->owner) {
-                    $placeholders = [
-                        'platform' => $this->platform->label(),
-                        'account' => $this->handle(),
-                    ];
-
                     SendNotification::dispatch(
                         user: $this->workspace->owner,
-                        workspaceId: $this->workspace_id,
                         type: Type::AccountDisconnected,
-                        channel: Channel::Both,
-                        title: __('notifications.account_disconnected.title', $placeholders),
-                        body: __('notifications.account_disconnected.body', $placeholders),
-                        data: ['social_account_id' => $this->id],
                         mailable: new AccountDisconnected($this),
                     );
                 }
@@ -387,19 +472,9 @@ class SocialAccount extends Model
             ]);
 
             if ($notify && $wasUsable && $this->workspace->owner) {
-                $placeholders = [
-                    'platform' => $this->platform->label(),
-                    'account' => $this->handle(),
-                ];
-
                 SendNotification::dispatch(
                     user: $this->workspace->owner,
-                    workspaceId: $this->workspace_id,
                     type: Type::AccountDisconnected,
-                    channel: Channel::Both,
-                    title: __('notifications.account_token_expired.title', $placeholders),
-                    body: __('notifications.account_token_expired.body', $placeholders),
-                    data: ['social_account_id' => $this->id],
                     mailable: new AccountDisconnected($this),
                 );
             }
@@ -417,13 +492,23 @@ class SocialAccount extends Model
         ]);
     }
 
+    public function hasPostingSchedule(): bool
+    {
+        return ($this->posting_schedule?->nextSlots(now(), $this->timezone, 1) ?? []) !== [];
+    }
+
     public function isDisconnected(): bool
     {
         return $this->status === Status::Disconnected || $this->status === Status::TokenExpired;
     }
 
-    public function scopeActive(Builder $query): Builder
+    public function scopeConnected(Builder $query): Builder
     {
-        return $query->where('is_active', true)->orderBy('platform');
+        return $query->where('status', Status::Connected);
+    }
+
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('platform', SocialPlatform::analyticsValues());
     }
 }

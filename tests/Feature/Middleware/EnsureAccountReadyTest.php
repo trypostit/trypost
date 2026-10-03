@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -27,7 +26,7 @@ test('redirects members without app access straight to subscription required', f
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $workspace->id]);
 
     $this->actingAs($member->fresh())
@@ -56,7 +55,7 @@ test('passes through when subscribed and has workspace', function () {
     $user = User::factory()->create(['account_id' => $account->id]);
 
     $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $account->subscriptions()->create([
@@ -78,7 +77,7 @@ test('skips subscription check when self-hosted is enabled', function () {
     $user = User::factory()->create(['account_id' => $account->id]);
 
     $workspace = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $this->actingAs($user)

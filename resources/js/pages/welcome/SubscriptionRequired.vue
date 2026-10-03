@@ -28,13 +28,13 @@ usePoll(10000, { only: ['auth'] });
             data-testid="welcome-subscription-required"
         >
             <span
-                class="inline-flex size-14 -rotate-2 items-center justify-center rounded-2xl border-2 border-foreground bg-violet-100 shadow-2xs"
+                class="inline-flex size-12 items-center justify-center rounded-xl border border-border bg-card"
             >
-                <IconCreditCard class="size-7 text-foreground" />
+                <IconCreditCard class="size-6 text-foreground" />
             </span>
             <p
                 v-if="ownerName"
-                class="text-sm font-semibold text-muted-foreground"
+                class="text-base font-medium text-foreground"
             >
                 {{
                     $t('welcome.subscription_required_owner', {
@@ -42,7 +42,7 @@ usePoll(10000, { only: ['auth'] });
                     })
                 }}
             </p>
-            <p class="text-xs text-muted-foreground/80">
+            <p class="text-sm text-muted-foreground">
                 {{ $t('welcome.subscription_required_auto') }}
             </p>
         </div>

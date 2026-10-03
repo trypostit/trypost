@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social\LinkCard;
 
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Support\UrlDetector;
 use Illuminate\Support\Facades\Cache;
 

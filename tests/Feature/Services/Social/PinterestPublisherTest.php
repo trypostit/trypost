@@ -886,7 +886,7 @@ test('pinterest publisher includes title description and link on carousels', fun
     });
 });
 
-test('pinterest video pin uses the provided cover image url over the default frame', function () {
+test('pinterest video pin sends the chosen cover frame rounded to whole seconds and ignores a stored cover image url', function (?int $coverOffsetMs, int $keyFrameTime) {
     $this->postPlatform->update([
         'content_type' => ContentType::PinterestVideoPin,
         'meta' => ['board_id' => 'board_123', 'cover_image_url' => 'https://example.com/cover.jpg'],
@@ -899,6 +899,7 @@ test('pinterest video pin uses the provided cover image url over the default fra
             'url' => 'https://example.com/media/2026-01/video.mp4',
             'mime_type' => 'video/mp4',
             'original_filename' => 'video.mp4',
+            'meta' => array_filter(['duration' => 10, 'cover_offset_ms' => $coverOffsetMs], fn (mixed $value): bool => $value !== null),
         ]],
     ]);
 
@@ -933,9 +934,13 @@ test('pinterest video pin uses the provided cover image url over the default fra
     $this->publisher->publish($this->postPlatform);
 
     Http::assertSent(fn ($request) => $request->url() === config('trypost.platforms.pinterest.api').'/pins'
-        && data_get($request->data(), 'media_source.cover_image_url') === 'https://example.com/cover.jpg'
-        && data_get($request->data(), 'media_source.cover_image_key_frame_time') === null);
-});
+        && data_get($request->data(), 'media_source.cover_image_url') === null
+        && data_get($request->data(), 'media_source.cover_image_key_frame_time') === $keyFrameTime);
+})->with([
+    'offset of 1.4 s' => [1400, 1],
+    'offset of 2.9 s' => [2900, 3],
+    'no offset' => [null, 0],
+]);
 
 test('pinterest publisher throws exception for unsupported content type', function () {
     $this->postPlatform->update(['content_type' => ContentType::InstagramFeed]);

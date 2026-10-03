@@ -51,7 +51,7 @@ const accountOptions = computed(() =>
 
         <CardContent class="space-y-4">
             <div class="space-y-1">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                <p class="text-sm font-medium text-foreground">
                     {{ $t('repurposes.source.account_label') }}
                 </p>
 
@@ -80,10 +80,10 @@ const accountOptions = computed(() =>
 
                             <span v-if="compact" class="truncate">{{ option.label }}</span>
                             <span v-else class="min-w-0 text-left">
-                                <span class="block truncate text-sm font-bold">{{ option.label }}</span>
+                                <span class="block truncate text-sm leading-tight font-emphasis">{{ option.label }}</span>
                                 <span
                                     v-if="option.disconnected"
-                                    class="block truncate text-xs font-semibold text-amber-700 dark:text-amber-400"
+                                    class="block truncate text-xs text-destructive-text"
                                     :data-testid="`source-option-disconnected-${option.value}`"
                                 >
                                     {{ $t('repurposes.source.needs_reconnect') }}
@@ -96,11 +96,11 @@ const accountOptions = computed(() =>
                     </SearchableSelect>
                 </div>
 
-                <p v-if="error" class="text-sm text-red-600">{{ error }}</p>
+                <p v-if="error" class="text-sm text-destructive-text">{{ error }}</p>
             </div>
 
             <div class="space-y-1 sm:max-w-xs">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
+                <p class="text-sm font-medium text-foreground">
                     {{ $t('repurposes.source.watch_label') }}
                 </p>
 

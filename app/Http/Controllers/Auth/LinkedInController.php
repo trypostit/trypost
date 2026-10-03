@@ -193,18 +193,18 @@ class LinkedInController extends SocialController
                     return $this->popupCallback(false, __('accounts.popup_callback.wrong_account'), $this->platform->value);
                 }
 
-                $this->connectOrganization($workspace, $pending, $organization, $reconnect);
+                $account = $this->connectOrganization($workspace, $pending, $organization, $reconnect);
             } else {
                 if ($reconnect !== null && (string) data_get($pending, 'person.id') !== (string) $reconnect->platform_user_id) {
                     return $this->popupCallback(false, __('accounts.popup_callback.wrong_account'), $this->platform->value);
                 }
 
-                $this->connectPerson($workspace, $pending, $reconnect);
+                $account = $this->connectPerson($workspace, $pending, $reconnect);
             }
 
             session()->forget('linkedin_pending');
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {
@@ -219,11 +219,11 @@ class LinkedInController extends SocialController
     /**
      * The user's personal LinkedIn profile becomes a `linkedin` account.
      */
-    private function connectPerson(Workspace $workspace, array $pending, ?SocialAccount $reconnect): void
+    private function connectPerson(Workspace $workspace, array $pending, ?SocialAccount $reconnect): SocialAccount
     {
         $person = $pending['person'];
 
-        SocialAccount::connectIdentity(
+        return SocialAccount::connectIdentity(
             $workspace,
             SocialPlatform::LinkedIn,
             (string) data_get($person, 'id'),
@@ -266,11 +266,11 @@ class LinkedInController extends SocialController
      * @param  array<string, mixed>  $pending
      * @param  array<string, mixed>  $organization
      */
-    private function connectOrganization(Workspace $workspace, array $pending, array $organization, ?SocialAccount $reconnect): void
+    private function connectOrganization(Workspace $workspace, array $pending, array $organization, ?SocialAccount $reconnect): SocialAccount
     {
         $organizationId = data_get($organization, 'id');
 
-        SocialAccount::connectIdentity(
+        return SocialAccount::connectIdentity(
             $workspace,
             SocialPlatform::LinkedInPage,
             (string) $organizationId,

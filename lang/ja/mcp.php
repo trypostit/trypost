@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'TryPostアカウントで投稿の作成・管理ができるよう、AIアシスタントを接続します。',
+    'subtitle' => 'AI アシスタントを接続します。',
     'copy_step' => 'TryPostサーバーURLをコピー',
     'open_step' => 'AIアシスタントを開く',
     'copy' => 'URLをコピー',
@@ -15,7 +15,8 @@ return [
     'config_label' => '設定',
     'connected_title' => '接続済みアプリ',
     'connected_description' => 'サインインしたアシスタントです。不要な接続は切断できます。',
-    'connected_empty' => 'まだ接続がありません。上の Claude、ChatGPT、または他のクライアントを使ってください。',
+    'connected_empty_title' => '接続済みのアプリはありません',
+    'connected_empty' => '上の Claude、ChatGPT、または他のクライアントを使ってください。',
     'disconnect' => '切断',
     'disconnect_title' => 'アプリを切断',
     'disconnect_confirm' => 'TryPostからアプリを切断します。再度MCPを使うには再接続が必要です。',

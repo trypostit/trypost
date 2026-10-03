@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\User\Locale;
-use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncUser;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -272,8 +271,8 @@ test('member deleting profile does NOT destroy the shared account', function (bo
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
+    $owner->workspaces()->attach($workspace->id, membershipPivot('member'));
+    $member->workspaces()->attach($workspace->id, membershipPivot('member'));
 
     $this->actingAs($member)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -293,8 +292,8 @@ test('member deleting profile does not delete shared workspaces they created', f
         'account_id' => $owner->account_id,
         'user_id' => $member->id,
     ]);
-    $sharedWorkspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
-    $sharedWorkspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $sharedWorkspace->members()->attach($owner->id, membershipPivot('admin'));
+    $sharedWorkspace->members()->attach($member->id, membershipPivot('member'));
 
     $this->actingAs($member)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -315,7 +314,7 @@ test('member deleting profile detaches them from workspaces', function (bool $se
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $member->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
+    $member->workspaces()->attach($workspace->id, membershipPivot('member'));
 
     $this->actingAs($member)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -353,7 +352,7 @@ test('owner deleting profile destroys the account and cascades', function (bool 
         'account_id' => $accountId,
         'user_id' => $owner->id,
     ]);
-    $owner->workspaces()->attach($workspace->id, ['role' => Role::Member->value]);
+    $owner->workspaces()->attach($workspace->id, membershipPivot('member'));
 
     $this->actingAs($owner)->delete(route('app.profile.destroy'), [
         'password' => 'password',
@@ -425,8 +424,8 @@ test('owner account delete aborts when stripe cancel fails', function () {
         'account_id' => $accountId,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Member->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('member'));
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     $media = $workspace->addMedia(
         UploadedFile::fake()->image('logo.jpg'),

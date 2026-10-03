@@ -5,11 +5,18 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 test('verifies account without refresh when token is not expired', function () {
     Http::fake([
@@ -78,7 +85,7 @@ test('refreshes x token before verifying when expired', function () {
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 7200,
         ], 200),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $account = SocialAccount::factory()->x()->create([
@@ -457,7 +464,7 @@ test('does not disconnect when a concurrent refresh already rotated the token (l
         // Our stale refresh_token is rejected — a concurrent process already used it.
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
         // But the access_token the winning refresh persisted still works.
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $account = SocialAccount::factory()->x()->create([
@@ -493,7 +500,7 @@ test('does not disconnect when the verify after a refresh 401s once but a fresh 
         // ...but the verify that follows 401s once (the sub-commit window where a
         // lock-skipped refresh reloads a not-yet-persisted token) before
         // succeeding on the reload + retry.
-        config('trypost.platforms.x.api').'/users/me' => Http::sequence()
+        config('trypost.platforms.x.api').'/users/me*' => Http::sequence()
             ->push(['error' => 'unauthorized'], 401)
             ->push(['data' => ['id' => '123']], 200),
     ]);
@@ -986,7 +993,7 @@ test('linkedin page verify throws TokenExpiredException on a bare 401', function
 
 test('x verify treats a 5xx as platform unavailable, not a disconnect', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Internal Server Error'], 503),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['title' => 'Internal Server Error'], 503),
     ]);
 
     $account = SocialAccount::factory()->x()->create();
@@ -998,7 +1005,7 @@ test('x verify treats a 5xx as platform unavailable, not a disconnect', function
 test('x verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['title' => 'Unauthorized'], 401),
     ]);
 
     $account = SocialAccount::factory()->x()->create();
@@ -1010,7 +1017,7 @@ test('x verify throws TokenExpiredException on a bare 401', function () {
 test('x verify throws TokenExpiredException on an unsupported-authentication error type', function () {
     Http::fake([
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response([
+        config('trypost.platforms.x.api').'/users/me*' => Http::response([
             'type' => 'https://api.twitter.com/2/problems/unsupported-authentication',
             'title' => 'Unsupported Authentication',
         ], 403),
@@ -1305,4 +1312,26 @@ test('refreshToken persists a rotated google business refresh token', function (
     app(ConnectionVerifier::class)->refreshToken($account);
 
     expect($account->fresh()->refresh_token)->toBe('refresh-rotated');
+});
+
+test('a refresh that loses the race reuses the token the winner stored instead of replaying a used refresh token', function () {
+    Http::fake([
+        config('trypost.platforms.x.api').'/*' => Http::response(['error' => 'invalid_request'], 400),
+    ]);
+    $account = SocialAccount::factory()->x()->createQuietly([
+        'access_token' => 'stale-access',
+        'refresh_token' => 'used-refresh',
+        'token_expires_at' => now()->subMinute(),
+    ]);
+    $loser = SocialAccount::query()->findOrFail($account->id);
+    SocialAccount::query()->findOrFail($account->id)->update([
+        'access_token' => 'winner-access',
+        'refresh_token' => 'winner-refresh',
+        'token_expires_at' => now()->addHours(2),
+    ]);
+
+    expect((new ConnectionVerifier)->refreshToken($loser))->toBeFalse()
+        ->and($loser->access_token)->toBe('winner-access')
+        ->and($loser->refresh_token)->toBe('winner-refresh');
+    Http::assertNothingSent();
 });

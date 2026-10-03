@@ -2,7 +2,8 @@
 
 return [
     'title' => 'Signatures',
-    'description' => 'Create reusable signatures to quickly append to your posts',
+    'description' => 'Reusable text to append to your posts.',
+    'save_failed' => 'Could not save the signature. Please try again.',
     'search' => 'Search signatures...',
     'new' => 'New signature',
     'empty_title' => 'No signatures yet',
@@ -15,6 +16,7 @@ return [
         'created_at' => 'Created',
     ],
 
+    'row_actions' => 'Signature actions',
     'actions' => [
         'edit' => 'Edit signature',
         'delete' => 'Delete signature',
@@ -22,24 +24,22 @@ return [
 
     'create' => [
         'title' => 'Create signature',
-        'description' => 'Give your signature a name and the content to append (hashtags, links, custom text — anything you reuse).',
+        'description' => 'Save text you add to posts often, like hashtags, links or a sign-off.',
         'name' => 'Name',
         'name_placeholder' => 'e.g. Marketing, Travel, Brand sign-off',
         'content' => 'Content',
         'content_placeholder' => "#marketing #socialmedia\nLearn more: https://yourbrand.com",
-        'content_hint' => 'Hashtags, links, custom intros, signoffs — anything you append to posts.',
         'submit' => 'Create signature',
         'submitting' => 'Creating...',
     ],
 
     'edit' => [
         'title' => 'Edit signature',
-        'description' => 'Update the name and content for this signature.',
+        'description' => 'Change the name or the text this signature adds to your posts.',
         'name' => 'Name',
         'name_placeholder' => 'e.g. Marketing, Travel, Brand sign-off',
         'content' => 'Content',
         'content_placeholder' => "#marketing #socialmedia\nLearn more: https://yourbrand.com",
-        'content_hint' => 'Hashtags, links, custom intros, signoffs — anything you append to posts.',
         'submit' => 'Save changes',
         'submitting' => 'Saving...',
     ],
@@ -49,11 +49,5 @@ return [
         'description' => 'Are you sure you want to delete this signature? This action cannot be undone.',
         'confirm' => 'Delete',
         'cancel' => 'Cancel',
-    ],
-
-    'flash' => [
-        'created' => 'Signature created.',
-        'updated' => 'Signature updated.',
-        'deleted' => 'Signature deleted.',
     ],
 ];

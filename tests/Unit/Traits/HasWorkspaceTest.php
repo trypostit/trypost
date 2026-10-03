@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -12,8 +11,8 @@ test('user can get workspaces they belong to', function () {
     $workspace2 = Workspace::factory()->create(['user_id' => $user->id]);
 
     // Add user as owner to both workspaces via pivot
-    $workspace1->members()->attach($user->id, ['role' => Role::Member->value]);
-    $workspace2->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace1->members()->attach($user->id, membershipPivot('member'));
+    $workspace2->members()->attach($user->id, membershipPivot('member'));
 
     expect($user->workspaces)->toHaveCount(2);
     expect($user->workspaces->pluck('id')->toArray())->toContain($workspace1->id, $workspace2->id);
@@ -23,7 +22,7 @@ test('user can get workspaces as member', function () {
     $owner = User::factory()->create();
     $member = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($member->workspaces)->toHaveCount(1);
     expect($member->workspaces->first()->id)->toBe($workspace->id);
@@ -56,7 +55,7 @@ test('user belongs to member workspace on the same account', function () {
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($member->belongsToWorkspace($workspace))->toBeTrue();
 });
@@ -68,7 +67,7 @@ test('user does not belong to a workspace on another account even with a pivot',
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($member->account_id)->not->toBe($workspace->account_id);
     expect($member->belongsToWorkspace($workspace))->toBeFalse();
@@ -77,7 +76,7 @@ test('user does not belong to a workspace on another account even with a pivot',
 test('user belongs to owned workspace', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
 
     expect($user->belongsToWorkspace($workspace))->toBeTrue();
 });
@@ -91,13 +90,13 @@ test('accountWorkspaces excludes memberships on other accounts', function () {
         'account_id' => $personalAccountId,
         'user_id' => $user->id,
     ]);
-    $personalWorkspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $personalWorkspace->members()->attach($user->id, membershipPivot('admin'));
 
     $sharedWorkspace = Workspace::factory()->create([
         'account_id' => $sharedOwner->account_id,
         'user_id' => $sharedOwner->id,
     ]);
-    $sharedWorkspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $sharedWorkspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['account_id' => $sharedOwner->account_id]);
 
     expect($user->fresh()->accountWorkspaces()->pluck('workspaces.id')->all())
@@ -117,7 +116,7 @@ test('user can get owned workspaces count', function () {
     $workspaces = Workspace::factory()->count(3)->create(['user_id' => $user->id]);
 
     foreach ($workspaces as $workspace) {
-        $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+        $workspace->members()->attach($user->id, membershipPivot('member'));
     }
 
     expect($user->ownedWorkspacesCount())->toBe(3);

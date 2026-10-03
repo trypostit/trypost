@@ -1,22 +1,14 @@
 <script setup lang="ts">
-import { Head, InfiniteScroll, router } from '@inertiajs/vue3';
-import { IconAlertTriangle, IconRepeat } from '@tabler/icons-vue';
+import { Head, InfiniteScroll, Link } from '@inertiajs/vue3';
+import { IconAlertTriangle, IconPlus, IconRepeat } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import EmptyState from '@/components/EmptyState.vue';
-import PageHeader from '@/components/PageHeader.vue';
+import HeaderTitle from '@/components/HeaderTitle.vue';
 import CreateRepurposeDialog from '@/components/repurpose/CreateRepurposeDialog.vue';
 import RepurposeFlow from '@/components/repurpose/RepurposeFlow.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { show } from '@/routes/app/repurposes';
@@ -32,100 +24,149 @@ const props = defineProps<{
 
 const createDialogOpen = ref(false);
 
-const openRepurpose = (repurpose: Repurpose) => {
-    router.visit(show.url(repurpose.id));
-};
-
-
 const startBlank = () => {
     createDialogOpen.value = true;
 };
 
 const destinationNodes = (repurpose: Repurpose): FlowNode[] =>
     repurpose.destinations.flatMap((destination) => {
-        const account = props.destinationAccounts.find((item) => item.id === destination.social_account_id);
+        const account = props.destinationAccounts.find(
+            (item) => item.id === destination.social_account_id,
+        );
 
         return account
-            ? [{ platform: account.platform, label: account.display_name, username: account.username }]
+            ? [
+                  {
+                      platform: account.platform,
+                      label: account.display_name,
+                      username: account.username,
+                  },
+              ]
             : [];
     });
-
 </script>
 
 <template>
     <Head :title="$t('repurposes.title')" />
 
-    <AppLayout>
-        <div class="flex h-full flex-1 flex-col gap-6 px-6 py-8">
-            <PageHeader :title="$t('repurposes.title')" :description="$t('repurposes.description')" />
+    <AppLayout full-width>
+        <template #header>
+            <HeaderTitle :title="$t('repurposes.title')" :icon="IconRepeat" />
+        </template>
 
-            <div class="flex justify-end">
-                <Button data-testid="create-repurpose-button" @click="startBlank">
-                    {{ $t('repurposes.new') }}
-                </Button>
+        <template #header-actions>
+            <Button
+                variant="outline"
+                data-testid="create-repurpose-button"
+                @click="startBlank"
+            >
+                <IconPlus aria-hidden="true" />
+                {{ $t('repurposes.new') }}
+            </Button>
+        </template>
+
+        <div
+            class="flex h-full min-w-0 flex-1 flex-col gap-6 px-4 pt-2 pb-10 md:px-8"
+        >
+            <p class="max-w-2xl text-sm text-muted-foreground">
+                {{ $t('repurposes.description') }}
+            </p>
+
+            <div
+                v-if="repurposes.data.length === 0"
+                class="rounded-xl border border-dashed border-border-strong"
+            >
+                <EmptyState
+                    :icon="IconRepeat"
+                    :title="$t('repurposes.empty.title')"
+                    :description="$t('repurposes.empty.description')"
+                />
             </div>
 
-            <EmptyState
-                v-if="repurposes.data.length === 0"
-                :icon="IconRepeat"
-                :title="$t('repurposes.empty.title')"
-                :description="$t('repurposes.empty.description')"
-            />
-
-            <InfiniteScroll v-else data="repurposes" items-element="#repurposes-body" preserve-url>
-            <Table data-testid="repurposes-table">
-                <TableHeader>
-                    <TableRow>
-                        <TableHead class="w-full">{{ $t('repurposes.table.flow') }}</TableHead>
-                        <TableHead class="whitespace-nowrap">{{ $t('repurposes.table.status') }}</TableHead>
-                        <TableHead class="whitespace-nowrap text-center">{{ $t('repurposes.table.published') }}</TableHead>
-                        <TableHead class="whitespace-nowrap text-right">{{ $t('repurposes.table.last_polled') }}</TableHead>
-                    </TableRow>
-                </TableHeader>
-
-                <TableBody id="repurposes-body">
-                    <TableRow
+            <InfiniteScroll
+                v-else
+                data="repurposes"
+                items-element="#repurposes-body"
+                preserve-url
+            >
+                <ul
+                    id="repurposes-body"
+                    class="flex flex-col gap-2"
+                    data-testid="repurposes-table"
+                >
+                    <li
                         v-for="repurpose in repurposes.data"
                         :key="repurpose.id"
-                        class="cursor-pointer"
-                        :data-testid="`repurpose-row-${repurpose.id}`"
-                        @click="openRepurpose(repurpose)"
                     >
-                        <TableCell>
+                        <Link
+                            :href="show.url(repurpose.id)"
+                            class="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-border bg-card p-4 transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                            :data-testid="`repurpose-row-${repurpose.id}`"
+                        >
                             <RepurposeFlow
                                 :source="{
-                                    platform: repurpose.source_account?.platform ?? '',
-                                    label: repurpose.source_account?.display_name,
-                                    username: repurpose.source_account?.username,
+                                    platform:
+                                        repurpose.source_account?.platform ??
+                                        '',
+                                    label: repurpose.source_account
+                                        ?.display_name,
+                                    username:
+                                        repurpose.source_account?.username,
                                 }"
                                 :destinations="destinationNodes(repurpose)"
                                 size="sm"
                                 align="start"
                             />
-                        </TableCell>
-                        <TableCell class="whitespace-nowrap">
-                            <div class="flex items-center gap-1.5">
-                                <Badge :variant="repurposeStatusVariant(repurpose.status)">
-                                    {{ $t(`repurposes.status.${repurpose.status}`) }}
-                                </Badge>
-
-                                <IconAlertTriangle
-                                    v-if="repurpose.paused_reason"
-                                    class="size-4 text-amber-500"
-                                    :title="$t('repurposes.health.stopped_itself')"
-                                    data-testid="repurpose-stopped-itself"
-                                />
+                            <div
+                                class="ms-auto flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1"
+                            >
+                                <p
+                                    class="text-sm text-muted-foreground tabular-nums"
+                                >
+                                    {{ $t('repurposes.table.published') }}
+                                    <span class="text-foreground">{{
+                                        repurpose.published_items_count ?? 0
+                                    }}</span>
+                                    <span aria-hidden="true"> · </span>
+                                    {{ $t('repurposes.table.last_polled') }}
+                                    <span class="text-foreground">{{
+                                        repurpose.last_polled_at
+                                            ? date.diffForHumans(
+                                                  repurpose.last_polled_at,
+                                              )
+                                            : '—'
+                                    }}</span>
+                                </p>
+                                <span class="flex items-center gap-1.5">
+                                    <Badge
+                                        :variant="
+                                            repurposeStatusVariant(
+                                                repurpose.status,
+                                            )
+                                        "
+                                        class="h-6 px-2"
+                                    >
+                                        {{
+                                            $t(
+                                                `repurposes.status.${repurpose.status}`,
+                                            )
+                                        }}
+                                    </Badge>
+                                    <IconAlertTriangle
+                                        v-if="repurpose.paused_reason"
+                                        class="size-4 text-amber-500"
+                                        :title="
+                                            $t(
+                                                'repurposes.health.stopped_itself',
+                                            )
+                                        "
+                                        data-testid="repurpose-stopped-itself"
+                                    />
+                                </span>
                             </div>
-                        </TableCell>
-                        <TableCell class="text-center tabular-nums">
-                            {{ repurpose.published_items_count ?? 0 }}
-                        </TableCell>
-                        <TableCell class="whitespace-nowrap text-right text-foreground/70">
-                            {{ repurpose.last_polled_at ? date.diffForHumans(repurpose.last_polled_at) : '—' }}
-                        </TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+                        </Link>
+                    </li>
+                </ul>
             </InfiniteScroll>
         </div>
 
@@ -133,6 +174,5 @@ const destinationNodes = (repurpose: Repurpose): FlowNode[] =>
             v-model:open="createDialogOpen"
             :source-accounts="sourceAccounts"
         />
-
     </AppLayout>
 </template>

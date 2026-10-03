@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -41,7 +40,7 @@ function welcomeOwnerOnConnectStep(): User
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     return $user->fresh();
@@ -144,4 +143,18 @@ test('connect step shows the backend error when the account disappears before su
     $page->assertVisible('@welcome-connect-error')
         ->assertSee(trans('welcome.connect.required'))
         ->assertNoJavaScriptErrors();
+});
+
+test('picking instagram during onboarding opens the method step', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnConnectStep());
+
+    $page = visit(route('app.welcome.connect'));
+
+    waitForWelcomeTestId($page, 'connect-channel-instagram');
+    $page->click('@connect-channel-instagram');
+    waitForWelcomeTestId($page, 'instagram-connect-standalone');
+
+    $page->assertVisible('@instagram-connect-standalone')->assertNoJavaScriptErrors();
 });

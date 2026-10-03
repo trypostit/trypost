@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
-import { IconDots, IconTrash } from '@tabler/icons-vue';
+import { IconDotsVertical, IconTrash } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 import { toast } from 'vue-sonner';
@@ -52,7 +52,7 @@ const send = (url: string) =>
         <DropdownMenu>
             <DropdownMenuTrigger as-child>
                 <Button variant="outline" size="icon" data-testid="repurpose-menu" :aria-label="$t('repurposes.menu.label')">
-                    <IconDots class="size-4" />
+                    <IconDotsVertical class="size-4" />
                 </Button>
             </DropdownMenuTrigger>
 

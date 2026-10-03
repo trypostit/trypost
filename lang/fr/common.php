@@ -8,11 +8,10 @@ return [
     'back' => 'Retour',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'Cette action est irréversible.',
         'type' => 'Saisissez',
         'to_confirm' => 'pour confirmer.',
         'copy_to_clipboard' => 'Copier dans le presse-papiers',
-        'delete_keyword' => 'supprimer',
+        'delete_keyword' => 'SUPPRIMER',
     ],
 
     'photo_upload' => [
@@ -65,5 +64,16 @@ return [
         'copy' => 'Copier',
         'copied' => 'Copié',
         'copy_failed' => 'Échec de la copie dans le presse-papiers',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'Aperçu du média',
+        'previous' => 'Précédent',
+        'next' => 'Suivant',
+        'zoom_in' => 'Zoom avant',
+        'zoom_out' => 'Zoom arrière',
+        'counter' => ':current / :total',
+        'go_to' => 'Afficher l\'élément :number',
+        'open' => 'Ouvrir l\'aperçu',
     ],
 ];

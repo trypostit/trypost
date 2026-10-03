@@ -2,7 +2,6 @@ import { getMediaRulesForContentType } from '@/composables/useMediaRules';
 import date from '@/date';
 import type { MediaRules } from '@/lib/contentTypeMediaRules';
 import { isDocument, isGif, isImage, isMov, isVideo } from '@/lib/mediaType';
-import { ContentType } from '@/types/content-type';
 import type { MediaItem } from '@/types/media';
 
 export type { MediaItem } from '@/types/media';
@@ -36,12 +35,15 @@ const sizeParams = (cap: number, size: number): Record<string, string> => {
 
 const formatAspect = (ratio: number): string => ratio.toFixed(2);
 
+/** Same tolerance as ContentTypeCompatibleWithMedia::RATIO_TOLERANCE. */
+const RATIO_TOLERANCE = 0.0001;
+
 const warning = (key: string, params: Record<string, string> = {}): MediaValidationWarning => ({ key, params });
 
 const firstWarning = (...candidates: Array<MediaValidationWarning | false | null | undefined>): MediaValidationWarning | null =>
     candidates.find((candidate): candidate is MediaValidationWarning => Boolean(candidate)) ?? null;
 
-const itemConstraintWarning = (item: MediaItem, rules: MediaRules, contentType: string): MediaValidationWarning | null => {
+const itemConstraintWarning = (item: MediaItem, rules: MediaRules): MediaValidationWarning | null => {
     const size = item.size ?? 0;
     const duration = item.meta?.duration ?? 0;
     const width = item.meta?.width ?? 0;
@@ -69,25 +71,55 @@ const itemConstraintWarning = (item: MediaItem, rules: MediaRules, contentType: 
         return warning('image_too_large', sizeParams(rules.maxImageBytes, size));
     }
 
-    const skipSourceAspectRatioCheck = isImage(item) && (
-        rules.autoFitsImage
-        || contentType === ContentType.InstagramFeed
-    );
+    if (width <= 0 || height <= 0 || (isImage(item) && rules.autoFitsImage)) {
+        return null;
+    }
 
-    if (width > 0 && height > 0 && ! skipSourceAspectRatioCheck) {
-        const ratio = width / height;
+    const ratio = width / height;
+    const checksRatio = ! rules.aspectRatioImagesOnly || (isImage(item) && ! isGif(item));
 
-        if (rules.aspectRatioMin && ratio < rules.aspectRatioMin) {
-            return warning('aspect_ratio_too_narrow', { current: formatAspect(ratio), min: formatAspect(rules.aspectRatioMin) });
-        }
+    if (checksRatio && rules.aspectRatioMin && ratio < rules.aspectRatioMin - RATIO_TOLERANCE) {
+        return warning('aspect_ratio_too_narrow', { current: formatAspect(ratio), min: formatAspect(rules.aspectRatioMin) });
+    }
 
-        if (rules.aspectRatioMax && ratio > rules.aspectRatioMax) {
-            return warning('aspect_ratio_too_wide', { current: formatAspect(ratio), max: formatAspect(rules.aspectRatioMax) });
-        }
+    if (checksRatio && rules.aspectRatioMax && ratio > rules.aspectRatioMax + RATIO_TOLERANCE) {
+        return warning('aspect_ratio_too_wide', { current: formatAspect(ratio), max: formatAspect(rules.aspectRatioMax) });
+    }
+
+    if (! isImage(item)) {
+        return null;
+    }
+
+    if (width < (rules.imageMinWidth ?? 0) || height < (rules.imageMinHeight ?? 0)) {
+        return warning('image_too_small_dimensions', {
+            current: `${width}×${height}`,
+            min: `${rules.imageMinWidth}×${rules.imageMinHeight}`,
+        });
+    }
+
+    if (width > (rules.imageMaxWidth ?? Infinity) || height > (rules.imageMaxHeight ?? Infinity)) {
+        return warning('image_too_large_dimensions', {
+            current: `${width}×${height}`,
+            max: `${rules.imageMaxWidth}×${rules.imageMaxHeight}`,
+        });
     }
 
     return null;
 };
+
+/**
+ * The warning's params plus `destination` ("Instagram · Feed Post"), the same
+ * string ContentType::destinationLabel() puts in the server's message. Called
+ * from templates with `$t` so the content-type label follows the loaded locale.
+ */
+export const mediaWarningParams = (
+    warning: MediaValidationWarning,
+    contentType: string,
+    translate: (key: string) => string,
+): Record<string, string> => ({
+    ...warning.params,
+    destination: `${getMediaRulesForContentType(contentType).platformLabel ?? ''} · ${translate(`posts.content_types.${contentType}.label`)}`,
+});
 
 /**
  * Return the first violation found for a given content_type + media list.
@@ -108,6 +140,7 @@ export const getMediaValidationWarning = (
 
     return firstWarning(
         rules.requiresMedia && total === 0 && warning('requires_media'),
+        rules.maxFiles === 0 && total > 0 && warning('text_only'),
         total > rules.maxFiles && warning('max_files_exceeded', { max: String(rules.maxFiles), current: String(total) }),
         total < (rules.minFiles ?? 0) && warning('min_files_required', { min: String(rules.minFiles), current: String(total) }),
         ! rules.acceptVideos && videos.length > 0 && warning('no_video_allowed'),
@@ -117,7 +150,7 @@ export const getMediaValidationWarning = (
         rules.acceptDocuments && documents.length > 0 && total > 1 && warning('document_not_alone'),
         ! rules.acceptsGif && media.some(isGif) && warning('gif_not_allowed'),
         ! rules.acceptsMov && media.some(isMov) && warning('mov_not_allowed'),
-        ...media.map((item) => itemConstraintWarning(item, rules, contentType)),
+        ...media.map((item) => itemConstraintWarning(item, rules)),
     );
 };
 
@@ -135,7 +168,7 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
     if (isDocument(item)) {
         return firstWarning(
             ! rules.acceptDocuments && warning('no_document_allowed'),
-            itemConstraintWarning(item, rules, contentType),
+            itemConstraintWarning(item, rules),
         )?.key ?? null;
     }
 
@@ -144,6 +177,6 @@ export const getMediaItemIssue = (item: MediaItem, contentType: string): string 
         ! isVideo(item) && ! rules.acceptImages && warning('no_image_allowed'),
         isGif(item) && ! rules.acceptsGif && warning('gif_not_allowed'),
         isMov(item) && ! rules.acceptsMov && warning('mov_not_allowed'),
-        itemConstraintWarning(item, rules, contentType),
+        itemConstraintWarning(item, rules),
     )?.key ?? null;
 };

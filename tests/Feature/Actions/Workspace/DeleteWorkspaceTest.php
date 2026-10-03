@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Enums\UserWorkspace\Role;
 use App\Jobs\PostHog\SyncAccountUsage;
 use App\Models\Account;
 use App\Models\User;
@@ -21,7 +20,7 @@ test('delete workspace dispatches SyncAccountUsage when PostHog is enabled', fun
         'account_id' => $account->id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     Bus::fake();
@@ -47,7 +46,7 @@ test('delete workspace does not dispatch SyncAccountUsage when PostHog is disabl
         'account_id' => $account->id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     Bus::fake();

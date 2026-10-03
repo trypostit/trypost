@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
@@ -10,7 +10,7 @@ use App\Models\WorkspaceLabel;
 beforeEach(function () {
     $this->user = User::factory()->create([]);
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -52,13 +52,17 @@ test('store label requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('store label creates label', function () {
-    $response = $this->actingAs($this->user)->post(route('app.labels.store'), [
+test('store label creates label and returns to the page it came from', function () {
+    $response = $this->actingAs($this->user)->from(route('app.insights'))->post(route('app.labels.store'), [
         'name' => 'New Label',
         'color' => '#FF5733',
     ]);
 
-    $response->assertRedirect(route('app.labels.index'));
+    $response->assertRedirect(route('app.insights'))
+        ->assertSessionMissing('flash.banner')
+        ->assertInertiaFlash('createdLabel.name', 'New Label')
+        ->assertInertiaFlash('createdLabel.color', '#FF5733')
+        ->assertInertiaFlash('createdLabel.id', WorkspaceLabel::sole()->id);
 
     $this->assertDatabaseHas('workspace_labels', [
         'workspace_id' => $this->workspace->id,
@@ -100,12 +104,13 @@ test('update label requires authentication', function () {
 test('update label updates the label', function () {
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->put(route('app.labels.update', $label), [
+    $response = $this->actingAs($this->user)->from(route('app.labels.index', ['search' => 'Upd']))->put(route('app.labels.update', $label), [
         'name' => 'Updated Label',
         'color' => '#00FF00',
     ]);
 
-    $response->assertRedirect(route('app.labels.index'));
+    $response->assertRedirect(route('app.labels.index', ['search' => 'Upd']))
+        ->assertSessionMissing('flash.banner');
 
     $label->refresh();
     expect($label->name)->toBe('Updated Label');
@@ -136,9 +141,10 @@ test('destroy label requires authentication', function () {
 test('destroy label deletes the label', function () {
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->delete(route('app.labels.destroy', $label));
+    $response = $this->actingAs($this->user)->from(route('app.labels.index', ['search' => 'Del']))->delete(route('app.labels.destroy', $label));
 
-    $response->assertRedirect(route('app.labels.index'));
+    $response->assertRedirect(route('app.labels.index', ['search' => 'Del']))
+        ->assertSessionMissing('flash.banner');
     expect(WorkspaceLabel::find($label->id))->toBeNull();
 });
 
@@ -194,7 +200,7 @@ test('labels index returns all when no search query', function () {
 // Member authorization tests
 test('member can create label', function () {
     $member = User::factory()->create(['account_id' => $this->workspace->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $response = $this->actingAs($member)->post(route('app.labels.store'), [
@@ -223,4 +229,45 @@ test('update label validates color format', function () {
     ]);
 
     $response->assertSessionHasErrors('color');
+});
+
+test('a label that fails validation returns to the page it came from with the errors', function () {
+    $this->actingAs($this->user)
+        ->from(route('app.insights'))
+        ->post(route('app.labels.store'), ['name' => '', 'color' => 'red'])
+        ->assertRedirect(route('app.insights'))
+        ->assertSessionHasErrors(['name', 'color']);
+
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.labels.index', ['search' => 'Upd']))
+        ->put(route('app.labels.update', $label), ['name' => '', 'color' => 'red'])
+        ->assertRedirect(route('app.labels.index', ['search' => 'Upd']))
+        ->assertSessionHasErrors(['name', 'color']);
+
+    $this->assertDatabaseCount('workspace_labels', 1);
+});
+
+test('labels index says whether the workspace has any label, independent of the search', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.labels.index'))
+        ->assertInertia(fn ($page) => $page->where('hasData', false)->has('labels.data', 0));
+
+    WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Important']);
+    WorkspaceLabel::factory()->create(['workspace_id' => Workspace::factory()->create()->id, 'name' => 'Foreign']);
+
+    $this->actingAs($this->user)
+        ->get(route('app.labels.index', ['search' => 'nothing-matches']))
+        ->assertInertia(fn ($page) => $page->where('hasData', true)->has('labels.data', 0));
+});
+
+test('labels index counts the posts that use each label', function () {
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
+    $posts = Post::factory()->count(2)->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $label->posts()->attach($posts->pluck('id'));
+
+    $this->actingAs($this->user)
+        ->get(route('app.labels.index'))
+        ->assertInertia(fn ($page) => $page->where('labels.data.0.posts_count', 2));
 });

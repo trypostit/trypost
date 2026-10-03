@@ -40,7 +40,6 @@ test('usage returns correct counts across the account', function () {
         'memberCount' => 3,
         'pendingInviteCount' => 2,
         'postCount' => 0,
-        'creditsUsed' => 0,
     ]);
 });
 
@@ -141,4 +140,13 @@ test('postCount survives a string-typed cache value (Redis serializer quirk)', f
 
     expect($usage['postCount'])->toBe(42);
     expect($usage['postCount'])->toBeInt();
+});
+
+test('usage post count leaves out posts imported from the networks', function () {
+    $workspace = Workspace::factory()->create(['account_id' => $this->account->id, 'user_id' => $this->owner->id]);
+    Post::factory()->create(['workspace_id' => $workspace->id]);
+    Post::factory()->imported()->count(2)->create(['workspace_id' => $workspace->id]);
+    Cache::flush();
+
+    expect($this->account->usage()['postCount'])->toBe(1);
 });

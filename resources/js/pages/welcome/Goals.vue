@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -23,8 +22,6 @@ const EXCLUSIVE_GOAL = 'just_exploring';
 const form = useForm<{ goals: string[] }>({
     goals: (props.selected ?? []).filter((goal) => props.goals.includes(goal)),
 });
-
-const goalLabel = (value: string): string => trans(`welcome.goals.${value}`);
 
 const isSelected = (value: string): boolean => form.goals.includes(value);
 
@@ -61,11 +58,11 @@ const submit = (): void => {
         :description="$t('welcome.goals_description')"
         step="goals"
     >
-        <div class="flex flex-wrap gap-2.5">
+        <div class="flex flex-wrap gap-2">
             <WelcomeChoicePill
                 v-for="goal in goals"
                 :key="goal"
-                :label="goalLabel(goal)"
+                :label="$t(`welcome.goals.${goal}`)"
                 :meta="welcomeOptionMeta(goalMeta, goal)"
                 :selected="isSelected(goal)"
                 :testid="`welcome-goal-${goal}`"

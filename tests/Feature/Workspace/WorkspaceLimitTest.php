@@ -152,7 +152,7 @@ test('the workspaces plan can store another workspace', function () use ($onPlan
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.accounts'));
+        ->assertRedirect(route('app.workspace.channels'));
 
     expect($user->account->workspaces()->count())->toBe(2);
 });

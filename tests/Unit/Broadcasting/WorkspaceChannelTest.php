@@ -3,14 +3,13 @@
 declare(strict_types=1);
 
 use App\Broadcasting\WorkspaceChannel;
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
 test('workspace channel allows a member to join', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
 
     $channel = new WorkspaceChannel;
 

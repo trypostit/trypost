@@ -5,18 +5,20 @@ declare(strict_types=1);
 use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Events\NotificationCreated;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
-use App\Models\Notification;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Event;
+use App\Support\PostingSchedule;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
 });
@@ -67,7 +69,7 @@ test('markAsTokenExpired updates status and dispatches notification when transit
     Queue::assertPushed(SendNotification::class, function ($job) {
         return $job->user->id === $this->owner->id
             && $job->type === Type::AccountDisconnected
-            && str_contains($job->title, 'needs to be reconnected');
+            && $job->mailable instanceof AccountDisconnected;
     });
 });
 
@@ -130,8 +132,7 @@ test('markAsTokenExpired preserves existing disconnected_at value', function () 
         ->toBe($earlier->toIso8601String());
 });
 
-test('markAsTokenExpired creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
+test('markAsTokenExpired emails the workspace owner', function () {
     Mail::fake();
 
     $account = SocialAccount::factory()->x()->create([
@@ -142,16 +143,8 @@ test('markAsTokenExpired creates notification row with i18n placeholders substit
 
     $account->markAsTokenExpired('refresh_token rejected');
 
-    $notification = Notification::where('user_id', $this->owner->id)->first();
-
-    expect($notification)->not->toBeNull();
-    expect($notification->title)->toBe('X account needs to be reconnected');
-    expect($notification->body)->toBe('@testuser session expired — please reconnect to keep posting');
-    expect($notification->type)->toBe(Type::AccountDisconnected);
-    expect($notification->data)->toBe(['social_account_id' => $account->id]);
-
-    Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertQueued(AccountDisconnected::class, fn (AccountDisconnected $mail) => $mail->hasTo($this->owner->email)
+        && $mail->account->is($account));
 });
 
 // ---- markAsDisconnected ----
@@ -191,8 +184,7 @@ test('markAsDisconnected does not dispatch notification when already disconnecte
     Queue::assertNotPushed(SendNotification::class);
 });
 
-test('markAsDisconnected creates notification row with i18n placeholders substituted', function () {
-    Event::fake([NotificationCreated::class]);
+test('markAsDisconnected emails the workspace owner', function () {
     Mail::fake();
 
     $account = SocialAccount::factory()->x()->create([
@@ -203,16 +195,8 @@ test('markAsDisconnected creates notification row with i18n placeholders substit
 
     $account->markAsDisconnected('manual disconnect');
 
-    $notification = Notification::where('user_id', $this->owner->id)->first();
-
-    expect($notification)->not->toBeNull();
-    expect($notification->title)->toBe('X account disconnected');
-    expect($notification->body)->toBe('@testuser needs to be reconnected');
-    expect($notification->type)->toBe(Type::AccountDisconnected);
-    expect($notification->data)->toBe(['social_account_id' => $account->id]);
-
-    Event::assertDispatched(NotificationCreated::class);
-    Mail::assertQueued(AccountDisconnected::class);
+    Mail::assertQueued(AccountDisconnected::class, fn (AccountDisconnected $mail) => $mail->hasTo($this->owner->email)
+        && $mail->account->is($account));
 });
 
 // ---- profile_url ----
@@ -245,3 +229,18 @@ test('profile_url for google business is null without a stored location', functi
 
     expect($account->profile_url)->toBeNull();
 });
+
+test('hasPostingSchedule is true only when the schedule yields an upcoming slot', function (?PostingSchedule $schedule, bool $expected) {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'timezone' => 'America/Sao_Paulo',
+        'posting_schedule' => $schedule,
+    ]);
+
+    expect($account->hasPostingSchedule())->toBe($expected);
+})->with([
+    'no schedule' => [null, false],
+    'no times' => [fn () => PostingSchedule::empty(), false],
+    'times only on switched-off days' => [fn () => PostingSchedule::empty()->withTime(2, '09:00')->withDayEnabled(2, false), false],
+    'an enabled time' => [fn () => PostingSchedule::empty()->withTime(2, '09:00'), true],
+]);

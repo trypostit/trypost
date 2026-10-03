@@ -126,7 +126,7 @@ class TikTokPublisher
      *
      * @return array<string, mixed>
      */
-    private function buildVideoPostInfo(PostPlatform $postPlatform, ?string $content): array
+    private function buildVideoPostInfo(PostPlatform $postPlatform, ?string $content, ?int $coverOffsetMs = null): array
     {
         $meta = $postPlatform->meta ?? [];
 
@@ -148,6 +148,10 @@ class TikTokPublisher
 
         if (data_get($meta, 'brand_organic_toggle', false)) {
             $postInfo['brand_organic_toggle'] = true;
+        }
+
+        if ($coverOffsetMs !== null) {
+            $postInfo['video_cover_timestamp_ms'] = $coverOffsetMs;
         }
 
         return $postInfo;
@@ -186,7 +190,7 @@ class TikTokPublisher
     {
         $response = $this->getHttpClient()
             ->post("{$this->baseUrl}/post/publish/video/init/", [
-                'post_info' => $this->buildVideoPostInfo($postPlatform, $content),
+                'post_info' => $this->buildVideoPostInfo($postPlatform, $content, $media->coverOffsetMs()),
                 'source_info' => [
                     'source' => 'PULL_FROM_URL',
                     'video_url' => $media->url,

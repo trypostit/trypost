@@ -38,12 +38,14 @@ const setOpenMobile = (value: boolean) => {
   openMobile.value = value
 }
 
-// Helper to toggle the sidebar. Desktop toggling is intentionally a no-op:
-// the app does not support hiding/collapsing the sidebar on desktop.
 const toggleSidebar = () => {
   if (isMobile.value) {
     setOpenMobile(!openMobile.value)
+
+    return
   }
+
+  setOpen(!open.value)
 }
 
 // We add a state so that we can do data-state="expanded" or "collapsed".

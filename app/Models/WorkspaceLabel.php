@@ -32,4 +32,9 @@ class WorkspaceLabel extends Model
     {
         return $this->belongsToMany(Post::class);
     }
+
+    public function ideas(): BelongsToMany
+    {
+        return $this->belongsToMany(Idea::class);
+    }
 }

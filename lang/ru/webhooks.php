@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Получайте уведомления в реальном времени, когда посты создаются, планируются, снимаются с плана, публикуются или завершаются ошибкой.',
+    'description' => 'Мгновенные уведомления о ваших постах.',
     'new' => 'Создать вебхук',
     'empty_title' => 'Вебхуков пока нет',
     'empty_description' => 'Создайте вебхук, чтобы получать уведомления о событиях в реальном времени.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Слушает',
         'status' => 'Статус',
         'last_sent' => 'Последняя отправка',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Отключён',
         'paused' => 'Приостановлен',
     ],
+    'row_actions' => 'Действия с вебхуком',
     'actions' => [
         'view' => 'Подробности',
-        'copy_id' => 'Скопировать ID вебхука',
         'delete' => 'Удалить',
         'edit' => 'Изменить endpoint',
         'enable' => 'Включить endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Настройте endpoint для получения уведомлений вебхука.',
         'endpoint' => 'URL endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Мы отправим POST-запрос с JSON на этот URL.',
         'events' => 'События',
-        'events_placeholder' => 'Выберите события...',
-        'events_selected' => '{1} :count событие выбрано|[2,*] :count событий выбрано',
-        'search_events' => 'Поиск событий...',
-        'no_events' => 'События не найдены',
+        'events_count_selected' => 'Выбрано :count из :total',
         'submit' => 'Создать вебхук',
         'cancel' => 'Отмена',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Секрет подписи',
-        'last_sent' => 'Последняя отправка :time',
-        'listening_for' => 'Слушает',
+        'edit' => 'Изменить',
         'http_status' => 'Статус HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'Попытки',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Нет тела ответа',
         'no_response' => 'Нет ответа',
         'payload' => 'Payload сообщения',
-        'empty_title' => 'Событий пока нет',
-        'empty_description' => 'Когда посты создаются, планируются, снимаются с плана или публикуются, события вебхука появятся здесь.',
+    ],
+    'deliveries' => [
+        'title' => 'Доставки',
+        'empty_title' => 'Доставок пока нет',
+        'empty_description' => 'Отправьте тестовое событие, чтобы увидеть его здесь.',
+        'pending' => 'В ожидании',
     ],
     'events' => [
         'group_posts' => 'Посты',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Пост частично опубликован',
         'post_failed' => 'Ошибка публикации',
         'post_deleted' => 'Пост удалён',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Когда создаётся новый пост.',
+        'post_scheduled' => 'Когда пост запланирован к публикации.',
+        'post_unscheduled' => 'Когда пост снят с расписания.',
+        'post_published' => 'Когда пост публикуется в канале.',
+        'post_partially_published' => 'Когда одни каналы публикуют, а другие нет.',
+        'post_failed' => 'Когда пост не удаётся опубликовать.',
+        'post_deleted' => 'Когда пост удалён.',
     ],
     'http_reasons' => [
         'unknown' => 'Неизвестно',
@@ -111,7 +119,6 @@ return [
         '504' => 'Истекло время шлюза',
     ],
     'copied' => [
-        'id' => 'ID вебхука скопирован в буфер обмена',
         'secret' => 'Секрет подписи скопирован в буфер обмена',
         'response' => 'Тело ответа скопировано',
         'payload' => 'Payload скопирован',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'Endpoint вернул HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Вебхук создан.',
         'updated' => 'Вебхук обновлён.',
         'deleted' => 'Вебхук удалён.',
         'secret_rotated' => 'Секрет подписи изменён.',

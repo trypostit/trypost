@@ -27,17 +27,14 @@ defineProps<{
                     >
                         {{ title }}
                     </h1>
-                    <p
-                        v-if="description"
-                        class="text-sm text-muted-foreground"
-                    >
+                    <p v-if="description" class="text-sm text-muted-foreground">
                         {{ description }}
                     </p>
                 </div>
             </div>
 
             <div
-                class="space-y-6 rounded-xl border-2 border-foreground bg-card p-6 shadow-sm"
+                class="space-y-6 rounded-xl border border-border bg-card p-6 shadow-sm"
             >
                 <slot />
             </div>

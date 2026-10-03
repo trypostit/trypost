@@ -4,7 +4,8 @@ declare(strict_types=1);
 
 return [
     'title' => 'Signaturen',
-    'description' => 'Erstelle wiederverwendbare Signaturen, um sie schnell an deine Beiträge anzuhängen',
+    'description' => 'Wiederverwendbare Texte für deine Beiträge.',
+    'save_failed' => 'Die Signatur konnte nicht gespeichert werden. Bitte versuche es erneut.',
     'search' => 'Signaturen suchen...',
     'new' => 'Neue Signatur',
     'empty_title' => 'Noch keine Signaturen',
@@ -17,6 +18,7 @@ return [
         'created_at' => 'Erstellt',
     ],
 
+    'row_actions' => 'Signatur-Aktionen',
     'actions' => [
         'edit' => 'Signatur bearbeiten',
         'delete' => 'Signatur löschen',
@@ -24,24 +26,22 @@ return [
 
     'create' => [
         'title' => 'Signatur erstellen',
-        'description' => 'Gib deiner Signatur einen Namen und den Inhalt zum Anhängen (Hashtags, Links, individueller Text – alles, was du wiederverwendest).',
+        'description' => 'Speichere Text, den du oft anhängst, etwa Hashtags, Links oder eine Grußformel.',
         'name' => 'Name',
         'name_placeholder' => 'z. B. Marketing, Reisen, Marken-Grußformel',
         'content' => 'Inhalt',
         'content_placeholder' => "#marketing #socialmedia\nMehr erfahren: https://yourbrand.com",
-        'content_hint' => 'Hashtags, Links, individuelle Einleitungen, Grußformeln – alles, was du an Beiträge anhängst.',
         'submit' => 'Signatur erstellen',
         'submitting' => 'Wird erstellt...',
     ],
 
     'edit' => [
         'title' => 'Signatur bearbeiten',
-        'description' => 'Aktualisiere Name und Inhalt für diese Signatur.',
+        'description' => 'Ändere den Namen oder den Text, den diese Signatur an deine Beiträge anhängt.',
         'name' => 'Name',
         'name_placeholder' => 'z. B. Marketing, Reisen, Marken-Grußformel',
         'content' => 'Inhalt',
         'content_placeholder' => "#marketing #socialmedia\nMehr erfahren: https://yourbrand.com",
-        'content_hint' => 'Hashtags, Links, individuelle Einleitungen, Grußformeln – alles, was du an Beiträge anhängst.',
         'submit' => 'Änderungen speichern',
         'submitting' => 'Wird gespeichert...',
     ],
@@ -51,11 +51,5 @@ return [
         'description' => 'Möchtest du diese Signatur wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
         'confirm' => 'Löschen',
         'cancel' => 'Abbrechen',
-    ],
-
-    'flash' => [
-        'created' => 'Signatur erstellt.',
-        'updated' => 'Signatur aktualisiert.',
-        'deleted' => 'Signatur gelöscht.',
     ],
 ];

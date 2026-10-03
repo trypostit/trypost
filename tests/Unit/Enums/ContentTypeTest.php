@@ -59,6 +59,7 @@ test('media rules for frontend expose the full editor rule set keyed by content 
     expect($rules['pinterest_carousel']['min_files'])->toBe(2);
     expect($rules['x_post']['accepts_gif'])->toBeTrue();
     expect($rules['instagram_feed']['requires_media'])->toBeTrue();
+    expect($rules['instagram_feed'])->toMatchArray(['aspect_ratio_min' => 0.75, 'aspect_ratio_max' => 1.91]);
     expect($rules['discord_message']['accepts_gif'])->toBeTrue();
     expect($rules['telegram_post']['accepts_gif'])->toBeTrue();
     expect($rules['bluesky_post']['accepts_mov'])->toBeTrue();
@@ -419,4 +420,62 @@ test('google business post media rules allow at most one image, no video', funct
 
 test('google business post is the default content type for the platform', function () {
     expect(ContentType::defaultFor(Platform::GoogleBusiness))->toBe(ContentType::GoogleBusinessPost);
+});
+
+test('media rules carry crop presets and editor tab availability', function () {
+    expect(ContentType::InstagramFeed->mediaRules())->toMatchArray([
+        'supports_alt_text' => true,
+        'supports_user_tags' => true,
+        'supports_video_cover' => true,
+        'crop_presets' => ['3:4', '4:5', '1:1', '1.91:1'],
+    ]);
+
+    expect(ContentType::InstagramStory->mediaRules()['supports_user_tags'])->toBeFalse();
+
+    expect(ContentType::TikTokPhoto->mediaRules())->toMatchArray([
+        'supports_alt_text' => false,
+        'crop_presets' => ['4:3', '16:9', '9:16', '1:1'],
+    ]);
+
+    expect(ContentType::TikTokVideo->mediaRules())->toMatchArray([
+        'supports_alt_text' => false,
+        'supports_video_cover' => true,
+    ]);
+
+    expect(ContentType::XPost->mediaRules())->toMatchArray([
+        'supports_alt_text' => true,
+        'supports_user_tags' => false,
+        'supports_video_cover' => false,
+        'crop_presets' => ['1:1', '4:3', '16:9', '2:1'],
+    ]);
+
+    expect(ContentType::GoogleBusinessPost->mediaRules()['supports_alt_text'])->toBeFalse();
+    expect(ContentType::defaultCropPresets())->toBe(['1:1', '9:16']);
+});
+
+test('crop presets are non-empty and only use ratios the frontend editor knows', function (ContentType $type) {
+    $known = ['9:16', '2:3', '3:4', '4:5', '1:1', '4:3', '1.91:1', '16:9', '2:1'];
+
+    expect($type->cropPresets())->not->toBeEmpty()
+        ->and(array_diff($type->cropPresets(), $known))->toBe([])
+        ->and($type->cropPresets())->toBe(array_values(array_unique($type->cropPresets())));
+})->with(ContentType::cases());
+
+test('media rules carry the documented pixel limits and the platform label', function () {
+    expect(ContentType::GoogleBusinessPost->mediaRules())->toMatchArray([
+        'platform_label' => 'Google Business Profile',
+        'image_min_width' => 250,
+        'image_min_height' => 250,
+        'image_max_width' => null,
+        'image_max_height' => null,
+    ]);
+
+    expect(ContentType::XPost->imageDimensionBounds())->toBeNull()
+        ->and(ContentType::XPost->mediaRules()['image_max_width'])->toBeNull();
+});
+
+test('threads and telegram carry their documented hard aspect ratio limits', function () {
+    expect(ContentType::ThreadsPost->aspectRatioBounds())->toBe(['min' => 0.1, 'max' => 10.0])
+        ->and(ContentType::TelegramPost->aspectRatioBounds())->toBe(['min' => 0.05, 'max' => 20.0])
+        ->and(ContentType::XPost->aspectRatioBounds())->toBeNull();
 });

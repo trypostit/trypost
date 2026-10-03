@@ -14,7 +14,7 @@ class TelegramChannelConnected implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public function __construct(public string $workspaceId, public string $nonce) {}
+    public function __construct(public string $workspaceId, public string $nonce, public string $accountId, public bool $created) {}
 
     public function broadcastAs(): string
     {
@@ -29,12 +29,14 @@ class TelegramChannelConnected implements ShouldBroadcast
     }
 
     /**
-     * @return array<string, string>
+     * @return array<string, string|bool>
      */
     public function broadcastWith(): array
     {
         return [
             'nonce' => $this->nonce,
+            'account_id' => $this->accountId,
+            'created' => $this->created,
         ];
     }
 

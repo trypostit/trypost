@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 });
 
 test('pinterest authorize url carries the publishing scopes', function () {
@@ -82,6 +81,59 @@ test('pinterest oauth callback creates account', function () {
         'username' => 'pinner',
         'status' => Status::Connected->value,
     ]);
+});
+
+function fakePinterestCallbackUser(string $id): void
+{
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn($id);
+    $socialiteUser->shouldReceive('getNickname')->andReturn('pinner');
+    $socialiteUser->shouldReceive('getName')->andReturn('Pinterest User');
+    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
+    $socialiteUser->token = 'test-access-token';
+    $socialiteUser->refreshToken = 'test-refresh-token';
+    $socialiteUser->expiresIn = 2592000;
+    $socialiteUser->approvedScopes = ['boards:read', 'pins:write'];
+
+    Socialite::shouldReceive('driver')->with('pinterest')->andReturn(Mockery::mock(['user' => $socialiteUser]));
+}
+
+test('pinterest callback reports the new account id and created true on a first connect', function () {
+    session(['social_connect_workspace' => $this->workspace->id]);
+    fakePinterestCallbackUser('pin-new-1');
+
+    $response = $this->actingAs($this->user)->get(route('app.social.pinterest.callback'));
+
+    $accountId = SocialAccount::where('platform_user_id', 'pin-new-1')->value('id');
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('accountId', $accountId)
+        ->where('created', true));
+});
+
+test('pinterest callback reports created false on a reconnect', function () {
+    $account = SocialAccount::factory()->pinterest()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'pin-old-1',
+    ]);
+    session(['social_connect_workspace' => $this->workspace->id, 'social_reconnect_id' => $account->id]);
+    fakePinterestCallbackUser('pin-old-1');
+
+    $response = $this->actingAs($this->user)->get(route('app.social.pinterest.callback'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', true)
+        ->where('accountId', $account->id)
+        ->where('created', false));
+});
+
+test('pinterest callback failure reports no account and created false', function () {
+    $response = $this->actingAs($this->user)->get(route('app.social.pinterest.callback'));
+
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->where('success', false)
+        ->where('accountId', null)
+        ->where('created', false));
 });
 
 test('pinterest oauth callback splits space-separated approvedScopes before saving', function () {

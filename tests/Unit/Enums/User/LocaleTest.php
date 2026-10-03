@@ -29,3 +29,36 @@ test('options expose the code, native name, direction and flag of every case', f
 test('every case points at a flag file that actually ships', function (Locale $locale) {
     expect(public_path("images/flags/{$locale->flag()}.svg"))->toBeFile();
 })->with(Locale::cases());
+
+test('englishName returns the English name of every locale', function (Locale $locale, string $expected) {
+    expect($locale->englishName())->toBe($expected);
+})->with([
+    [Locale::English, 'English'],
+    [Locale::Ukrainian, 'Ukrainian'],
+    [Locale::PortugueseBrazil, 'Brazilian Portuguese'],
+    [Locale::Spanish, 'Spanish'],
+    [Locale::French, 'French'],
+    [Locale::German, 'German'],
+    [Locale::Italian, 'Italian'],
+    [Locale::Dutch, 'Dutch'],
+    [Locale::Polish, 'Polish'],
+    [Locale::Greek, 'Greek'],
+    [Locale::Japanese, 'Japanese'],
+    [Locale::Korean, 'Korean'],
+    [Locale::Chinese, 'Chinese'],
+    [Locale::Russian, 'Russian'],
+    [Locale::Turkish, 'Turkish'],
+    [Locale::Arabic, 'Arabic'],
+]);
+
+test('bcp47 widens only the codes Google treats as underspecified', function (Locale $locale, string $expected) {
+    expect($locale->bcp47())->toBe($expected);
+})->with([
+    [Locale::English, 'en'],
+    [Locale::PortugueseBrazil, 'pt-BR'],
+    [Locale::Chinese, 'zh-CN'],
+]);
+
+test('promptLanguage names the language and its code', function () {
+    expect(Locale::PortugueseBrazil->promptLanguage())->toBe('Brazilian Portuguese (pt-BR)');
+});

@@ -1,29 +1,25 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
 
-import { Button } from '@/components/ui/button';
+import SignatureForm from '@/components/signatures/SignatureForm.vue';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { store as signaturesStore } from '@/routes/app/signatures';
 
 const open = defineModel<boolean>('open', { default: false });
 
-const form = useForm({
-    name: '',
-    content: '',
-});
+const closeDialog = (): void => {
+    open.value = false;
+};
 
-const submit = () => {
+const form = useForm({ name: '', content: '' });
+
+const submit = (): void => {
     form.post(signaturesStore.url(), {
         onSuccess: () => {
             open.value = false;
@@ -32,7 +28,7 @@ const submit = () => {
     });
 };
 
-const handleOpenChange = (value: boolean) => {
+const handleOpenChange = (value: boolean): void => {
     if (value) {
         form.reset();
         form.clearErrors();
@@ -43,53 +39,23 @@ const handleOpenChange = (value: boolean) => {
 
 <template>
     <Dialog :open="open" @update:open="handleOpenChange">
-        <DialogContent class="sm:max-w-md">
+        <DialogContent data-testid="create-signature-sheet" class="sm:max-w-lg">
             <DialogHeader>
                 <DialogTitle>{{ $t('signatures.create.title') }}</DialogTitle>
                 <DialogDescription>
                     {{ $t('signatures.create.description') }}
                 </DialogDescription>
             </DialogHeader>
-            <form @submit.prevent="submit" class="space-y-4">
-                <div class="grid gap-2">
-                    <Label for="create-name">{{ $t('signatures.create.name') }}</Label>
-                    <Input
-                        id="create-name"
-                        v-model="form.name"
-                        :placeholder="trans('signatures.create.name_placeholder')"
-                        :class="{ 'border-destructive': form.errors.name }"
-                    />
-                    <p v-if="form.errors.name" class="text-sm text-destructive">
-                        {{ form.errors.name }}
-                    </p>
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="create-content">{{ $t('signatures.create.content') }}</Label>
-                    <Textarea
-                        id="create-content"
-                        v-model="form.content"
-                        :placeholder="trans('signatures.create.content_placeholder')"
-                        rows="4"
-                        :class="{ 'border-destructive': form.errors.content }"
-                    />
-                    <p class="text-sm text-muted-foreground">
-                        {{ $t('signatures.create.content_hint') }}
-                    </p>
-                    <p v-if="form.errors.content" class="text-sm text-destructive">
-                        {{ form.errors.content }}
-                    </p>
-                </div>
-
-                <DialogFooter>
-                    <Button type="submit" :disabled="form.processing">
-                        {{ form.processing ? $t('signatures.create.submitting') : $t('signatures.create.submit') }}
-                    </Button>
-                    <Button type="button" variant="outline" @click="open = false">
-                        {{ $t('common.cancel') }}
-                    </Button>
-                </DialogFooter>
-            </form>
+            <SignatureForm
+                v-model:name="form.name"
+                v-model:content="form.content"
+                mode="create"
+                id-prefix="create-signature"
+                :errors="form.errors"
+                :processing="form.processing"
+                @submit="submit"
+                @cancel="closeDialog"
+            />
         </DialogContent>
     </Dialog>
 </template>

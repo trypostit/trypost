@@ -37,7 +37,6 @@ class AcceptInviteController extends Controller
         }
 
         $workspace = $workspaces->first();
-        $role = $invite->role;
 
         return Inertia::render('auth/AcceptInvite', [
             'expired' => false,
@@ -52,9 +51,9 @@ class AcceptInviteController extends Controller
                     'id' => $workspace->id,
                     'name' => $workspace->name,
                 ],
-                'role' => [
-                    'value' => $role->value,
-                    'label' => $role->label(),
+                'access' => [
+                    'is_admin' => $invite->is_admin,
+                    'requires_approval' => $invite->requires_approval,
                 ],
             ],
         ]);

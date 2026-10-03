@@ -1,63 +1,49 @@
 <script setup lang="ts">
 import { Head } from '@inertiajs/vue3';
+import { IconPlus } from '@tabler/icons-vue';
+import { ref } from 'vue';
 
-import PageHeader from '@/components/PageHeader.vue';
-import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
 import UsersTab from '@/components/settings/UsersTab.vue';
-import { useWorkspaceSettingsTabs } from '@/composables/useWorkspaceSettingsTabs';
-import AppLayout from '@/layouts/AppLayout.vue';
-
-interface Workspace {
-    id: string;
-    name: string;
-}
-
-interface Member {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-}
-
-interface Invite {
-    id: string;
-    email: string;
-    role: string;
-}
-
-interface Role {
-    value: string;
-    label: string;
-}
+import { Button } from '@/components/ui/button';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import type { WorkspaceInvitation, WorkspaceMember } from '@/types/members';
 
 defineProps<{
-    workspace: Workspace;
-    owner: Member;
-    members: Member[];
-    invites: Invite[];
-    roles: Role[];
+    workspace: { id: string; name: string };
+    owner: { id: string | null; name: string | null; email: string | null };
+    members: WorkspaceMember[];
+    invites: WorkspaceInvitation[];
 }>();
 
-const tabs = useWorkspaceSettingsTabs();
+const { canManageTeam } = useWorkspaceAbilities();
+const inviteOpen = ref(false);
+
+const openInviteDialog = (): void => {
+    inviteOpen.value = true;
+};
+
 </script>
 
 <template>
     <Head :title="$t('settings.members.title')" />
 
-    <AppLayout>
-        <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+    <SettingsLayout
+        :title="$t('settings.members.title')"
+        :description="$t('settings.workspace.members_description')"
+    >
+        <template v-if="canManageTeam" #actions>
+            <Button data-testid="invite-member-button" @click="openInviteDialog">
+                <IconPlus class="size-4" />
+                {{ $t('settings.members.invite.submit') }}
+            </Button>
+        </template>
 
-            <SettingsTabsNav :tabs="tabs" active="members" />
-
-            <UsersTab
-                :members="members"
-                :invitations="invites"
-                :roles="roles"
-            />
-        </div>
-    </AppLayout>
+        <UsersTab
+            v-model:invite-open="inviteOpen"
+            :members="members"
+            :invitations="invites"
+            :owner-id="owner.id"
+        />
+    </SettingsLayout>
 </template>

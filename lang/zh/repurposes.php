@@ -13,15 +13,12 @@ return [
     ],
 
     'publish_mode' => [
-
         'title' => '发布',
 
         'description' => '发现新内容时会发生什么。',
-
     ],
 
     'publish_modes' => [
-
         'publish' => '自动发布',
 
         'publish_hint' => '每条新内容一被发现就会排入发布计划。',
@@ -29,7 +26,6 @@ return [
         'draft' => '创建为草稿',
 
         'draft_hint' => '每条新内容都会在这里生成草稿，供你检查后发布。',
-
     ],
 
     'formats' => [
@@ -58,8 +54,6 @@ return [
     ],
 
     'table' => [
-        'flow' => '流程',
-        'status' => '状态',
         'published' => '已同步',
         'last_polled' => '上次检查',
     ],
@@ -97,7 +91,6 @@ return [
     ],
 
     'destinations' => [
-        'paused_note' => '已关闭，重新开启前将被跳过：:accounts',
         'title' => '目标',
         'description' => '选择接收的账号。每个账号按你指定的格式发布。',
         'hint' => '只有当文案超出该平台上限时，才会按平台调整。',
@@ -150,9 +143,7 @@ return [
     ],
 
     'menu' => [
-
         'label' => '更多操作',
-
     ],
 
     'danger' => [
@@ -175,6 +166,7 @@ return [
         'source_unusable' => '开始此自动化之前，请重新连接此自动化监控的账号。',
         'destinations_required' => '启用前请至少选择一个目标。',
         'destination_needs_video' => '该格式不支持视频。',
+        'destination_not_supported' => 'Google 商家不能作为发布目标：其帖子不支持视频。',
         'only_paused_resumes' => '只有已暂停的 Repurpose 才能继续。',
         'only_active_pauses' => '只有正在运行的转发规则才能暂停。',
         'only_running_disables' => '只有正在运行的转发规则才能停用。',

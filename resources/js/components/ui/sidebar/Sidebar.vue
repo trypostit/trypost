@@ -42,8 +42,8 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       }"
     >
       <SheetHeader class="sr-only">
-        <SheetTitle>Sidebar</SheetTitle>
-        <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+        <SheetTitle>{{ $t('sidebar.mobile_title') }}</SheetTitle>
+        <SheetDescription>{{ $t('sidebar.mobile_description') }}</SheetDescription>
       </SheetHeader>
       <div class="flex h-full w-full flex-col">
         <slot />
@@ -63,7 +63,7 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     <!-- This is what handles the sidebar gap on desktop  -->
     <div
       :class="cn(
-        'relative w-(--sidebar-width) bg-transparent transition-[width] duration-200 ease-linear',
+        'relative w-(--sidebar-width) bg-transparent transition-[width] duration-(--motion-duration-sidebar-toggle) ease-(--motion-easing-sidebar-toggle) motion-reduce:transition-none',
         'group-data-[collapsible=offcanvas]:w-0',
         'group-data-[side=right]:rotate-180',
         variant === 'floating' || variant === 'inset'
@@ -73,21 +73,21 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     />
     <div
       :class="cn(
-        'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[inset-inline-start,inset-inline-end,width] duration-200 ease-linear md:flex',
+        'fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[inset-inline-start,inset-inline-end,width] duration-(--motion-duration-sidebar-toggle) ease-(--motion-easing-sidebar-toggle) motion-reduce:transition-none md:flex',
         side === 'left'
           ? 'start-0 group-data-[collapsible=offcanvas]:start-[calc(var(--sidebar-width)*-1)]'
           : 'end-0 group-data-[collapsible=offcanvas]:end-[calc(var(--sidebar-width)*-1)]',
         // Adjust the padding for floating and inset variants.
         variant === 'floating' || variant === 'inset'
           ? 'p-2 group-data-[collapsible=icon]:w-[calc(var(--sidebar-width-icon)+(--spacing(4))+2px)]'
-          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon) group-data-[side=left]:border-e-2 group-data-[side=right]:border-s-2 border-foreground',
+          : 'group-data-[collapsible=icon]:w-(--sidebar-width-icon)',
         props.class,
       )"
       v-bind="$attrs"
     >
       <div
         data-sidebar="sidebar"
-        class="bg-sidebar flex h-full w-full flex-col group-data-[variant=floating]:rounded-2xl group-data-[variant=floating]:border-2 group-data-[variant=floating]:border-foreground group-data-[variant=floating]:shadow-sm group-data-[variant=inset]:rounded-2xl group-data-[variant=inset]:border-2 group-data-[variant=inset]:border-foreground group-data-[variant=inset]:shadow-sm"
+        class="bg-sidebar flex h-full w-full flex-col group-data-[variant=floating]:rounded-lg group-data-[variant=floating]:border group-data-[variant=floating]:border-sidebar-border group-data-[variant=floating]:shadow-sm"
       >
         <slot />
       </div>

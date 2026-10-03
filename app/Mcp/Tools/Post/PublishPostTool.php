@@ -6,14 +6,15 @@ namespace App\Mcp\Tools\Post;
 
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
+use App\Enums\Post\QueuePosition;
 use App\Enums\Post\Status;
+use App\Exceptions\Post\QueueBusyException;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\Post;
-use App\Rules\ContentTypeCompatibleWithMedia;
-use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Validation\Rule;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -22,7 +23,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Publish a draft post — either immediately or scheduled for a future time. The post must already have at least one enabled platform. Use update-post-tool first to set content/platforms. Before queueing, the attached media is validated against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool); a cap violation returns a per-platform error and nothing is published.')]
+#[Description('Publish a draft post — either immediately or scheduled for a future time. The post must already have at least one enabled platform. Use update-post-tool first to set content/platforms. Before queueing, the attached media is validated against every enabled content_type (file size, video duration, GIF, MOV — see list-content-types-tool); a cap violation returns a per-platform error and nothing is published. When the acting member needs approval in this workspace, the post is stored with status pending_approval instead and waits for approve-post-tool.')]
 class PublishPostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -31,8 +32,9 @@ class PublishPostTool extends Tool
     {
         $validated = $request->validate([
             'post_id' => ['required', 'uuid'],
-            'scheduled_at' => ['nullable', 'date', 'after:now'],
-        ]);
+            'scheduled_at' => ['nullable', 'date', 'after:now', 'prohibits:queue'],
+            'queue' => ['nullable', Rule::enum(QueuePosition::class)],
+        ], ['scheduled_at.prohibits' => PostStatusRules::queueMessages()['queue.prohibits']]);
 
         $workspace = $request->user()?->currentWorkspace;
         $post = $workspace
@@ -51,15 +53,23 @@ class PublishPostTool extends Tool
             return Response::error('Post has no enabled platforms. Use update-post-tool to enable at least one platform first.');
         }
 
-        PostPlatformMetaRules::assertStoredPostPublishable($post);
-        ContentTypeCompatibleWithMedia::assertStoredPostCompatible($post);
+        PostStatusRules::assertStoredPostPublishable($post);
 
         $scheduledAt = data_get($validated, 'scheduled_at');
 
-        $result = UpdatePost::execute($workspace, $post, [
-            'status' => $scheduledAt ? Status::Scheduled->value : Status::Publishing->value,
-            'scheduled_at' => $scheduledAt,
-        ]);
+        $queue = data_get($validated, 'queue');
+
+        try {
+            $result = UpdatePost::execute($workspace, $post, $queue ? [
+                'status' => Status::Scheduled->value,
+                'queue' => $queue,
+            ] : [
+                'status' => $scheduledAt ? Status::Scheduled->value : Status::Publishing->value,
+                'scheduled_at' => $scheduledAt,
+            ], $request->user());
+        } catch (QueueBusyException) {
+            return Response::error(__('posts.errors.queue_busy'));
+        }
 
         if (data_get($result, 'action') === PostAction::Finalized) {
             return Response::error(PostStatusRules::editBlockedMessage());
@@ -76,6 +86,7 @@ class PublishPostTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to publish.'),
+            'queue' => $schema->string()->enum(array_column(QueuePosition::cases(), 'value'))->description(PostStatusRules::QUEUE_DESCRIPTION),
             'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future. If provided, the post is queued for that time. If omitted, publishing starts immediately.'),
         ];
     }

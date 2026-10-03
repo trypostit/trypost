@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'Підключення',
-    'page_title' => 'Соціальні акаунти',
-    'description' => 'Огляд усіх підключених соціальних акаунтів',
-    'connect_cta' => 'Підключити',
-    'connect_another' => 'Підключити ще',
-    'actions' => 'Дії з акаунтом',
-    'activate' => 'Увімкнути',
-    'deactivate' => 'Вимкнути',
-    'active' => 'Активний',
-    'paused' => 'Вимкнений',
-    'accounts_count' => ':count акаунт|:count акаунти|:count акаунтів',
-
-    'variants' => [
-        'linkedin-page' => 'Сторінка',
-        'instagram-facebook' => 'через Facebook',
-    ],
-
-    'not_connected' => 'Не підключено',
-    'connect' => 'Підключити',
-    'connection_lost' => 'З’єднання втрачено',
-    'reconnect' => 'Перепідключити',
-    'reconnect_account' => 'Перепідключити акаунт',
-    'view_profile' => 'Переглянути профіль',
-    'disconnect' => 'Від’єднати',
-
-    'descriptions' => [
-        'linkedin' => 'Підключіть профіль LinkedIn або сторінку компанії',
-        'linkedin-page' => 'Підключіть сторінку компанії LinkedIn',
-        'x' => 'Підключіть акаунт X (Twitter)',
-        'tiktok' => 'Підключіть акаунт TikTok',
-        'youtube' => 'Підключіть канал YouTube',
-        'facebook' => 'Підключіть сторінку Facebook',
-        'instagram' => 'Підключіть через Instagram Login або сторінки Facebook',
-        'instagram-facebook' => 'Підключіть Instagram через сторінку Facebook',
-        'threads' => 'Підключіть акаунт Threads',
-        'pinterest' => 'Підключіть акаунт Pinterest',
-        'bluesky' => 'Підключіть акаунт Bluesky',
-        'mastodon' => 'Підключіть акаунт Mastodon',
-        'telegram' => 'Підключіть канал або групу Telegram',
-        'discord' => 'Підключіть сервер Discord',
-        'google_business' => 'Підключіть місцезнаходження Google Business Profile',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Від’єднати акаунт',
-        'description' => 'Ви впевнені, що хочете від’єднати цей акаунт? Ви зможете підключити його знову будь-коли.',
-        'confirm' => 'Від’єднати',
-        'cancel' => 'Скасувати',
-    ],
-
     'bluesky' => [
         'title' => 'Підключити Bluesky',
         'description' => 'Введіть облікові дані для підключення',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Підключити Telegram',
         'description' => 'Під’єднайте канал або групу',
+        'steps' => 'Кроки',
         'step_admin' => 'Додайте :bot як адміністратора до каналу або групи Telegram.',
+        'open_bot' => 'Відкрити в Telegram',
         'step_command' => 'Опублікуйте цю команду в каналі або групі:',
         'waiting' => 'Очікуємо підключення каналу…',
-        'connected' => 'Канал підключено!',
-        'connected_toast' => 'Канал Telegram успішно підключено!',
-        'copied_toast' => 'Команду скопійовано в буфер обміну',
-        'copy_tooltip' => 'Копіювати команду',
-        'expired' => 'Цей код прострочено. Згенеруйте новий і спробуйте ще раз.',
-        'new_code' => 'Згенерувати новий код',
-        'retry' => 'Спробувати ще раз',
+        'copy_command' => 'Копіювати команду',
+        'expired' => 'Термін дії цієї команди минув. Створіть нову, щоб спробувати ще раз.',
+        'new_command' => 'Створити нову команду',
         'error_generic' => 'Не вдалося розпочати підключення. Спробуйте ще раз.',
         'network_taken' => 'У цьому робочому просторі вже підключено канал Telegram. Спочатку від’єднайте його.',
         'wrong_chat' => 'Надішліть команду в канал, який ви перепідключаєте.',
         'busy' => 'Інше підключення ще завершується. Надішліть команду ще раз за мить.',
+        'help' => [
+            'channel_admins' => 'Додавання адміністраторів до каналу',
+            'group_admins' => 'Додавання адміністраторів до групи',
+            'bot_privacy' => 'Що боти можуть читати в групах',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Підключити Instagram',
-        'description' => 'Оберіть спосіб підключення акаунта Instagram',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Увійдіть за допомогою професійного акаунта Instagram',
-        'facebook_title' => 'Сторінки Facebook',
-        'facebook_description' => 'Підключіть акаунт Instagram, повʼязаний зі сторінкою Facebook',
+        'title' => 'Як ви хочете підключити акаунт Instagram?',
+        'description' => 'Можливості залежать від типу вашого акаунта Instagram і вибраного способу підключення.',
+        'professional_title' => 'Професійний',
+        'professional_types' => '(Бізнес і Автор)',
+        'badge' => 'Автоматична публікація',
+        'features' => [
+            'automatic' => [
+                'title' => 'Автоматична публікація',
+                'description' => 'Ви плануєте, ми публікуємо',
+            ],
+            'metrics' => [
+                'title' => 'Метрики опублікованих дописів',
+                'description' => 'Переглядайте результати минулих дописів',
+            ],
+        ],
+        'connect' => 'Підключитися до Instagram',
+        'convert_hint' => 'За потреби Instagram запропонує легко перейти на професійний акаунт.',
+        'facebook_link' => 'Підключіть Instagram через Facebook',
+        'facebook_suffix' => '(якщо ваш акаунт Instagram зараз пов’язаний із Facebook).',
+        'help' => [
+            'account_type' => 'Як дізнатися тип акаунта Instagram',
+            'convert' => 'Як перевести акаунт Instagram у професійний',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Підключіть Instagram через Facebook',
+        'subtitle' => 'Ось що потрібно знати 👇',
+        'heading' => 'Вимоги',
+        'items' => [
+            'account_type' => [
+                'lead' => 'Бізнес-акаунт або акаунт автора',
+                'rest' => 'в Instagram, а не особистий профіль.',
+            ],
+            'page' => [
+                'lead' => 'Пов’язаний зі сторінкою Facebook,',
+                'rest' => 'а не з особистим профілем Facebook. Потрібно пов’язати Instagram із Facebook у Meta?',
+            ],
+            'admin' => [
+                'lead' => 'Вхід виконано як адміністратор сторінки Facebook',
+                'rest' => 'з «повним контролем».',
+            ],
+            'permissions' => [
+                'lead' => 'Вибрано всі дозволи для всіх сторінок і акаунтів Instagram',
+                'rest' => 'під час підключення, навіть для тих, які ви не підключатимете до TryPost.',
+            ],
+        ],
+        'learn_how' => 'Як це зробити.',
+        'note' => 'Підключення не працюватиме, якщо не виконано хоча б одну з цих вимог.',
+        'connect' => 'Підключити через Facebook',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Обліковий запис увімкнено. Відновлено :count автоматизацію.|Обліковий запис увімкнено. Відновлено автоматизацій: :count.',
         'disconnected_paused_repurposes' => 'Обліковий запис відключено. Призупинено :count автоматизацію.|Обліковий запис відключено. Призупинено автоматизацій: :count.',
-        'deactivated_paused_repurposes' => 'Обліковий запис вимкнено. Призупинено :count автоматизацію.|Обліковий запис вимкнено. Призупинено автоматизацій: :count.',
         'disconnected' => 'Акаунт успішно від’єднано!',
-        'connected' => 'Акаунт успішно підключено!',
         'session_expired' => 'Сесію завершено. Спробуйте ще раз.',
         'workspace_not_found' => 'Робочий простір не знайдено.',
-        'activated' => 'Акаунт активовано!',
-        'deactivated' => 'Акаунт деактивовано!',
         'already_connected' => 'Ця платформа вже підключена.',
         'no_youtube_channels' => 'Каналів YouTube не знайдено. Спочатку створіть канал.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Підключено',
         'title_error' => 'Помилка',
         'closing' => 'Це вікно закриється автоматично...',
         'manual_close' => 'Ви можете закрити це вікно.',
         'popup_blocked' => 'Не вдалося відкрити вікно підключення. Дозвольте спливаючі вікна і спробуйте ще раз.',
-        'connected' => 'Акаунт підключено!',
-        'reconnected' => 'Акаунт перепідключено!',
         'error_connecting' => 'Помилка підключення акаунта. Спробуйте ще раз.',
         'network_taken' => 'У цьому робочому просторі вже є акаунт для цієї мережі. Спочатку від’єднайте його.',
         'wrong_account' => 'Це інший акаунт. Авторизуйте той, який ви перепідключаєте.',

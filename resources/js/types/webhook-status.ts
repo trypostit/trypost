@@ -7,14 +7,11 @@ export const WebhookStatus = {
 export type WebhookStatusValue =
     (typeof WebhookStatus)[keyof typeof WebhookStatus];
 
-type WebhookStatusBadgeVariant = 'default' | 'secondary' | 'warning';
+const webhookStatusDots = {
+    [WebhookStatus.Enabled]: 'bg-success',
+    [WebhookStatus.Paused]: 'bg-warning',
+    [WebhookStatus.Disabled]: 'bg-border-strong',
+} as const satisfies Record<WebhookStatusValue, string>;
 
-const webhookStatusVariants = {
-    [WebhookStatus.Enabled]: 'default',
-    [WebhookStatus.Disabled]: 'secondary',
-    [WebhookStatus.Paused]: 'warning',
-} as const satisfies Record<WebhookStatusValue, WebhookStatusBadgeVariant>;
-
-export const webhookStatusVariant = (
-    status: WebhookStatusValue,
-): WebhookStatusBadgeVariant => webhookStatusVariants[status];
+export const webhookStatusDot = (status: WebhookStatusValue): string =>
+    webhookStatusDots[status];

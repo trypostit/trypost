@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
@@ -142,18 +141,9 @@ class VerifyWorkspaceConnections implements ShouldQueue
             return;
         }
 
-        $accountNames = $disconnectedAccounts
-            ->map(fn ($account) => $account->platform->label().' ('.$account->handle().')')
-            ->implode(', ');
-
         SendNotification::dispatch(
             user: $owner,
-            workspaceId: $this->workspace->id,
             type: Type::AccountDisconnected,
-            channel: Channel::Both,
-            title: $disconnectedAccounts->count().' '.($disconnectedAccounts->count() === 1 ? 'account' : 'accounts').' disconnected',
-            body: $accountNames,
-            data: ['workspace_id' => $this->workspace->id],
             mailable: new WorkspaceConnectionsDisconnected($this->workspace, $disconnectedAccounts),
         );
     }

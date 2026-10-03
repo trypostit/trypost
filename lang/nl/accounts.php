@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'Koppelingen',
-    'page_title' => 'Social accounts',
-    'description' => 'Overzicht van al je gekoppelde social accounts',
-    'connect_cta' => 'Koppelen',
-    'connect_another' => 'Nog een koppelen',
-    'actions' => 'Accountacties',
-    'activate' => 'Inschakelen',
-    'deactivate' => 'Uitschakelen',
-    'active' => 'Actief',
-    'paused' => 'Uit',
-    'accounts_count' => ':count account|:count accounts',
-
-    'variants' => [
-        'linkedin-page' => 'Pagina',
-        'instagram-facebook' => 'via Facebook',
-    ],
-
-    'not_connected' => 'Niet gekoppeld',
-    'connect' => 'Koppelen',
-    'connection_lost' => 'Verbinding verbroken',
-    'reconnect' => 'Opnieuw koppelen',
-    'reconnect_account' => 'Account opnieuw koppelen',
-    'view_profile' => 'Profiel bekijken',
-    'disconnect' => 'Loskoppelen',
-
-    'descriptions' => [
-        'linkedin' => 'Koppel je LinkedIn-profiel of bedrijfspagina',
-        'linkedin-page' => 'Koppel een LinkedIn-bedrijfspagina',
-        'x' => 'Koppel je X-account (Twitter)',
-        'tiktok' => 'Koppel je TikTok-account',
-        'youtube' => 'Koppel een YouTube-kanaal',
-        'facebook' => 'Koppel een Facebook-pagina',
-        'instagram' => 'Koppel via Instagram Login of Facebook-pagina\'s',
-        'instagram-facebook' => 'Koppel Instagram via een Facebook-pagina',
-        'threads' => 'Koppel je Threads-account',
-        'pinterest' => 'Koppel je Pinterest-account',
-        'bluesky' => 'Koppel je Bluesky-account',
-        'mastodon' => 'Koppel je Mastodon-account',
-        'telegram' => 'Koppel een Telegram-kanaal of -groep',
-        'discord' => 'Koppel een Discord-server',
-        'google_business' => 'Koppel een Google Bedrijfsprofiel-locatie',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Account loskoppelen',
-        'description' => 'Weet je zeker dat je dit account wilt loskoppelen? Je kunt het op elk moment opnieuw koppelen.',
-        'confirm' => 'Loskoppelen',
-        'cancel' => 'Annuleren',
-    ],
-
     'bluesky' => [
         'title' => 'Bluesky koppelen',
         'description' => 'Voer je inloggegevens in om te koppelen',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Telegram koppelen',
         'description' => 'Koppel een kanaal of groep',
+        'steps' => 'Stappen',
         'step_admin' => 'Voeg :bot toe als beheerder aan je Telegram-kanaal of -groep.',
+        'open_bot' => 'Openen in Telegram',
         'step_command' => 'Plaats deze opdracht in het kanaal of de groep:',
         'waiting' => 'Wachten tot het kanaal koppelt…',
-        'connected' => 'Kanaal gekoppeld!',
-        'connected_toast' => 'Telegram-kanaal succesvol gekoppeld!',
-        'copied_toast' => 'Opdracht gekopieerd naar klembord',
-        'copy_tooltip' => 'Opdracht kopiëren',
-        'expired' => 'Deze code is verlopen. Genereer een nieuwe om het opnieuw te proberen.',
-        'new_code' => 'Genereer een nieuwe code',
-        'retry' => 'Opnieuw proberen',
+        'copy_command' => 'Opdracht kopiëren',
+        'expired' => 'Deze opdracht is verlopen. Genereer een nieuwe om het opnieuw te proberen.',
+        'new_command' => 'Nieuwe opdracht genereren',
         'error_generic' => 'Kon de koppeling niet starten. Probeer het opnieuw.',
         'network_taken' => 'Deze workspace heeft al een Telegram-kanaal gekoppeld. Koppel dat eerst los.',
         'wrong_chat' => 'Plaats de opdracht in het kanaal dat je opnieuw koppelt.',
         'busy' => 'Een andere koppeling wordt nog afgerond. Plaats de opdracht zo meteen opnieuw.',
+        'help' => [
+            'channel_admins' => 'Beheerders toevoegen aan een kanaal',
+            'group_admins' => 'Beheerders toevoegen aan een groep',
+            'bot_privacy' => 'Wat bots in groepen kunnen lezen',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Instagram koppelen',
-        'description' => 'Kies hoe je je Instagram-account wilt koppelen',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Log in met je professionele Instagram-account',
-        'facebook_title' => 'Facebook-pagina\'s',
-        'facebook_description' => 'Koppel een Instagram-account dat gekoppeld is aan een Facebook-pagina',
+        'title' => 'Hoe wil je je Instagram-account koppelen?',
+        'description' => 'Functies hangen af van het type Instagram-account dat je hebt en de koppeling die je kiest.',
+        'professional_title' => 'Professioneel',
+        'professional_types' => '(Bedrijf & Creator)',
+        'badge' => 'Automatisch posten',
+        'features' => [
+            'automatic' => [
+                'title' => 'Automatisch posten',
+                'description' => 'Jij plant, wij posten',
+            ],
+            'metrics' => [
+                'title' => 'Statistieken van verzonden posts',
+                'description' => 'Bekijk de prestaties van eerdere posts',
+            ],
+        ],
+        'connect' => 'Koppelen met Instagram',
+        'convert_hint' => 'Instagram vraagt je indien nodig om eenvoudig over te stappen naar een professioneel account.',
+        'facebook_link' => 'Koppel Instagram via Facebook',
+        'facebook_suffix' => 'als je Instagram-account momenteel aan Facebook is gekoppeld.',
+        'help' => [
+            'account_type' => 'Het type van je Instagram-account vinden',
+            'convert' => 'Je Instagram-account omzetten naar een professioneel account',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Koppel Instagram via Facebook',
+        'subtitle' => 'Dit moet je weten 👇',
+        'heading' => 'Vereisten',
+        'items' => [
+            'account_type' => [
+                'lead' => 'Zakelijk of Creator',
+                'rest' => 'Instagram-account, geen persoonlijk Instagram-profiel.',
+            ],
+            'page' => [
+                'lead' => 'Gekoppeld aan een Facebook-pagina,',
+                'rest' => 'niet aan een Facebook-profiel. Moet je Instagram nog aan Facebook koppelen bij Meta?',
+            ],
+            'admin' => [
+                'lead' => 'Ingelogd als beheerder van de Facebook-pagina',
+                'rest' => 'met “volledige controle”.',
+            ],
+            'permissions' => [
+                'lead' => 'Alle machtigingen geselecteerd voor alle pagina’s en Instagram-accounts',
+                'rest' => 'tijdens het koppelen, ook voor de accounts die je niet aan TryPost koppelt.',
+            ],
+        ],
+        'learn_how' => 'Zo werkt het.',
+        'note' => 'De koppeling werkt niet als niet aan al deze vereisten wordt voldaan.',
+        'connect' => 'Koppelen via Facebook',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Account ingeschakeld. :count automatisering hervat.|Account ingeschakeld. :count automatiseringen hervat.',
         'disconnected_paused_repurposes' => 'Account losgekoppeld. :count automatisering gepauzeerd.|Account losgekoppeld. :count automatiseringen gepauzeerd.',
-        'deactivated_paused_repurposes' => 'Account uitgeschakeld. :count automatisering gepauzeerd.|Account uitgeschakeld. :count automatiseringen gepauzeerd.',
         'disconnected' => 'Account succesvol losgekoppeld!',
-        'connected' => 'Account succesvol gekoppeld!',
         'session_expired' => 'Sessie verlopen. Probeer het opnieuw.',
         'workspace_not_found' => 'Workspace niet gevonden.',
-        'activated' => 'Account geactiveerd!',
-        'deactivated' => 'Account gedeactiveerd!',
         'already_connected' => 'Dit platform is al gekoppeld.',
         'no_youtube_channels' => 'Geen YouTube-kanalen gevonden. Maak eerst een kanaal aan.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Gekoppeld',
         'title_error' => 'Fout',
         'closing' => 'Dit venster wordt automatisch gesloten...',
         'manual_close' => 'Je kunt dit venster sluiten.',
         'popup_blocked' => 'Kon het koppelvenster niet openen. Sta pop-ups toe en probeer het opnieuw.',
-        'connected' => 'Account gekoppeld!',
-        'reconnected' => 'Account opnieuw gekoppeld!',
         'error_connecting' => 'Fout bij het koppelen van het account. Probeer het opnieuw.',
         'network_taken' => 'Deze workspace heeft al een account voor dit netwerk. Koppel dat eerst los.',
         'wrong_account' => 'Dat is een ander account. Autoriseer het account dat je opnieuw koppelt.',

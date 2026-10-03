@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace App\Services\Post;
 
+use App\Actions\Post\AppendPostMedia;
 use App\Dto\MediaItem;
+use App\Dto\RemoteFile;
 use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
+use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Brand\SafeHttpFetcher;
-use Illuminate\Support\Facades\File;
-use RuntimeException;
-use Throwable;
+use App\Services\Media\RemoteMediaImporter;
 
 /**
- * Downloads public URLs and attaches them as media to a post — used by
- * the MCP `AttachMediaFromUrlTool` and the REST `attach-media-from-url`
- * endpoint.
+ * Downloads public URLs as temporary uploads and attaches them as media the
+ * post owns — used by the MCP `AttachMediaFromUrlTool` and the REST
+ * `attach-media-from-url` endpoint.
  *
  * URL syntax + DNS resolvability are validated at the request layer
  * (`url:http,https`, `active_url`). Locking, intersection of accepted
@@ -26,26 +26,32 @@ use Throwable;
  */
 class MediaAttacher
 {
-    public function __construct(private readonly SafeHttpFetcher $safeHttp) {}
+    private const int TIMEOUT_SECONDS = 20;
+
+    private const int IMAGE_TIMEOUT_SECONDS = 10;
+
+    public function __construct(private readonly RemoteMediaImporter $importer) {}
 
     /**
      * @param  array<int, array{url: string, alt?: ?string}>  $urls
      * @return array{attached: array<int, array<string, mixed>>, failed: array<int, string>}
      */
-    public function attachFromUrls(Post $post, array $urls): array
+    public function attachFromUrls(Post $post, array $urls, ?User $actor = null): array
     {
         $attached = [];
         $failed = [];
 
         foreach ($urls as $entry) {
             $url = (string) data_get($entry, 'url', '');
-            $item = $this->fetchToWorkspace($post->workspace, $post->allowedMediaTypes(), $url);
+            $hosted = $this->hostUpload($post->workspace, $post->allowedMediaTypes(), $url);
 
-            if ($item === null) {
+            if ($hosted === null) {
                 $failed[] = $url;
 
                 continue;
             }
+
+            $item = MediaItem::fromMedia($hosted)->toArray();
 
             if (($alt = data_get($entry, 'alt')) !== null
                 && MediaType::classify(data_get($item, 'mime_type'), data_get($item, 'path')) === MediaType::Image) {
@@ -56,135 +62,39 @@ class MediaAttacher
         }
 
         if ($attached !== []) {
-            $post->appendMedia($attached);
+            AppendPostMedia::execute($post, $attached, $actor);
+            $owned = collect($post->media ?? [])->keyBy('id');
+            $attached = array_map(fn (array $item): array => $owned->get(data_get($item, 'id'), $item), $attached);
         }
 
         return ['attached' => $attached, 'failed' => $failed];
     }
 
     /**
-     * Resolve an inline media array into hosted items: items with a `path` pass
-     * through, external URLs are downloaded and hosted. Atomic — when any item
-     * fails, media hosted in this call is rolled back so nothing is orphaned.
-     *
-     * @param  array<MediaType>  $allowedTypes
-     * @param  array<int, array<string, mixed>>  $items
-     * @return array{media: array<int, array<string, mixed>>, failed: array<int, string>}
+     * Download one image URL as a temporary upload, aborting once the transfer
+     * passes the image size cap. Null when the URL is blocked, unreachable,
+     * oversized or not an image.
      */
-    public function resolveInlineMedia(Workspace $workspace, array $allowedTypes, array $items): array
+    public function hostImage(Workspace $workspace, string $url): ?Media
     {
-        $media = [];
-        $failed = [];
-        $hostedIds = [];
+        $deadline = now()->addSeconds((int) config('trypost.rss_feeds.fetch_budget_seconds'));
 
-        foreach ($items as $item) {
-            if (filled(data_get($item, 'path'))) {
-                $media[] = $item;
-
-                continue;
-            }
-
-            $url = (string) data_get($item, 'url', '');
-            $hosted = $this->fetchToWorkspace($workspace, $allowedTypes, $url);
-
-            if ($hosted === null) {
-                $failed[] = $url;
-
-                continue;
-            }
-
-            // The client's meta (alt text) fills in; what the server measured from the file wins.
-            $hosted['meta'] = [...data_get($item, 'meta') ?? [], ...data_get($hosted, 'meta', [])];
-
-            $media[] = $hosted;
-            $hostedIds[] = data_get($hosted, 'id');
-        }
-
-        if ($failed !== [] && $hostedIds !== []) {
-            Media::query()->whereKey($hostedIds)->get()->each->delete();
-        }
-
-        return ['media' => $media, 'failed' => $failed];
+        return $this->importer->import($workspace, $this->remoteFile($url), [MediaType::Image], self::IMAGE_TIMEOUT_SECONDS, $deadline, followRedirects: true)->media;
     }
 
     /**
-     * Download a URL, validate its type, and store it on the workspace.
+     * Download one URL of an allowed type as a temporary upload. Null when the
+     * download fails or the file is not an allowed type or is over its cap.
      *
      * @param  array<MediaType>  $allowedTypes
-     * @return array<string, mixed>|null
      */
-    private function fetchToWorkspace(Workspace $workspace, array $allowedTypes, string $url): ?array
+    public function hostUpload(Workspace $workspace, array $allowedTypes, string $url): ?Media
     {
-        $download = $this->download($url);
-
-        if ($download === null) {
-            return null;
-        }
-
-        try {
-            $type = MediaType::fromMime($download['mime'] ?? '');
-
-            if ($type === null || ! in_array($type, $allowedTypes, true)) {
-                return null;
-            }
-
-            if ($download['bytes'] > $type->maxSizeInBytes()) {
-                return null;
-            }
-
-            $name = basename(parse_url($url, PHP_URL_PATH) ?? '') ?: 'download.bin';
-            $media = $workspace->addMediaFromPath($download['path'], $name, 'assets');
-
-            return MediaItem::fromMedia($media)->toArray();
-        } finally {
-            @unlink($download['path']);
-        }
+        return $this->importer->import($workspace, $this->remoteFile($url), $allowedTypes, self::TIMEOUT_SECONDS)->media;
     }
 
-    /**
-     * Stream the URL to a temp file, aborting once we exceed the largest
-     * configured per-type cap (video). MIME is sniffed from the file's
-     * magic bytes — far more reliable than trusting the upstream
-     * `Content-Type` header (CDNs misconfigure, attackers spoof).
-     *
-     * @return array{path: string, mime: ?string, bytes: int}|null
-     */
-    private function download(string $url): ?array
+    private function remoteFile(string $url): RemoteFile
     {
-        $cap = MediaType::Video->maxSizeInBytes();
-        $temp = tempnam(sys_get_temp_dir(), 'media_');
-
-        try {
-            $response = $this->safeHttp->guardedRequest($url, followRedirects: false)
-                ->timeout(20)
-                ->sink($temp)
-                ->withOptions([
-                    'progress' => static function ($total, $downloaded) use ($cap): void {
-                        if ($downloaded > $cap) {
-                            throw new RuntimeException('exceeded max bytes');
-                        }
-                    },
-                ])
-                ->get($url);
-        } catch (Throwable) {
-            // Any fetch failure (timeout, DNS, refused, oversize) is a failed download.
-            @unlink($temp);
-
-            return null;
-        }
-
-        $bytes = filesize($temp) ?: 0;
-
-        if (! $response->successful() || $bytes === 0) {
-            @unlink($temp);
-
-            return null;
-        }
-
-        return [
-            'path' => $temp,
-            'mime' => File::mimeType($temp) ?: null,
-            'bytes' => $bytes,
-        ];
+        return new RemoteFile($url, basename((string) parse_url($url, PHP_URL_PATH)));
     }
 }

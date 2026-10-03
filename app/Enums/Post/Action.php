@@ -9,4 +9,5 @@ enum Action: string
     case Finalized = 'finalized';
     case Publishing = 'publishing';
     case Scheduled = 'scheduled';
+    case PendingApproval = 'pending_approval';
 }

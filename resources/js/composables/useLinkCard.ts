@@ -2,6 +2,7 @@ import { useHttp } from '@inertiajs/vue3';
 import { watchDebounced } from '@vueuse/core';
 import { computed, ref, watch, type Ref } from 'vue';
 
+import dayjs from '@/dayjs';
 import { linkPreview } from '@/routes/app/posts';
 import type { MediaItem } from '@/types/media';
 
@@ -13,8 +14,37 @@ export interface LinkCard {
     image: string | null;
 }
 
-const firstHttpUrl = (text: string): string | null =>
+export const firstHttpUrl = (text: string): string | null =>
     text.match(/https?:\/\/\S+/)?.[0] ?? null;
+
+const CARD_TTL_MS = 10 * 60 * 1000;
+
+const sharedCards = new Map<
+    string,
+    { expiresAt: number; request: Promise<LinkCard | null> }
+>();
+
+const sharedCard = (
+    target: string,
+    fetchCard: () => Promise<LinkCard | null>,
+): Promise<LinkCard | null> => {
+    const cached = sharedCards.get(target);
+    if (cached && cached.expiresAt > dayjs().valueOf()) {
+        return cached.request;
+    }
+
+    const request = fetchCard().catch(() => {
+        sharedCards.delete(target);
+
+        return null;
+    });
+    sharedCards.set(target, {
+        expiresAt: dayjs().valueOf() + CARD_TTL_MS,
+        request,
+    });
+
+    return request;
+};
 
 /**
  * OpenGraph card for the link a platform will publish. Attached media hides it.
@@ -22,8 +52,8 @@ const firstHttpUrl = (text: string): string | null =>
  * some hosts. The backend trims the URL and returns the card.
  */
 export const useLinkCard = (
-    content: Ref<string>,
-    media: Ref<MediaItem[]>,
+    content: Readonly<Ref<string>>,
+    media: Readonly<Ref<MediaItem[]>>,
     selectUrl: (text: string) => string | null = firstHttpUrl,
 ) => {
     const card = ref<LinkCard | null>(null);
@@ -37,9 +67,11 @@ export const useLinkCard = (
 
     const loadCard = async (target: string): Promise<void> => {
         const id = requestId;
-        http.url = target;
+        const data = await sharedCard(target, () => {
+            http.url = target;
 
-        const data = await http.post(linkPreview.url()).catch(() => null);
+            return http.post(linkPreview.url());
+        });
 
         // A slow response must not revive a removed link or overwrite a newer one.
         if (id !== requestId) {

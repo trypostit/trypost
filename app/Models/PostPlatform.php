@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy(PostPlatformObserver::class)]
@@ -37,6 +38,7 @@ class PostPlatform extends Model
         'platform_url',
         'error_message',
         'error_context',
+        'thread_reply_ids',
         'published_at',
         'submitted_at',
         'last_reconciled_at',
@@ -56,6 +58,7 @@ class PostPlatform extends Model
             'last_reconciled_at' => 'datetime',
             'meta' => 'array',
             'error_context' => 'array',
+            'thread_reply_ids' => 'array',
             'connection_warning_sent_at' => 'datetime',
         ];
     }
@@ -68,6 +71,11 @@ class PostPlatform extends Model
     public function socialAccount(): BelongsTo
     {
         return $this->belongsTo(SocialAccount::class);
+    }
+
+    public function analyticsPublication(): HasOne
+    {
+        return $this->hasOne(AnalyticsPublication::class);
     }
 
     /**
@@ -90,6 +98,11 @@ class PostPlatform extends Model
         return $query->where('post_platforms.status', Status::Published);
     }
 
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('post_platforms.platform', SocialPlatform::analyticsValues());
+    }
+
     /**
      * Get display name, falling back to snapshot if account was deleted.
      */
@@ -107,7 +120,7 @@ class PostPlatform extends Model
     }
 
     /**
-     * "Facebook Page (@handle)" for emails and in-app notifications.
+     * "Facebook Page (@handle)" for emails.
      * Username first, then display name (live account or the snapshot
      * kept on this row). When neither is set — or the account is gone
      * and there is no snapshot — just the platform name, never "(@)".
@@ -135,6 +148,15 @@ class PostPlatform extends Model
         }
 
         return $this->platform_avatar ? Storage::url($this->platform_avatar) : null;
+    }
+
+    /**
+     * Whether the publisher attaches the link preview card for the first URL.
+     * False only when the user dropped the card in the composer.
+     */
+    public function attachesLinkPreview(): bool
+    {
+        return data_get($this->meta, 'link_preview') !== false;
     }
 
     public function markAsPublishing(): void

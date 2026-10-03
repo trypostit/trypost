@@ -16,6 +16,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\PostPlatform;
+use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Discord\DiscordPublisher;
@@ -32,6 +33,8 @@ use App\Services\Social\TikTokPublisher;
 use App\Services\Social\XPublisher;
 use App\Services\Social\YouTubePublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
+use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -90,12 +93,6 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        if (! $this->postPlatform->socialAccount->is_active) {
-            $this->failAndFinalize(__('posts.errors.account_inactive'));
-
-            return;
-        }
-
         if ($this->postPlatform->socialAccount->status === Status::Disconnected) {
             $this->failAndFinalize(__('posts.errors.account_disconnected'));
 
@@ -112,6 +109,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         }
 
         if ($this->failForMissingScopes()) {
+            return;
+        }
+
+        if ($this->failForInvalidMedia()) {
             return;
         }
 
@@ -187,6 +188,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         // tryFrom, not fromApi: every other publisher omits `state`. fromApi(null)
         // is Processing, which would hold LinkedIn/X/… in pending review forever.
         $state = LocalPostState::tryFrom((string) data_get($result, 'state'));
+        $threadReplyIds = data_get($result, 'thread_reply_ids');
+
+        if (is_array($threadReplyIds) && $threadReplyIds !== []) {
+            $this->postPlatform->thread_reply_ids = array_values($threadReplyIds);
+        }
 
         match ($state) {
             LocalPostState::Rejected => $this->postPlatform->markAsRejected(
@@ -228,6 +234,45 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 'failed_at' => now()->toIso8601String(),
             ],
         );
+
+        return true;
+    }
+
+    /**
+     * Media can become invalid after scheduling (bounds changed in a release,
+     * an edit through another path, legacy rows): recheck it against the same
+     * rule every save runs, and fail without calling the network. A resume of
+     * a publish already accepted by the provider (Instagram container, TikTok
+     * publish id) is not rechecked: its media is already on the network.
+     */
+    private function failForInvalidMedia(): bool
+    {
+        $context = $this->postPlatform->error_context;
+
+        if (PublishCheckpoint::instagramWorkflow($context) !== null || PublishCheckpoint::tiktokPublishId($context) !== null) {
+            return false;
+        }
+
+        $post = $this->postPlatform->post;
+        $errors = ContentTypeCompatibleWithMedia::errorsFor(
+            [[
+                'key' => 'media',
+                'content_type' => $this->postPlatform->content_type?->value,
+                'aspect_ratio' => data_get($this->postPlatform->meta, 'aspect_ratio'),
+            ]],
+            (array) ($post->media ?? []),
+            $post->workspace,
+            $post->content,
+        );
+
+        if ($errors === []) {
+            return false;
+        }
+
+        $this->failAndFinalize((string) array_first($errors), $this->failureContext([
+            'reason' => 'media_invalid',
+            'category' => ErrorCategory::MediaFormat->value,
+        ]));
 
         return true;
     }
@@ -373,7 +418,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
         $failureContext = [...$previousContext, ...($context ?? [])];
 
-        $this->postPlatform->markAsFailed($message, $failureContext === [] ? null : $failureContext);
+        $this->postPlatform->markAsFailed(
+            ThreadProgress::failureMessage($this->postPlatform, $message, $failureContext),
+            $failureContext === [] ? null : $failureContext,
+        );
     }
 
     /**

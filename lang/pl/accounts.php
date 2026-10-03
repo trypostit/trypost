@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'Połączenia',
-    'page_title' => 'Konta społecznościowe',
-    'description' => 'Przegląd wszystkich Twoich połączonych kont społecznościowych',
-    'connect_cta' => 'Połącz',
-    'connect_another' => 'Połącz kolejne',
-    'actions' => 'Akcje konta',
-    'activate' => 'Włącz',
-    'deactivate' => 'Wyłącz',
-    'active' => 'Aktywne',
-    'paused' => 'Wyłączone',
-    'accounts_count' => ':count konto|:count konta|:count kont',
-
-    'variants' => [
-        'linkedin-page' => 'Strona',
-        'instagram-facebook' => 'przez Facebooka',
-    ],
-
-    'not_connected' => 'Niepołączone',
-    'connect' => 'Połącz',
-    'connection_lost' => 'Utracono połączenie',
-    'reconnect' => 'Połącz ponownie',
-    'reconnect_account' => 'Połącz konto ponownie',
-    'view_profile' => 'Zobacz profil',
-    'disconnect' => 'Rozłącz',
-
-    'descriptions' => [
-        'linkedin' => 'Połącz swój profil LinkedIn lub stronę firmową',
-        'linkedin-page' => 'Połącz stronę firmową LinkedIn',
-        'x' => 'Połącz swoje konto X (Twitter)',
-        'tiktok' => 'Połącz swoje konto TikTok',
-        'youtube' => 'Połącz kanał YouTube',
-        'facebook' => 'Połącz stronę na Facebooku',
-        'instagram' => 'Połącz przez Instagram Login lub strony na Facebooku',
-        'instagram-facebook' => 'Połącz Instagram przez stronę na Facebooku',
-        'threads' => 'Połącz swoje konto Threads',
-        'pinterest' => 'Połącz swoje konto Pinterest',
-        'bluesky' => 'Połącz swoje konto Bluesky',
-        'mastodon' => 'Połącz swoje konto Mastodon',
-        'telegram' => 'Połącz kanał lub grupę na Telegramie',
-        'discord' => 'Połącz serwer Discord',
-        'google_business' => 'Połącz lokalizację Google Business Profile',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Rozłącz konto',
-        'description' => 'Czy na pewno chcesz rozłączyć to konto? Możesz połączyć je ponownie w dowolnym momencie.',
-        'confirm' => 'Rozłącz',
-        'cancel' => 'Anuluj',
-    ],
-
     'bluesky' => [
         'title' => 'Połącz Bluesky',
         'description' => 'Wprowadź swoje dane logowania, aby połączyć konto',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Połącz Telegram',
         'description' => 'Podłącz kanał lub grupę',
+        'steps' => 'Kroki',
         'step_admin' => 'Dodaj :bot jako administratora swojego kanału lub grupy na Telegramie.',
+        'open_bot' => 'Otwórz w Telegramie',
         'step_command' => 'Opublikuj tę komendę na kanale lub w grupie:',
         'waiting' => 'Oczekiwanie na połączenie kanału…',
-        'connected' => 'Kanał połączony!',
-        'connected_toast' => 'Kanał Telegram został pomyślnie połączony!',
-        'copied_toast' => 'Skopiowano komendę do schowka',
-        'copy_tooltip' => 'Kopiuj komendę',
-        'expired' => 'Ten kod wygasł. Wygeneruj nowy, aby spróbować ponownie.',
-        'new_code' => 'Wygeneruj nowy kod',
-        'retry' => 'Spróbuj ponownie',
+        'copy_command' => 'Kopiuj komendę',
+        'expired' => 'To polecenie wygasło. Wygeneruj nowe, aby spróbować ponownie.',
+        'new_command' => 'Wygeneruj nowe polecenie',
         'error_generic' => 'Nie udało się rozpocząć łączenia. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już połączony kanał Telegram. Najpierw go rozłącz.',
         'wrong_chat' => 'Opublikuj polecenie w kanale, który ponownie łączysz.',
         'busy' => 'Inne łączenie wciąż się kończy. Wyślij polecenie ponownie za chwilę.',
+        'help' => [
+            'channel_admins' => 'Dodawanie administratorów do kanału',
+            'group_admins' => 'Dodawanie administratorów do grupy',
+            'bot_privacy' => 'Co boty mogą czytać w grupach',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Połącz Instagram',
-        'description' => 'Wybierz sposób połączenia konta Instagram',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Zaloguj się kontem profesjonalnym Instagram',
-        'facebook_title' => 'Strony na Facebooku',
-        'facebook_description' => 'Połącz konto Instagram powiązane ze stroną na Facebooku',
+        'title' => 'Jak chcesz połączyć swoje konto na Instagramie?',
+        'description' => 'Funkcje zależą od typu Twojego konta na Instagramie i wybranego sposobu połączenia.',
+        'professional_title' => 'Profesjonalne',
+        'professional_types' => '(Firma i Twórca)',
+        'badge' => 'Automatyczne publikowanie',
+        'features' => [
+            'automatic' => [
+                'title' => 'Automatyczne publikowanie',
+                'description' => 'Ty planujesz, my publikujemy',
+            ],
+            'metrics' => [
+                'title' => 'Statystyki wysłanych postów',
+                'description' => 'Sprawdzaj wyniki wcześniejszych postów',
+            ],
+        ],
+        'connect' => 'Połącz z Instagramem',
+        'convert_hint' => 'W razie potrzeby Instagram poprosi Cię o łatwe przełączenie na konto profesjonalne.',
+        'facebook_link' => 'Połącz Instagram przez Facebooka',
+        'facebook_suffix' => '(jeśli Twoje konto na Instagramie jest obecnie połączone z Facebookiem).',
+        'help' => [
+            'account_type' => 'Jak sprawdzić typ konta na Instagramie',
+            'convert' => 'Jak przełączyć konto na Instagramie na profesjonalne',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Połącz Instagram przez Facebooka',
+        'subtitle' => 'Oto, co musisz wiedzieć 👇',
+        'heading' => 'Wymagania',
+        'items' => [
+            'account_type' => [
+                'lead' => 'Konto firmowe lub twórcy',
+                'rest' => 'na Instagramie, a nie osobisty profil.',
+            ],
+            'page' => [
+                'lead' => 'Połączone ze stroną na Facebooku,',
+                'rest' => 'a nie z profilem na Facebooku. Musisz połączyć Instagram z Facebookiem w Meta?',
+            ],
+            'admin' => [
+                'lead' => 'Zalogowano jako administrator strony na Facebooku',
+                'rest' => 'z „pełną kontrolą”.',
+            ],
+            'permissions' => [
+                'lead' => 'Wszystkie uprawnienia zaznaczone dla wszystkich stron i kont na Instagramie',
+                'rest' => 'podczas łączenia, także tych, których nie połączysz z TryPost.',
+            ],
+        ],
+        'learn_how' => 'Dowiedz się jak.',
+        'note' => 'Połączenie nie zadziała, jeśli którekolwiek z tych wymagań nie jest spełnione.',
+        'connect' => 'Połącz przez Facebooka',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Konto włączone. Wznowiono :count automatyzację.|Konto włączone. Wznowiono :count automatyzacje.',
         'disconnected_paused_repurposes' => 'Konto odłączone. Wstrzymano :count automatyzację.|Konto odłączone. Wstrzymano :count automatyzacje.',
-        'deactivated_paused_repurposes' => 'Konto wyłączone. Wstrzymano :count automatyzację.|Konto wyłączone. Wstrzymano :count automatyzacje.',
         'disconnected' => 'Konto zostało pomyślnie rozłączone!',
-        'connected' => 'Konto zostało pomyślnie połączone!',
         'session_expired' => 'Sesja wygasła. Spróbuj ponownie.',
         'workspace_not_found' => 'Nie znaleziono przestrzeni roboczej.',
-        'activated' => 'Konto aktywowane!',
-        'deactivated' => 'Konto dezaktywowane!',
         'already_connected' => 'Ta platforma jest już połączona.',
         'no_youtube_channels' => 'Nie znaleziono kanałów YouTube. Najpierw utwórz kanał.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Połączono',
         'title_error' => 'Błąd',
         'closing' => 'To okno zamknie się automatycznie...',
         'manual_close' => 'Możesz zamknąć to okno.',
         'popup_blocked' => 'Nie udało się otworzyć okna połączenia. Zezwól na wyskakujące okienka i spróbuj ponownie.',
-        'connected' => 'Konto połączone!',
-        'reconnected' => 'Konto połączone ponownie!',
         'error_connecting' => 'Błąd podczas łączenia konta. Spróbuj ponownie.',
         'network_taken' => 'Ta przestrzeń robocza ma już konto dla tej sieci. Najpierw je rozłącz.',
         'wrong_account' => 'To inne konto. Autoryzuj to, które ponownie łączysz.',

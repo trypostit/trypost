@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\AccessToken\RevokeAccessTokens;
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ test('revokes access tokens and their refresh tokens', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
 
     $token = mcpAccessToken($user, mcpOauthClient(), $workspace);
     $refreshId = Str::random(80);

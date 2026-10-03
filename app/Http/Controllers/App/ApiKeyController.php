@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\ApiKey\CreateApiKey;
+use App\Actions\ApiKey\RegenerateApiKey;
+use App\Enums\AccessToken\ExpiryStatus;
 use App\Http\Requests\App\ApiKey\StoreApiKeyRequest;
 use App\Models\AccessToken;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +39,7 @@ class ApiKeyController extends Controller
                 'last_used_at' => $token->last_used_at,
                 'expires_at' => $token->expires_at,
                 'created_at' => $token->created_at,
+                'status' => ExpiryStatus::for($token->expires_at)->value,
             ]);
 
         return Inertia::render('settings/workspace/ApiKeys', [
@@ -61,9 +64,26 @@ class ApiKeyController extends Controller
             $request->validated(),
         );
 
-        return back()
-            ->with('flash.success', __('settings.api_keys.flash.created'))
-            ->with('flash.plainToken', $created['plain_token']);
+        return back()->with('flash.plainToken', $created['plain_token']);
+    }
+
+    public function regenerate(Request $request, string $tokenId): RedirectResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+
+        if (! $workspace) {
+            return redirect()->route('app.workspaces.create');
+        }
+
+        $this->authorize('manageTeam', $workspace);
+
+        $regenerated = RegenerateApiKey::execute(
+            $request->user(),
+            $workspace,
+            $this->findToken($request, $workspace->id, $tokenId),
+        );
+
+        return back()->with('flash.plainToken', $regenerated['plain_token']);
     }
 
     public function destroy(Request $request, string $tokenId): RedirectResponse
@@ -76,9 +96,19 @@ class ApiKeyController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
+        $this->findToken($request, $workspace->id, $tokenId)
+            ->forceFill(['revoked' => true])
+            ->saveQuietly();
+
+        return back()->with('flash.success', __('settings.api_keys.flash.deleted'));
+    }
+
+    private function findToken(Request $request, string $workspaceId, string $tokenId): AccessToken
+    {
         $token = AccessToken::where('id', $tokenId)
             ->where('user_id', $request->user()->id)
-            ->where('workspace_id', $workspace->id)
+            ->where('workspace_id', $workspaceId)
+            ->where('revoked', false)
             ->personalAccessApiKey()
             ->first();
 
@@ -86,8 +116,6 @@ class ApiKeyController extends Controller
             abort(Response::HTTP_NOT_FOUND);
         }
 
-        $token->forceFill(['revoked' => true])->saveQuietly();
-
-        return back()->with('flash.success', __('settings.api_keys.flash.deleted'));
+        return $token;
     }
 }

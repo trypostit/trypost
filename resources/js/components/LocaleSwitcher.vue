@@ -60,7 +60,7 @@ const select = (code: string): void => {
                     <img
                         :src="current.flag"
                         :alt="current.name"
-                        class="h-3.5 w-5 rounded-xs object-cover ring-1 ring-border"
+                        class="h-3.5 w-5 rounded-xs object-cover"
                     />
                     <span>{{ current.name }}</span>
                 </template>
@@ -79,7 +79,7 @@ const select = (code: string): void => {
                 <img
                     :src="language.flag"
                     :alt="language.name"
-                    class="h-3.5 w-5 rounded-xs object-cover ring-1 ring-border"
+                    class="h-3.5 w-5 rounded-xs object-cover"
                 />
                 {{ language.name }}
                 <IconCheck

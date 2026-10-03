@@ -8,11 +8,10 @@ return [
     'back' => 'Назад',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'Это действие нельзя отменить.',
         'type' => 'Введите',
         'to_confirm' => 'для подтверждения.',
         'copy_to_clipboard' => 'Копировать в буфер обмена',
-        'delete_keyword' => 'удалить',
+        'delete_keyword' => 'УДАЛИТЬ',
     ],
 
     'photo_upload' => [
@@ -65,5 +64,16 @@ return [
         'copy' => 'Копировать',
         'copied' => 'Скопировано',
         'copy_failed' => 'Не удалось скопировать в буфер обмена',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'Просмотр медиа',
+        'previous' => 'Назад',
+        'next' => 'Далее',
+        'zoom_in' => 'Увеличить',
+        'zoom_out' => 'Уменьшить',
+        'counter' => ':current / :total',
+        'go_to' => 'Показать элемент :number',
+        'open' => 'Открыть просмотр',
     ],
 ];

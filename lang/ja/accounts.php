@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => '接続',
-    'page_title' => 'ソーシャルアカウント',
-    'description' => '接続済みのソーシャルアカウントの一覧',
-    'connect_cta' => '接続',
-    'connect_another' => '別のアカウントを接続',
-    'actions' => 'アカウント操作',
-    'activate' => '有効にする',
-    'deactivate' => '無効にする',
-    'active' => '有効',
-    'paused' => '無効',
-    'accounts_count' => ':count 件のアカウント',
-
-    'variants' => [
-        'linkedin-page' => 'ページ',
-        'instagram-facebook' => 'Facebook経由',
-    ],
-
-    'not_connected' => '未接続',
-    'connect' => '接続',
-    'connection_lost' => '接続が切れました',
-    'reconnect' => '再接続',
-    'reconnect_account' => 'アカウントを再接続',
-    'view_profile' => 'プロフィールを表示',
-    'disconnect' => '接続解除',
-
-    'descriptions' => [
-        'linkedin' => 'LinkedIn プロフィールまたは会社ページを接続',
-        'linkedin-page' => 'LinkedIn 会社ページを接続',
-        'x' => 'X（Twitter）アカウントを接続',
-        'tiktok' => 'TikTok アカウントを接続',
-        'youtube' => 'YouTube チャンネルを接続',
-        'facebook' => 'Facebook ページを接続',
-        'instagram' => 'Instagram Login または Facebook ページで接続',
-        'instagram-facebook' => 'Facebook ページ経由で Instagram を接続',
-        'threads' => 'Threads アカウントを接続',
-        'pinterest' => 'Pinterest アカウントを接続',
-        'bluesky' => 'Bluesky アカウントを接続',
-        'mastodon' => 'Mastodon アカウントを接続',
-        'telegram' => 'Telegram チャンネルまたはグループを接続',
-        'discord' => 'Discord サーバーを接続',
-        'google_business' => 'Google ビジネス プロフィールの店舗を接続',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'アカウントの接続解除',
-        'description' => 'このアカウントの接続を解除してもよろしいですか？いつでも再接続できます。',
-        'confirm' => '接続解除',
-        'cancel' => 'キャンセル',
-    ],
-
     'bluesky' => [
         'title' => 'Bluesky を接続',
         'description' => '接続するには認証情報を入力してください',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Telegram を接続',
         'description' => 'チャンネルまたはグループを連携',
+        'steps' => '手順',
         'step_admin' => ':bot を Telegram のチャンネルまたはグループの管理者として追加してください。',
+        'open_bot' => 'Telegram で開く',
         'step_command' => 'このコマンドをチャンネルまたはグループに投稿してください:',
         'waiting' => 'チャンネルの接続を待っています…',
-        'connected' => 'チャンネルを接続しました！',
-        'connected_toast' => 'Telegram チャンネルを正常に接続しました！',
-        'copied_toast' => 'コマンドをクリップボードにコピーしました',
-        'copy_tooltip' => 'コマンドをコピー',
-        'expired' => 'このコードは有効期限が切れています。新しいコードを生成してもう一度お試しください。',
-        'new_code' => '新しいコードを生成',
-        'retry' => 'もう一度試す',
+        'copy_command' => 'コマンドをコピー',
+        'expired' => 'このコマンドは有効期限が切れています。新しいコマンドを生成してもう一度お試しください。',
+        'new_command' => '新しいコマンドを生成',
         'error_generic' => '接続を開始できませんでした。もう一度お試しください。',
         'network_taken' => 'このワークスペースにはすでに Telegram チャンネルが接続されています。先に接続を解除してください。',
         'wrong_chat' => '再接続するチャンネルでコマンドを投稿してください。',
         'busy' => '別の接続がまだ完了していません。少し待ってからコマンドを再送信してください。',
+        'help' => [
+            'channel_admins' => 'チャンネルに管理者を追加する',
+            'group_admins' => 'グループに管理者を追加する',
+            'bot_privacy' => 'グループでボットが読めるメッセージ',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Instagram を接続',
-        'description' => 'Instagram アカウントの接続方法を選択してください',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Instagram のプロフェッショナルアカウントでサインイン',
-        'facebook_title' => 'Facebook ページ',
-        'facebook_description' => 'Facebook ページに連携された Instagram アカウントを接続',
+        'title' => 'Instagram アカウントをどの方法で接続しますか？',
+        'description' => '利用できる機能は、Instagram アカウントの種類と選択した接続方法によって異なります。',
+        'professional_title' => 'プロアカウント',
+        'professional_types' => '（ビジネス・クリエイター）',
+        'badge' => '自動投稿',
+        'features' => [
+            'automatic' => [
+                'title' => '自動投稿',
+                'description' => '予約するだけで自動で投稿',
+            ],
+            'metrics' => [
+                'title' => '投稿済みのメトリクス',
+                'description' => '過去の投稿のパフォーマンスを確認',
+            ],
+        ],
+        'connect' => 'Instagram に接続',
+        'convert_hint' => '必要に応じて、Instagram からプロアカウントへの簡単な切り替えを案内されます。',
+        'facebook_link' => 'Facebook 経由で Instagram を接続',
+        'facebook_suffix' => '（Instagram アカウントが Facebook にリンクされている場合）',
+        'help' => [
+            'account_type' => 'Instagram アカウントの種類を確認する',
+            'convert' => 'Instagram アカウントをプロアカウントに切り替える',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Facebook 経由で Instagram を接続',
+        'subtitle' => '知っておくべきこと 👇',
+        'heading' => '必要条件',
+        'items' => [
+            'account_type' => [
+                'lead' => 'ビジネスまたはクリエイターアカウント',
+                'rest' => 'の Instagram であること（個人アカウントは不可）。',
+            ],
+            'page' => [
+                'lead' => 'Facebook ページにリンクされていること',
+                'rest' => '（Facebook の個人プロフィールは不可）。Meta で Instagram を Facebook にリンクする必要がありますか？',
+            ],
+            'admin' => [
+                'lead' => 'Facebook ページの管理者としてログインしていること',
+                'rest' => '（「フルコントロール」権限）。',
+            ],
+            'permissions' => [
+                'lead' => 'すべてのページと Instagram アカウントですべての権限を選択すること',
+                'rest' => '（TryPost に接続しないものも含め、接続時に選択）。',
+            ],
+        ],
+        'learn_how' => '方法を見る。',
+        'note' => 'これらの条件のいずれかを満たしていない場合、接続は機能しません。',
+        'connect' => 'Facebook 経由で接続',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'アカウントを有効にしました。:count 件の自動化を再開しました。|アカウントを有効にしました。:count 件の自動化を再開しました。',
         'disconnected_paused_repurposes' => 'アカウントを切断しました。:count 件の自動化を停止しました。|アカウントを切断しました。:count 件の自動化を停止しました。',
-        'deactivated_paused_repurposes' => 'アカウントを無効にしました。:count 件の自動化を停止しました。|アカウントを無効にしました。:count 件の自動化を停止しました。',
         'disconnected' => 'アカウントの接続を解除しました！',
-        'connected' => 'アカウントを接続しました！',
         'session_expired' => 'セッションの有効期限が切れました。もう一度お試しください。',
         'workspace_not_found' => 'ワークスペースが見つかりません。',
-        'activated' => 'アカウントを有効化しました！',
-        'deactivated' => 'アカウントを無効化しました！',
         'already_connected' => 'このプラットフォームはすでに接続されています。',
         'no_youtube_channels' => 'YouTube チャンネルが見つかりません。先にチャンネルを作成してください。',
     ],
 
     'popup_callback' => [
-        'title_success' => '接続完了',
         'title_error' => 'エラー',
         'closing' => 'このウィンドウは自動的に閉じます...',
         'manual_close' => 'このウィンドウを閉じても構いません。',
         'popup_blocked' => '接続ウィンドウを開けませんでした。ポップアップを許可してもう一度お試しください。',
-        'connected' => 'アカウントを接続しました！',
-        'reconnected' => 'アカウントを再接続しました！',
         'error_connecting' => 'アカウントの接続中にエラーが発生しました。もう一度お試しください。',
         'network_taken' => 'このワークスペースにはすでにこのネットワークのアカウントが接続されています。先に接続を解除してください。',
         'wrong_account' => '別のアカウントです。再接続するアカウントを認証してください。',

@@ -1,0 +1,33 @@
+{
+    "version": "https://jsonfeed.org/version/1.1",
+    "title": "JSON Feed Example",
+    "home_page_url": "https://example.io/",
+    "items": [
+        {
+            "id": "1",
+            "url": "https://example.io/posts/1",
+            "title": "Image beats banner",
+            "content_html": "<p><img src=\"https://example.io/inline-1.jpg\">Body one</p>",
+            "image": "https://example.io/image-1.jpg",
+            "banner_image": "https://example.io/banner-1.jpg",
+            "authors": [{ "name": "Katherine Johnson" }],
+            "date_published": "2026-09-05T08:00:00Z",
+            "date_modified": "2026-09-06T08:00:00Z"
+        },
+        {
+            "id": "2",
+            "external_url": "https://elsewhere.example.com/story",
+            "title": "Banner beats inline",
+            "content_html": "<p><img src=\"https://example.io/inline-2.jpg\">Body two</p>",
+            "banner_image": "https://example.io/banner-2.jpg",
+            "author": { "name": "Legacy Author" }
+        },
+        {
+            "id": "3",
+            "url": "https://example.io/posts/3",
+            "content_text": "An item without a title gets one from the start of its text, cut to eighty characters for display.",
+            "tags": ["one", "two"]
+        },
+        "not an item"
+    ]
+}

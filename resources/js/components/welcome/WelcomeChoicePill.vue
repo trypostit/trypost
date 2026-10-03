@@ -21,16 +21,16 @@ const emit = defineEmits<{
         :aria-pressed="selected"
         :data-testid="testid"
         :class="[
-            'inline-flex cursor-pointer items-center gap-3 rounded-full border-2 border-foreground py-2 ps-2 pe-4 text-start transition-[box-shadow,background-color,transform] duration-150 motion-reduce:transition-none',
+            'inline-flex min-h-12 cursor-pointer items-center gap-3 rounded-xl border py-2 ps-2 pe-3 text-start transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
             selected
-                ? 'bg-violet-100 shadow-sm'
-                : 'bg-card shadow-2xs hover:-translate-y-px hover:shadow-sm',
+                ? 'border-primary-strong bg-primary-subtle'
+                : 'border-border-strong bg-card hover:bg-accent',
         ]"
         @click="emit('select')"
     >
         <span
             :class="[
-                'inline-flex size-10 shrink-0 items-center justify-center rounded-full border-2 border-foreground',
+                'inline-flex size-8 shrink-0 items-center justify-center rounded-lg',
                 meta.badge,
             ]"
         >
@@ -38,30 +38,27 @@ const emit = defineEmits<{
                 v-if="meta.logo"
                 :src="meta.logo"
                 :alt="label"
-                class="size-5"
+                class="size-4"
             />
             <component
                 :is="meta.icon"
                 v-else
-                :class="[meta.iconClass, 'size-5']"
-                stroke-width="2"
+                :class="[meta.iconClass, 'size-4']"
             />
         </span>
-        <span class="text-sm font-bold tracking-tight text-foreground">
+        <span class="text-sm font-medium text-foreground">
             {{ label }}
         </span>
         <span
             :class="[
-                'inline-flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-foreground transition-colors',
-                selected ? 'bg-foreground' : 'bg-card',
+                'inline-flex size-4 shrink-0 items-center justify-center rounded-sm border transition-control',
+                selected
+                    ? 'border-primary-strong bg-primary-strong text-primary-strong-foreground'
+                    : 'border-input bg-card',
             ]"
             aria-hidden="true"
         >
-            <IconCheck
-                v-if="selected"
-                class="size-3 text-background"
-                stroke-width="3"
-            />
+            <IconCheck v-if="selected" class="size-3" stroke-width="3" />
         </span>
     </button>
 </template>

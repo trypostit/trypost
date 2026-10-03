@@ -36,8 +36,8 @@ it('lists pinterest boards for a connected account', function () {
     $response->assertOk();
     $response->assertExactJson([
         'boards' => [
-            ['id' => 'board_1', 'name' => 'Ideas'],
-            ['id' => 'board_2', 'name' => 'Product'],
+            ['id' => 'board_1', 'name' => 'Ideas', 'cover_url' => null],
+            ['id' => 'board_2', 'name' => 'Product', 'cover_url' => null],
         ],
         'truncated' => false,
     ]);

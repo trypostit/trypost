@@ -24,7 +24,7 @@ withDefaults(
                 <span :data-testid="`flow-source-${source.platform}`">
                     <span
                         v-if="!source.platform"
-                        class="flex size-8 items-center justify-center rounded-lg bg-muted text-foreground/40"
+                        class="flex size-8 items-center justify-center rounded-lg bg-secondary text-muted-foreground"
                         data-testid="flow-source-missing"
                     >
                         <IconQuestionMark class="size-4" />
@@ -35,7 +35,7 @@ withDefaults(
             </TooltipTrigger>
             <TooltipContent>
                 <div class="space-y-0.5 text-xs">
-                    <p class="font-semibold">
+                    <p class="font-medium">
                         {{ source.label }}<span v-if="source.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ source.username }}</span>
                     </p>
                     <p class="opacity-70">
@@ -45,18 +45,18 @@ withDefaults(
             </TooltipContent>
         </Tooltip>
 
-        <IconArrowRight class="size-4 shrink-0 text-foreground/40" />
+        <IconArrowRight class="size-4 shrink-0 text-muted-foreground" />
 
         <div v-if="destinations.length > 0" class="flex items-center gap-2">
             <Tooltip v-for="(destination, index) in destinations" :key="`${destination.platform}-${index}`">
                 <TooltipTrigger as-child>
                     <span>
-                        <PlatformLogo :platform="destination.platform" :size="size" :tilt="false" />
+                        <PlatformLogo :platform="destination.platform" :size="size" />
                     </span>
                 </TooltipTrigger>
                 <TooltipContent>
                     <div class="space-y-0.5 text-xs">
-                        <p class="font-semibold">
+                        <p class="font-medium">
                             {{ destination.label }}<span v-if="destination.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ destination.username }}</span>
                         </p>
                         <p class="opacity-70">

@@ -4,39 +4,35 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Http\Requests\App\Asset\SearchRequest;
+use App\Http\Requests\App\Media\SearchRequest;
+use App\Http\Requests\App\Media\TrendingRequest;
 use App\Services\UnsplashService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class UnsplashController extends Controller
 {
     public function search(SearchRequest $request, UnsplashService $unsplash): JsonResponse
     {
-        $workspace = $request->user()->currentWorkspace;
-
-        $this->authorize('createPost', $workspace);
-
-        $validated = $request->validated();
+        $this->authorize('createPost', $request->user()->currentWorkspace);
 
         $results = $unsplash->search(
-            query: data_get($validated, 'query'),
-            page: (int) data_get($validated, 'page', 1),
+            query: (string) $request->validated('query'),
+            page: (int) $request->validated('page', 1),
         );
 
-        return response()->json($results);
+        return $results === null ? $this->unavailable() : response()->json($results);
     }
 
-    public function trending(Request $request, UnsplashService $unsplash): JsonResponse
+    public function trending(TrendingRequest $request, UnsplashService $unsplash): JsonResponse
     {
-        $workspace = $request->user()->currentWorkspace;
+        $photos = $unsplash->trending(page: (int) $request->validated('page', 1));
 
-        $this->authorize('createPost', $workspace);
+        return $photos === null ? $this->unavailable() : response()->json(['results' => $photos]);
+    }
 
-        $photos = $unsplash->trending(
-            page: $request->integer('page', 1),
-        );
-
-        return response()->json(['results' => $photos]);
+    private function unavailable(): JsonResponse
+    {
+        return response()->json(['message' => __('posts.composer.unsplash.error')], Response::HTTP_SERVICE_UNAVAILABLE);
     }
 }

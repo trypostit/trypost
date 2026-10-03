@@ -1,14 +1,12 @@
 <script setup lang="ts">
 import { useForm } from '@inertiajs/vue3';
-import { watch } from 'vue';
+import { computed, watch } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
     DialogDescription,
-    DialogFooter,
-    DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
 import { update } from '@/routes/app/webhooks';
@@ -27,10 +25,18 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
+const closeDialog = (): void => {
+    open.value = false;
+};
+
 const form = useForm({
     endpoint: props.webhook.endpoint,
     events: [...props.webhook.events],
 });
+
+const canSubmit = computed(
+    () => form.endpoint.trim() !== '' && form.events.length > 0,
+);
 
 watch(open, (isOpen) => {
     if (isOpen) {
@@ -40,7 +46,11 @@ watch(open, (isOpen) => {
     }
 });
 
-const submit = () => {
+const submit = (): void => {
+    if (!canSubmit.value || form.processing) {
+        return;
+    }
+
     form.put(update.url(props.webhook), {
         onSuccess: () => {
             open.value = false;
@@ -51,40 +61,51 @@ const submit = () => {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="sm:max-w-lg">
-            <DialogHeader>
-                <DialogTitle>{{ $t('webhooks.edit.title') }}</DialogTitle>
-                <DialogDescription>
-                    {{ $t('webhooks.edit.description') }}
-                </DialogDescription>
-            </DialogHeader>
-            <form class="space-y-4" @submit.prevent="submit">
-                <WebhookFormFields
-                    v-model:endpoint="form.endpoint"
-                    v-model:events="form.events"
-                    endpoint-id="edit-endpoint"
-                    endpoint-test-id="edit-webhook-endpoint"
-                    events-test-id="edit-webhook-events"
-                    :errors="form.errors"
-                />
+        <DialogContent
+            data-testid="edit-webhook-dialog"
+            class="gap-0 p-0 sm:max-w-lg"
+        >
+            <form @submit.prevent="submit">
+                <div class="flex flex-col gap-1.5 px-8 pt-7 pb-5">
+                    <DialogTitle class="font-sans text-base font-emphasis">
+                        {{ $t('webhooks.edit.title') }}
+                    </DialogTitle>
+                    <DialogDescription class="text-sm text-muted-foreground">
+                        {{ $t('webhooks.edit.description') }}
+                    </DialogDescription>
+                </div>
 
-                <DialogFooter>
+                <div class="px-8 pb-6">
+                    <WebhookFormFields
+                        v-model:endpoint="form.endpoint"
+                        v-model:events="form.events"
+                        endpoint-id="edit-endpoint"
+                        endpoint-test-id="edit-webhook-endpoint"
+                        events-test-id="edit-webhook-events"
+                        :errors="form.errors"
+                    />
+                </div>
+
+                <div
+                    class="flex items-center justify-end gap-2 border-t border-border px-8 py-4"
+                >
                     <Button
-                        type="submit"
-                        data-testid="edit-webhook-submit"
-                        :disabled="form.processing || form.events.length === 0"
-                    >
-                        {{ $t('webhooks.edit.submit') }}
-                    </Button>
-                    <Button
-                        variant="secondary"
+                        variant="ghost"
                         type="button"
                         data-testid="cancel-edit-webhook"
-                        @click="open = false"
+                        @click="closeDialog"
                     >
                         {{ $t('webhooks.edit.cancel') }}
                     </Button>
-                </DialogFooter>
+                    <Button
+                        type="submit"
+                        data-testid="edit-webhook-submit"
+                        :loading="form.processing"
+                        :disabled="!canSubmit || form.processing"
+                    >
+                        {{ $t('webhooks.edit.submit') }}
+                    </Button>
+                </div>
             </form>
         </DialogContent>
     </Dialog>

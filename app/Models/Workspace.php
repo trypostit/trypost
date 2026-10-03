@@ -4,9 +4,10 @@ declare(strict_types=1);
 
 namespace App\Models;
 
-use App\Enums\Workspace\ImageStyle;
 use App\Models\Traits\HasMedia;
+use App\Observers\WorkspaceObserver;
 use Database\Factories\WorkspaceFactory;
+use Illuminate\Database\Eloquent\Attributes\ObservedBy;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+#[ObservedBy([WorkspaceObserver::class])]
 class Workspace extends Model
 {
     /** @use HasFactory<WorkspaceFactory> */
@@ -24,24 +26,7 @@ class Workspace extends Model
         'account_id',
         'user_id',
         'name',
-        'brand_website',
-        'brand_description',
-        'brand_voice_traits',
-        'brand_color',
-        'background_color',
-        'text_color',
-        'brand_font',
-        'image_style',
-        'content_language',
     ];
-
-    protected function casts(): array
-    {
-        return [
-            'image_style' => ImageStyle::class,
-            'brand_voice_traits' => 'array',
-        ];
-    }
 
     protected $appends = ['has_logo', 'logo_url'];
 
@@ -68,8 +53,28 @@ class Workspace extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)
-            ->withPivot('role')
+            ->withPivot(['is_admin', 'requires_approval'])
             ->withTimestamps();
+    }
+
+    /**
+     * Users who may approve posts here: the account owner and every member who publishes directly.
+     *
+     * @return Collection<int, User>
+     */
+    public function approvers(): Collection
+    {
+        $approvers = $this->members()
+            ->with('account')
+            ->get()
+            ->filter(fn (User $member): bool => $member->publishesDirectlyThrough($this, $member->pivot));
+        $owner = $this->account?->owner;
+
+        if ($owner !== null && ! $approvers->contains('id', $owner->id)) {
+            $approvers->push($owner);
+        }
+
+        return $approvers->values();
     }
 
     public function socialAccounts(): HasMany
@@ -90,6 +95,31 @@ class Workspace extends Model
     public function labels(): HasMany
     {
         return $this->hasMany(WorkspaceLabel::class);
+    }
+
+    public function ideas(): HasMany
+    {
+        return $this->hasMany(Idea::class);
+    }
+
+    public function postTemplates(): HasMany
+    {
+        return $this->hasMany(PostTemplate::class);
+    }
+
+    public function ideaStages(): HasMany
+    {
+        return $this->hasMany(IdeaStage::class)->orderBy('position');
+    }
+
+    public function rssFeeds(): HasMany
+    {
+        return $this->hasMany(RssFeed::class);
+    }
+
+    public function rssFeedCollections(): HasMany
+    {
+        return $this->hasMany(RssFeedCollection::class)->orderBy('position');
     }
 
     public function webhooks(): HasMany

@@ -9,9 +9,11 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;
+use App\Models\SocialAccount;
 use App\Rules\ContentFitsPlatformLimits;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Rules\ContentTypeMatchesPostPlatform;
+use App\Rules\PostContentFitsMaxLength;
 use App\Support\PostMediaRules;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
@@ -42,13 +44,16 @@ class UpdatePostRequest extends FormRequest
             'content' => [
                 'nullable',
                 'string',
-                'max:10000',
+                new PostContentFitsMaxLength,
                 Rule::when(
                     $enforcesPlatformLimits,
-                    [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms())]
+                    [new ContentFitsPlatformLimits($this->resolveSelectedPlatforms(), PostPlatformMetaRules::metaByKey($this->input('platforms', []), 'id'), PostPlatformMetaRules::contentTypesByKey($this->input('platforms', []), 'id', $this->storedContentTypes()))]
                 ),
             ],
-            ...PostMediaRules::rules(hosted: false),
+            ...PostMediaRules::rules(),
+            'social_account_id' => ['prohibited'],
+            'content_type' => ['sometimes', 'string', Rule::in(array_column(ContentType::cases(), 'value'))],
+            'meta' => ['sometimes', 'array'],
             'platforms' => ['sometimes', 'array'],
             'platforms.*.id' => ['required', 'uuid', Rule::exists('post_platforms', 'id')->where('post_id', $this->route('post')->id)],
             'platforms.*.content_type' => [
@@ -58,9 +63,10 @@ class UpdatePostRequest extends FormRequest
                 new ContentTypeMatchesPostPlatform,
             ],
             ...PostPlatformMetaRules::rules(),
-            'scheduled_at' => PostStatusRules::scheduledAtRules($this->route('post'), $status),
+            'scheduled_at' => PostStatusRules::scheduledAtRules($this->route('post'), $status, $this->filled('queue')),
+            'queue' => PostStatusRules::queueRules(),
             'label_ids' => ['sometimes', 'array'],
-            'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)],
+            'label_ids.*' => ['uuid', Rule::exists('workspace_labels', 'id')->where('workspace_id', $this->user()->currentWorkspace->id)->withoutTrashed()],
         ];
     }
 
@@ -69,7 +75,7 @@ class UpdatePostRequest extends FormRequest
      */
     public function messages(): array
     {
-        return PostPlatformMetaRules::messages();
+        return [...PostPlatformMetaRules::messages(), ...PostStatusRules::queueMessages()];
     }
 
     /**
@@ -89,7 +95,8 @@ class UpdatePostRequest extends FormRequest
 
             $this->addMediaCompatibilityErrors($validator);
 
-            $platformsById = $this->resolveSelectedPlatforms();
+            $platformsById = $this->resolveSelectedPlatforms()
+                ->map(fn (Platform|SocialAccount $target): Platform => $target instanceof SocialAccount ? $target->platform : $target);
 
             PostPlatformMetaRules::addRequiredOnPublishErrors(
                 $validator,
@@ -109,6 +116,10 @@ class UpdatePostRequest extends FormRequest
      */
     private function addMediaCompatibilityErrors(Validator $validator): void
     {
+        if ($this->filled('content_type') && ! $this->has('platforms')) {
+            return;
+        }
+
         /** @var Post $post */
         $post = $this->route('post');
 
@@ -117,19 +128,33 @@ class UpdatePostRequest extends FormRequest
         $entries = ContentTypeCompatibleWithMedia::entriesForUpdate(
             $post,
             $this->has('platforms') ? (array) $this->input('platforms', []) : null,
+            is_array($this->input('meta')) ? (array) $this->input('meta') : null,
         );
 
-        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries, $media) as $key => $message) {
+        $content = $this->has('content') ? $this->input('content') : $post->content;
+
+        foreach (ContentTypeCompatibleWithMedia::errorsFor($entries, $media, $post->workspace, is_string($content) ? $content : null) as $key => $message) {
             $validator->errors()->add($key, $message);
         }
     }
 
     /**
-     * @return Collection<int|string, Platform>
+     * @return Collection<int|string, Platform|SocialAccount>
      */
+    /**
+     * @return array<string, string|null>
+     */
+    private function storedContentTypes(): array
+    {
+        return $this->route('post')->postPlatforms()->pluck('content_type', 'id')
+            ->map(fn (?ContentType $contentType): ?string => $contentType?->value)
+            ->all();
+    }
+
     private function resolveSelectedPlatforms(): Collection
     {
         $ids = collect($this->input('platforms', []))->pluck('id')->filter()->all();
+
         if (empty($ids)) {
             return collect();
         }
@@ -137,9 +162,13 @@ class UpdatePostRequest extends FormRequest
         /** @var Post $post */
         $post = $this->route('post');
 
-        return PostPlatform::query()
-            ->where('post_id', $post->id)
+        return $post
+            ->postPlatforms()
             ->whereIn('id', $ids)
-            ->pluck('platform', 'id');
+            ->with('socialAccount')
+            ->get()
+            ->mapWithKeys(fn (PostPlatform $postPlatform): array => [
+                $postPlatform->id => $postPlatform->socialAccount ?? $postPlatform->platform,
+            ]);
     }
 }

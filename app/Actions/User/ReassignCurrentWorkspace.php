@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Actions\User;
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -88,7 +87,7 @@ class ReassignCurrentWorkspace
 
         if ($fallback && ! $user->belongsToWorkspace($fallback)) {
             $fallback->members()->syncWithoutDetaching([
-                $user->id => ['role' => Role::Admin->value],
+                $user->id => ['is_admin' => true, 'requires_approval' => false],
             ]);
         }
 

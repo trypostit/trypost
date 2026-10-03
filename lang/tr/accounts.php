@@ -3,56 +3,6 @@
 declare(strict_types=1);
 
 return [
-    'title' => 'Bağlantılar',
-    'page_title' => 'Sosyal Hesaplar',
-    'description' => 'Bağlı tüm sosyal hesaplarınıza genel bakış',
-    'connect_cta' => 'Bağla',
-    'connect_another' => 'Başka birini bağla',
-    'actions' => 'Hesap işlemleri',
-    'activate' => 'Aç',
-    'deactivate' => 'Kapat',
-    'active' => 'Aktif',
-    'paused' => 'Kapalı',
-    'accounts_count' => ':count hesap|:count hesap',
-
-    'variants' => [
-        'linkedin-page' => 'Sayfa',
-        'instagram-facebook' => 'Facebook üzerinden',
-    ],
-
-    'not_connected' => 'Bağlı değil',
-    'connect' => 'Bağla',
-    'connection_lost' => 'Bağlantı koptu',
-    'reconnect' => 'Yeniden bağla',
-    'reconnect_account' => 'Hesabı yeniden bağla',
-    'view_profile' => 'Profili görüntüle',
-    'disconnect' => 'Bağlantıyı kes',
-
-    'descriptions' => [
-        'linkedin' => 'LinkedIn profilinizi veya şirket sayfanızı bağlayın',
-        'linkedin-page' => 'Bir LinkedIn şirket sayfası bağlayın',
-        'x' => 'X (Twitter) hesabınızı bağlayın',
-        'tiktok' => 'TikTok hesabınızı bağlayın',
-        'youtube' => 'Bir YouTube kanalı bağlayın',
-        'facebook' => 'Bir Facebook sayfası bağlayın',
-        'instagram' => 'Instagram Login veya Facebook Sayfaları ile bağlayın',
-        'instagram-facebook' => 'Facebook sayfası üzerinden Instagram bağlayın',
-        'threads' => 'Threads hesabınızı bağlayın',
-        'pinterest' => 'Pinterest hesabınızı bağlayın',
-        'bluesky' => 'Bluesky hesabınızı bağlayın',
-        'mastodon' => 'Mastodon hesabınızı bağlayın',
-        'telegram' => 'Bir Telegram kanalı veya grubu bağlayın',
-        'discord' => 'Bir Discord sunucusu bağlayın',
-        'google_business' => 'Bir Google İşletme Profili konumu bağlayın',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Hesap Bağlantısını Kes',
-        'description' => 'Bu hesabın bağlantısını kesmek istediğinizden emin misiniz? İstediğiniz zaman yeniden bağlayabilirsiniz.',
-        'confirm' => 'Bağlantıyı kes',
-        'cancel' => 'İptal',
-    ],
-
     'bluesky' => [
         'title' => 'Bluesky\'i Bağla',
         'description' => 'Bağlanmak için kimlik bilgilerinizi girin',
@@ -78,20 +28,23 @@ return [
     'telegram' => [
         'title' => 'Telegram\'ı Bağla',
         'description' => 'Bir kanal veya grup bağlayın',
+        'steps' => 'Adımlar',
         'step_admin' => ':bot\'u Telegram kanalınıza veya grubunuza yönetici olarak ekleyin.',
+        'open_bot' => 'Telegram\'da aç',
         'step_command' => 'Bu komutu kanala veya gruba gönderin:',
         'waiting' => 'Kanalın bağlanması bekleniyor…',
-        'connected' => 'Kanal bağlandı!',
-        'connected_toast' => 'Telegram kanalı başarıyla bağlandı!',
-        'copied_toast' => 'Komut panoya kopyalandı',
-        'copy_tooltip' => 'Komutu kopyala',
-        'expired' => 'Bu kodun süresi doldu. Yeniden denemek için yeni bir tane oluşturun.',
-        'new_code' => 'Yeni bir kod oluştur',
-        'retry' => 'Tekrar dene',
+        'copy_command' => 'Komutu kopyala',
+        'expired' => 'Bu komutun süresi doldu. Tekrar denemek için yenisini oluşturun.',
+        'new_command' => 'Yeni komut oluştur',
         'error_generic' => 'Bağlantı başlatılamadı. Lütfen tekrar deneyin.',
         'network_taken' => 'Bu çalışma alanında zaten bağlı bir Telegram kanalı var. Önce bağlantısını kesin.',
         'wrong_chat' => 'Komutu yeniden bağladığınız kanalda paylaşın.',
         'busy' => 'Başka bir bağlantı hâlâ tamamlanıyor. Komutu birazdan tekrar gönderin.',
+        'help' => [
+            'channel_admins' => 'Kanala yönetici ekleme',
+            'group_admins' => 'Gruba yönetici ekleme',
+            'bot_privacy' => 'Botlar gruplarda neleri okuyabilir',
+        ],
     ],
 
     'facebook' => [
@@ -114,12 +67,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Instagram bağla',
-        'description' => 'Instagram hesabınızı nasıl bağlamak istediğinizi seçin',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Profesyonel Instagram hesabınızla oturum açın',
-        'facebook_title' => 'Facebook Sayfaları',
-        'facebook_description' => 'Bir Facebook Sayfasına bağlı Instagram hesabı bağlayın',
+        'title' => 'Instagram hesabınızı nasıl bağlamak istersiniz?',
+        'description' => 'Özellikler, sahip olduğunuz Instagram hesabı türüne ve seçtiğiniz bağlantıya bağlıdır.',
+        'professional_title' => 'Profesyonel',
+        'professional_types' => '(İşletme ve İçerik Üreticisi)',
+        'badge' => 'Otomatik paylaşım',
+        'features' => [
+            'automatic' => [
+                'title' => 'Otomatik paylaşım',
+                'description' => 'Siz planlayın, biz paylaşalım',
+            ],
+            'metrics' => [
+                'title' => 'Gönderilen gönderi metrikleri',
+                'description' => 'Geçmiş gönderilerin performansını görün',
+            ],
+        ],
+        'connect' => 'Instagram\'a bağlan',
+        'convert_hint' => 'Gerekirse Instagram, hesabınızı kolayca profesyonel hesaba dönüştürmenizi isteyecek.',
+        'facebook_link' => 'Instagram\'ı Facebook üzerinden bağlayın',
+        'facebook_suffix' => '(Instagram hesabınız şu anda Facebook\'a bağlıysa).',
+        'help' => [
+            'account_type' => 'Instagram hesap türünüzü öğrenme',
+            'convert' => 'Instagram hesabınızı profesyonel hesaba dönüştürme',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Instagram\'ı Facebook üzerinden bağlayın',
+        'subtitle' => 'Bilmeniz gerekenler 👇',
+        'heading' => 'Gereksinimler',
+        'items' => [
+            'account_type' => [
+                'lead' => 'İşletme veya İçerik Üreticisi',
+                'rest' => 'Instagram hesabı; kişisel Instagram profili değil.',
+            ],
+            'page' => [
+                'lead' => 'Bir Facebook sayfasına bağlı;',
+                'rest' => 'Facebook profiline değil. Instagram\'ı Meta\'da Facebook\'a bağlamanız mı gerekiyor?',
+            ],
+            'admin' => [
+                'lead' => 'Facebook sayfası yöneticisi olarak giriş yapılmış',
+                'rest' => '(“tam denetim” yetkisiyle).',
+            ],
+            'permissions' => [
+                'lead' => 'Tüm sayfalar ve Instagram hesapları için tüm izinler seçilmiş',
+                'rest' => '(bağlanırken, TryPost\'a bağlamayacaklarınız dahil).',
+            ],
+        ],
+        'learn_how' => 'Nasıl yapılır?',
+        'note' => 'Bu gereksinimlerden biri karşılanmazsa bağlantı çalışmaz.',
+        'connect' => 'Facebook üzerinden bağlan',
     ],
 
     'linkedin' => [
@@ -137,27 +134,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Hesap açıldı. :count otomasyon devam ediyor.|Hesap açıldı. :count otomasyon devam ediyor.',
         'disconnected_paused_repurposes' => 'Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.|Hesap bağlantısı kesildi. :count otomasyon duraklatıldı.',
-        'deactivated_paused_repurposes' => 'Hesap kapatıldı. :count otomasyon duraklatıldı.|Hesap kapatıldı. :count otomasyon duraklatıldı.',
         'disconnected' => 'Hesap bağlantısı başarıyla kesildi!',
-        'connected' => 'Hesap başarıyla bağlandı!',
         'session_expired' => 'Oturum süresi doldu. Lütfen tekrar deneyin.',
         'workspace_not_found' => 'Çalışma alanı bulunamadı.',
-        'activated' => 'Hesap etkinleştirildi!',
-        'deactivated' => 'Hesap devre dışı bırakıldı!',
         'already_connected' => 'Bu platform zaten bağlı.',
         'no_youtube_channels' => 'YouTube kanalı bulunamadı. Lütfen önce bir kanal oluşturun.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Bağlandı',
         'title_error' => 'Hata',
         'closing' => 'Bu pencere otomatik olarak kapanacak...',
         'manual_close' => 'Bu pencereyi kapatabilirsiniz.',
         'popup_blocked' => 'Bağlantı penceresi açılamadı. Lütfen açılır pencerelere izin verip tekrar deneyin.',
-        'connected' => 'Hesap bağlandı!',
-        'reconnected' => 'Hesap yeniden bağlandı!',
         'error_connecting' => 'Hesap bağlanırken hata oluştu. Lütfen tekrar deneyin.',
         'network_taken' => 'Bu çalışma alanında bu ağa ait zaten bir hesap var. Önce bağlantısını kesin.',
         'wrong_account' => 'Bu farklı bir hesap. Yeniden bağladığınız hesabı yetkilendirin.',

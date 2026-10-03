@@ -10,13 +10,17 @@ use App\Enums\User\Goal;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
-use App\Enums\UserWorkspace\Role;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     config(['trypost.self_hosted' => false]);
 
     $this->user = User::factory()->create([
@@ -29,7 +33,7 @@ beforeEach(function () {
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $workspace->id]);
 
     SocialAccount::factory()->create([

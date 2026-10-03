@@ -34,13 +34,6 @@ return [
         'ignore' => 'Si vous n’avez pas créé de compte, vous pouvez ignorer cet e-mail.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name vous a mentionné sur TryPost',
-        'title' => ':name vous a mentionné',
-        'intro' => ':name vous a mentionné dans le commentaire d\'une publication.',
-        'button' => 'Voir le commentaire',
-    ],
-
     'password_reset' => [
         'subject' => 'Réinitialisez votre mot de passe',
         'preview' => 'Réinitialisez votre mot de passe.',
@@ -55,9 +48,55 @@ return [
         'title' => 'Vos publications risquent d’échouer',
         'heading' => 'Vos publications risquent d’échouer',
         'intro' => 'Les comptes suivants de l’espace de travail :workspace doivent être reconnectés avant que ces publications planifiées puissent partir :',
-        'posts_label' => '{1} :count publication planifiée : :times UTC|[0,*] :count publications planifiées : :times UTC',
+        'posts_label' => '{1} :count publication planifiée : :times (:timezone)|[0,*] :count publications planifiées : :times (:timezone)',
         'reconnect_cta' => 'Reconnectez ces comptes dès maintenant pour ne pas manquer vos publications planifiées.',
         'button' => 'Reconnecter les comptes',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author a ajouté une note à une publication',
+        'title' => 'Nouvelle note de :author',
+        'heading' => 'Nouvelle note sur une publication',
+        'body' => ':author a ajouté une note à une publication dans l\'espace de travail :workspace.',
+        'post_title' => 'Publication',
+        'post_without_text' => 'Cette publication n\'a pas encore de texte.',
+        'button' => 'Voir la note',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name vous demande d\'approuver une publication',
+        'title' => 'Une publication attend votre approbation',
+        'preview' => ':name demande une approbation dans :workspace.',
+        'heading' => 'Une publication attend votre approbation',
+        'body' => ':name (:email) demande une approbation dans l\'espace de travail :workspace.',
+        'channels' => 'Canaux',
+        'requested_time' => 'Heure demandée',
+        'next_queue_slot' => 'Prochain créneau de la file d\'attente',
+        'as_soon_as_approved' => 'Dès son approbation',
+        'post_without_text' => 'Cette publication n\'a pas encore de texte.',
+        'button' => 'Voir les publications en attente d\'approbation',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name a approuvé votre publication',
+        'title' => 'Votre publication a été approuvée',
+        'preview' => ':name a approuvé votre publication dans :workspace.',
+        'heading' => 'Votre publication a été approuvée',
+        'body' => ':name a approuvé votre publication dans l\'espace de travail :workspace.',
+        'channels' => 'Canaux',
+        'goes_out' => 'Publication prévue',
+        'channel_time' => ':channel : :time',
+        'publishing_now' => 'Publication en cours',
+        'button' => 'Voir dans la file d\'attente',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name n\'a pas approuvé votre publication',
+        'title' => 'Votre publication n\'a pas été approuvée',
+        'preview' => ':name a remis votre publication dans les brouillons.',
+        'heading' => 'Votre publication n\'a pas été approuvée',
+        'body' => ':name a remis votre publication de l\'espace de travail :workspace dans les brouillons.',
+        'channels' => 'Canaux',
+        'button' => 'Voir dans les brouillons',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => 'Vous êtes invité !',
         'intro' => 'Vous êtes invité à collaborer sur l’espace de travail <strong>:account</strong>.',
         'role' => 'Vous êtes invité en tant que <strong>:role</strong>.',
+        'roles' => ['admin' => 'Administrateur', 'member' => 'Membre', 'needs_approval' => 'Membre (ses publications doivent être approuvées)'],
         'button' => 'Accepter l’invitation',
         'expiry' => 'Cette invitation expire dans 7 jours.',
     ],

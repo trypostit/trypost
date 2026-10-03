@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\VerifyWorkspaceConnections;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Models\SocialAccount;
@@ -12,6 +14,11 @@ use App\Models\Workspace;
 use App\Services\Social\ConnectionVerifier;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 test('job does nothing when workspace has no connected accounts', function () {
     Mail::fake();
@@ -161,7 +168,7 @@ test('job skips already disconnected accounts', function () {
 test('daily sweep skips verifying a connected account a recent refresh already proved valid', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
@@ -182,7 +189,7 @@ test('daily sweep skips verifying a connected account a recent refresh already p
 test('daily sweep still verifies a connected account whose last_verified_at is stale', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
@@ -200,7 +207,7 @@ test('daily sweep still verifies a connected account whose last_verified_at is s
 test('daily sweep still verifies a TokenExpired account despite a fresh last_verified_at', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $workspace = Workspace::factory()->create();
@@ -220,7 +227,7 @@ test('daily sweep still verifies a TokenExpired account despite a fresh last_ver
 test('daily sweep records its own successful verification', function () {
     Mail::fake();
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $workspace = Workspace::factory()->create();

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\User\SettleStrandedMember;
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Media;
@@ -19,7 +18,7 @@ test('no-ops when the user still has a membership on the leaving account', funct
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     SettleStrandedMember::execute($member->fresh(), $owner->account);
 
@@ -91,7 +90,7 @@ test('forAccountMembers only deletes members without remaining account workspace
         owner: $owner,
         sharedWorkspaces: 0,
     );
-    $workspace->members()->attach($stillMember->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($stillMember->id, membershipPivot('member'));
 
     SettleStrandedMember::forAccountMembers(
         $owner->account,

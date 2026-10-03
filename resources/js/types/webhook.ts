@@ -32,3 +32,18 @@ export const webhookLogFromBroadcast = (broadcast: WebhookLogBroadcast): Webhook
     payload: null,
     response_body: null,
 });
+
+export const webhookEndpointParts = (
+    endpoint: string,
+): { host: string; path: string } => {
+    try {
+        const url = new URL(endpoint);
+
+        return {
+            host: url.host,
+            path: `${url.pathname === '/' ? '' : url.pathname}${url.search}`,
+        };
+    } catch {
+        return { host: endpoint, path: '' };
+    }
+};

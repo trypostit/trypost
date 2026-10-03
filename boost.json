@@ -2,7 +2,8 @@
     "agents": [
         "claude_code",
         "cursor",
-        "codex"
+        "codex",
+        "antigravity"
     ],
     "cloud": false,
     "guidelines": true,

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'اربط مساعدي الذكاء الاصطناعي لإنشاء المنشورات وإدارتها بحساب TryPost الخاص بك.',
+    'subtitle' => 'اربط مساعدي الذكاء الاصطناعي بمساحتك.',
     'copy_step' => 'انسخ عنوان خادم TryPost',
     'open_step' => 'افتح مساعد الذكاء الاصطناعي',
     'copy' => 'نسخ الرابط',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'الإعداد',
     'connected_title' => 'التطبيقات المتصلة',
     'connected_description' => 'المساعدون الذين سجّلت الدخول إليهم. يمكنك قطع اتصال ما لم تعد تستخدمه.',
-    'connected_empty' => 'لا يوجد اتصال بعد. استخدم Claude أو ChatGPT أو عميلًا آخر أعلاه.',
+    'connected_empty_title' => 'لا توجد تطبيقات متصلة',
+    'connected_empty' => 'استخدم Claude أو ChatGPT أو عميلًا آخر أعلاه.',
     'disconnect' => 'قطع الاتصال',
     'disconnect_title' => 'قطع اتصال التطبيق',
     'disconnect_confirm' => 'يؤدي هذا إلى تسجيل خروج التطبيق من TryPost. سيحتاج إلى إعادة الاتصال قبل استخدام MCP مجددًا.',

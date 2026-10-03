@@ -34,13 +34,6 @@ return [
         'ignore' => '如果你没有创建账号，可以忽略这封邮件。',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name 在 TryPost 上提到了你',
-        'title' => ':name 提到了你',
-        'intro' => ':name 在一条帖子评论中提到了你。',
-        'button' => '查看评论',
-    ],
-
     'password_reset' => [
         'subject' => '重置你的密码',
         'preview' => '重置你的密码。',
@@ -55,9 +48,55 @@ return [
         'title' => '内容可能无法发布',
         'heading' => '内容可能无法发布',
         'intro' => '需要重新连接工作区 :workspace 中的以下账号，这些已排期的内容才能发布：',
-        'posts_label' => '{1} 已排期 :count 条：:times UTC|[0,*] 已排期 :count 条：:times UTC',
+        'posts_label' => '{1} 已排期 :count 条：:times (:timezone)|[0,*] 已排期 :count 条：:times (:timezone)',
         'reconnect_cta' => '请立即重新连接这些账号，以免错过已排期的发布。',
         'button' => '重新连接账号',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author 为一篇帖子添加了备注',
+        'title' => '来自 :author 的新备注',
+        'heading' => '帖子有新备注',
+        'body' => ':author 在工作区 :workspace 中为一篇帖子添加了备注。',
+        'post_title' => '帖子',
+        'post_without_text' => '这篇帖子还没有文字。',
+        'button' => '查看备注',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name 请你审批一条帖子',
+        'title' => '有帖子需要你的审批',
+        'preview' => ':name 在 :workspace 中请求审批。',
+        'heading' => '有帖子需要你的审批',
+        'body' => ':name（:email）在工作区 :workspace 中请求审批。',
+        'channels' => '频道',
+        'requested_time' => '请求的时间',
+        'next_queue_slot' => '队列中的下一个时段',
+        'as_soon_as_approved' => '获批后立即发布',
+        'post_without_text' => '该帖子还没有文字。',
+        'button' => '查看待审批的帖子',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name 批准了你的帖子',
+        'title' => '你的帖子已获批准',
+        'preview' => ':name 在 :workspace 中批准了你的帖子。',
+        'heading' => '你的帖子已获批准',
+        'body' => ':name 在工作区 :workspace 中批准了你的帖子。',
+        'channels' => '频道',
+        'goes_out' => '发布时间',
+        'channel_time' => ':channel：:time',
+        'publishing_now' => '正在发布',
+        'button' => '在队列中查看',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name 未批准你的帖子',
+        'title' => '你的帖子未获批准',
+        'preview' => ':name 已将你的帖子退回草稿。',
+        'heading' => '你的帖子未获批准',
+        'body' => ':name 已将你在工作区 :workspace 中的帖子退回草稿。',
+        'channels' => '频道',
+        'button' => '在草稿中查看',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => '你收到一份邀请',
         'intro' => '你被邀请加入工作区 <strong>:account</strong> 一起协作。',
         'role' => '你被邀请的角色是 <strong>:role</strong>。',
+        'roles' => ['admin' => '管理员', 'member' => '成员', 'needs_approval' => '成员（帖子需要审批）'],
         'button' => '接受邀请',
         'expiry' => '该邀请 7 天后失效。',
     ],

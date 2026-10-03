@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { trans } from 'laravel-vue-i18n';
+import { IconDotsVertical, IconRosetteDiscountCheckFilled, IconShare } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { getInitials } from '@/composables/useInitials';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import PreviewTextPost from '@/components/posts/previews/PreviewTextPost.vue';
 import date from '@/date';
 import {
     GOOGLE_BUSINESS_EVENT_TOPIC_TYPES,
@@ -14,40 +13,26 @@ import {
 import { isGif, isImage } from '@/lib/mediaType';
 import type { MediaItem } from '@/types/media';
 
-interface SocialAccount {
-    id: string;
-    platform: string;
-    display_name: string;
-    username: string;
-    display_label: string;
-    avatar_url: string | null;
-}
+import type { PreviewProps } from './types';
 
-const props = defineProps<{
-    socialAccount: SocialAccount;
-    content: string;
-    media: MediaItem[];
-    meta?: Record<string, any>;
-}>();
+const props = defineProps<PreviewProps>();
 
 const topicType = computed(() =>
     resolveGoogleBusinessTopicType(props.meta?.topic_type),
 );
 
-const image = computed(
-    () => props.media.find((item) => isImage(item) && !isGif(item)) ?? null,
-);
+const images = computed((): MediaItem[] => {
+    const image = props.media.find((item) => isImage(item) && !isGif(item));
 
-const ctaLabel = computed(() => {
+    return image ? [image] : [];
+});
+
+const ctaLabelKey = computed((): string | null => {
     if (!googleBusinessAllowsCallToAction(topicType.value)) {
         return null;
     }
 
-    const key = googleBusinessCtaLabelKey(
-        props.meta?.call_to_action?.action_type,
-    );
-
-    return key ? trans(key) : null;
+    return googleBusinessCtaLabelKey(props.meta?.call_to_action?.action_type);
 });
 
 const eventInstant = (day?: string, time?: string): string | null => {
@@ -88,97 +73,44 @@ const event = computed(() => {
 </script>
 
 <template>
-    <div
-        class="flex h-full w-full flex-col overflow-hidden bg-white dark:bg-[#202124]"
+    <PreviewTextPost
+        data-testid="google-business-preview"
+        variant="stacked"
+        :account="socialAccount"
+        :content="content"
+        :media="images"
+        :caption="date.formatPreviewDate(postedAt)"
+        avatar-class="size-8"
+        avatar-square
+        text-class="text-muted-foreground"
+        link-tone="info"
+        tags="plain"
+        :trailing-actions="[{ icon: IconShare }]"
+        action-class="text-info"
     >
-        <div
-            class="flex items-center gap-3 border-b border-black/10 px-4 py-3 dark:border-white/10"
-        >
-            <img
-                v-if="socialAccount.avatar_url"
-                :src="socialAccount.avatar_url"
-                :alt="socialAccount.display_label"
-                class="h-9 w-9 rounded-full object-cover"
+        <template #avatar-badge>
+            <IconRosetteDiscountCheckFilled
+                class="absolute -right-1.5 -bottom-1.5 size-4 rounded-full bg-card text-info"
             />
-            <div
-                v-else
-                class="flex h-9 w-9 items-center justify-center rounded-full bg-[#4285F4] font-semibold text-white"
-            >
-                {{ getInitials(socialAccount.display_label) }}
-            </div>
-            <div class="min-w-0 flex-1">
-                <div
-                    class="truncate text-sm font-semibold text-[#202124] dark:text-white"
-                >
-                    {{ socialAccount.display_label }}
-                </div>
-                <div class="text-xs text-[#5f6368] dark:text-[#9aa0a6]">
-                    {{ getPlatformLabel('google_business') }}
-                </div>
-            </div>
-        </div>
-
-        <div class="flex-1 overflow-y-auto">
-            <div
-                v-if="image"
-                class="aspect-video w-full overflow-hidden bg-black/5"
-            >
-                <img
-                    :src="image.url"
-                    :alt="image.original_filename"
-                    class="h-full w-full object-cover"
-                />
-            </div>
-
-            <div class="space-y-3 px-4 py-3">
-                <div v-if="event" class="space-y-0.5">
-                    <p
-                        v-if="event.title"
-                        class="text-sm font-semibold text-[#202124] dark:text-white"
-                    >
-                        {{ event.title }}
-                    </p>
-                    <p
-                        v-if="event.range"
-                        class="text-xs text-[#5f6368] dark:text-[#9aa0a6]"
-                    >
-                        {{ event.range }}
-                    </p>
-                    <p
-                        v-if="event.coupon"
-                        class="text-xs font-medium text-[#5f6368] dark:text-[#9aa0a6]"
-                    >
-                        {{ event.coupon }}
-                    </p>
-                    <p
-                        v-if="event.redeem"
-                        class="text-xs text-[#5f6368] dark:text-[#9aa0a6]"
-                    >
-                        {{ event.redeem }}
-                    </p>
-                    <p
-                        v-if="event.terms"
-                        class="text-xs text-[#5f6368] dark:text-[#9aa0a6]"
-                    >
-                        {{ event.terms }}
-                    </p>
-                </div>
-
-                <p
-                    v-if="content"
-                    class="text-sm whitespace-pre-wrap text-[#202124] dark:text-[#e8eaed]"
-                >
-                    {{ content }}
+        </template>
+        <template #aside>
+            <IconDotsVertical class="size-5 shrink-0 text-muted-foreground" />
+        </template>
+        <template v-if="event" #before-media>
+            <div class="space-y-0.5 text-[13px] leading-[18px] text-muted-foreground">
+                <p v-if="event.title" class="text-[15px] font-semibold text-foreground">
+                    {{ event.title }}
                 </p>
-
-                <button
-                    v-if="ctaLabel"
-                    type="button"
-                    class="rounded-full bg-[#4285F4] px-4 py-1.5 text-xs font-semibold text-white"
-                >
-                    {{ ctaLabel }}
-                </button>
+                <p v-if="event.range">{{ event.range }}</p>
+                <p v-if="event.coupon" class="font-medium">{{ event.coupon }}</p>
+                <p v-if="event.redeem">{{ event.redeem }}</p>
+                <p v-if="event.terms">{{ event.terms }}</p>
             </div>
-        </div>
-    </div>
+        </template>
+        <span
+            v-if="ctaLabelKey"
+            class="inline-flex rounded-full border px-4 py-1.5 text-[13px] font-semibold text-info"
+            >{{ $t(ctaLabelKey) }}</span
+        >
+    </PreviewTextPost>
 </template>

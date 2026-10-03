@@ -1,54 +1,64 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, useHttp } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
+import { toast } from 'vue-sonner';
 
-import HeadingSmall from '@/components/HeadingSmall.vue';
-import PageHeader from '@/components/PageHeader.vue';
-import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
-import { Button } from '@/components/ui/button';
+import NotificationPreferenceController from '@/actions/App/Http/Controllers/App/Settings/NotificationPreferenceController';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import AppLayout from '@/layouts/AppLayout.vue';
-import { edit as editAuthentication } from '@/routes/app/authentication';
-import { preferences as preferencesRoute } from '@/routes/app/notifications';
-import { edit as editProfile } from '@/routes/app/profile';
+import SettingsLayout from '@/layouts/SettingsLayout.vue';
 
-interface Preferences {
-    post_published: boolean;
-    post_failed: boolean;
-    account_disconnected: boolean;
-}
+type PreferenceField =
+    | 'post_published'
+    | 'post_failed'
+    | 'account_disconnected'
+    | 'post_note_added'
+    | 'collaboration';
 
-interface Props {
+type Preferences = Record<PreferenceField, boolean>;
+
+const props = defineProps<{
     preferences: Preferences;
-}
+}>();
 
-const props = defineProps<Props>();
+const fields: PreferenceField[] = [
+    'post_published',
+    'post_failed',
+    'account_disconnected',
+    'post_note_added',
+    'collaboration',
+];
 
-const postPublished = ref(props.preferences.post_published);
-const postFailed = ref(props.preferences.post_failed);
-const accountDisconnected = ref(props.preferences.account_disconnected);
-const processing = ref(false);
+const values = ref<Preferences>(
+    Object.fromEntries(
+        fields.map((field) => [field, Boolean(props.preferences[field])]),
+    ) as Preferences,
+);
+const savedField = ref<PreferenceField | null>(null);
+const http = useHttp<Partial<Preferences>>({});
+let queue: Promise<void> = Promise.resolve();
 
-const tabs = computed(() => [
-    { name: 'profile', label: trans('settings.nav.profile'), href: editProfile().url },
-    { name: 'authentication', label: trans('settings.nav.authentication'), href: editAuthentication().url },
-    { name: 'notifications', label: trans('settings.nav.notifications'), href: preferencesRoute().url },
-]);
+/**
+ * Each switch saves on its own. Saves run one after another so a quick second
+ * toggle never cancels the first; a failed save puts the switch back.
+ */
+const toggle = (field: PreferenceField, value: boolean): void => {
+    const previous = values.value[field];
+    values.value = { ...values.value, [field]: value };
+    savedField.value = null;
 
-const submit = () => {
-    processing.value = true;
-
-    router.put(preferencesRoute().url, {
-        post_published: postPublished.value,
-        post_failed: postFailed.value,
-        account_disconnected: accountDisconnected.value,
-    }, {
-        preserveScroll: true,
-        onFinish: () => {
-            processing.value = false;
-        },
+    queue = queue.then(async () => {
+        try {
+            await http
+                .transform(() => ({ [field]: value }))
+                .patch(NotificationPreferenceController.update.url());
+            savedField.value = field;
+        } catch {
+            values.value = { ...values.value, [field]: previous };
+            toast.error(trans('settings.notifications.save_failed'));
+        }
     });
 };
 </script>
@@ -56,59 +66,43 @@ const submit = () => {
 <template>
     <Head :title="$t('settings.notifications.title')" />
 
-    <AppLayout>
-        <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
-
-            <SettingsTabsNav :tabs="tabs" active="notifications" />
-
-            <section class="space-y-12">
-                <div class="flex flex-col space-y-6">
-                    <HeadingSmall
-                        :title="$t('settings.notifications.heading')"
-                        :description="$t('settings.notifications.description')"
-                    />
-
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs">
-                            <div class="space-y-0.5">
-                                <Label for="post_published" class="text-sm font-bold">{{ $t('settings.notifications.post_published') }}</Label>
-                                <p class="text-sm text-foreground/70">
-                                    {{ $t('settings.notifications.post_published_description') }}
-                                </p>
-                            </div>
-                            <Switch id="post_published" v-model="postPublished" />
-                        </div>
-
-                        <div class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs">
-                            <div class="space-y-0.5">
-                                <Label for="post_failed" class="text-sm font-bold">{{ $t('settings.notifications.post_failed') }}</Label>
-                                <p class="text-sm text-foreground/70">
-                                    {{ $t('settings.notifications.post_failed_description') }}
-                                </p>
-                            </div>
-                            <Switch id="post_failed" v-model="postFailed" />
-                        </div>
-
-                        <div class="flex items-center justify-between gap-4 rounded-xl border-2 border-foreground bg-card p-4 shadow-2xs">
-                            <div class="space-y-0.5">
-                                <Label for="account_disconnected" class="text-sm font-bold">{{ $t('settings.notifications.account_disconnected') }}</Label>
-                                <p class="text-sm text-foreground/70">
-                                    {{ $t('settings.notifications.account_disconnected_description') }}
-                                </p>
-                            </div>
-                            <Switch id="account_disconnected" v-model="accountDisconnected" />
-                        </div>
+    <SettingsLayout :title="$t('settings.notifications.title')">
+        <SettingsSection
+            :title="$t('settings.notifications.heading')"
+            :description="$t('settings.notifications.description')"
+        >
+            <div class="flex flex-col gap-6" data-testid="notifications-page">
+                <div
+                    v-for="field in fields"
+                    :key="field"
+                    class="flex items-start justify-between gap-4"
+                >
+                    <div class="flex max-w-[440px] min-w-0 flex-col gap-2">
+                        <Label
+                            :for="field"
+                            class="text-sm leading-tight font-emphasis"
+                        >
+                            {{ $t(`settings.notifications.${field}`) }}
+                        </Label>
+                        <p class="text-sm text-muted-foreground">
+                            {{ $t(`settings.notifications.${field}_description`) }}
+                        </p>
                     </div>
-
-                    <Button :disabled="processing" class="self-start" @click="submit">
-                        {{ $t('settings.notifications.save') }}
-                    </Button>
+                    <Switch
+                        :id="field"
+                        :model-value="values[field]"
+                        :data-testid="`notifications-${field}`"
+                        class="shrink-0"
+                        @update:model-value="toggle(field, Boolean($event))"
+                    />
                 </div>
-            </section>
-        </div>
-    </AppLayout>
+            </div>
+
+            <span
+                v-if="savedField"
+                :data-testid="`notifications-saved-${savedField}`"
+                class="sr-only"
+            />
+        </SettingsSection>
+    </SettingsLayout>
 </template>

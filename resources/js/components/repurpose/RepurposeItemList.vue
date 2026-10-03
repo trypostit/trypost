@@ -23,12 +23,12 @@ defineProps<{
 }>();
 
 const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }> = {
-    [RepurposeItemStatus.Published]: { icon: IconCheck, class: 'bg-emerald-100 text-emerald-700' },
-    [RepurposeItemStatus.Drafted]: { icon: IconPencil, class: 'bg-violet-100 text-violet-700' },
-    [RepurposeItemStatus.Pending]: { icon: IconClock, class: 'bg-foreground/5 text-foreground/60' },
-    [RepurposeItemStatus.Processing]: { icon: IconClock, class: 'bg-foreground/5 text-foreground/60' },
-    [RepurposeItemStatus.Skipped]: { icon: IconMinus, class: 'bg-foreground/5 text-foreground/60' },
-    [RepurposeItemStatus.Failed]: { icon: IconAlertTriangle, class: 'bg-rose-100 text-rose-700' },
+    [RepurposeItemStatus.Published]: { icon: IconCheck, class: 'bg-success-subtle text-success-text' },
+    [RepurposeItemStatus.Drafted]: { icon: IconPencil, class: 'bg-info-subtle text-info-text' },
+    [RepurposeItemStatus.Pending]: { icon: IconClock, class: 'bg-secondary text-muted-foreground' },
+    [RepurposeItemStatus.Processing]: { icon: IconClock, class: 'bg-secondary text-muted-foreground' },
+    [RepurposeItemStatus.Skipped]: { icon: IconMinus, class: 'bg-secondary text-muted-foreground' },
+    [RepurposeItemStatus.Failed]: { icon: IconAlertTriangle, class: 'bg-critical-subtle text-destructive-text' },
 };
 
 const detail = (item: RepurposeItem): string | null => item.error ?? null;
@@ -52,7 +52,7 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
 
 <template>
     <InfiniteScroll data="items" items-element="#repurpose-items-body" preserve-url>
-        <ul id="repurpose-items-body" class="divide-y-2 divide-dashed divide-foreground/15">
+        <ul id="repurpose-items-body" class="divide-y divide-border-strong">
             <li
                 v-for="item in items"
                 :key="item.id"
@@ -60,14 +60,14 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
                 :data-testid="`repurpose-item-${item.id}`"
             >
                 <span
-                    class="inline-flex size-8 shrink-0 items-center justify-center rounded-full"
+                    class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg"
                     :class="marks[item.status].class"
                 >
-                    <component :is="marks[item.status].icon" class="size-4" stroke-width="2.5" />
+                    <component :is="marks[item.status].icon" class="size-4" />
                 </span>
 
                 <div class="min-w-0 flex-1 space-y-1">
-                    <p class="text-sm font-bold text-foreground">
+                    <p class="text-sm leading-tight font-emphasis text-foreground">
                         {{
                             item.reason
                                 ? $t(`repurposes.items.reasons.${item.reason}`)
@@ -101,7 +101,7 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
                         </template>
                     </p>
 
-                    <p v-if="detail(item)" class="max-w-prose text-xs break-words text-rose-700">
+                    <p v-if="detail(item)" class="max-w-prose text-xs break-words text-destructive-text">
                         {{ detail(item) }}
                     </p>
                 </div>
@@ -111,7 +111,7 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
                         v-for="post in item.posts"
                         :key="post.id"
                         :href="edit.url(post.id)"
-                        class="group/post inline-flex items-center gap-1.5 rounded-lg bg-foreground/5 py-1 pr-1.5 pl-2 text-xs font-medium text-foreground transition-colors hover:bg-foreground/10"
+                        class="group/post inline-flex h-6 items-center gap-1.5 rounded-md bg-secondary pr-1.5 pl-2 text-xs font-medium text-foreground transition-control hover:bg-border-strong"
                     >
                         <img
                             v-for="entry in post.platforms"
@@ -129,14 +129,14 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
                             :class="[
                                 'rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide',
                                 postState(post) === PostPlatformStatus.Failed
-                                    ? 'bg-red-500/10 text-red-600 dark:text-red-400'
+                                    ? 'bg-critical-subtle text-destructive-text'
                                     : 'bg-foreground/10 text-foreground/60',
                             ]"
                         >
                             {{ $t(`posts.status.${postState(post)}`) }}
                         </span>
 
-                        <IconChevronRight class="size-3.5 text-foreground/40 transition-colors group-hover/post:text-foreground" />
+                        <IconChevronRight class="size-3.5 text-muted-foreground transition-colors group-hover/post:text-foreground" />
                     </a>
                 </div>
             </li>

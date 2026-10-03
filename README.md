@@ -33,7 +33,7 @@
 |  |  |
 | --- | --- |
 | 📅&nbsp; **One calendar, every network** | Plan a month at a glance, drag any post to a new slot, and publish natively to 12 platforms. No redirects, no "finish in the mobile app." |
-| ✨&nbsp; **An AI copilot that knows your brand** | Captions, hooks, full drafts, and multi-slide carousels in your tone, voice, and colors. It reads your brand profile on every generation. |
+| ✨&nbsp; **An AI assistant for your captions** | Generate, rephrase, shorten or expand a caption, tuned to each network's limits, in your language. |
 | 🤖&nbsp; **Built for AI agents** | A first-class MCP server and REST API. Claude, Cursor, ChatGPT, or your own scripts can draft, schedule, and publish for you. |
 | 🗂️&nbsp; **Made for many clients** | Workspaces, roles, and approval flows so an agency or freelancer can run a roster of brands without the spreadsheets. |
 
@@ -43,13 +43,11 @@
 | --- | --- |
 | **Visual calendar** | Month, week, and day views. Drag and drop to reschedule across networks. |
 | **Multi-platform composer** | Write once, then tailor the preview per network in parallel. |
-| **AI generate &amp; review** | Draft from a prompt, get inline feedback before you publish. |
-| **AI carousel builder** | Prompt to a multi-slide carousel with images, on-brand. |
-| **Brand profile** | Tone, voice, language, and colors applied to every AI call. |
+| **AI writing assistant** | Rephrase, shorten or expand a caption right inside the composer. |
 | **Repurpose** | Auto-replicate the videos you post outside TryPost to your other networks. |
-| **Asset library** | Reusable workspace media, plus Unsplash and Giphy search built in. |
+| **Media sources** | Upload from your device, Unsplash, Google Drive, Google Photos and Canva. |
 | **Signatures &amp; labels** | Reusable hashtag and CTA blocks, color-coded post tags. |
-| **Team collaboration** | Owner / Admin / Member roles, comments with @mentions on drafts. |
+| **Team collaboration** | Owner / Admin / Member roles, post notes that email the rest of the team. |
 | **Workspaces** | Isolate each brand, client, or project in its own space. |
 | **REST API + MCP** | Full programmatic control; AI assistants integrate natively. |
 | **Native analytics** | Per-account reach and engagement across every connected platform. |
@@ -85,6 +83,12 @@ Posts publish natively through each platform's official API.
 | ☁️&nbsp; **Cloud** | The fastest way in. We host, update, and scale it for you. [Start at trypost.it &rarr;](https://trypost.it) |
 | 🛠️&nbsp; **Self-host** | Free forever, your servers, your data. [Installation guide &rarr;](https://docs.trypost.it/self-hosting/overview) |
 | 🤖&nbsp; **Drive it with AI** | Connect Claude, Cursor, or ChatGPT over MCP. [MCP setup &rarr;](https://docs.trypost.it/ai/introduction) |
+
+Self-hosting media maintenance:
+
+- `php artisan release:trypost-2 --force` runs the one-off data steps of the 2.0 release once, after `php artisan migrate`: it splits multi-channel posts, purges posts of channels disconnected earlier, copies the old media library onto the posts and ideas that use it (then deletes the library) and queues the analytics backfill. Run it with a queue worker running. The individual commands live in `app/Console/Commands/Scripts/`.
+- `php artisan media:prune-uploads` deletes unused uploads older than `MEDIA_UPLOAD_RETENTION_HOURS` (24 by default) and stale publish crops. The scheduler runs it hourly.
+- `php artisan posts:prune-history` deletes published posts, and their media, older than `POST_HISTORY_RETENTION_DAYS` (730 by default). The scheduler runs it daily; analytics are kept.
 
 ## Own your stack
 

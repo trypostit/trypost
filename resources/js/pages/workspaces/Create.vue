@@ -2,20 +2,16 @@
 import { Head, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
-import BrandForm from '@/components/BrandForm.vue';
+import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store as storeWorkspace } from '@/routes/app/workspaces';
-import type { ContentLanguageOption, SharedData } from '@/types';
-
-defineProps<{
-    availableFonts: string[];
-    availableImageStyles: string[];
-    availableVoiceTraits: Record<string, string[]>;
-    availableContentLanguages: ContentLanguageOption[];
-}>();
+import type { SharedData } from '@/types';
 
 const page = usePage<SharedData>();
 const { atWorkspaceLimit } = useWorkspaceLimit(
@@ -25,16 +21,6 @@ const upgradeDialogOpen = ref(false);
 
 const form = useForm({
     name: '',
-    brand_website: '',
-    brand_description: '',
-    brand_voice_traits: [] as string[],
-    brand_color: null as string | null,
-    background_color: null as string | null,
-    text_color: null as string | null,
-    brand_font: 'Inter',
-    image_style: 'cinematic',
-    content_language: 'en',
-    logo_url: '' as string | null,
 });
 
 const submit = (): void => {
@@ -55,17 +41,20 @@ const submit = (): void => {
         :title="$t('workspaces.create.title')"
         :description="$t('workspaces.create.description')"
     >
-        <form class="flex flex-col space-y-6" @submit.prevent="submit">
-            <BrandForm
-                :fields="form"
-                :errors="form.errors"
-                :available-fonts="availableFonts"
-                :available-image-styles="availableImageStyles"
-                :available-voice-traits="availableVoiceTraits"
-                :available-content-languages="availableContentLanguages"
-                :autofill="true"
-                :show-name="true"
-            />
+        <form class="flex flex-col gap-4" @submit.prevent="submit">
+            <div class="grid gap-2">
+                <Label for="name">{{ $t('workspaces.create.name') }}</Label>
+                <Input
+                    id="name"
+                    v-model="form.name"
+                    type="text"
+                    name="name"
+                    autofocus
+                    data-testid="workspaces-create-name"
+                    :placeholder="$t('workspaces.create.name_placeholder')"
+                />
+                <InputError :message="form.errors.name" />
+            </div>
 
             <Button
                 type="submit"
@@ -73,6 +62,7 @@ const submit = (): void => {
                 data-testid="workspaces-create-submit"
                 :disabled="form.processing"
             >
+                <Spinner v-if="form.processing" />
                 {{ $t('workspaces.create.submit') }}
             </Button>
         </form>

@@ -53,7 +53,7 @@ class WorkspaceConnectionsDisconnected extends Mailable implements ShouldQueue
                 ]),
                 'workspaceName' => $workspaceName,
                 'disconnectedAccounts' => $this->disconnectedAccounts,
-                'url' => route('app.accounts'),
+                'url' => route('app.workspace.channels'),
             ],
         );
     }

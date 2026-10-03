@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Mcp\Concerns\AuthorizesMcpTool;
 use App\Models\User;
 use App\Models\Workspace;
@@ -35,7 +34,7 @@ it('denies when the mcp request has no authenticated user', function () {
 it('denies when the policy argument is null', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
     $owner->update(['current_workspace_id' => $workspace->id]);
 
     $tool = new class
@@ -107,11 +106,11 @@ it('authorizeCurrentWorkspace denies when the user has no current workspace', fu
 it('denies when the user lacks the ability', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
-    $viewer = User::factory()->create(['account_id' => $owner->account_id]);
-    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $workspace->id]);
+    $requester = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $workspace->id]);
 
     $tool = new class
     {
@@ -119,24 +118,24 @@ it('denies when the user lacks the ability', function () {
 
         public function probe(Request $request, Workspace $workspace): Response|ResponseFactory|null
         {
-            return $this->denyUnlessCan($request, 'createPost', $workspace, 'Not authorized to create posts.');
+            return $this->denyUnlessCan($request, 'publishDirectly', $workspace, 'Not authorized to publish posts directly.');
         }
     };
 
     $request = Mockery::mock(Request::class);
-    $request->shouldReceive('user')->once()->andReturn($viewer->fresh());
+    $request->shouldReceive('user')->once()->andReturn($requester->fresh());
 
     $denied = $tool->probe($request, $workspace);
 
     expect($denied)->toBeInstanceOf(Response::class)
         ->and($denied->isError())->toBeTrue()
-        ->and((string) $denied->content())->toBe('Not authorized to create posts.');
+        ->and((string) $denied->content())->toBe('Not authorized to publish posts directly.');
 });
 
 it('allows when the user has the ability', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
     $owner->update(['current_workspace_id' => $workspace->id]);
 
     $tool = new class
@@ -158,11 +157,11 @@ it('allows when the user has the ability', function () {
 it('authorizeCurrentWorkspace denies when the user lacks the ability', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
-    $viewer = User::factory()->create(['account_id' => $owner->account_id]);
-    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $workspace->id]);
+    $requester = User::factory()->create(['account_id' => $owner->account_id]);
+    $workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $workspace->id]);
 
     $tool = new class
     {
@@ -170,25 +169,25 @@ it('authorizeCurrentWorkspace denies when the user lacks the ability', function 
 
         public function probe(Request $request): Workspace|Response|ResponseFactory
         {
-            return $this->authorizeCurrentWorkspace($request, 'createPost', 'Not authorized to create posts.');
+            return $this->authorizeCurrentWorkspace($request, 'publishDirectly', 'Not authorized to publish posts directly.');
         }
     };
 
     $request = Mockery::mock(Request::class);
-    $request->shouldReceive('user')->twice()->andReturn($viewer->fresh());
+    $request->shouldReceive('user')->twice()->andReturn($requester->fresh());
 
     $denied = $tool->probe($request);
 
     expect($denied)->not->toBeInstanceOf(Workspace::class)
         ->and($denied)->toBeInstanceOf(Response::class)
         ->and($denied->isError())->toBeTrue()
-        ->and((string) $denied->content())->toBe('Not authorized to create posts.');
+        ->and((string) $denied->content())->toBe('Not authorized to publish posts directly.');
 });
 
 it('authorizeCurrentWorkspace returns the current workspace when allowed', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
     $owner->update(['current_workspace_id' => $workspace->id]);
 
     $tool = new class

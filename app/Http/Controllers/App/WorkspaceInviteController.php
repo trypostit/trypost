@@ -8,13 +8,12 @@ use App\Actions\AccessToken\RevokeWorkspaceApiKeys;
 use App\Actions\Invite\CreateInvite;
 use App\Actions\Invite\DeleteInvite;
 use App\Actions\Invite\RemoveMember;
-use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Http\Requests\App\Invite\StoreWorkspaceInviteRequest;
+use App\Http\Requests\App\Invite\UpdateWorkspaceMemberRequest;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,22 +37,19 @@ class WorkspaceInviteController extends Controller
                 ->get(),
             'members' => $workspace->members()
                 ->get()
-                ->map(fn ($member) => [
+                ->map(fn (User $member): array => [
                     'id' => $member->id,
                     'name' => $member->name,
                     'email' => $member->email,
-                    'role' => $member->pivot->role,
+                    'photo_url' => $member->photo_url,
+                    'is_admin' => (bool) $member->pivot->is_admin,
+                    'requires_approval' => (bool) $member->pivot->requires_approval,
                 ]),
             'owner' => [
                 'id' => $workspace->account?->owner?->id,
                 'name' => $workspace->account?->owner?->name,
                 'email' => $workspace->account?->owner?->email,
             ],
-            'roles' => collect(WorkspaceRole::cases())
-                ->map(fn ($role) => [
-                    'value' => $role->value,
-                    'label' => $role->label(),
-                ])->values(),
         ]);
     }
 
@@ -86,7 +82,7 @@ class WorkspaceInviteController extends Controller
             ]);
         }
 
-        CreateInvite::execute($workspace, $request->validated());
+        CreateInvite::execute($workspace, [...$request->validated(), ...$request->memberAccess()]);
 
         session()->flash('flash.banner', __('settings.members.flash.invite_sent'));
         session()->flash('flash.bannerStyle', 'success');
@@ -126,14 +122,12 @@ class WorkspaceInviteController extends Controller
 
         $this->authorize('manageTeam', $workspace);
 
-        // You cannot remove yourself
         if ($userId === $request->user()->id) {
-            return back()->withErrors(['member' => 'You cannot remove yourself.']);
+            return back()->withErrors(['member' => __('settings.members.errors.cannot_remove_self')]);
         }
 
-        // Account owner cannot be removed
         if ($userId === $workspace->account?->owner_id) {
-            return back()->withErrors(['member' => 'Cannot remove the account owner.']);
+            return back()->withErrors(['member' => __('settings.members.errors.cannot_remove_owner')]);
         }
 
         RemoveMember::execute($workspace, $userId);
@@ -144,7 +138,7 @@ class WorkspaceInviteController extends Controller
         return back();
     }
 
-    public function updateRole(Request $request, string $userId): RedirectResponse
+    public function updateMember(UpdateWorkspaceMemberRequest $request, string $userId): RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
 
@@ -152,31 +146,19 @@ class WorkspaceInviteController extends Controller
             return redirect()->route('app.workspaces.create');
         }
 
-        $this->authorize('manageTeam', $workspace);
-
-        // You cannot change your own role
         if ($userId === $request->user()->id) {
-            return back()->withErrors(['role' => 'You cannot change your own role.']);
+            return back()->withErrors(['is_admin' => __('settings.members.errors.cannot_change_own_access')]);
         }
 
-        // Account owner's role cannot be changed
         if ($userId === $workspace->account?->owner_id) {
-            return back()->withErrors(['role' => 'Cannot change the account owner role.']);
+            return back()->withErrors(['is_admin' => __('settings.members.errors.cannot_change_owner_access')]);
         }
 
-        $validated = $request->validate([
-            'role' => ['required', Rule::in(array_column(WorkspaceRole::cases(), 'value'))],
-        ]);
-        $role = WorkspaceRole::from(data_get($validated, 'role'));
+        $access = $request->memberAccess();
 
-        $workspace->members()->updateExistingPivot($userId, [
-            'role' => $role->value,
-        ]);
+        $workspace->members()->updateExistingPivot($userId, $access);
 
-        RevokeWorkspaceApiKeys::forUserUnlessAdmin($userId, $workspace, $role);
-
-        session()->flash('flash.banner', __('settings.members.flash.role_updated'));
-        session()->flash('flash.bannerStyle', 'success');
+        RevokeWorkspaceApiKeys::forUserUnlessAdmin($userId, $workspace, $access['is_admin']);
 
         return back();
     }

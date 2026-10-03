@@ -13,15 +13,12 @@ return [
     ],
 
     'publish_mode' => [
-
         'title' => 'Publicação',
 
         'description' => 'O que acontece quando uma publicação nova aparece.',
-
     ],
 
     'publish_modes' => [
-
         'publish' => 'Publicar automaticamente',
 
         'publish_hint' => 'Cada publicação nova é agendada assim que é encontrada.',
@@ -29,7 +26,6 @@ return [
         'draft' => 'Criar como rascunho',
 
         'draft_hint' => 'Cada publicação nova vira um rascunho aqui para você revisar e publicar.',
-
     ],
 
     'formats' => [
@@ -58,8 +54,6 @@ return [
     ],
 
     'table' => [
-        'flow' => 'Fluxo',
-        'status' => 'Status',
         'published' => 'Replicados',
         'last_polled' => 'Última verificação',
     ],
@@ -97,7 +91,6 @@ return [
     ],
 
     'destinations' => [
-        'paused_note' => 'Desativadas e ignoradas até você reativá-las: :accounts',
         'title' => 'Destinos',
         'description' => 'Escolha as contas que vão receber. Cada uma publica no formato que você definir.',
         'hint' => 'A legenda só é adaptada por rede quando ultrapassa o limite daquela rede.',
@@ -150,9 +143,7 @@ return [
     ],
 
     'menu' => [
-
         'label' => 'Mais ações',
-
     ],
 
     'danger' => [
@@ -175,6 +166,7 @@ return [
         'source_unusable' => 'Reconecte a conta que esta automação monitora antes de iniciá-la.',
         'destinations_required' => 'Escolha ao menos um destino antes de ativar.',
         'destination_needs_video' => 'Esse formato não aceita vídeo.',
+        'destination_not_supported' => 'O Google Meu Negócio não pode ser destino: as postagens dele não aceitam vídeo.',
         'only_paused_resumes' => 'Só um repost pausado pode ser retomado.',
         'only_active_pauses' => 'Só um repost ativo pode ser pausado.',
         'only_running_disables' => 'Só um repost em execução pode ser desativado.',

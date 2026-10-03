@@ -8,7 +8,6 @@ return [
     'back' => '뒤로',
 
     'confirm_modal' => [
-        'cannot_be_undone' => '이 작업은 되돌릴 수 없습니다.',
         'type' => '입력',
         'to_confirm' => '하여 확인하세요.',
         'copy_to_clipboard' => '클립보드에 복사',
@@ -65,5 +64,16 @@ return [
         'copy' => '복사',
         'copied' => '복사됨',
         'copy_failed' => '클립보드에 복사하지 못했습니다',
+    ],
+
+    'media_lightbox' => [
+        'title' => '미디어 미리보기',
+        'previous' => '이전',
+        'next' => '다음',
+        'zoom_in' => '확대',
+        'zoom_out' => '축소',
+        'counter' => ':current / :total',
+        'go_to' => '항목 :number 보기',
+        'open' => '미리보기 열기',
     ],
 ];

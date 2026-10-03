@@ -24,6 +24,7 @@ enum EventType: string
             PostStatus::PartiallyPublished => self::PostPartiallyPublished,
             PostStatus::Failed => self::PostFailed,
             PostStatus::Draft => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,
+            PostStatus::PendingApproval => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,
             default => null,
         };
     }

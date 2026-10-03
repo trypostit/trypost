@@ -5,7 +5,7 @@ export interface McpClient {
     label: string;
     logo: string;
     settingsUrl: string;
-    theme: { bg: string; rotate: string };
+    logoClass?: string;
 }
 
 /**
@@ -19,13 +19,12 @@ export const mcpClients: McpClient[] = [
         label: 'Claude',
         logo: '/images/ai/claude.svg',
         settingsUrl: 'https://claude.ai/customize/connectors',
-        theme: { bg: 'bg-orange-100', rotate: '-rotate-2' },
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
         logo: '/images/ai/chatgpt-white.svg',
-        settingsUrl: 'https://chatgpt.com/plugins#settings/Connectors?create-connector=true&redirectAfter=%2Fplugins',
-        theme: { bg: 'bg-black', rotate: 'rotate-1' },
+        settingsUrl: 'https://chatgpt.com/plugins',
+        logoClass: 'invert dark:invert-0',
     },
 ];

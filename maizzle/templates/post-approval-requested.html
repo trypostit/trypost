@@ -1,0 +1,60 @@
+<x-main>
+  <div class="bg-zinc-50 sm:px-4 font-sans">
+    <table align="center">
+      <tr>
+        <td class="w-[552px] max-w-full">
+          <x-header />
+
+          <table class="w-full">
+            <tr>
+              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
+                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
+                  @{{ __('mail.post_approval_requested.heading') }}
+                </h1>
+
+                <p class="m-0 leading-6">
+                  @{{ __('mail.post_approval_requested.body', ['name' => $requesterName, 'email' => $requesterEmail, 'workspace' => $workspaceName]) }}
+                </p>
+
+                <div class="mt-4 p-4 bg-zinc-50 rounded">
+                  <p class="m-0 leading-6 text-sm text-zinc-900" style="white-space: pre-line;">@{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_approval_requested.post_without_text') }}</p>
+                </div>
+
+                <p class="m-0 mt-4 text-sm font-semibold text-zinc-900">
+                  @{{ __('mail.post_approval_requested.channels') }}
+                </p>
+                <ul class="m-0 mt-2 pl-5 leading-6 text-sm">
+                  @foreach($channels as $channel)
+                    <li><strong>@{{ $channel }}</strong></li>
+                  @endforeach
+                </ul>
+
+                <p class="m-0 mt-4 text-sm font-semibold text-zinc-900">
+                  @{{ __('mail.post_approval_requested.requested_time') }}
+                </p>
+                <p class="m-0 mt-2 leading-6 text-sm">
+                  @if($queued)
+                    @{{ __('mail.post_approval_requested.next_queue_slot') }}
+                  @elseif($requestedTime !== null)
+                    @{{ $requestedTime }}
+                  @else
+                    @{{ __('mail.post_approval_requested.as_soon_as_approved') }}
+                  @endif
+                </p>
+
+                <x-spacer height="24px" />
+
+                <div class="flex items-center justify-center">
+                  <x-button href="@{{ $url }}">
+                    @{{ __('mail.post_approval_requested.button') }}
+                  </x-button>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <x-footer-authenticated />
+        </td>
+      </tr>
+    </table>
+  </div>
+</x-main>

@@ -8,7 +8,9 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Services\Social\ContentSanitizer;
+use App\Support\ThreadReplies;
 use App\Support\YouTubeDescription;
+use App\Support\YouTubeMetadata;
 use Illuminate\Support\Collection;
 
 /**
@@ -35,7 +37,8 @@ class PostPreviewer
      *         max_content_length: int,
      *         truncated: bool,
      *         description?: string,
-     *         description_length_bytes?: int
+     *         description_length_bytes?: int,
+     *         thread_replies?: list<string>
      *     }>
      * }
      */
@@ -69,14 +72,21 @@ class PostPreviewer
                     'content_type' => $pp->content_type?->value,
                     'sanitized_content' => $sanitized,
                     'sanitized_length' => mb_strlen($sanitized),
-                    'max_content_length' => $platform->maxContentLength(),
+                    'max_content_length' => $pp->socialAccount?->maxContentLength() ?? $platform->maxContentLength(),
                     'truncated' => mb_strlen($sanitized) < mb_strlen($original),
                 ];
 
                 if ($platform === Platform::YouTube) {
                     $description = YouTubeDescription::resolve($pp->meta, $sanitized);
+                    $preview['title'] = YouTubeMetadata::title($pp->meta, $sanitized);
                     $preview['description'] = $description;
                     $preview['description_length_bytes'] = strlen($description);
+                }
+
+                $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($pp->meta) : [];
+
+                if ($replies !== []) {
+                    $preview['thread_replies'] = array_map(fn (string $reply): string => $this->sanitizer->sanitize($reply, $platform), $replies);
                 }
 
                 return $preview;

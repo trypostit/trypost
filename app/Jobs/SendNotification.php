@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
-use App\Events\NotificationCreated;
-use App\Models\Notification;
+use App\Mail\PostApprovalRequested;
+use App\Models\Post;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -24,41 +23,35 @@ class SendNotification implements ShouldQueue
 
     public int $backoff = 10;
 
-    /**
-     * @param  array<string, mixed>|null  $data
-     */
     public function __construct(
         public User $user,
-        public string $workspaceId,
         public Type $type,
-        public Channel $channel,
-        public string $title,
-        public string $body,
-        public ?array $data = null,
-        public ?Mailable $mailable = null,
+        public Mailable $mailable,
     ) {}
 
     public function handle(): void
     {
-        // Save in-app notification
-        if ($this->channel !== Channel::Email) {
-            $notification = Notification::create([
-                'user_id' => $this->user->id,
-                'workspace_id' => $this->workspaceId,
-                'type' => $this->type,
-                'channel' => $this->channel,
-                'title' => $this->title,
-                'body' => $this->body,
-                'data' => $this->data,
-            ]);
-
-            NotificationCreated::dispatch($notification);
+        if (! $this->user->wantsEmailFor($this->type) || ! $this->keepsPendingApprovalPosts()) {
+            return;
         }
 
-        // Send email (respects user preferences)
-        if ($this->mailable && $this->channel !== Channel::InApp && $this->user->wantsEmailFor($this->type)) {
-            Mail::to($this->user)->send($this->mailable);
+        Mail::to($this->user)->send($this->mailable);
+    }
+
+    /**
+     * An approval request lists only its posts still waiting for approval, and
+     * is not sent once every one was approved, rejected or deleted.
+     */
+    private function keepsPendingApprovalPosts(): bool
+    {
+        if (! $this->mailable instanceof PostApprovalRequested) {
+            return true;
         }
+
+        $pendingIds = Post::query()->whereIn('id', $this->mailable->postIds)->pendingApproval()->pluck('id')->all();
+        $this->mailable->postIds = array_values(array_intersect($this->mailable->postIds, $pendingIds));
+
+        return $this->mailable->postIds !== [];
     }
 
     public function failed(Throwable $exception): void

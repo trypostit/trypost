@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Models\WorkspaceSignature;
@@ -10,7 +9,7 @@ use App\Models\WorkspaceSignature;
 beforeEach(function () {
     $this->user = User::factory()->create([]);
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -53,18 +52,43 @@ test('store signature requires authentication', function () {
 });
 
 test('store signature creates signature', function () {
-    $response = $this->actingAs($this->user)->post(route('app.signatures.store'), [
+    $response = $this->actingAs($this->user)->from(route('app.signatures.index', ['search' => 'Mar']))->post(route('app.signatures.store'), [
         'name' => 'Marketing',
         'content' => '#marketing #digital #growth',
     ]);
 
-    $response->assertRedirect(route('app.signatures.index'));
+    $response->assertRedirect(route('app.signatures.index', ['search' => 'Mar']))
+        ->assertSessionMissing('flash.banner');
 
     $this->assertDatabaseHas('workspace_signatures', [
         'workspace_id' => $this->workspace->id,
         'name' => 'Marketing',
         'content' => '#marketing #digital #growth',
     ]);
+});
+
+test('composer creates signature with JSON without leaving the post', function () {
+    $this->actingAs($this->user)
+        ->postJson(route('app.signatures.store'), [
+            'name' => 'Launch',
+            'content' => '#launch',
+        ])
+        ->assertCreated()
+        ->assertJsonPath('name', 'Launch')
+        ->assertJsonPath('content', '#launch')
+        ->assertJsonStructure(['id']);
+
+    $this->assertDatabaseHas('workspace_signatures', [
+        'workspace_id' => $this->workspace->id,
+        'name' => 'Launch',
+    ]);
+});
+
+test('composer gets JSON validation errors for invalid signature', function () {
+    $this->actingAs($this->user)
+        ->postJson(route('app.signatures.store'), ['name' => '', 'content' => ''])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['name', 'content']);
 });
 
 test('store signature validates required fields', function () {
@@ -91,16 +115,42 @@ test('update signature requires authentication', function () {
 test('update signature updates the signature', function () {
     $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->put(route('app.signatures.update', $signature), [
+    $response = $this->actingAs($this->user)->from(route('app.signatures.index', ['search' => 'Upd']))->put(route('app.signatures.update', $signature), [
         'name' => 'Updated Name',
         'content' => '#updated #content',
     ]);
 
-    $response->assertRedirect(route('app.signatures.index'));
+    $response->assertRedirect(route('app.signatures.index', ['search' => 'Upd']))
+        ->assertSessionMissing('flash.banner');
 
     $signature->refresh();
     expect($signature->name)->toBe('Updated Name');
     expect($signature->content)->toBe('#updated #content');
+});
+
+test('composer updates signature with JSON and keeps workspace isolation', function () {
+    $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.signatures.update', $signature), [
+            'name' => 'Updated in composer',
+            'content' => '#updated',
+        ])
+        ->assertOk()
+        ->assertJsonPath('id', $signature->id)
+        ->assertJsonPath('content', '#updated');
+
+    expect($signature->fresh()->name)->toBe('Updated in composer');
+
+    $otherWorkspace = Workspace::factory()->create();
+    $otherSignature = WorkspaceSignature::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.signatures.update', $otherSignature), [
+            'name' => 'Not allowed',
+            'content' => '#no',
+        ])
+        ->assertNotFound();
 });
 
 test('update signature returns 404 for other workspace signature', function () {
@@ -127,9 +177,10 @@ test('destroy signature requires authentication', function () {
 test('destroy signature deletes the signature', function () {
     $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->delete(route('app.signatures.destroy', $signature));
+    $response = $this->actingAs($this->user)->from(route('app.signatures.index', ['search' => 'Del']))->delete(route('app.signatures.destroy', $signature));
 
-    $response->assertRedirect(route('app.signatures.index'));
+    $response->assertRedirect(route('app.signatures.index', ['search' => 'Del']))
+        ->assertSessionMissing('flash.banner');
     expect(WorkspaceSignature::find($signature->id))->toBeNull();
 });
 
@@ -185,7 +236,7 @@ test('signatures index returns all when no search query', function () {
 // Member authorization tests
 test('member can create signature', function () {
     $member = User::factory()->create(['account_id' => $this->workspace->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $response = $this->actingAs($member)->post(route('app.signatures.store'), [
@@ -203,4 +254,35 @@ test('update signature validates required fields', function () {
     $response = $this->actingAs($this->user)->put(route('app.signatures.update', $signature), []);
 
     $response->assertSessionHasErrors(['name', 'content']);
+});
+
+test('a signature that fails validation returns to the page it came from with the errors', function () {
+    $this->actingAs($this->user)
+        ->from(route('app.signatures.index', ['search' => 'New']))
+        ->post(route('app.signatures.store'), ['name' => '', 'content' => ''])
+        ->assertRedirect(route('app.signatures.index', ['search' => 'New']))
+        ->assertSessionHasErrors(['name', 'content']);
+
+    $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.signatures.index', ['search' => 'Upd']))
+        ->put(route('app.signatures.update', $signature), ['name' => '', 'content' => ''])
+        ->assertRedirect(route('app.signatures.index', ['search' => 'Upd']))
+        ->assertSessionHasErrors(['name', 'content']);
+
+    $this->assertDatabaseCount('workspace_signatures', 1);
+});
+
+test('signatures index says whether the workspace has any signature, independent of the search', function () {
+    $this->actingAs($this->user)
+        ->get(route('app.signatures.index'))
+        ->assertInertia(fn ($page) => $page->where('hasData', false)->has('signatures.data', 0));
+
+    WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id, 'name' => 'Marketing']);
+    WorkspaceSignature::factory()->create(['workspace_id' => Workspace::factory()->create()->id, 'name' => 'Foreign']);
+
+    $this->actingAs($this->user)
+        ->get(route('app.signatures.index', ['search' => 'nothing-matches']))
+        ->assertInertia(fn ($page) => $page->where('hasData', true)->has('signatures.data', 0));
 });

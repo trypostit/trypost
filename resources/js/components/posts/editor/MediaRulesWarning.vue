@@ -2,7 +2,10 @@
 import { IconAlertTriangle, IconExternalLink } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { getMediaValidationWarning } from '@/composables/useMedia';
+import {
+    getMediaValidationWarning,
+    mediaWarningParams,
+} from '@/composables/useMedia';
 import { mediaLimitsDocsUrl } from '@/lib/docs';
 import type { MediaItem } from '@/types/media';
 
@@ -10,20 +13,35 @@ const props = defineProps<{
     contentType: string;
     media: MediaItem[];
     platform: string;
+    hiddenKeys?: string[];
 }>();
 
-const warning = computed(() => getMediaValidationWarning(props.contentType, props.media));
+const warning = computed(() => {
+    const found = getMediaValidationWarning(props.contentType, props.media);
+
+    return found &&
+        found.key !== 'requires_media' &&
+        !props.hiddenKeys?.includes(found.key)
+        ? found
+        : null;
+});
 </script>
 
 <template>
     <p
         v-if="warning"
-        class="flex items-start gap-2 rounded-lg border-2 border-foreground bg-rose-50 p-2 text-xs font-semibold text-rose-700"
+        role="status"
+        class="flex items-start gap-2 rounded-md bg-warning/15 px-3 py-1.5 text-sm"
         data-testid="media-rules-warning"
     >
-        <IconAlertTriangle class="mt-0.5 size-3.5 shrink-0" />
+        <IconAlertTriangle class="mt-0.5 size-4 shrink-0 text-warning" />
         <span>
-            {{ $t(`posts.form.warnings.${warning.key}`, warning.params) }}
+            {{
+                $t(
+                    `posts.form.warnings.${warning.key}`,
+                    mediaWarningParams(warning, contentType, $t),
+                )
+            }}
             <a
                 :href="mediaLimitsDocsUrl(platform)"
                 target="_blank"

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Συνδέστε βοηθούς AI για να δημιουργούν και να διαχειρίζονται αναρτήσεις με τον λογαριασμό TryPost σας.',
+    'subtitle' => 'Συνδέστε βοηθούς AI στον χώρο σας.',
     'copy_step' => 'Αντίγραψε το URL του διακομιστή TryPost',
     'open_step' => 'Άνοιξε τον βοηθό AI σου',
     'copy' => 'Αντιγραφή URL',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Συνδεδεμένες εφαρμογές',
     'connected_description' => 'Βοηθοί στους οποίους έχετε συνδεθεί. Μπορείτε να αποσυνδέσετε όσους δεν χρησιμοποιείτε πλέον.',
-    'connected_empty' => 'Τίποτα συνδεδεμένο ακόμα. Χρησιμοποιήστε Claude, ChatGPT ή άλλο client παραπάνω.',
+    'connected_empty_title' => 'Καμία συνδεδεμένη εφαρμογή',
+    'connected_empty' => 'Χρησιμοποιήστε Claude, ChatGPT ή άλλο client παραπάνω.',
     'disconnect' => 'Αποσύνδεση',
     'disconnect_title' => 'Αποσύνδεση εφαρμογής',
     'disconnect_confirm' => 'Αυτό αποσυνδέει την εφαρμογή από το TryPost. Θα χρειαστεί να συνδεθεί ξανά πριν χρησιμοποιήσει το MCP.',

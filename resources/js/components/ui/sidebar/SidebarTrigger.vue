@@ -24,6 +24,6 @@ const { isMobile, state, toggleSidebar } = useSidebar()
     <IconMenu2 v-if="isMobile" />
     <IconLayoutSidebarLeftExpand v-else-if="state === 'collapsed'" />
     <IconLayoutSidebarLeftCollapse v-else />
-    <span class="sr-only">Toggle Sidebar</span>
+    <span class="sr-only">{{ $t('sidebar.toggle') }}</span>
   </Button>
 </template>

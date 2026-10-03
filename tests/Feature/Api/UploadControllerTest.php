@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
@@ -19,7 +18,7 @@ beforeEach(function () {
 
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 });
 
 function signedUploadUrl(Workspace $ws, string $token, ?int $expiresInMinutes = 15): string

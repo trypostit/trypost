@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
@@ -22,7 +22,7 @@ beforeEach(function () {
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->account->subscriptions()->create([
@@ -39,7 +39,7 @@ function postEncodedChunkedUpload(string $fileName, string $content): TestRespon
 
     return test()->actingAs(test()->user)->call(
         'POST',
-        route('app.assets.store-chunked'),
+        route('app.media.store-chunked'),
         [], [], [],
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
@@ -60,7 +60,7 @@ test('chunked upload accepts filename with en-dash when percent-encoded', functi
 
     $response->assertSuccessful();
     $response->assertJson(['done' => true]);
-    expect($this->workspace->getMedia('assets')->first()->original_filename)
+    expect($this->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->original_filename)
         ->toBe(strtolower($fileName));
 });
 
@@ -71,7 +71,7 @@ test('chunked upload accepts filename with emoji when percent-encoded', function
     $response = postEncodedChunkedUpload($fileName, $content);
 
     $response->assertSuccessful();
-    expect($this->workspace->getMedia('assets')->first()->original_filename)
+    expect($this->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->original_filename)
         ->toBe(strtolower($fileName));
 });
 
@@ -82,7 +82,7 @@ test('chunked upload accepts filename with spaces and double-dot extension', fun
     $response = postEncodedChunkedUpload($fileName, $content);
 
     $response->assertSuccessful();
-    expect($this->workspace->getMedia('assets')->first()->original_filename)
+    expect($this->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->original_filename)
         ->toBe('my video file..png');
 });
 
@@ -92,7 +92,7 @@ test('chunked upload still accepts plain ascii filename without encoding', funct
 
     $response = $this->actingAs($this->user)->call(
         'POST',
-        route('app.assets.store-chunked'),
+        route('app.media.store-chunked'),
         [], [], [],
         [
             'HTTP_CONTENT_RANGE' => 'bytes 0-'.($size - 1).'/'.$size,
@@ -105,7 +105,7 @@ test('chunked upload still accepts plain ascii filename without encoding', funct
     );
 
     $response->assertSuccessful();
-    expect($this->workspace->getMedia('assets')->first()->original_filename)
+    expect($this->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->original_filename)
         ->toBe('plain-ascii.png');
 });
 
@@ -125,7 +125,7 @@ test('chunked upload streams a video file to storage on finalize', function () {
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'video']);
 
-    $media = $this->workspace->getMedia('assets')->first();
+    $media = $this->workspace->getMedia(Media::COLLECTION_UPLOADS)->first();
     expect($media->original_filename)->toBe(strtolower($fileName));
     expect($media->type->value)->toBe('video');
     expect($media->size)->toBe(strlen($content));

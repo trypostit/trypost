@@ -13,15 +13,12 @@ return [
     ],
 
     'publish_mode' => [
-
         'title' => '게시',
 
         'description' => '새 게시물이 나타났을 때의 동작.',
-
     ],
 
     'publish_modes' => [
-
         'publish' => '자동으로 게시',
 
         'publish_hint' => '새 게시물은 발견되는 즉시 예약됩니다.',
@@ -29,7 +26,6 @@ return [
         'draft' => '초안으로 만들기',
 
         'draft_hint' => '새 게시물은 여기에서 초안이 되어 검토 후 게시할 수 있습니다.',
-
     ],
 
     'formats' => [
@@ -58,8 +54,6 @@ return [
     ],
 
     'table' => [
-        'flow' => '흐름',
-        'status' => '상태',
         'published' => '복제됨',
         'last_polled' => '마지막 확인',
     ],
@@ -97,7 +91,6 @@ return [
     ],
 
     'destinations' => [
-        'paused_note' => '꺼져 있어 건너뜁니다. 다시 켤 때까지: :accounts',
         'title' => '대상',
         'description' => '받을 계정을 고르세요. 각 계정은 지정한 형식으로 게시합니다.',
         'hint' => '캡션은 해당 네트워크의 한도를 넘을 때만 조정됩니다.',
@@ -150,9 +143,7 @@ return [
     ],
 
     'menu' => [
-
         'label' => '추가 작업',
-
     ],
 
     'danger' => [
@@ -175,6 +166,7 @@ return [
         'source_unusable' => '이 자동화를 시작하기 전에 모니터링 중인 계정을 다시 연결하세요.',
         'destinations_required' => '활성화하기 전에 대상을 하나 이상 고르세요.',
         'destination_needs_video' => '그 형식은 영상을 담을 수 없습니다.',
+        'destination_not_supported' => 'Google 비즈니스는 대상이 될 수 없습니다. 게시물에 동영상을 쓸 수 없습니다.',
         'only_paused_resumes' => '일시중지된 Repurpose만 재개할 수 있습니다.',
         'only_active_pauses' => '활성 상태의 리퍼포즈만 일시중지할 수 있습니다.',
         'only_running_disables' => '실행 중인 리퍼포즈만 사용 중지할 수 있습니다.',

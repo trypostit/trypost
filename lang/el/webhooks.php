@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Λάβετε ειδοποιήσεις σε πραγματικό χρόνο όταν δημιουργούνται, προγραμματίζονται, αποπρογραμματίζονται, δημοσιεύονται ή αποτυγχάνουν αναρτήσεις.',
+    'description' => 'Άμεσες ειδοποιήσεις για τις αναρτήσεις σας.',
     'new' => 'Δημιουργία webhook',
     'empty_title' => 'Δεν υπάρχουν ακόμα webhooks',
     'empty_description' => 'Δημιουργήστε ένα webhook για να λαμβάνετε ειδοποιήσεις συμβάντων σε πραγματικό χρόνο.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Ακούει',
         'status' => 'Κατάσταση',
         'last_sent' => 'Τελευταία αποστολή',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Ανενεργό',
         'paused' => 'Σε παύση',
     ],
+    'row_actions' => 'Ενέργειες webhook',
     'actions' => [
         'view' => 'Προβολή λεπτομερειών',
-        'copy_id' => 'Αντιγραφή ID webhook',
         'delete' => 'Διαγραφή',
         'edit' => 'Επεξεργασία endpoint',
         'enable' => 'Ενεργοποίηση endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Ρυθμίστε ένα endpoint για να λαμβάνετε ειδοποιήσεις webhook.',
         'endpoint' => 'URL του endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Θα στείλουμε ένα αίτημα POST με JSON σε αυτό το URL.',
         'events' => 'Συμβάντα',
-        'events_placeholder' => 'Επιλογή συμβάντων...',
-        'events_selected' => '{1} :count συμβάν επιλεγμένο|[2,*] :count συμβάντα επιλεγμένα',
-        'search_events' => 'Αναζήτηση συμβάντων...',
-        'no_events' => 'Δεν βρέθηκαν συμβάντα',
+        'events_count_selected' => '{1} :count από :total επιλεγμένο|[0,*] :count από :total επιλεγμένα',
         'submit' => 'Δημιουργία webhook',
         'cancel' => 'Ακύρωση',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Μυστικό υπογραφής',
-        'last_sent' => 'Τελευταία αποστολή :time',
-        'listening_for' => 'Ακούει',
+        'edit' => 'Επεξεργασία',
         'http_status' => 'Κατάσταση HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'Προσπάθειες',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Χωρίς σώμα απάντησης',
         'no_response' => 'Χωρίς απάντηση',
         'payload' => 'Payload μηνύματος',
-        'empty_title' => 'Δεν υπάρχουν ακόμα συμβάντα',
-        'empty_description' => 'Όταν δημιουργούνται, προγραμματίζονται, αποπρογραμματίζονται ή δημοσιεύονται αναρτήσεις, τα συμβάντα του webhook εμφανίζονται εδώ.',
+    ],
+    'deliveries' => [
+        'title' => 'Παραδόσεις',
+        'empty_title' => 'Καμία παράδοση ακόμα',
+        'empty_description' => 'Στείλτε ένα δοκιμαστικό συμβάν για να το δείτε εδώ.',
+        'pending' => 'Σε αναμονή',
     ],
     'events' => [
         'group_posts' => 'Αναρτήσεις',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Μερική δημοσίευση',
         'post_failed' => 'Η ανάρτηση απέτυχε',
         'post_deleted' => 'Η ανάρτηση διαγράφηκε',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Όταν δημιουργείται μια νέα ανάρτηση.',
+        'post_scheduled' => 'Όταν μια ανάρτηση προγραμματίζεται.',
+        'post_unscheduled' => 'Όταν μια προγραμματισμένη ανάρτηση γίνεται πρόχειρο.',
+        'post_published' => 'Όταν μια ανάρτηση δημοσιεύεται σε ένα κανάλι.',
+        'post_partially_published' => 'Όταν κάποια κανάλια δημοσιεύουν και άλλα αποτυγχάνουν.',
+        'post_failed' => 'Όταν μια ανάρτηση αποτυγχάνει να δημοσιευτεί.',
+        'post_deleted' => 'Όταν διαγράφεται μια ανάρτηση.',
     ],
     'http_reasons' => [
         'unknown' => 'Άγνωστο',
@@ -111,7 +119,6 @@ return [
         '504' => 'Λήξη χρόνου πύλης',
     ],
     'copied' => [
-        'id' => 'Το ID του webhook αντιγράφηκε στο πρόχειρο',
         'secret' => 'Το μυστικό υπογραφής αντιγράφηκε στο πρόχειρο',
         'response' => 'Το σώμα απάντησης αντιγράφηκε',
         'payload' => 'Το payload αντιγράφηκε',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'Το endpoint επέστρεψε HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Το webhook δημιουργήθηκε.',
         'updated' => 'Το webhook ενημερώθηκε.',
         'deleted' => 'Το webhook διαγράφηκε.',
         'secret_rotated' => 'Το μυστικό υπογραφής άλλαξε.',

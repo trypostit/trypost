@@ -32,26 +32,32 @@ const highlighted = computed(() => {
 </script>
 
 <template>
-    <div class="json-viewer group relative overflow-hidden rounded-lg border-2 border-foreground">
+    <div
+        class="json-viewer group relative min-w-0 overflow-hidden rounded-md border border-border"
+    >
         <TooltipProvider v-if="serialized" :delay-duration="200">
             <div
-                class="absolute right-2 top-2 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
+                class="absolute top-2 right-2 z-10 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100"
             >
                 <Tooltip>
                     <TooltipTrigger as-child>
                         <button
                             type="button"
-                            class="inline-flex size-7 items-center justify-center rounded-md border-2 border-foreground bg-card shadow-[1px_1px_0_var(--foreground)] transition hover:-translate-x-px hover:-translate-y-px hover:shadow-[2px_2px_0_var(--foreground)] active:translate-x-0 active:translate-y-0 active:shadow-[0_0_0_var(--foreground)]"
+                            class="inline-flex size-7 items-center justify-center rounded-md border border-border bg-card text-muted-foreground shadow-xs transition hover:bg-accent hover:text-foreground"
                             :aria-label="$t('common.actions.copy')"
                             @click="copyToClipboard(serialized)"
                         >
-                            <IconCopy class="size-3.5" stroke-width="2.5" />
+                            <IconCopy class="size-3.5" />
                         </button>
                     </TooltipTrigger>
-                    <TooltipContent>{{ $t('common.actions.copy') }}</TooltipContent>
+                    <TooltipContent>{{
+                        $t('common.actions.copy')
+                    }}</TooltipContent>
                 </Tooltip>
             </div>
         </TooltipProvider>
-        <pre class="json-viewer__body overflow-x-auto p-3 text-xs leading-relaxed"><code class="hljs language-json" v-html="highlighted" /></pre>
+        <pre
+            class="json-viewer__body overflow-x-auto px-3 py-2.5 text-xs leading-5"
+        ><code class="hljs language-json" v-html="highlighted" /></pre>
     </div>
 </template>

@@ -68,7 +68,7 @@ const organizationUrl = (vanity: string | null): string | null =>
             <div class="flex items-center gap-3">
                 <img src="/images/accounts/linkedin.png" alt="LinkedIn" class="h-10 w-10" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">
+                    <h1 class="font-heading text-xl font-medium tracking-tight">
                         {{ $t('accounts.linkedin.select_title') }}
                     </h1>
                     <p class="text-sm text-muted-foreground">

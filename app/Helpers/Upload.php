@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Services\Brand\SafeHttpFetcher;
+use App\Enums\Media\Type as MediaType;
+use App\Services\Http\SafeHttpFetcher;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -22,7 +23,8 @@ if (! function_exists('uploadFromUrl')) {
         }
 
         try {
-            $response = app(SafeHttpFetcher::class)->guardedRequest($url)->timeout(10)->get($url);
+            $safeHttp = app(SafeHttpFetcher::class);
+            $response = $safeHttp->limitTransfer($safeHttp->guardedRequest($url), MediaType::Image->maxSizeInBytes())->get($url);
 
             if (! $response->successful()) {
                 Log::warning('uploadFromUrl: Failed to download', [

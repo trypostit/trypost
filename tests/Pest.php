@@ -3,14 +3,17 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Enums\UserWorkspace\Role;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Http\HostResolver;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
@@ -28,11 +31,15 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
+    ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class]))
     ->in('Feature', 'Unit');
 
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Browser');
+
+pest()->in('Feature/Social')
+    ->beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
 
 /*
 |--------------------------------------------------------------------------
@@ -106,9 +113,7 @@ function createApiTestToken(array $overrides = []): array
             'account_id' => $user->account_id,
             'user_id' => $user->id,
         ]);
-        $workspace->members()->attach($user->id, [
-            'role' => Role::Admin->value,
-        ]);
+        $workspace->members()->attach($user->id, membershipPivot('admin'));
         $user->update(['current_workspace_id' => $workspace->id]);
     } else {
         $user = $workspace->owner ?? User::factory()->create([
@@ -125,6 +130,48 @@ function createApiTestToken(array $overrides = []): array
         'workspace' => $workspace,
         'user' => $user,
     ];
+}
+
+/**
+ * Pivot columns for a workspace membership: an admin, a member who publishes
+ * directly, or a member whose posts need approval.
+ *
+ * @return array{is_admin: bool, requires_approval: bool}
+ */
+function membershipPivot(string $access): array
+{
+    return match ($access) {
+        'admin' => ['is_admin' => true, 'requires_approval' => false],
+        'member' => ['is_admin' => false, 'requires_approval' => false],
+        'approval' => ['is_admin' => false, 'requires_approval' => true],
+    };
+}
+
+/**
+ * A user on the workspace's account, attached with the given access and
+ * switched to that workspace.
+ *
+ * @param  array<string, mixed>  $attributes
+ */
+function workspaceMember(Workspace $workspace, string $access = 'member', array $attributes = []): User
+{
+    $user = User::factory()->create(['account_id' => $workspace->account_id, ...$attributes]);
+    $workspace->members()->attach($user->id, membershipPivot($access));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    return $user->fresh();
+}
+
+/**
+ * A user on the workspace's account whose current workspace is this one but
+ * who is not a member of it.
+ */
+function workspaceOutsider(Workspace $workspace): User
+{
+    $user = User::factory()->create(['account_id' => $workspace->account_id]);
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    return $user->fresh();
 }
 
 /**
@@ -157,6 +204,16 @@ function billingAccount(string $price, array $subscriptionAttributes = [], int $
     Workspace::factory()->count($workspaces)->create(['account_id' => $account->id]);
 
     return $account->refresh();
+}
+
+/**
+ * Every host name resolves to one public documentation address, so a fetch
+ * through SafeHttpFetcher never depends on real DNS. IP literals are still
+ * vetted by the guard itself.
+ */
+function fakePublicDns(string $address = '93.184.216.34'): void
+{
+    test()->mock(HostResolver::class)->shouldReceive('addresses')->andReturn([$address]);
 }
 
 /**
@@ -303,13 +360,11 @@ function strandedMemberOnSharedAccount(
         ]);
 
         $workspace->members()->syncWithoutDetaching([
-            $owner->id => ['role' => Role::Admin->value],
+            $owner->id => membershipPivot('admin'),
         ]);
 
         if ($attachMember && ($attachMemberToAll || $i === 0)) {
-            $workspace->members()->attach($member->id, [
-                'role' => Role::Member->value,
-            ]);
+            $workspace->members()->attach($member->id, membershipPivot('member'));
         }
 
         $shared[] = $workspace;

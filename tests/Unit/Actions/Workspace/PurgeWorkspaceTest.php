@@ -11,9 +11,10 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
-test('purge workspace deletes the workspace and returns media paths', function () {
+test('purge workspace deletes the workspace, its media rows and, after commit, their files', function () {
     Storage::fake();
 
     $owner = User::factory()->create();
@@ -28,12 +29,15 @@ test('purge workspace deletes the workspace and returns media paths', function (
     );
     $path = $media->path;
 
-    $paths = PurgeWorkspace::execute($workspace);
+    DB::transaction(function () use ($workspace, $path): void {
+        PurgeWorkspace::execute($workspace);
 
-    expect($paths)->toBe([$path]);
+        Storage::assertExists($path);
+    });
+
     expect(Workspace::find($workspace->id))->toBeNull();
     expect(Media::find($media->id))->toBeNull();
-    Storage::assertExists($path);
+    Storage::assertMissing($path);
 });
 
 test('purge workspace prunes google business jpegs before the cascade', function () {

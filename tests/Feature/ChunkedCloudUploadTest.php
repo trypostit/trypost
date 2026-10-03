@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Media;
 use App\Models\User;
@@ -29,7 +28,7 @@ function seedChunkedUploadWorkspace(): void
         'account_id' => test()->account->id,
         'user_id' => test()->user->id,
     ]);
-    test()->workspace->members()->attach(test()->user->id, ['role' => Role::Member->value]);
+    test()->workspace->members()->attach(test()->user->id, membershipPivot('member'));
     test()->user->update(['current_workspace_id' => test()->workspace->id]);
     test()->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -66,7 +65,7 @@ function postChunkedAsset(string $fileName, string $content, int $rangeStart = 0
 
     return test()->actingAs(test()->user)->call(
         'POST',
-        route('app.assets.store-chunked'),
+        route('app.media.store-chunked'),
         [], [], [],
         $headers,
         $content,
@@ -262,7 +261,7 @@ test('chunked upload stores video on the local disk via assemble path', function
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'video']);
 
-    $media = test()->workspace->getMedia('assets')->first();
+    $media = test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first();
     expect($media->original_filename)->toBe('clip.mp4');
     expect($media->size)->toBe(strlen($content));
     Storage::disk('local')->assertExists($media->path);
@@ -279,7 +278,7 @@ test('chunked upload stores video on the public disk via assemble path', functio
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'video']);
 
-    $media = test()->workspace->getMedia('assets')->first();
+    $media = test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first();
     expect($media->type->value)->toBe('video');
     Storage::disk('public')->assertExists($media->path);
 });
@@ -297,12 +296,12 @@ test('chunked upload on local disk reports progress across multiple chunks', fun
     $mid = postChunkedAsset('clip.mp4', $part1, 0, $total, uploadId: $uploadId);
     $mid->assertSuccessful();
     $mid->assertJson(['done' => false]);
-    expect(test()->workspace->getMedia('assets')->count())->toBe(0);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->count())->toBe(0);
 
     $done = postChunkedAsset('clip.mp4', $part2, strlen($part1), $total, uploadId: $uploadId);
     $done->assertSuccessful();
     $done->assertJson(['done' => true, 'type' => 'video']);
-    expect(test()->workspace->getMedia('assets')->count())->toBe(1);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->count())->toBe(1);
 });
 
 test('chunked upload stores image on local disk', function () {
@@ -315,7 +314,7 @@ test('chunked upload stores image on local disk', function () {
 
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'image']);
-    Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+    Storage::disk('local')->assertExists(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->path);
 });
 
 // ─── Video duration (server probe, X-Media-Duration fallback) ───
@@ -327,7 +326,7 @@ test('chunked upload reads the duration from the assembled file and ignores the 
 
     postChunkedAsset('clip.mp4', file_get_contents(base_path('tests/fixtures/sample.mp4')), uploadId: Str::uuid()->toString(), duration: '61.437')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 1.0]);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta)->toEqual(['duration' => 1.0]);
 });
 
 test('chunked upload falls back to the browser duration when the file carries none', function () {
@@ -337,7 +336,7 @@ test('chunked upload falls back to the browser duration when the file carries no
 
     postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString(), duration: '61.437')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 61.44]);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta)->toEqual(['duration' => 61.44]);
 });
 
 test('chunked upload probes the duration from object storage on the multipart path', function () {
@@ -359,7 +358,7 @@ test('chunked upload probes the duration from object storage on the multipart pa
 
     postChunkedAsset('clip.mp4', 'fake-video!!', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 1.0]);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta)->toEqual(['duration' => 1.0]);
 });
 
 test('chunked upload never probes object storage for a non-video on the multipart path', function () {
@@ -377,7 +376,7 @@ test('chunked upload never probes object storage for a non-video on the multipar
 
     postChunkedAsset('deck.pdf', '%PDF-1.4 xx', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta ?? [])->not->toHaveKey('duration');
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta ?? [])->not->toHaveKey('duration');
 });
 
 test('chunked upload stores no duration when the browser reports zero and the file carries none', function () {
@@ -387,7 +386,7 @@ test('chunked upload stores no duration when the browser reports zero and the fi
 
     postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString(), duration: '0')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta ?? [])->not->toHaveKey('duration');
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta ?? [])->not->toHaveKey('duration');
 });
 
 test('chunked upload keeps the browser duration when object storage cannot be probed', function () {
@@ -405,7 +404,7 @@ test('chunked upload keeps the browser duration when object storage cannot be pr
 
     postChunkedAsset('clip.mp4', 'fake-video!!', uploadId: Str::uuid()->toString(), duration: '600')->assertSuccessful();
 
-    expect(test()->workspace->getMedia('assets')->first()->meta)->toEqual(['duration' => 600.0]);
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->meta)->toEqual(['duration' => 600.0]);
 });
 
 test('chunked upload ignores the duration header on images and without it stores no duration', function () {
@@ -416,7 +415,7 @@ test('chunked upload ignores the duration header on images and without it stores
     postChunkedAsset('photo.png', file_get_contents(__DIR__.'/../fixtures/1x1.png'), uploadId: Str::uuid()->toString(), duration: '12')->assertSuccessful();
     postChunkedAsset('clip.mp4', fakeMp4Bytes(), uploadId: Str::uuid()->toString())->assertSuccessful();
 
-    $byName = test()->workspace->getMedia('assets')->get()->keyBy('original_filename');
+    $byName = test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->get()->keyBy('original_filename');
     expect($byName['photo.png']->meta)->not->toHaveKey('duration');
     expect($byName['clip.mp4']->meta ?? [])->not->toHaveKey('duration');
 });
@@ -464,7 +463,7 @@ test('chunked upload uses multipart for videos on s3 disks', function (string $d
         'path' => "medias/{$disk}-clip.mp4",
         'type' => 'video',
     ]);
-    expect(test()->workspace->getMedia('assets')->first()->path)->toBe("medias/{$disk}-clip.mp4");
+    expect(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->path)->toBe("medias/{$disk}-clip.mp4");
 })->with(['s3', 'r2', 'spaces']);
 
 test('chunked upload on s3 still assembles images without multipart', function () {
@@ -485,7 +484,7 @@ test('chunked upload on s3 still assembles images without multipart', function (
 
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'image']);
-    Storage::disk('s3')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+    Storage::disk('s3')->assertExists(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->path);
 });
 
 test('chunked upload on local never calls multipart receiveChunk for videos', function () {
@@ -502,7 +501,7 @@ test('chunked upload on local never calls multipart receiveChunk for videos', fu
 
     $response->assertSuccessful();
     $response->assertJson(['done' => true, 'type' => 'video']);
-    Storage::disk('local')->assertExists(test()->workspace->getMedia('assets')->first()->path);
+    Storage::disk('local')->assertExists(test()->workspace->getMedia(Media::COLLECTION_UPLOADS)->first()->path);
 });
 
 test('chunked upload rejects a request with no X-Upload-Id header', function () {

@@ -2,28 +2,47 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\App\AnalyticsController;
+use App\Enums\Analytics\ExportFormat;
 use App\Http\Controllers\App\ApiKeyController;
-use App\Http\Controllers\App\AssetController;
 use App\Http\Controllers\App\BillingController;
+use App\Http\Controllers\App\CanvaController;
+use App\Http\Controllers\App\ChannelController;
+use App\Http\Controllers\App\ChannelPostingScheduleController;
+use App\Http\Controllers\App\ChannelQueueController;
 use App\Http\Controllers\App\DiscordController as AppDiscordController;
-use App\Http\Controllers\App\GiphyController;
+use App\Http\Controllers\App\GoogleMediaController;
+use App\Http\Controllers\App\GooglePhotosSessionController;
+use App\Http\Controllers\App\IdeaController;
+use App\Http\Controllers\App\IdeaGenerateController;
+use App\Http\Controllers\App\IdeaStageController;
+use App\Http\Controllers\App\InsightsController;
+use App\Http\Controllers\App\LibraryTemplateController;
 use App\Http\Controllers\App\LinkPreviewController;
+use App\Http\Controllers\App\LinkPreviewMediaController;
 use App\Http\Controllers\App\McpSettingsController;
-use App\Http\Controllers\App\NotificationController;
-use App\Http\Controllers\App\PostAiCreateController;
-use App\Http\Controllers\App\PostAiGenerateController;
-use App\Http\Controllers\App\PostAiRegenerateMediaController;
-use App\Http\Controllers\App\PostAiReviewController;
-use App\Http\Controllers\App\PostCommentController;
+use App\Http\Controllers\App\MediaAltTextController;
+use App\Http\Controllers\App\MediaImportController;
+use App\Http\Controllers\App\MediaUploadController;
+use App\Http\Controllers\App\PinterestBoardController;
+use App\Http\Controllers\App\PostAiAssistantController;
+use App\Http\Controllers\App\PostApprovalController;
 use App\Http\Controllers\App\PostController;
-use App\Http\Controllers\App\PresenceController;
+use App\Http\Controllers\App\PostGroupController;
+use App\Http\Controllers\App\PostLabelController;
+use App\Http\Controllers\App\PostNoteController;
+use App\Http\Controllers\App\PostRecurrenceController;
+use App\Http\Controllers\App\PostScheduleController;
+use App\Http\Controllers\App\PostTemplateController;
+use App\Http\Controllers\App\PostTemplatePickerController;
 use App\Http\Controllers\App\RepurposeController;
+use App\Http\Controllers\App\RssFeedCollectionController;
+use App\Http\Controllers\App\RssFeedController;
+use App\Http\Controllers\App\RssFeedItemController;
 use App\Http\Controllers\App\Settings\AccountController;
 use App\Http\Controllers\App\Settings\AuthenticationController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
+use App\Http\Controllers\App\Settings\PreferencesController;
 use App\Http\Controllers\App\Settings\ProfileController;
-use App\Http\Controllers\App\Settings\SettingsController;
 use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
@@ -46,8 +65,10 @@ use App\Http\Controllers\Auth\ThreadsController;
 use App\Http\Controllers\Auth\TikTokController;
 use App\Http\Controllers\Auth\XController;
 use App\Http\Controllers\Auth\YouTubeController;
+use App\Http\Controllers\FaviconController;
 use App\Http\Middleware\App\EnsureAccountReady;
 use App\Http\Middleware\App\EnsureHasWorkspace;
+use App\Support\TemplateLibrary;
 use Illuminate\Support\Facades\Route;
 
 // Subscription selection (requires auth but not subscription)
@@ -80,16 +101,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
-    Route::post('workspaces/autofill', [WorkspaceController::class, 'autofillBrand'])
-        ->middleware('throttle:10,1')
-        ->name('app.workspaces.autofill');
-
-    Route::get('workspace/members/search', [WorkspaceController::class, 'searchMembers'])
-        ->middleware('throttle:60,1')
-        ->name('app.workspace.members.search');
-
-    Route::post('presence/heartbeat', [PresenceController::class, 'heartbeat'])
-        ->name('app.presence.heartbeat');
 });
 
 // Social Connect routes
@@ -100,6 +111,9 @@ Route::middleware(['auth'])->group(function () {
     // subscription exists; the controller still authorizes workspace ownership.
     Route::middleware(EnsureHasWorkspace::class)->group(function () {
         Route::get('connect/linkedin', [LinkedInController::class, 'connect'])->name('app.social.linkedin.connect');
+        Route::put('channels/{account}/posting-schedule', [ChannelPostingScheduleController::class, 'update'])->name('app.channels.posting-schedule.update');
+        Route::post('channels/{account}/posting-schedule/generate', [ChannelPostingScheduleController::class, 'generate'])->name('app.channels.posting-schedule.generate');
+        Route::post('channels/{account}/posting-schedule/copy', [ChannelPostingScheduleController::class, 'copy'])->name('app.channels.posting-schedule.copy');
         Route::get('connect/x', [XController::class, 'connect'])->name('app.social.x.connect');
         Route::get('connect/tiktok', [TikTokController::class, 'connect'])->name('app.social.tiktok.connect');
         Route::get('connect/youtube', [YouTubeController::class, 'connect'])->name('app.social.youtube.connect');
@@ -116,7 +130,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('connect/discord', [DiscordController::class, 'connect'])->name('app.social.discord.connect');
         Route::get('connect/google-business', [GoogleBusinessController::class, 'connect'])->name('app.social.google-business.connect');
 
-        Route::delete('accounts/{account}', [SocialController::class, 'disconnect'])->name('app.accounts.disconnect');
+        Route::delete('channels/{account}', [SocialController::class, 'disconnect'])->name('app.channels.disconnect');
     });
 
     // OAuth callbacks and identity selection resolve their workspace from the
@@ -160,6 +174,8 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes that require account access and a current workspace
 Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class])->group(function () {
+    Route::get('favicon/{domain}', FaviconController::class)->where('domain', '.*')->name('app.favicon');
+
     // Discord — live lookups for the composer (channel picker + mention autocomplete).
     // Throttled because they proxy the shared bot's (rate-limited) Discord API.
     Route::get('discord/accounts/{account}/channels', [AppDiscordController::class, 'channels'])
@@ -168,6 +184,13 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('discord/accounts/{account}/mentions', [AppDiscordController::class, 'mentions'])
         ->middleware('throttle:60,1')
         ->name('app.discord.mentions');
+
+    Route::get('pinterest/accounts/{account}/boards', [PinterestBoardController::class, 'index'])
+        ->middleware('throttle:30,1')
+        ->name('app.pinterest.boards.index');
+    Route::post('pinterest/accounts/{account}/boards', [PinterestBoardController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('app.pinterest.boards.store');
 
     // Workspaces
     Route::get('workspaces', [WorkspaceController::class, 'index'])->name('app.workspaces.index');
@@ -180,83 +203,181 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('settings/workspace/logo', [WorkspaceController::class, 'uploadLogo'])->name('app.workspace.upload-logo');
     Route::delete('settings/workspace/logo', [WorkspaceController::class, 'deleteLogo'])->name('app.workspace.delete-logo');
 
-    // Brand settings
-    Route::get('settings/workspace/brand', [WorkspaceController::class, 'brandSettings'])->name('app.workspace.brand');
+    // Channels
+    Route::get('settings/workspace/channels', [ChannelController::class, 'index'])->name('app.workspace.channels');
+    Route::put('settings/workspace/channels/order', [ChannelController::class, 'reorder'])->name('app.channels.reorder');
+    Route::get('channels/{account}/publish', [ChannelController::class, 'publish'])->name('app.channels.publish');
+    Route::get('channels/{account}/grid', [ChannelController::class, 'grid'])->name('app.channels.grid');
+    Route::get('channels/{account}/calendar/{view?}', [ChannelController::class, 'calendar'])
+        ->where('view', 'week|month')
+        ->name('app.channels.calendar');
+    Route::get('channels/{account}/insights', [ChannelController::class, 'insights'])->name('app.channels.insights');
+    Route::get('channels/{account}/settings', [ChannelController::class, 'settings'])->name('app.channels.settings');
+    Route::put('channels/{account}/queue/order', [ChannelQueueController::class, 'reorder'])->name('app.channels.queue.order');
+    Route::put('channels/{account}/queue/slot', [ChannelQueueController::class, 'moveToSlot'])->name('app.channels.queue.slot');
 
-    // Social Accounts
-    Route::get('accounts', [SocialController::class, 'index'])->name('app.accounts');
-    Route::put('accounts/{account}/toggle', [SocialController::class, 'toggleActive'])->name('app.accounts.toggle');
+    // Insights
+    Route::get('insights', [InsightsController::class, 'index'])->name('app.insights');
+    Route::get('insights/download/{format}', [InsightsController::class, 'download'])
+        ->whereIn('format', ExportFormat::values())
+        ->name('app.insights.download');
 
-    // Analytics
-    Route::get('analytics', [AnalyticsController::class, 'index'])->name('app.analytics');
-    Route::get('analytics/{account}', [AnalyticsController::class, 'show'])->name('app.analytics.show');
-
-    // Calendar
-    Route::get('calendar', [PostController::class, 'calendar'])->name('app.calendar');
+    // Schedule
+    Route::get('schedule', [PostController::class, 'index'])->name('app.posts.index');
+    Route::get('schedule/calendar/{view?}', [PostController::class, 'calendar'])
+        ->where('view', 'week|month')
+        ->name('app.calendar');
 
     // Posts
-    Route::get('posts/{status?}', [PostController::class, 'index'])->name('app.posts.index')->where('status', 'draft|scheduled|published');
+    Route::get('posts/composer-data', [PostController::class, 'composerData'])->name('app.posts.composer-data');
     Route::get('posts/create', [PostController::class, 'create'])->name('app.posts.create');
     Route::post('posts', [PostController::class, 'store'])->name('app.posts.store');
     Route::get('posts/{post}/edit', [PostController::class, 'edit'])->name('app.posts.edit');
-    Route::get('posts/{post}', [PostController::class, 'show'])->name('app.posts.show');
     Route::get('posts/{post}/platforms/{postPlatform}/metrics', [PostController::class, 'platformMetrics'])->name('app.posts.platforms.metrics');
     Route::put('posts/{post}', [PostController::class, 'update'])->name('app.posts.update');
+    Route::put('posts/{post}/schedule', [PostScheduleController::class, 'update'])->name('app.posts.schedule.update');
+    Route::put('posts/{post}/approve', [PostApprovalController::class, 'approve'])->name('app.posts.approve');
+    Route::put('posts/{post}/reject', [PostApprovalController::class, 'reject'])->name('app.posts.reject');
+    Route::patch('posts/{post}/labels', [PostLabelController::class, 'update'])->name('app.posts.labels.update');
+    Route::patch('posts/{post}/recurrence', [PostRecurrenceController::class, 'update'])->name('app.posts.recurrence.update');
+    Route::delete('posts/{post}/recurrence', [PostRecurrenceController::class, 'destroy'])->name('app.posts.recurrence.destroy');
+    Route::get('posts/{post}/group', [PostGroupController::class, 'show'])->name('app.posts.group.show');
     Route::delete('posts/{post}', [PostController::class, 'destroy'])->name('app.posts.destroy');
     Route::post('posts/{post}/duplicate', [PostController::class, 'duplicate'])->name('app.posts.duplicate');
     Route::post('posts/link-preview', LinkPreviewController::class)
         ->middleware('throttle:30,1')
         ->name('app.posts.link-preview');
+    Route::post('posts/link-preview/media', LinkPreviewMediaController::class)
+        ->middleware('throttle:media-imports')
+        ->name('app.posts.link-preview-media');
 
     // Post AI
-    Route::post('posts/{post}/ai/generate', [PostAiGenerateController::class, 'generate'])->name('app.posts.ai.generate');
-    Route::post('posts/{post}/media/{mediaId}/ai/regenerate', [PostAiRegenerateMediaController::class, 'regenerate'])->name('app.posts.ai.regenerate-media');
-    Route::post('posts/{post}/ai/review', [PostAiReviewController::class, 'review'])->name('app.posts.ai.review');
-    Route::post('posts/ai/create', [PostAiCreateController::class, 'start'])->name('app.posts.ai.create');
-    Route::get('posts/ai/{creationId}/loading', [PostAiCreateController::class, 'loading'])->name('app.posts.ai.loading')->whereUuid('creationId');
+    Route::post('posts/ai/assist', PostAiAssistantController::class)
+        ->middleware('throttle:10,1')
+        ->name('app.posts.ai.assist');
+    Route::post('posts/ai/alt-text', MediaAltTextController::class)
+        ->middleware('throttle:10,1')
+        ->name('app.posts.ai.alt-text');
 
-    // Post Comments
-    Route::get('posts/{post}/comments', [PostCommentController::class, 'index'])->name('app.posts.comments.index');
-    Route::post('posts/{post}/comments', [PostCommentController::class, 'store'])->name('app.posts.comments.store');
-    Route::put('posts/{post}/comments/{comment}', [PostCommentController::class, 'update'])->name('app.posts.comments.update');
-    Route::delete('posts/{post}/comments/{comment}', [PostCommentController::class, 'destroy'])->name('app.posts.comments.destroy');
-    Route::post('posts/{post}/comments/{comment}/react', [PostCommentController::class, 'react'])->name('app.posts.comments.react');
+    // Post notes
+    Route::get('posts/{post}/notes', [PostNoteController::class, 'index'])->name('app.posts.notes.index');
+    Route::post('posts/{post}/notes', [PostNoteController::class, 'store'])->name('app.posts.notes.store');
+    Route::put('posts/{post}/notes/{note}', [PostNoteController::class, 'update'])->name('app.posts.notes.update');
+    Route::delete('posts/{post}/notes/{note}', [PostNoteController::class, 'destroy'])->name('app.posts.notes.destroy');
 
     // Members
     Route::get('settings/workspace/members', [WorkspaceInviteController::class, 'index'])->name('app.members');
     Route::post('settings/workspace/members/invites', [WorkspaceInviteController::class, 'store'])->name('app.invites.store');
     Route::delete('settings/workspace/members/invites/{invite}', [WorkspaceInviteController::class, 'destroy'])->name('app.invites.destroy');
     Route::delete('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'removeMember'])->name('app.members.remove');
-    Route::put('settings/workspace/members/{user}/role', [WorkspaceInviteController::class, 'updateRole'])->name('app.members.update-role');
+    Route::put('settings/workspace/members/{user}', [WorkspaceInviteController::class, 'updateMember'])->name('app.members.update');
 
     // Signatures
-    Route::get('signatures', [WorkspaceSignatureController::class, 'index'])->name('app.signatures.index');
-    Route::post('signatures', [WorkspaceSignatureController::class, 'store'])->name('app.signatures.store');
-    Route::put('signatures/{signature}', [WorkspaceSignatureController::class, 'update'])->name('app.signatures.update');
-    Route::delete('signatures/{signature}', [WorkspaceSignatureController::class, 'destroy'])->name('app.signatures.destroy');
+    Route::get('settings/workspace/signatures', [WorkspaceSignatureController::class, 'index'])->name('app.signatures.index');
+    Route::post('settings/workspace/signatures', [WorkspaceSignatureController::class, 'store'])->name('app.signatures.store');
+    Route::put('settings/workspace/signatures/{signature}', [WorkspaceSignatureController::class, 'update'])->name('app.signatures.update');
+    Route::delete('settings/workspace/signatures/{signature}', [WorkspaceSignatureController::class, 'destroy'])->name('app.signatures.destroy');
 
-    // Assets
-    Route::get('assets', [AssetController::class, 'index'])->name('app.assets.index');
-    Route::get('assets/search', [AssetController::class, 'search'])->name('app.assets.search');
-    Route::post('assets', [AssetController::class, 'store'])->name('app.assets.store');
-    Route::post('assets/chunked', [AssetController::class, 'storeChunked'])->name('app.assets.store-chunked');
-    Route::post('assets/from-url', [AssetController::class, 'storeFromUrl'])->name('app.assets.store-from-url');
-    Route::get('assets/{media}/download', [AssetController::class, 'download'])->name('app.assets.download');
-    Route::delete('assets/{media}', [AssetController::class, 'destroy'])->name('app.assets.destroy');
-    Route::get('assets/unsplash/search', [UnsplashController::class, 'search'])->name('app.assets.unsplash.search');
-    Route::get('assets/unsplash/trending', [UnsplashController::class, 'trending'])->name('app.assets.unsplash.trending');
-    Route::get('assets/giphy/search', [GiphyController::class, 'search'])->name('app.assets.giphy.search');
-    Route::get('assets/giphy/trending', [GiphyController::class, 'trending'])->name('app.assets.giphy.trending');
+    // Media (temporary uploads)
+    Route::post('media/chunked', [MediaUploadController::class, 'storeChunked'])->name('app.media.store-chunked');
+    Route::post('media/from-url', [MediaUploadController::class, 'storeFromUrl'])
+        ->middleware('throttle:media-imports')
+        ->name('app.media.store-from-url');
+    Route::get('media/unsplash/search', [UnsplashController::class, 'search'])
+        ->middleware('throttle:unsplash')
+        ->name('app.media.unsplash.search');
+    Route::get('media/unsplash/trending', [UnsplashController::class, 'trending'])
+        ->middleware('throttle:unsplash')
+        ->name('app.media.unsplash.trending');
+    Route::post('media/imports', [MediaImportController::class, 'store'])
+        ->middleware('throttle:media-imports')
+        ->name('app.media.imports.store');
+    Route::get('media/imports/{import}', [MediaImportController::class, 'show'])->whereUuid('import')->name('app.media.imports.show');
+    Route::get('media/google-photos/sessions/{session}', [GooglePhotosSessionController::class, 'show'])
+        ->where('session', GooglePhotosSessionController::SESSION_ROUTE_PATTERN)
+        ->middleware('throttle:google-photos-polling')
+        ->name('app.media.google-photos.sessions.show');
+    Route::delete('media/google-photos/sessions/{session}', [GooglePhotosSessionController::class, 'destroy'])
+        ->where('session', GooglePhotosSessionController::SESSION_ROUTE_PATTERN)
+        ->name('app.media.google-photos.sessions.destroy');
+
+    // Media sources > Google Drive and Google Photos (popup)
+    Route::get('integrations/google/start', [GoogleMediaController::class, 'start'])
+        ->middleware('throttle:media-imports')
+        ->name('app.integrations.google.start');
+    Route::get('integrations/google/callback', [GoogleMediaController::class, 'callback'])
+        ->middleware('throttle:media-imports')
+        ->name('app.integrations.google.callback');
+    Route::post('integrations/google/returns/{nonce}', [GoogleMediaController::class, 'claim'])
+        ->where('nonce', '[A-Za-z0-9_-]{16,64}')
+        ->middleware('throttle:60,1')
+        ->name('app.integrations.google.returns.claim');
+
+    // Media sources > Canva (popup)
+    Route::get('integrations/canva/designs/create', [CanvaController::class, 'createDesign'])
+        ->middleware('throttle:media-imports')
+        ->name('app.integrations.canva.designs.create');
+    Route::get('integrations/canva/designs/edit', [CanvaController::class, 'editDesign'])
+        ->middleware('throttle:media-imports')
+        ->name('app.integrations.canva.designs.edit');
+    Route::get('integrations/canva/callback', [CanvaController::class, 'callback'])->name('app.integrations.canva.callback');
+    Route::get('integrations/canva/return', [CanvaController::class, 'return'])->name('app.integrations.canva.return');
+    Route::get('integrations/canva/returns/{nonce}', [CanvaController::class, 'showReturn'])
+        ->where('nonce', '[A-Za-z0-9_-]{16,64}')
+        ->middleware('throttle:60,1')
+        ->name('app.integrations.canva.returns.show');
+
+    // Create > Idea stages
+    Route::post('create/idea-stages', [IdeaStageController::class, 'store'])->name('app.create.idea-stages.store');
+    Route::put('create/idea-stages/order', [IdeaStageController::class, 'reorder'])->name('app.create.idea-stages.reorder');
+    Route::put('create/idea-stages/{ideaStage}', [IdeaStageController::class, 'update'])->whereUuid('ideaStage')->name('app.create.idea-stages.update');
+    Route::delete('create/idea-stages/{ideaStage}', [IdeaStageController::class, 'destroy'])->whereUuid('ideaStage')->name('app.create.idea-stages.destroy');
+
+    // Create > Ideas
+    Route::get('create/ideas', [IdeaController::class, 'index'])->name('app.create.ideas.index');
+    Route::get('create/ideas/new', [IdeaController::class, 'create'])->name('app.create.ideas.create');
+    Route::post('create/ideas/generate', IdeaGenerateController::class)->middleware('throttle:10,1')->name('app.create.ideas.generate');
+    Route::get('create/ideas/{idea}', [IdeaController::class, 'show'])->whereUuid('idea')->name('app.create.ideas.show');
+    Route::post('create/ideas', [IdeaController::class, 'store'])->name('app.create.ideas.store');
+    Route::delete('create/ideas', [IdeaController::class, 'bulkDestroy'])->name('app.create.ideas.bulk-destroy');
+    Route::put('create/ideas/{idea}', [IdeaController::class, 'update'])->whereUuid('idea')->name('app.create.ideas.update');
+    Route::delete('create/ideas/{idea}', [IdeaController::class, 'destroy'])->whereUuid('idea')->name('app.create.ideas.destroy');
+    Route::post('create/ideas/{idea}/duplicate', [IdeaController::class, 'duplicate'])->whereUuid('idea')->name('app.create.ideas.duplicate');
+    Route::put('create/ideas/{idea}/move', [IdeaController::class, 'move'])->whereUuid('idea')->name('app.create.ideas.move');
+
+    // Create > Feeds
+    Route::get('create/feeds', [RssFeedController::class, 'index'])->name('app.create.feeds.index');
+    Route::get('create/feeds/collections/{rssFeedCollection}', [RssFeedController::class, 'collection'])->whereUuid('rssFeedCollection')->name('app.create.feeds.collections.show');
+    Route::get('create/feeds/{rssFeed}', [RssFeedController::class, 'show'])->whereUuid('rssFeed')->name('app.create.feeds.show');
+    Route::post('create/feeds', [RssFeedController::class, 'store'])->middleware('throttle:20,1')->name('app.create.feeds.store');
+    Route::post('create/feeds/refresh', [RssFeedController::class, 'refresh'])->middleware('throttle:12,1')->name('app.create.feeds.refresh');
+    Route::put('create/feeds/{rssFeed}', [RssFeedController::class, 'update'])->whereUuid('rssFeed')->name('app.create.feeds.update');
+    Route::delete('create/feeds/{rssFeed}', [RssFeedController::class, 'destroy'])->whereUuid('rssFeed')->name('app.create.feeds.destroy');
+    Route::post('create/feed-collections', [RssFeedCollectionController::class, 'store'])->name('app.create.feed-collections.store');
+    Route::put('create/feed-collections/{rssFeedCollection}', [RssFeedCollectionController::class, 'update'])->whereUuid('rssFeedCollection')->name('app.create.feed-collections.update');
+    Route::delete('create/feed-collections/{rssFeedCollection}', [RssFeedCollectionController::class, 'destroy'])->whereUuid('rssFeedCollection')->name('app.create.feed-collections.destroy');
+    Route::post('create/feed-items/{rssFeedItem}/import-image', [RssFeedItemController::class, 'importImage'])->whereUuid('rssFeedItem')->middleware('throttle:30,1')->name('app.create.feed-items.import-image');
+    Route::post('create/feed-items/{rssFeedItem}/idea', [RssFeedItemController::class, 'saveAsIdea'])->whereUuid('rssFeedItem')->middleware('throttle:30,1')->name('app.create.feed-items.idea');
+
+    // Create > Templates
+    Route::get('create/templates', [PostTemplateController::class, 'index'])->name('app.create.templates.index');
+    Route::get('create/templates/picker', PostTemplatePickerController::class)->name('app.create.templates.picker');
+    Route::post('create/templates/library/{key}/duplicate', [LibraryTemplateController::class, 'duplicate'])->whereIn('key', TemplateLibrary::keys())->name('app.create.templates.library.duplicate');
+    Route::post('create/templates', [PostTemplateController::class, 'store'])->name('app.create.templates.store');
+    Route::put('create/templates/{postTemplate}', [PostTemplateController::class, 'update'])->whereUuid('postTemplate')->name('app.create.templates.update');
+    Route::delete('create/templates/{postTemplate}', [PostTemplateController::class, 'destroy'])->whereUuid('postTemplate')->name('app.create.templates.destroy');
+    Route::post('create/templates/{postTemplate}/duplicate', [PostTemplateController::class, 'duplicate'])->whereUuid('postTemplate')->name('app.create.templates.duplicate');
 
     // Labels
-    Route::get('labels', [WorkspaceLabelController::class, 'index'])->name('app.labels.index');
-    Route::post('labels', [WorkspaceLabelController::class, 'store'])->name('app.labels.store');
-    Route::put('labels/{label}', [WorkspaceLabelController::class, 'update'])->name('app.labels.update');
-    Route::delete('labels/{label}', [WorkspaceLabelController::class, 'destroy'])->name('app.labels.destroy');
+    Route::get('settings/workspace/labels', [WorkspaceLabelController::class, 'index'])->name('app.labels.index');
+    Route::post('settings/workspace/labels', [WorkspaceLabelController::class, 'store'])->name('app.labels.store');
+    Route::put('settings/workspace/labels/{label}', [WorkspaceLabelController::class, 'update'])->name('app.labels.update');
+    Route::delete('settings/workspace/labels/{label}', [WorkspaceLabelController::class, 'destroy'])->name('app.labels.destroy');
 
     // API Keys
     Route::get('settings/workspace/api-keys', [ApiKeyController::class, 'index'])->name('app.api-keys.index');
     Route::post('settings/workspace/api-keys', [ApiKeyController::class, 'store'])->name('app.api-keys.store');
+    Route::post('settings/workspace/api-keys/{tokenId}/regenerate', [ApiKeyController::class, 'regenerate'])->name('app.api-keys.regenerate');
     Route::delete('settings/workspace/api-keys/{tokenId}', [ApiKeyController::class, 'destroy'])->name('app.api-keys.destroy');
 
     // MCP
@@ -275,14 +396,14 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::delete('repurposes/{repurpose}', [RepurposeController::class, 'destroy'])->name('app.repurposes.destroy');
 
     // Webhooks
-    Route::get('webhooks', [WebhookController::class, 'index'])->name('app.webhooks.index');
-    Route::post('webhooks', [WebhookController::class, 'store'])->name('app.webhooks.store');
-    Route::get('webhooks/{webhook}', [WebhookController::class, 'show'])->name('app.webhooks.show');
-    Route::put('webhooks/{webhook}', [WebhookController::class, 'update'])->name('app.webhooks.update');
-    Route::post('webhooks/{webhook}/send-test', [WebhookController::class, 'sendTest'])->name('app.webhooks.send-test');
-    Route::post('webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
-    Route::post('webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
-    Route::delete('webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');
+    Route::get('settings/workspace/webhooks', [WebhookController::class, 'index'])->name('app.webhooks.index');
+    Route::post('settings/workspace/webhooks', [WebhookController::class, 'store'])->name('app.webhooks.store');
+    Route::get('settings/workspace/webhooks/{webhook}', [WebhookController::class, 'show'])->name('app.webhooks.show');
+    Route::put('settings/workspace/webhooks/{webhook}', [WebhookController::class, 'update'])->name('app.webhooks.update');
+    Route::post('settings/workspace/webhooks/{webhook}/send-test', [WebhookController::class, 'sendTest'])->name('app.webhooks.send-test');
+    Route::post('settings/workspace/webhooks/{webhook}/rotate-secret', [WebhookController::class, 'rotateSecret'])->name('app.webhooks.rotate-secret');
+    Route::post('settings/workspace/webhooks/{webhook}/logs/{webhookLog}/replay', [WebhookController::class, 'replay'])->name('app.webhooks.replay');
+    Route::delete('settings/workspace/webhooks/{webhook}', [WebhookController::class, 'destroy'])->name('app.webhooks.destroy');
 
     // Account Settings
     Route::get('settings/account', [AccountController::class, 'edit'])->name('app.account.edit');
@@ -295,23 +416,16 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
 
 });
 
-// Notifications (auth only, no subscription required)
-Route::middleware(['auth'])->group(function () {
-    Route::get('notifications', [NotificationController::class, 'index'])->name('app.notifications.index');
-    Route::put('notifications/{notification}/read', [NotificationController::class, 'markAsRead'])->name('app.notifications.read');
-    Route::post('notifications/read-all', [NotificationController::class, 'markAllAsRead'])->name('app.notifications.read-all');
-    Route::post('notifications/archive-all', [NotificationController::class, 'archiveAll'])->name('app.notifications.archive-all');
-});
-
 // Settings (auth required)
 Route::middleware(['auth'])->group(function () {
-    Route::get('settings', [SettingsController::class, 'index'])->name('app.settings');
 
     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('app.profile.edit');
     Route::put('settings/profile', [ProfileController::class, 'update'])->name('app.profile.update');
     Route::post('settings/profile/photo', [ProfileController::class, 'uploadPhoto'])->name('app.profile.upload-photo');
     Route::delete('settings/profile/photo', [ProfileController::class, 'deletePhoto'])->name('app.profile.delete-photo');
     Route::put('settings/language', [ProfileController::class, 'updateLanguage'])->name('app.profile.language');
+    Route::get('settings/preferences', [PreferencesController::class, 'edit'])->name('app.settings.preferences');
+    Route::patch('settings/preferences', [PreferencesController::class, 'update'])->name('app.settings.preferences.update');
 });
 
 Route::middleware(['auth'])->group(function () {
@@ -329,5 +443,5 @@ Route::middleware(['auth'])->group(function () {
         ->name('app.authentication.disconnect-provider');
 
     Route::get('settings/profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('app.notifications.preferences');
-    Route::put('settings/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('app.notifications.preferences.update');
+    Route::patch('settings/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('app.notifications.preferences.update');
 });

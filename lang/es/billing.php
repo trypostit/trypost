@@ -46,8 +46,8 @@ return [
             'networks_all_tooltip' => 'Puedes publicar en todas estas redes.',
             'accounts_unlimited' => 'Cuentas sociales ilimitadas',
             'accounts_unlimited_tooltip' => 'Conecta todas las cuentas que quieras, incluso varias de la misma red. Tres Instagrams, por ejemplo.',
-            'calendar' => 'Calendario mensual, semanal y diario',
-            'calendar_tooltip' => 'Ve todo tu mes de un vistazo: lo planificado, lo programado y lo ya publicado. Cambia a semana o día cuando necesites el detalle.',
+            'calendar' => 'Calendario mensual y semanal',
+            'calendar_tooltip' => 'Ve todo tu mes de un vistazo: lo planificado, lo programado y lo ya publicado. Cambia a semana cuando necesites el detalle.',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => 'Tu asistente de IA para escribir y revisar posts.',
             'mcp' => 'MCP: publica desde Claude, ChatGPT o Grok',
@@ -79,6 +79,7 @@ return [
         'title' => 'Facturas',
         'description' => 'Descarga tus facturas anteriores.',
         'paid' => 'Pagado',
+        'download' => 'Descargar factura',
     ],
 
     'flash' => [

@@ -44,6 +44,7 @@ class AttachMediaFromUrlTool extends Tool
         $result = app(MediaAttacher::class)->attachFromUrls(
             $post,
             data_get($validated, 'urls', []),
+            $request->user(),
         );
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Media\Type;
+use App\Support\HeicConverter;
 
 test('media type has correct values', function () {
     expect(Type::Image->value)->toBe('image');
@@ -113,7 +114,6 @@ test('mimeTypeFromExtension returns the allow-listed mime, not the registry\'s f
     expect(Type::mimeTypeFromExtension('pdf'))->toBe('application/pdf');
 
     // Classifiable but not accepted on upload — no MIME to claim.
-    expect(Type::mimeTypeFromExtension('heic'))->toBeNull();
     expect(Type::mimeTypeFromExtension('txt'))->toBeNull();
     expect(Type::mimeTypeFromExtension(null))->toBeNull();
 });
@@ -130,4 +130,24 @@ test('isMov matches quicktime mime or a mov extension', function () {
     expect(Type::isMov('video/mp4', 'clip.MP4'))->toBeFalse();
     expect(Type::isMov('video/mp4'))->toBeFalse();
     expect(Type::isMov(null))->toBeFalse();
+});
+
+test('heic is on the image allow-list only while conversion is available', function () {
+    HeicConverter::flush();
+
+    if (HeicConverter::available()) {
+        expect(Type::Image->extensions())->toContain('heic', 'heif')
+            ->and(Type::Image->allowedMimeTypes())->toContain('image/heic', 'image/heif')
+            ->and(Type::fromMime('image/heic'))->toBe(Type::Image)
+            ->and(Type::mimeTypeFromExtension('heic'))->toBe('image/heic');
+    }
+
+    config(['trypost.media.heic_conversion' => false]);
+    HeicConverter::flush();
+
+    expect(Type::Image->extensions())->not->toContain('heic')
+        ->and(Type::Image->allowedMimeTypes())->not->toContain('image/heic')
+        ->and(Type::fromMime('image/heic'))->toBeNull()
+        ->and(Type::mimeTypeFromExtension('heic'))->toBeNull()
+        ->and(Type::classify('image/heic'))->toBe(Type::Image);
 });

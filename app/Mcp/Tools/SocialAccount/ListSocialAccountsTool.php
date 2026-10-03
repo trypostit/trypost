@@ -13,14 +13,13 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List all connected social accounts for the current workspace (LinkedIn, X, Bluesky, Pinterest, Threads, etc.). Each account has an id, platform, display_name, username, is_active flag, and connection status.')]
+#[Description('List all connected social accounts for the current workspace (LinkedIn, X, Bluesky, Pinterest, Threads, etc.). Each account has an id, platform, display_name, username, connection status, and has_posting_schedule (true when the account has posting times, so posts can use queue).')]
 class ListSocialAccountsTool extends Tool
 {
     public function handle(Request $request): ResponseFactory
     {
         $accounts = $request->user()->currentWorkspace
             ->socialAccounts()
-            ->orderBy('platform')
             ->get();
 
         return Response::structured([

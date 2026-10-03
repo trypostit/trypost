@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Erhalte Echtzeit-Benachrichtigungen, wenn Beiträge erstellt, geplant, deren Planung aufgehoben, veröffentlicht werden oder fehlschlagen.',
+    'description' => 'Echtzeit-Benachrichtigungen zu deinen Beiträgen.',
     'new' => 'Webhook erstellen',
     'empty_title' => 'Noch keine Webhooks',
     'empty_description' => 'Erstelle einen Webhook, um Ereignisbenachrichtigungen in Echtzeit zu empfangen.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Hört auf',
         'status' => 'Status',
         'last_sent' => 'Zuletzt gesendet',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Deaktiviert',
         'paused' => 'Pausiert',
     ],
+    'row_actions' => 'Webhook-Aktionen',
     'actions' => [
         'view' => 'Details anzeigen',
-        'copy_id' => 'Webhook-ID kopieren',
         'delete' => 'Löschen',
         'edit' => 'Endpoint bearbeiten',
         'enable' => 'Endpoint aktivieren',
@@ -40,11 +38,9 @@ return [
         'description' => 'Konfiguriere einen Endpoint, um Webhook-Benachrichtigungen zu empfangen.',
         'endpoint' => 'Endpoint-URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Wir senden eine POST-Anfrage mit JSON an diese URL.',
         'events' => 'Ereignisse',
-        'events_placeholder' => 'Ereignisse auswählen...',
-        'events_selected' => '{1} :count Ereignis ausgewählt|[2,*] :count Ereignisse ausgewählt',
-        'search_events' => 'Ereignisse suchen...',
-        'no_events' => 'Keine Ereignisse gefunden',
+        'events_count_selected' => ':count von :total ausgewählt',
         'submit' => 'Webhook erstellen',
         'cancel' => 'Abbrechen',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Signatur-Secret',
-        'last_sent' => 'Zuletzt gesendet :time',
-        'listening_for' => 'Hört auf',
+        'edit' => 'Bearbeiten',
         'http_status' => 'HTTP-Status',
         'status_code' => ':code - :reason',
         'attempts' => 'Versuche',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Kein Antworttext',
         'no_response' => 'Keine Antwort',
         'payload' => 'Nachrichten-Payload',
-        'empty_title' => 'Noch keine Webhook-Ereignisse',
-        'empty_description' => 'Sobald Beiträge erstellt, geplant, deren Planung aufgehoben oder veröffentlicht werden, siehst du die Webhook-Ereignisse hier.',
+    ],
+    'deliveries' => [
+        'title' => 'Zustellungen',
+        'empty_title' => 'Noch keine Zustellungen',
+        'empty_description' => 'Sende ein Testereignis, um es hier zu sehen.',
+        'pending' => 'Ausstehend',
     ],
     'events' => [
         'group_posts' => 'Beiträge',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Beitrag teilweise veröffentlicht',
         'post_failed' => 'Beitrag fehlgeschlagen',
         'post_deleted' => 'Beitrag gelöscht',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Wenn ein neuer Beitrag erstellt wird.',
+        'post_scheduled' => 'Wenn ein Beitrag zur Veröffentlichung geplant wird.',
+        'post_unscheduled' => 'Wenn ein geplanter Beitrag zurück zu Entwürfen geht.',
+        'post_published' => 'Wenn ein Beitrag auf einem Kanal live geht.',
+        'post_partially_published' => 'Wenn einige Kanäle veröffentlichen, andere scheitern.',
+        'post_failed' => 'Wenn ein Beitrag nicht veröffentlicht werden kann.',
+        'post_deleted' => 'Wenn ein Beitrag gelöscht wird.',
     ],
     'http_reasons' => [
         'unknown' => 'Unbekannt',
@@ -111,7 +119,6 @@ return [
         '504' => 'Gateway-Zeitüberschreitung',
     ],
     'copied' => [
-        'id' => 'Webhook-ID in die Zwischenablage kopiert',
         'secret' => 'Signatur-Secret in die Zwischenablage kopiert',
         'response' => 'Antworttext kopiert',
         'payload' => 'Payload kopiert',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'Der Endpoint hat HTTP :status zurückgegeben.',
     ],
     'flash' => [
-        'created' => 'Webhook erstellt.',
         'updated' => 'Webhook aktualisiert.',
         'deleted' => 'Webhook gelöscht.',
         'secret_rotated' => 'Signatur-Secret rotiert.',

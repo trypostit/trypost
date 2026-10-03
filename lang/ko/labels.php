@@ -2,21 +2,24 @@
 
 return [
     'title' => '라벨',
-    'description' => '라벨을 만들어 게시물을 정리하고 분류하세요',
+    'description' => '라벨로 게시물을 정리하세요.',
     'search' => '라벨 검색...',
     'new_label' => '새 라벨',
     'no_labels_yet' => '아직 라벨이 없습니다',
     'no_search_results' => '검색과 일치하는 라벨이 없습니다',
     'try_different_search' => '다른 키워드로 시도하거나 검색을 지우세요.',
     'create_first_label' => '첫 라벨 만들기',
-    'table' => [
-        'name' => '이름',
-        'created_at' => '생성일',
+
+    'meta' => [
+        'posts' => '{0} 게시물 없음|[1,*] 게시물 :count개',
     ],
 
     'actions' => [
         'edit' => '라벨 편집',
         'delete' => '라벨 삭제',
+        'more' => '추가 작업',
+        'view_posts' => '게시물 보기',
+        'open_reporting' => '리포트 열기',
     ],
 
     'create' => [
@@ -44,11 +47,5 @@ return [
         'description' => '이 라벨을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
         'confirm' => '삭제',
         'cancel' => '취소',
-    ],
-
-    'flash' => [
-        'created' => '라벨이 성공적으로 생성되었습니다!',
-        'updated' => '라벨이 성공적으로 업데이트되었습니다!',
-        'deleted' => '라벨이 성공적으로 삭제되었습니다!',
     ],
 ];

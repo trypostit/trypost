@@ -27,3 +27,24 @@ export const mediaLimitsDocsUrl = (platform: string): string => {
 
     return `${DOCS_URL}/knowledge-base/media${anchor ? `#${anchor}` : ''}`;
 };
+
+const PLATFORM_GUIDE_SLUG: Partial<Record<PlatformValue, string>> = {
+    [Platform.Instagram]: 'instagram',
+    [Platform.Facebook]: 'facebook',
+    [Platform.Threads]: 'threads',
+    [Platform.X]: 'x-twitter',
+    [Platform.LinkedIn]: 'linkedin',
+    [Platform.TikTok]: 'tiktok',
+    [Platform.YouTube]: 'youtube',
+    [Platform.Pinterest]: 'pinterest',
+    [Platform.Bluesky]: 'bluesky',
+    [Platform.Mastodon]: 'mastodon',
+    [Platform.Discord]: 'discord',
+    [Platform.Telegram]: 'telegram',
+};
+
+export const platformGuideDocsUrl = (platform: string): string | null => {
+    const slug = PLATFORM_GUIDE_SLUG[platform as PlatformValue];
+
+    return slug ? `${DOCS_URL}/platforms/${slug}` : null;
+};

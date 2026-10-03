@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => '连接 AI 助手，让它们用你的 TryPost 账户创建和管理帖子。',
+    'subtitle' => '将 AI 助手连接到你的工作区。',
     'copy_step' => '复制你的 TryPost 服务器 URL',
     'open_step' => '打开你的 AI 助手',
     'copy' => '复制 URL',
@@ -15,7 +15,8 @@ return [
     'config_label' => '配置',
     'connected_title' => '已连接的应用',
     'connected_description' => '你已登录的助手。可以断开不再使用的连接。',
-    'connected_empty' => '还没有连接。请使用上方的 Claude、ChatGPT 或其他客户端。',
+    'connected_empty_title' => '暂无已连接的应用',
+    'connected_empty' => '请使用上方的 Claude、ChatGPT 或其他客户端。',
     'disconnect' => '断开连接',
     'disconnect_title' => '断开应用',
     'disconnect_confirm' => '这将使应用退出 TryPost。再次使用 MCP 前需要重新连接。',

@@ -7,6 +7,7 @@ namespace App\Enums\Post;
 enum Status: string
 {
     case Draft = 'draft';
+    case PendingApproval = 'pending_approval';
     case Scheduled = 'scheduled';
     case Publishing = 'publishing';
     case Published = 'published';
@@ -17,6 +18,7 @@ enum Status: string
     {
         return match ($this) {
             self::Draft => __('posts.status.draft'),
+            self::PendingApproval => __('posts.status.pending_approval'),
             self::Scheduled => __('posts.status.scheduled'),
             self::Publishing => __('posts.status.publishing'),
             self::Published => __('posts.status.published'),
@@ -29,6 +31,7 @@ enum Status: string
     {
         return match ($this) {
             self::Draft => 'gray',
+            self::PendingApproval => 'orange',
             self::Scheduled => 'blue',
             self::Publishing => 'yellow',
             self::Published => 'green',

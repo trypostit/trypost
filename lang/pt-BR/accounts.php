@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'Conexões',
-    'page_title' => 'Contas Sociais',
-    'description' => 'Visão geral de todas as suas contas sociais conectadas',
-    'connect_cta' => 'Conectar',
-    'connect_another' => 'Conectar outra',
-    'actions' => 'Ações da conta',
-    'activate' => 'Ativar',
-    'deactivate' => 'Desativar',
-    'active' => 'Ativa',
-    'paused' => 'Desativada',
-    'accounts_count' => ':count conta|:count contas',
-
-    'variants' => [
-        'linkedin-page' => 'Página',
-        'instagram-facebook' => 'via Facebook',
-    ],
-
-    'not_connected' => 'Não conectado',
-    'connect' => 'Conectar',
-    'connection_lost' => 'Conexão perdida',
-    'reconnect' => 'Reconectar',
-    'reconnect_account' => 'Reconectar conta',
-    'view_profile' => 'Ver perfil',
-    'disconnect' => 'Desconectar',
-
-    'descriptions' => [
-        'linkedin' => 'Conecte seu perfil do LinkedIn ou página de empresa',
-        'linkedin-page' => 'Conecte uma página de empresa do LinkedIn',
-        'x' => 'Conecte sua conta do X (Twitter)',
-        'tiktok' => 'Conecte sua conta do TikTok',
-        'youtube' => 'Conecte um canal do YouTube',
-        'facebook' => 'Conecte uma página do Facebook',
-        'instagram' => 'Conecte via Instagram Login ou Facebook Pages',
-        'instagram-facebook' => 'Conecte Instagram via página do Facebook',
-        'threads' => 'Conecte sua conta do Threads',
-        'pinterest' => 'Conecte sua conta do Pinterest',
-        'bluesky' => 'Conecte sua conta do Bluesky',
-        'mastodon' => 'Conecte sua conta do Mastodon',
-        'telegram' => 'Conecte um canal ou grupo do Telegram',
-        'discord' => 'Conecte um servidor do Discord',
-        'google_business' => 'Conecte um local do Google Business Profile',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'Desconectar Conta',
-        'description' => 'Tem certeza que deseja desconectar esta conta? Você pode reconectá-la a qualquer momento.',
-        'confirm' => 'Desconectar',
-        'cancel' => 'Cancelar',
-    ],
-
     'bluesky' => [
         'title' => 'Conectar Bluesky',
         'description' => 'Digite suas credenciais para conectar',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Conectar Telegram',
         'description' => 'Vincule um canal ou grupo',
+        'steps' => 'Passos',
         'step_admin' => 'Adicione :bot como administrador do seu canal ou grupo do Telegram.',
+        'open_bot' => 'Abrir no Telegram',
         'step_command' => 'Publique este comando no canal ou grupo:',
         'waiting' => 'Aguardando o canal conectar…',
-        'connected' => 'Canal conectado!',
-        'connected_toast' => 'Canal do Telegram conectado com sucesso!',
-        'copied_toast' => 'Comando copiado para a área de transferência',
-        'copy_tooltip' => 'Copiar comando',
-        'expired' => 'Este código expirou. Gere um novo para tentar de novo.',
-        'new_code' => 'Gerar um novo código',
-        'retry' => 'Tentar novamente',
+        'copy_command' => 'Copiar comando',
+        'expired' => 'Este comando expirou. Gere um novo para tentar de novo.',
+        'new_command' => 'Gerar novo comando',
         'error_generic' => 'Não foi possível iniciar a conexão. Tente novamente.',
         'network_taken' => 'Este workspace já tem um canal de Telegram conectado. Desconecte-o primeiro.',
         'wrong_chat' => 'Publique o comando no canal que você está reconectando.',
         'busy' => 'Outra conexão ainda está sendo concluída. Envie o comando novamente em instantes.',
+        'help' => [
+            'channel_admins' => 'Adicionar administradores a um canal',
+            'group_admins' => 'Adicionar administradores a um grupo',
+            'bot_privacy' => 'O que os bots podem ler em grupos',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Conectar Instagram',
-        'description' => 'Escolha como você quer conectar sua conta do Instagram',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Entre com sua conta profissional do Instagram',
-        'facebook_title' => 'Facebook Pages',
-        'facebook_description' => 'Conecte um Instagram vinculado a uma Página do Facebook',
+        'title' => 'Como você quer conectar sua conta do Instagram?',
+        'description' => 'Os recursos dependem do tipo de conta do Instagram que você tem e da conexão que você escolher.',
+        'professional_title' => 'Profissional',
+        'professional_types' => '(Empresa e Criador de conteúdo)',
+        'badge' => 'Publicação automática',
+        'features' => [
+            'automatic' => [
+                'title' => 'Publicação automática',
+                'description' => 'Você agenda e nós publicamos',
+            ],
+            'metrics' => [
+                'title' => 'Métricas dos posts enviados',
+                'description' => 'Veja o desempenho dos posts anteriores',
+            ],
+        ],
+        'connect' => 'Conectar ao Instagram',
+        'convert_hint' => 'O Instagram vai pedir para você converter facilmente para uma conta profissional, se necessário.',
+        'facebook_link' => 'Conecte o Instagram pelo Facebook',
+        'facebook_suffix' => 'se a sua conta do Instagram estiver vinculada ao Facebook.',
+        'help' => [
+            'account_type' => 'Descobrir o tipo da sua conta do Instagram',
+            'convert' => 'Converter sua conta do Instagram em uma conta profissional',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Conectar o Instagram pelo Facebook',
+        'subtitle' => 'Veja o que você precisa saber 👇',
+        'heading' => 'Requisitos',
+        'items' => [
+            'account_type' => [
+                'lead' => 'Instagram Empresa ou Criador de conteúdo,',
+                'rest' => 'não um perfil pessoal do Instagram.',
+            ],
+            'page' => [
+                'lead' => 'Vinculado a uma página do Facebook,',
+                'rest' => 'não a um perfil do Facebook. Precisa vincular o Instagram ao Facebook na Meta?',
+            ],
+            'admin' => [
+                'lead' => 'Conectado como administrador da página do Facebook',
+                'rest' => 'com “controle total”.',
+            ],
+            'permissions' => [
+                'lead' => 'Todas as permissões selecionadas para todas as páginas e contas do Instagram',
+                'rest' => 'ao conectar, inclusive as que você não vai conectar ao TryPost.',
+            ],
+        ],
+        'learn_how' => 'Saiba como.',
+        'note' => 'A conexão não vai funcionar se algum desses requisitos não for atendido.',
+        'connect' => 'Conectar pelo Facebook',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'Conta ativada. :count automação retomada.|Conta ativada. :count automações retomadas.',
         'disconnected_paused_repurposes' => 'Conta desconectada. :count automação pausada.|Conta desconectada. :count automações pausadas.',
-        'deactivated_paused_repurposes' => 'Conta desativada. :count automação pausada.|Conta desativada. :count automações pausadas.',
         'disconnected' => 'Conta desconectada com sucesso!',
-        'connected' => 'Conta conectada com sucesso!',
         'session_expired' => 'Sessão expirada. Por favor, tente novamente.',
         'workspace_not_found' => 'Workspace não encontrado.',
-        'activated' => 'Conta ativada!',
-        'deactivated' => 'Conta desativada!',
         'already_connected' => 'Esta plataforma já está conectada.',
         'no_youtube_channels' => 'Nenhum canal do YouTube encontrado. Por favor, crie um canal primeiro.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'Conectado',
         'title_error' => 'Erro',
         'closing' => 'Esta janela será fechada automaticamente...',
         'manual_close' => 'Você pode fechar esta janela.',
         'popup_blocked' => 'Não foi possível abrir a janela de conexão. Permita pop-ups e tente novamente.',
-        'connected' => 'Conta conectada!',
-        'reconnected' => 'Conta reconectada!',
         'error_connecting' => 'Erro ao conectar conta. Por favor, tente novamente.',
         'network_taken' => 'Este workspace já tem uma conta para esta rede. Desconecte-a primeiro.',
         'wrong_account' => 'Essa é outra conta. Autorize a que você está reconectando.',

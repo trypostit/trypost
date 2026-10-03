@@ -49,9 +49,7 @@ const selectedWorkspace = ref<WorkspaceOption | undefined>(
     ) ?? props.workspaces[0],
 );
 
-const workspaceIdForSubmit = computed(
-    () => selectedWorkspace.value?.id ?? '',
-);
+const workspaceIdForSubmit = computed(() => selectedWorkspace.value?.id ?? '');
 
 const canApprove = computed(() => workspaceIdForSubmit.value !== '');
 
@@ -79,7 +77,7 @@ const scopeLabel = (scope: Scope): string =>
         : scope.description;
 
 const onApproveSubmit = (event: Event): void => {
-    if (! canApprove.value) {
+    if (!canApprove.value) {
         event.preventDefault();
 
         return;
@@ -144,7 +142,7 @@ const onDenySubmit = (): void => {
                         <ComboboxTrigger as-child>
                             <button
                                 type="button"
-                                class="flex h-10 w-full items-center justify-between rounded-md border-2 border-foreground bg-card px-3 py-2 text-sm font-medium text-foreground shadow-2xs transition-colors hover:bg-muted/40"
+                                class="flex h-10 w-full items-center justify-between rounded-md border border-border bg-card px-3 py-2 text-sm font-medium text-foreground shadow-2xs transition-colors hover:bg-muted/40"
                             >
                                 <span
                                     :class="
@@ -166,9 +164,7 @@ const onDenySubmit = (): void => {
                     </ComboboxAnchor>
                     <ComboboxList>
                         <ComboboxInput
-                            :placeholder="
-                                $t('mcp.authorize.search_workspace')
-                            "
+                            :placeholder="$t('mcp.authorize.search_workspace')"
                         />
                         <ComboboxEmpty>
                             {{ $t('mcp.authorize.no_workspace_found') }}
@@ -200,8 +196,8 @@ const onDenySubmit = (): void => {
                     :key="scope.id"
                     class="flex items-start gap-2"
                 >
-                    <div class="mt-0.5 rounded-full bg-primary/10 p-1">
-                        <div class="size-1.5 rounded-full bg-primary" />
+                    <div class="mt-0.5 rounded-full bg-primary-subtle p-1">
+                        <div class="size-1.5 rounded-full bg-primary-strong" />
                     </div>
                     <span class="text-sm text-muted-foreground">
                         {{ scopeLabel(scope) }}
@@ -251,11 +247,7 @@ const onDenySubmit = (): void => {
                 <input type="hidden" name="state" :value="state" />
                 <input type="hidden" name="client_id" :value="client.id" />
                 <input type="hidden" name="auth_token" :value="authToken" />
-                <Button
-                    type="submit"
-                    variant="outline"
-                    class="w-full"
-                >
+                <Button type="submit" variant="outline" class="w-full">
                     {{ $t('mcp.authorize.cancel') }}
                 </Button>
             </form>

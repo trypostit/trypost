@@ -44,10 +44,10 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     linkedin: ['linkedin_post'],
     'linkedin-page': ['linkedin_page_post'],
     facebook: ['facebook_post', 'facebook_reel', 'facebook_story'],
-    tiktok: ['tiktok_video'],
+    tiktok: ['tiktok_video', 'tiktok_photo'],
     youtube: ['youtube_short'],
     x: ['x_post'],
-    threads: ['threads_post'],
+    threads: ['threads_post', 'threads_ghost_post'],
     pinterest: ['pinterest_pin', 'pinterest_video_pin', 'pinterest_carousel'],
     bluesky: ['bluesky_post'],
     mastodon: ['mastodon_post'],
@@ -59,33 +59,11 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
 export interface ContentTypeOption {
     value: string;
     labelKey: string;
+    disabledReasonKey?: string;
 }
-
-const PLATFORM_THEMES: Record<string, { bg: string; rotate: string }> = {
-    instagram: { bg: 'bg-pink-200', rotate: '-rotate-2' },
-    'instagram-facebook': { bg: 'bg-pink-200', rotate: '-rotate-2' },
-    facebook: { bg: 'bg-sky-200', rotate: 'rotate-1' },
-    linkedin: { bg: 'bg-blue-200', rotate: '-rotate-1' },
-    'linkedin-page': { bg: 'bg-blue-200', rotate: '-rotate-1' },
-    x: { bg: 'bg-amber-200', rotate: 'rotate-2' },
-    tiktok: { bg: 'bg-fuchsia-200', rotate: '-rotate-1' },
-    youtube: { bg: 'bg-red-200', rotate: 'rotate-1' },
-    pinterest: { bg: 'bg-rose-200', rotate: '-rotate-2' },
-    threads: { bg: 'bg-emerald-200', rotate: 'rotate-2' },
-    bluesky: { bg: 'bg-cyan-200', rotate: '-rotate-1' },
-    mastodon: { bg: 'bg-violet-200', rotate: 'rotate-1' },
-    telegram: { bg: 'bg-sky-200', rotate: '-rotate-2' },
-    discord: { bg: 'bg-indigo-200', rotate: 'rotate-1' },
-    google_business: { bg: 'bg-blue-100', rotate: 'rotate-2' },
-};
 
 export const getPlatformLogo = (platform: string): string =>
     PLATFORM_LOGOS[platform] ?? PLATFORM_LOGOS.linkedin;
-
-export const getPlatformTheme = (platform: string): { bg: string; rotate: string; image: string } => ({
-    ...(PLATFORM_THEMES[platform] ?? { bg: 'bg-muted', rotate: '' }),
-    image: getPlatformLogo(platform),
-});
 
 export const getPlatformLabel = (platform: string): string =>
     PLATFORM_LABELS[platform] ?? platform;
@@ -98,14 +76,32 @@ export const getContentTypeOptions = (platform: string): ContentTypeOption[] =>
         labelKey: translationKeyFor(value),
     }));
 
+const LONE_CONTENT_TYPE_RADIO_PLATFORMS = new Set(['youtube']);
+
+/**
+ * The content types the composer offers as radios. A single type shows only
+ * where it gets a lone radio (YouTube "Short"); Pinterest derives its type from the media.
+ */
+export const getPickableContentTypeOptions = (
+    platform: string,
+): ContentTypeOption[] => {
+    const options =
+        platform === 'pinterest' ? [] : getContentTypeOptions(platform);
+
+    return options.length > 1 || LONE_CONTENT_TYPE_RADIO_PLATFORMS.has(platform)
+        ? options
+        : [];
+};
+
 /** Whether the user picks a format on this platform, or it only has one. */
 export const hasMultipleContentTypes = (platform: string): boolean =>
     getContentTypeOptions(platform).length > 1;
 
 /**
- * Translation key for the badge that names a published format, or null when
- * the format was never a choice: tagging "Post" on X would just repeat the
- * platform name.
+ * Translation key for the badge that names a published format, or null for a
+ * platform's default format: tagging a regular post would just add noise.
  */
 export const getContentTypeBadgeKey = (platform: string, contentType: string | null): string | null =>
-    contentType && hasMultipleContentTypes(platform) ? translationKeyFor(contentType) : null;
+    contentType && hasMultipleContentTypes(platform) && contentType !== PLATFORM_CONTENT_TYPES[platform]?.[0]
+        ? translationKeyFor(contentType)
+        : null;

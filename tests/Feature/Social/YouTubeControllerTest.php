@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -18,7 +17,7 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 });
 
 test('youtube authorize url offers the account chooser', function () {
@@ -155,7 +154,7 @@ test('youtube callback connects the first channel and warns when google returns 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.connected'))
+            ->where('message', null)
         );
 
     $this->assertDatabaseHas('social_accounts', [
@@ -320,7 +319,7 @@ test('youtube reconnect keeps the original card for a single channel', function 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.reconnected'))
+            ->where('message', null)
         );
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::YouTube)->count())->toBe(1)
@@ -421,7 +420,7 @@ test('youtube reconnect narrows a multi channel response to its own card', funct
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.reconnected'))
+            ->where('message', null)
         );
 
     expect($account->fresh()->platform_user_id)->toBe('UC_target')

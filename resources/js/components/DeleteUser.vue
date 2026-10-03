@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
+import { IconAlertTriangle } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, useTemplateRef } from 'vue';
 
 import ProfileController from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
-import HeadingSmall from '@/components/HeadingSmall.vue';
 import InputError from '@/components/InputError.vue';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -40,21 +41,17 @@ const focusFirstInput = () => {
 </script>
 
 <template>
-    <div class="space-y-6">
-        <HeadingSmall
-            :title="$t('settings.delete_account.heading')"
-            :description="$t('settings.delete_account.description')"
-        />
-        <div class="space-y-4 rounded-xl border-2 border-foreground bg-rose-50 p-4 shadow-2xs">
-            <div class="relative space-y-0.5 text-rose-700">
-                <p class="font-bold">{{ $t('settings.delete_account.warning') }}</p>
-                <p class="text-sm font-medium">
-                    {{ $t('settings.delete_account.warning_message') }}
-                </p>
-            </div>
+    <SettingsSection
+        :title="$t('settings.delete_account.heading')"
+        :description="$t('settings.delete_account.description')"
+    >
+        <template #actions>
             <Dialog>
                 <DialogTrigger as-child>
-                    <Button variant="destructive" data-test="delete-user-button">
+                    <Button
+                        variant="destructive"
+                        data-test="delete-user-button"
+                    >
                         {{ $t('settings.delete_account.button') }}
                     </Button>
                 </DialogTrigger>
@@ -70,11 +67,20 @@ const focusFirstInput = () => {
                         v-slot="{ errors, processing, reset, clearErrors }"
                     >
                         <DialogHeader class="space-y-3">
-                            <DialogTitle>{{ $t('settings.delete_account.modal_title') }}</DialogTitle>
+                            <DialogTitle>{{
+                                $t('settings.delete_account.modal_title')
+                            }}</DialogTitle>
                             <DialogDescription>
-                                {{ hasPassword
-                                    ? $t('settings.delete_account.modal_description_password')
-                                    : trans('settings.delete_account.modal_description_email', { email: userEmail }) }}
+                                {{
+                                    hasPassword
+                                        ? $t(
+                                              'settings.delete_account.modal_description_password',
+                                          )
+                                        : trans(
+                                              'settings.delete_account.modal_description_email',
+                                              { email: userEmail },
+                                          )
+                                }}
                             </DialogDescription>
                         </DialogHeader>
 
@@ -87,37 +93,38 @@ const focusFirstInput = () => {
                                 type="password"
                                 name="password"
                                 ref="passwordInput"
-                                :placeholder="trans('settings.delete_account.password_placeholder')"
+                                :placeholder="
+                                    trans(
+                                        'settings.delete_account.password_placeholder',
+                                    )
+                                "
                             />
                             <InputError :message="errors.password" />
                         </div>
 
                         <div v-else class="grid gap-2">
-                            <Label for="email_confirmation" class="sr-only">Email</Label>
+                            <Label for="email_confirmation" class="sr-only">{{
+                                $t('settings.profile.email')
+                            }}</Label>
                             <Input
                                 id="email_confirmation"
                                 type="email"
                                 name="email_confirmation"
                                 ref="emailInput"
-                                :placeholder="trans('settings.delete_account.email_placeholder')"
+                                :placeholder="
+                                    trans(
+                                        'settings.delete_account.email_placeholder',
+                                    )
+                                "
                                 autocomplete="off"
                             />
                             <InputError :message="errors.email_confirmation" />
                         </div>
 
-                        <DialogFooter class="gap-2">
-                             <Button
-                                type="submit"
-                                variant="destructive"
-                                :disabled="processing"
-                                data-test="confirm-delete-user-button"
-                            >
-                                {{ $t('settings.delete_account.confirm') }}
-                            </Button>
-
+                        <DialogFooter>
                             <DialogClose as-child>
                                 <Button
-                                    variant="secondary"
+                                    variant="ghost"
                                     @click="
                                         () => {
                                             clearErrors();
@@ -128,10 +135,33 @@ const focusFirstInput = () => {
                                     {{ $t('settings.delete_account.cancel') }}
                                 </Button>
                             </DialogClose>
+
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                :disabled="processing"
+                                data-test="confirm-delete-user-button"
+                            >
+                                {{ $t('settings.delete_account.confirm') }}
+                            </Button>
                         </DialogFooter>
                     </Form>
                 </DialogContent>
             </Dialog>
+        </template>
+
+        <div
+            class="flex items-start gap-2 rounded-xl bg-critical-subtle p-4 text-sm text-foreground"
+        >
+            <IconAlertTriangle
+                class="mt-0.5 size-4 shrink-0 text-destructive-text"
+            />
+            <p>
+                <span class="font-emphasis">{{
+                    $t('settings.delete_account.warning')
+                }}</span>
+                {{ $t('settings.delete_account.warning_message') }}
+            </p>
         </div>
-    </div>
+    </SettingsSection>
 </template>

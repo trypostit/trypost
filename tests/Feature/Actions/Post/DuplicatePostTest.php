@@ -14,6 +14,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Validation\ValidationException;
 
 test('execute clones the post as a draft created via web', function () {
     $user = User::factory()->create();
@@ -25,6 +26,8 @@ test('execute clones the post as a draft created via web', function () {
         'created_via' => CreatedVia::Api,
         'status' => PostStatus::Published,
     ]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
+    PostPlatform::factory()->create(['post_id' => $original->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
     $copy = DuplicatePost::execute($original, $user);
 
@@ -43,6 +46,8 @@ test('execute relies on the observer to dispatch PostCreated for the duplicate',
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
     ]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
+    PostPlatform::factory()->create(['post_id' => $original->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
     Event::fake([PostCreated::class]);
 
@@ -101,7 +106,7 @@ test('execute skips platform rows whose social account was removed', function ()
         ->and($copiedPlatforms->first()->enabled)->toBeTrue();
 });
 
-test('execute copies only platforms that still have a social account relation', function () {
+test('execute refuses a duplicate when no connected account remains', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
@@ -125,7 +130,6 @@ test('execute copies only platforms that still have a social account relation', 
 
     expect($platform->social_account_id)->toBeNull();
 
-    $copy = DuplicatePost::execute($original->fresh(['postPlatforms', 'labels']), $user);
-
-    expect($copy->postPlatforms)->toHaveCount(0);
+    expect(fn () => DuplicatePost::execute($original->fresh(['postPlatforms', 'labels']), $user))
+        ->toThrow(ValidationException::class);
 });

@@ -20,7 +20,7 @@ class MastodonController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Mastodon;
 
-    private const SCOPES = 'read:accounts write:statuses write:media';
+    private const SCOPES = 'read:accounts read:statuses write:statuses write:media';
 
     /**
      * Show form to enter Mastodon instance URL
@@ -178,7 +178,7 @@ class MastodonController extends SocialController
             $grantedScopes = array_values(array_filter(explode(' ', (string) data_get($tokenData, 'scope', self::SCOPES))));
             $reconnect = $this->reconnectAccount($workspace);
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 (string) data_get($profile, 'id'),
@@ -202,7 +202,7 @@ class MastodonController extends SocialController
                 $reconnect,
             );
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {

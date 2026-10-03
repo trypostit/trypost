@@ -92,7 +92,7 @@ class FacebookController extends MetaController
                 $page = $pages[0];
                 $avatarPath = uploadFromUrl(data_get($page, 'picture'));
 
-                SocialAccount::connectIdentity(
+                $account = SocialAccount::connectIdentity(
                     $workspace,
                     $this->platform,
                     (string) data_get($page, 'id'),
@@ -116,7 +116,7 @@ class FacebookController extends MetaController
                     $reconnect,
                 );
 
-                return $this->connectedCallback($reconnect);
+                return $this->connectedCallback($account, $reconnect);
             }
 
             // Multiple pages - store data and show selection
@@ -187,7 +187,7 @@ class FacebookController extends MetaController
             $avatarPath = uploadFromUrl(data_get($selectedPage, 'picture'));
             $reconnect = $this->reconnectAccount($workspace, data_get($oauthData, 'reconnect_id'));
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 (string) data_get($selectedPage, 'id'),
@@ -213,7 +213,7 @@ class FacebookController extends MetaController
 
             session()->forget('facebook_oauth');
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {

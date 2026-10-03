@@ -59,7 +59,7 @@ class FacebookPublisher
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireVideo($media->first(), 'Stories')),
-            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, data_get($postPlatform->meta, 'aspect_ratio')),
+            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, data_get($postPlatform->meta, 'aspect_ratio'), $postPlatform->attachesLinkPreview()),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
                 category: ErrorCategory::MediaFormat,
@@ -71,10 +71,10 @@ class FacebookPublisher
      * @param  Collection<int, MediaItem>  $media
      * @return array{id: mixed, url: string}
      */
-    private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, ?string $aspectRatio): array
+    private function publishPost(string $pageId, string $accessToken, ?string $content, Collection $media, ?string $aspectRatio, bool $attachLink): array
     {
         if ($media->isEmpty()) {
-            return $this->publishTextPost($pageId, $accessToken, $content);
+            return $this->publishTextPost($pageId, $accessToken, $content, $attachLink);
         }
 
         $firstMedia = $media->first();
@@ -93,7 +93,7 @@ class FacebookPublisher
     /**
      * @return array{id: mixed, url: string}
      */
-    private function publishTextPost(string $pageId, string $accessToken, ?string $content): array
+    private function publishTextPost(string $pageId, string $accessToken, ?string $content, bool $attachLink): array
     {
         if (! filled($content)) {
             throw new FacebookPublishException(
@@ -102,7 +102,7 @@ class FacebookPublisher
             );
         }
 
-        $link = FacebookLinkPreview::url($content);
+        $link = $attachLink ? FacebookLinkPreview::url($content) : null;
 
         $response = $link === null
             ? $this->postTextToFeed($pageId, $accessToken, $content, null)

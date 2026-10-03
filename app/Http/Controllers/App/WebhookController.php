@@ -47,7 +47,7 @@ class WebhookController extends Controller
             'webhook' => $webhook->makeVisible('signing_secret'),
             'logs' => Inertia::scroll(
                 fn () => $webhook->logs()->orderByDesc('created_at')->paginate((int) config('app.pagination.default')),
-            ),
+            )->matchOn('data.id'),
         ]);
     }
 
@@ -64,9 +64,6 @@ class WebhookController extends Controller
                 'endpoint' => $e->getMessage(),
             ]);
         }
-
-        session()->flash('flash.banner', __('webhooks.flash.created'));
-        session()->flash('flash.bannerStyle', 'success');
 
         return redirect()->route('app.webhooks.show', $webhook);
     }

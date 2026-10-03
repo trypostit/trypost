@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Passport\AuthorizationView;
@@ -22,8 +21,8 @@ test('authorization view prefers the current workspace and maps consent props', 
         'user_id' => $user->id,
         'name' => 'Beta',
     ]);
-    $alpha->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $beta->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $alpha->members()->attach($user->id, membershipPivot('admin'));
+    $beta->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $beta->id]);
 
     $props = authorizationViewProps($user, state: 'consent-state');
@@ -48,7 +47,7 @@ test('authorization view falls back to the first workspace when current is unava
         'user_id' => $user->id,
         'name' => 'Only',
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => null]);
 
     $props = authorizationViewProps($user);

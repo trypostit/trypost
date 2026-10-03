@@ -19,6 +19,10 @@ export const ALLOWED_MIME_TYPES: Record<MediaType, readonly string[]> = {
     [MediaType.Document]: ['application/pdf'],
 };
 
+/** HEIC/HEIF is accepted only while the server can convert it (`mediaUploadLimits.heic`). */
+export const HEIC_MIME_TYPES: readonly string[] = ['image/heic', 'image/heif'];
+const HEIC_EXTENSIONS: readonly string[] = ['heic', 'heif'];
+
 const GIF_MIME = 'image/gif';
 const MOV_MIME = 'video/quicktime';
 const PDF_MIME = 'application/pdf';
@@ -67,7 +71,12 @@ const ownsMime = (type: MediaType, mime: string): boolean =>
     type === MediaType.Document ? mime === PDF_MIME : mime.startsWith(`${type}/`);
 
 /** The `accept` attribute value for a file input that takes any media we allow. */
-export const acceptAttribute = (): string => Object.values(ALLOWED_MIME_TYPES).flat().join(',');
+export const acceptAttribute = (heic: boolean = false): string =>
+    [...Object.values(ALLOWED_MIME_TYPES).flat(), ...(heic ? [...HEIC_MIME_TYPES, ...HEIC_EXTENSIONS.map((extension) => `.${extension}`)] : [])].join(',');
+
+/** Whether a browser `File` (or name + MIME) is HEIC/HEIF, by MIME or extension. */
+export const isHeic = (file: { name?: string | null; type?: string | null } | null | undefined): boolean =>
+    HEIC_MIME_TYPES.includes(normalizeMime(file?.type)) || hasExtension(pathOf(file?.name), HEIC_EXTENSIONS);
 
 /** The structural shape every classifiable media item satisfies. */
 interface ClassifiableMedia {
@@ -121,3 +130,17 @@ export const isGif = (item: ClassifiableMedia | null | undefined): boolean => no
 
 export const isMov = (item: ClassifiableMedia | null | undefined): boolean =>
     normalizeMime(item?.mime_type) === MOV_MIME || hasExtension(pathOf(item?.original_filename ?? item?.path), ['mov']);
+
+/**
+ * The MediaType an upload endpoint would accept a browser `File` as, judged by
+ * its filename against the server's own allow-list (`Type::extensions()`,
+ * shared as `mediaUploadLimits.extensions`), or null when it would be rejected.
+ */
+export const uploadTypeOf = (
+    file: { name: string },
+    extensions: Record<MediaType, readonly string[]>,
+): MediaType | null => {
+    const path = pathOf(file.name);
+
+    return MEDIA_TYPES.find((type) => hasExtension(path, extensions[type])) ?? null;
+};

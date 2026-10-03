@@ -6,6 +6,7 @@ import {
     SidebarGroup,
     SidebarGroupLabel,
     SidebarMenu,
+    SidebarMenuBadge,
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
@@ -21,7 +22,7 @@ const { urlIsActive } = useActiveUrl();
 </script>
 
 <template>
-    <SidebarGroup class="px-2 py-0">
+    <SidebarGroup class="px-4 py-0 group-data-[collapsible=icon]:px-2.5">
         <SidebarGroupLabel v-if="label">
             {{ label }}
         </SidebarGroupLabel>
@@ -37,10 +38,16 @@ const { urlIsActive } = useActiveUrl();
                         <span>{{ item.title }}</span>
                     </Link>
                 </SidebarMenuButton>
+                <SidebarMenuBadge
+                    v-if="item.count !== undefined"
+                    :data-testid="item.countTestId"
+                >
+                    {{ item.count }}
+                </SidebarMenuBadge>
                 <Badge
-                    v-if="item.badge"
+                    v-else-if="item.badge"
                     variant="warning"
-                    class="pointer-events-none absolute top-1/2 end-2 -translate-y-1/2 px-1.5 group-data-[collapsible=icon]:hidden"
+                    class="pointer-events-none absolute top-1/2 end-2 -translate-y-1/2 group-data-[collapsible=icon]:hidden"
                 >
                     {{ item.badge }}
                 </Badge>

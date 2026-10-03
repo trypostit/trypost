@@ -2,7 +2,8 @@
 
 return [
     'title' => 'Sygnatury',
-    'description' => 'Twórz wielokrotnego użytku sygnatury, aby szybko dołączać je do postów',
+    'description' => 'Teksty wielokrotnego użytku do postów.',
+    'save_failed' => 'Nie udało się zapisać sygnatury. Spróbuj ponownie.',
     'search' => 'Szukaj sygnatur...',
     'new' => 'Nowa sygnatura',
     'empty_title' => 'Brak sygnatur',
@@ -15,6 +16,7 @@ return [
         'created_at' => 'Utworzono',
     ],
 
+    'row_actions' => 'Akcje podpisu',
     'actions' => [
         'edit' => 'Edytuj sygnaturę',
         'delete' => 'Usuń sygnaturę',
@@ -22,24 +24,22 @@ return [
 
     'create' => [
         'title' => 'Utwórz sygnaturę',
-        'description' => 'Nadaj sygnaturze nazwę i podaj treść do dołączenia (hasztagi, linki, własny tekst — wszystko, co powtarzasz).',
+        'description' => 'Zapisz tekst, który często dodajesz do postów, np. hashtagi, linki lub podpis.',
         'name' => 'Nazwa',
         'name_placeholder' => 'np. Marketing, Podróże, Stopka marki',
         'content' => 'Treść',
         'content_placeholder' => "#marketing #socialmedia\nDowiedz się więcej: https://twojamarka.com",
-        'content_hint' => 'Hasztagi, linki, własne wstępy, zakończenia — wszystko, co dołączasz do postów.',
         'submit' => 'Utwórz sygnaturę',
         'submitting' => 'Tworzenie...',
     ],
 
     'edit' => [
         'title' => 'Edytuj sygnaturę',
-        'description' => 'Zaktualizuj nazwę i treść tej sygnatury.',
+        'description' => 'Zmień nazwę lub tekst, który ten podpis dodaje do postów.',
         'name' => 'Nazwa',
         'name_placeholder' => 'np. Marketing, Podróże, Stopka marki',
         'content' => 'Treść',
         'content_placeholder' => "#marketing #socialmedia\nDowiedz się więcej: https://twojamarka.com",
-        'content_hint' => 'Hasztagi, linki, własne wstępy, zakończenia — wszystko, co dołączasz do postów.',
         'submit' => 'Zapisz zmiany',
         'submitting' => 'Zapisywanie...',
     ],
@@ -49,11 +49,5 @@ return [
         'description' => 'Czy na pewno chcesz usunąć tę sygnaturę? Tej operacji nie można cofnąć.',
         'confirm' => 'Usuń',
         'cancel' => 'Anuluj',
-    ],
-
-    'flash' => [
-        'created' => 'Sygnatura utworzona.',
-        'updated' => 'Sygnatura zaktualizowana.',
-        'deleted' => 'Sygnatura usunięta.',
     ],
 ];

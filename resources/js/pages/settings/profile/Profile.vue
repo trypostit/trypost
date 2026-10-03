@@ -1,22 +1,16 @@
 <script setup lang="ts">
 import { Form, Head, Link, usePage } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import ProfileController from '@/actions/App/Http/Controllers/App/Settings/ProfileController';
-import HeadingSmall from '@/components/HeadingSmall.vue';
-import InputError from '@/components/InputError.vue';
-import PageHeader from '@/components/PageHeader.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
-import SettingsTabsNav from '@/components/settings/SettingsTabsNav.vue';
+import SettingsField from '@/components/settings/SettingsField.vue';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import AppLayout from '@/layouts/AppLayout.vue';
-import { edit as editAuthentication } from '@/routes/app/authentication';
-import { preferences as notificationPreferences } from '@/routes/app/notifications';
-import { deletePhoto, edit as editProfile, uploadPhoto } from '@/routes/app/profile';
+import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { deletePhoto, uploadPhoto } from '@/routes/app/profile';
 import { send } from '@/routes/verification';
 
 interface Props {
@@ -28,109 +22,99 @@ defineProps<Props>();
 
 const page = usePage();
 const user = computed(() => page.props.auth.user);
-
-const tabs = computed(() => [
-    { name: 'profile', label: trans('settings.nav.profile'), href: editProfile().url },
-    { name: 'authentication', label: trans('settings.nav.authentication'), href: editAuthentication().url },
-    { name: 'notifications', label: trans('settings.nav.notifications'), href: notificationPreferences().url },
-]);
 </script>
 
 <template>
     <Head :title="$t('settings.profile.title')" />
 
-    <AppLayout>
-        <div class="mx-auto max-w-4xl space-y-8 px-6 py-8">
-            <PageHeader
-                :title="$t('settings.hub.title')"
-                :description="$t('settings.hub.description')"
-            />
+    <SettingsLayout :title="$t('settings.profile.title')">
+        <div class="flex flex-col gap-10">
+            <SettingsSection
+                :title="$t('settings.profile.photo_heading')"
+                :description="$t('settings.profile.photo_description')"
+            >
+                <PhotoUpload
+                    :photo-url="user.photo_url"
+                    :has-photo="user.has_photo"
+                    :name="user.name"
+                    :upload-url="uploadPhoto().url"
+                    :delete-url="deletePhoto().url"
+                    size="sm"
+                />
+            </SettingsSection>
 
-            <SettingsTabsNav :tabs="tabs" active="profile" />
+            <Separator />
 
-            <section class="space-y-12">
-                <div class="flex flex-col space-y-6">
-                    <HeadingSmall
-                        :title="$t('settings.profile.photo_heading')"
-                        :description="$t('settings.profile.photo_description')"
-                    />
-
-                    <PhotoUpload
-                        :photo-url="user.photo_url"
-                        :has-photo="user.has_photo"
-                        :name="user.name"
-                        :upload-url="uploadPhoto().url"
-                        :delete-url="deletePhoto().url"
-                    />
-                </div>
-
-                <Separator />
-
-                <div class="flex flex-col space-y-6">
-                    <HeadingSmall
-                        :title="$t('settings.profile.heading')"
-                        :description="$t('settings.profile.description')"
-                    />
-
-                    <Form
-                        v-bind="ProfileController.update.form()"
-                        class="space-y-6"
-                        v-slot="{ errors, processing }"
+            <SettingsSection
+                :title="$t('settings.profile.heading')"
+                :description="$t('settings.profile.description')"
+            >
+                <Form
+                    v-bind="ProfileController.update.form()"
+                    class="flex flex-col gap-6"
+                    v-slot="{ errors, processing }"
+                >
+                    <SettingsField
+                        :label="$t('settings.profile.name')"
+                        for="name"
+                        :error="errors.name"
                     >
-                        <div class="grid gap-2">
-                            <Label for="name">{{ $t('settings.profile.name') }}</Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                :default-value="user.name"
-                                autocomplete="name"
-                                :placeholder="trans('settings.profile.name_placeholder')"
-                            />
-                            <InputError :message="errors.name" />
-                        </div>
+                        <Input
+                            id="name"
+                            name="name"
+                            :default-value="user.name"
+                            autocomplete="name"
+                            :placeholder="$t('settings.profile.name_placeholder')"
+                        />
+                    </SettingsField>
 
-                        <div class="grid gap-2">
-                            <Label for="email">{{ $t('settings.profile.email') }}</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                name="email"
-                                :default-value="user.email"
-                                autocomplete="username"
-                                :placeholder="trans('settings.profile.email_placeholder')"
-                            />
-                            <InputError :message="errors.email" />
-                        </div>
+                    <SettingsField
+                        :label="$t('settings.profile.email')"
+                        for="email"
+                        :error="errors.email"
+                    >
+                        <Input
+                            id="email"
+                            type="email"
+                            name="email"
+                            :default-value="user.email"
+                            autocomplete="username"
+                            :placeholder="$t('settings.profile.email_placeholder')"
+                        />
+                    </SettingsField>
 
-                        <div v-if="mustVerifyEmail && !user.email_verified_at">
-                            <p class="-mt-4 text-sm text-foreground/70">
-                                {{ $t('settings.profile.email_unverified') }}
-                                <Link
-                                    :href="send()"
-                                    as="button"
-                                    class="font-semibold text-foreground underline decoration-foreground/30 underline-offset-4 transition-colors hover:decoration-foreground"
-                                >
-                                    {{ $t('settings.profile.resend_verification') }}
-                                </Link>
-                            </p>
-
-                            <div
-                                v-if="status === 'verification-link-sent'"
-                                class="mt-2 text-sm font-semibold text-emerald-700"
+                    <div
+                        v-if="mustVerifyEmail && !user.email_verified_at"
+                        class="-mt-4 flex flex-col gap-2"
+                    >
+                        <p class="text-sm text-muted-foreground">
+                            {{ $t('settings.profile.email_unverified') }}
+                            <Link
+                                :href="send()"
+                                as="button"
+                                class="cursor-pointer text-primary-text underline underline-offset-4 transition-control hover:text-primary-text-hover"
                             >
-                                {{ $t('settings.profile.verification_sent') }}
-                            </div>
-                        </div>
+                                {{ $t('settings.profile.resend_verification') }}
+                            </Link>
+                        </p>
 
-                        <Button
-                            :disabled="processing"
-                            data-test="update-profile-button"
+                        <p
+                            v-if="status === 'verification-link-sent'"
+                            class="text-sm font-medium text-success-text"
                         >
-                            {{ $t('settings.profile.save') }}
-                        </Button>
-                    </Form>
-                </div>
-            </section>
+                            {{ $t('settings.profile.verification_sent') }}
+                        </p>
+                    </div>
+
+                    <Button
+                        :disabled="processing"
+                        class="self-start"
+                        data-test="update-profile-button"
+                    >
+                        {{ $t('settings.profile.save') }}
+                    </Button>
+                </Form>
+            </SettingsSection>
         </div>
-    </AppLayout>
+    </SettingsLayout>
 </template>

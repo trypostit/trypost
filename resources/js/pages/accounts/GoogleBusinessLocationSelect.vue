@@ -43,7 +43,7 @@ const handleSelectLocation = (location: Location) => {
             <div class="flex items-center gap-3">
                 <img src="/images/accounts/google_business.png" :alt="$t('accounts.google_business.title')" class="h-10 w-10" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.google_business.title') }}</h1>
+                    <h1 class="font-heading text-xl font-medium tracking-tight">{{ $t('accounts.google_business.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.google_business.description') }}</p>
                 </div>
             </div>

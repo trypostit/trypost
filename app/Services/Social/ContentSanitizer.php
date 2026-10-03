@@ -59,6 +59,14 @@ class ContentSanitizer
     }
 
     /**
+     * The content without editor markup, before any network-specific rule.
+     */
+    public function plainText(string $content): string
+    {
+        return $this->stripHtml($content);
+    }
+
+    /**
      * Rewrites every URL into a non-clickable form (`example.com` →
      * `example(.)com`), dropping the scheme and any `www.` prefix and breaking
      * every dot of the host — leaving one intact dot would still leave a

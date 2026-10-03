@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mcp\Tools\Post;
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Models\Post;
-use App\Services\Post\PostMetricsFetcher;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
@@ -15,7 +15,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Fetch engagement metrics (likes, comments, shares, etc.) for a published post across all platforms it was posted to. Returns "unsupported" entries for platforms that do not expose post-level metrics or for unpublished platforms.')]
+#[Description('Read all latest saved analytics for a TryPost post across its published platforms, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. Returns "unsupported" for excluded or unpublished platforms.')]
 class GetPostMetricsTool extends Tool
 {
     public function handle(Request $request): Response|ResponseFactory
@@ -34,7 +34,7 @@ class GetPostMetricsTool extends Tool
 
         return Response::structured([
             'post_id' => $post->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($post)->all(),
+            'platforms' => app(ReadPublicationAnalytics::class)->forPost($post)->all(),
         ]);
     }
 

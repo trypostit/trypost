@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Połącz asystentów AI, aby tworzyli i zarządzali postami na koncie TryPost.',
+    'subtitle' => 'Połącz asystentów AI z workspace\'em.',
     'copy_step' => 'Skopiuj URL serwera TryPost',
     'open_step' => 'Otwórz asystenta AI',
     'copy' => 'Kopiuj URL',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Połączone aplikacje',
     'connected_description' => 'Asystenci, z którymi się zalogowałeś. Możesz rozłączyć te, których już nie używasz.',
-    'connected_empty' => 'Nic jeszcze nie połączono. Użyj Claude, ChatGPT lub innego klienta powyżej.',
+    'connected_empty_title' => 'Brak połączonych aplikacji',
+    'connected_empty' => 'Użyj Claude, ChatGPT lub innego klienta powyżej.',
     'disconnect' => 'Rozłącz',
     'disconnect_title' => 'Rozłącz aplikację',
     'disconnect_confirm' => 'To wyloguje aplikację z TryPost. Musi połączyć się ponownie, zanim znów użyje MCP.',

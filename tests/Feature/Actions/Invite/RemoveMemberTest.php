@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\RemoveMember;
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 
@@ -79,7 +78,7 @@ test('remove member keeps mcp oauth bound to another workspace', function () {
         ->and($member->fresh()->can('createPost', $sharedB))->toBeTrue();
 });
 
-test('remove member keeps mcp oauth on another workspace when the member remains a viewer there', function () {
+test('remove member keeps mcp oauth on another workspace where the member still needs approval', function () {
     [
         'member' => $member,
         'shared_workspaces' => [$sharedA, $sharedB],
@@ -87,15 +86,13 @@ test('remove member keeps mcp oauth on another workspace when the member remains
         sharedWorkspaces: 2,
         setMemberCurrent: true,
     );
-    $sharedB->members()->updateExistingPivot($member->id, [
-        'role' => Role::Viewer->value,
-    ]);
+    $sharedB->members()->updateExistingPivot($member->id, membershipPivot('approval'));
     $oauth = mcpAccessToken($member, mcpOauthClient(), $sharedB);
 
     RemoveMember::execute($sharedA, $member->id);
 
     expect($oauth->fresh()->revoked)->toBeFalse()
-        ->and($member->fresh()->can('createPost', $sharedB))->toBeFalse()
+        ->and($member->fresh()->can('publishDirectly', $sharedB))->toBeFalse()
         ->and($member->fresh()->can('view', $sharedB))->toBeTrue();
 });
 

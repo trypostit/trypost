@@ -17,6 +17,13 @@ class PostObserver
         DB::afterCommit(fn () => PostCreated::dispatch($post));
     }
 
+    public function saving(Post $post): void
+    {
+        if ($post->isDirty('status') && $post->status === PostStatus::Draft) {
+            $post->fill(Post::withoutRecurrence());
+        }
+    }
+
     public function saved(Post $post): void
     {
         if (! $post->wasChanged('status')) {

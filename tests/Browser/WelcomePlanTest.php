@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -41,7 +40,7 @@ function welcomeOwnerOnPlanStep(): User
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     SocialAccount::factory()->linkedin()->create([

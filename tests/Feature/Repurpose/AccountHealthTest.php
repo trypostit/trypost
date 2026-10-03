@@ -9,11 +9,12 @@ use App\Actions\Repurpose\UpdateRepurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\ItemReason;
 use App\Enums\Repurpose\PauseReason;
-use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -24,7 +25,12 @@ use App\Services\Post\MediaAttacher;
 use App\Services\Repurpose\CaptionAdapter;
 use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 /**
  * @return array{0: Workspace, 1: User, 2: SocialAccount}
@@ -91,33 +97,11 @@ test('applyIfPossible applies the change and returns the fresh model', function 
     expect($result?->status)->toBe(Status::Paused);
 });
 
-test('a deactivated destination does not block activation while another still works', function () {
-    [$workspace, $user, $source] = healthWorkspace();
-
-    $live = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Mastodon]);
-    $off = SocialAccount::factory()->for($workspace)->create([
-        'platform' => Platform::Threads,
-        'is_active' => false,
-    ]);
-
-    $repurpose = Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Draft,
-        'destinations' => [
-            ['social_account_id' => $live->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => []],
-            ['social_account_id' => $off->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
-        ],
-    ]);
-
-    expect(ActivateRepurpose::execute($repurpose)->status)->toBe(Status::Active);
-});
-
 test('activation is refused when no destination is usable', function () {
     [$workspace, $user, $source] = healthWorkspace();
 
-    $off = SocialAccount::factory()->for($workspace)->create([
+    $off = SocialAccount::factory()->for(Workspace::factory()->create())->create([
         'platform' => Platform::Threads,
-        'is_active' => false,
     ]);
 
     $repurpose = Repurpose::factory()->for($workspace)->create([
@@ -158,29 +142,6 @@ test('activation is refused when the source account was removed', function () {
     expect(fn () => ActivateRepurpose::execute($repurpose->fresh()))->toThrow(ValidationException::class);
 });
 
-test('editing an active repurpose is not blocked by a deactivated destination', function () {
-    [$workspace, $user, $source] = healthWorkspace();
-
-    $live = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Mastodon]);
-    $off = SocialAccount::factory()->for($workspace)->create([
-        'platform' => Platform::Threads,
-        'is_active' => false,
-    ]);
-
-    $repurpose = Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Active,
-        'destinations' => [
-            ['social_account_id' => $live->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => []],
-            ['social_account_id' => $off->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
-        ],
-    ]);
-
-    $updated = UpdateRepurpose::execute($repurpose, ['publish_mode' => PublishMode::Draft->value]);
-
-    expect($updated->publish_mode)->toBe(PublishMode::Draft);
-});
-
 test('resuming a user pause keeps the watermark', function () {
     [$workspace, $user, $source] = healthWorkspace();
     $watermark = now()->subDays(3);
@@ -217,7 +178,7 @@ test('resuming a system pause starts from now and clears the reason', function (
 
 test('resuming is refused while the source is still unusable', function () {
     [$workspace, $user, $source] = healthWorkspace();
-    $source->update(['is_active' => false]);
+    $source->update(['status' => AccountStatus::TokenExpired]);
 
     $repurpose = Repurpose::factory()->for($workspace)->create([
         'source_social_account_id' => $source->id,
@@ -258,20 +219,6 @@ test('a source going token expired pauses the repurpose', function () {
     expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceUnavailable);
 });
 
-test('deactivating the source pauses the repurpose', function () {
-    [$workspace, $user, $source] = healthWorkspace();
-
-    $repurpose = Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Active,
-        'destinations' => [healthDestination($workspace)],
-    ]);
-
-    $source->update(['is_active' => false]);
-
-    expect($repurpose->fresh()->paused_reason)->toBe(PauseReason::SourceUnavailable);
-});
-
 test('a draft repurpose is left alone when its source dies', function () {
     [$workspace, $user, $source] = healthWorkspace();
 
@@ -281,7 +228,7 @@ test('a draft repurpose is left alone when its source dies', function () {
         'destinations' => [healthDestination($workspace)],
     ]);
 
-    $source->update(['is_active' => false]);
+    $source->update(['status' => AccountStatus::TokenExpired]);
 
     expect($repurpose->fresh()->status)->toBe(Status::Draft)
         ->and($repurpose->fresh()->paused_reason)->toBeNull();
@@ -297,7 +244,7 @@ test('a repurpose the user paused does not acquire a system reason', function ()
         'destinations' => [healthDestination($workspace)],
     ]);
 
-    $source->update(['is_active' => false]);
+    $source->update(['status' => AccountStatus::TokenExpired]);
 
     expect($repurpose->fresh()->paused_reason)->toBeNull();
 });
@@ -377,24 +324,6 @@ test('reconnecting a LinkedIn destination as a page realigns its content type', 
         ->toBe(ContentType::LinkedInPagePost->value);
 });
 
-test('a deactivated destination is left in place', function () {
-    [$workspace, $user, $source] = healthWorkspace();
-    $off = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Threads]);
-
-    $repurpose = Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Active,
-        'destinations' => [
-            ['social_account_id' => $off->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => []],
-        ],
-    ]);
-
-    $off->update(['is_active' => false]);
-
-    expect($repurpose->fresh()->destinations)->toHaveCount(1)
-        ->and($repurpose->fresh()->status)->toBe(Status::Active);
-});
-
 test('reconnecting the source resumes the repurpose from now', function () {
     [$workspace, $user, $source] = healthWorkspace();
     $source->update(['status' => AccountStatus::TokenExpired]);
@@ -418,7 +347,7 @@ test('reconnecting the source resumes the repurpose from now', function () {
 
 test('a user pause is never auto-resumed', function () {
     [$workspace, $user, $source] = healthWorkspace();
-    $source->update(['is_active' => false]);
+    $source->update(['status' => AccountStatus::TokenExpired]);
 
     $repurpose = Repurpose::factory()->for($workspace)->create([
         'source_social_account_id' => $source->id,
@@ -427,7 +356,7 @@ test('a user pause is never auto-resumed', function () {
         'destinations' => [healthDestination($workspace)],
     ]);
 
-    $source->update(['is_active' => true]);
+    $source->update(['status' => AccountStatus::Connected]);
 
     expect($repurpose->fresh()->status)->toBe(Status::Paused);
 });
@@ -465,7 +394,7 @@ test('disconnecting an account says how many automations it paused', function ()
     ]);
 
     $this->actingAs($user)
-        ->delete(route('app.accounts.disconnect', $source))
+        ->delete(route('app.channels.disconnect', $source))
         ->assertSessionHas('flash.banner', trans_choice('accounts.flash.disconnected_paused_repurposes', 1, ['count' => 1]));
 });
 
@@ -480,54 +409,8 @@ test('disconnecting an account with no automations keeps the plain message', fun
     $account = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
 
     $this->actingAs($user)
-        ->delete(route('app.accounts.disconnect', $account))
+        ->delete(route('app.channels.disconnect', $account))
         ->assertSessionHas('flash.banner', __('accounts.flash.disconnected'));
-});
-
-test('switching an account off says how many automations it paused', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    $source = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Instagram]);
-
-    Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Active,
-        'destinations' => [healthDestination($workspace)],
-    ]);
-
-    $this->actingAs($user)
-        ->put(route('app.accounts.toggle', $source))
-        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.deactivated_paused_repurposes', 1, ['count' => 1]));
-});
-
-test('switching an account back on says how many automations resumed', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    $source = SocialAccount::factory()->for($workspace)->create([
-        'platform' => Platform::Instagram,
-        'is_active' => false,
-    ]);
-
-    Repurpose::factory()->for($workspace)->create([
-        'source_social_account_id' => $source->id,
-        'status' => Status::Paused,
-        'paused_reason' => PauseReason::SourceUnavailable,
-        'destinations' => [healthDestination($workspace)],
-    ]);
-
-    $this->actingAs($user)
-        ->put(route('app.accounts.toggle', $source))
-        ->assertSessionHas('flash.banner', trans_choice('accounts.flash.activated_resumed_repurposes', 1, ['count' => 1]));
 });
 
 test('deleting the last destination account also reports the automation it paused', function () {
@@ -550,7 +433,7 @@ test('deleting the last destination account also reports the automation it pause
     ]);
 
     $this->actingAs($user)
-        ->delete(route('app.accounts.disconnect', $only))
+        ->delete(route('app.channels.disconnect', $only))
         ->assertSessionHas('flash.banner', trans_choice('accounts.flash.disconnected_paused_repurposes', 1, ['count' => 1]));
 });
 
@@ -677,7 +560,7 @@ test('a failure inside the sync never breaks the account operation', function ()
     ]);
 
     $this->actingAs($user)
-        ->delete(route('app.accounts.disconnect', $account))
+        ->delete(route('app.channels.disconnect', $account))
         ->assertRedirect();
 
     expect(SocialAccount::query()->whereKey($account->id)->exists())->toBeFalse();

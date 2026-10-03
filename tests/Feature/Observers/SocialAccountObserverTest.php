@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Status;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -87,7 +89,7 @@ test('updating a social account does not dispatch SyncAccountUsage', function ()
 
     Bus::fake();
 
-    $socialAccount->update(['is_active' => false]);
+    $socialAccount->update(['display_name' => 'Renamed']);
 
     Bus::assertNotDispatched(SyncAccountUsage::class);
     Bus::assertNotDispatched(IdentifyConnectedPlatforms::class);
@@ -140,3 +142,27 @@ test('updating status on multiple batch-hydrated social accounts does not throw 
         $socialAccount->update(['status' => Status::Disconnected]);
     }
 })->throwsNoExceptions();
+
+test('connecting an included account dispatches its initial follower collection', function () {
+    Bus::fake();
+
+    $socialAccount = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    Bus::assertDispatched(CollectAccountDailySnapshot::class, fn ($job): bool => $job->socialAccountId === $socialAccount->id
+        && $job->queue === 'analytics');
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn ($job): bool => $job->socialAccountId === $socialAccount->id
+        && $job->queue === 'analytics');
+});
+
+test('connecting an excluded account does not dispatch follower collection', function () {
+    Bus::fake();
+
+    SocialAccount::factory()->linkedin()->create([
+        'workspace_id' => $this->workspace->id,
+    ]);
+
+    Bus::assertNotDispatched(CollectAccountDailySnapshot::class);
+    Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+});

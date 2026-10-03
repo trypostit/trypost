@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Http;
 use Inertia\Testing\AssertableInertia;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
@@ -16,7 +16,15 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
+
+    Http::fake([
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => [
+            'id' => '123456789',
+            'subscription_type' => 'Premium',
+            'verified_type' => 'blue',
+        ]]),
+    ]);
 });
 
 test('x authorize url uses the current host and pkce', function () {
@@ -72,8 +80,13 @@ test('x oauth callback creates account', function () {
     $response = $this->actingAs($this->user)->get(route('app.social.x.callback'));
 
     $response->assertOk();
-    $response->assertInertia(fn (AssertableInertia $page) => $page->component('accounts/PopupCallback'));
-    $response->assertInertia(fn (AssertableInertia $page) => $page->where('success', true));
+    $response->assertInertia(fn (AssertableInertia $page) => $page
+        ->component('accounts/PopupCallback')
+        ->where('success', true)
+        ->where('message', null)
+        ->where('accountId', $this->workspace->socialAccounts()->sole()->id)
+        ->where('created', true)
+    );
 
     $this->assertDatabaseHas('social_accounts', [
         'workspace_id' => $this->workspace->id,
@@ -82,6 +95,34 @@ test('x oauth callback creates account', function () {
         'username' => 'testuser',
         'status' => Status::Connected->value,
     ]);
+});
+
+test('x oauth callback stores the subscription tier', function () {
+    session([
+        'social_connect_workspace' => $this->workspace->id,
+    ]);
+
+    $socialiteUser = Mockery::mock(SocialiteUser::class);
+    $socialiteUser->shouldReceive('getId')->andReturn('123456789');
+    $socialiteUser->shouldReceive('getNickname')->andReturn('testuser');
+    $socialiteUser->shouldReceive('getName')->andReturn('Test User');
+    $socialiteUser->shouldReceive('getAvatar')->andReturn(null);
+    $socialiteUser->token = 'test-access-token';
+    $socialiteUser->refreshToken = 'test-refresh-token';
+    $socialiteUser->expiresIn = 7200;
+    $socialiteUser->approvedScopes = ['tweet.read', 'tweet.write', 'users.read'];
+
+    Socialite::shouldReceive('driver')
+        ->with('x')
+        ->andReturn(Mockery::mock(['user' => $socialiteUser]));
+
+    $this->actingAs($this->user)->get(route('app.social.x.callback'))->assertOk();
+
+    $account = $this->workspace->socialAccounts()->sole();
+
+    expect($account->hasXLongPosts())->toBeTrue()
+        ->and($account->maxContentLength())->toBe(SocialAccount::X_LONG_POST_LENGTH);
+    Http::assertSentCount(1);
 });
 
 test('x callback fails with expired session', function () {
@@ -161,7 +202,9 @@ test('x callback reconnects the original card', function () {
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.reconnected'))
+            ->where('message', null)
+            ->where('accountId', $account->id)
+            ->where('created', false)
         );
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::X)->count())->toBe(1)

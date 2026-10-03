@@ -31,14 +31,14 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 <template>
   <div
     data-slot="command-input-wrapper"
-    class="flex h-10 items-center gap-2 border-b-2 border-foreground/10 px-3"
+    class="flex h-9 items-center gap-2 border-b border-border px-3"
   >
-    <IconSearch class="size-4 shrink-0 text-foreground/60" />
+    <IconSearch class="size-4 shrink-0 text-muted-foreground" />
     <ComboboxInput
       data-slot="command-input"
       :class="
         cn(
-          'placeholder:text-foreground/50 flex h-10 w-full rounded-md bg-transparent py-3 text-sm font-medium text-foreground outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
+          'placeholder:text-muted-foreground flex h-9 w-full rounded-md bg-transparent py-2 text-sm text-foreground outline-hidden disabled:cursor-not-allowed disabled:opacity-50',
           props.class,
         )
       "

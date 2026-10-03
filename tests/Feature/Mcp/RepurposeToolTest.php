@@ -12,7 +12,8 @@ use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Enums\UserWorkspace\Role;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
 use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
@@ -30,15 +31,18 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->source = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Instagram]);
@@ -326,25 +330,6 @@ test('the items tool carries each replicated post status', function () {
         ->assertSee(PostPlatformStatus::Published->value);
 });
 
-test('the update tool accepts a switched-off account as a destination', function () {
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'source_social_account_id' => $this->source->id,
-        'destinations' => [tiktokDestinationForMcp($this->tiktok)],
-    ]);
-
-    $this->tiktok->update(['is_active' => false]);
-
-    TryPostServer::actingAs($this->user)
-        ->tool(UpdateRepurposeTool::class, [
-            'repurpose_id' => $repurpose->id,
-            'destinations' => [tiktokDestinationForMcp($this->tiktok)],
-        ])
-        ->assertOk();
-
-    expect($repurpose->fresh()->destinations)->toHaveCount(1);
-});
-
 test('the update tool keeps a draft destination that is still missing its board', function () {
     $pinterest = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::Pinterest]);
 
@@ -405,4 +390,20 @@ test('the source formats tool lists what a repurpose can watch', function () {
         ->tool(ListRepurposeSourceFormatsTool::class)
         ->assertOk()
         ->assertSee(SourceFormat::Reel->value);
+});
+
+test('google business is rejected as a destination', function () {
+    $googleBusiness = SocialAccount::factory()->for($this->workspace)->create(['platform' => Platform::GoogleBusiness]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateRepurposeTool::class, [
+            'source_social_account_id' => $this->source->id,
+            'destinations' => [[
+                'social_account_id' => $googleBusiness->id,
+                'content_type' => ContentType::GoogleBusinessPost->value,
+            ]],
+        ])
+        ->assertHasErrors([__('repurposes.errors.destination_not_supported')]);
+
+    expect(Repurpose::count())->toBe(0);
 });

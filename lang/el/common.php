@@ -8,11 +8,10 @@ return [
     'back' => 'Πίσω',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'Αυτό δεν μπορεί να αναιρεθεί.',
         'type' => 'Πληκτρολογήστε',
         'to_confirm' => 'για επιβεβαίωση.',
         'copy_to_clipboard' => 'Αντιγραφή στο πρόχειρο',
-        'delete_keyword' => 'διαγραφή',
+        'delete_keyword' => 'ΔΙΑΓΡΑΦΗ',
     ],
 
     'photo_upload' => [
@@ -65,5 +64,16 @@ return [
         'copy' => 'Αντιγραφή',
         'copied' => 'Αντιγράφηκε',
         'copy_failed' => 'Αποτυχία αντιγραφής στο πρόχειρο',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'Προεπισκόπηση πολυμέσων',
+        'previous' => 'Προηγούμενο',
+        'next' => 'Επόμενο',
+        'zoom_in' => 'Μεγέθυνση',
+        'zoom_out' => 'Σμίκρυνση',
+        'counter' => ':current / :total',
+        'go_to' => 'Εμφάνιση στοιχείου :number',
+        'open' => 'Άνοιγμα προεπισκόπησης',
     ],
 ];

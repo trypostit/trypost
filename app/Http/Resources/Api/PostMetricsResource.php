@@ -4,13 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\Api;
 
-use App\Services\Post\PostMetricsFetcher;
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * Wraps a Post with its per-platform engagement metrics. The actual fetching
- * (with cache + per-platform dispatch) is delegated to PostMetricsFetcher.
+ * Wraps a Post with its persisted per-platform engagement metrics.
  */
 class PostMetricsResource extends JsonResource
 {
@@ -21,7 +20,7 @@ class PostMetricsResource extends JsonResource
     {
         return [
             'post_id' => $this->id,
-            'platforms' => app(PostMetricsFetcher::class)->forPost($this->resource)->all(),
+            'platforms' => app(ReadPublicationAnalytics::class)->forPost($this->resource)->all(),
         ];
     }
 }

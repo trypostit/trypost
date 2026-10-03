@@ -8,6 +8,8 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
+use App\Mail\PostPublished;
+use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -20,7 +22,7 @@ beforeEach(function () {
     app()->setLocale(Locale::DEFAULT->value);
 });
 
-test('published notification uses the owner locale', function () {
+test('a published post queues the published email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $account = SocialAccount::factory()->facebook()->create([
@@ -41,17 +43,14 @@ test('published notification uses the owner locale', function () {
     app(FinalizePostPublication::class)->handle($post);
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
-        $locale = $owner->preferredLocale();
-        $platforms = 'Facebook Page (@inbox)';
-
         return $job->type === Type::PostPublished
-            && $job->title === __('notifications.post_published.title', [], $locale)
-            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms], $locale)
-            && data_get($job->data, 'post_id') === $post->id;
+            && $job->user->is($owner)
+            && $job->mailable instanceof PostPublished
+            && $job->mailable->post->is($post);
     });
 });
 
-test('failed notification uses the owner locale', function () {
+test('a failed post queues the failed email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $account = SocialAccount::factory()->facebook()->create([
@@ -72,13 +71,10 @@ test('failed notification uses the owner locale', function () {
     app(FinalizePostPublication::class)->handle($post);
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
-        $locale = $owner->preferredLocale();
-        $platforms = 'Facebook Page (@inbox)';
-
         return $job->type === Type::PostFailed
-            && $job->title === __('notifications.post_failed.title', [], $locale)
-            && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms], $locale)
-            && data_get($job->data, 'post_id') === $post->id;
+            && $job->user->is($owner)
+            && $job->mailable instanceof PostPublishFailed
+            && $job->mailable->post->is($post);
     });
 });
 

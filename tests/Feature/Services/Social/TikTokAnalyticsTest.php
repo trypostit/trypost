@@ -2,16 +2,19 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Post\PostMetricsFetcher;
 use App\Services\Social\TikTokAnalytics;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -280,25 +283,58 @@ test('tiktok analytics stops scanning at videos older than the publish instead o
     Http::assertSentCount(2);
 });
 
-test('tiktok analytics forPost returns the backfilled video url alongside the metrics', function () {
-    $videoId = '7685359243088103444';
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.backfill');
-    $postPlatform->update(['status' => PostPlatformStatus::Published]);
+test('tiktok video matching keeps the one-day cutoff inclusive without changing the published timestamp', function (int $secondsBeforeCutoff, ?string $expectedVideoId) {
+    $this->post->update(['content' => 'Boundary caption']);
+    $publishedAt = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
+    $videoId = '7000000000000000003';
+    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.boundary');
+    $postPlatform->update(['published_at' => $publishedAt]);
 
     Http::fake([
-        $this->api.'/post/publish/status/fetch/' => Http::response([
-            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => [$videoId]],
+        $this->api.'/video/list/*' => Http::response([
+            'data' => [
+                'videos' => [[
+                    'id' => $videoId,
+                    'title' => 'Boundary caption',
+                    'create_time' => $publishedAt->subDay()->subSeconds($secondsBeforeCutoff)->getTimestamp(),
+                ]],
+                'has_more' => false,
+            ],
             'error' => ['code' => 'ok'],
         ]),
-        $this->api.'/video/query/*' => Http::response(tiktokVideoQueryResponse($videoId, ['view_count' => 5])),
     ]);
 
-    $platforms = app(PostMetricsFetcher::class)->forPost($this->post->fresh());
+    expect((new TikTokAnalytics)->findVideoIdByCaption($postPlatform))->toBe($expectedVideoId)
+        ->and($postPlatform->published_at->toDateTimeString())->toBe('2026-09-23 12:00:00');
+})->with([
+    'at cutoff' => [0, '7000000000000000003'],
+    'before cutoff' => [1, null],
+]);
+
+test('tiktok post metrics facade returns the saved video url and metrics without provider reads', function () {
+    $videoId = '7685359243088103444';
+    $postPlatform = tiktokPostPlatform($videoId);
+    $postPlatform->update([
+        'status' => PostPlatformStatus::Published,
+        'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
+    ]);
+    $publication = AnalyticsPublication::query()->where('post_platform_id', $postPlatform->id)->firstOrFail();
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $publication->id,
+        'views_count' => 5,
+        'metrics' => ['views' => ['value' => 5, 'unit' => 'count', 'availability' => 'available']],
+    ]);
+
+    Http::fake();
+
+    $platforms = app(ReadPublicationAnalytics::class)->forPost($this->post->fresh());
 
     expect($platforms->first())->toMatchArray([
         'platform_post_id' => $videoId,
         'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
-    ])->and($platforms->first()['metrics'][0])->toBe(['label' => __('analytics.metrics.views'), 'value' => 5]);
+    ])->and($platforms->first()['metrics']['metrics']['views']['value'])->toBe(5);
+
+    Http::assertNothingSent();
 });
 
 test('tiktok analytics reports a missing platform post id as unsupported', function () {

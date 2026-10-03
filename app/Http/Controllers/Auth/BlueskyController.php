@@ -85,7 +85,7 @@ class BlueskyController extends SocialController
             $avatarPath = data_get($profile, 'avatar') ? uploadFromUrl(data_get($profile, 'avatar')) : null;
             $reconnect = $this->reconnectAccount($workspace);
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 (string) data_get($data, 'did'),
@@ -108,7 +108,7 @@ class BlueskyController extends SocialController
                 $reconnect,
             );
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (ValidationException $e) {
             throw $e;
         } catch (NetworkAlreadyConnectedException $e) {

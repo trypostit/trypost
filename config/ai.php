@@ -16,7 +16,6 @@ return [
     */
 
     'default' => env('AI_TEXT_PROVIDER', 'openai'),
-    'default_for_images' => env('AI_IMAGE_PROVIDER', 'openai'),
     'default_for_audio' => env('AI_AUDIO_PROVIDER', 'openai'),
     'default_for_transcription' => env('AI_TRANSCRIPTION_PROVIDER', 'openai'),
     'default_for_embeddings' => env('AI_EMBEDDINGS_PROVIDER', 'openai'),
@@ -47,7 +46,7 @@ return [
     |
     | Below are each of your AI providers defined for this application. Each
     | represents an AI provider and API key combination which can be used
-    | to perform tasks like text, image, and audio creation via agents.
+    | to perform tasks like text and audio creation via agents.
     |
     */
 
@@ -68,7 +67,6 @@ return [
             'api_version' => env('AZURE_OPENAI_API_VERSION', '2025-04-01-preview'),
             'deployment' => env('AZURE_OPENAI_DEPLOYMENT', 'gpt-4o'),
             'embedding_deployment' => env('AZURE_OPENAI_EMBEDDING_DEPLOYMENT', 'text-embedding-3-small'),
-            'image_deployment' => env('AZURE_OPENAI_IMAGE_DEPLOYMENT', 'gpt-image-1'),
             'store' => env('AZURE_OPENAI_STORE', true),
         ],
 
@@ -88,7 +86,6 @@ return [
             ],
             'models' => [
                 'text' => ['default' => env('AWS_BEDROCK_TEXT_MODEL')],
-                'image' => ['default' => env('AWS_BEDROCK_IMAGE_MODEL')],
                 'embeddings' => ['default' => env('AWS_BEDROCK_EMBEDDINGS_MODEL')],
             ],
         ],
@@ -125,7 +122,6 @@ return [
             'url' => env('GEMINI_URL', 'https://generativelanguage.googleapis.com/v1beta/'),
             'models' => [
                 'text' => ['default' => env('GEMINI_TEXT_MODEL')],
-                'image' => ['default' => env('GEMINI_IMAGE_MODEL')],
                 'audio' => ['default' => env('GEMINI_AUDIO_MODEL')],
                 'transcription' => ['default' => env('GEMINI_TRANSCRIPTION_MODEL')],
                 'embeddings' => ['default' => env('GEMINI_EMBEDDINGS_MODEL')],
@@ -176,7 +172,6 @@ return [
             'store' => env('OPENAI_STORE', true),
             'models' => [
                 'text' => ['default' => env('OPENAI_TEXT_MODEL')],
-                'image' => ['default' => env('OPENAI_IMAGE_MODEL')],
                 'audio' => ['default' => env('OPENAI_AUDIO_MODEL')],
                 'transcription' => ['default' => env('OPENAI_TRANSCRIPTION_MODEL')],
                 'embeddings' => ['default' => env('OPENAI_EMBEDDINGS_MODEL')],
@@ -198,7 +193,6 @@ return [
             'key' => env('OPENROUTER_API_KEY'),
             'models' => [
                 'text' => ['default' => env('OPENROUTER_TEXT_MODEL')],
-                'image' => ['default' => env('OPENROUTER_IMAGE_MODEL')],
                 'audio' => ['default' => env('OPENROUTER_AUDIO_MODEL')],
                 'transcription' => ['default' => env('OPENROUTER_TRANSCRIPTION_MODEL')],
                 'embeddings' => ['default' => env('OPENROUTER_EMBEDDINGS_MODEL')],
@@ -219,7 +213,6 @@ return [
             'key' => env('XAI_API_KEY'),
             'models' => [
                 'text' => ['default' => env('XAI_TEXT_MODEL')],
-                'image' => ['default' => env('XAI_IMAGE_MODEL')],
             ],
         ],
     ],

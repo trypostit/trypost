@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => '在帖子被创建、排期、取消排期、发布或失败时接收实时通知。',
+    'description' => '实时接收帖子变更通知。',
     'new' => '创建 webhook',
     'empty_title' => '还没有 webhook',
     'empty_description' => '创建一个 webhook，即可实时接收事件通知。',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => '正在监听',
         'status' => '状态',
         'last_sent' => '上次发送',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => '已停用',
         'paused' => '已暂停',
     ],
+    'row_actions' => 'Webhook 操作',
     'actions' => [
         'view' => '查看详情',
-        'copy_id' => '复制 webhook ID',
         'delete' => '删除',
         'edit' => '编辑 endpoint',
         'enable' => '启用 endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => '配置一个 endpoint 以接收 webhook 通知。',
         'endpoint' => 'Endpoint URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => '我们会向此 URL 发送包含 JSON 负载的 POST 请求。',
         'events' => '事件',
-        'events_placeholder' => '选择事件...',
-        'events_selected' => '{1} 已选择 :count 个事件|[2,*] 已选择 :count 个事件',
-        'search_events' => '搜索事件...',
-        'no_events' => '未找到事件',
+        'events_count_selected' => '已选择 :count/:total',
         'submit' => '创建 webhook',
         'cancel' => '取消',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => '签名密钥',
-        'last_sent' => '上次发送 :time',
-        'listening_for' => '正在监听',
+        'edit' => '编辑',
         'http_status' => 'HTTP 状态',
         'status_code' => ':code - :reason',
         'attempts' => '尝试次数',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => '无响应正文',
         'no_response' => '无响应',
         'payload' => '消息 payload',
-        'empty_title' => '还没有 webhook 事件',
-        'empty_description' => '帖子被创建、排期、取消排期或发布后，webhook 事件会显示在这里。',
+    ],
+    'deliveries' => [
+        'title' => '投递记录',
+        'empty_title' => '暂无投递记录',
+        'empty_description' => '发送一个测试事件，即可在此查看。',
+        'pending' => '待处理',
     ],
     'events' => [
         'group_posts' => '帖子',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => '帖子部分发布',
         'post_failed' => '帖子失败',
         'post_deleted' => '帖子已删除',
+    ],
+    'event_descriptions' => [
+        'post_created' => '创建新帖子时。',
+        'post_scheduled' => '帖子被排期发布时。',
+        'post_unscheduled' => '已排期的帖子退回草稿时。',
+        'post_published' => '帖子在频道上发布时。',
+        'post_partially_published' => '部分频道发布成功、其他失败时。',
+        'post_failed' => '帖子发布失败时。',
+        'post_deleted' => '帖子被删除时。',
     ],
     'http_reasons' => [
         'unknown' => '未知',
@@ -111,7 +119,6 @@ return [
         '504' => '网关超时',
     ],
     'copied' => [
-        'id' => '已将 webhook ID 复制到剪贴板',
         'secret' => '已将签名密钥复制到剪贴板',
         'response' => '已复制响应正文',
         'payload' => '已复制 payload',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => '该 endpoint 返回了 HTTP :status。',
     ],
     'flash' => [
-        'created' => '已创建 webhook。',
         'updated' => '已更新 webhook。',
         'deleted' => '已删除 webhook。',
         'secret_rotated' => '已轮换签名密钥。',

@@ -11,7 +11,9 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\Social\ContentSanitizer;
 use App\Services\Social\YouTubePublisher;
+use App\Support\YouTubeMetadata;
 use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -87,7 +89,7 @@ test('youtube description reaches the resumable upload request', function (?stri
         $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
 
         return $request->method() === 'POST'
-            && $payload['snippet']['title'] === 'Short title #Shorts'
+            && $payload['snippet']['title'] === 'Short title'
             && $payload['snippet']['description'] === $expected
             && $payload['snippet']['categoryId'] === '22'
             && $payload['status']['privacyStatus'] === 'public'
@@ -141,7 +143,7 @@ test('youtube description builds independent upload metadata', function () {
 
             $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
 
-            return $payload['snippet']['title'] === 'Short title #Shorts'
+            return $payload['snippet']['title'] === 'Short title'
                 && $payload['snippet']['description'] === $description;
         });
     }
@@ -357,50 +359,148 @@ test('youtube publisher throws exception with null content', function () {
         ->toThrow(Exception::class, 'YouTube Shorts require a title');
 });
 
-test('youtube publisher builds correct title with shorts tag', function () {
-    $publisher = new YouTubePublisher;
-    $reflection = new ReflectionClass($publisher);
-    $method = $reflection->getMethod('buildTitle');
-    $method->setAccessible(true);
-
-    // Short content: appends #Shorts
-    $title = $method->invoke($publisher, 'My awesome short video');
-    expect($title)->toBe('My awesome short video #Shorts');
-
-    // Long content: truncates to leave room for #Shorts tag (100 chars max)
-    $longContent = str_repeat('A', 200);
-    $title = $method->invoke($publisher, $longContent);
-    expect(mb_strlen($title))->toBeLessThanOrEqual(100);
-    expect($title)->toEndWith(' #Shorts');
-
-    // Multi-line content: only uses first line before period
-    $multiLine = "First sentence. Second part.\nSecond line";
-    $title = $method->invoke($publisher, $multiLine);
-    expect($title)->toBe('First sentence #Shorts');
-
-    // Newline-separated: stops at newline
-    $newlineContent = "Title line\nMore content here";
-    $title = $method->invoke($publisher, $newlineContent);
-    expect($title)->toBe('Title line #Shorts');
-});
+test('youtube publisher derives the title from the first non-empty line like the composer', function (string $content, string $expected) {
+    expect(YouTubeMetadata::title(null, $content))->toBe($expected);
+})->with([
+    'single line' => ['My awesome short video', 'My awesome short video'],
+    'keeps every sentence of the line' => ["First sentence. Second part.\nSecond line", 'First sentence. Second part.'],
+    'first non-empty line' => ["\n\n  Title line  \nMore content here", 'Title line'],
+    'strips angle brackets' => ['Video <tips> & more', 'Video tips & more'],
+    'cuts at 100 characters' => [str_repeat('A', 200), str_repeat('A', 100)],
+]);
 
 test('youtube publisher counts an accented title in characters, not bytes', function () {
-    $reflection = new ReflectionClass(YouTubePublisher::class);
-    $method = $reflection->getMethod('buildTitle');
-    $method->setAccessible(true);
-
-    $publisher = new YouTubePublisher;
-
     foreach (range(0, 11) as $pad) {
-        $title = $method->invoke($publisher, str_repeat('a', $pad).str_repeat('ação ', 30));
+        $title = YouTubeMetadata::title(null, str_repeat('a', $pad).str_repeat('ação ', 30));
 
         expect(mb_check_encoding($title, 'UTF-8'))->toBeTrue()
             ->and(mb_strlen($title))->toBeLessThanOrEqual(100);
     }
 
-    $accented = str_repeat('ção', 30);
+    $accented = str_repeat('ção', 40);
 
-    expect(mb_strlen($accented))->toBe(90)
-        ->and(strlen($accented))->toBeGreaterThan(92)
-        ->and($method->invoke($publisher, $accented))->toBe($accented.' #Shorts');
+    expect(strlen($accented))->toBeGreaterThan(100)
+        ->and(YouTubeMetadata::title(null, $accented))->toBe(mb_substr($accented, 0, 100));
+});
+
+test('the published fallback title matches the title the composer fills in for the same caption', function () {
+    $caption = '<p></p><p>First &amp; best</p><p>Second</p>';
+
+    expect(YouTubeMetadata::title(null, app(ContentSanitizer::class)->sanitize($caption, Platform::YouTube)))
+        ->toBe('First & best');
+});
+
+function youtubeVideoPost(mixed $test, array $meta): void
+{
+    $test->post->update([
+        'content' => 'Short title. More text',
+        'media' => [[
+            'id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4',
+            'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4',
+        ]],
+    ]);
+    $test->postPlatform->update(['meta' => $meta]);
+}
+
+test('youtube metadata reaches videos.insert', function () {
+    youtubeVideoPost($this, [
+        'title' => 'My explicit title',
+        'category_id' => '27',
+        'privacy_status' => 'unlisted',
+        'license' => 'creativeCommon',
+        'notify_subscribers' => false,
+        'embeddable' => false,
+        'made_for_kids' => true,
+        'is_ai_generated' => true,
+    ]);
+    $publisher = fakeYouTubeUpload();
+
+    $publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+        return str_contains($request->url(), 'notifySubscribers=false')
+            && $payload['snippet']['title'] === 'My explicit title'
+            && $payload['snippet']['categoryId'] === '27'
+            && $payload['status']['privacyStatus'] === 'unlisted'
+            && $payload['status']['license'] === 'creativeCommon'
+            && $payload['status']['embeddable'] === false
+            && $payload['status']['selfDeclaredMadeForKids'] === true
+            && $payload['status']['containsSyntheticMedia'] === true;
+    });
+});
+
+test('a youtube post without metadata publishes with today defaults', function () {
+    youtubeVideoPost($this, []);
+    $publisher = fakeYouTubeUpload();
+
+    $publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+        return ! str_contains($request->url(), 'notifySubscribers')
+            && $payload['snippet']['title'] === 'Short title. More text'
+            && $payload['snippet']['categoryId'] === '22'
+            && $payload['status']['privacyStatus'] === 'public'
+            && $payload['status']['license'] === 'youtube'
+            && $payload['status']['embeddable'] === true
+            && $payload['status']['selfDeclaredMadeForKids'] === false
+            && $payload['status']['containsSyntheticMedia'] === false;
+    });
+});
+
+test('a stored invalid youtube title fails before any upload', function () {
+    youtubeVideoPost($this, ['title' => 'a <b> title']);
+    Http::fake();
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(YouTubePublishException::class, __('posts.form.youtube.title_invalid'));
+    Http::assertNothingSent();
+});
+
+test('an explicit youtube title publishes a post without content', function () {
+    youtubeVideoPost($this, ['title' => 'Only a title']);
+    $this->post->update(['content' => null]);
+    $publisher = fakeYouTubeUpload();
+
+    $publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+        return $payload['snippet']['title'] === 'Only a title';
+    });
+});
+
+test('a long youtube content becomes the description while the title stays short', function () {
+    youtubeVideoPost($this, []);
+    $this->post->update(['content' => str_repeat('word ', 400)]);
+    $publisher = fakeYouTubeUpload();
+
+    $publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(function (Request $request): bool {
+        if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
+            return false;
+        }
+
+        $payload = json_decode($request->body(), true, flags: JSON_THROW_ON_ERROR);
+
+        return mb_strlen($payload['snippet']['title']) <= 100
+            && $payload['snippet']['description'] === trim(str_repeat('word ', 400));
+    });
 });

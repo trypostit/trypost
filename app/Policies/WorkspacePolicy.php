@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -27,7 +26,7 @@ class WorkspacePolicy
 
     public function update(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isAdmin($user, $workspace);
     }
 
     public function delete(User $user, Workspace $workspace): bool
@@ -47,36 +46,46 @@ class WorkspacePolicy
 
     public function manageTeam(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isAdmin($user, $workspace);
     }
 
     public function manageAccounts(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isAdmin($user, $workspace);
     }
 
     public function manageWebhooks(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isAdmin($user, $workspace);
     }
 
     public function manageRepurposes(User $user, Workspace $workspace): bool
     {
-        return $this->createPost($user, $workspace);
+        return $this->publishDirectly($user, $workspace);
     }
 
+    /**
+     * Every member may write posts; whether they reach the queue directly is
+     * decided by `publishDirectly`.
+     */
     public function createPost(User $user, Workspace $workspace): bool
     {
-        if ($this->isOwner($user, $workspace)) {
-            return true;
-        }
+        return $this->canAccess($user, $workspace);
+    }
 
-        return $this->hasRole($user, $workspace, [Role::Admin, Role::Member]);
+    public function publishDirectly(User $user, Workspace $workspace): bool
+    {
+        return $this->canAccess($user, $workspace) && $user->canPublishDirectlyIn($workspace);
+    }
+
+    public function approvePosts(User $user, Workspace $workspace): bool
+    {
+        return $this->publishDirectly($user, $workspace);
     }
 
     public function inviteMember(User $user, Workspace $workspace): bool
     {
-        return $this->isOwnerOrWorkspaceAdmin($user, $workspace);
+        return $this->isAdmin($user, $workspace);
     }
 
     public function manageBilling(User $user, Workspace $workspace): bool
@@ -86,16 +95,12 @@ class WorkspacePolicy
 
     private function isOwner(User $user, Workspace $workspace): bool
     {
-        return $workspace->account_id === $user->account_id && $user->isAccountOwner();
+        return $user->ownsAccountOf($workspace);
     }
 
-    private function isOwnerOrWorkspaceAdmin(User $user, Workspace $workspace): bool
+    private function isAdmin(User $user, Workspace $workspace): bool
     {
-        if ($this->isOwner($user, $workspace)) {
-            return true;
-        }
-
-        return $this->hasRole($user, $workspace, [Role::Admin]);
+        return $user->isWorkspaceAdmin($workspace);
     }
 
     private function canAccess(User $user, Workspace $workspace): bool
@@ -109,20 +114,5 @@ class WorkspacePolicy
         }
 
         return $workspace->members()->where('user_id', $user->id)->exists();
-    }
-
-    private function hasRole(User $user, Workspace $workspace, array $roles): bool
-    {
-        if ($workspace->account_id !== $user->account_id) {
-            return false;
-        }
-
-        $member = $workspace->members()->where('user_id', $user->id)->first();
-
-        if (! $member) {
-            return false;
-        }
-
-        return in_array(Role::tryFrom($member->pivot->role), $roles);
     }
 }

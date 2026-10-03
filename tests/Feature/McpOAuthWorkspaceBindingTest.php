@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,7 +21,7 @@ beforeEach(function () {
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
     $this->user->refresh();
     $this->clientId = mcpOauthClient();
@@ -48,7 +47,7 @@ test('authorization code grant binds workspace from the encrypted auth code payl
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $otherWorkspace->id]);
 
     request()->merge([
@@ -77,7 +76,7 @@ test('refresh grant inherits workspace from the refreshed access token id', func
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('admin'));
 
     // Newer grant on another workspace for the same client must not win.
     mcpAccessToken($this->user, $this->clientId, $otherWorkspace);
@@ -206,7 +205,7 @@ test('auth code repository prefers workspace_id from the consent form', function
         'user_id' => $this->user->id,
         'name' => 'Workspace B',
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('admin'));
 
     // Current workspace stays A; consent form picks B.
     $this->actingAs($this->user);
@@ -258,7 +257,7 @@ test('auth code repository requires workspace_id from the consent form', functio
         'user_id' => $this->user->id,
         'name' => 'Workspace B',
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $otherWorkspace->id]);
     $this->actingAs($this->user->fresh());
     // No workspace_id in the request — current workspace must not be used.

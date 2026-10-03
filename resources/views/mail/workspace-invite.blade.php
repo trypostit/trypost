@@ -72,7 +72,13 @@
                     {!! __('mail.workspace_invite.intro', ['account' => '<strong>'.e($accountName).'</strong>']) !!}
                   </p>
                   <p style="margin: 16px 0 0; line-height: 24px">
-                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e($roleLabel).'</strong>']) !!}
+                    @if($isAdmin)
+                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.admin')).'</strong>']) !!}
+                    @elseif($requiresApproval)
+                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.needs_approval')).'</strong>']) !!}
+                    @else
+                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.member')).'</strong>']) !!}
+                    @endif
                   </p>
                   <div role="separator" style="line-height: 24px">&zwj;</div>
                   <div style="display: flex; align-items: center; justify-content: center">

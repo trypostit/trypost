@@ -5,32 +5,27 @@ declare(strict_types=1);
 namespace App\Support;
 
 /**
- * Single source of truth for the user-supplied AI generation prompt length,
- * shared by the create wizard (StartPostCreationRequest) and the editor's
- * content generation (GeneratePostContentRequest). The frontend counter in
- * resources/js/components/posts/create/AiPostWizard.vue mirrors these bounds.
+ * Shared limits for prompts sent to the post assistant.
  */
-class AiPromptRules
+final class AiPromptRules
 {
-    /**
-     * Minimum prompt length (characters) for the create wizard.
-     */
-    public const PROMPT_MIN_LENGTH = 3;
-
     /**
      * Maximum prompt length (characters); mirrored by the frontend counter.
      */
-    public const PROMPT_MAX_LENGTH = 2000;
+    public const int PROMPT_MAX_LENGTH = 10000;
+
+    public const int PROMPT_MIN_WORDS = 4;
 
     /**
-     * Validation rules for the create wizard's generation prompt. The editor's
-     * content generation reuses only PROMPT_MAX_LENGTH — it has no minimum,
-     * since it has no character counter to mirror one.
-     *
-     * @return array<int, string>
+     * Counts whitespace-separated words, with each Han, Hiragana or Katakana
+     * character counted as one word since those scripts do not use spaces.
      */
-    public static function wizardPromptRule(): array
+    public static function wordCount(string $text): int
     {
-        return ['required', 'string', 'min:'.self::PROMPT_MIN_LENGTH, 'max:'.self::PROMPT_MAX_LENGTH];
+        $pattern = '/[\p{Han}\p{Hiragana}\p{Katakana}]/u';
+        $ideographs = preg_match_all($pattern, $text);
+        $rest = preg_split('/\s+/u', trim((string) preg_replace($pattern, ' ', $text)), -1, PREG_SPLIT_NO_EMPTY);
+
+        return $ideographs + count($rest);
     }
 }

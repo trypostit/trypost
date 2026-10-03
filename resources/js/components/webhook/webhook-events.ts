@@ -15,7 +15,14 @@ export const webhookEventGroups = [
     },
 ];
 
+export const allWebhookEvents = webhookEventGroups.flatMap(
+    (group) => group.events,
+);
+
 export const webhookEventLabelKey = (event: string): string =>
     `webhooks.events.${event.replaceAll('.', '_')}`;
+
+export const webhookEventDescriptionKey = (event: string): string =>
+    `webhooks.event_descriptions.${event.replaceAll('.', '_')}`;
 
 export const webhookEventLabel = (event: string): string => trans(webhookEventLabelKey(event));

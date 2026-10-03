@@ -55,7 +55,6 @@ class SyncAccountUsage implements ShouldQueue
             'social_accounts_count' => $usage['socialAccountCount'],
             'posts_count' => $usage['postCount'],
             'pending_invites_count' => $usage['pendingInviteCount'],
-            'credits_used' => $usage['creditsUsed'],
             'created_at' => $account->created_at?->toIso8601String(),
         ]);
 

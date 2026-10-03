@@ -5,9 +5,16 @@ declare(strict_types=1);
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Repurpose\SourceFetchException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Services\Repurpose\SourceFetcherFactory;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 function instagramGraph(): string
 {

@@ -76,7 +76,7 @@ class YouTubeController extends SocialController
             $channel = $channels[0];
             $avatarPath = uploadFromUrl(data_get($channel, 'thumbnail'));
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 (string) data_get($channel, 'id'),
@@ -99,7 +99,7 @@ class YouTubeController extends SocialController
                 $reconnect,
             );
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {

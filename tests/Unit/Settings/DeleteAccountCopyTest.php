@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Workspace\ContentLanguage;
+use App\Enums\User\Locale;
 
 /**
  * Content markers for destructive copy. Key parity across locales is covered by
@@ -110,13 +110,13 @@ test('workspace delete members warning is conditional in every locale', function
         ->all()
 );
 
-test('destructive copy locale markers cover every ContentLanguage', function () use (
+test('destructive copy locale markers cover every Locale', function () use (
     $accountDeleteInvitedMemberMarkers,
     $workspaceDeleteConditionalMemberMarkers,
 ) {
     expect(array_keys($accountDeleteInvitedMemberMarkers))
-        ->toEqualCanonicalizing(ContentLanguage::values());
+        ->toEqualCanonicalizing(Locale::values());
 
     expect(array_keys($workspaceDeleteConditionalMemberMarkers))
-        ->toEqualCanonicalizing(ContentLanguage::values());
+        ->toEqualCanonicalizing(Locale::values());
 });

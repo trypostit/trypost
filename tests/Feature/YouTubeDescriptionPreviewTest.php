@@ -10,7 +10,7 @@ use App\Models\SocialAccount;
 use App\Services\Post\PostPreviewer;
 use Illuminate\Testing\Fluent\AssertableJson;
 
-test('youtube description preview includes effective bytes without changing title length', function (mixed $description, string $expected) {
+test('youtube description preview includes effective bytes and the description length limit', function (mixed $description, string $expected) {
     $post = Post::factory()->create(['content' => 'Title']);
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $post->workspace_id]);
     PostPlatform::factory()->youtube()->create([
@@ -26,7 +26,7 @@ test('youtube description preview includes effective bytes without changing titl
         ->and($preview['description_length_bytes'])->toBe(strlen($expected))
         ->and($preview['sanitized_content'])->toBe('Title')
         ->and($preview['sanitized_length'])->toBe(5)
-        ->and($preview['max_content_length'])->toBe(100);
+        ->and($preview['max_content_length'])->toBe(5000);
 })->with([
     'custom description' => ['ação', 'ação'],
     'null description' => [null, 'Title'],
@@ -88,3 +88,19 @@ test('API and MCP previews expose independent YouTube descriptions', function ()
             }
         });
 });
+
+test('youtube preview shows the explicit title or the derived one', function (array $meta, string $expected) {
+    $post = Post::factory()->create(['content' => 'First sentence. Second']);
+    $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $post->workspace_id]);
+    PostPlatform::factory()->youtube()->create([
+        'post_id' => $post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => $meta,
+    ]);
+
+    expect(app(PostPreviewer::class)->forPost($post->fresh())['platforms'][0]['title'])->toBe($expected);
+})->with([
+    'explicit title' => [['title' => 'My title'], 'My title'],
+    'derived title' => [[], 'First sentence. Second'],
+]);

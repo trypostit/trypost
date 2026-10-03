@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
 import { Input } from '@/components/ui/input';
-import { CATEGORY_ICON, EMOJIS, EMOJI_CATEGORIES, type Emoji, type EmojiCategory } from '@/data/emojis';
+import {
+    CATEGORY_ICON,
+    EMOJIS,
+    EMOJI_CATEGORIES,
+    type Emoji,
+    type EmojiCategory,
+} from '@/data/emojis';
 
 const RECENTS_KEY = 'trypost.emoji.recents';
 const RECENTS_MAX = 24;
@@ -15,6 +28,9 @@ const emit = defineEmits<{
 const search = ref('');
 const activeCategory = ref<EmojiCategory | 'recent'>('smileys');
 const scrollEl = useTemplateRef<HTMLDivElement>('scrollEl');
+const STUCK_HEADER_CLASS =
+    'shadow-[0_6px_10px_-8px_rgb(0_0_0/0.25)] border-b border-border';
+const stuckCategory = ref<EmojiCategory | 'recent' | null>(null);
 const headerRefs = ref<Record<string, HTMLElement | null>>({});
 const setHeaderRef = (key: string) => (el: unknown) => {
     headerRefs.value[key] = el instanceof HTMLElement ? el : null;
@@ -25,7 +41,9 @@ const readRecents = (): string[] => {
         const raw = localStorage.getItem(RECENTS_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
-        return Array.isArray(parsed) ? parsed.filter((c) => typeof c === 'string') : [];
+        return Array.isArray(parsed)
+            ? parsed.filter((c) => typeof c === 'string')
+            : [];
     } catch {
         return [];
     }
@@ -83,7 +101,10 @@ const persistRecents = () => {
 
 const onPick = (emoji: Emoji) => {
     emit('select', emoji.c);
-    const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(0, RECENTS_MAX);
+    const next = [emoji.c, ...recents.value.filter((c) => c !== emoji.c)].slice(
+        0,
+        RECENTS_MAX,
+    );
     recents.value = next;
     persistRecents();
 };
@@ -100,7 +121,8 @@ const onScroll = () => {
     const container = scrollEl.value;
     if (!container || isSearching.value) return;
     const top = container.scrollTop + 8;
-    let current: EmojiCategory | 'recent' = recentEmojis.value.length > 0 ? 'recent' : 'smileys';
+    let current: EmojiCategory | 'recent' =
+        recentEmojis.value.length > 0 ? 'recent' : 'smileys';
     for (const category of EMOJI_CATEGORIES) {
         const header = headerRefs.value[category];
         if (header && header.offsetTop <= top) {
@@ -108,6 +130,10 @@ const onScroll = () => {
         }
     }
     activeCategory.value = current;
+
+    const section = headerRefs.value[current]?.parentElement;
+    stuckCategory.value =
+        section && container.scrollTop > section.offsetTop ? current : null;
 };
 
 watch(search, async () => {
@@ -117,12 +143,15 @@ watch(search, async () => {
 
 onBeforeUnmount(() => {
     headerRefs.value = {};
+    stuckCategory.value = null;
 });
 </script>
 
 <template>
-    <div class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground">
-        <div class="border-b-2 border-foreground/10 p-2">
+    <div
+        class="flex w-[min(340px,calc(100vw-2rem))] flex-col overflow-hidden rounded-[10px] bg-card text-foreground"
+    >
+        <div class="border-b border-border p-2">
             <Input
                 v-model="search"
                 type="search"
@@ -133,7 +162,8 @@ onBeforeUnmount(() => {
 
         <div
             ref="scrollEl"
-            class="relative h-72 overflow-y-auto px-2 py-1"
+            data-testid="emoji-picker-scroll"
+            class="relative h-72 overflow-y-auto px-2 pb-1"
             @scroll.passive="onScroll"
         >
             <template v-if="isSearching">
@@ -162,7 +192,8 @@ onBeforeUnmount(() => {
                 <section v-if="recentEmojis.length > 0">
                     <h3
                         :ref="setHeaderRef('recent')"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black uppercase tracking-widest text-foreground/60 backdrop-blur"
+                        class="sticky top-0 z-10 -mx-2 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-shadow"
+                        :class="stuckCategory === 'recent' ? STUCK_HEADER_CLASS : ''"
                     >
                         {{ categoryLabel('recent') }}
                     </h3>
@@ -184,7 +215,9 @@ onBeforeUnmount(() => {
                 <section v-for="category in EMOJI_CATEGORIES" :key="category">
                     <h3
                         :ref="setHeaderRef(category)"
-                        class="sticky top-0 z-10 bg-card/95 px-1 py-1.5 text-[11px] font-black uppercase tracking-widest text-foreground/60 backdrop-blur"
+                        data-testid="emoji-picker-category-header"
+                        class="sticky top-0 z-10 -mx-2 bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-shadow"
+                        :class="stuckCategory === category ? STUCK_HEADER_CLASS : ''"
                     >
                         {{ categoryLabel(category) }}
                     </h3>
@@ -193,6 +226,7 @@ onBeforeUnmount(() => {
                             v-for="emoji in grouped[category]"
                             :key="emoji.c"
                             type="button"
+                            data-testid="emoji-picker-option"
                             class="flex size-9 cursor-pointer items-center justify-center rounded-md text-xl transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
                             :title="emoji.n"
                             :aria-label="emoji.n"
@@ -205,12 +239,18 @@ onBeforeUnmount(() => {
             </template>
         </div>
 
-        <div class="flex items-center justify-between border-t-2 border-foreground/10 px-1 py-1">
+        <div
+            class="flex items-center justify-between border-t border-border px-1 py-1"
+        >
             <button
                 v-if="recentEmojis.length > 0"
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
-                :class="activeCategory === 'recent' && !isSearching ? 'bg-violet-100 ring-2 ring-foreground' : ''"
+                :class="
+                    activeCategory === 'recent' && !isSearching
+                        ? 'bg-primary-subtle'
+                        : ''
+                "
                 :title="categoryLabel('recent')"
                 :aria-label="categoryLabel('recent')"
                 @click="scrollToCategory('recent')"
@@ -222,7 +262,11 @@ onBeforeUnmount(() => {
                 :key="category"
                 type="button"
                 class="flex size-8 cursor-pointer items-center justify-center rounded-md text-base transition-colors hover:bg-foreground/5 focus:bg-foreground/5 focus:outline-none"
-                :class="activeCategory === category && !isSearching ? 'bg-violet-100 ring-2 ring-foreground' : ''"
+                :class="
+                    activeCategory === category && !isSearching
+                        ? 'bg-primary-subtle'
+                        : ''
+                "
                 :title="categoryLabel(category)"
                 :aria-label="categoryLabel(category)"
                 @click="scrollToCategory(category)"

@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Receba notificações em tempo real quando posts forem criados, agendados, desagendados, publicados ou falharem.',
+    'description' => 'Avisos em tempo real quando seus posts mudarem.',
     'new' => 'Criar webhook',
     'empty_title' => 'Nenhum webhook ainda',
     'empty_description' => 'Crie um webhook para receber notificações de eventos em tempo real.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Escutando',
         'status' => 'Status',
         'last_sent' => 'Último envio',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Desativado',
         'paused' => 'Pausado',
     ],
+    'row_actions' => 'Ações do webhook',
     'actions' => [
         'view' => 'Ver detalhes',
-        'copy_id' => 'Copiar ID do webhook',
         'delete' => 'Excluir',
         'edit' => 'Editar endpoint',
         'enable' => 'Ativar endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Configure um endpoint para receber notificações de webhook.',
         'endpoint' => 'URL do endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Enviaremos um POST com um payload JSON para esta URL.',
         'events' => 'Eventos',
-        'events_placeholder' => 'Selecionar eventos...',
-        'events_selected' => '{1} :count evento selecionado|[2,*] :count eventos selecionados',
-        'search_events' => 'Buscar eventos...',
-        'no_events' => 'Nenhum evento encontrado',
+        'events_count_selected' => '{1} :count de :total selecionado|[0,*] :count de :total selecionados',
         'submit' => 'Criar webhook',
         'cancel' => 'Cancelar',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Secret de assinatura',
-        'last_sent' => 'Último envio :time',
-        'listening_for' => 'Escutando',
+        'edit' => 'Editar',
         'http_status' => 'Status HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'Tentativas',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Sem corpo de resposta',
         'no_response' => 'Sem resposta',
         'payload' => 'Payload da mensagem',
-        'empty_title' => 'Nenhum evento ainda',
-        'empty_description' => 'Quando posts forem criados, agendados, desagendados ou publicados, os eventos do webhook aparecem aqui.',
+    ],
+    'deliveries' => [
+        'title' => 'Entregas',
+        'empty_title' => 'Nenhuma entrega ainda',
+        'empty_description' => 'Envie um evento de teste para vê-lo aqui.',
+        'pending' => 'Pendente',
     ],
     'events' => [
         'group_posts' => 'Posts',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Post parcialmente publicado',
         'post_failed' => 'Post falhou',
         'post_deleted' => 'Post excluído',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Quando um novo post é criado.',
+        'post_scheduled' => 'Quando um post é agendado para publicação.',
+        'post_unscheduled' => 'Quando um post agendado volta para rascunhos.',
+        'post_published' => 'Quando um post é publicado em um canal.',
+        'post_partially_published' => 'Quando alguns canais publicam e outros falham.',
+        'post_failed' => 'Quando um post falha ao publicar.',
+        'post_deleted' => 'Quando um post é excluído.',
     ],
     'http_reasons' => [
         'unknown' => 'Desconhecido',
@@ -111,7 +119,6 @@ return [
         '504' => 'Tempo esgotado do gateway',
     ],
     'copied' => [
-        'id' => 'ID do webhook copiado',
         'secret' => 'Secret de assinatura copiado',
         'response' => 'Corpo da resposta copiado',
         'payload' => 'Payload copiado',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'O endpoint retornou HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Webhook criado.',
         'updated' => 'Webhook atualizado.',
         'deleted' => 'Webhook excluído.',
         'secret_rotated' => 'Secret de assinatura rotacionado.',

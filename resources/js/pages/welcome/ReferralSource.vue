@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { trans } from 'laravel-vue-i18n';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -19,9 +18,6 @@ const props = defineProps<{
 const form = useForm<{ referral_source: string }>({
     referral_source: props.selected ?? '',
 });
-
-const sourceLabel = (value: string): string =>
-    trans(`welcome.referral_source.${value}`);
 
 const isSelected = (value: string): boolean => form.referral_source === value;
 
@@ -46,11 +42,11 @@ const submit = (): void => {
         :description="$t('welcome.referral_source_description')"
         step="referral_source"
     >
-        <div class="flex flex-wrap gap-2.5">
+        <div class="flex flex-wrap gap-2">
             <WelcomeChoicePill
                 v-for="source in sources"
                 :key="source"
-                :label="sourceLabel(source)"
+                :label="$t(`welcome.referral_source.${source}`)"
                 :meta="welcomeOptionMeta(referralSourceMeta, source)"
                 :selected="isSelected(source)"
                 :testid="`welcome-source-${source}`"

@@ -6,6 +6,7 @@ use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -20,7 +21,7 @@ use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
-    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id, 'content_language' => 'en']);
+    $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
 
     $this->socialAccount = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
@@ -116,7 +117,8 @@ test('publish reports the review state Google returned and the real post URL', f
         ->and($result['url'])->toBe('https://posts.google.com/999');
 });
 
-test('publishes a standard post with the workspace content language', function () {
+test('publishes a standard post with the author locale', function () {
+    $this->user->update(['locale' => Locale::English]);
     fakeLocalPostCreate();
 
     $result = $this->publisher->publish($this->postPlatform);
@@ -181,13 +183,22 @@ test('a blank offer title throws with the offer-title message', function () {
     Http::assertNothingSent();
 });
 
-test('a chinese workspace sends a regional language code', function () {
-    $this->workspace->update(['content_language' => 'zh']);
+test('a chinese author sends a regional language code', function () {
+    $this->user->update(['locale' => Locale::Chinese]);
     fakeLocalPostCreate();
 
     $this->publisher->publish($this->postPlatform->fresh());
 
     Http::assertSent(fn ($request) => data_get($request->data(), 'languageCode') === 'zh-CN');
+});
+
+test('a post whose author was deleted falls back to the default language code', function () {
+    $this->post->update(['user_id' => null]);
+    fakeLocalPostCreate();
+
+    $this->publisher->publish($this->postPlatform->fresh());
+
+    Http::assertSent(fn ($request) => data_get($request->data(), 'languageCode') === 'en');
 });
 
 test('a blank event title throws instead of publishing an untitled event', function () {

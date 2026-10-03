@@ -46,8 +46,8 @@ return [
             'networks_all_tooltip' => 'Puoi pubblicare su tutti questi social.',
             'accounts_unlimited' => 'Account social illimitati',
             'accounts_unlimited_tooltip' => 'Collega tutti gli account che vuoi, anche più di uno dello stesso social. Tre Instagram, per esempio.',
-            'calendar' => 'Calendario mensile, settimanale e giornaliero',
-            'calendar_tooltip' => 'Guarda tutto il mese in un colpo d\'occhio: cosa è pianificato, programmato e già pubblicato. Passa a settimana o giorno quando ti serve il dettaglio.',
+            'calendar' => 'Calendario mensile e settimanale',
+            'calendar_tooltip' => 'Guarda tutto il mese in un colpo d\'occhio: cosa è pianificato, programmato e già pubblicato. Passa alla settimana quando ti serve il dettaglio.',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => 'Il tuo assistente IA per scrivere e rivedere i post.',
             'mcp' => 'MCP: pubblica da Claude, ChatGPT o Grok',
@@ -79,6 +79,7 @@ return [
         'title' => 'Fatture',
         'description' => 'Scarica le tue fatture passate.',
         'paid' => 'Pagata',
+        'download' => 'Scarica fattura',
     ],
 
     'flash' => [

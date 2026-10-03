@@ -80,9 +80,9 @@ class GoogleBusinessController extends SocialController
             }
 
             if (count($locations) === 1) {
-                $this->connectLocation($workspace, $locations[0], $oauth, $reconnect);
+                $account = $this->connectLocation($workspace, $locations[0], $oauth, $reconnect);
 
-                return $this->connectedCallback($reconnect);
+                return $this->connectedCallback($account, $reconnect);
             }
 
             session([self::OAUTH_SESSION => [...$oauth, 'locations' => $locations]]);
@@ -118,11 +118,11 @@ class GoogleBusinessController extends SocialController
         ]);
     }
 
-    protected function popupCallback(bool $success, string $message, ?string $platform = null): InertiaResponse
+    protected function popupCallback(bool $success, ?string $message, ?string $platform = null, ?string $accountId = null, bool $created = false): InertiaResponse
     {
         $this->forgetOauthSession();
 
-        return parent::popupCallback($success, $message, $platform);
+        return parent::popupCallback($success, $message, $platform, $accountId, $created);
     }
 
     public function select(SelectGoogleBusinessLocationRequest $request): InertiaResponse
@@ -140,9 +140,9 @@ class GoogleBusinessController extends SocialController
 
             $reconnect = $this->reconnectAccount($workspace, data_get($oauth, 'reconnect_id'));
 
-            $this->connectLocation($workspace, $location, $oauth, $reconnect);
+            $account = $this->connectLocation($workspace, $location, $oauth, $reconnect);
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (Exception $e) {
@@ -160,7 +160,7 @@ class GoogleBusinessController extends SocialController
      * @param  array<string, mixed>  $location
      * @param  array<string, mixed>  $oauth
      */
-    private function connectLocation(Workspace $workspace, array $location, array $oauth, ?SocialAccount $reconnect = null): void
+    private function connectLocation(Workspace $workspace, array $location, array $oauth, ?SocialAccount $reconnect = null): SocialAccount
     {
         $location['photo'] = $this->publisher->fetchLocationPhoto(
             (string) data_get($oauth, 'access_token'),
@@ -173,7 +173,7 @@ class GoogleBusinessController extends SocialController
             $attributes['refresh_token'] = $reconnect->refresh_token;
         }
 
-        SocialAccount::connectIdentity(
+        return SocialAccount::connectIdentity(
             $workspace,
             $this->platform,
             (string) data_get($location, 'id'),

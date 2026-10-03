@@ -11,7 +11,6 @@ use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Enums\UserWorkspace\Role;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
@@ -20,6 +19,9 @@ use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
+use App\Mail\AccountDisconnected;
+use App\Mail\PostPublished;
+use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -34,10 +36,12 @@ use App\Services\Social\PinterestPublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
@@ -478,6 +482,14 @@ test('publish reschedules when pinterest video processing times out', function (
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
     Mail::fake();
+    $this->post->update(['media' => [[
+        'id' => 'video-1',
+        'path' => 'media/2026-01/pin.mp4',
+        'url' => 'https://example.com/media/2026-01/pin.mp4',
+        'type' => 'video',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'pin.mp4',
+    ]]]);
 
     $pinterestAccount = SocialAccount::factory()->pinterest()->create([
         'workspace_id' => $this->workspace->id,
@@ -1058,7 +1070,6 @@ test('terminal TikTok account guards keep derivatives while a publish_id can be 
     Storage::put($path, 'image');
 
     $accountAttributes = match ($guard) {
-        'inactive' => ['is_active' => false],
         'disconnected' => ['status' => AccountStatus::Disconnected],
         'token_expired' => ['status' => AccountStatus::TokenExpired],
         'missing_scopes' => ['scopes' => []],
@@ -1094,14 +1105,12 @@ test('terminal TikTok account guards keep derivatives while a publish_id can be 
     }
 
     $translationKey = match ($guard) {
-        'inactive' => 'posts.errors.account_inactive',
         'disconnected' => 'posts.errors.account_disconnected',
         'token_expired' => 'posts.errors.account_token_expired',
     };
 
     expect($platform->error_message)->toBe(__($translationKey));
 })->with([
-    'inactive account' => 'inactive',
     'disconnected account' => 'disconnected',
     'expired token' => 'token_expired',
     'missing publish scopes' => 'missing_scopes',
@@ -1116,7 +1125,6 @@ test('terminal TikTok account guards prune derivatives when there is no publish_
     Storage::put($path, 'image');
 
     $accountAttributes = match ($guard) {
-        'inactive' => ['is_active' => false],
         'disconnected' => ['status' => AccountStatus::Disconnected],
         'token_expired' => ['status' => AccountStatus::TokenExpired],
         'missing_scopes' => ['scopes' => []],
@@ -1140,7 +1148,6 @@ test('terminal TikTok account guards prune derivatives when there is no publish_
     expect($platform->fresh()->status)->toBe(PlatformStatus::Failed)
         ->and($platform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBeNull();
 })->with([
-    'inactive account' => 'inactive',
     'disconnected account' => 'disconnected',
     'expired token' => 'token_expired',
     'missing publish scopes' => 'missing_scopes',
@@ -1169,6 +1176,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
     $platform = PostPlatform::factory()->tiktok()->create([
         'post_id' => $this->post->id,
         'social_account_id' => $account->id,
+        'content_type' => ContentType::TikTokPhoto,
         'status' => PlatformStatus::Pending,
         'enabled' => true,
         'meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value],
@@ -1292,8 +1300,8 @@ test('pinterest media status 401 marks the account token expired and notifies to
 
     Queue::assertPushed(SendNotification::class, function ($job) use ($pinterestAccount) {
         return $job->type === Type::AccountDisconnected
-            && data_get($job->data, 'social_account_id') === $pinterestAccount->id
-            && str_contains($job->title, 'needs to be reconnected');
+            && $job->mailable instanceof AccountDisconnected
+            && $job->mailable->account->is($pinterestAccount);
     });
 });
 
@@ -1396,23 +1404,6 @@ test('publish to social platform skips publishing when account token is expired'
     expect($this->postPlatform->error_context['category'])->toBe('token_expired');
 });
 
-test('publish to social platform skips publishing when account is inactive', function () {
-    Event::fake();
-
-    $this->socialAccount->update(['is_active' => false]);
-
-    $publisher = Mockery::mock(LinkedInPublisher::class);
-    $publisher->shouldNotReceive('publish');
-
-    $this->app->instance(LinkedInPublisher::class, $publisher);
-
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
-
-    $this->postPlatform->refresh();
-    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed);
-    expect($this->postPlatform->error_message)->toBe(__('posts.errors.account_inactive'));
-});
-
 test('publish to social platform dispatches success notification when all platforms published', function () {
     Event::fake();
     Queue::fake();
@@ -1425,7 +1416,7 @@ test('publish to social platform dispatches success notification when all platfo
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
 
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1443,7 +1434,7 @@ test('publish to social platform dispatches failure notification when platform f
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
 
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
@@ -1452,7 +1443,7 @@ test('publish to social platform dispatches failure notification when platform f
     Queue::assertPushed(SendNotification::class);
 });
 
-test('in-app published notification falls back to the facebook page display name', function () {
+test('a published post queues the published email for the owner', function () {
     Event::fake();
     Queue::fake();
 
@@ -1482,16 +1473,14 @@ test('in-app published notification falls back to the facebook page display name
     (new PublishToSocialPlatform($postPlatform))->handle();
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
-        $platforms = 'Facebook Page (@InboxPlacement.io)';
-
         return $job->type === Type::PostPublished
-            && $job->title === __('notifications.post_published.title')
-            && $job->body === __('notifications.post_published.body', ['platforms' => $platforms])
-            && data_get($job->data, 'post_id') === $post->id;
+            && $job->user->is($this->user)
+            && $job->mailable instanceof PostPublished
+            && $job->mailable->post->is($post);
     });
 });
 
-test('in-app failed notification falls back to the facebook page display name', function () {
+test('a failed post queues the failed email for the owner', function () {
     Event::fake();
     Queue::fake();
 
@@ -1518,12 +1507,10 @@ test('in-app failed notification falls back to the facebook page display name', 
     (new PublishToSocialPlatform($postPlatform))->handle();
 
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($post) {
-        $platforms = 'Facebook Page (@InboxPlacement.io)';
-
         return $job->type === Type::PostFailed
-            && $job->title === __('notifications.post_failed.title')
-            && $job->body === __('notifications.post_failed.body', ['platforms' => $platforms])
-            && data_get($job->data, 'post_id') === $post->id;
+            && $job->user->is($this->user)
+            && $job->mailable instanceof PostPublishFailed
+            && $job->mailable->post->is($post);
     });
 });
 
@@ -2132,4 +2119,103 @@ test('a google business target already in review is not published a second time'
     Http::assertNothingSent();
     expect($postPlatform->fresh()->status)->toBe(PlatformStatus::PendingReview)
         ->and($postPlatform->fresh()->platform_post_id)->toBe('accounts/1/locations/2/localPosts/3');
+});
+
+test('a thread result stores the reply ids on the target', function () {
+    Event::fake();
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andReturn(['id' => 'root-1', 'url' => 'https://example.com/root-1', 'thread_reply_ids' => ['a', 'b']]);
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    expect($this->postPlatform->fresh()->thread_reply_ids)->toEqual(['a', 'b'])
+        ->and($this->postPlatform->fresh()->platform_post_id)->toBe('root-1')
+        ->and($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
+});
+
+test('a mastodon thread that fails midway is visible and its retry never posts a live segment again', function () {
+    Event::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update(['content' => 'Root']);
+    $this->postPlatform->update(['enabled' => false]);
+    $target = PostPlatform::factory()->mastodon()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['thread_replies' => ['Two', 'Three']],
+    ]);
+    $instance = data_get($account->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
+        ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
+        ->push(['id' => '2', 'url' => "{$instance}/@t/2"])
+        ->push(['error' => 'Validation failed'], 422)
+        ->push(['id' => '3', 'url' => "{$instance}/@t/3"])]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    $failed = $target->fresh();
+    expect($failed->status)->toBe(PlatformStatus::Failed)
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', ['published' => 2, 'total' => 3, 'error' => 'Media validation failed.']))
+        ->and(collect(data_get($failed->error_context, 'thread_progress'))->pluck('id')->all())->toBe(['1', '2']);
+
+    Bus::fake([PublishToSocialPlatform::class]);
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'yes')
+        ->assertSuccessful();
+    (new PublishToSocialPlatform($target->fresh()))->handle();
+
+    $published = $target->fresh();
+    expect($published->status)->toBe(PlatformStatus::Published)
+        ->and($published->platform_post_id)->toBe('1')
+        ->and($published->platform_url)->toBe("{$instance}/@t/1")
+        ->and($published->thread_reply_ids)->toEqual(['2', '3'])
+        ->and($published->error_context)->toBeNull();
+    Http::assertSentCount(4);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'status') === 'Three' && data_get($request->data(), 'in_reply_to_id') === '2');
+});
+
+test('the reply ids are written in the same update that publishes the target', function () {
+    Event::fake();
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andReturn(['id' => 'root-1', 'url' => 'https://example.com/root-1', 'thread_reply_ids' => ['a', 'b']]);
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+    $writes = [];
+    DB::listen(function (QueryExecuted $query) use (&$writes): void {
+        if (str_starts_with(strtolower($query->sql), 'update') && str_contains($query->sql, 'thread_reply_ids')) {
+            $writes[] = $query->sql;
+        }
+    });
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    expect($writes)->toHaveCount(1)
+        ->and($writes[0])->toContain('platform_post_id')
+        ->and($writes[0])->toContain('published_at');
+});
+
+test('a thread that stops on any error says how much of it is live', function () {
+    Event::fake();
+    $account = SocialAccount::factory()->mastodon()->create(['workspace_id' => $this->workspace->id]);
+    $this->post->update(['content' => 'Root']);
+    $this->postPlatform->update(['enabled' => false]);
+    $target = PostPlatform::factory()->mastodon()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'enabled' => true,
+        'meta' => ['thread_replies' => ['Two', 'Three']],
+    ]);
+    $instance = data_get($account->meta, 'instance');
+    Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
+        ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
+        ->pushFailedConnection()]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    expect($target->fresh()->status)->toBe(PlatformStatus::Failed)
+        ->and($target->fresh()->error_message)->toBe(__('posts.errors.thread_incomplete', [
+            'published' => 1,
+            'total' => 3,
+            'error' => 'An unexpected error occurred while publishing. Please try again.',
+        ]));
 });

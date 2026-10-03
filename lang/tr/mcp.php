@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'TryPost hesabınızla gönderi oluşturup yönetmeleri için yapay zeka asistanlarını bağlayın.',
+    'subtitle' => 'Yapay zekâ asistanlarını bağlayın.',
     'copy_step' => 'TryPost sunucu URL’ini kopyala',
     'open_step' => 'AI asistanını aç',
     'copy' => 'URL’yi kopyala',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Bağlı uygulamalar',
     'connected_description' => 'Giriş yaptığınız asistanlar. Artık kullanmadıklarınızın bağlantısını kesebilirsiniz.',
-    'connected_empty' => 'Henüz bağlı bir şey yok. Yukarıdan Claude, ChatGPT veya başka bir istemci kullanın.',
+    'connected_empty_title' => 'Bağlı uygulama yok',
+    'connected_empty' => 'Yukarıdan Claude, ChatGPT veya başka bir istemci kullanın.',
     'disconnect' => 'Bağlantıyı kes',
     'disconnect_title' => 'Uygulama bağlantısını kes',
     'disconnect_confirm' => 'Bu, uygulamayı TryPost’tan çıkarır. MCP’yi yeniden kullanmak için tekrar bağlanması gerekir.',

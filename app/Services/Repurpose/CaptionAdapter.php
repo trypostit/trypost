@@ -8,8 +8,8 @@ use App\Ai\Agents\PostContentShortener;
 use App\Enums\SocialAccount\Platform;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Ai\RecordAiUsage;
 use App\Services\Social\ContentSanitizer;
+use App\Support\Hashtags;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
@@ -20,14 +20,22 @@ class CaptionAdapter
 
     public function __construct(private readonly ContentSanitizer $sanitizer) {}
 
-    public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform): string
+    /**
+     * Hashtags past the network's cap are dropped before the length is fitted.
+     *
+     * @param  int|null  $limit  The account's own cap; the platform's when null.
+     */
+    public function adapt(Workspace $workspace, ?User $user, string $caption, Platform $platform, ?int $limit = null): string
     {
-        if ($this->fits($caption, $platform)) {
+        $limit ??= $platform->maxContentLength();
+        $caption = $platform->maxHashtags() === null ? $caption : Hashtags::keepFirst($caption, $platform->maxHashtags());
+
+        if ($this->fits($caption, $platform, $limit)) {
             return $caption;
         }
 
-        return $this->shorten($workspace, $user, $caption, $platform)
-            ?? $this->truncate($caption, $platform);
+        return $this->shorten($workspace, $user, $caption, $platform, $limit)
+            ?? $this->truncate($caption, $platform, $limit);
     }
 
     private function sent(string $caption, Platform $platform): string
@@ -35,57 +43,46 @@ class CaptionAdapter
         return $this->sanitizer->displayText($caption, $platform);
     }
 
-    private function fits(string $caption, Platform $platform): bool
+    private function fits(string $caption, Platform $platform, int $limit): bool
     {
-        return $platform->contentOverflow($this->sent($caption, $platform)) === 0;
+        return mb_strlen($this->sent($caption, $platform)) <= $limit;
     }
 
-    private function shorten(Workspace $workspace, ?User $user, string $caption, Platform $platform): ?string
+    private function shorten(Workspace $workspace, ?User $user, string $caption, Platform $platform, int $limit): ?string
     {
         if ($user === null || Gate::forUser($user)->denies('useAi', $workspace->account)) {
             return null;
         }
 
-        $key = $platform->maxContentLength().':'.md5($caption);
+        $key = "{$limit}:".md5($caption);
 
         $shortened = $this->shortened[$key] ??= rescue(
-            fn (): string => $this->ask($workspace, $user, $caption, $platform),
+            fn (): string => $this->ask($caption, $platform, $limit),
         );
 
-        return filled($shortened) && $this->fits($shortened, $platform) ? $shortened : null;
+        return filled($shortened) && $this->fits($shortened, $platform, $limit) ? $shortened : null;
     }
 
-    private function ask(Workspace $workspace, User $user, string $caption, Platform $platform): string
+    private function ask(string $caption, Platform $platform, int $limit): string
     {
         $result = (new PostContentShortener(
-            workspace: $workspace,
             platformLabel: $platform->label(),
-            limit: $platform->maxContentLength(),
+            limit: $limit,
         ))->prompt($caption);
-
-        RecordAiUsage::recordText(
-            workspace: $workspace,
-            promptTokens: $result->usage->promptTokens,
-            completionTokens: $result->usage->completionTokens,
-            provider: (string) $result->meta->provider,
-            model: (string) $result->meta->model,
-            userId: $user->id,
-            metadata: ['agent' => 'post_shortener'],
-        );
 
         return trim((string) $result->text);
     }
 
-    private function truncate(string $caption, Platform $platform): string
+    private function truncate(string $caption, Platform $platform, int $limit): string
     {
         $candidate = $caption;
 
-        while (! $this->fits($candidate, $platform) && str_contains($candidate, ' ')) {
+        while (! $this->fits($candidate, $platform, $limit) && str_contains($candidate, ' ')) {
             $candidate = rtrim(Str::beforeLast($candidate, ' '));
         }
 
-        return $this->fits($candidate, $platform)
+        return $this->fits($candidate, $platform, $limit)
             ? $candidate
-            : Str::limit($caption, $platform->maxContentLength(), '');
+            : Str::limit($caption, $limit, '');
     }
 }

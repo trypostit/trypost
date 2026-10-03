@@ -165,7 +165,7 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/Connect', [
             'platforms' => SocialPlatform::connectableOptions(),
             'accounts' => SocialAccountResource::collection(
-                $workspace->socialAccounts()->orderBy('id')->get(),
+                $workspace->socialAccounts()->get(),
             )->resolve(),
             'welcome' => WelcomeSummaryResource::make($user),
         ]);

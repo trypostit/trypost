@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
@@ -30,28 +29,38 @@ const source = computed(() => {
     return handle ? `${network} (@${handle})` : network;
 });
 
-const sentence = computed(() => {
-    if (!props.sourceAccount) {
-        return trans('repurposes.summary.no_source');
-    }
+type SummarySentence = { key: string; params: Record<string, string> };
 
-    if (destinationLabels.value.length === 0) {
-        return trans('repurposes.summary.no_destinations', {
-            format: props.formatLabel,
-            source: source.value,
-        });
-    }
+const sentence = computed<SummarySentence>(
+    (): SummarySentence => {
+        if (!props.sourceAccount) {
+            return { key: 'repurposes.summary.no_source', params: {} };
+        }
 
-    return trans('repurposes.summary.sentence', {
-        format: props.formatLabel,
-        source: source.value,
-        destinations: destinationLabels.value.join(', '),
-    });
-});
+        if (destinationLabels.value.length === 0) {
+            return {
+                key: 'repurposes.summary.no_destinations',
+                params: { format: props.formatLabel, source: source.value },
+            };
+        }
+
+        return {
+            key: 'repurposes.summary.sentence',
+            params: {
+                format: props.formatLabel,
+                source: source.value,
+                destinations: destinationLabels.value.join(', '),
+            },
+        };
+    },
+);
 </script>
 
 <template>
-    <p class="max-w-2xl text-sm leading-relaxed text-foreground/70" data-testid="repurpose-summary">
-        {{ sentence }}
+    <p
+        class="max-w-2xl text-sm text-muted-foreground"
+        data-testid="repurpose-summary"
+    >
+        {{ $t(sentence.key, sentence.params) }}
     </p>
 </template>

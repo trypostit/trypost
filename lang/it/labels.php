@@ -2,21 +2,24 @@
 
 return [
     'title' => 'Etichette',
-    'description' => 'Crea etichette per organizzare e categorizzare i tuoi post',
+    'description' => 'Organizza i tuoi post con le etichette.',
     'search' => 'Cerca etichette...',
     'new_label' => 'Nuova etichetta',
     'no_labels_yet' => 'Ancora nessuna etichetta',
     'no_search_results' => 'Nessuna etichetta corrisponde alla ricerca',
     'try_different_search' => 'Prova con un\'altra parola chiave o cancella la ricerca.',
     'create_first_label' => 'Crea la tua prima etichetta',
-    'table' => [
-        'name' => 'Nome',
-        'created_at' => 'Creata',
+
+    'meta' => [
+        'posts' => '{0} Nessun post|{1} :count post|[2,*] :count post',
     ],
 
     'actions' => [
         'edit' => 'Modifica etichetta',
         'delete' => 'Elimina etichetta',
+        'more' => 'Altre azioni',
+        'view_posts' => 'Visualizza post',
+        'open_reporting' => 'Apri report',
     ],
 
     'create' => [
@@ -44,11 +47,5 @@ return [
         'description' => 'Vuoi davvero eliminare questa etichetta? Questa azione non può essere annullata.',
         'confirm' => 'Elimina',
         'cancel' => 'Annulla',
-    ],
-
-    'flash' => [
-        'created' => 'Etichetta creata con successo!',
-        'updated' => 'Etichetta aggiornata con successo!',
-        'deleted' => 'Etichetta eliminata con successo!',
     ],
 ];

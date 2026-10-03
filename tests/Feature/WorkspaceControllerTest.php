@@ -2,21 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Ai\Agents\BrandAnalyzer;
-use App\Enums\UserWorkspace\Role;
-use App\Enums\Workspace\ContentLanguage;
 use App\Models\Account;
-use App\Models\AiUsageLog;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\Brand\LogoAttacher;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Route;
 
 beforeEach(function () {
     $this->user = User::factory()->create([]);
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -30,7 +25,7 @@ test('workspaces index requires authentication', function () {
 test('workspaces index shows all workspaces for user', function () {
     $workspaces = Workspace::factory()->count(2)->create(['user_id' => $this->user->id]);
     foreach ($workspaces as $workspace) {
-        $workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+        $workspace->members()->attach($this->user->id, membershipPivot('member'));
     }
 
     $response = $this->actingAs($this->user)->get(route('app.workspaces.index'));
@@ -60,9 +55,8 @@ test('create workspace shows form for user with no workspaces', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('workspaces/Create', false)
-        ->has('availableContentLanguages', count(ContentLanguage::cases()))
-        ->where('availableContentLanguages.0', ['value' => 'en', 'label' => 'English', 'englishName' => 'English'])
-        ->where('availableContentLanguages.1', ['value' => 'uk', 'label' => 'Українська', 'englishName' => 'Ukrainian'])
+        ->missing('availableContentLanguages')
+        ->missing('availableFonts')
     );
 });
 
@@ -93,7 +87,7 @@ test('store workspace creates first workspace', function () {
         'name' => 'New Workspace',
     ]);
 
-    $response->assertRedirect(route('app.accounts'));
+    $response->assertRedirect(route('app.workspace.channels'));
 
     $this->assertDatabaseHas('workspaces', [
         'name' => 'New Workspace',
@@ -108,7 +102,7 @@ test('store workspace creates second workspace in self-hosted mode', function ()
         'name' => 'Second Workspace',
     ]);
 
-    $response->assertRedirect(route('app.accounts'));
+    $response->assertRedirect(route('app.workspace.channels'));
 
     $this->assertDatabaseHas('workspaces', [
         'name' => 'Second Workspace',
@@ -148,7 +142,7 @@ test('switch workspace requires authentication', function () {
 
 test('switch workspace changes current workspace', function () {
     $otherWorkspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('member'));
 
     $response = $this->actingAs($this->user)->post(route('app.workspaces.switch', $otherWorkspace));
 
@@ -176,13 +170,13 @@ test('switch workspace returns 403 for personal workspace after joining another 
         'account_id' => $personalAccountId,
         'user_id' => $invitee->id,
     ]);
-    $personalWorkspace->members()->attach($invitee->id, ['role' => Role::Admin->value]);
+    $personalWorkspace->members()->attach($invitee->id, membershipPivot('admin'));
 
     $sharedWorkspace = Workspace::factory()->create([
         'account_id' => $sharedOwner->account_id,
         'user_id' => $sharedOwner->id,
     ]);
-    $sharedWorkspace->members()->attach($invitee->id, ['role' => Role::Member->value]);
+    $sharedWorkspace->members()->attach($invitee->id, membershipPivot('member'));
     $invitee->update([
         'account_id' => $sharedOwner->account_id,
         'current_workspace_id' => $sharedWorkspace->id,
@@ -203,13 +197,13 @@ test('workspace index only lists workspaces on the current account', function ()
         'account_id' => $personalAccountId,
         'user_id' => $invitee->id,
     ]);
-    $personalWorkspace->members()->attach($invitee->id, ['role' => Role::Admin->value]);
+    $personalWorkspace->members()->attach($invitee->id, membershipPivot('admin'));
 
     $sharedWorkspace = Workspace::factory()->create([
         'account_id' => $sharedOwner->account_id,
         'user_id' => $sharedOwner->id,
     ]);
-    $sharedWorkspace->members()->attach($invitee->id, ['role' => Role::Member->value]);
+    $sharedWorkspace->members()->attach($invitee->id, membershipPivot('member'));
     $invitee->update([
         'account_id' => $sharedOwner->account_id,
         'current_workspace_id' => $sharedWorkspace->id,
@@ -294,27 +288,15 @@ test('workspace settings otherMemberCount only includes members without another 
         'user_id' => $this->user->id,
     ]);
 
-    $this->workspace->members()->attach($stranded->id, ['role' => Role::Member->value]);
-    $this->workspace->members()->attach($alsoOnOther->id, ['role' => Role::Member->value]);
-    $otherWorkspace->members()->attach($alsoOnOther->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($stranded->id, membershipPivot('member'));
+    $this->workspace->members()->attach($alsoOnOther->id, membershipPivot('member'));
+    $otherWorkspace->members()->attach($alsoOnOther->id, membershipPivot('member'));
 
     $response = $this->actingAs($this->user)->get(route('app.workspace.settings'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->where('otherMemberCount', 1)
-    );
-});
-
-test('brand settings shows the brand settings page', function () {
-    $response = $this->actingAs($this->user)->get(route('app.workspace.brand'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('settings/workspace/Brand', false)
-        ->has('workspace')
-        ->has('availableContentLanguages', count(ContentLanguage::cases()))
-        ->where('availableContentLanguages.1', ['value' => 'uk', 'label' => 'Українська', 'englishName' => 'Ukrainian'])
     );
 });
 
@@ -337,53 +319,15 @@ test('update workspace settings requires authentication', function () {
 
 test('update workspace settings updates workspace and redirects back', function () {
     $response = $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
+        ->from(route('app.workspace.settings'))
         ->put(route('app.workspace.settings.update'), [
             'name' => 'Updated Name',
-            'brand_font' => 'Inter',
-            'image_style' => 'cinematic',
         ]);
 
-    $response->assertRedirect(route('app.workspace.brand'));
+    $response->assertRedirect(route('app.workspace.settings'));
 
     $this->workspace->refresh();
     expect($this->workspace->name)->toBe('Updated Name');
-});
-
-test('update workspace settings persists brand voice traits', function () {
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'brand_font' => 'Inter',
-            'image_style' => 'cinematic',
-            'brand_voice_traits' => ['third_person', 'no_hype', 'data_driven'],
-        ])->assertRedirect(route('app.workspace.brand'));
-
-    expect($this->workspace->refresh()->brand_voice_traits)->toBe(['third_person', 'no_hype', 'data_driven']);
-});
-
-test('update workspace settings rejects an unknown brand voice trait', function () {
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'brand_font' => 'Inter',
-            'image_style' => 'cinematic',
-            'brand_voice_traits' => ['third_person', 'not_a_real_trait'],
-        ])->assertSessionHasErrors('brand_voice_traits.1');
-});
-
-test('update workspace settings persists the image_style choice', function () {
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'brand_font' => 'Inter',
-            'image_style' => 'minimalist',
-        ])->assertRedirect(route('app.workspace.brand'));
-
-    expect($this->workspace->refresh()->image_style->value)->toBe('minimalist');
 });
 
 test('update workspace settings updates the name when only the name is submitted', function () {
@@ -396,56 +340,6 @@ test('update workspace settings updates the name when only the name is submitted
         ->assertSessionHasNoErrors();
 
     expect($this->workspace->refresh()->name)->toBe('Name Only Update');
-});
-
-test('update workspace settings still requires brand_font and image_style when submitted empty', function () {
-    $this->actingAs($this->user)
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'brand_font' => '',
-            'image_style' => '',
-        ])->assertSessionHasErrors(['brand_font', 'image_style']);
-});
-
-test('update workspace settings rejects unknown image_style values', function () {
-    $this->actingAs($this->user)
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'brand_font' => 'Inter',
-            'image_style' => 'pixel-art',
-        ])->assertSessionHasErrors(['image_style']);
-});
-
-test('update workspace settings persists a newly supported content language', function () {
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'content_language' => 'fr',
-        ])->assertRedirect(route('app.workspace.brand'))
-        ->assertSessionHasNoErrors();
-
-    expect($this->workspace->refresh()->content_language)->toBe('fr');
-});
-
-test('update workspace settings persists Ukrainian as a content language', function () {
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'content_language' => 'uk',
-        ])->assertRedirect(route('app.workspace.brand'))
-        ->assertSessionHasNoErrors();
-
-    expect($this->workspace->refresh()->content_language)->toBe('uk');
-});
-
-test('update workspace settings rejects an unsupported content language', function () {
-    $this->actingAs($this->user)
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'content_language' => 'sv',
-        ])->assertSessionHasErrors(['content_language']);
 });
 
 test('update workspace settings validates required fields', function () {
@@ -496,7 +390,7 @@ test('upload workspace logo validates max size', function () {
 test('upload workspace logo requires authorization', function () {
     $otherUser = User::factory()->create([]);
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
-    $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($otherUser->id, membershipPivot('member'));
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
     $otherUser->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -543,7 +437,7 @@ test('delete workspace logo succeeds', function () {
 test('delete workspace logo requires authorization', function () {
     $otherUser = User::factory()->create([]);
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
-    $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($otherUser->id, membershipPivot('member'));
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
     $otherUser->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -595,7 +489,7 @@ test('destroy workspace falls back to another account workspace when deleting cu
 
 test('destroy workspace reassigns current to another joined workspace', function () {
     $other = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $other->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $other->members()->attach($this->user->id, membershipPivot('member'));
 
     $this->actingAs($this->user)->delete(route('app.workspaces.destroy', $this->workspace));
 
@@ -634,7 +528,7 @@ test('destroy workspace allows deleting the only workspace in self-hosted mode',
 test('destroy workspace returns 403 for non-owner', function () {
     $otherUser = User::factory()->create([]);
     $otherWorkspace = Workspace::factory()->create(['user_id' => $otherUser->id]);
-    $otherWorkspace->members()->attach($otherUser->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($otherUser->id, membershipPivot('member'));
     $otherUser->update(['current_workspace_id' => $otherWorkspace->id]);
     $otherUser->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
@@ -658,7 +552,7 @@ test('destroy workspace returns 403 for workspace admin', function () {
         'account_id' => $this->user->account_id,
         'current_workspace_id' => $this->workspace->id,
     ]);
-    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
 
     $response = $this->actingAs($admin)->delete(route('app.workspaces.destroy', $this->workspace));
 
@@ -676,7 +570,7 @@ test('destroy workspace returns 403 for workspace member', function () {
         'account_id' => $this->user->account_id,
         'current_workspace_id' => $this->workspace->id,
     ]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $response = $this->actingAs($member)->delete(route('app.workspaces.destroy', $this->workspace));
 
@@ -684,99 +578,7 @@ test('destroy workspace returns 403 for workspace member', function () {
     expect(Workspace::find($this->workspace->id))->not->toBeNull();
 });
 
-// Autofill brand tests
-test('autofillBrand returns metadata without persisting anything', function () {
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
-
-    Http::fake([
-        'example.com/*' => Http::response(
-            '<html><head><title>Acme</title><meta name="description" content="We sell rockets." /></head><body></body></html>',
-            200,
-            ['Content-Type' => 'text/html'],
-        ),
-        'example.com' => Http::response(
-            '<html><head><title>Acme</title><meta name="description" content="We sell rockets." /></head><body></body></html>',
-            200,
-            ['Content-Type' => 'text/html'],
-        ),
-    ]);
-
-    $initialWorkspaceCount = Workspace::count();
-
-    $response = $this->actingAs($user)
-        ->postJson(route('app.workspaces.autofill'), ['url' => 'https://example.com']);
-
-    $response->assertOk();
-    $response->assertJsonStructure(['name', 'brand_description', 'content_language', 'logo_url']);
-
-    expect(Workspace::count())->toBe($initialWorkspaceCount);
-});
-
-test('autofillBrand is always allowed even without a subscription', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $account = Account::factory()->create(['trial_ends_at' => null]);
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
-
-    expect($account->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
-
-    Http::fake([
-        'example.com/*' => Http::response(
-            '<html><head><title>Acme</title><meta name="description" content="We sell rockets." /></head><body></body></html>',
-            200,
-            ['Content-Type' => 'text/html'],
-        ),
-        'example.com' => Http::response(
-            '<html><head><title>Acme</title><meta name="description" content="We sell rockets." /></head><body></body></html>',
-            200,
-            ['Content-Type' => 'text/html'],
-        ),
-    ]);
-
-    $this->actingAs($user)
-        ->postJson(route('app.workspaces.autofill'), ['url' => 'https://example.com'])
-        ->assertOk();
-});
-
-test('autofillBrand never records AI usage even when the LLM runs', function () {
-    config(['trypost.self_hosted' => false]);
-    config()->set('ai.providers.gemini.key', 'fake-key');
-    config()->set('ai.default', 'gemini');
-
-    Http::fake([
-        'example.com' => Http::response(
-            '<html lang="en"><head><title>Acme</title><meta name="description" content="Terse." /></head><body><main><p>Acme ships rockets fast.</p></main></body></html>',
-            200,
-            ['Content-Type' => 'text/html'],
-        ),
-    ]);
-
-    BrandAnalyzer::fake([
-        ['description' => 'Acme ships rockets fast.', 'language' => 'en'],
-    ]);
-
-    $this->actingAs($this->user)
-        ->postJson(route('app.workspaces.autofill'), ['url' => 'https://example.com'])
-        ->assertOk();
-
-    expect(AiUsageLog::count())->toBe(0);
-});
-
-test('autofillBrand validates url is required', function () {
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-
-    $this->actingAs($user)
-        ->postJson(route('app.workspaces.autofill'), [])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('url');
-});
-
-// Brand-aware store tests
-test('store persists brand fields and redirects to /accounts', function () {
+test('store persists the name and redirects to channels', function () {
     $account = Account::factory()->create();
     $user = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $user->id]);
@@ -790,43 +592,29 @@ test('store persists brand fields and redirects to /accounts', function () {
 
     $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
         'name' => 'Acme Inc',
-        'brand_website' => 'https://acme.example',
-        'brand_description' => 'We sell rockets.',
-        'brand_voice_traits' => ['third_person', 'no_hype'],
-        'content_language' => 'en',
     ]);
 
-    $response->assertRedirect(route('app.accounts'));
+    $response->assertRedirect(route('app.workspace.channels'));
 
-    $workspace = Workspace::where('name', 'Acme Inc')->sole();
-    expect($workspace->name)->toBe('Acme Inc');
-    expect($workspace->brand_website)->toBe('https://acme.example');
-    expect($workspace->brand_description)->toBe('We sell rockets.');
+    expect(Workspace::where('name', 'Acme Inc')->sole()->name)->toBe('Acme Inc');
 });
 
-test('store persists a newly supported non-default content language', function () {
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
-
-    $this->actingAs($user)->post(route('app.workspaces.store'), [
-        'name' => 'Beispiel GmbH',
-        'content_language' => 'de',
-    ])->assertSessionHasNoErrors();
-
-    // 'de' is not the DB default ('en'), so this proves the field is written.
-    expect(Workspace::where('name', 'Beispiel GmbH')->sole()->content_language)->toBe('de');
+test('brand routes are gone', function () {
+    expect(Route::has('app.workspace.brand'))->toBeFalse()
+        ->and(Route::has('app.workspaces.autofill'))->toBeFalse();
 });
 
-test('store rejects an unsupported content language', function () {
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
+test('store ignores retired brand fields', function () {
+    $this->user->update(['current_workspace_id' => null]);
+    $this->workspace->delete();
 
-    $this->actingAs($user)->post(route('app.workspaces.store'), [
-        'name' => 'Bad Lang',
-        'content_language' => 'sv',
-    ])->assertSessionHasErrors(['content_language']);
+    $this->actingAs($this->user)->post(route('app.workspaces.store'), [
+        'name' => 'Acme',
+        'brand_description' => 'x',
+        'content_language' => 'fr',
+    ])->assertRedirect(route('app.workspace.channels'));
+
+    expect(Workspace::where('name', 'Acme')->exists())->toBeTrue();
 });
 
 test('store redirects additional workspace to /accounts', function () {
@@ -843,13 +631,13 @@ test('store redirects additional workspace to /accounts', function () {
 
     // First workspace already exists
     $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
-    $existing->members()->attach($user->id, ['role' => Role::Member->value]);
+    $existing->members()->attach($user->id, membershipPivot('member'));
 
     $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
         'name' => 'Second Workspace',
     ]);
 
-    $response->assertRedirect(route('app.accounts'));
+    $response->assertRedirect(route('app.workspace.channels'));
     expect(Workspace::where('account_id', $account->id)->count())->toBe(2);
 });
 
@@ -863,7 +651,7 @@ test('store blocks a second workspace without an active subscription', function 
     // The account already owns one workspace and has no subscription, so a
     // direct POST must not bootstrap a second (billable) workspace.
     $existing = Workspace::factory()->create(['account_id' => $account->id, 'user_id' => $user->id]);
-    $existing->members()->attach($user->id, ['role' => Role::Member->value]);
+    $existing->members()->attach($user->id, membershipPivot('member'));
 
     $response = $this->actingAs($user)->post(route('app.workspaces.store'), [
         'name' => 'Second Workspace',
@@ -871,48 +659,4 @@ test('store blocks a second workspace without an active subscription', function 
 
     $response->assertRedirect(route('app.billing.index'));
     expect(Workspace::where('account_id', $account->id)->count())->toBe(1);
-});
-
-test('store attaches logo when logo_url is provided', function () {
-    $account = Account::factory()->create();
-    $user = User::factory()->create(['account_id' => $account->id]);
-    $account->update(['owner_id' => $user->id]);
-
-    $account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_test_'.fake()->uuid(),
-        'stripe_status' => 'active',
-        'stripe_price' => 'price_123',
-    ]);
-
-    $logoAttacher = $this->mock(LogoAttacher::class);
-    $logoAttacher->shouldReceive('attach')->once();
-
-    $this->actingAs($user)->post(route('app.workspaces.store'), [
-        'name' => 'Acme',
-        'logo_url' => 'https://example.com/logo.png',
-    ])->assertRedirect();
-});
-
-test('update settings attaches the autofilled logo when logo_url is provided', function () {
-    $logoAttacher = $this->mock(LogoAttacher::class);
-    $logoAttacher->shouldReceive('attach')->once();
-
-    $this->actingAs($this->user)
-        ->from(route('app.workspace.brand'))
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-            'logo_url' => 'https://example.com/logo.png',
-        ])->assertRedirect(route('app.workspace.brand'))
-        ->assertSessionHasNoErrors();
-});
-
-test('update settings does not touch the logo when no logo_url is provided', function () {
-    $logoAttacher = $this->mock(LogoAttacher::class);
-    $logoAttacher->shouldReceive('attach')->never();
-
-    $this->actingAs($this->user)
-        ->put(route('app.workspace.settings.update'), [
-            'name' => $this->workspace->name,
-        ])->assertRedirect();
 });

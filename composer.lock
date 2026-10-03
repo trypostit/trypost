@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ef65b49279941f3458f444863f0ce6e4",
+    "content-hash": "e95ac3d5b463dbccbd85d79a339a07d6",
     "packages": [
         {
             "name": "aws/aws-crt-php",
@@ -3428,67 +3428,6 @@
             "time": "2025-10-17T11:30:53+00:00"
         },
         {
-            "name": "league/color-extractor",
-            "version": "0.4.0",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/thephpleague/color-extractor.git",
-                "reference": "21fcac6249c5ef7d00eb83e128743ee6678fe505"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/color-extractor/zipball/21fcac6249c5ef7d00eb83e128743ee6678fe505",
-                "reference": "21fcac6249c5ef7d00eb83e128743ee6678fe505",
-                "shasum": ""
-            },
-            "require": {
-                "ext-gd": "*",
-                "php": "^7.3 || ^8.0"
-            },
-            "replace": {
-                "matthecat/colorextractor": "*"
-            },
-            "require-dev": {
-                "friendsofphp/php-cs-fixer": "~2",
-                "phpunit/phpunit": "^9.5"
-            },
-            "suggest": {
-                "ext-curl": "To download images from remote URLs if allow_url_fopen is disabled for security reasons"
-            },
-            "type": "library",
-            "autoload": {
-                "psr-4": {
-                    "League\\ColorExtractor\\": "src"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Mathieu Lechat",
-                    "email": "math.lechat@gmail.com",
-                    "homepage": "http://matthecat.com",
-                    "role": "Developer"
-                }
-            ],
-            "description": "Extract colors from an image as a human would do.",
-            "homepage": "https://github.com/thephpleague/color-extractor",
-            "keywords": [
-                "color",
-                "extract",
-                "human",
-                "image",
-                "palette"
-            ],
-            "support": {
-                "issues": "https://github.com/thephpleague/color-extractor/issues",
-                "source": "https://github.com/thephpleague/color-extractor/tree/0.4.0"
-            },
-            "time": "2022-09-24T15:57:16+00:00"
-        },
-        {
             "name": "league/commonmark",
             "version": "2.9.0",
             "source": {
@@ -3922,95 +3861,6 @@
                 "source": "https://github.com/thephpleague/flysystem-local/tree/3.31.0"
             },
             "time": "2026-01-23T15:30:45+00:00"
-        },
-        {
-            "name": "league/html-to-markdown",
-            "version": "5.1.1",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/thephpleague/html-to-markdown.git",
-                "reference": "0b4066eede55c48f38bcee4fb8f0aa85654390fd"
-            },
-            "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/thephpleague/html-to-markdown/zipball/0b4066eede55c48f38bcee4fb8f0aa85654390fd",
-                "reference": "0b4066eede55c48f38bcee4fb8f0aa85654390fd",
-                "shasum": ""
-            },
-            "require": {
-                "ext-dom": "*",
-                "ext-xml": "*",
-                "php": "^7.2.5 || ^8.0"
-            },
-            "require-dev": {
-                "mikehaertl/php-shellcommand": "^1.1.0",
-                "phpstan/phpstan": "^1.8.8",
-                "phpunit/phpunit": "^8.5 || ^9.2",
-                "scrutinizer/ocular": "^1.6",
-                "unleashedtech/php-coding-standard": "^2.7 || ^3.0",
-                "vimeo/psalm": "^4.22 || ^5.0"
-            },
-            "bin": [
-                "bin/html-to-markdown"
-            ],
-            "type": "library",
-            "extra": {
-                "branch-alias": {
-                    "dev-master": "5.2-dev"
-                }
-            },
-            "autoload": {
-                "psr-4": {
-                    "League\\HTMLToMarkdown\\": "src/"
-                }
-            },
-            "notification-url": "https://packagist.org/downloads/",
-            "license": [
-                "MIT"
-            ],
-            "authors": [
-                {
-                    "name": "Colin O'Dell",
-                    "email": "colinodell@gmail.com",
-                    "homepage": "https://www.colinodell.com",
-                    "role": "Lead Developer"
-                },
-                {
-                    "name": "Nick Cernis",
-                    "email": "nick@cern.is",
-                    "homepage": "http://modernnerd.net",
-                    "role": "Original Author"
-                }
-            ],
-            "description": "An HTML-to-markdown conversion helper for PHP",
-            "homepage": "https://github.com/thephpleague/html-to-markdown",
-            "keywords": [
-                "html",
-                "markdown"
-            ],
-            "support": {
-                "issues": "https://github.com/thephpleague/html-to-markdown/issues",
-                "source": "https://github.com/thephpleague/html-to-markdown/tree/5.1.1"
-            },
-            "funding": [
-                {
-                    "url": "https://www.colinodell.com/sponsor",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://www.paypal.me/colinpodell/10.00",
-                    "type": "custom"
-                },
-                {
-                    "url": "https://github.com/colinodell",
-                    "type": "github"
-                },
-                {
-                    "url": "https://tidelift.com/funding/github/packagist/league/html-to-markdown",
-                    "type": "tidelift"
-                }
-            ],
-            "time": "2023-07-12T21:21:09+00:00"
         },
         {
             "name": "league/mime-type-detection",

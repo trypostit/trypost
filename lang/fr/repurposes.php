@@ -13,15 +13,12 @@ return [
     ],
 
     'publish_mode' => [
-
         'title' => 'Publication',
 
         'description' => 'Ce qui se passe quand une nouvelle publication apparaît.',
-
     ],
 
     'publish_modes' => [
-
         'publish' => 'Publier automatiquement',
 
         'publish_hint' => 'Chaque nouvelle publication est programmée dès qu\'elle est trouvée.',
@@ -29,7 +26,6 @@ return [
         'draft' => 'Créer en brouillon',
 
         'draft_hint' => 'Chaque nouvelle publication devient un brouillon à relire et publier ici.',
-
     ],
 
     'formats' => [
@@ -58,8 +54,6 @@ return [
     ],
 
     'table' => [
-        'flow' => 'Flux',
-        'status' => 'Statut',
         'published' => 'Répliquées',
         'last_polled' => 'Dernière vérification',
     ],
@@ -97,7 +91,6 @@ return [
     ],
 
     'destinations' => [
-        'paused_note' => 'Désactivés et ignorés jusqu\'à réactivation : :accounts',
         'title' => 'Destinations',
         'description' => 'Choisissez les comptes qui le reçoivent. Chacun publie dans le format que vous choisissez.',
         'hint' => 'La légende n\'est adaptée par réseau que lorsqu\'elle dépasse la limite de ce réseau.',
@@ -150,9 +143,7 @@ return [
     ],
 
     'menu' => [
-
         'label' => 'Plus d\'actions',
-
     ],
 
     'danger' => [
@@ -175,6 +166,7 @@ return [
         'source_unusable' => 'Reconnectez le compte que cette automatisation surveille avant de la démarrer.',
         'destinations_required' => 'Choisissez au moins une destination avant d\'activer.',
         'destination_needs_video' => 'Ce format n\'accepte pas de vidéo.',
+        'destination_not_supported' => 'Google Business ne peut pas être une destination : ses publications n\'acceptent pas la vidéo.',
         'only_paused_resumes' => 'Seul un repurpose en pause peut être repris.',
         'only_active_pauses' => 'Seul un repurpose actif peut être mis en pause.',
         'only_running_disables' => 'Seul un repurpose en cours peut être désactivé.',

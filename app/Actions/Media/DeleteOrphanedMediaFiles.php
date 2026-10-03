@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use App\Models\Media;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
 class DeleteOrphanedMediaFiles
 {
+    private const int CHUNK_SIZE = 500;
+
     /**
      * Delete storage objects for media paths that no longer have DB rows.
      *
@@ -26,14 +29,18 @@ class DeleteOrphanedMediaFiles
             })
             ->filter()
             ->unique()
-            ->each(function (string $path): void {
-                $stillReferenced = Media::query()
-                    ->where('path', $path)
-                    ->exists();
+            ->values()
+            ->chunk(self::CHUNK_SIZE)
+            ->each(function (Collection $paths): void {
+                $referenced = Media::query()
+                    ->whereIn('path', $paths->all())
+                    ->distinct()
+                    ->pluck('path')
+                    ->flip();
 
-                if (! $stillReferenced) {
-                    Storage::delete($path);
-                }
+                $paths
+                    ->reject(fn (string $path): bool => $referenced->has($path))
+                    ->each(fn (string $path): bool => Storage::delete($path));
             });
     }
 }

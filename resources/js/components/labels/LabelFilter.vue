@@ -1,21 +1,14 @@
 <script setup lang="ts">
-import { IconCheck, IconChevronDown, IconTag, IconX } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
+import { Link } from '@inertiajs/vue3';
+import { IconPlus, IconSettings, IconTag } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import LabelBadge from '@/components/labels/LabelBadge.vue';
+import FilterEmptyState from '@/components/FilterEmptyState.vue';
+import CreateDialog from '@/components/labels/CreateDialog.vue';
+import MultiSelectFilter from '@/components/MultiSelectFilter.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Command,
-    CommandEmpty,
-    CommandGroup,
-    CommandInput,
-    CommandItem,
-    CommandList,
-} from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { Checkbox } from '@/components/ui/checkbox';
+import { index as labelsIndex } from '@/routes/app/labels';
 
 interface Label {
     id: string;
@@ -23,107 +16,153 @@ interface Label {
     color: string;
 }
 
-interface Props {
-    labels: Label[];
-}
-
-const props = defineProps<Props>();
-
+const props = withDefaults(
+    defineProps<{
+        labels: Label[];
+        testId?: string;
+        showUntagged?: boolean;
+        align?: 'start' | 'center' | 'end';
+    }>(),
+    { testId: 'posts-label', showUntagged: true, align: 'end' },
+);
+const emit = defineEmits<{ created: [label: Label] }>();
 const selectedIds = defineModel<string[]>({ required: true });
+const untagged = defineModel<boolean>('untagged', { default: false });
 
-const open = ref(false);
-
-const selectedLabels = computed<Label[]>(() =>
-    props.labels.filter((l) => selectedIds.value.includes(l.id)),
+const options = computed(() =>
+    props.labels.map((label) => ({ id: label.id, label: label.name })),
 );
 
-const isSelected = (id: string) => selectedIds.value.includes(id);
+const labelsById = computed(
+    () => new Map(props.labels.map((label) => [label.id, label])),
+);
 
-const toggle = (id: string) => {
-    selectedIds.value = isSelected(id)
-        ? selectedIds.value.filter((existing) => existing !== id)
-        : [...selectedIds.value, id];
+const labelFor = (id: string): Label => labelsById.value.get(id)!;
+
+const matches = (text: string, search: string): boolean =>
+    text.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase());
+
+const createDialogOpen = ref(false);
+
+const openCreateDialog = (): void => {
+    createDialogOpen.value = true;
 };
 
-const clear = () => {
+const clear = (): void => {
     selectedIds.value = [];
+    untagged.value = false;
 };
 </script>
 
 <template>
-    <Popover v-model:open="open">
-        <PopoverTrigger as-child>
-            <Button
-                type="button"
-                variant="outline"
-                role="combobox"
-                :aria-expanded="open"
-                class="w-full justify-between gap-2 font-normal sm:w-auto"
+    <MultiSelectFilter
+        v-model="selectedIds"
+        :options="options"
+        :label="$t('posts.filter_by_label')"
+        :search-placeholder="$t('posts.label_search_placeholder')"
+        :empty-message="$t('posts.no_labels')"
+        :select-all-label="$t('posts.composer.select_all')"
+        :deselect-all-label="$t('posts.composer.deselect_all')"
+        :test-id="testId"
+        :show-header="false"
+        :extra-count="untagged ? 1 : 0"
+        compact
+        content-class="w-64"
+        checkbox-position="start"
+        :align="align"
+    >
+        <template v-if="$slots.trigger" #trigger="slotProps">
+            <slot name="trigger" v-bind="slotProps" />
+        </template>
+        <template #icon>
+            <IconTag class="size-4" />
+        </template>
+        <template #before-options="{ search }">
+            <div v-if="showUntagged && labels.length > 0" class="pt-2">
+                <label
+                    v-if="matches($t('posts.label_filter_untagged'), search)"
+                    class="flex min-h-8 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm leading-5 transition-control hover:bg-accent"
+                    :class="{ 'bg-accent': untagged }"
+                    :data-testid="`${testId}-untagged`"
+                >
+                    <Checkbox
+                        v-model="untagged"
+                        :data-testid="`${testId}-untagged-checkbox`"
+                    />
+                    <span
+                        class="flex min-w-0 flex-1 items-center gap-2.5 text-foreground"
+                    >
+                        <span
+                            class="size-2.5 shrink-0 rounded-full border border-dashed border-muted-foreground"
+                            aria-hidden="true"
+                        />
+                        <span class="truncate">{{
+                            $t('posts.label_filter_untagged')
+                        }}</span>
+                    </span>
+                </label>
+            </div>
+        </template>
+        <template #option="{ option }">
+            <span
+                class="flex min-w-0 items-center gap-2.5 text-sm leading-5 text-foreground"
             >
-                <div class="flex min-w-0 items-center gap-2">
-                    <IconTag class="size-4 shrink-0 opacity-60" />
-
-                    <template v-if="selectedLabels.length === 0">
-                        <span class="text-foreground/70">{{ trans('posts.filter_by_label') }}</span>
-                    </template>
-                    <template v-else>
-                        <div class="flex flex-wrap items-center gap-1">
-                            <LabelBadge
-                                v-for="label in selectedLabels.slice(0, 3)"
-                                :key="label.id"
-                                :label="label"
-                            />
-                            <span
-                                v-if="selectedLabels.length > 3"
-                                class="text-xs font-bold text-foreground/60"
-                            >+{{ selectedLabels.length - 3 }}</span>
-                        </div>
-                    </template>
-                </div>
-
-                <TooltipProvider v-if="selectedIds.length" :delay-duration="200">
-                    <Tooltip>
-                        <TooltipTrigger as-child>
-                            <button
-                                type="button"
-                                class="ml-1 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center rounded text-foreground/60 hover:text-foreground"
-                                :aria-label="trans('posts.clear_label_filter')"
-                                @click.stop="clear"
-                                @pointerdown.stop
-                                @mousedown.stop
-                            >
-                                <IconX class="size-4" />
-                            </button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            {{ trans('posts.clear_label_filter') }}
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-                <IconChevronDown v-else class="size-4 shrink-0 opacity-50" />
-            </Button>
-        </PopoverTrigger>
-
-        <PopoverContent class="w-(--reka-popover-trigger-width) min-w-[220px] p-0" align="start">
-            <Command>
-                <CommandInput :placeholder="trans('posts.label_search_placeholder')" />
-                <CommandList>
-                    <CommandEmpty>{{ trans('posts.no_labels') }}</CommandEmpty>
-                    <CommandGroup>
-                        <CommandItem
-                            v-for="label in labels"
-                            :key="label.id"
-                            :value="label.name"
-                            @select="toggle(label.id)"
-                        >
-                            <LabelBadge :label="label" />
-                            <IconCheck
-                                :class="cn('ml-auto size-4', isSelected(label.id) ? 'opacity-100' : 'opacity-0')"
-                            />
-                        </CommandItem>
-                    </CommandGroup>
-                </CommandList>
-            </Command>
-        </PopoverContent>
-    </Popover>
+                <span
+                    class="size-2.5 shrink-0 rounded-full"
+                    :style="{ backgroundColor: labelFor(option.id).color }"
+                    aria-hidden="true"
+                />
+                <span class="truncate">{{ labelFor(option.id).name }}</span>
+            </span>
+        </template>
+        <template v-if="labels.length === 0" #empty>
+            <FilterEmptyState
+                :icon="IconTag"
+                :title="$t('posts.no_labels')"
+                :test-id="`${testId}-empty`"
+            >
+                <Button
+                    type="button"
+                    size="sm"
+                    :data-testid="`${testId}-create`"
+                    @click="openCreateDialog"
+                >
+                    <IconPlus class="size-4" />
+                    {{ $t('labels.create.submit') }}
+                </Button>
+            </FilterEmptyState>
+        </template>
+        <template v-if="labels.length > 0" #footer>
+            <div
+                class="-mx-3 mt-2 flex items-center justify-between border-t border-border px-3 pt-2"
+            >
+                <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    :data-testid="`${testId}-clear`"
+                    @click="clear"
+                >
+                    {{ $t('posts.label_filter_clear') }}
+                </Button>
+                <Button
+                    as-child
+                    variant="ghost"
+                    size="icon-sm"
+                    :aria-label="$t('posts.label_filter_manage')"
+                >
+                    <Link
+                        :href="labelsIndex.url()"
+                        :data-testid="`${testId}-settings`"
+                    >
+                        <IconSettings class="size-4" aria-hidden="true" />
+                    </Link>
+                </Button>
+            </div>
+        </template>
+    </MultiSelectFilter>
+    <CreateDialog
+        v-model:open="createDialogOpen"
+        @created="emit('created', $event)"
+    />
 </template>

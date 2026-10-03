@@ -7,7 +7,6 @@ namespace App\Models\Traits;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Post;
-use App\Support\BillingCycle;
 use Illuminate\Support\Facades\Cache;
 
 trait HasUsage
@@ -15,7 +14,7 @@ trait HasUsage
     private const POST_COUNT_CACHE_TTL = 300;
 
     /**
-     * @return array{workspaceCount: int, socialAccountCount: int, memberCount: int, pendingInviteCount: int, postCount: int, creditsUsed: int}
+     * @return array{workspaceCount: int, socialAccountCount: int, memberCount: int, pendingInviteCount: int, postCount: int}
      */
     public function usage(): array
     {
@@ -31,7 +30,6 @@ trait HasUsage
                 ->whereNull('accepted_at')
                 ->count(),
             'postCount' => $this->cachedPostCount($workspaces->pluck('id')->all()),
-            'creditsUsed' => BillingCycle::for($this)->usedCredits(),
         ];
     }
 
@@ -58,7 +56,7 @@ trait HasUsage
         return (int) Cache::remember(
             Account::postsCountCacheKey((string) $this->id),
             self::POST_COUNT_CACHE_TTL,
-            fn () => Post::whereIn('workspace_id', $workspaceIds)->count(),
+            fn () => Post::query()->createdInTryPost()->whereIn('workspace_id', $workspaceIds)->count(),
         );
     }
 }

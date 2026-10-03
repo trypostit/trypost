@@ -46,8 +46,8 @@ return [
             'networks_all_tooltip' => 'You can post to every one of these.',
             'accounts_unlimited' => 'Unlimited social accounts',
             'accounts_unlimited_tooltip' => 'Connect as many accounts as you want, even several from the same network. Three Instagrams, for example.',
-            'calendar' => 'Calendar: month, week, and day views',
-            'calendar_tooltip' => 'See your whole month at a glance: what\'s planned, scheduled, and already published. Switch to week or day when you need the detail.',
+            'calendar' => 'Calendar: month and week views',
+            'calendar_tooltip' => 'See your whole month at a glance: what\'s planned, scheduled, and already published. Switch to week when you need the detail.',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => 'Your AI assistant for writing and reviewing posts.',
             'mcp' => 'MCP: post from Claude, ChatGPT, or Grok',
@@ -79,6 +79,7 @@ return [
         'title' => 'Invoices',
         'description' => 'Download your past invoices.',
         'paid' => 'Paid',
+        'download' => 'Download invoice',
     ],
 
     'flash' => [

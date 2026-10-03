@@ -34,13 +34,6 @@ return [
         'ignore' => 'アカウントを作成していない場合は、このメールを無視してください。',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name さんが TryPost であなたにメンションしました',
-        'title' => ':name さんがあなたにメンションしました',
-        'intro' => ':name さんが投稿のコメントであなたにメンションしました。',
-        'button' => 'コメントを表示',
-    ],
-
     'password_reset' => [
         'subject' => 'パスワードを再設定してください',
         'preview' => 'パスワードを再設定してください。',
@@ -55,9 +48,55 @@ return [
         'title' => '投稿が公開できない可能性があります',
         'heading' => '投稿が公開できない可能性があります',
         'intro' => '予約済みの投稿を公開するには、ワークスペース :workspace の次のアカウントを再接続する必要があります。',
-        'posts_label' => '{1} :count 件の予約投稿: :times UTC|[0,*] :count 件の予約投稿: :times UTC',
+        'posts_label' => '{1} :count 件の予約投稿: :times (:timezone)|[0,*] :count 件の予約投稿: :times (:timezone)',
         'reconnect_cta' => '予約投稿を逃さないよう、今すぐこれらのアカウントを再接続してください。',
         'button' => 'アカウントを再接続',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author さんが投稿にメモを追加しました',
+        'title' => ':author さんからの新しいメモ',
+        'heading' => '投稿への新しいメモ',
+        'body' => ':author さんがワークスペース :workspace の投稿にメモを追加しました。',
+        'post_title' => '投稿',
+        'post_without_text' => 'この投稿にはまだテキストがありません。',
+        'button' => 'メモを見る',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':nameさんが投稿の承認を依頼しました',
+        'title' => '承認が必要な投稿があります',
+        'preview' => ':nameさんが:workspaceで承認を依頼しました。',
+        'heading' => '承認が必要な投稿があります',
+        'body' => ':nameさん（:email）がワークスペース「:workspace」で承認を依頼しました。',
+        'channels' => 'チャンネル',
+        'requested_time' => '希望時刻',
+        'next_queue_slot' => 'キューの次の枠',
+        'as_soon_as_approved' => '承認されしだい',
+        'post_without_text' => 'この投稿にはまだテキストがありません。',
+        'button' => '承認待ちの投稿を見る',
+    ],
+
+    'post_approved' => [
+        'subject' => ':nameさんがあなたの投稿を承認しました',
+        'title' => '投稿が承認されました',
+        'preview' => ':nameさんが:workspaceであなたの投稿を承認しました。',
+        'heading' => '投稿が承認されました',
+        'body' => ':nameさんがワークスペース「:workspace」であなたの投稿を承認しました。',
+        'channels' => 'チャンネル',
+        'goes_out' => '公開予定',
+        'channel_time' => ':channel：:time',
+        'publishing_now' => '今すぐ公開中',
+        'button' => 'キューで見る',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':nameさんがあなたの投稿を承認しませんでした',
+        'title' => '投稿は承認されませんでした',
+        'preview' => ':nameさんがあなたの投稿を下書きに戻しました。',
+        'heading' => '投稿は承認されませんでした',
+        'body' => ':nameさんがワークスペース「:workspace」のあなたの投稿を下書きに戻しました。',
+        'channels' => 'チャンネル',
+        'button' => '下書きで見る',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => '招待が届いています',
         'intro' => 'ワークスペース <strong>:account</strong> での共同作業に招待されました。',
         'role' => '<strong>:role</strong> として招待されました。',
+        'roles' => ['admin' => '管理者', 'member' => 'メンバー', 'needs_approval' => 'メンバー（投稿は承認が必要）'],
         'button' => '招待を承認',
         'expiry' => 'この招待は 7 日間有効です。',
     ],

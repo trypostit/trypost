@@ -119,7 +119,7 @@ class ThreadsController extends SocialController
             $avatarPath = uploadFromUrl(data_get($profile, 'threads_profile_picture_url', null));
             $reconnect = $this->reconnectAccount($workspace);
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 (string) data_get($profile, 'id'),
@@ -138,7 +138,7 @@ class ThreadsController extends SocialController
                 $reconnect,
             );
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {

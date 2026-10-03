@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Http\Middleware\App\EnsureCanAuthorizeMcp;
 use App\Models\Account;
 use App\Models\User;
@@ -129,37 +128,37 @@ test('dynamic oauth registration accepts extra custom schemes from config', func
     ])->assertCreated();
 });
 
-test('mcp oauth consent page is available for workspace viewers', function () {
+test('mcp oauth consent page is available for members who need approval', function () {
     $account = Account::factory()->create();
     $owner = User::factory()->create(['account_id' => $account->id]);
     $account->update(['owner_id' => $owner->id]);
     $workspace = Workspace::factory()->create([
         'account_id' => $account->id,
         'user_id' => $owner->id,
-        'name' => 'Viewer Workspace',
+        'name' => 'Requester Workspace',
     ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
-    $viewer = User::factory()->create(['account_id' => $account->id]);
-    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $workspace->id]);
+    $requester = User::factory()->create(['account_id' => $account->id]);
+    $workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $workspace->id]);
 
-    $clientId = mcpOauthClient('Viewer Agent');
+    $clientId = mcpOauthClient('Requester Agent');
     DB::table('oauth_clients')->where('id', $clientId)->update([
         'redirect_uris' => json_encode(['https://client.example/callback']),
     ]);
 
-    $this->actingAs($viewer)
+    $this->actingAs($requester)
         ->get(route('passport.authorizations.authorize', oauthAuthorizeQuery($clientId)))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('mcp/Authorize')
-            ->where('client.name', 'Viewer Agent')
-            ->where('user.email', $viewer->email)
+            ->where('client.name', 'Requester Agent')
+            ->where('user.email', $requester->email)
             ->where('selectedWorkspaceId', (string) $workspace->id)
             ->has('workspaces', 1)
             ->where('workspaces.0.id', (string) $workspace->id)
-            ->where('workspaces.0.name', 'Viewer Workspace')
+            ->where('workspaces.0.name', 'Requester Workspace')
             ->has('scopes', 1)
             ->where('scopes.0.id', 'mcp:use')
             ->has('authToken')
@@ -194,8 +193,8 @@ test('mcp oauth consent page lists every workspace the user can access', functio
         'user_id' => $user->id,
         'name' => 'Beta',
     ]);
-    $alpha->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $beta->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $alpha->members()->attach($user->id, membershipPivot('admin'));
+    $beta->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $alpha->id]);
 
     $clientId = mcpOauthClient('Claude');
@@ -224,7 +223,7 @@ test('mcp oauth always shows consent even when scopes were previously granted', 
         'account_id' => $account->id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $clientId = mcpOauthClient('Reconnect Agent');

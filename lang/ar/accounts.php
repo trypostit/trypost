@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => 'الاتصالات',
-    'page_title' => 'الحسابات الاجتماعية',
-    'description' => 'نظرة عامة على جميع حساباتك الاجتماعية المتصلة',
-    'connect_cta' => 'ربط',
-    'connect_another' => 'ربط حساب آخر',
-    'actions' => 'إجراءات الحساب',
-    'activate' => 'تشغيل',
-    'deactivate' => 'إيقاف',
-    'active' => 'نشط',
-    'paused' => 'متوقف',
-    'accounts_count' => ':count حساب|:count حسابات',
-
-    'variants' => [
-        'linkedin-page' => 'صفحة',
-        'instagram-facebook' => 'عبر Facebook',
-    ],
-
-    'not_connected' => 'غير متصل',
-    'connect' => 'ربط',
-    'connection_lost' => 'انقطع الاتصال',
-    'reconnect' => 'إعادة الربط',
-    'reconnect_account' => 'إعادة ربط الحساب',
-    'view_profile' => 'عرض الملف الشخصي',
-    'disconnect' => 'فصل',
-
-    'descriptions' => [
-        'linkedin' => 'اربط ملفك الشخصي أو صفحة شركتك على LinkedIn',
-        'linkedin-page' => 'اربط صفحة شركة على LinkedIn',
-        'x' => 'اربط حسابك على X (Twitter)',
-        'tiktok' => 'اربط حسابك على TikTok',
-        'youtube' => 'اربط قناة على YouTube',
-        'facebook' => 'اربط صفحة على Facebook',
-        'instagram' => 'اربط عبر Instagram Login أو صفحات Facebook',
-        'instagram-facebook' => 'اربط Instagram عبر صفحة Facebook',
-        'threads' => 'اربط حسابك على Threads',
-        'pinterest' => 'اربط حسابك على Pinterest',
-        'bluesky' => 'اربط حسابك على Bluesky',
-        'mastodon' => 'اربط حسابك على Mastodon',
-        'telegram' => 'اربط قناة أو مجموعة على Telegram',
-        'discord' => 'اربط خادم Discord',
-        'google_business' => 'اربط موقع Google Business Profile',
-    ],
-
-    'disconnect_modal' => [
-        'title' => 'فصل الحساب',
-        'description' => 'هل أنت متأكد من رغبتك في فصل هذا الحساب؟ يمكنك إعادة ربطه في أي وقت.',
-        'confirm' => 'فصل',
-        'cancel' => 'إلغاء',
-    ],
-
     'bluesky' => [
         'title' => 'ربط Bluesky',
         'description' => 'أدخل بيانات اعتمادك للربط',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'ربط Telegram',
         'description' => 'اربط قناة أو مجموعة',
+        'steps' => 'الخطوات',
         'step_admin' => 'أضِف :bot كمشرف على قناتك أو مجموعتك على Telegram.',
+        'open_bot' => 'افتح في Telegram',
         'step_command' => 'انشر هذا الأمر في القناة أو المجموعة:',
         'waiting' => 'في انتظار اتصال القناة…',
-        'connected' => 'تم اتصال القناة!',
-        'connected_toast' => 'تم ربط قناة Telegram بنجاح!',
-        'copied_toast' => 'تم نسخ الأمر إلى الحافظة',
-        'copy_tooltip' => 'نسخ الأمر',
-        'expired' => 'انتهت صلاحية هذا الرمز. أنشئ رمزًا جديدًا للمحاولة مرة أخرى.',
-        'new_code' => 'إنشاء رمز جديد',
-        'retry' => 'إعادة المحاولة',
+        'copy_command' => 'نسخ الأمر',
+        'expired' => 'انتهت صلاحية هذا الأمر. أنشئ أمرًا جديدًا للمحاولة مرة أخرى.',
+        'new_command' => 'إنشاء أمر جديد',
         'error_generic' => 'تعذر بدء الاتصال. يرجى المحاولة مرة أخرى.',
         'network_taken' => 'تحتوي مساحة العمل هذه بالفعل على قناة Telegram متصلة. افصلها أولًا.',
         'wrong_chat' => 'انشر الأمر في القناة التي تعيد ربطها.',
         'busy' => 'لا يزال هناك اتصال آخر قيد الإنهاء. أعد إرسال الأمر بعد لحظات.',
+        'help' => [
+            'channel_admins' => 'إضافة مشرفين إلى قناة',
+            'group_admins' => 'إضافة مشرفين إلى مجموعة',
+            'bot_privacy' => 'ما الذي يمكن للبوتات قراءته في المجموعات',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'ربط Instagram',
-        'description' => 'اختر طريقة ربط حساب Instagram',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'سجّل الدخول بحساب Instagram الاحترافي',
-        'facebook_title' => 'صفحات Facebook',
-        'facebook_description' => 'اربط حساب Instagram مرتبطًا بصفحة Facebook',
+        'title' => 'كيف تريد ربط حسابك على Instagram؟',
+        'description' => 'تعتمد الميزات على نوع حسابك على Instagram وطريقة الربط التي تختارها.',
+        'professional_title' => 'احترافي',
+        'professional_types' => '(نشاط تجاري وصانع محتوى)',
+        'badge' => 'نشر تلقائي',
+        'features' => [
+            'automatic' => [
+                'title' => 'النشر التلقائي',
+                'description' => 'أنت تجدول ونحن ننشر',
+            ],
+            'metrics' => [
+                'title' => 'مقاييس المنشورات المرسلة',
+                'description' => 'اطّلع على أداء المنشورات السابقة',
+            ],
+        ],
+        'connect' => 'الربط مع Instagram',
+        'convert_hint' => 'سيطلب منك Instagram التحويل بسهولة إلى حساب احترافي عند الحاجة.',
+        'facebook_link' => 'اربط Instagram عبر Facebook',
+        'facebook_suffix' => 'إذا كان حسابك على Instagram مرتبطًا حاليًا بـ Facebook.',
+        'help' => [
+            'account_type' => 'معرفة نوع حسابك على Instagram',
+            'convert' => 'تحويل حسابك على Instagram إلى حساب احترافي',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'اربط Instagram عبر Facebook',
+        'subtitle' => 'إليك ما تحتاج إلى معرفته 👇',
+        'heading' => 'المتطلبات',
+        'items' => [
+            'account_type' => [
+                'lead' => 'حساب نشاط تجاري أو صانع محتوى',
+                'rest' => 'على Instagram، وليس ملفًا شخصيًا.',
+            ],
+            'page' => [
+                'lead' => 'مرتبط بصفحة على Facebook',
+                'rest' => '، وليس بملف شخصي على Facebook. هل تحتاج إلى ربط Instagram بـ Facebook على Meta؟',
+            ],
+            'admin' => [
+                'lead' => 'تسجيل الدخول كمسؤول عن صفحة Facebook',
+                'rest' => 'مع «التحكم الكامل».',
+            ],
+            'permissions' => [
+                'lead' => 'تحديد جميع الأذونات لجميع الصفحات وحسابات Instagram',
+                'rest' => 'عند الربط، حتى التي لن تربطها بـ TryPost.',
+            ],
+        ],
+        'learn_how' => 'تعرّف على الطريقة.',
+        'note' => 'لن يعمل الربط إذا لم يتحقق أي من هذه المتطلبات.',
+        'connect' => 'الربط عبر Facebook',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => 'تم تفعيل الحساب. تم استئناف :count أتمتة.|تم تفعيل الحساب. تم استئناف :count أتمتة.',
         'disconnected_paused_repurposes' => 'تم فصل الحساب. تم إيقاف :count أتمتة مؤقتًا.|تم فصل الحساب. تم إيقاف :count أتمتة مؤقتًا.',
-        'deactivated_paused_repurposes' => 'تم إيقاف الحساب. تم إيقاف :count أتمتة مؤقتًا.|تم إيقاف الحساب. تم إيقاف :count أتمتة مؤقتًا.',
         'disconnected' => 'تم فصل الحساب بنجاح!',
-        'connected' => 'تم ربط الحساب بنجاح!',
         'session_expired' => 'انتهت الجلسة. يرجى المحاولة مرة أخرى.',
         'workspace_not_found' => 'لم يتم العثور على مساحة العمل.',
-        'activated' => 'تم تفعيل الحساب!',
-        'deactivated' => 'تم إلغاء تفعيل الحساب!',
         'already_connected' => 'هذه المنصة متصلة بالفعل.',
         'no_youtube_channels' => 'لم يتم العثور على قنوات YouTube. يرجى إنشاء قناة أولًا.',
     ],
 
     'popup_callback' => [
-        'title_success' => 'تم الاتصال',
         'title_error' => 'خطأ',
         'closing' => 'ستُغلق هذه النافذة تلقائيًا...',
         'manual_close' => 'يمكنك إغلاق هذه النافذة.',
         'popup_blocked' => 'تعذر فتح نافذة الاتصال. يرجى السماح بالنوافذ المنبثقة والمحاولة مرة أخرى.',
-        'connected' => 'تم ربط الحساب!',
-        'reconnected' => 'تمت إعادة ربط الحساب!',
         'error_connecting' => 'خطأ في ربط الحساب. يرجى المحاولة مرة أخرى.',
         'network_taken' => 'تحتوي مساحة العمل هذه بالفعل على حساب لهذه الشبكة. افصله أولًا.',
         'wrong_account' => 'هذا حساب مختلف. صرّح بالحساب الذي تعيد ربطه.',

@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\User\DefaultPostAction;
 use App\Enums\User\Locale;
+use App\Enums\User\Theme;
+use App\Enums\User\TimeFormat;
+use App\Enums\User\WeekStart;
 use App\Models\Account;
 use App\Models\User;
+use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -49,6 +54,11 @@ class UserFactory extends Factory
             'registration_ip' => null,
             'persona' => null,
             'locale' => Locale::DEFAULT,
+            'timezone' => Timezone::DEFAULT,
+            'theme' => Theme::DEFAULT,
+            'time_format' => TimeFormat::DEFAULT,
+            'week_starts_on' => WeekStart::DEFAULT,
+            'default_post_action' => DefaultPostAction::DEFAULT,
         ];
     }
 
@@ -59,6 +69,26 @@ class UserFactory extends Factory
                 $user->account->update(['owner_id' => $user->id]);
             }
         });
+    }
+
+    public function theme(Theme $theme): static
+    {
+        return $this->state(fn (array $attributes) => ['theme' => $theme]);
+    }
+
+    public function timeFormat(TimeFormat $timeFormat): static
+    {
+        return $this->state(fn (array $attributes) => ['time_format' => $timeFormat]);
+    }
+
+    public function weekStartsOn(WeekStart $weekStart): static
+    {
+        return $this->state(fn (array $attributes) => ['week_starts_on' => $weekStart]);
+    }
+
+    public function defaultPostAction(DefaultPostAction $action): static
+    {
+        return $this->state(fn (array $attributes) => ['default_post_action' => $action]);
     }
 
     /**

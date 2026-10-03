@@ -34,13 +34,6 @@ return [
         'ignore' => 'Si no creaste una cuenta, puedes ignorar este correo sin problema.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name te mencionó en TryPost',
-        'title' => ':name te mencionó',
-        'intro' => ':name te mencionó en un comentario.',
-        'button' => 'Ver comentario',
-    ],
-
     'password_reset' => [
         'subject' => 'Restablece tu contraseña',
         'preview' => 'Restablece tu contraseña.',
@@ -55,9 +48,55 @@ return [
         'title' => 'Tus publicaciones podrían fallar',
         'heading' => 'Tus publicaciones podrían fallar',
         'intro' => 'Las siguientes cuentas del espacio de trabajo :workspace necesitan reconectarse antes de que estas publicaciones programadas puedan salir:',
-        'posts_label' => '{1} :count publicación programada: :times UTC|[0,*] :count publicaciones programadas: :times UTC',
+        'posts_label' => '{1} :count publicación programada: :times (:timezone)|[0,*] :count publicaciones programadas: :times (:timezone)',
         'reconnect_cta' => 'Reconecta estas cuentas ahora para no perder tus publicaciones programadas.',
         'button' => 'Reconectar cuentas',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author añadió una nota a una publicación',
+        'title' => 'Nueva nota de :author',
+        'heading' => 'Nueva nota en una publicación',
+        'body' => ':author añadió una nota a una publicación en el espacio de trabajo :workspace.',
+        'post_title' => 'Publicación',
+        'post_without_text' => 'Esta publicación aún no tiene texto.',
+        'button' => 'Ver nota',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name te pidió aprobar una publicación',
+        'title' => 'Una publicación necesita tu aprobación',
+        'preview' => ':name pidió aprobación en :workspace.',
+        'heading' => 'Una publicación necesita tu aprobación',
+        'body' => ':name (:email) pidió aprobación en el workspace :workspace.',
+        'channels' => 'Canales',
+        'requested_time' => 'Hora solicitada',
+        'next_queue_slot' => 'Próximo hueco de la cola',
+        'as_soon_as_approved' => 'En cuanto se apruebe',
+        'post_without_text' => 'Esta publicación aún no tiene texto.',
+        'button' => 'Ver publicaciones pendientes de aprobación',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name aprobó tu publicación',
+        'title' => 'Tu publicación fue aprobada',
+        'preview' => ':name aprobó tu publicación en :workspace.',
+        'heading' => 'Tu publicación fue aprobada',
+        'body' => ':name aprobó tu publicación en el workspace :workspace.',
+        'channels' => 'Canales',
+        'goes_out' => 'Se publicará',
+        'channel_time' => ':channel: :time',
+        'publishing_now' => 'Publicando ahora',
+        'button' => 'Ver en la cola',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name no aprobó tu publicación',
+        'title' => 'Tu publicación no fue aprobada',
+        'preview' => ':name devolvió tu publicación a borradores.',
+        'heading' => 'Tu publicación no fue aprobada',
+        'body' => ':name devolvió tu publicación del workspace :workspace a borradores.',
+        'channels' => 'Canales',
+        'button' => 'Ver en borradores',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => '¡Te han invitado!',
         'intro' => 'Te han invitado a colaborar en el espacio de trabajo <strong>:account</strong>.',
         'role' => 'Te han invitado como <strong>:role</strong>.',
+        'roles' => ['admin' => 'Administrador', 'member' => 'Miembro', 'needs_approval' => 'Miembro (sus publicaciones necesitan aprobación)'],
         'button' => 'Aceptar invitación',
         'expiry' => 'Esta invitación caduca en 7 días.',
     ],

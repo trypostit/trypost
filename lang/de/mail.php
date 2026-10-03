@@ -34,13 +34,6 @@ return [
         'ignore' => 'Wenn du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => ':name hat dich auf TryPost erwähnt',
-        'title' => ':name hat dich erwähnt',
-        'intro' => ':name hat dich in einem Beitragskommentar erwähnt.',
-        'button' => 'Kommentar ansehen',
-    ],
-
     'password_reset' => [
         'subject' => 'Setze dein Passwort zurück',
         'preview' => 'Setze dein Passwort zurück.',
@@ -55,9 +48,55 @@ return [
         'title' => 'Beiträge könnten fehlschlagen',
         'heading' => 'Beiträge könnten fehlschlagen',
         'intro' => 'Die folgenden Konten im Workspace :workspace müssen neu verbunden werden, damit diese geplanten Beiträge veröffentlicht werden können:',
-        'posts_label' => '{1} :count Beitrag geplant: :times UTC|[0,*] :count Beiträge geplant: :times UTC',
+        'posts_label' => '{1} :count Beitrag geplant: :times (:timezone)|[0,*] :count Beiträge geplant: :times (:timezone)',
         'reconnect_cta' => 'Verbinde diese Konten jetzt neu, damit deine geplanten Beiträge nicht ausfallen.',
         'button' => 'Konten neu verbinden',
+    ],
+
+    'post_note_added' => [
+        'subject' => ':author hat eine Notiz zu einem Beitrag hinzugefügt',
+        'title' => 'Neue Notiz von :author',
+        'heading' => 'Neue Notiz zu einem Beitrag',
+        'body' => ':author hat im Workspace :workspace eine Notiz zu einem Beitrag hinzugefügt.',
+        'post_title' => 'Beitrag',
+        'post_without_text' => 'Dieser Beitrag hat noch keinen Text.',
+        'button' => 'Notiz ansehen',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name bittet dich um Freigabe eines Beitrags',
+        'title' => 'Ein Beitrag braucht deine Freigabe',
+        'preview' => ':name bittet in :workspace um Freigabe.',
+        'heading' => 'Ein Beitrag braucht deine Freigabe',
+        'body' => ':name (:email) bittet im Workspace :workspace um Freigabe.',
+        'channels' => 'Kanäle',
+        'requested_time' => 'Gewünschter Zeitpunkt',
+        'next_queue_slot' => 'Nächster Platz in der Warteschlange',
+        'as_soon_as_approved' => 'Sobald er freigegeben ist',
+        'post_without_text' => 'Dieser Beitrag hat noch keinen Text.',
+        'button' => 'Beiträge zur Freigabe ansehen',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name hat deinen Beitrag freigegeben',
+        'title' => 'Dein Beitrag wurde freigegeben',
+        'preview' => ':name hat deinen Beitrag in :workspace freigegeben.',
+        'heading' => 'Dein Beitrag wurde freigegeben',
+        'body' => ':name hat deinen Beitrag im Workspace :workspace freigegeben.',
+        'channels' => 'Kanäle',
+        'goes_out' => 'Wird veröffentlicht',
+        'channel_time' => ':channel: :time',
+        'publishing_now' => 'Wird jetzt veröffentlicht',
+        'button' => 'In der Warteschlange ansehen',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name hat deinen Beitrag nicht freigegeben',
+        'title' => 'Dein Beitrag wurde nicht freigegeben',
+        'preview' => ':name hat deinen Beitrag zurück in die Entwürfe verschoben.',
+        'heading' => 'Dein Beitrag wurde nicht freigegeben',
+        'body' => ':name hat deinen Beitrag im Workspace :workspace zurück in die Entwürfe verschoben.',
+        'channels' => 'Kanäle',
+        'button' => 'In den Entwürfen ansehen',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => 'Du wurdest eingeladen!',
         'intro' => 'Du wurdest eingeladen, im Workspace <strong>:account</strong> mitzuarbeiten.',
         'role' => 'Du wurdest als <strong>:role</strong> eingeladen.',
+        'roles' => ['admin' => 'Admin', 'member' => 'Mitglied', 'needs_approval' => 'Mitglied (Beiträge brauchen Freigabe)'],
         'button' => 'Einladung annehmen',
         'expiry' => 'Diese Einladung läuft in 7 Tagen ab.',
     ],

@@ -1,7 +1,9 @@
 import { usePage } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, inject, type InjectionKey, type Ref } from 'vue';
 
 import { contentForPlatform } from '@/lib/defuseXLinks';
+
+export const xLinkTldsKey: InjectionKey<Ref<string[]>> = Symbol('xLinkTlds');
 
 /**
  * X publishes links defused (`acme(.)com`), so the editor has to count characters
@@ -15,9 +17,15 @@ import { contentForPlatform } from '@/lib/defuseXLinks';
  */
 export const useXLinkDefuser = () => {
     const page = usePage();
+    const providedTlds = inject(xLinkTldsKey, null);
 
     const tlds = computed<ReadonlySet<string>>(
-        () => new Set((page.props.xLinkTlds as string[] | undefined) ?? []),
+        () =>
+            new Set(
+                providedTlds?.value ??
+                    (page.props.xLinkTlds as string[] | undefined) ??
+                    [],
+            ),
     );
 
     const contentFor = (content: string, platform: string): string =>

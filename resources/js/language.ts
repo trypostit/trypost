@@ -19,6 +19,10 @@ const chosen = ref<string | null>(null);
  */
 export const activeLocale = ref('en');
 
+export const textDirection = ref<'ltr' | 'rtl'>(
+    document.documentElement.dir === 'rtl' ? 'rtl' : 'ltr',
+);
+
 export const guestLocale = (): string | null => chosen.value;
 
 /**
@@ -31,6 +35,7 @@ const align = (locale: string, direction?: string): void => {
 
     if (direction) {
         document.documentElement.dir = direction;
+        textDirection.value = direction === 'rtl' ? 'rtl' : 'ltr';
     }
 };
 

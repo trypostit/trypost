@@ -59,7 +59,6 @@ class WelcomeSummaryResource
 
         return $workspace->socialAccounts()
             ->where('status', Status::Connected)
-            ->orderBy('id')
             ->get()
             ->map(fn (SocialAccount $account): array => [
                 'id' => $account->id,

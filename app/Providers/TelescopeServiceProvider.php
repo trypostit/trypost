@@ -19,6 +19,9 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     {
         // Telescope::night();
 
+        Telescope::hideRequestParameters(['access_token', 'refresh_token', 'code', 'code_verifier', 'client_secret']);
+        Telescope::hideResponseParameters(['access_token', 'refresh_token']);
+
         $this->hideSensitiveRequestDetails();
 
         $isLocal = $this->app->environment('local');

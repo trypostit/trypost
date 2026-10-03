@@ -21,6 +21,10 @@ const DEFAULT_RULES: MediaRules = {
     requiresMedia: false,
     acceptsGif: false,
     acceptsMov: true,
+    cropPresets: [],
+    supportsAltText: false,
+    supportsUserTags: false,
+    supportsVideoCover: false,
 };
 
 export const getMediaRulesForContentType = (contentType: string): MediaRules => {

@@ -8,6 +8,8 @@ use App\Enums\Media\Type;
 use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\HeicConverter;
+use App\Support\Media\ImageDimensions;
 use App\Support\VideoDurationProbe;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Http\UploadedFile;
@@ -15,11 +17,13 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
 use Intervention\Image\ImageManager;
 use InvalidArgumentException;
 use RuntimeException;
+use Throwable;
 
 trait HasMedia
 {
@@ -31,7 +35,6 @@ trait HasMedia
     protected static array $mediaCollections = [
         Workspace::class => [
             'logo' => 'single',
-            'assets' => 'multiple',
         ],
         User::class => [
             'avatar' => 'single',
@@ -101,11 +104,11 @@ trait HasMedia
             'collection' => $collection,
             'type' => $type,
             'path' => $path,
-            'original_filename' => $this->sanitizeOriginalFilename($file->getClientOriginalName()),
+            'original_filename' => $this->sanitizeOriginalFilename(HeicConverter::convertedFilename($file->getClientOriginalName(), $mimeType)),
             'mime_type' => $normalizedMime,
             'size' => strlen($normalizedBytes),
             'order' => 0,
-            'meta' => [...$this->imageDimensions($normalizedBytes, $type), ...$meta],
+            'meta' => [...$meta, ...$this->imageDimensions($normalizedBytes, $type)],
         ]);
     }
 
@@ -141,7 +144,7 @@ trait HasMedia
             'collection' => $collection,
             'type' => $type,
             'path' => $stored['path'],
-            'original_filename' => $this->sanitizeOriginalFilename($originalFilename),
+            'original_filename' => $this->sanitizeOriginalFilename(HeicConverter::convertedFilename($originalFilename, $mimeType)),
             'mime_type' => $stored['mime_type'],
             'size' => $stored['size'],
             'order' => 0,
@@ -215,7 +218,7 @@ trait HasMedia
             'path' => $path,
             'mime_type' => $storedMime,
             'size' => strlen($bytes),
-            'meta' => [...$this->imageDimensions($bytes, $type), ...$meta],
+            'meta' => [...$meta, ...$this->imageDimensions($bytes, $type)],
         ];
     }
 
@@ -277,16 +280,15 @@ trait HasMedia
     }
 
     /**
-     * Pixel width / height of raw image bytes (read after format normalization,
-     * when the original file path is gone); nothing for other types.
+     * Pixel width / height of raw image bytes as displayed (EXIF orientation
+     * applied), read after format normalization, when the original file path is
+     * gone; nothing for other types.
      *
      * @return array<string, int>
      */
     private function imageDimensions(string $bytes, Type $type): array
     {
-        $info = $type === Type::Image ? @getimagesizefromstring($bytes) : false;
-
-        return $info ? ['width' => $info[0], 'height' => $info[1]] : [];
+        return $type === Type::Image ? (ImageDimensions::fromBytes($bytes) ?? []) : [];
     }
 
     /**
@@ -301,6 +303,14 @@ trait HasMedia
             return [file_get_contents($filePath), $mimeType, $originalExtension];
         }
 
+        if (HeicConverter::isSequenceMime($mimeType)) {
+            throw ValidationException::withMessages(['media' => __('posts.composer.upload_errors.heic_invalid')]);
+        }
+
+        if (HeicConverter::isHeicMime($mimeType)) {
+            return $this->convertHeicToJpeg($filePath);
+        }
+
         // Formats that publish safely everywhere (JPEG is universal, GIF needed for X/Bluesky/Mastodon).
         if (in_array($mimeType, ['image/jpeg', 'image/jpg', 'image/gif'], true)) {
             return [file_get_contents($filePath), $mimeType, $originalExtension];
@@ -311,13 +321,31 @@ trait HasMedia
             $encoded = (string) $manager->decodePath($filePath)->encode(new JpegEncoder(quality: 100));
 
             return [$encoded, 'image/jpeg', 'jpg'];
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             Log::warning('HasMedia: image normalization failed, storing original', [
                 'mime' => $mimeType,
                 'error' => $e->getMessage(),
             ]);
 
             return [file_get_contents($filePath), $mimeType, $originalExtension];
+        }
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: string} [bytes, mime_type, extension]
+     */
+    private function convertHeicToJpeg(string $filePath): array
+    {
+        if (! HeicConverter::available()) {
+            throw ValidationException::withMessages(['media' => __('posts.composer.upload_errors.heic_unavailable')]);
+        }
+
+        try {
+            return [HeicConverter::toJpeg($filePath), 'image/jpeg', 'jpg'];
+        } catch (Throwable $e) {
+            Log::warning('HasMedia: HEIC conversion failed', ['error' => $e->getMessage()]);
+
+            throw ValidationException::withMessages(['media' => __('posts.composer.upload_errors.heic_invalid')]);
         }
     }
 }

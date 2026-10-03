@@ -97,10 +97,10 @@ test('adding media to multiple collection does not clear existing', function () 
     $file1 = UploadedFile::fake()->image('image1.jpg', 100, 100);
     $file2 = UploadedFile::fake()->image('image2.jpg', 100, 100);
 
-    $workspace->addMedia($file1, 'assets');
-    $workspace->addMedia($file2, 'assets');
+    $workspace->addMedia($file1, Media::COLLECTION_UPLOADS);
+    $workspace->addMedia($file2, Media::COLLECTION_UPLOADS);
 
-    expect($workspace->getMedia('assets')->count())->toBe(2);
+    expect($workspace->getMedia(Media::COLLECTION_UPLOADS)->count())->toBe(2);
 });
 
 test('model can add media from file path', function () {
@@ -125,7 +125,7 @@ test('model can add video media from file path via stream', function () {
     $bytes = "\0\0\0\x18ftypmp42\0\0\0\0mp42isom".str_repeat("\0", 64);
     file_put_contents($tempFile, $bytes);
 
-    $media = $workspace->addMediaFromPath($tempFile, 'clip.mp4', 'assets');
+    $media = $workspace->addMediaFromPath($tempFile, 'clip.mp4', Media::COLLECTION_UPLOADS);
 
     expect($media->type->value)->toBe('video');
     expect($media->size)->toBe(strlen($bytes));
@@ -146,14 +146,14 @@ test('model can clear media collection', function () {
 
     // Need to use a 'multiple' collection model
     $ws = Workspace::factory()->create();
-    $ws->addMedia($file2, 'assets');
-    $ws->addMedia($file3, 'assets');
+    $ws->addMedia($file2, Media::COLLECTION_UPLOADS);
+    $ws->addMedia($file3, Media::COLLECTION_UPLOADS);
 
-    expect($ws->getMedia('assets')->count())->toBe(2);
+    expect($ws->getMedia(Media::COLLECTION_UPLOADS)->count())->toBe(2);
 
-    $ws->clearMediaCollection('assets');
+    $ws->clearMediaCollection(Media::COLLECTION_UPLOADS);
 
-    expect($ws->getMedia('assets')->count())->toBe(0);
+    expect($ws->getMedia(Media::COLLECTION_UPLOADS)->count())->toBe(0);
 });
 
 test('is single media collection returns true for single collections', function () {
@@ -165,7 +165,7 @@ test('is single media collection returns true for single collections', function 
 test('is single media collection returns false for multiple collections', function () {
     $workspace = Workspace::factory()->create();
 
-    expect($workspace->isSingleMediaCollection('assets'))->toBeFalse();
+    expect($workspace->isSingleMediaCollection(Media::COLLECTION_UPLOADS))->toBeFalse();
 });
 
 test('is single media collection returns false for undefined collections', function () {
@@ -284,7 +284,7 @@ test('PNG upload is converted to JPEG at upload time', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.png', 200, 150);
 
-    $media = $workspace->addMedia($file, 'assets');
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
     expect($media->mime_type)->toBe('image/jpeg')
         ->and($media->path)->toEndWith('.jpg')
@@ -298,7 +298,7 @@ test('JPEG upload stays as JPEG (no-op)', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.jpg', 200, 150);
 
-    $media = $workspace->addMedia($file, 'assets');
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
     expect($media->mime_type)->toBe('image/jpeg')
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
@@ -308,7 +308,7 @@ test('GIF upload preserves GIF format for animation', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('anim.gif', 200, 150);
 
-    $media = $workspace->addMedia($file, 'assets');
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
     expect($media->mime_type)->toBe('image/gif')
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('gif');
@@ -318,7 +318,7 @@ test('WebP upload is converted to JPEG', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.webp', 200, 150);
 
-    $media = $workspace->addMedia($file, 'assets');
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
     expect($media->mime_type)->toBe('image/jpeg')
         ->and(pathinfo($media->path, PATHINFO_EXTENSION))->toBe('jpg');
@@ -329,7 +329,7 @@ test('model can add media from stored path', function () {
     $content = file_get_contents(__DIR__.'/../../fixtures/1x1.png');
     Storage::put('medias/existing.png', $content);
 
-    $media = $workspace->addMediaFromStoredPath('medias/existing.png', 'existing.png', 'image/png', strlen($content), 'assets');
+    $media = $workspace->addMediaFromStoredPath('medias/existing.png', 'existing.png', 'image/png', strlen($content), Media::COLLECTION_UPLOADS);
 
     expect($media)->toBeInstanceOf(Media::class);
     expect($media->original_filename)->toBe('existing.png');
@@ -344,7 +344,7 @@ test('add media from stored path sanitizes invalid UTF-8 bytes in the original f
     Storage::put('medias/existing.png', $content);
     $invalidName = "earnings \x97 report.png";
 
-    $media = $workspace->addMediaFromStoredPath('medias/existing.png', $invalidName, 'image/png', strlen($content), 'assets');
+    $media = $workspace->addMediaFromStoredPath('medias/existing.png', $invalidName, 'image/png', strlen($content), Media::COLLECTION_UPLOADS);
 
     expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
     expect($media->original_filename)->toBe('earnings ? report.png');
@@ -355,7 +355,7 @@ test('add media sanitizes invalid UTF-8 bytes in the original filename', functio
     $invalidName = "earnings \x97 report.jpg";
     $file = UploadedFile::fake()->image($invalidName, 100, 100);
 
-    $media = $workspace->addMedia($file, 'assets');
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
     expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
     expect($media->original_filename)->toBe('earnings ? report.jpg');
@@ -367,7 +367,7 @@ test('add media from path sanitizes invalid UTF-8 bytes in the original filename
     file_put_contents($tempFile, file_get_contents(__DIR__.'/../../fixtures/1x1.png'));
     $invalidName = "earnings \x97 report.png";
 
-    $media = $workspace->addMediaFromPath($tempFile, $invalidName, 'assets');
+    $media = $workspace->addMediaFromPath($tempFile, $invalidName, Media::COLLECTION_UPLOADS);
 
     expect(mb_check_encoding($media->original_filename, 'UTF-8'))->toBeTrue();
     expect($media->original_filename)->toBe('earnings ? report.png');
@@ -379,9 +379,39 @@ test('client meta is merged into media meta', function () {
     $workspace = Workspace::factory()->create();
     $file = UploadedFile::fake()->image('photo.jpg', 640, 480);
 
-    $media = $workspace->addMedia($file, 'assets', ['duration' => 12.5]);
+    $media = $workspace->addMedia($file, Media::COLLECTION_UPLOADS, ['duration' => 12.5]);
 
     expect($media->meta)->toHaveKey('duration', 12.5)
         ->and($media->meta)->toHaveKey('width')
         ->and($media->meta)->toHaveKey('height');
+});
+
+test('user avatar accessors ignore an unrelated media load and use the avatar relation', function () {
+    $user = User::factory()->create();
+    Media::factory()->create([
+        'mediable_type' => $user->getMorphClass(),
+        'mediable_id' => $user->id,
+        'collection' => 'avatar',
+        'path' => 'avatars/me.jpg',
+    ]);
+
+    $withoutAvatar = User::query()->with(['media' => fn ($media) => $media->where('collection', 'default')])->findOrFail($user->id);
+    $withAvatar = User::query()->with('avatarMedia')->findOrFail($user->id);
+    $withoutRelation = User::query()->findOrFail($user->id);
+
+    expect($withoutAvatar->relationLoaded('media'))->toBeTrue()
+        ->and($withoutAvatar->media)->toBeEmpty()
+        ->and($withoutAvatar->has_photo)->toBeTrue()
+        ->and($withoutAvatar->photo_url)->toBe(Storage::url('avatars/me.jpg'))
+        ->and($withAvatar->has_photo)->toBeTrue()
+        ->and($withAvatar->photo_url)->toBe(Storage::url('avatars/me.jpg'))
+        ->and($withoutRelation->has_photo)->toBeTrue();
+});
+
+test('user avatar accessors report no photo when none exists', function () {
+    $user = User::query()->with('avatarMedia')->findOrFail(User::factory()->create()->id);
+
+    expect($user->relationLoaded('avatarMedia'))->toBeTrue()
+        ->and($user->has_photo)->toBeFalse()
+        ->and($user->photo_url)->toBeNull();
 });

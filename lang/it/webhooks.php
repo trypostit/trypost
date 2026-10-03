@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Ricevi notifiche in tempo reale quando i post vengono creati, programmati, deprogrammati, pubblicati o falliscono.',
+    'description' => 'Aggiornamenti in tempo reale sui tuoi post.',
     'new' => 'Crea webhook',
     'empty_title' => 'Nessun webhook ancora',
     'empty_description' => 'Crea un webhook per ricevere notifiche di eventi in tempo reale.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'In ascolto',
         'status' => 'Stato',
         'last_sent' => 'Ultimo invio',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Disattivato',
         'paused' => 'In pausa',
     ],
+    'row_actions' => 'Azioni del webhook',
     'actions' => [
         'view' => 'Vedi dettagli',
-        'copy_id' => 'Copia ID del webhook',
         'delete' => 'Elimina',
         'edit' => 'Modifica endpoint',
         'enable' => 'Attiva endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Configura un endpoint per ricevere le notifiche webhook.',
         'endpoint' => 'URL dell\'endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Invieremo una richiesta POST con un JSON a questo URL.',
         'events' => 'Eventi',
-        'events_placeholder' => 'Seleziona eventi...',
-        'events_selected' => '{1} :count evento selezionato|[2,*] :count eventi selezionati',
-        'search_events' => 'Cerca eventi...',
-        'no_events' => 'Nessun evento trovato',
+        'events_count_selected' => '{1} :count di :total selezionato|[0,*] :count di :total selezionati',
         'submit' => 'Crea webhook',
         'cancel' => 'Annulla',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Secret di firma',
-        'last_sent' => 'Ultimo invio :time',
-        'listening_for' => 'In ascolto',
+        'edit' => 'Modifica',
         'http_status' => 'Stato HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'Tentativi',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Nessun corpo della risposta',
         'no_response' => 'Nessuna risposta',
         'payload' => 'Payload del messaggio',
-        'empty_title' => 'Nessun evento ancora',
-        'empty_description' => 'Quando i post vengono creati, programmati, deprogrammati o pubblicati, gli eventi del webhook appaiono qui.',
+    ],
+    'deliveries' => [
+        'title' => 'Consegne',
+        'empty_title' => 'Ancora nessuna consegna',
+        'empty_description' => 'Invia un evento di test per vederlo qui.',
+        'pending' => 'In attesa',
     ],
     'events' => [
         'group_posts' => 'Post',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Post pubblicato parzialmente',
         'post_failed' => 'Post non riuscito',
         'post_deleted' => 'Post eliminato',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Quando viene creato un nuovo post.',
+        'post_scheduled' => 'Quando un post viene programmato.',
+        'post_unscheduled' => 'Quando un post programmato torna tra le bozze.',
+        'post_published' => 'Quando un post va online su un canale.',
+        'post_partially_published' => 'Quando alcuni canali pubblicano e altri falliscono.',
+        'post_failed' => 'Quando la pubblicazione di un post non riesce.',
+        'post_deleted' => 'Quando un post viene eliminato.',
     ],
     'http_reasons' => [
         'unknown' => 'Sconosciuto',
@@ -111,7 +119,6 @@ return [
         '504' => 'Tempo scaduto del gateway',
     ],
     'copied' => [
-        'id' => 'ID del webhook copiato negli appunti',
         'secret' => 'Secret di firma copiato negli appunti',
         'response' => 'Corpo della risposta copiato',
         'payload' => 'Payload copiato',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'L\'endpoint ha restituito HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Webhook creato.',
         'updated' => 'Webhook aggiornato.',
         'deleted' => 'Webhook eliminato.',
         'secret_rotated' => 'Secret di firma ruotato.',

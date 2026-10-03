@@ -32,6 +32,9 @@ RUN apk add --no-cache \
         freetype-dev \
         libwebp-dev \
         libavif-dev \
+        imagemagick \
+        imagemagick-dev \
+        imagemagick-heic \
         libzip-dev \
         oniguruma-dev \
         icu-dev \
@@ -51,7 +54,8 @@ RUN apk add --no-cache \
         intl \
         sockets \
     && pecl install redis \
-    && docker-php-ext-enable redis \
+    && printf "\\n" | pecl install imagick \
+    && docker-php-ext-enable redis imagick \
     && apk del $PHPIZE_DEPS \
     && rm -rf /tmp/* /var/cache/apk/*
 

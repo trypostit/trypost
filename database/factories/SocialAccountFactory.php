@@ -8,6 +8,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\Timezone;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -34,6 +35,7 @@ class SocialAccountFactory extends Factory
             'scopes' => [],
             'meta' => [],
             'status' => Status::Connected,
+            'timezone' => Timezone::DEFAULT,
         ];
     }
 

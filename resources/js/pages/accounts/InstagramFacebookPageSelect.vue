@@ -51,7 +51,7 @@ const igUrl = (username: string): string => `https://www.instagram.com/${usernam
             <div class="flex items-center gap-3">
                 <img src="/images/accounts/instagram.png" alt="Instagram" class="h-10 w-10" />
                 <div>
-                    <h1 class="text-xl font-bold tracking-tight">{{ $t('accounts.instagram_facebook.title') }}</h1>
+                    <h1 class="font-heading text-xl font-medium tracking-tight">{{ $t('accounts.instagram_facebook.title') }}</h1>
                     <p class="text-sm text-muted-foreground">{{ $t('accounts.instagram_facebook.description') }}</p>
                 </div>
             </div>

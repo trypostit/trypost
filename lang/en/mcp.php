@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Connect AI assistants to your TryPost workspace. They use the same permissions as each signed-in user.',
+    'subtitle' => 'Connect AI assistants to your workspace.',
     'copy_step' => 'Copy your TryPost server URL',
     'open_step' => 'Open your AI assistant',
     'copy' => 'Copy URL',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Connected apps',
     'connected_description' => 'Assistants you\'ve signed in with. You can disconnect any you no longer use.',
-    'connected_empty' => 'Nothing connected yet. Use Claude, ChatGPT, or another client above.',
+    'connected_empty_title' => 'No connected apps',
+    'connected_empty' => 'Use Claude, ChatGPT, or another client above.',
     'disconnect' => 'Disconnect',
     'disconnect_title' => 'Disconnect app',
     'disconnect_confirm' => 'This signs the app out of TryPost. It will need to reconnect before it can use MCP again.',

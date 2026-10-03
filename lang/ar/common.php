@@ -8,7 +8,6 @@ return [
     'back' => 'رجوع',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'لا يمكن التراجع عن هذا الإجراء.',
         'type' => 'اكتب',
         'to_confirm' => 'للتأكيد.',
         'copy_to_clipboard' => 'نسخ إلى الحافظة',
@@ -65,5 +64,16 @@ return [
         'copy' => 'نسخ',
         'copied' => 'تم النسخ',
         'copy_failed' => 'فشل النسخ إلى الحافظة',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'معاينة الوسائط',
+        'previous' => 'السابق',
+        'next' => 'التالي',
+        'zoom_in' => 'تكبير',
+        'zoom_out' => 'تصغير',
+        'counter' => ':current / :total',
+        'go_to' => 'عرض العنصر :number',
+        'open' => 'فتح المعاينة',
     ],
 ];

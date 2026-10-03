@@ -67,7 +67,7 @@ class InstagramController extends SocialController
                 return $this->noConnectableIdentities($reconnect, 'wrong_account');
             }
 
-            SocialAccount::connectIdentity(
+            $account = SocialAccount::connectIdentity(
                 $workspace,
                 $this->platform,
                 $socialUser->getId(),
@@ -89,7 +89,7 @@ class InstagramController extends SocialController
                 $reconnect,
             );
 
-            return $this->connectedCallback($reconnect);
+            return $this->connectedCallback($account, $reconnect);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->popupCallback(false, __("accounts.popup_callback.{$e->messageKey}"), $this->platform->value);
         } catch (\Exception $e) {

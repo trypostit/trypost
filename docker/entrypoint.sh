@@ -78,6 +78,11 @@ done
 echo "[entrypoint] running migrations"
 php artisan migrate --force
 
+# Queue the one-off move of the old media library onto its posts and ideas.
+# A no-op once no library rows remain.
+echo "[entrypoint] adopting the media library"
+php artisan media:adopt-library --force || echo "[entrypoint] WARN: media:adopt-library dispatch failed; it runs again on the next boot" >&2
+
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
     echo "[entrypoint] linking storage"

@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List posts for the current workspace, ordered by scheduled date (newest first). Optional filters: status (draft|scheduled|published) and search (matches against post content).')]
+#[Description('List posts for the current workspace, ordered by scheduled date (newest first). Optional filters: status (draft|scheduled|pending_approval|published|failed) and search (matches against post content).')]
 class ListPostsTool extends Tool
 {
     public function handle(Request $request): ResponseFactory
@@ -27,6 +27,7 @@ class ListPostsTool extends Tool
                 Status::Scheduled->value,
                 Status::Published->value,
                 Status::Failed->value,
+                Status::PendingApproval->value,
             ])],
             'search' => ['sometimes', 'string', 'max:255'],
             'limit' => ['sometimes', 'integer', 'min:1', 'max:100'],
@@ -41,6 +42,7 @@ class ListPostsTool extends Tool
             Status::Scheduled->value => $query->scheduled(),
             Status::Published->value => $query->published(),
             Status::Failed->value => $query->failed(),
+            Status::PendingApproval->value => $query->pendingApproval(),
             default => $query,
         };
 
@@ -61,7 +63,7 @@ class ListPostsTool extends Tool
     {
         return [
             'status' => $schema->string()
-                ->enum(['draft', 'scheduled', 'published', 'failed'])
+                ->enum(['draft', 'scheduled', 'published', 'failed', 'pending_approval'])
                 ->description('Filter by status. "published" includes partially-published posts.'),
             'search' => $schema->string()->description('Case-insensitive substring match against the post content.'),
             'limit' => $schema->integer()->description('Max results (1-100, default 50).'),

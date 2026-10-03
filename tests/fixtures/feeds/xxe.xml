@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE rss [
+    <!ENTITY xxe SYSTEM "file:///etc/passwd">
+]>
+<rss version="2.0">
+    <channel>
+        <title>XXE &xxe;</title>
+        <link>https://example.com/</link>
+        <item>
+            <title>Leak &xxe;</title>
+            <link>https://example.com/posts/xxe</link>
+            <description>Body &xxe;</description>
+        </item>
+    </channel>
+</rss>

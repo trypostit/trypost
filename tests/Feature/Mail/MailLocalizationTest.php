@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use App\Actions\Invite\CreateInvite;
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
-use App\Enums\UserWorkspace\Role;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
 use App\Mail\WebhookPausedMail;
@@ -25,7 +23,7 @@ function localizedOwner(Locale $locale): User
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     return $user;
@@ -42,11 +40,7 @@ test('an email is rendered in the recipient locale, not the app default', functi
 
     (new SendNotification(
         user: $user,
-        workspaceId: $user->current_workspace_id,
         type: Type::AccountDisconnected,
-        channel: Channel::Email,
-        title: 'x',
-        body: 'x',
         mailable: new AccountDisconnected($account),
     ))->handle();
 
@@ -67,11 +61,7 @@ test('each recipient gets their own locale for the same mailable', function () {
 
         (new SendNotification(
             user: $user,
-            workspaceId: $user->current_workspace_id,
             type: Type::AccountDisconnected,
-            channel: Channel::Email,
-            title: 'x',
-            body: 'x',
             mailable: new AccountDisconnected($account),
         ))->handle();
     }
@@ -112,7 +102,7 @@ test('an invite is sent in the locale of whoever sent it', function () {
 
     CreateInvite::execute($inviter->currentWorkspace, [
         'email' => 'invitee@example.com',
-        'role' => Role::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     Mail::assertQueued(

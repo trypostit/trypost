@@ -6,6 +6,8 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Exceptions\Social\ErrorCategory;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -21,6 +23,8 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->post = Post::factory()->create([
@@ -808,3 +812,28 @@ test('an Instagram resume of a checkpointed media id completes without media_pub
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
     Http::assertNotSent(fn ($request) => $request->method() === 'POST');
 });
+
+test('it keeps the live segments of a thread whatever the failure category', function (?string $category) {
+    Bus::fake([PublishToSocialPlatform::class]);
+
+    $progress = [['hash' => 'h0', 'id' => '1'], ['hash' => 'h1', 'id' => '2']];
+    $failedMastodon = PostPlatform::factory()->mastodon()->failed()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => SocialAccount::factory()->mastodon()->create([
+            'workspace_id' => $this->workspace->id,
+        ]),
+        'error_context' => array_filter(['category' => $category, 'thread_progress' => $progress, 'failed_at' => now()->toIso8601String()]),
+    ]);
+
+    $this->artisan('posts:retry', ['post' => $this->post->id])
+        ->expectsConfirmation('Queue publish attempts for these failed platforms?', 'yes')
+        ->expectsOutputToContain('Resume')
+        ->assertSuccessful();
+
+    expect($failedMastodon->fresh()->status)->toBe(PlatformStatus::Pending)
+        ->and($failedMastodon->fresh()->error_context)->toEqual(['thread_progress' => $progress]);
+})->with([
+    'media format' => ['media_format'],
+    'timeout' => ['timeout'],
+    'missing category' => [null],
+]);

@@ -66,4 +66,4 @@ Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/) — th
 
 - Do not write prompts inside agent classes (no heredocs, no long strings in `instructions()`).
 - Store prompt copy in `resources/views/prompts/**/*.blade.php` and render with `view('prompts....', $vars)->render()`.
-- Follow `PostContentStreamer`, `PostContentReviewer`, or `BrandAnalyzer` for structure.
+- Follow `PostWritingAssistant` or `MediaAltTextGenerator` for structure.

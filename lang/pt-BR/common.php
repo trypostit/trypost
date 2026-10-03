@@ -8,11 +8,10 @@ return [
     'back' => 'Voltar',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'Esta ação não pode ser desfeita.',
         'type' => 'Digite',
         'to_confirm' => 'para confirmar.',
         'copy_to_clipboard' => 'Copiar para a área de transferência',
-        'delete_keyword' => 'deletar',
+        'delete_keyword' => 'EXCLUIR',
     ],
 
     'photo_upload' => [
@@ -65,5 +64,16 @@ return [
         'copy' => 'Copiar',
         'copied' => 'Copiado',
         'copy_failed' => 'Falha ao copiar para a área de transferência',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'Visualização de mídia',
+        'previous' => 'Anterior',
+        'next' => 'Próxima',
+        'zoom_in' => 'Ampliar',
+        'zoom_out' => 'Reduzir',
+        'counter' => ':current / :total',
+        'go_to' => 'Mostrar item :number',
+        'open' => 'Abrir visualização',
     ],
 ];

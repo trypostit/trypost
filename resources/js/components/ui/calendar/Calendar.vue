@@ -2,13 +2,14 @@
 import type { CalendarRootEmits, CalendarRootProps, DateValue } from "reka-ui"
 import type { HTMLAttributes, Ref } from "vue"
 import type { LayoutTypes } from "."
-import { getLocalTimeZone, today } from "@internationalized/date"
+import { today } from "@internationalized/date"
 import { createReusableTemplate, reactiveOmit, useVModel } from "@vueuse/core"
 import { CalendarRoot, useForwardPropsEmits } from "reka-ui"
 import { createYear, createYearRange, toDate } from "reka-ui/date"
 import { computed, toRaw } from "vue"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
+import { userTimezone, weekStartIndex } from "@/preferences"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CalendarCell, CalendarCellTrigger, CalendarGrid, CalendarGridBody, CalendarGridHead, CalendarGridRow, CalendarHeadCell, CalendarHeader, CalendarHeading, CalendarNextButton, CalendarPrevButton } from "."
 
@@ -22,7 +23,7 @@ const delegatedProps = reactiveOmit(props, "class", "layout", "placeholder")
 
 const placeholder = useVModel(props, "placeholder", emits, {
   passive: true,
-  defaultValue: props.defaultPlaceholder ?? today(getLocalTimeZone()),
+  defaultValue: props.defaultPlaceholder ?? today(userTimezone.value),
 }) as Ref<DateValue>
 
 const formatMonth = (d: DateValue) => dayjs(toDate(d)).format("MMM")
@@ -30,10 +31,10 @@ const formatYear = (d: DateValue) => dayjs(toDate(d)).format("YYYY")
 
 const yearRange = computed(() => {
   return props.yearRange ?? createYearRange({
-    start: props?.minValue ?? (toRaw(props.placeholder) ?? props.defaultPlaceholder ?? today(getLocalTimeZone()))
+    start: props?.minValue ?? (toRaw(props.placeholder) ?? props.defaultPlaceholder ?? today(userTimezone.value))
       .cycle("year", -100),
 
-    end: props?.maxValue ?? (toRaw(props.placeholder) ?? props.defaultPlaceholder ?? today(getLocalTimeZone()))
+    end: props?.maxValue ?? (toRaw(props.placeholder) ?? props.defaultPlaceholder ?? today(userTimezone.value))
       .cycle("year", 10),
   })
 })
@@ -81,6 +82,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
     v-slot="{ grid, weekDays, date }"
     v-bind="forwarded"
     v-model:placeholder="placeholder"
+    :week-starts-on="props.weekStartsOn ?? weekStartIndex()"
     data-slot="calendar"
     :class="cn('p-3', props.class)"
   >

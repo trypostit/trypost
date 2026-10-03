@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { IconCircleCheck, IconCircleX } from '@tabler/icons-vue';
+import { router } from '@inertiajs/vue3';
+import { IconCircleX } from '@tabler/icons-vue';
 import { onMounted, ref } from 'vue';
 
 import PopupLayout from '@/layouts/PopupLayout.vue';
+import { channels } from '@/routes/app/workspace';
 
 const props = defineProps<{
     success: boolean;
-    message: string;
+    message?: string | null;
     platform?: string | null;
+    accountId?: string | null;
+    created?: boolean;
 }>();
 
-const CLOSE_DELAY = 1500;
+const ERROR_CLOSE_DELAY = 1500;
 
 // A window not opened by script can't be closed via window.close() in modern
 // browsers, so only promise an auto-close when we actually have an opener.
@@ -20,42 +24,59 @@ onMounted(() => {
     const opener = window.opener && !window.opener.closed ? window.opener : null;
     canAutoClose.value = opener !== null;
 
-    if (opener) {
-        try {
-            opener.postMessage(
-                {
-                    type: 'social-oauth-callback',
-                    success: props.success,
-                    message: props.message,
-                    platform: props.platform ?? null,
-                },
-                window.location.origin,
-            );
-        } catch {
-            // Opener may be cross-origin or already gone; the timed close still applies.
+    if (!opener) {
+        if (props.success) {
+            router.visit(channels(), { replace: true });
         }
 
-        window.setTimeout(() => window.close(), CLOSE_DELAY);
+        return;
     }
+
+    try {
+        opener.postMessage(
+            {
+                type: 'social-oauth-callback',
+                success: props.success,
+                message: props.message ?? '',
+                platform: props.platform ?? null,
+                account_id: props.accountId ?? null,
+                created: props.created ?? false,
+            },
+            window.location.origin,
+        );
+    } catch {
+        // Opener may be cross-origin or already gone; the close still applies.
+    }
+
+    if (props.success) {
+        window.close();
+        return;
+    }
+
+    window.setTimeout(() => window.close(), ERROR_CLOSE_DELAY);
 });
 </script>
 
 <template>
-    <PopupLayout :title="success ? $t('accounts.popup_callback.title_success') : $t('accounts.popup_callback.title_error')">
-        <div class="flex flex-col items-center justify-center gap-3 py-16 text-center" role="status" aria-live="polite">
+    <div data-testid="popup-callback">
+        <PopupLayout
+            v-if="!success"
+            :title="$t('accounts.popup_callback.title_error')"
+        >
             <div
-                class="flex h-14 w-14 items-center justify-center rounded-full"
-                :class="
-                    success
-                        ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
-                        : 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
-                "
+                class="flex flex-col items-center justify-center gap-3 py-16 text-center"
+                role="status"
+                aria-live="polite"
+                data-testid="popup-callback-error"
             >
-                <IconCircleCheck v-if="success" class="h-7 w-7" aria-hidden="true" />
-                <IconCircleX v-else class="h-7 w-7" aria-hidden="true" />
+                <div
+                    class="flex h-14 w-14 items-center justify-center rounded-full bg-critical-subtle text-destructive-text"
+                >
+                    <IconCircleX class="h-7 w-7" aria-hidden="true" />
+                </div>
+                <p class="text-lg font-medium text-foreground">{{ message }}</p>
+                <p class="text-sm text-muted-foreground">{{ canAutoClose ? $t('accounts.popup_callback.closing') : $t('accounts.popup_callback.manual_close') }}</p>
             </div>
-            <p class="text-lg font-medium text-foreground">{{ message }}</p>
-            <p class="text-sm text-muted-foreground">{{ canAutoClose ? $t('accounts.popup_callback.closing') : $t('accounts.popup_callback.manual_close') }}</p>
-        </div>
-    </PopupLayout>
+        </PopupLayout>
+    </div>
 </template>

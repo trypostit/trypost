@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
@@ -159,32 +158,25 @@ test('accept invite adds user to account and workspaces', function () {
     expect($invite->accepted_at)->not->toBeNull();
 });
 
-test('accept invite assigns the exact role from the invite', function (Role $role) {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-    ]);
-
+test('accept invite assigns the exact access from the invite', function (string $access) {
+    $user = User::factory()->create(['email' => 'invitee@example.com']);
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,
         'email' => 'invitee@example.com',
         'workspaces' => [$this->workspace->id],
-        'role' => $role,
+        ...membershipPivot($access),
     ]);
 
     $this->actingAs($user)
         ->post(route('app.invites.accept', $invite))
         ->assertRedirect(route('app.calendar'));
 
-    $member = $this->workspace->members()->where('user_id', $user->id)->first();
+    $pivot = $this->workspace->members()->where('user_id', $user->id)->first()->pivot;
 
-    expect($member)->not->toBeNull();
-    expect($member->pivot->role)->toBe($role->value);
-})->with([
-    'viewer' => Role::Viewer,
-    'admin' => Role::Admin,
-    'member' => Role::Member,
-]);
+    expect(['is_admin' => (bool) $pivot->is_admin, 'requires_approval' => (bool) $pivot->requires_approval])
+        ->toBe(membershipPivot($access));
+})->with(['admin', 'member', 'approval']);
 
 test('accept invite fails for wrong email', function () {
     $user = User::factory()->create([
@@ -219,7 +211,7 @@ test('accept invite handles already member of account', function () {
         'invited_by' => $this->owner->id,
         'email' => 'invitee@example.com',
         'workspaces' => [$this->workspace->id],
-        'role' => Role::Member,
+        ...membershipPivot('member'),
     ]);
 
     $response = $this->actingAs($user)->post(route('app.invites.accept', $invite));
@@ -264,26 +256,38 @@ test('accept invite rejects invites whose workspaces were deleted', function () 
 });
 
 test('accept invite does not demote an existing workspace admin', function () {
-    $user = User::factory()->create([
-        'email' => 'invitee@example.com',
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
-
+    $user = User::factory()->create(['email' => 'invitee@example.com', 'account_id' => $this->account->id]);
+    $this->workspace->members()->attach($user->id, membershipPivot('admin'));
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,
         'invited_by' => $this->owner->id,
         'email' => 'invitee@example.com',
         'workspaces' => [$this->workspace->id],
-        'role' => Role::Viewer,
+        ...membershipPivot('approval'),
     ]);
 
     $this->actingAs($user)->post(route('app.invites.accept', $invite));
 
-    $member = $this->workspace->members()->where('user_id', $user->id)->first();
+    $pivot = $this->workspace->members()->where('user_id', $user->id)->first()->pivot;
 
-    expect($member->pivot->role)->toBe(Role::Admin->value);
-    expect($invite->fresh()->accepted_at)->not->toBeNull();
+    expect((bool) $pivot->is_admin)->toBeTrue()
+        ->and((bool) $pivot->requires_approval)->toBeFalse()
+        ->and($invite->fresh()->accepted_at)->not->toBeNull();
+});
+
+test('the accept page shows the invite access', function () {
+    $invite = Invite::factory()->create([
+        'account_id' => $this->account->id,
+        'invited_by' => $this->owner->id,
+        'email' => 'invitee@example.com',
+        'workspaces' => [$this->workspace->id],
+        ...membershipPivot('approval'),
+    ]);
+
+    $this->get(route('app.invites.show', $invite))
+        ->assertInertia(fn ($page) => $page
+            ->where('invite.access', ['is_admin' => false, 'requires_approval' => true])
+            ->missing('invite.role'));
 });
 
 test('accepting an already accepted invite does not claim the workspace was deleted', function () {
@@ -292,7 +296,7 @@ test('accepting an already accepted invite does not claim the workspace was dele
         'account_id' => $this->account->id,
         'current_workspace_id' => $this->workspace->id,
     ]);
-    $this->workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($user->id, membershipPivot('member'));
 
     $invite = Invite::factory()->create([
         'account_id' => $this->account->id,

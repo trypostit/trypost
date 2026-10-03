@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
-use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
@@ -104,13 +103,12 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
-            // atRiskPostPlatforms()'s is_active guard only runs at query
-            // time; this job can take real wall-clock time working through
-            // a workspace, so re-check fresh (paused/deleted since then
-            // shouldn't burn an API call or warn about it). Keep workspace
+            // This job can take real wall-clock time working through a
+            // workspace, so re-check fresh (deleted since then shouldn't
+            // burn an API call or warn about it). Keep workspace
             // eager-loaded — SocialAccountObserver reads it when
             // markAsTokenExpired() below updates the account (#255).
-            $account = SocialAccount::active()->with('workspace')->find($account->id);
+            $account = SocialAccount::query()->with('workspace')->find($account->id);
 
             if (! $account) {
                 continue;
@@ -315,14 +313,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         return PostPlatform::query()
             ->where('status', PostPlatformStatus::Pending)
             ->enabled() // PublishPost only iterates enabled platforms — an at-risk warning for a disabled one would be a false positive.
-            // A paused account already fails at publish time with
-            // posts.errors.account_inactive before any platform API call
-            // (PublishToSocialPlatform::handle()) — verifying it here would
-            // waste a real API call and, if the token also happens to be
-            // dead, warn the owner to "reconnect" an account they paused on
-            // purpose. whereHas() already excludes a null social_account_id
-            // (nothing to join to).
-            ->whereHas('socialAccount', fn ($query) => $query->where('is_active', true))
+            ->whereHas('socialAccount')
             ->where(function ($query) {
                 $query->whereNull('connection_warning_sent_at')
                     ->orWhere('connection_warning_sent_at', '<', now()->subDay());
@@ -352,13 +343,8 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
         SendNotification::dispatch(
             user: $owner,
-            workspaceId: $workspace->id,
             type: Type::PostAtRisk,
-            channel: Channel::Both,
-            title: trans_choice('notifications.post_at_risk.title', $postCount, ['count' => $postCount]),
-            body: $atRisk->map(fn (array $group) => $group['account']->platform->label().' ('.$group['account']->handle().')')->implode(', '),
-            data: ['workspace_id' => $workspace->id],
-            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount),
+            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount, $owner),
         );
     }
 }

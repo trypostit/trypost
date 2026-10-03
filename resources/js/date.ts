@@ -1,20 +1,31 @@
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
+import { timeFormat, userTimezone } from '@/preferences';
 
 /**
  * A dayjs instance bound to the current language. `dayjs.locale()` is global and
  * not reactive, so reading the ref here is what makes a computed re-run when the
  * language changes instead of serving the previous one from cache.
  */
-const localized = (value?: dayjs.ConfigType) => dayjs(value).locale(activeLocale.value.toLowerCase());
+const localized = (value?: dayjs.ConfigType) =>
+    dayjs(value).locale(activeLocale.value.toLowerCase());
 
 /**
- * Obtém o timezone do usuário
- * Tenta pegar do Inertia page props primeiro, senão usa o timezone do browser
+ * The dayjs token for a clock time in the user's chosen format. Every time the
+ * app shows goes through here, so the Preferences setting reaches all of them.
  */
-function getUserTimezone(): string {
-    return Intl.DateTimeFormat().resolvedOptions().timeZone;
-}
+const timeToken = (): string =>
+    timeFormat.value === '12h' ? 'h:mm A' : 'HH:mm';
+
+/** The signed-in user's time zone (`users.timezone`), never the browser's. */
+const getUserTimezone = (): string => userTimezone.value;
+
+/**
+ * Now as a wall clock in the user's zone, parsed like `localized(value)`, so a
+ * local datetime compares against it in the same zone.
+ */
+const userNow = () =>
+    localized(dayjs().tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'));
 
 /** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
@@ -25,17 +36,46 @@ const resolvePreviewPostedAt = (postedAt?: string | null) => {
         }
     }
 
-    return localized();
-};
-
-/** X / Bluesky style: `4:21 PM · Aug 5, 2026` (locale-aware). */
-const formatAbsolutePreviewPostedAt = (postedAt?: string | null) => {
-    const instant = resolvePreviewPostedAt(postedAt);
-
-    return `${instant.format('LT')} · ${instant.format('ll')}`;
+    return userNow();
 };
 
 export default {
+    timeToken,
+
+    /**
+     * A wall-clock "HH:mm" (a posting slot, a picked time) in the user's format.
+     */
+    formatClockTime(time: string): string {
+        return localized(`2000-01-01T${time}`).format(timeToken());
+    },
+
+    /**
+     * The label of an hour option ("00"–"23") in a time picker: "09" on a
+     * 24-hour clock, "9 AM" on a 12-hour one.
+     */
+    formatHourOption(hour: string): string {
+        return timeFormat.value === '12h'
+            ? localized(`2000-01-01T${hour}:00`).format('h A')
+            : hour;
+    },
+
+    /**
+     * The hour part of a split hour/minute picker: "09" or "9". Pair it with
+     * `formatMeridiem` after the minutes on a 12-hour clock.
+     */
+    formatHourPart(hour: string): string {
+        return timeFormat.value === '12h'
+            ? localized(`2000-01-01T${hour}:00`).format('h')
+            : hour;
+    },
+
+    /** "AM" / "PM" for an hour on a 12-hour clock, empty on a 24-hour one. */
+    formatMeridiem(hour: string): string {
+        return timeFormat.value === '12h'
+            ? localized(`2000-01-01T${hour}:00`).format('A')
+            : '';
+    },
+
     formatDate(date: string | null | undefined) {
         if (!date) return '-';
         return dayjs.utc(date).tz(getUserTimezone()).format('LL');
@@ -59,7 +99,20 @@ export default {
             return '—';
         }
 
-        return dayjs.utc(date).tz(getUserTimezone()).format('LLL');
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .locale(activeLocale.value.toLowerCase())
+            .format(`LL ${timeToken()}`);
+    },
+
+    formatDateShort(date: string | null | undefined) {
+        if (!date) return '—';
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .locale(activeLocale.value.toLowerCase())
+            .format('D MMM');
     },
 
     /**
@@ -71,7 +124,22 @@ export default {
             return '—';
         }
 
-        return dayjs(date).format('lll');
+        return dayjs(date).format(`ll ${timeToken()}`);
+    },
+
+    /**
+     * A local datetime as short month + day + clock time ("Oct 1, 00:47"), with
+     * the year only when it is not the current one.
+     */
+    formatLocalMonthDayTime(value: string): string {
+        const instant = localized(value);
+        const day = new Intl.DateTimeFormat(activeLocale.value, {
+            month: 'short',
+            day: 'numeric',
+            ...(instant.year() === userNow().year() ? {} : { year: 'numeric' }),
+        }).format(instant.toDate());
+
+        return `${day}, ${instant.format(timeToken())}`;
     },
 
     /**
@@ -82,44 +150,40 @@ export default {
             return '—';
         }
 
-        return dayjs(date).format('LL');
+        return localized(date).format('LL');
     },
 
     /**
      * Short day + month for chart axes (day-first so locales keep natural order).
      */
     formatMonthDay(date: string | Date) {
-        return dayjs(date).format('D MMM');
+        return localized(date).format('D MMM');
+    },
+
+    formatDayMonthYear(date: string | Date) {
+        return localized(date).format('D MMM YYYY');
     },
 
     /**
      * Short month + day + year for chart tooltips (locale-aware via L).
      */
     formatMonthDayYear(date: string | Date) {
-        return dayjs(date).format('L');
+        return localized(date).format('L');
     },
 
-    formatXPreview(postedAt?: string | null) {
-        return formatAbsolutePreviewPostedAt(postedAt);
-    },
-
-    formatBlueskyPreview(postedAt?: string | null) {
-        return formatAbsolutePreviewPostedAt(postedAt);
-    },
-
-    formatMastodonPreview(postedAt?: string | null) {
-        return resolvePreviewPostedAt(postedAt).format('lll');
+    formatPreviewDate(postedAt?: string | null) {
+        return resolvePreviewPostedAt(postedAt).format('ll');
     },
 
     /**
      * @param justNowLabel Localized fallback when no schedule is set (e.g. common.just_now).
      */
-    formatFacebookPreview(postedAt?: string | null, justNowLabel?: string) {
-        if (! postedAt && justNowLabel) {
+    formatPreviewPostedAt(postedAt?: string | null, justNowLabel?: string) {
+        if (!postedAt && justNowLabel) {
             return justNowLabel;
         }
 
-        return resolvePreviewPostedAt(postedAt).fromNow();
+        return resolvePreviewPostedAt(postedAt).from(userNow());
     },
 
     /**
@@ -128,18 +192,41 @@ export default {
     formatDiscordPreview(postedAt?: string | null, todayLabel?: string) {
         const instant = resolvePreviewPostedAt(postedAt);
 
-        if (instant.isSame(dayjs(), 'day')) {
+        if (instant.isSame(userNow(), 'day')) {
             return todayLabel
-                ? `${todayLabel} · ${instant.format('LT')}`
-                : instant.format('LT');
+                ? `${todayLabel} · ${instant.format(timeToken())}`
+                : instant.format(timeToken());
         }
 
-        return instant.format('lll');
+        return instant.format(`ll ${timeToken()}`);
     },
 
     formatTime(date: string | null | undefined) {
         if (!date) return '-';
-        return dayjs.utc(date).tz(getUserTimezone()).format('HH:mm');
+        return dayjs.utc(date).tz(getUserTimezone()).format(timeToken());
+    },
+
+    /**
+     * Local time (e.g. "4:21 PM") of a UTC instant in an explicit time zone.
+     */
+    formatTimeInTimezone(date: string, timezone: string) {
+        return dayjs
+            .utc(date)
+            .tz(timezone)
+            .locale(activeLocale.value.toLowerCase())
+            .format(timeToken());
+    },
+
+    /**
+     * Date and time (e.g. "October 1, 2026 4:21 PM") of a UTC instant in an
+     * explicit time zone.
+     */
+    formatDateTimeInTimezone(date: string, timezone: string) {
+        return dayjs
+            .utc(date)
+            .tz(timezone)
+            .locale(activeLocale.value.toLowerCase())
+            .format(`LL ${timeToken()}`);
     },
 
     formatDateTimeForApi(date: string) {
@@ -157,11 +244,7 @@ export default {
     },
 
     diffForHumans(date: string) {
-        const localDate = dayjs
-            .utc(date)
-            .tz(getUserTimezone())
-            .format('YYYY-MM-DD HH:mm:ss');
-        return dayjs().to(dayjs(localDate));
+        return dayjs().to(dayjs.utc(date));
     },
 
     formatTimelineDate(dateStr: string) {
@@ -228,7 +311,11 @@ export default {
      * @returns String formatada (ex: "Fev/2025")
      */
     formatMonthYear(month: number, year: number): string {
-        return dayjs(new Date(year, month - 1, 1)).format('MMM YYYY');
+        return localized(new Date(year, month - 1, 1)).format('MMM YYYY');
+    },
+
+    formatShortMonth(month: number): string {
+        return localized(new Date(2026, month - 1, 1)).format('MMM');
     },
 
     formatAge(birthDate: string): string {
@@ -261,23 +348,11 @@ export default {
      * @returns String formatada (ex: "31/12/2025 14:25")
      */
     formatBuildDate(date: string): string {
-        return dayjs.utc(date).tz(getUserTimezone()).format('L LT');
+        return dayjs.utc(date).tz(getUserTimezone()).format(`L ${timeToken()}`);
     },
 
-    /**
-     * Obtém o timezone do usuário
-     * Tenta pegar do Inertia page props primeiro, senão usa o timezone do browser
-     * @returns Timezone do usuário
-     */
+    /** The signed-in user's time zone (`users.timezone`), never the browser's. */
     getUserTimezone,
-
-    /**
-     * Abreviação do timezone do usuário para exibição (ex.: "GMT-3")
-     * @returns Abreviação do timezone
-     */
-    getTimezoneAbbr(): string {
-        return dayjs().format('z');
-    },
 
     /**
      * Formata uma data para o formato YYYY-MM-DD (usado em DatePicker)
@@ -297,19 +372,35 @@ export default {
      */
     formatUtcForDateTimeLocalInput(date: string | null | undefined): string {
         if (!date) return '';
-        return dayjs.utc(date).tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:00');
+        return dayjs
+            .utc(date)
+            .tz(getUserTimezone())
+            .format('YYYY-MM-DDTHH:mm:00');
     },
 
     /**
-     * Inverso de `formatUtcForDateTimeLocalInput`: recebe uma string vinda de um
-     * input `datetime-local` (no timezone do usuário) e devolve uma ISO 8601 em
-     * UTC pronta para enviar à API. Retorna `null` quando não houver data.
-     * @param date - String do input (YYYY-MM-DDTHH:mm[:ss]) ou nulo
-     * @returns ISO 8601 em UTC (ex.: 2026-05-19T19:40:00Z) ou null
+     * The "YYYY-MM-DDTHH:mm" wall clock of a UTC instant in a zone.
      */
-    formatLocalDateTimeForApi(date: string | null | undefined): string | null {
-        if (!date) return null;
-        return dayjs.tz(date, getUserTimezone()).utc().format();
+    utcToWallClock(value: string, timezone: string): string {
+        return dayjs.utc(value).tz(timezone).format('YYYY-MM-DDTHH:mm');
+    },
+
+    /**
+     * The next full hour in a zone, as a "YYYY-MM-DDTHH:mm" wall clock.
+     */
+    nextFullHour(timezone: string): string {
+        return dayjs()
+            .tz(timezone)
+            .add(1, 'hour')
+            .startOf('hour')
+            .format('YYYY-MM-DDTHH:mm');
+    },
+
+    /**
+     * The UTC instant (ISO 8601) of a "YYYY-MM-DDTHH:mm" wall clock in a zone.
+     */
+    wallClockToUtc(value: string, timezone: string): string {
+        return dayjs.tz(value, timezone).utc().format();
     },
 
     /**

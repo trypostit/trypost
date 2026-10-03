@@ -34,13 +34,6 @@ return [
         'ignore' => 'إذا لم تنشئ حسابًا، يمكنك تجاهل هذه الرسالة.',
     ],
 
-    'mentioned_in_comment' => [
-        'subject' => 'أشار إليك :name على TryPost',
-        'title' => 'أشار إليك :name',
-        'intro' => 'أشار إليك :name في تعليق على منشور.',
-        'button' => 'عرض التعليق',
-    ],
-
     'password_reset' => [
         'subject' => 'أعد تعيين كلمة المرور',
         'preview' => 'أعد تعيين كلمة المرور.',
@@ -55,9 +48,55 @@ return [
         'title' => 'قد يفشل نشر المنشورات',
         'heading' => 'قد يفشل نشر المنشورات',
         'intro' => 'يجب إعادة ربط الحسابات التالية في مساحة العمل :workspace قبل أن يمكن نشر هذه المنشورات المجدولة:',
-        'posts_label' => '{1} منشور واحد مجدول: :times UTC|[0,*] :count منشورات مجدولة: :times UTC',
+        'posts_label' => '{1} منشور واحد مجدول: :times (:timezone)|[0,*] :count منشورات مجدولة: :times (:timezone)',
         'reconnect_cta' => 'أعد ربط هذه الحسابات الآن حتى لا تفوتك منشوراتك المجدولة.',
         'button' => 'إعادة ربط الحسابات',
+    ],
+
+    'post_note_added' => [
+        'subject' => 'أضاف :author ملاحظة إلى منشور',
+        'title' => 'ملاحظة جديدة من :author',
+        'heading' => 'ملاحظة جديدة على منشور',
+        'body' => 'أضاف :author ملاحظة إلى منشور في مساحة العمل :workspace.',
+        'post_title' => 'المنشور',
+        'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
+        'button' => 'عرض الملاحظة',
+    ],
+    'post_approval_requested' => [
+        'subject' => ':name طلب منك الموافقة على منشور',
+        'title' => 'منشور يحتاج إلى موافقتك',
+        'preview' => ':name طلب الموافقة في :workspace.',
+        'heading' => 'منشور يحتاج إلى موافقتك',
+        'body' => ':name (:email) طلب الموافقة في مساحة العمل :workspace.',
+        'channels' => 'القنوات',
+        'requested_time' => 'الوقت المطلوب',
+        'next_queue_slot' => 'الموعد التالي في قائمة الانتظار',
+        'as_soon_as_approved' => 'فور الموافقة عليه',
+        'post_without_text' => 'لا يحتوي هذا المنشور على نص بعد.',
+        'button' => 'عرض المنشورات بانتظار الموافقة',
+    ],
+
+    'post_approved' => [
+        'subject' => ':name وافق على منشورك',
+        'title' => 'تمت الموافقة على منشورك',
+        'preview' => ':name وافق على منشورك في :workspace.',
+        'heading' => 'تمت الموافقة على منشورك',
+        'body' => ':name وافق على منشورك في مساحة العمل :workspace.',
+        'channels' => 'القنوات',
+        'goes_out' => 'موعد النشر',
+        'channel_time' => ':channel: :time',
+        'publishing_now' => 'يُنشر الآن',
+        'button' => 'عرض في قائمة الانتظار',
+    ],
+
+    'post_rejected' => [
+        'subject' => ':name لم يوافق على منشورك',
+        'title' => 'لم تتم الموافقة على منشورك',
+        'preview' => ':name أعاد منشورك إلى المسودات.',
+        'heading' => 'لم تتم الموافقة على منشورك',
+        'body' => ':name أعاد منشورك في مساحة العمل :workspace إلى المسودات.',
+        'channels' => 'القنوات',
+        'button' => 'عرض في المسودات',
     ],
 
     'post_publish_failed' => [
@@ -110,6 +149,7 @@ return [
         'heading' => 'تمت دعوتك!',
         'intro' => 'تمت دعوتك للتعاون في مساحة العمل <strong>:account</strong>.',
         'role' => 'تمت دعوتك بصفة <strong>:role</strong>.',
+        'roles' => ['admin' => 'مشرف', 'member' => 'عضو', 'needs_approval' => 'عضو (منشوراته تحتاج إلى موافقة)'],
         'button' => 'قبول الدعوة',
         'expiry' => 'تنتهي صلاحية هذه الدعوة خلال 7 أيام.',
     ],

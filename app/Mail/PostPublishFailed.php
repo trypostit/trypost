@@ -49,7 +49,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
                 'previewText' => __('mail.post_publish_failed.preview'),
                 'workspaceName' => $this->post->workspace->name,
                 'failedPlatforms' => $failedPlatforms,
-                'url' => route('app.posts.edit', $this->post),
+                'url' => route('app.posts.index', ['tab' => 'sent', 'post' => $this->post->id]),
             ],
         );
     }

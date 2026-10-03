@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Api;
 
 use App\Enums\Media\Type as MediaType;
+use App\Rules\HeicAccepted;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Validator;
 
@@ -31,8 +32,10 @@ class StoreUploadRequest extends FormRequest
             // enforcement runs in withValidator() below — same pattern as
             // StoreMediaRequest + PostController::storeMedia.
             'media' => [
+                'bail',
                 'required',
                 'file',
+                new HeicAccepted,
                 'max:'.MediaType::Video->maxSizeInKb(),
                 "mimetypes:{$allowed}",
             ],

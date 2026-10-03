@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\AccessToken;
 use App\Models\Account;
 use App\Models\User;
@@ -102,13 +101,11 @@ test('rejects a personal token after its owner is demoted from admin', function 
     subscribeAccount($this->user->account);
 
     $admin = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
     $admin->update(['current_workspace_id' => $this->workspace->id]);
     $plainToken = passportToken($admin, $this->workspace);
 
-    $this->workspace->members()->updateExistingPivot($admin->id, [
-        'role' => Role::Viewer->value,
-    ]);
+    $this->workspace->members()->updateExistingPivot($admin->id, membershipPivot('approval'));
 
     $this->withHeaders(['Authorization' => "Bearer {$plainToken}"])
         ->getJson(route('api.workspace.show'))
@@ -120,7 +117,7 @@ test('rejects a personal token after its owner is removed from the workspace', f
     subscribeAccount($this->user->account);
 
     $admin = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
     $admin->update(['current_workspace_id' => $this->workspace->id]);
     $plainToken = passportToken($admin, $this->workspace);
 
@@ -132,13 +129,13 @@ test('rejects a personal token after its owner is removed from the workspace', f
         ->assertJson(['message' => 'Workspace access denied.']);
 });
 
-test('rejects mcp oauth grants on api routes for workspace viewers', function () {
+test('rejects mcp oauth grants on api routes for members who need approval', function () {
     subscribeAccount($this->user->account);
 
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
-    $issued = mcpBearerToken($viewer, $this->workspace);
+    $requester = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $this->workspace->id]);
+    $issued = mcpBearerToken($requester, $this->workspace);
 
     $this->withHeaders(['Authorization' => "Bearer {$issued['plain_token']}"])
         ->getJson(route('api.workspace.show'))
@@ -150,7 +147,7 @@ test('rejects scoped mcp oauth grants on api routes', function () {
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
     $issued = mcpBearerToken($member, $this->workspace);
 
@@ -164,7 +161,7 @@ test('rejects unscoped mcp oauth grants on api routes', function () {
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
     $issued = mcpBearerToken($member, $this->workspace, scopes: []);
 
@@ -198,7 +195,7 @@ test('rejects oauth grants without the mcp scope on the mcp endpoint', function 
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $issued = mcpBearerToken($member, $this->workspace, scopes: []);
@@ -222,7 +219,7 @@ test('allows scoped oauth grants for workspace members on the mcp endpoint', fun
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $issued = mcpBearerToken($member, $this->workspace);
@@ -242,14 +239,14 @@ test('allows scoped oauth grants for workspace members on the mcp endpoint', fun
     ])->assertSuccessful();
 });
 
-test('allows scoped oauth grants for workspace viewers on the mcp endpoint', function () {
+test('allows scoped oauth grants for members who need approval on the mcp endpoint', function () {
     subscribeAccount($this->user->account);
 
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
+    $requester = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($requester->id, membershipPivot('approval'));
+    $requester->update(['current_workspace_id' => $this->workspace->id]);
 
-    $issued = mcpBearerToken($viewer, $this->workspace);
+    $issued = mcpBearerToken($requester, $this->workspace);
 
     $this->withHeaders([
         'Authorization' => "Bearer {$issued['plain_token']}",
@@ -329,7 +326,7 @@ test('mcp oauth uses its bound workspace even when the user switched current wor
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('member'));
 
     $issued = mcpBearerToken($this->user, $this->workspace);
 
@@ -362,7 +359,7 @@ test('same mcp client can stay connected to two workspaces independently', funct
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
     ]);
-    $workspaceB->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $workspaceB->members()->attach($this->user->id, membershipPivot('admin'));
 
     $clientId = mcpOauthClient('Claude');
     $onA = mcpBearerToken($this->user, $this->workspace);
@@ -402,7 +399,7 @@ test('rejects mcp oauth bound to a workspace the user no longer belongs to', fun
     subscribeAccount($this->user->account);
 
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $issued = mcpBearerToken($member, $this->workspace);
@@ -433,7 +430,7 @@ test('personal access token uses its bound workspace even when the user switched
         'user_id' => $this->user->id,
         'name' => 'Workspace B',
     ]);
-    $otherWorkspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $otherWorkspace->members()->attach($this->user->id, membershipPivot('admin'));
 
     $this->user->update(['current_workspace_id' => $otherWorkspace->id]);
 

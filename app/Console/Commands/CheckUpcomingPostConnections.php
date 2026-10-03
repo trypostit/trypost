@@ -21,11 +21,7 @@ class CheckUpcomingPostConnections extends Command
         $workspaceIds = PostPlatform::query()
             ->where('post_platforms.status', PostPlatformStatus::Pending)
             ->enabled()
-            // Mirrors VerifyUpcomingPostConnections::atRiskPostPlatforms() —
-            // a paused account can't be the reason to dispatch a job for its
-            // workspace, since the job itself will skip it too. whereHas()
-            // already excludes a null social_account_id (nothing to join to).
-            ->whereHas('socialAccount', fn ($query) => $query->where('is_active', true))
+            ->whereHas('socialAccount')
             ->where(function ($query) {
                 $query->whereNull('post_platforms.connection_warning_sent_at')
                     ->orWhere('post_platforms.connection_warning_sent_at', '<', now()->subDay());

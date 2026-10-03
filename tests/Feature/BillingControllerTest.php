@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
@@ -20,7 +19,7 @@ beforeEach(function () {
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -215,7 +214,7 @@ test('non-owner admin cannot access billing index', function () {
     $admin = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
     $admin->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->account->subscriptions()->create([
@@ -234,7 +233,7 @@ test('member cannot access billing index', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->account->subscriptions()->create([
@@ -251,7 +250,7 @@ test('changePlan forbids a non-owner', function () {
     config(['trypost.self_hosted' => false]);
 
     $member = User::factory()->create(['account_id' => $this->account->id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->account->subscriptions()->create([

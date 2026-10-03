@@ -2,23 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Actions\Post\AttachExistingAsset;
-use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\UserWorkspace\Role;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
-use App\Models\User;
 use App\Models\Workspace;
-use App\Support\PostMediaRules;
-use App\Support\PostStatusRules;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\ValidationException;
 
 // A public IP literal as the host lets SafeHttpFetcher's SSRF guard pass without
 // a real DNS lookup; Http::fake() intercepts the request before any network I/O.
@@ -65,7 +58,7 @@ it('attaches media from url', function () {
         ->assertJsonPath('attached_count', 1)
         ->assertJsonPath('failed_urls', []);
 
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect($this->post->ownedMedia()->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
 
     expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
@@ -253,7 +246,7 @@ it('uploads a media file and attaches it to the post', function () {
         ->post(route('api.posts.store-media', $this->post), ['media' => $file])
         ->assertOk();
 
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect($this->post->ownedMedia()->count())->toBe(1);
     expect($this->post->fresh()->media)->toHaveCount(1);
     expect(data_get($this->post->fresh()->media, '0.size'))->toBe(Media::sole()->size)->toBeGreaterThan(0);
 });
@@ -328,7 +321,6 @@ it('rejects upload without a media file', function () {
 });
 
 it('downloads and hosts an external media url when creating a post', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
         '93.184.216.34/listing.jpg' => Http::response(
@@ -353,11 +345,10 @@ it('downloads and hosts an external media url when creating a post', function ()
     expect($media)->toHaveCount(1)
         ->and(data_get($media, '0.path'))->not->toBeNull()
         ->and(data_get($media, '0.url'))->not->toContain('93.184.216.34');
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect(Post::where('content', 'External media post')->firstOrFail()->ownedMedia()->pluck('id')->all())->toBe([data_get($media, '0.id')]);
 });
 
 it('persists alt text submitted on a bare external media url', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
         '93.184.216.34/car.jpg' => Http::response(
@@ -387,7 +378,6 @@ it('persists alt text submitted on a bare external media url', function () {
 });
 
 it('keeps the measured duration when an external video url is submitted with its own meta', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
         '93.184.216.34/clip.mp4' => Http::response(file_get_contents(base_path('tests/fixtures/sample.mp4')), 200, ['Content-Type' => 'video/mp4']),
@@ -410,7 +400,6 @@ it('keeps the measured duration when an external video url is submitted with its
 });
 
 it('rejects creating a post when an external media url cannot be fetched', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake(['93.184.216.34/missing.jpg' => Http::response(null, 404)]);
 
@@ -423,14 +412,13 @@ it('rejects creating a post when an external media url cannot be fetched', funct
             ],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['media']);
+        ->assertJsonValidationErrors(['media.0.url']);
 
     expect(Post::where('content', 'Broken media post')->exists())->toBeFalse();
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
 
 it('rolls back already-hosted media when another url in the batch fails', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
         '93.184.216.34/good.jpg' => Http::response(
@@ -453,14 +441,13 @@ it('rolls back already-hosted media when another url in the batch fails', functi
             ],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['media']);
+        ->assertJsonValidationErrors(['media.1.url']);
 
     expect(Post::where('content', 'Partial media post')->exists())->toBeFalse();
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
 
 it('rejects and rolls back when a media url connection fails (timeout/dns)', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     Http::fake([
         '93.184.216.34/good.jpg' => Http::response(
@@ -483,14 +470,13 @@ it('rejects and rolls back when a media url connection fails (timeout/dns)', fun
             ],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['media']);
+        ->assertJsonValidationErrors(['media.1.url']);
 
     expect(Post::where('content', 'Timeout media post')->exists())->toBeFalse();
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
 
 it('rejects creating a post when an external media url is not a supported type', function () {
-    $this->socialAccount->update(['is_active' => true]);
 
     // Downloads fine (200) but the bytes are not a supported media type.
     Http::fake(['93.184.216.34/notes.txt' => Http::response('just some text', 200)]);
@@ -504,14 +490,15 @@ it('rejects creating a post when an external media url is not a supported type',
             ],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['media']);
+        ->assertJsonValidationErrors(['media.0.url']);
 
     expect(Post::where('content', 'Bad type post')->exists())->toBeFalse();
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
 
 it('keeps an already-hosted item and a freshly-hosted url in order', function () {
-    $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->stored()->ownedByPost($this->post)->create(['path' => 'medias/already.jpg']);
 
     Http::fake([
         '93.184.216.34/external.jpg' => Http::response(
@@ -525,7 +512,7 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
         ->postJson(route('api.posts.store'), [
             'content' => 'Mixed media post',
             'media' => [
-                ['id' => 'hosted-1', 'path' => 'assets/already.jpg', 'url' => 'https://cdn.trypost.test/assets/already.jpg', 'type' => 'image'],
+                ['id' => $asset->id],
                 ['url' => 'https://93.184.216.34/external.jpg'],
             ],
             'platforms' => [
@@ -537,34 +524,32 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
     $media = Post::where('content', 'Mixed media post')->firstOrFail()->media;
 
     expect($media)->toHaveCount(2)
-        ->and(data_get($media, '0.path'))->toBe('assets/already.jpg')
+        ->and(Media::query()->find(data_get($media, '0.id'))->meta['copied_from'])->toBe($asset->id)
         ->and(data_get($media, '1.url'))->not->toContain('93.184.216.34')
         ->and(data_get($media, '1.path'))->not->toBeNull();
-    // Only the external URL is hosted; the passed-through item creates no new row.
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(1);
+    expect($asset->fresh()->post_id)->toBe($this->post->id);
 });
 
 it('passes already-hosted media through on create without downloading', function () {
-    $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
     Http::preventStrayRequests();
+    $asset = Media::factory()->stored()->ownedByPost($this->post)->create(['path' => 'medias/foo.jpg']);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Hosted media post',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-            ]],
+            'media' => [['id' => $asset->id]],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
         ])
         ->assertCreated();
 
-    expect(data_get(Post::where('content', 'Hosted media post')->firstOrFail()->media, '0.path'))->toBe('assets/foo.jpg');
-    expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
+    $copy = Post::where('content', 'Hosted media post')->firstOrFail()->ownedMedia()->sole();
+
+    expect($copy->meta['copied_from'])->toBe($asset->id)
+        ->and($copy->path)->not->toBe('medias/foo.jpg');
+    expect($asset->fresh()->post_id)->toBe($this->post->id);
 });
 
 it('downloads and hosts an external media url when updating a post', function () {
@@ -601,25 +586,21 @@ it('rejects updating a post when an external media url cannot be fetched', funct
             'media' => [['url' => 'https://93.184.216.34/missing.jpg']],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['media']);
+        ->assertJsonValidationErrors(['media.0.url']);
 
     expect($this->post->fresh()->media)->toBe($original);
 });
 
 it('accepts and persists media alt text on create', function () {
-    $this->socialAccount->update(['is_active' => true]);
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
     Http::preventStrayRequests();
+    $asset = Media::factory()->stored()->ownedByPost($this->post)->create(['path' => 'medias/foo.jpg']);
+    $media = ['id' => $asset->id, 'alt' => 'A description of the photo'];
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => 'Alt text post',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => ['alt_text' => 'A description of the photo'],
-            ]],
+            'media' => [$media],
             'platforms' => [
                 ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ],
@@ -632,16 +613,14 @@ it('accepts and persists media alt text on create', function () {
 });
 
 it('accepts and persists media alt text on update', function () {
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->stored()->ownedByPost($this->post)->create(['path' => 'medias/foo.jpg']);
+    $media = ['id' => $asset->id, 'alt' => 'Updated alt text'];
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => ['alt_text' => 'Updated alt text'],
-            ]],
+            'media' => [$media],
         ])
         ->assertOk();
 
@@ -649,21 +628,17 @@ it('accepts and persists media alt text on update', function () {
 });
 
 it('preserves every media meta key on update, not just alt_text', function () {
+    Storage::fake(null, ['url' => 'https://cdn.example.com']);
+    $asset = Media::factory()->stored()->ownedByPost($this->post)->create([
+        'path' => 'medias/foo.jpg',
+        'meta' => ['width' => 1920, 'height' => 1080, 'duration' => 30],
+    ]);
+    $media = ['id' => $asset->id, 'alt' => 'A description of the photo'];
+
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $this->post), [
             'status' => 'draft',
-            'media' => [[
-                'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
-                'meta' => [
-                    'width' => 1920,
-                    'height' => 1080,
-                    'duration' => 30,
-                    'alt_text' => 'A description of the photo',
-                ],
-            ]],
+            'media' => [$media],
         ])
         ->assertOk();
 
@@ -676,7 +651,6 @@ it('preserves every media meta key on update, not just alt_text', function () {
 });
 
 it('rejects media alt text over 2000 characters', function () {
-    $this->socialAccount->update(['is_active' => true]);
     Http::preventStrayRequests();
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
@@ -684,9 +658,6 @@ it('rejects media alt text over 2000 characters', function () {
             'content' => 'Alt text too long post',
             'media' => [[
                 'id' => 'media-1',
-                'path' => 'assets/foo.jpg',
-                'url' => 'https://cdn.trypost.test/assets/foo.jpg',
-                'type' => 'image',
                 'meta' => ['alt_text' => str_repeat('a', 2001)],
             ]],
             'platforms' => [
@@ -697,315 +668,4 @@ it('rejects media alt text over 2000 characters', function () {
         ->assertJsonValidationErrors(['media.0.meta']);
 
     expect(Post::where('content', 'Alt text too long post')->exists())->toBeFalse();
-});
-
-it('attaches an existing workspace asset to a post', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-        'original_filename' => 'library.jpg',
-        'size' => 12345,
-        'meta' => [
-            'width' => 1920,
-            'height' => 1080,
-            'duration' => 12.5,
-            'color_space' => 'srgb',
-        ],
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => 'Library hero',
-        ])
-        ->assertOk()
-        ->assertJsonPath('id', $this->post->id);
-
-    expect($this->post->fresh()->media)->toHaveCount(1)
-        ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
-        ->and(data_get($this->post->fresh()->media, '0.size'))->toBe(12345)
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toEqual([
-            'width' => 1920,
-            'height' => 1080,
-            'duration' => 12.5,
-            'color_space' => 'srgb',
-            'alt_text' => 'Library hero',
-        ]);
-});
-
-it('preserves library alt text when attach omits alt', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-        'meta' => [
-            'width' => 800,
-            'height' => 600,
-            'alt_text' => 'From library',
-        ],
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertOk();
-
-    expect(data_get($this->post->fresh()->media, '0.meta'))->toEqual([
-        'width' => 800,
-        'height' => 600,
-        'alt_text' => 'From library',
-    ]);
-});
-
-it('attaches an existing document asset without inventing meta', function () {
-    $asset = Media::factory()->assets()->document()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-        'original_filename' => 'brief.pdf',
-        'meta' => [],
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => 'ignored for pdf',
-        ])
-        ->assertOk();
-
-    expect($this->post->fresh()->media)->toHaveCount(1)
-        ->and(data_get($this->post->fresh()->media, '0.id'))->toBe($asset->id)
-        ->and(data_get($this->post->fresh()->media, '0.type'))->toBe('document')
-        ->and(data_get($this->post->fresh()->media, '0.meta'))->toBeNull();
-});
-
-it('does not duplicate an already attached asset', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => 'First alt',
-        ])
-        ->assertOk()
-        ->assertJsonPath('id', $this->post->id);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => 'Replacement alt',
-        ])
-        ->assertOk()
-        ->assertJsonPath('id', $this->post->id);
-
-    expect($this->post->fresh()->media)->toHaveCount(1)
-        ->and(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBe('First alt');
-});
-
-it('does not store alt text for existing non-image assets', function () {
-    $asset = Media::factory()->assets()->video()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => 'ignored for video',
-        ])
-        ->assertOk();
-
-    expect(data_get($this->post->fresh()->media, '0.meta.alt_text'))->toBeNull()
-        ->and(data_get($this->post->fresh()->media, '0.meta.duration'))->not->toBeNull();
-});
-
-it('rejects existing-asset alt text over the stored maximum', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-            'alt' => str_repeat('a', PostMediaRules::ALT_TEXT_MAX_LENGTH + 1),
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['alt']);
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-});
-
-it('attaches an existing asset to a scheduled post', function () {
-    $this->post->update([
-        'status' => PostStatus::Scheduled,
-        'scheduled_at' => now()->addDay(),
-    ]);
-
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertOk();
-
-    expect($this->post->fresh()->media)->toHaveCount(1);
-});
-
-it('does not reveal a post from another workspace when attaching an asset', function () {
-    $other = Workspace::factory()->create();
-    $foreignPost = Post::factory()->create([
-        'workspace_id' => $other->id,
-        'user_id' => $this->user->id,
-    ]);
-    $tiktok = SocialAccount::factory()->tiktok()->create([
-        'workspace_id' => $other->id,
-    ]);
-    PostPlatform::factory()->tiktok()->create([
-        'post_id' => $foreignPost->id,
-        'social_account_id' => $tiktok->id,
-        'enabled' => true,
-    ]);
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $foreignPost), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertNotFound();
-});
-
-it('does not duplicate an asset when two post instances attach it', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $first = $this->post->fresh();
-    $second = $this->post->fresh();
-
-    AttachExistingAsset::execute($first, $asset);
-    AttachExistingAsset::execute($second, $asset);
-
-    expect($this->post->fresh()->media)->toHaveCount(1);
-});
-
-it('forbids viewers from attaching an existing asset', function () {
-    $viewer = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
-    $viewer->update(['current_workspace_id' => $this->workspace->id]);
-
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.passportToken($viewer, $this->workspace)])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertForbidden();
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-});
-
-it('rejects an asset from another workspace', function () {
-    $other = Workspace::factory()->create();
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $other->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['asset_id']);
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-});
-
-it('rejects attaching an existing asset when the post cannot be edited', function (PostStatus $status) {
-    $this->post->update(['status' => $status]);
-
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertUnprocessable()
-        ->assertJsonPath('message', PostStatusRules::editBlockedMessage());
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-})->with([
-    PostStatus::Published,
-    PostStatus::PartiallyPublished,
-    PostStatus::Failed,
-    PostStatus::Publishing,
-]);
-
-it('rejects attaching via the action when the post cannot be edited', function () {
-    $this->post->update(['status' => PostStatus::Published]);
-
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    expect(fn () => AttachExistingAsset::execute($this->post, $asset))
-        ->toThrow(ValidationException::class);
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-});
-
-it('rejects attaching via the action when the library asset was deleted', function () {
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-    $stale = $asset->fresh();
-    $asset->delete();
-
-    expect(fn () => AttachExistingAsset::execute($this->post, $stale))
-        ->toThrow(ValidationException::class);
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
-});
-
-it('rejects an asset type the enabled platforms cannot publish', function () {
-    $this->socialAccount->update(['platform' => Platform::TikTok]);
-    $this->post->postPlatforms()->delete();
-    PostPlatform::factory()->tiktok()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
-    ]);
-
-    $asset = Media::factory()->assets()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->postJson(route('api.posts.attach-existing-asset', $this->post), [
-            'asset_id' => $asset->id,
-        ])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['asset_id']);
-
-    expect($this->post->fresh()->media)->toHaveCount(0);
 });

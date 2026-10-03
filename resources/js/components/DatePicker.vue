@@ -1,10 +1,8 @@
 <script setup lang="ts">
 import { parseDate } from '@internationalized/date';
 import { IconCalendar } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
-import { ref, watch, computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 
-import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import {
     Popover,
@@ -19,7 +17,9 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCalendarLocale } from '@/composables/useCalendarLocale';
+import date from '@/date';
 import dayjs from '@/dayjs';
+import { cn } from '@/lib/utils';
 
 const props = defineProps({
     name: {
@@ -33,7 +33,8 @@ const props = defineProps({
     align: {
         type: String as () => 'start' | 'center' | 'end',
         default: 'end',
-        validator: (value: string) => ['start', 'center', 'end'].includes(value),
+        validator: (value: string) =>
+            ['start', 'center', 'end'].includes(value),
     },
     disabled: {
         type: Boolean,
@@ -55,7 +56,6 @@ const emit = defineEmits<{
 
 const calendarLocale = useCalendarLocale();
 
-// Parse input value into date
 const parseInput = (value: string) => {
     if (!value) return undefined;
 
@@ -73,7 +73,6 @@ const parseInput = (value: string) => {
 const internalDate = ref(parseInput(props.modelValue));
 const popoverOpen = ref(false);
 
-// Time state (24-hour format)
 const selectedHour = ref(
     props.modelValue && dayjs(props.modelValue).isValid()
         ? dayjs(props.modelValue).format('HH')
@@ -85,21 +84,18 @@ const selectedMinute = ref(
         : '00',
 );
 
-// Generate hours (00-23)
 const hours = computed(() => {
     return Array.from({ length: 24 }, (_, i) => {
         return i.toString().padStart(2, '0');
     });
 });
 
-// Generate minutes (00-59 in 5-minute intervals)
 const minutes = computed(() => {
     return Array.from({ length: 12 }, (_, i) => {
         return (i * 5).toString().padStart(2, '0');
     });
 });
 
-// Build full datetime string
 const buildDateTime = (dateStr: string | null): string | null => {
     if (!dateStr) return null;
 
@@ -118,7 +114,6 @@ const onTimeChange = () => {
     }
 };
 
-// Parse input value into date component
 const isInternalUpdate = ref(false);
 
 watch(
@@ -147,7 +142,6 @@ watch(
     { immediate: true },
 );
 
-// Watch internal date changes from calendar
 watch(internalDate, (newDate) => {
     if (!newDate || isInternalUpdate.value) return;
 
@@ -160,7 +154,6 @@ watch(internalDate, (newDate) => {
     }
 });
 
-// Display string for the button — LL/LLL follow the active dayjs locale.
 const displayText = computed(() => {
     if (!props.modelValue || !dayjs(props.modelValue).isValid()) {
         return null;
@@ -169,7 +162,7 @@ const displayText = computed(() => {
     const parsed = dayjs(props.modelValue);
 
     if (props.showTime) {
-        return parsed.format('LLL');
+        return parsed.format(`LL ${date.timeToken()}`);
     }
 
     return parsed.format('LL');
@@ -179,41 +172,71 @@ const displayText = computed(() => {
 <template>
     <Popover v-model:open="popoverOpen">
         <PopoverTrigger as-child :disabled="disabled">
-            <Button :id="name" type="button" variant="outline" class="w-full justify-between text-left font-medium"
-                :class="[{ 'text-foreground/60': !displayText }, $attrs.class]" :disabled="disabled">
-                <span>{{ displayText || placeholder || $t('common.date_picker.select') }}</span>
-                <IconCalendar class="size-4 shrink-0" />
-            </Button>
+            <button
+                :id="name"
+                type="button"
+                :data-testid="name ? `${name}-trigger` : undefined"
+                :disabled="disabled"
+                :class="
+                    cn(
+                        'flex h-8 w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-card px-2 py-1 text-start text-sm text-foreground transition-[color,box-shadow] outline-none focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=open]:border-ring dark:bg-input/30',
+                        !displayText && 'text-subtle-foreground',
+                        $attrs.class as string,
+                    )
+                "
+            >
+                <span class="truncate">{{
+                    displayText ||
+                    placeholder ||
+                    $t('common.date_picker.select')
+                }}</span>
+                <IconCalendar class="size-4 shrink-0 text-muted-foreground" />
+            </button>
         </PopoverTrigger>
-        <PopoverContent class="w-auto p-0" :align="align">
+        <PopoverContent
+            class="w-auto p-0"
+            :align="align"
+            :data-testid="name ? `${name}-calendar` : undefined"
+        >
             <Calendar
                 v-model="internalDate as any"
-                :placeholder="(internalDate as any)"
+                :placeholder="internalDate as any"
                 layout="month-and-year"
                 :locale="calendarLocale"
-                :calendar-label="trans('common.date_picker.label')"
+                :calendar-label="$t('common.date_picker.label')"
                 initial-focus
             />
-            <!-- Time Picker -->
-            <div v-if="showTime" class="border-t-2 border-foreground/10 p-3">
+            <div v-if="showTime" class="border-t border-border p-3">
                 <div class="flex items-center gap-2">
-                    <Select v-model="selectedHour" @update:model-value="onTimeChange">
-                        <SelectTrigger class="w-[80px]">
-                            <SelectValue placeholder="HH" />
+                    <Select
+                        v-model="selectedHour"
+                        @update:model-value="onTimeChange"
+                    >
+                        <SelectTrigger class="w-[96px]">
+                            <SelectValue placeholder="HH">{{
+                                date.formatHourOption(selectedHour)
+                            }}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem v-for="h in hours" :key="h" :value="h">
-                                {{ h }}
+                                {{ date.formatHourOption(h) }}
                             </SelectItem>
                         </SelectContent>
                     </Select>
                     <span class="font-bold text-foreground/40">:</span>
-                    <Select v-model="selectedMinute" @update:model-value="onTimeChange">
+                    <Select
+                        v-model="selectedMinute"
+                        @update:model-value="onTimeChange"
+                    >
                         <SelectTrigger class="w-[80px]">
                             <SelectValue placeholder="MM" />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem v-for="m in minutes" :key="m" :value="m">
+                            <SelectItem
+                                v-for="m in minutes"
+                                :key="m"
+                                :value="m"
+                            >
                                 {{ m }}
                             </SelectItem>
                         </SelectContent>

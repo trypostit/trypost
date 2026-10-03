@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role as WorkspaceRole;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -26,7 +25,7 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => WorkspaceRole::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
@@ -51,9 +50,12 @@ test('members page shows members and invites', function () {
         ->component('settings/workspace/Members', false)
         ->has('workspace')
         ->has('members')
+        ->has('members.0', fn ($member) => $member
+            ->hasAll(['id', 'name', 'email', 'photo_url', 'is_admin', 'requires_approval'])
+        )
         ->has('invites')
         ->has('owner')
-        ->has('roles')
+        ->missing('roles')
     );
 });
 
@@ -61,7 +63,7 @@ test('members page shows members and invites', function () {
 test('store invite requires authentication', function () {
     $response = $this->post(route('app.invites.store'), [
         'email' => 'test@example.com',
-        'role' => WorkspaceRole::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     $response->assertRedirect(route('login'));
@@ -70,7 +72,7 @@ test('store invite requires authentication', function () {
 test('store invite creates invite and sends email', function () {
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => 'newmember@example.com',
-        'role' => WorkspaceRole::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     $response->assertRedirect();
@@ -88,7 +90,7 @@ test('store invite blocks an email that already belongs to a registered user', f
 
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => 'existing@example.com',
-        'role' => WorkspaceRole::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     $response->assertSessionHasErrors('email');
@@ -96,25 +98,38 @@ test('store invite blocks an email that already belongs to a registered user', f
     Mail::assertNothingQueued();
 });
 
-test('store invite requires a role', function () {
-    $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
+test('store invite requires both access flags', function () {
+    $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => 'newmember@example.com',
-    ]);
+    ])->assertSessionHasErrors(['is_admin', 'requires_approval']);
 
-    $response->assertSessionHasErrors('role');
     $this->assertDatabaseMissing('invites', ['email' => 'newmember@example.com']);
 });
 
-test('store invite persists the chosen role', function () {
+test('store invite persists the chosen access', function () {
     $this->actingAs($this->user)->post(route('app.invites.store'), [
-        'email' => 'viewer@example.com',
-        'role' => WorkspaceRole::Viewer->value,
-    ]);
+        'email' => 'approval@example.com',
+        'is_admin' => '0',
+        'requires_approval' => '1',
+    ])->assertSessionHasNoErrors();
 
-    $this->assertDatabaseHas('invites', [
-        'email' => 'viewer@example.com',
-        'role' => WorkspaceRole::Viewer->value,
-    ]);
+    $invite = Invite::query()->where('email', 'approval@example.com')->sole();
+
+    expect($invite->is_admin)->toBeFalse()
+        ->and($invite->requires_approval)->toBeTrue();
+});
+
+test('an admin invite never needs approval', function () {
+    $this->actingAs($this->user)->post(route('app.invites.store'), [
+        'email' => 'admin@example.com',
+        'is_admin' => '1',
+        'requires_approval' => '1',
+    ])->assertSessionHasNoErrors();
+
+    $invite = Invite::query()->where('email', 'admin@example.com')->sole();
+
+    expect($invite->is_admin)->toBeTrue()
+        ->and($invite->requires_approval)->toBeFalse();
 });
 
 test('store invite fails if invite already exists', function () {
@@ -127,7 +142,7 @@ test('store invite fails if invite already exists', function () {
 
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => 'existing@example.com',
-        'role' => WorkspaceRole::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     $response->assertSessionHasErrors('email');
@@ -137,11 +152,11 @@ test('store invite fails if user is already member', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
         'email' => $member->email,
-        'role' => WorkspaceRole::Member->value,
+        ...membershipPivot('member'),
     ]);
 
     $response->assertSessionHasErrors('email');
@@ -190,7 +205,7 @@ test('remove member requires authentication', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $response = $this->delete(route('app.members.remove', $member));
 
@@ -201,7 +216,7 @@ test('remove member removes user from workspace', function () {
     $member = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $response = $this->actingAs($this->user)->delete(route('app.members.remove', $member));
 
@@ -217,7 +232,7 @@ test('remove member deletes stranded members', function () {
         setMemberCurrent: false,
     );
     $member->update(['current_workspace_id' => $this->workspace->id]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
 
     $this->actingAs($this->user)->delete(route('app.members.remove', $member));
 
@@ -231,68 +246,67 @@ test('remove member fails for owner', function () {
     $response->assertSessionHasErrors('member');
 });
 
-// Update role tests
-test('update role requires authentication', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+// Update member tests
+function inviteControllerMemberFlags(Workspace $workspace, User $member): array
+{
+    $pivot = $workspace->members()->where('user_id', $member->id)->first()->pivot;
 
-    $response = $this->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Admin->value,
-    ]);
+    return ['is_admin' => (bool) $pivot->is_admin, 'requires_approval' => (bool) $pivot->requires_approval];
+}
 
-    $response->assertRedirect(route('login'));
+test('update member requires authentication', function () {
+    $member = workspaceMember($this->workspace);
+
+    $this->put(route('app.members.update', $member), membershipPivot('admin'))
+        ->assertRedirect(route('login'));
 });
 
-test('update role changes member to admin', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+test('update member makes a member an admin', function () {
+    $member = workspaceMember($this->workspace);
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Admin->value,
-    ]);
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => '1', 'requires_approval' => '0'])
+        ->assertRedirect()
+        ->assertSessionMissing('flash.banner');
 
-    $response->assertRedirect();
-    expect($this->workspace->members()->where('user_id', $member->id)->first()->pivot->role)->toBe(WorkspaceRole::Admin->value);
+    expect(inviteControllerMemberFlags($this->workspace, $member))->toBe(['is_admin' => true, 'requires_approval' => false]);
 });
 
-test('update role changes member to viewer', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+test('update member makes a member need approval', function () {
+    $member = workspaceMember($this->workspace);
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Viewer->value,
-    ]);
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => '0', 'requires_approval' => '1'])
+        ->assertRedirect();
 
-    $response->assertRedirect();
-    expect($this->workspace->members()->where('user_id', $member->id)->first()->pivot->role)->toBe(WorkspaceRole::Viewer->value);
+    expect(inviteControllerMemberFlags($this->workspace, $member))->toBe(['is_admin' => false, 'requires_approval' => true]);
 });
 
-test('an admin cannot change their own role', function () {
-    $admin = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($admin->id, ['role' => WorkspaceRole::Admin->value]);
-    $admin->update(['current_workspace_id' => $this->workspace->id]);
+test('an admin is never stored as needing approval', function () {
+    $member = workspaceMember($this->workspace, 'approval');
 
-    $response = $this->actingAs($admin)->put(route('app.members.update-role', $admin), [
-        'role' => WorkspaceRole::Member->value,
-    ]);
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => '1', 'requires_approval' => '1'])
+        ->assertRedirect();
 
-    $response->assertSessionHasErrors('role');
-    expect($this->workspace->members()->where('user_id', $admin->id)->first()->pivot->role)->toBe(WorkspaceRole::Admin->value);
+    expect(inviteControllerMemberFlags($this->workspace, $member))->toBe(['is_admin' => true, 'requires_approval' => false]);
+});
+
+test('an admin cannot change their own access', function () {
+    $admin = workspaceMember($this->workspace, 'admin');
+
+    $this->actingAs($admin)
+        ->put(route('app.members.update', $admin), ['is_admin' => '0', 'requires_approval' => '1'])
+        ->assertSessionHasErrors(['is_admin' => __('settings.members.errors.cannot_change_own_access')]);
+
+    expect(inviteControllerMemberFlags($this->workspace, $admin))->toBe(['is_admin' => true, 'requires_approval' => false]);
 });
 
 test('an admin cannot remove themselves', function () {
     $admin = User::factory()->create([
         'account_id' => $this->account->id,
     ]);
-    $this->workspace->members()->attach($admin->id, ['role' => WorkspaceRole::Admin->value]);
+    $this->workspace->members()->attach($admin->id, membershipPivot('admin'));
     $admin->update(['current_workspace_id' => $this->workspace->id]);
 
     $response = $this->actingAs($admin)->delete(route('app.members.remove', $admin));
@@ -301,31 +315,22 @@ test('an admin cannot remove themselves', function () {
     expect($this->workspace->members()->where('user_id', $admin->id)->exists())->toBeTrue();
 });
 
-test('update role changes admin to member', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Admin->value]);
+test('removing admin access revokes the member api keys', function () {
+    $member = workspaceMember($this->workspace, 'admin');
     $result = $member->createToken('Admin Key');
     $token = AccessToken::query()->findOrFail($result->token->id);
     $token->forceFill(['workspace_id' => $this->workspace->id])->saveQuietly();
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Member->value,
-    ]);
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => '0', 'requires_approval' => '0'])
+        ->assertRedirect();
 
-    $response->assertRedirect();
-    expect($this->workspace->members()->where('user_id', $member->id)->first()->pivot->role)->toBe(WorkspaceRole::Member->value);
-    expect($token->fresh()->revoked)->toBeTrue();
+    expect(inviteControllerMemberFlags($this->workspace, $member))->toBe(['is_admin' => false, 'requires_approval' => false])
+        ->and($token->fresh()->revoked)->toBeTrue();
 });
 
-test('demoting a member to viewer keeps their mcp oauth grants', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
-
+test('requiring approval keeps mcp oauth grants and still lets the member write posts', function () {
+    $member = workspaceMember($this->workspace);
     $oauth = mcpAccessToken($member, mcpOauthClient(), $this->workspace);
     $refreshTokenId = (string) Str::uuid();
     DB::table('oauth_refresh_tokens')->insert([
@@ -335,78 +340,52 @@ test('demoting a member to viewer keeps their mcp oauth grants', function () {
         'expires_at' => now()->addDay(),
     ]);
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Viewer->value,
-    ]);
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => '0', 'requires_approval' => '1'])
+        ->assertRedirect();
 
-    $response->assertRedirect();
     expect($oauth->fresh()->revoked)->toBeFalse()
         ->and((bool) DB::table('oauth_refresh_tokens')->where('id', $refreshTokenId)->value('revoked'))->toBeFalse()
-        ->and($member->fresh()->can('createPost', $this->workspace))->toBeFalse()
-        ->and($member->fresh()->can('view', $this->workspace))->toBeTrue();
+        ->and($member->fresh()->can('createPost', $this->workspace))->toBeTrue()
+        ->and($member->fresh()->can('publishDirectly', $this->workspace))->toBeFalse();
 });
 
-test('demoting to viewer on one workspace keeps mcp when they remain a member elsewhere', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $other = Workspace::factory()->create([
-        'user_id' => $this->user->id,
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
-    $other->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
-    $oauth = mcpAccessToken($member, mcpOauthClient(), $this->workspace);
+test('the account owner cannot be demoted', function () {
+    $admin = workspaceMember($this->workspace, 'admin');
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Viewer->value,
-    ]);
+    $this->actingAs($admin)
+        ->put(route('app.members.update', $this->user), ['is_admin' => '0', 'requires_approval' => '1'])
+        ->assertSessionHasErrors(['is_admin' => __('settings.members.errors.cannot_change_owner_access')]);
 
-    $response->assertRedirect();
-    expect($oauth->fresh()->revoked)->toBeFalse()
-        ->and($member->fresh()->can('createPost', $other))->toBeTrue()
-        ->and($member->fresh()->can('createPost', $this->workspace))->toBeFalse();
+    expect($this->user->fresh()->isWorkspaceAdmin($this->workspace))->toBeTrue()
+        ->and($this->user->fresh()->requiresApprovalIn($this->workspace))->toBeFalse()
+        ->and(inviteControllerMemberFlags($this->workspace, $this->user))->toBe(['is_admin' => true, 'requires_approval' => false]);
 });
 
-test('update role fails for workspace owner', function () {
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $this->user), [
-        'role' => WorkspaceRole::Member->value,
-    ]);
+test('update member validates both flags', function () {
+    $member = workspaceMember($this->workspace);
 
-    $response->assertSessionHasErrors('role');
+    $this->actingAs($this->user)
+        ->put(route('app.members.update', $member), ['is_admin' => 'maybe'])
+        ->assertSessionHasErrors(['is_admin', 'requires_approval']);
 });
 
-test('update role fails with invalid role', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+test('update member requires team management', function () {
+    $member = workspaceMember($this->workspace);
+    $nonAdmin = workspaceMember($this->workspace);
 
-    $response = $this->actingAs($this->user)->put(route('app.members.update-role', $member), [
-        'role' => 'invalid',
-    ]);
-
-    $response->assertSessionHasErrors('role');
+    $this->actingAs($nonAdmin)
+        ->put(route('app.members.update', $member), membershipPivot('admin'))
+        ->assertForbidden();
 });
 
-test('update role requires authorization', function () {
-    $member = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($member->id, ['role' => WorkspaceRole::Member->value]);
+test('update member is forbidden before validation for non admins', function () {
+    $member = workspaceMember($this->workspace);
+    $nonAdmin = workspaceMember($this->workspace);
 
-    $nonAdmin = User::factory()->create([
-        'account_id' => $this->account->id,
-    ]);
-    $this->workspace->members()->attach($nonAdmin->id, ['role' => WorkspaceRole::Member->value]);
-    $nonAdmin->update(['current_workspace_id' => $this->workspace->id]);
-
-    $response = $this->actingAs($nonAdmin)->put(route('app.members.update-role', $member), [
-        'role' => WorkspaceRole::Admin->value,
-    ]);
-
-    $response->assertForbidden();
+    $this->actingAs($nonAdmin)
+        ->put(route('app.members.update', $member), ['is_admin' => 'maybe'])
+        ->assertForbidden();
 });
 
 test('store invite validates email is required', function () {
@@ -421,13 +400,4 @@ test('store invite validates email format', function () {
     ]);
 
     $response->assertSessionHasErrors('email');
-});
-
-test('store invite validates role must be valid', function () {
-    $response = $this->actingAs($this->user)->post(route('app.invites.store'), [
-        'email' => 'test@example.com',
-        'role' => 'owner',
-    ]);
-
-    $response->assertSessionHasErrors('role');
 });

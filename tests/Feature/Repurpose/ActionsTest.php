@@ -15,13 +15,20 @@ use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 function repurposeWorkspace(): array
 {
@@ -282,9 +289,8 @@ test('an active repurpose cannot be updated into a state it could not be activat
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => []]))
         ->toThrow(ValidationException::class);
 
-    $switchedOff = SocialAccount::factory()->for($workspace)->create([
+    $switchedOff = SocialAccount::factory()->for(Workspace::factory()->create())->create([
         'platform' => Platform::Discord,
-        'is_active' => false,
     ]);
 
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[
@@ -359,9 +365,8 @@ test('an update the activation rules reject leaves the stored destinations untou
         'destinations' => [$destination],
     ]);
 
-    $pinterest = SocialAccount::factory()->for($workspace)->create([
+    $pinterest = SocialAccount::factory()->for(Workspace::factory()->create())->create([
         'platform' => Platform::Pinterest,
-        'is_active' => false,
     ]);
 
     expect(fn () => UpdateRepurpose::execute($repurpose, ['destinations' => [[

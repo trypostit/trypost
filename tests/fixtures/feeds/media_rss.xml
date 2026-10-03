@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:media="http://search.yahoo.com/mrss/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>Media Example</title>
+        <link>/</link>
+        <item>
+            <title>Thumbnail wins</title>
+            <link>https://example.com/posts/a</link>
+            <guid isPermaLink="false">item-a</guid>
+            <pubDate>Mon, 14 Sep 2026 08:00:00 +0000</pubDate>
+            <media:thumbnail url="https://cdn.example.com/a-thumb.jpg"/>
+            <media:content url="https://cdn.example.com/a-content.jpg" medium="image"/>
+            <enclosure url="https://cdn.example.com/a-enclosure.jpg" type="image/jpeg" length="1"/>
+            <description><![CDATA[<p><img src="https://cdn.example.com/a-inline.jpg"/>Body A</p>]]></description>
+        </item>
+        <item>
+            <title>Insecure thumbnail dropped</title>
+            <link>https://example.com/posts/b</link>
+            <guid>item-b</guid>
+            <media:thumbnail url="http://cdn.example.com/b-thumb.jpg"/>
+            <media:content url="https://cdn.example.com/b-video.mp4" type="video/mp4"/>
+            <media:content url="https://cdn.example.com/b-content.jpg" type="image/jpeg"/>
+            <description>Body B</description>
+        </item>
+        <item>
+            <title>Enclosure wins over inline</title>
+            <link>https://example.com/posts/c</link>
+            <guid>item-c</guid>
+            <enclosure url="https://cdn.example.com/c-audio.mp3" type="audio/mpeg" length="1"/>
+            <enclosure url="https://cdn.example.com/c-enclosure.png" type="image/png" length="1"/>
+            <content:encoded><![CDATA[<p><img src="https://cdn.example.com/c-inline.jpg"/>Body C</p>]]></content:encoded>
+        </item>
+        <item>
+            <title>Relative link and inline image</title>
+            <link>/posts/d</link>
+            <description><![CDATA[<p><img src="/images/d.png"/>Body D</p>]]></description>
+        </item>
+        <item>
+            <title>AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA</title>
+            <description><![CDATA[<p><img src="http://cdn.example.com/e.jpg"/>Body E has neither guid nor link.</p>]]></description>
+        </item>
+    </channel>
+</rss>

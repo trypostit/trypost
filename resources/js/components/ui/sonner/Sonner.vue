@@ -1,5 +1,12 @@
 <script lang="ts" setup>
 import type { ToasterProps } from "vue-sonner"
+import {
+  IconAlertCircleFilled,
+  IconAlertTriangleFilled,
+  IconCircleCheckFilled,
+  IconInfoCircleFilled,
+  IconLoader2,
+} from "@tabler/icons-vue"
 import { Toaster as Sonner } from "vue-sonner"
 
 const props = defineProps<ToasterProps>()
@@ -10,58 +17,99 @@ const props = defineProps<ToasterProps>()
     v-bind="props"
     position="bottom-right"
     :style="{
-      '--normal-bg': 'var(--card)',
-      '--normal-text': 'var(--foreground)',
-      '--normal-border': 'var(--foreground)',
-      '--success-bg': '#d1fae5',
-      '--success-text': 'var(--foreground)',
-      '--success-border': 'var(--foreground)',
-      '--error-bg': '#fee2e2',
-      '--error-text': 'var(--foreground)',
-      '--error-border': 'var(--foreground)',
-      '--warning-bg': '#fef3c7',
-      '--warning-text': 'var(--foreground)',
-      '--warning-border': 'var(--foreground)',
-      '--info-bg': '#ede9fe',
-      '--info-text': 'var(--foreground)',
-      '--info-border': 'var(--foreground)',
+      '--normal-bg': 'var(--popover)',
+      '--normal-text': 'var(--popover-foreground)',
+      '--normal-border': 'var(--border)',
+      '--success-bg': 'var(--popover)',
+      '--success-text': 'var(--popover-foreground)',
+      '--success-border': 'var(--border)',
+      '--error-bg': 'var(--popover)',
+      '--error-text': 'var(--popover-foreground)',
+      '--error-border': 'var(--border)',
+      '--warning-bg': 'var(--popover)',
+      '--warning-text': 'var(--popover-foreground)',
+      '--warning-border': 'var(--border)',
+      '--info-bg': 'var(--popover)',
+      '--info-text': 'var(--popover-foreground)',
+      '--info-border': 'var(--border)',
     }"
-  />
+  >
+    <template #success-icon>
+      <IconCircleCheckFilled class="size-5" />
+    </template>
+    <template #error-icon>
+      <IconAlertCircleFilled class="size-5" />
+    </template>
+    <template #warning-icon>
+      <IconAlertTriangleFilled class="size-5" />
+    </template>
+    <template #info-icon>
+      <IconInfoCircleFilled class="size-5" />
+    </template>
+    <template #loading-icon>
+      <IconLoader2 class="size-5 animate-spin" />
+    </template>
+  </Sonner>
 </template>
 
 <style>
-/* Indies sticker toast — ink 2px border + solid offset ink shadow, no blur. */
-[data-sonner-toast] {
-  border-width: 2px !important;
-  border-radius: var(--radius-lg) !important;
-  box-shadow: 4px 4px 0 0 #0a0a0a !important;
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  gap: 10px;
+  padding: 14px 16px;
+  border-color: transparent;
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  font-size: 14px;
   font-weight: 500;
+  line-height: 20px;
 }
 
-[data-sonner-toast] [data-title] {
-  font-weight: 600;
+.dark [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
+  border-color: var(--border);
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-description] {
+  font-weight: 400;
+  color: var(--muted-foreground);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-sonner-toaster] [data-sonner-toast] {
+    transition:
+      transform var(--motion-duration-toast-enter) var(--motion-easing-overlay-enter),
+      opacity var(--motion-duration-toast-enter) var(--motion-easing-overlay-enter),
+      height var(--motion-duration-toast-enter) var(--motion-easing-overlay-enter),
+      box-shadow 200ms;
+  }
+
+  [data-sonner-toaster] [data-sonner-toast][data-removed="true"],
+  [data-sonner-toaster] [data-sonner-toast][data-removed="true"][data-front="false"][data-swipe-out="false"][data-expanded="false"] {
+    transition:
+      transform var(--motion-duration-toast-exit) var(--motion-easing-overlay-exit),
+      opacity var(--motion-duration-toast-exit) var(--motion-easing-overlay-exit),
+      height var(--motion-duration-toast-exit) var(--motion-easing-overlay-exit);
+  }
 }
 
 [data-sonner-toast][data-type="success"] [data-icon] {
-  color: #047857 !important;
+  color: var(--success) !important;
 }
 
 [data-sonner-toast][data-type="error"] [data-icon] {
-  color: #b91c1c !important;
+  color: var(--error) !important;
 }
 
 [data-sonner-toast][data-type="warning"] [data-icon] {
-  color: #b45309 !important;
+  color: var(--warning) !important;
 }
 
 [data-sonner-toast][data-type="info"] [data-icon] {
-  color: #5b21b6 !important;
-}
-
-/* Action / cancel buttons inside a toast pick up the indies button look. */
-[data-sonner-toast] [data-button] {
-  border: 2px solid #0a0a0a !important;
-  box-shadow: 1px 1px 0 0 #0a0a0a !important;
-  font-weight: 600;
+  color: var(--info) !important;
 }
 </style>

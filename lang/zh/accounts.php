@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => '连接',
-    'page_title' => '社交账号',
-    'description' => '查看你所有已连接的社交账号',
-    'connect_cta' => '连接',
-    'connect_another' => '连接另一个',
-    'actions' => '账号操作',
-    'activate' => '启用',
-    'deactivate' => '停用',
-    'active' => '已启用',
-    'paused' => '已停用',
-    'accounts_count' => ':count 个账号',
-
-    'variants' => [
-        'linkedin-page' => '主页',
-        'instagram-facebook' => '通过 Facebook',
-    ],
-
-    'not_connected' => '未连接',
-    'connect' => '连接',
-    'connection_lost' => '连接已断开',
-    'reconnect' => '重新连接',
-    'reconnect_account' => '重新连接账号',
-    'view_profile' => '查看主页',
-    'disconnect' => '断开连接',
-
-    'descriptions' => [
-        'linkedin' => '连接你的 LinkedIn 个人主页或公司页面',
-        'linkedin-page' => '连接一个 LinkedIn 公司页面',
-        'x' => '连接你的 X（Twitter）账号',
-        'tiktok' => '连接你的 TikTok 账号',
-        'youtube' => '连接一个 YouTube 频道',
-        'facebook' => '连接一个 Facebook 主页',
-        'instagram' => '通过 Instagram Login 或 Facebook 主页连接',
-        'instagram-facebook' => '通过 Facebook 主页连接 Instagram',
-        'threads' => '连接你的 Threads 账号',
-        'pinterest' => '连接你的 Pinterest 账号',
-        'bluesky' => '连接你的 Bluesky 账号',
-        'mastodon' => '连接你的 Mastodon 账号',
-        'telegram' => '连接一个 Telegram 频道或群组',
-        'discord' => '连接一个 Discord 服务器',
-        'google_business' => '连接一个 Google 商家资料位置',
-    ],
-
-    'disconnect_modal' => [
-        'title' => '断开账号连接',
-        'description' => '确定要断开此账号的连接吗？你可以随时重新连接。',
-        'confirm' => '断开连接',
-        'cancel' => '取消',
-    ],
-
     'bluesky' => [
         'title' => '连接 Bluesky',
         'description' => '输入你的凭据以连接',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => '连接 Telegram',
         'description' => '关联一个频道或群组',
+        'steps' => '步骤',
         'step_admin' => '将 :bot 添加为你的 Telegram 频道或群组的管理员。',
+        'open_bot' => '在 Telegram 中打开',
         'step_command' => '在该频道或群组中发送以下命令：',
         'waiting' => '正在等待频道连接…',
-        'connected' => '频道已连接！',
-        'connected_toast' => 'Telegram 频道连接成功！',
-        'copied_toast' => '命令已复制到剪贴板',
-        'copy_tooltip' => '复制命令',
-        'expired' => '此代码已过期。请生成新代码后重试。',
-        'new_code' => '生成新代码',
-        'retry' => '重试',
+        'copy_command' => '复制命令',
+        'expired' => '此命令已过期。请生成新命令后重试。',
+        'new_command' => '生成新命令',
         'error_generic' => '无法启动连接，请重试。',
         'network_taken' => '此工作区已连接了一个 Telegram 频道。请先断开该连接。',
         'wrong_chat' => '请在你要重新连接的频道中发送该命令。',
         'busy' => '另一个连接仍在完成中，请稍后重新发送该命令。',
+        'help' => [
+            'channel_admins' => '为频道添加管理员',
+            'group_admins' => '为群组添加管理员',
+            'bot_privacy' => '机器人在群组中能读取哪些消息',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => '连接 Instagram',
-        'description' => '选择连接 Instagram 账号的方式',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => '使用你的 Instagram 专业账号登录',
-        'facebook_title' => 'Facebook 主页',
-        'facebook_description' => '连接关联到 Facebook 主页的 Instagram 账号',
+        'title' => '你想如何连接你的 Instagram 账号？',
+        'description' => '可用功能取决于你的 Instagram 账号类型以及所选的连接方式。',
+        'professional_title' => '专业账号',
+        'professional_types' => '（商家和创作者）',
+        'badge' => '自动发布',
+        'features' => [
+            'automatic' => [
+                'title' => '自动发布',
+                'description' => '你来排期，我们来发布',
+            ],
+            'metrics' => [
+                'title' => '已发布帖子数据',
+                'description' => '查看过往帖子的表现',
+            ],
+        ],
+        'connect' => '连接到 Instagram',
+        'convert_hint' => '如有需要，Instagram 会提示你轻松转换为专业账号。',
+        'facebook_link' => '通过 Facebook 连接 Instagram',
+        'facebook_suffix' => '（如果你的 Instagram 账号已关联 Facebook）。',
+        'help' => [
+            'account_type' => '查看你的 Instagram 账号类型',
+            'convert' => '将 Instagram 账号转换为专业账号',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => '通过 Facebook 连接 Instagram',
+        'subtitle' => '你需要了解以下内容 👇',
+        'heading' => '要求',
+        'items' => [
+            'account_type' => [
+                'lead' => '商家或创作者',
+                'rest' => 'Instagram 账号，而非个人 Instagram 主页。',
+            ],
+            'page' => [
+                'lead' => '已关联 Facebook 公共主页，',
+                'rest' => '而非 Facebook 个人主页。需要在 Meta 上将 Instagram 关联到 Facebook？',
+            ],
+            'admin' => [
+                'lead' => '以 Facebook 公共主页管理员身份登录，',
+                'rest' => '并拥有“完全控制权限”。',
+            ],
+            'permissions' => [
+                'lead' => '为所有公共主页和 Instagram 账号选择所有权限',
+                'rest' => '（连接时选择，包括你不会连接到 TryPost 的账号）。',
+            ],
+        ],
+        'learn_how' => '了解方法。',
+        'note' => '如果未满足以上任一要求，连接将无法正常工作。',
+        'connect' => '通过 Facebook 连接',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => '账号已开启。已恢复 :count 个自动化。|账号已开启。已恢复 :count 个自动化。',
         'disconnected_paused_repurposes' => '账号已断开连接。已暂停 :count 个自动化。|账号已断开连接。已暂停 :count 个自动化。',
-        'deactivated_paused_repurposes' => '账号已关闭。已暂停 :count 个自动化。|账号已关闭。已暂停 :count 个自动化。',
         'disconnected' => '账号已成功断开连接！',
-        'connected' => '账号连接成功！',
         'session_expired' => '会话已过期，请重试。',
         'workspace_not_found' => '未找到工作区。',
-        'activated' => '账号已启用！',
-        'deactivated' => '账号已停用！',
         'already_connected' => '此平台已连接。',
         'no_youtube_channels' => '未找到 YouTube 频道，请先创建一个频道。',
     ],
 
     'popup_callback' => [
-        'title_success' => '已连接',
         'title_error' => '错误',
         'closing' => '此窗口将自动关闭…',
         'manual_close' => '你可以关闭此窗口。',
         'popup_blocked' => '无法打开连接窗口。请允许弹出窗口后重试。',
-        'connected' => '账号已连接！',
-        'reconnected' => '账号已重新连接！',
         'error_connecting' => '连接账号时出错，请重试。',
         'network_taken' => '此工作区已连接了该网络的账号。请先断开该连接。',
         'wrong_account' => '这是另一个账号。请授权你正在重新连接的那个。',

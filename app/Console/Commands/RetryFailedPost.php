@@ -12,6 +12,7 @@ use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Support\Social\PublishCheckpoint;
+use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -166,18 +167,25 @@ class RetryFailedPost extends Command
     }
 
     /**
-     * Keep in-flight checkpoints only. Confirmed remote failures must start over.
+     * Keep in-flight checkpoints only. Confirmed remote failures must start over,
+     * except the live segments of a thread, which are never posted twice.
      *
      * @param  array<string, mixed>|null  $context
      * @return array<string, mixed>|null
      */
     private function resumableContext(?array $context): ?array
     {
-        if (ErrorCategory::tryFromContext($context)?->isResumable() !== true) {
-            return null;
+        $kept = [];
+        $thread = data_get($context, ThreadProgress::KEY);
+
+        if (is_array($thread) && $thread !== []) {
+            $kept[ThreadProgress::KEY] = $thread;
         }
 
-        $kept = [];
+        if (ErrorCategory::tryFromContext($context)?->isResumable() !== true) {
+            return $kept === [] ? null : $kept;
+        }
+
         $publishId = PublishCheckpoint::tiktokPublishId($context);
         $workflow = PublishCheckpoint::instagramWorkflow($context);
 

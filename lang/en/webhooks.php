@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Receive real-time notifications when posts are created, scheduled, unscheduled, published, or fail.',
+    'description' => 'Get real-time updates when your posts change.',
     'new' => 'Create webhook',
     'empty_title' => 'No webhooks yet',
     'empty_description' => 'Create a webhook to receive real-time event notifications.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Listening for',
         'status' => 'Status',
         'last_sent' => 'Last sent',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Disabled',
         'paused' => 'Paused',
     ],
+    'row_actions' => 'Webhook actions',
     'actions' => [
         'view' => 'View details',
-        'copy_id' => 'Copy webhook ID',
         'delete' => 'Delete',
         'edit' => 'Edit endpoint',
         'enable' => 'Enable endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Configure an endpoint to receive webhook notifications.',
         'endpoint' => 'Endpoint URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'We\'ll send a POST request with a JSON payload to this URL.',
         'events' => 'Events',
-        'events_placeholder' => 'Select events...',
-        'events_selected' => '{1} :count event selected|[2,*] :count events selected',
-        'search_events' => 'Search events...',
-        'no_events' => 'No events found',
+        'events_count_selected' => ':count of :total selected',
         'submit' => 'Create webhook',
         'cancel' => 'Cancel',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Signing secret',
-        'last_sent' => 'Last sent :time',
-        'listening_for' => 'Listening for',
+        'edit' => 'Edit',
         'http_status' => 'HTTP status',
         'status_code' => ':code - :reason',
         'attempts' => 'Attempts',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'No response body',
         'no_response' => 'No response',
         'payload' => 'Message payload',
-        'empty_title' => 'No webhook events yet',
-        'empty_description' => 'Once posts are created, scheduled, unscheduled, or published, you will see the webhook events here.',
+    ],
+    'deliveries' => [
+        'title' => 'Deliveries',
+        'empty_title' => 'No deliveries yet',
+        'empty_description' => 'Send a test event to see it here.',
+        'pending' => 'Pending',
     ],
     'events' => [
         'group_posts' => 'Posts',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Post partially published',
         'post_failed' => 'Post failed',
         'post_deleted' => 'Post deleted',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'When a new post is created.',
+        'post_scheduled' => 'When a post is scheduled to publish.',
+        'post_unscheduled' => 'When a scheduled post goes back to drafts.',
+        'post_published' => 'When a post goes live on a channel.',
+        'post_partially_published' => 'When some channels publish and others fail.',
+        'post_failed' => 'When a post fails to publish.',
+        'post_deleted' => 'When a post is deleted.',
     ],
     'http_reasons' => [
         'unknown' => 'Unknown',
@@ -111,7 +119,6 @@ return [
         '504' => 'Gateway Timeout',
     ],
     'copied' => [
-        'id' => 'Webhook ID copied to clipboard',
         'secret' => 'Signing secret copied to clipboard',
         'response' => 'Response body copied',
         'payload' => 'Payload copied',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'The endpoint returned HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Webhook created.',
         'updated' => 'Webhook updated.',
         'deleted' => 'Webhook deleted.',
         'secret_rotated' => 'Signing secret rotated.',

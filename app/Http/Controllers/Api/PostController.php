@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
-use App\Actions\Post\AttachExistingAsset;
-use App\Actions\Post\CreatePost;
+use App\Actions\Post\AppendPostMedia;
+use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
 use App\Actions\Post\HostInlineMedia;
 use App\Actions\Post\UpdatePost;
@@ -13,15 +13,17 @@ use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\CreatedVia;
-use App\Http\Requests\Api\Post\AttachExistingAssetRequest;
+use App\Http\Requests\Api\Post\AttachMediaFromUploadRequest;
 use App\Http\Requests\Api\Post\AttachMediaFromUrlRequest;
 use App\Http\Requests\Api\Post\StoreMediaRequest;
 use App\Http\Requests\Api\Post\StorePostRequest;
+use App\Http\Requests\Api\Post\StorePostsRequest;
 use App\Http\Requests\Api\Post\UpdatePostRequest;
 use App\Http\Resources\Api\PostMediaAttachResource;
 use App\Http\Resources\Api\PostMetricsResource;
 use App\Http\Resources\Api\PostPreviewResource;
 use App\Http\Resources\Api\PostResource;
+use App\Models\Media;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
 use App\Support\PostStatusRules;
@@ -65,15 +67,39 @@ class PostController extends Controller
             );
         }
 
-        $data['created_via'] = CreatedVia::Api;
-
-        $post = CreatePost::execute($workspace, $workspace->owner, $data);
+        $post = CreatePosts::execute($workspace, $request->user(), [
+            'status' => $data['status'] ?? 'draft',
+            'content' => $data['content'] ?? '',
+            'media' => $data['media'] ?? [],
+            'scheduled_at' => $data['scheduled_at'] ?? null,
+            'queue' => $data['queue'] ?? null,
+            'label_ids' => $data['label_ids'] ?? [],
+            'created_via' => CreatedVia::Api,
+            'destinations' => [$data['platforms'][0]],
+        ])->sole();
 
         $post->load(['postPlatforms.socialAccount']);
 
         return (new PostResource($post))
             ->response()
             ->setStatusCode(Response::HTTP_CREATED);
+    }
+
+    public function storeBatch(StorePostsRequest $request): JsonResponse
+    {
+        $workspace = $request->user()->currentWorkspace;
+        $data = HostInlineMedia::forBatch($workspace, $request->validated());
+
+        $data['created_via'] = CreatedVia::Api;
+        $posts = CreatePosts::execute($workspace, $request->user(), $data);
+
+        return response()->json([
+            'posts' => $posts->map(function (Post $post): array {
+                $post->load(['postPlatforms.socialAccount', 'labels']);
+
+                return (new PostResource($post))->resolve();
+            })->all(),
+        ], Response::HTTP_CREATED);
     }
 
     public function update(UpdatePostRequest $request, Post $post): PostResource|JsonResponse
@@ -90,7 +116,7 @@ class PostController extends Controller
             );
         }
 
-        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $data);
+        $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $data, $request->user());
 
         if (data_get($result, 'action') === PostAction::Finalized) {
             return response()->json(
@@ -123,7 +149,7 @@ class PostController extends Controller
 
         if ($type === null || ! in_array($type, $post->allowedMediaTypes(), true)) {
             throw ValidationException::withMessages([
-                'media' => 'This file type is not supported by the platforms enabled on the post.',
+                'media' => __('posts.errors.media_type_unsupported'),
             ]);
         }
 
@@ -133,31 +159,28 @@ class PostController extends Controller
             ]);
         }
 
-        $media = $post->workspace->addMedia($file, 'assets');
+        $media = $post->workspace->addMedia($file, Media::COLLECTION_UPLOADS);
 
-        $post->appendMedia([MediaItem::fromMedia($media)->toArray()]);
+        AppendPostMedia::execute($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
         return new PostResource($post);
     }
 
-    public function attachExistingAsset(AttachExistingAssetRequest $request, Post $post): PostResource|JsonResponse
+    public function attachMediaFromUpload(AttachMediaFromUploadRequest $request, Post $post): PostResource
     {
         $this->authorize('update', $post);
 
-        if (PostStatusRules::blocksEditing($post)) {
-            return response()->json(
-                ['message' => PostStatusRules::editBlockedMessage()],
-                Response::HTTP_UNPROCESSABLE_ENTITY,
-            );
+        $media = $request->upload();
+
+        if (! in_array($media->type, $post->allowedMediaTypes(), true)) {
+            throw ValidationException::withMessages([
+                'upload_token' => __('posts.errors.media_type_unsupported'),
+            ]);
         }
 
-        AttachExistingAsset::execute(
-            $post,
-            $request->asset(),
-            $request->validated('alt'),
-        );
+        AppendPostMedia::execute($post, [MediaItem::fromMedia($media, $request->validated('alt'))->toArray()], $request->user());
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 
@@ -168,7 +191,7 @@ class PostController extends Controller
     {
         $this->authorize('update', $post);
 
-        $result = app(MediaAttacher::class)->attachFromUrls($post, $request->validated('urls'));
+        $result = app(MediaAttacher::class)->attachFromUrls($post, $request->validated('urls'), $request->user());
 
         $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
 

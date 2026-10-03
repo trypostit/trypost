@@ -1,0 +1,52 @@
+<x-main>
+  <div class="bg-zinc-50 sm:px-4 font-sans">
+    <table align="center">
+      <tr>
+        <td class="w-[552px] max-w-full">
+          <x-header />
+
+          <table class="w-full">
+            <tr>
+              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
+                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
+                  @{{ __('mail.post_note_added.heading') }}
+                </h1>
+
+                <p class="m-0 leading-6">
+                  @{{ __('mail.post_note_added.body', ['author' => $authorName, 'workspace' => $workspaceName]) }}
+                </p>
+
+                <div class="mt-4 p-4 bg-zinc-50 rounded">
+                  <p class="m-0 leading-6 text-zinc-900" style="white-space: pre-line;">@{{ $noteBody }}</p>
+                </div>
+
+                <div class="mt-4 p-4 bg-zinc-50 rounded">
+                  <p class="m-0 text-sm font-semibold text-zinc-900">
+                    @{{ __('mail.post_note_added.post_title') }}
+                  </p>
+                  <p class="m-0 mt-2 leading-6 text-sm" style="white-space: pre-line;">@{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_note_added.post_without_text') }}</p>
+                  @if(count($channels) > 0)
+                    <ul class="m-0 mt-2 pl-5 leading-6 text-sm">
+                      @foreach($channels as $channel)
+                        <li><strong>@{{ $channel }}</strong></li>
+                      @endforeach
+                    </ul>
+                  @endif
+                </div>
+
+                <x-spacer height="24px" />
+
+                <div class="flex items-center justify-center">
+                  <x-button href="@{{ $url }}">
+                    @{{ __('mail.post_note_added.button') }}
+                  </x-button>
+                </div>
+              </td>
+            </tr>
+          </table>
+          <x-footer-authenticated />
+        </td>
+      </tr>
+    </table>
+  </div>
+</x-main>

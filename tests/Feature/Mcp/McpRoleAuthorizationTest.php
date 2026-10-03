@@ -3,11 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
-use App\Enums\UserWorkspace\Role;
 use App\Mcp\Servers\TryPostServer;
-use App\Mcp\Tools\Asset\AttachExistingAssetTool;
-use App\Mcp\Tools\Asset\GetAssetTool;
-use App\Mcp\Tools\Asset\ListAssetsTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
@@ -23,7 +19,6 @@ use App\Mcp\Tools\Signature\UpdateSignatureTool;
 use App\Mcp\Tools\SocialAccount\ListDiscordChannelsTool;
 use App\Mcp\Tools\SocialAccount\ListPinterestBoardsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
-use App\Mcp\Tools\SocialAccount\ToggleSocialAccountTool;
 use App\Mcp\Tools\Webhook\CreateWebhookTool;
 use App\Mcp\Tools\Webhook\ListWebhooksTool;
 use App\Models\Media;
@@ -39,15 +34,15 @@ use Illuminate\Testing\Fluent\AssertableJson;
 beforeEach(function () {
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
-    $this->workspace->members()->attach($this->owner->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->owner->id, membershipPivot('admin'));
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
 
-    $this->viewer = User::factory()->create(['account_id' => $this->owner->account_id]);
-    $this->workspace->members()->attach($this->viewer->id, ['role' => Role::Viewer->value]);
-    $this->viewer->update(['current_workspace_id' => $this->workspace->id]);
+    $this->requester = User::factory()->create(['account_id' => $this->owner->account_id]);
+    $this->workspace->members()->attach($this->requester->id, membershipPivot('approval'));
+    $this->requester->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->member = User::factory()->create(['account_id' => $this->owner->account_id]);
-    $this->workspace->members()->attach($this->member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->member->id, membershipPivot('member'));
     $this->member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->post = Post::factory()->create([
@@ -56,7 +51,7 @@ beforeEach(function () {
     ]);
 });
 
-test('viewers can list labels signatures and social accounts via mcp', function () {
+test('members who need approval can list labels signatures and social accounts via mcp', function () {
     WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
     WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
     SocialAccount::factory()->create([
@@ -64,78 +59,62 @@ test('viewers can list labels signatures and social accounts via mcp', function 
         'platform' => Platform::LinkedIn,
     ]);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($this->requester)
         ->tool(ListLabelsTool::class, [])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json->has('labels', 1)->etc());
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($this->requester)
         ->tool(ListSignaturesTool::class, [])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json->has('signatures', 1)->etc());
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($this->requester)
         ->tool(ListSocialAccountsTool::class, [])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json->has('social_accounts', 1)->etc());
 });
 
-test('viewers cannot publish attach media or request uploads via mcp', function () {
-    $uploadToken = (string) Str::uuid();
-    Media::factory()->create([
-        'mediable_type' => (new Workspace)->getMorphClass(),
-        'mediable_id' => $this->workspace->id,
-        'collection' => 'assets',
-        'upload_token' => $uploadToken,
-    ]);
+test('a user outside the workspace cannot publish attach media or request uploads via mcp', function () {
+    $outsider = workspaceOutsider($this->workspace);
 
-    TryPostServer::actingAs($this->viewer)
+    $uploadToken = (string) Str::uuid();
+    Media::factory()->temporaryUpload($this->workspace)->create(['upload_token' => $uploadToken]);
+
+    TryPostServer::actingAs($outsider)
         ->tool(PublishPostTool::class, ['post_id' => $this->post->id])
         ->assertHasErrors(['Not authorized to publish this post.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(AttachMediaFromUrlTool::class, [
             'post_id' => $this->post->id,
             'urls' => [['url' => 'https://example.com/photo.jpg']],
         ])
         ->assertHasErrors(['Not authorized to update this post.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(AttachMediaFromUploadTool::class, [
             'post_id' => $this->post->id,
             'upload_token' => $uploadToken,
         ])
         ->assertHasErrors(['Not authorized to update this post.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(RequestMediaUploadTool::class, [])
         ->assertHasErrors(['Not authorized to upload media.']);
-
-    TryPostServer::actingAs($this->viewer)
-        ->tool(ListAssetsTool::class, [])
-        ->assertHasErrors(['Not authorized to view assets.']);
-
-    TryPostServer::actingAs($this->viewer)
-        ->tool(GetAssetTool::class, ['asset_id' => (string) Str::uuid()])
-        ->assertHasErrors(['Not authorized to view assets.']);
-
-    TryPostServer::actingAs($this->viewer)
-        ->tool(AttachExistingAssetTool::class, [
-            'post_id' => $this->post->id,
-            'asset_id' => (string) Str::uuid(),
-        ])
-        ->assertHasErrors(['Not authorized to update this post.']);
 });
 
-test('viewers cannot manage labels or signatures via mcp', function () {
+test('a user outside the workspace cannot manage labels or signatures via mcp', function () {
+    $outsider = workspaceOutsider($this->workspace);
+
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
     $signature = WorkspaceSignature::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(CreateLabelTool::class, ['name' => 'Nope', 'color' => '#112233'])
         ->assertHasErrors(['Not authorized to manage labels.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(UpdateLabelTool::class, [
             'label_id' => $label->id,
             'name' => 'Nope',
@@ -143,15 +122,15 @@ test('viewers cannot manage labels or signatures via mcp', function () {
         ])
         ->assertHasErrors(['Not authorized to manage labels.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(DeleteLabelTool::class, ['label_id' => $label->id])
         ->assertHasErrors(['Not authorized to manage labels.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(CreateSignatureTool::class, ['name' => 'Nope', 'content' => 'x'])
         ->assertHasErrors(['Not authorized to manage signatures.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(UpdateSignatureTool::class, [
             'signature_id' => $signature->id,
             'name' => 'Nope',
@@ -159,7 +138,7 @@ test('viewers cannot manage labels or signatures via mcp', function () {
         ])
         ->assertHasErrors(['Not authorized to manage signatures.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(DeleteSignatureTool::class, ['signature_id' => $signature->id])
         ->assertHasErrors(['Not authorized to manage signatures.']);
 
@@ -167,12 +146,9 @@ test('viewers cannot manage labels or signatures via mcp', function () {
         ->and($signature->fresh())->not->toBeNull();
 });
 
-test('viewers cannot toggle social accounts or list compose helpers via mcp', function () {
-    $linkedin = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
-        'is_active' => true,
-    ]);
+test('a user outside the workspace cannot list compose helpers via mcp', function () {
+    $outsider = workspaceOutsider($this->workspace);
+
     $discord = SocialAccount::factory()->discord()->create([
         'workspace_id' => $this->workspace->id,
     ]);
@@ -180,51 +156,17 @@ test('viewers cannot toggle social accounts or list compose helpers via mcp', fu
         'workspace_id' => $this->workspace->id,
     ]);
 
-    TryPostServer::actingAs($this->viewer)
-        ->tool(ToggleSocialAccountTool::class, ['account_id' => $linkedin->id])
-        ->assertHasErrors(['Not authorized to manage social accounts.']);
-
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(ListDiscordChannelsTool::class, ['account_id' => $discord->id])
         ->assertHasErrors(['Not authorized to manage posts.']);
 
-    TryPostServer::actingAs($this->viewer)
+    TryPostServer::actingAs($outsider)
         ->tool(ListPinterestBoardsTool::class, ['account_id' => $pinterest->id])
         ->assertHasErrors(['Not authorized to manage posts.']);
-
-    expect($linkedin->fresh()->is_active)->toBeTrue();
 });
 
-test('members cannot toggle social accounts via mcp', function () {
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
-        'is_active' => true,
-    ]);
-
-    TryPostServer::actingAs($this->member)
-        ->tool(ToggleSocialAccountTool::class, ['account_id' => $account->id])
-        ->assertHasErrors(['Not authorized to manage social accounts.']);
-
-    expect($account->fresh()->is_active)->toBeTrue();
-});
-
-test('admins can toggle social accounts via mcp', function () {
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::LinkedIn,
-        'is_active' => true,
-    ]);
-
-    TryPostServer::actingAs($this->owner)
-        ->tool(ToggleSocialAccountTool::class, ['account_id' => $account->id])
-        ->assertOk();
-
-    expect($account->fresh()->is_active)->toBeFalse();
-});
-
-test('viewers and members cannot list or create webhooks via mcp', function (Role $role) {
-    $user = $role === Role::Viewer ? $this->viewer : $this->member;
+test('members who are not admins cannot list or create webhooks via mcp', function (string $role) {
+    $user = $role === 'approval' ? $this->requester : $this->member;
 
     TryPostServer::actingAs($user)
         ->tool(ListWebhooksTool::class, [])
@@ -237,8 +179,8 @@ test('viewers and members cannot list or create webhooks via mcp', function (Rol
         ])
         ->assertHasErrors(['Not authorized to manage webhooks.']);
 })->with([
-    Role::Viewer,
-    Role::Member,
+    'approval',
+    'member',
 ]);
 
 test('admins can list webhooks via mcp', function () {

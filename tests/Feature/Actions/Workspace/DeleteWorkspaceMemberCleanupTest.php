@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Enums\UserWorkspace\Role;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\User;
@@ -51,7 +50,7 @@ test('delete workspace falls back to an account workspace the owner is not pivot
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $current->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $current->members()->attach($owner->id, membershipPivot('admin'));
     $owner->update(['current_workspace_id' => $current->id]);
 
     $memberCreated = Workspace::factory()->create([
@@ -78,7 +77,7 @@ test('delete workspace removes pending invites that only target that workspace',
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
     $invite = Invite::factory()->create([
         'account_id' => $owner->account_id,
@@ -101,7 +100,7 @@ test('delete workspace prunes the deleted workspace id from multi-workspace invi
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $first->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $first->members()->attach($owner->id, membershipPivot('admin'));
 
     $invite = Invite::factory()->create([
         'account_id' => $owner->account_id,
@@ -126,7 +125,7 @@ test('delete workspace deletes workspace media files and rows', function () {
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
     $media = $workspace->addMedia(
         UploadedFile::fake()->image('logo.jpg'),
@@ -150,7 +149,7 @@ test('delete workspace returns false when saas blocks the last workspace', funct
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
 
     expect(DeleteWorkspace::execute($workspace))->toBeFalse();
     expect(Workspace::find($workspace->id))->not->toBeNull();

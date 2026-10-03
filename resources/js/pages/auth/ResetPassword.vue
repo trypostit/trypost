@@ -30,61 +30,60 @@ const inputEmail = ref(props.email);
             :transform="(data) => ({ ...data, token, email })"
             :reset-on-success="['password', 'password_confirmation']"
             v-slot="{ errors, processing }"
+            class="flex flex-col gap-4"
         >
-            <div class="grid gap-6">
-                <div class="grid gap-2">
-                    <Label for="email">{{ $t('auth.reset_password.email') }}</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        name="email"
-                        autocomplete="email"
-                        v-model="inputEmail"
-                        class="mt-1 block w-full"
-                        readonly
-                    />
-                    <InputError :message="errors.email" class="mt-2" />
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="password">{{ $t('auth.reset_password.password') }}</Label>
-                    <Input
-                        id="password"
-                        type="password"
-                        name="password"
-                        autocomplete="new-password"
-                        class="mt-1 block w-full"
-                        autofocus
-                        :placeholder="$t('auth.reset_password.password')"
-                    />
-                    <InputError :message="errors.password" />
-                </div>
-
-                <div class="grid gap-2">
-                    <Label for="password_confirmation">
-                        {{ $t('auth.reset_password.confirm_password') }}
-                    </Label>
-                    <Input
-                        id="password_confirmation"
-                        type="password"
-                        name="password_confirmation"
-                        autocomplete="new-password"
-                        class="mt-1 block w-full"
-                        :placeholder="$t('auth.reset_password.confirm_placeholder')"
-                    />
-                    <InputError :message="errors.password_confirmation" />
-                </div>
-
-                <Button
-                    type="submit"
-                    class="mt-4 w-full"
-                    :disabled="processing"
-                    data-test="reset-password-button"
-                >
-                    <Spinner v-if="processing" />
-                    {{ $t('auth.reset_password.submit') }}
-                </Button>
+            <div class="grid gap-2">
+                <Label for="email">{{ $t('auth.reset_password.email') }}</Label>
+                <Input
+                    id="email"
+                    type="email"
+                    name="email"
+                    autocomplete="email"
+                    v-model="inputEmail"
+                    class="bg-muted text-muted-foreground"
+                    readonly
+                />
+                <InputError :message="errors.email" />
             </div>
+
+            <div class="grid gap-2">
+                <Label for="password">{{
+                    $t('auth.reset_password.password')
+                }}</Label>
+                <Input
+                    id="password"
+                    type="password"
+                    name="password"
+                    autocomplete="new-password"
+                    autofocus
+                    :placeholder="$t('auth.reset_password.password')"
+                />
+                <InputError :message="errors.password" />
+            </div>
+
+            <div class="grid gap-2">
+                <Label for="password_confirmation">{{
+                    $t('auth.reset_password.confirm_password')
+                }}</Label>
+                <Input
+                    id="password_confirmation"
+                    type="password"
+                    name="password_confirmation"
+                    autocomplete="new-password"
+                    :placeholder="$t('auth.reset_password.confirm_placeholder')"
+                />
+                <InputError :message="errors.password_confirmation" />
+            </div>
+
+            <Button
+                type="submit"
+                class="w-full"
+                :disabled="processing"
+                data-test="reset-password-button"
+            >
+                <Spinner v-if="processing" />
+                {{ $t('auth.reset_password.submit') }}
+            </Button>
         </Form>
     </AuthLayout>
 </template>

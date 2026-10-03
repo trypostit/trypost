@@ -2,8 +2,10 @@
 
 declare(strict_types=1);
 
+use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -14,6 +16,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\ThreadProgress;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Sleep;
@@ -1615,6 +1618,22 @@ test('bluesky publisher attaches an external card with a thumb for a bare link',
     });
 });
 
+test('bluesky publisher attaches no external card when the user dropped the link preview', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+    $this->postPlatform->update(['meta' => ['link_preview' => false]]);
+
+    $this->mock(LinkCardFetcher::class)->shouldReceive('fetch')->never();
+
+    Http::fake(fn ($request) => str_contains($request->url(), 'createRecord')
+        ? Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz', 'cid' => 'bafyreiabc123'], 200)
+        : Http::response([], 200));
+
+    $this->publisher->publish($this->postPlatform);
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord')
+        && ! isset($request['record']['embed']));
+});
+
 test('bluesky publisher builds an external card without a thumb when there is no image', function () {
     $this->post->update(['content' => 'read this https://example.com/article']);
 
@@ -1809,6 +1828,37 @@ test('bluesky publisher does not follow a redirect on the card thumb download', 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
 });
 
+test('bluesky publisher downloads the card thumb through the size-capped fetcher', function () {
+    $this->post->update(['content' => 'read this https://example.com/article']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: 'https://93.184.216.34/card.jpg',
+        ));
+
+    $thumbOptions = null;
+    Http::fake(function ($request, array $options) use (&$thumbOptions) {
+        if (str_contains($request->url(), 'card.jpg')) {
+            $thumbOptions = $options;
+
+            return Http::response('', 500);
+        }
+
+        return Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3abc123xyz', 'cid' => 'bafyreiabc123'], 200);
+    });
+
+    $this->publisher->publish($this->postPlatform);
+
+    expect(data_get($thumbOptions, 'allow_redirects'))->toBeFalse()
+        ->and(data_get($thumbOptions, 'decode_content'))->toBeFalse()
+        ->and(fn () => $thumbOptions['progress'](MediaType::Image->maxSizeInBytes() + 1, 0))->toThrow(RuntimeException::class);
+});
+
 test('bluesky publisher does not attach a card when a non-embeddable media item is attached', function () {
     $this->post->update([
         'content' => 'read this https://example.com/article',
@@ -1891,4 +1941,139 @@ test('bluesky publisher keeps links intact', function () {
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord')
         && $request['record']['text'] === 'New post: https://acme.com/blog');
+});
+
+test('a bluesky thread replies with root and parent strong refs', function () {
+    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three']]]);
+    $service = data_get($this->socialAccount->meta, 'service');
+    Http::fake(["{$service}/xrpc/com.atproto.repo.createRecord" => Http::sequence()
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'])
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'])
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r3', 'cid' => 'c3'])]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result)->toBe([
+        'id' => 'r1',
+        'url' => config('trypost.platforms.bluesky.web_app').'/profile/testuser.bsky.social/post/r1',
+        'thread_reply_ids' => ['r2', 'r3'],
+    ]);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'record.text') === 'Two'
+        && data_get($request->data(), 'record.reply') === [
+            'root' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'],
+            'parent' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'],
+        ]);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'record.text') === 'Three'
+        && data_get($request->data(), 'record.$type') === 'app.bsky.feed.post'
+        && data_get($request->data(), 'record.reply') === [
+            'root' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'],
+            'parent' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'],
+        ]);
+    Http::assertSentCount(3);
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'getPostThread'));
+});
+
+test('a bluesky thread resumes from the stored segments without posting the root again', function () {
+    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three']]]);
+    $service = data_get($this->socialAccount->meta, 'service');
+    Http::fake(["{$service}/xrpc/com.atproto.repo.createRecord" => Http::sequence()
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'])
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'])
+        ->push(['error' => 'InvalidRequest', 'message' => 'Bad'], 400)
+        ->push(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r3', 'cid' => 'c3'])]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(BlueskyPublishException::class);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('r1')->and($result['thread_reply_ids'])->toBe(['r2', 'r3']);
+    Http::assertSentCount(5);
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'getPostThread'));
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'record.text') === 'Three'
+        && data_get($request->data(), 'record.reply.parent') === ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2']);
+});
+
+function blueskyThreadCheckpoint(PostPlatform $postPlatform): void
+{
+    ThreadProgress::remember($postPlatform, [
+        ['hash' => 'root', 'id' => 'r1', 'url' => 'https://bsky.app/profile/testuser.bsky.social/post/r1', 'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'],
+        ['hash' => ThreadProgress::hash('Two'), 'id' => 'r2', 'url' => 'https://bsky.app/profile/testuser.bsky.social/post/r2', 'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'],
+    ]);
+}
+
+function blueskyThreadReply(string $did, string $text, string $rkey): array
+{
+    return [
+        '$type' => 'app.bsky.feed.defs#threadViewPost',
+        'post' => [
+            'uri' => "at://{$did}/app.bsky.feed.post/{$rkey}",
+            'cid' => "cid-{$rkey}",
+            'author' => ['did' => $did, 'handle' => 'someone.bsky.social'],
+            'record' => ['$type' => 'app.bsky.feed.post', 'text' => $text],
+        ],
+    ];
+}
+
+test('a resumed bluesky thread adopts a reply already live instead of posting it again', function () {
+    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three']]]);
+    blueskyThreadCheckpoint($this->postPlatform);
+    $service = data_get($this->socialAccount->meta, 'service');
+    $appView = config('trypost.platforms.bluesky.public_appview');
+    Http::fake([
+        "{$appView}/xrpc/app.bsky.feed.getPostThread*" => Http::response(['thread' => [
+            '$type' => 'app.bsky.feed.defs#threadViewPost',
+            'post' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'],
+            'replies' => [
+                blueskyThreadReply('did:plc:stranger', 'Three', 'x9'),
+                blueskyThreadReply('did:plc:testuser123', 'Three', 'r3'),
+            ],
+        ]]),
+        "{$service}/xrpc/com.atproto.repo.createRecord" => Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/dup', 'cid' => 'dup']),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('r1')->and($result['thread_reply_ids'])->toBe(['r2', 'r3']);
+    Http::assertNotSent(fn ($request): bool => str_contains($request->url(), 'createRecord'));
+    Http::assertSent(fn ($request): bool => str_contains($request->url(), 'getPostThread')
+        && data_get($request->data(), 'uri') === 'at://did:plc:testuser123/app.bsky.feed.post/r2'
+        && (string) data_get($request->data(), 'depth') === '1'
+        && (string) data_get($request->data(), 'parentHeight') === '0');
+});
+
+test('a resumed bluesky thread posts the missing reply when none of ours is live', function () {
+    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three']]]);
+    blueskyThreadCheckpoint($this->postPlatform);
+    $service = data_get($this->socialAccount->meta, 'service');
+    $appView = config('trypost.platforms.bluesky.public_appview');
+    Http::fake([
+        "{$appView}/xrpc/app.bsky.feed.getPostThread*" => Http::response(['thread' => [
+            '$type' => 'app.bsky.feed.defs#threadViewPost',
+            'post' => ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'],
+            'replies' => [
+                blueskyThreadReply('did:plc:stranger', 'Three', 'x9'),
+                blueskyThreadReply('did:plc:testuser123', 'Something else', 'x8'),
+            ],
+        ]]),
+        "{$service}/xrpc/com.atproto.repo.createRecord" => Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r3', 'cid' => 'c3']),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['thread_reply_ids'])->toBe(['r2', 'r3']);
+    Http::assertSent(fn ($request): bool => data_get($request->data(), 'record.text') === 'Three'
+        && data_get($request->data(), 'record.reply.parent') === ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2']);
+});
+
+test('a resumed bluesky thread still posts when the thread lookup fails', function () {
+    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three']]]);
+    blueskyThreadCheckpoint($this->postPlatform);
+    $service = data_get($this->socialAccount->meta, 'service');
+    $appView = config('trypost.platforms.bluesky.public_appview');
+    Http::fake([
+        "{$appView}/xrpc/app.bsky.feed.getPostThread*" => Http::response(['error' => 'NotFound'], 400),
+        "{$service}/xrpc/com.atproto.repo.createRecord" => Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r3', 'cid' => 'c3']),
+    ]);
+
+    expect($this->publisher->publish($this->postPlatform->fresh())['thread_reply_ids'])->toBe(['r2', 'r3']);
 });

@@ -40,6 +40,8 @@ export interface SocialOAuthResult {
     success: boolean;
     message: string;
     platform: string | null;
+    accountId: string | null;
+    created: boolean;
 }
 
 export const oauthConnectUrl = (platform: string, reconnectId?: string): string | undefined => {
@@ -52,27 +54,28 @@ export const oauthConnectUrl = (platform: string, reconnectId?: string): string 
     return route.url(reconnectId ? { query: { reconnect: reconnectId } } : undefined);
 };
 
+export const openOAuthPopupWindow = (url: string): void => {
+    const left = window.screenX + (window.outerWidth - POPUP_WIDTH) / 2;
+    const top = window.screenY + (window.outerHeight - POPUP_HEIGHT) / 2;
+
+    const popup = window.open(
+        url,
+        'oauth-popup',
+        `width=${POPUP_WIDTH},height=${POPUP_HEIGHT},left=${left},top=${top},scrollbars=yes,resizable=yes`,
+    );
+
+    if (!popup) {
+        toast.error(trans('accounts.popup_callback.popup_blocked'));
+    }
+};
+
 /**
- * Opens a connect URL in a centered popup and invokes `onResult` with the
- * popup's `{success, message}` outcome. The listener is wired to the calling
- * component's lifecycle.
+ * Listens for the popup's `{success, message}` postback and invokes
+ * `onResult`. Call it exactly once per page, from the globally mounted
+ * ConnectChannelDialog; other callers open popups with
+ * `openOAuthPopupWindow`.
  */
 export const useOAuthPopup = (onResult: (result: SocialOAuthResult) => void) => {
-    const openOAuthPopup = (url: string) => {
-        const left = window.screenX + (window.outerWidth - POPUP_WIDTH) / 2;
-        const top = window.screenY + (window.outerHeight - POPUP_HEIGHT) / 2;
-
-        const popup = window.open(
-            url,
-            'oauth-popup',
-            `width=${POPUP_WIDTH},height=${POPUP_HEIGHT},left=${left},top=${top},scrollbars=yes,resizable=yes`,
-        );
-
-        if (!popup) {
-            toast.error(trans('accounts.popup_callback.popup_blocked'));
-        }
-    };
-
     const handleMessage = (event: MessageEvent) => {
         if (event.origin !== window.location.origin) return;
         if (event.data?.type !== 'social-oauth-callback') return;
@@ -81,11 +84,11 @@ export const useOAuthPopup = (onResult: (result: SocialOAuthResult) => void) => 
             success: Boolean(event.data.success),
             message: String(event.data.message ?? ''),
             platform: event.data.platform ?? null,
+            accountId: event.data.account_id ?? null,
+            created: Boolean(event.data.created),
         });
     };
 
     onMounted(() => window.addEventListener('message', handleMessage));
     onUnmounted(() => window.removeEventListener('message', handleMessage));
-
-    return { openOAuthPopup };
 };

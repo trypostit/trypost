@@ -15,9 +15,8 @@ use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use Exception;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
 
@@ -50,7 +49,11 @@ class WebhookService
      */
     public function ping(string $endpoint, string $signingSecret): void
     {
-        $this->assertEndpointAllowed($endpoint);
+        try {
+            $request = $this->safeHttp->guardedRequest($endpoint, followRedirects: false);
+        } catch (RuntimeException) {
+            throw new RuntimeException(__('webhooks.errors.endpoint_not_allowed'));
+        }
 
         $body = [
             'id' => (string) Str::uuid(),
@@ -60,14 +63,16 @@ class WebhookService
         ];
 
         try {
-            $response = Http::timeout(5)
+            $response = $request
+                ->timeout(5)
                 ->withUserAgent(config('trypost.user_agent'))
-                ->withOptions(['allow_redirects' => false])
                 ->asJson()
                 ->withHeaders([
                     'X-Webhook-Signature' => $this->signature($body, $signingSecret),
                 ])
+                ->withOptions(['stream' => true])
                 ->post($endpoint, $body);
+            $this->safeHttp->bodyPrefix($response, 0);
         } catch (Exception) {
             throw new RuntimeException(__('webhooks.errors.endpoint_unreachable'));
         }
@@ -209,7 +214,7 @@ class WebhookService
     }
 
     /**
-     * @return array{id: string, platform: string|null, display_name: string|null, username: string|null, is_active: bool, status: string|null}|null
+     * @return array{id: string, platform: string|null, display_name: string|null, username: string|null, status: string|null}|null
      */
     private function socialAccountPayload(?SocialAccount $account): ?array
     {
@@ -222,7 +227,6 @@ class WebhookService
             'platform' => $account->platform?->value,
             'display_name' => $account->display_name,
             'username' => $account->username,
-            'is_active' => $account->is_active,
             'status' => $account->status?->value,
         ];
     }

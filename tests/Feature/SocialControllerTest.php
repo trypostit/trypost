@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\UserWorkspace\Role;
 use App\Jobs\SendNotification;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -19,13 +18,13 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     $this->user = User::factory()->create([]);
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 });
 
 // Index tests
 test('accounts index requires authentication', function () {
-    $response = $this->get(route('app.accounts'));
+    $response = $this->get(route('app.workspace.channels'));
 
     $response->assertRedirect(route('login'));
 });
@@ -36,15 +35,12 @@ test('accounts index shows platforms and connected accounts', function () {
         'platform' => Platform::LinkedIn,
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->has('workspace')
-        ->has('platforms')
-        ->has('platforms.0.network')
-        ->has('connectedAccounts', 1)
+        ->component('settings/workspace/Channels', false)
+        ->has('connectedChannels', 1)
     );
 });
 
@@ -62,67 +58,14 @@ test('accounts index lists every account of the same network', function () {
         ]),
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->has('connectedAccounts', 2)
-        ->where('connectedAccounts', fn ($accounts): bool => collect($accounts)->pluck('id')->contains($first->id)
+        ->component('settings/workspace/Channels', false)
+        ->has('connectedChannels', 2)
+        ->where('connectedChannels', fn ($accounts): bool => collect($accounts)->pluck('id')->contains($first->id)
             && collect($accounts)->pluck('id')->contains($second->id))
-    );
-});
-
-test('accounts index lists platforms alphabetically by label', function () {
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', function ($platforms): bool {
-            $labels = collect($platforms)->pluck('label')->all();
-
-            $sorted = $labels;
-            natcasesort($sorted);
-
-            return array_values($labels) === array_values($sorted);
-        })
-    );
-});
-
-test('accounts index offers a single linkedin card and no standalone linkedin page card', function () {
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::LinkedIn->value)
-            && ! collect($platforms)->contains('value', Platform::LinkedInPage->value)
-        )
-    );
-});
-
-test('the linkedin card still shows when only company pages are enabled', function () {
-    config(['trypost.platforms.linkedin.enabled' => false]);
-    config(['trypost.platforms.linkedin-page.enabled' => true]);
-
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::LinkedIn->value))
-    );
-});
-
-test('the linkedin card disappears only when both capabilities are disabled', function () {
-    config(['trypost.platforms.linkedin.enabled' => false]);
-    config(['trypost.platforms.linkedin-page.enabled' => false]);
-
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => ! collect($platforms)->contains('value', Platform::LinkedIn->value))
     );
 });
 
@@ -131,72 +74,15 @@ test('a connected linkedin page account is still returned so it surfaces under t
         'workspace_id' => $this->workspace->id,
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
 
     $response->assertOk();
     // The grid groups by the account's own `network`, so a linkedin-page account
     // must report network=linkedin to surface under the single LinkedIn card.
     $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('connectedAccounts.0.platform', Platform::LinkedInPage->value)
-        ->where('connectedAccounts.0.network', 'linkedin')
-    );
-});
-
-test('accounts index offers a single instagram card and no instagram-facebook card', function () {
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertOk();
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => collect($platforms)->contains('value', Platform::Instagram->value)
-            && ! collect($platforms)->contains('value', Platform::InstagramFacebook->value)
-        )
-    );
-});
-
-test('the instagram card still shows when only facebook business is enabled', function () {
-    config(['trypost.platforms.instagram.enabled' => false]);
-    config(['trypost.platforms.instagram-facebook.enabled' => true]);
-
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', function ($platforms): bool {
-            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
-
-            return $instagram !== null
-                && data_get($instagram, 'connect_methods') === [Platform::InstagramFacebook->value];
-        })
-    );
-});
-
-test('instagram card connect methods omit disabled facebook business entry', function () {
-    config(['trypost.platforms.instagram.enabled' => true]);
-    config(['trypost.platforms.instagram-facebook.enabled' => false]);
-
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', function ($platforms): bool {
-            $instagram = collect($platforms)->firstWhere('value', Platform::Instagram->value);
-
-            return data_get($instagram, 'connect_methods') === [Platform::Instagram->value];
-        })
-    );
-});
-
-test('the instagram card disappears only when both capabilities are disabled', function () {
-    config(['trypost.platforms.instagram.enabled' => false]);
-    config(['trypost.platforms.instagram-facebook.enabled' => false]);
-
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
-
-    $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('platforms', fn ($platforms) => ! collect($platforms)->contains('value', Platform::Instagram->value))
+        ->component('settings/workspace/Channels', false)
+        ->where('connectedChannels.0.platform', Platform::LinkedInPage->value)
+        ->where('connectedChannels.0.network', 'linkedin')
     );
 });
 
@@ -207,13 +93,13 @@ test('a connected instagram-facebook account is still returned so it surfaces un
         'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
     ]);
 
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
 
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
-        ->component('accounts/Index', false)
-        ->where('connectedAccounts.0.platform', Platform::InstagramFacebook->value)
-        ->where('connectedAccounts.0.network', 'instagram')
+        ->component('settings/workspace/Channels', false)
+        ->where('connectedChannels.0.platform', Platform::InstagramFacebook->value)
+        ->where('connectedChannels.0.network', 'instagram')
     );
 });
 
@@ -222,7 +108,7 @@ test('an unsubscribed account can disconnect without an active subscription', fu
 
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+    $response = $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     $response->assertRedirect();
     $response->assertSessionMissing('errors');
@@ -232,7 +118,7 @@ test('an unsubscribed account can disconnect without an active subscription', fu
 test('accounts index redirects if no workspace', function () {
     $this->user->update(['current_workspace_id' => null]);
 
-    $response = $this->actingAs($this->user)->get(route('app.accounts'));
+    $response = $this->actingAs($this->user)->get(route('app.workspace.channels'));
 
     $response->assertRedirect(route('app.workspaces.create'));
 });
@@ -241,7 +127,7 @@ test('accounts index redirects if no workspace', function () {
 test('disconnect requires authentication', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->delete(route('app.accounts.disconnect', $account));
+    $response = $this->delete(route('app.channels.disconnect', $account));
 
     $response->assertRedirect(route('login'));
 });
@@ -249,13 +135,13 @@ test('disconnect requires authentication', function () {
 test('disconnect removes social account', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $response = $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+    $response = $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     $response->assertRedirect();
     expect(SocialAccount::find($account->id))->toBeNull();
 });
 
-test('disconnect deletes pending platform rows from drafts and keeps published history', function () {
+test('disconnect deletes the channel drafts and published history', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
     $draftPost = Post::factory()->create([
@@ -269,30 +155,23 @@ test('disconnect deletes pending platform rows from drafts and keeps published h
         'status' => Status::Published,
     ]);
 
-    $pendingPlatform = PostPlatform::factory()->create([
+    PostPlatform::factory()->create([
         'post_id' => $draftPost->id,
         'social_account_id' => $account->id,
         'status' => PlatformStatus::Pending,
     ]);
-    $publishedPlatform = PostPlatform::factory()->create([
+    PostPlatform::factory()->create([
         'post_id' => $publishedPost->id,
         'social_account_id' => $account->id,
         'status' => PlatformStatus::Published,
-        'platform_name' => 'Snapshot Name',
-        'platform_avatar' => 'avatars/snapshot.jpg',
     ]);
 
-    $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
-    expect(PostPlatform::find($pendingPlatform->id))->toBeNull();
-
-    $publishedPlatform->refresh();
-    expect($publishedPlatform->social_account_id)->toBeNull();
-    expect($publishedPlatform->platform_name)->toBe('Snapshot Name');
-    expect($publishedPlatform->display_avatar)->toContain('avatars/snapshot.jpg');
+    expect(Post::query()->whereKey([$draftPost->id, $publishedPost->id])->exists())->toBeFalse();
 });
 
-test('disconnect settles a google business review still waiting on the account', function () {
+test('disconnect deletes a google business post still waiting on the account and prunes its image', function () {
     Queue::fake([SendNotification::class]);
     Storage::fake();
 
@@ -310,20 +189,19 @@ test('disconnect settles a google business review still waiting on the account',
     $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
     Storage::put($path, 'image');
 
-    $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     expect(SocialAccount::find($account->id))->toBeNull()
-        ->and($target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($target->fresh()->error_message)->toBe(__('posts.errors.account_disconnected'))
-        ->and($post->fresh()->status)->toBe(Status::Failed);
+        ->and(Post::query()->whereKey($post->id)->exists())->toBeFalse();
     Storage::assertMissing($path);
+    Queue::assertNotPushed(SendNotification::class);
 });
 
 test('disconnect returns 403 for other workspace account', function () {
     $otherWorkspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->create(['workspace_id' => $otherWorkspace->id]);
 
-    $response = $this->actingAs($this->user)->delete(route('app.accounts.disconnect', $account));
+    $response = $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     $response->assertForbidden();
 });
@@ -331,20 +209,10 @@ test('disconnect returns 403 for other workspace account', function () {
 // Member authorization tests
 test('member cannot disconnect social account', function () {
     $member = User::factory()->create([]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $this->actingAs($member)->delete(route('app.accounts.disconnect', $account))->assertForbidden();
-});
-
-test('member cannot toggle social account', function () {
-    $member = User::factory()->create([]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
-    $member->update(['current_workspace_id' => $this->workspace->id]);
-
-    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $this->actingAs($member)->put(route('app.accounts.toggle', $account))->assertForbidden();
+    $this->actingAs($member)->delete(route('app.channels.disconnect', $account))->assertForbidden();
 });

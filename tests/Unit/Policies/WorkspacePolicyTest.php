@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -28,7 +27,7 @@ test('owner can view workspace', function () {
         'account_id' => $account->id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
 
     expect($this->policy->view($user, $workspace))->toBeTrue();
 });
@@ -46,7 +45,7 @@ test('member can view workspace', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->view($member, $workspace))->toBeTrue();
 });
@@ -110,7 +109,7 @@ test('workspace admin can update workspace', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
 
     expect($this->policy->update($admin, $workspace))->toBeTrue();
 });
@@ -128,7 +127,7 @@ test('regular member cannot update workspace', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->update($member, $workspace))->toBeFalse();
 });
@@ -149,8 +148,8 @@ test('account owner can delete workspace but workspace admin cannot', function (
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->delete($owner, $workspace))->toBeTrue();
     expect($this->policy->delete($admin, $workspace))->toBeFalse();
@@ -170,7 +169,7 @@ test('account owner can restore workspace but workspace admin cannot', function 
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
 
     expect($this->policy->restore($owner, $workspace))->toBeTrue();
     expect($this->policy->restore($admin, $workspace))->toBeFalse();
@@ -189,7 +188,7 @@ test('account owner can force delete workspace but workspace admin cannot', func
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
 
     expect($this->policy->forceDelete($owner, $workspace))->toBeTrue();
     expect($this->policy->forceDelete($admin, $workspace))->toBeFalse();
@@ -211,8 +210,8 @@ test('account owner and admin can manage team', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
-    $workspace->members()->attach($regularUser->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
+    $workspace->members()->attach($regularUser->id, membershipPivot('member'));
 
     expect($this->policy->manageTeam($owner, $workspace))->toBeTrue();
     expect($this->policy->manageTeam($admin, $workspace))->toBeTrue();
@@ -235,8 +234,8 @@ test('account owner and workspace admin can manage accounts', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->manageAccounts($owner, $workspace))->toBeTrue();
     expect($this->policy->manageAccounts($admin, $workspace))->toBeTrue();
@@ -259,8 +258,8 @@ test('account owner and workspace admin can manage webhooks', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($admin->id, ['role' => Role::Admin->value]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($admin->id, membershipPivot('admin'));
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->manageWebhooks($owner, $workspace))->toBeTrue();
     expect($this->policy->manageWebhooks($admin, $workspace))->toBeTrue();
@@ -281,33 +280,46 @@ test('account owner and workspace member can create post', function () {
         'account_id' => $account->id,
         'user_id' => $owner->id,
     ]);
-    $workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($member->id, membershipPivot('member'));
 
     expect($this->policy->createPost($owner, $workspace))->toBeTrue();
     expect($this->policy->createPost($member, $workspace))->toBeTrue();
     expect($this->policy->createPost($otherUser, $workspace))->toBeFalse();
 });
 
-test('a viewer can view but cannot create posts or manage the team', function () {
-    $account = Account::factory()->create();
-    $owner = User::factory()->create([
-        'account_id' => $account->id,
-    ]);
-    $account->update(['owner_id' => $owner->id]);
-    $viewer = User::factory()->create([
-        'account_id' => $account->id,
-    ]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $account->id,
-        'user_id' => $owner->id,
-    ]);
-    $workspace->members()->attach($viewer->id, ['role' => Role::Viewer->value]);
+test('a member who needs approval can write posts but cannot publish directly, approve or manage', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $requester = workspaceMember($workspace, 'approval');
 
-    expect($this->policy->view($viewer, $workspace))->toBeTrue();
-    expect($this->policy->createPost($viewer, $workspace))->toBeFalse();
-    expect($this->policy->manageWebhooks($viewer, $workspace))->toBeFalse();
-    expect($this->policy->manageTeam($viewer, $workspace))->toBeFalse();
-    expect($this->policy->inviteMember($viewer, $workspace))->toBeFalse();
+    expect($this->policy->view($requester, $workspace))->toBeTrue()
+        ->and($this->policy->createPost($requester, $workspace))->toBeTrue()
+        ->and($this->policy->publishDirectly($requester, $workspace))->toBeFalse()
+        ->and($this->policy->approvePosts($requester, $workspace))->toBeFalse()
+        ->and($this->policy->manageRepurposes($requester, $workspace))->toBeFalse()
+        ->and($this->policy->manageWebhooks($requester, $workspace))->toBeFalse()
+        ->and($this->policy->manageTeam($requester, $workspace))->toBeFalse()
+        ->and($this->policy->inviteMember($requester, $workspace))->toBeFalse();
+});
+
+test('owners, admins and direct publishers can publish directly and approve', function (string $access) {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $actor = $access === 'owner' ? $owner : workspaceMember($workspace, $access);
+
+    expect($this->policy->publishDirectly($actor, $workspace))->toBeTrue()
+        ->and($this->policy->approvePosts($actor, $workspace))->toBeTrue()
+        ->and($this->policy->manageRepurposes($actor, $workspace))->toBeTrue();
+})->with(['owner', 'admin', 'member']);
+
+test('a user outside the workspace cannot write, publish or approve', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $owner->id]);
+    $outsider = workspaceOutsider($workspace);
+
+    expect($this->policy->createPost($outsider, $workspace))->toBeFalse()
+        ->and($this->policy->publishDirectly($outsider, $workspace))->toBeFalse()
+        ->and($this->policy->approvePosts($outsider, $workspace))->toBeFalse();
 });
 
 test('only account owner can manage billing', function () {

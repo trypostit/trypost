@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Requests\App\Auth;
 
 use App\Enums\User\Locale;
+use App\Enums\User\TimeFormat;
+use App\Enums\User\WeekStart;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -35,6 +37,9 @@ class RegisterRequest extends FormRequest
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', Rules\Password::defaults()],
             'locale' => ['required', Rule::enum(Locale::class)],
+            'timezone' => ['nullable', 'string'],
+            'week_starts_on' => ['nullable', Rule::enum(WeekStart::class)],
+            'time_format' => ['nullable', Rule::enum(TimeFormat::class)],
         ];
     }
 

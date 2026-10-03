@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Actions\SocialAccount\SyncXSubscription;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -242,6 +243,14 @@ class ConnectionVerifier
             if (! $account->platform->hasTokenRefreshFlow()) {
                 // Page tokens, Mastodon and the shared bot tokens have
                 // nothing per-account to refresh.
+                return false;
+            }
+
+            $stored = SocialAccount::query()->find($account->id);
+
+            if ($stored && $stored->refresh_token !== $account->refresh_token) {
+                $account->setRawAttributes($stored->getAttributes(), true);
+
                 return false;
             }
 
@@ -557,13 +566,15 @@ class ConnectionVerifier
     private function verifyX(SocialAccount $account): bool
     {
         $response = Http::withToken($account->access_token)
-            ->get(config('trypost.platforms.x.api').'/users/me');
+            ->get(config('trypost.platforms.x.api').'/users/me', ['user.fields' => SyncXSubscription::USER_FIELDS]);
 
         if (XPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('X access token is invalid or expired');
         }
 
         if ($response->successful()) {
+            SyncXSubscription::fromUser($account, (array) $response->json('data', []));
+
             return true;
         }
 

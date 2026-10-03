@@ -1,83 +1,259 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
-import { IconChevronLeft, IconChevronRight, IconPlus } from '@tabler/icons-vue';
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import {
+    IconCheck,
+    IconChevronDown,
+    IconChevronLeft,
+    IconChevronRight,
+    IconDotsVertical,
+    IconLayoutSidebarRight,
+    IconPlus,
+} from '@tabler/icons-vue';
+import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 
-import DatePicker from '@/components/DatePicker.vue';
+import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
+import LabelFilter from '@/components/labels/LabelFilter.vue';
+import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
+import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
+import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
+import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
+import CalendarStatusFilter from '@/components/publish/CalendarStatusFilter.vue';
+import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
+import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
+import PublishHeader from '@/components/publish/PublishHeader.vue';
+import TimezoneSelect from '@/components/TimezoneSelect.vue';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
+import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import {
+    deletePostCardKey,
+    postCardLabelsKey,
+} from '@/composables/usePostCardActions';
+import { useShowPostingSlots } from '@/composables/useShowPostingSlots';
+import { provideViewTimezone } from '@/composables/useViewTimezone';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
 import { calendar } from '@/routes/app';
-import { create as createPost, edit as editPost, show as showPost } from '@/routes/app/posts';
-import { PostStatus } from '@/types/post';
-
-interface PostPlatform {
-    id: string;
-    platform: string;
-    status: string;
-    social_account: {
-        id: string;
-        platform: string;
-        display_name: string;
-        username: string | null;
-        display_label: string;
-    } | null;
-}
-
-interface Post {
-    id: string;
-    status: string;
-    content: string | null;
-    scheduled_at: string;
-    post_platforms: PostPlatform[];
-}
-
-interface Workspace {
-    id: string;
-    name: string;
-}
+import {
+    calendar as channelCalendar,
+    grid,
+    publish,
+    settings,
+} from '@/routes/app/channels';
+import { index as postsIndex } from '@/routes/app/posts';
+import type { User } from '@/types';
+import type { TimezoneOption } from '@/types/posting-schedule';
+import type {
+    CalendarPost,
+    CalendarSlot,
+    CalendarStatus,
+    CalendarView,
+    PostCard,
+    PostCardLabel,
+    PublishChannel,
+    PublishScope,
+    PublishSocialAccount,
+    ScrollUndatedDrafts,
+} from '@/types/publish';
 
 interface Props {
-    workspace: Workspace;
-    posts: Record<string, Post[]>;
-    currentDay: string;
+    scope: PublishScope;
+    channel: PublishChannel | null;
+    posts: Record<string, CalendarPost[]>;
     currentWeekStart: string;
     currentMonth: string;
-    view: 'day' | 'week' | 'month';
+    view: CalendarView;
+    displayTimezone: string;
+    timezones: TimezoneOption[];
+    labels: PostCardLabel[];
+    filters: {
+        labels: string[];
+        untagged: boolean;
+        channels: string[];
+        status: CalendarStatus;
+    };
+    filterAccounts: PublishSocialAccount[];
+    undatedDrafts?: ScrollUndatedDrafts;
+    slots?: Record<string, CalendarSlot[]>;
 }
 
 const props = defineProps<Props>();
+const page = usePage();
+const { canCreatePost, canManageAccounts } = useWorkspaceAbilities();
+const { showSlots, setShowSlots } = useShowPostingSlots();
 
-// Mobile detection
-const isMobile = ref(false);
-const { canCreatePost } = useWorkspaceRole();
+const VIEWS: readonly CalendarView[] = ['week', 'month'];
+const MONTH_CHIPS = 3;
+const RELOAD_PROPS = [
+    'posts',
+    'currentWeekStart',
+    'currentMonth',
+    'view',
+    'displayTimezone',
+    'filters',
+    'slots',
+];
 
-const createPostUrl = (isoDate: string | null = null) =>
-    isoDate ? createPost.url({ query: { date: isoDate } }) : createPost.url();
-const checkMobile = () => {
-    isMobile.value = window.innerWidth < 1024;
+const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+
+provide(deletePostCardKey, (post: PostCard) => {
+    deleteModal.value?.open({ url: destroyPost.url(post.id) });
+});
+
+provide(
+    postCardLabelsKey,
+    computed(() => props.labels),
+);
+
+const now = ref(dayjs());
+let clock: ReturnType<typeof setInterval> | undefined;
+
+onUnmounted(() => {
+    clearInterval(clock);
+});
+
+const userTimezone = computed(
+    () => (page.props.auth.user as User).timezone || props.displayTimezone,
+);
+
+const { timezone, setTimezone } = useDisplayTimezone(
+    props.displayTimezone,
+    props.timezones.map((option) => option.value),
+    undefined,
+    RELOAD_PROPS,
+);
+
+provideViewTimezone(timezone);
+
+watch(
+    () => props.displayTimezone,
+    (value) => {
+        timezone.value = value;
+    },
+);
+
+const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
+const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
+const selectedChannelIds = ref<string[]>(props.filters.channels ?? []);
+const selectedStatus = ref<CalendarStatus>(props.filters.status ?? 'all');
+const undatedOpen = ref(props.undatedDrafts !== undefined);
+
+const filterQuery = (): Record<string, string | string[] | undefined> => ({
+    labels: selectedLabelIds.value.length ? selectedLabelIds.value : undefined,
+    untagged: selectedUntagged.value ? '1' : undefined,
+    channels:
+        props.scope === 'all' && selectedChannelIds.value.length
+            ? selectedChannelIds.value
+            : undefined,
+    tz: timezone.value !== userTimezone.value ? timezone.value : undefined,
+});
+
+const calendarUrl = (
+    view: CalendarView,
+    dateQuery: Record<string, string> = {},
+): string => {
+    const query = {
+        ...dateQuery,
+        ...filterQuery(),
+        status:
+            selectedStatus.value !== 'all' ? selectedStatus.value : undefined,
+        undated: undatedOpen.value ? '1' : undefined,
+        slots: showSlots.value ? '1' : undefined,
+    };
+
+    return props.channel
+        ? channelCalendar.url({ account: props.channel.id, view }, { query })
+        : calendar.url({ view }, { query });
+};
+
+const listHref = computed((): string => {
+    const query = filterQuery();
+
+    return props.channel
+        ? publish.url(props.channel.id, {
+              query: {
+                  labels: query.labels,
+                  untagged: query.untagged,
+                  tz: query.tz,
+              },
+          })
+        : postsIndex.url({ query });
+});
+
+const visit = (url: string): void => {
+    router.get(
+        url,
+        {},
+        { preserveState: true, preserveScroll: true, only: RELOAD_PROPS },
+    );
+};
+
+const reload = (only: string[], reset: string[] = []): void => {
+    router.get(
+        calendarUrl(props.view, currentDateQuery()),
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+            only,
+            reset,
+        },
+    );
+};
+
+watch(
+    [selectedLabelIds, selectedUntagged, selectedChannelIds, selectedStatus],
+    () => reload([...RELOAD_PROPS, 'undatedDrafts'], ['undatedDrafts']),
+    { deep: true },
+);
+
+const toggleUndated = (): void => {
+    undatedOpen.value = !undatedOpen.value;
+    reload(['undatedDrafts'], ['undatedDrafts']);
+};
+
+const closeUndated = (): void => {
+    if (undatedOpen.value) {
+        toggleUndated();
+    }
+};
+
+const toggleSlots = (value: boolean): void => {
+    setShowSlots(value);
+    reload(['slots']);
 };
 
 onMounted(() => {
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-});
+    clock = setInterval(() => {
+        now.value = dayjs();
+    }, 60_000);
 
-onUnmounted(() => {
-    window.removeEventListener('resize', checkMobile);
+    if (showSlots.value && props.slots === undefined) {
+        router.get(
+            calendarUrl(props.view, currentDateQuery()),
+            {},
+            {
+                preserveState: true,
+                preserveScroll: true,
+                preserveUrl: true,
+                only: ['slots'],
+            },
+        );
+    }
 });
-
-// Effective view (force day view on mobile)
-const effectiveView = computed(() => {
-    return isMobile.value ? 'day' : props.view;
-});
-
 
 /**
  * Every date on this screen goes through here: `dayjs.locale()` is global and
@@ -87,47 +263,31 @@ const effectiveView = computed(() => {
 const localized = (value?: dayjs.ConfigType) =>
     dayjs(value).locale(activeLocale.value.toLowerCase());
 
-// Generate weekday names based on dayjs locale (respects weekStart config)
+const todayKey = computed(() =>
+    now.value.tz(timezone.value).format('YYYY-MM-DD'),
+);
+
 const weekdayNames = computed(() => {
-    const names = [];
     const start = localized().startOf('week');
-    for (let i = 0; i < 7; i++) {
-        names.push(start.add(i, 'day').format('dddd'));
-    }
-    return names;
+
+    return Array.from({ length: 7 }, (_, index) =>
+        start.add(index, 'day').format('dddd'),
+    );
 });
 
-const formatDayMonth = (day: dayjs.Dayjs): string => day.format('D MMMM');
-
-// Day view computed
-const currentDay = computed(() => localized(props.currentDay));
-
-const dayHeaderTitle = computed(() => currentDay.value.format('LL'));
-
-const dayPosts = computed(() => {
-    const dateKey = currentDay.value.format('YYYY-MM-DD');
-    return props.posts[dateKey] || [];
-});
-
-// Date picker model for day navigation
-const selectedDate = ref(props.currentDay);
-
-// Week view computed
 const weekStart = computed(() => localized(props.currentWeekStart));
+const monthDate = computed(() => localized(props.currentMonth));
 
-const weekDays = computed(() => {
-    const days = [];
-    for (let i = 0; i < 7; i++) {
-        days.push(weekStart.value.add(i, 'day'));
-    }
-    return days;
-});
+const weekDays = computed(() =>
+    Array.from({ length: 7 }, (_, index) =>
+        weekStart.value.add(index, 'day'),
+    ),
+);
 
 const weekHeaderTitle = computed(() => {
     const start = weekStart.value;
     const end = weekStart.value.add(6, 'day');
 
-    // Day-first tokens so locales like pt-BR stay "3–9 de agosto", not "August 3–9".
     if (start.isSame(end, 'month')) {
         return `${start.format('D')}–${end.format('D MMMM YYYY')}`;
     }
@@ -139,441 +299,471 @@ const weekHeaderTitle = computed(() => {
     return `${start.format('ll')} – ${end.format('ll')}`;
 });
 
-// Month view computed
-const monthDate = computed(() => localized(props.currentMonth));
-
-const monthHeaderTitle = computed(() => monthDate.value.format('MMMM YYYY'));
-
-const calendarDays = computed(() => {
+const calendarWeeks = computed(() => {
     const start = monthDate.value.startOf('month').startOf('week');
     const end = monthDate.value.endOf('month').endOf('week');
-    const days = [];
+    const weeks: dayjs.Dayjs[][] = [];
     let current = start;
 
-    while (current.isBefore(end) || current.isSame(end, 'day')) {
-        days.push(current);
+    while (!current.isAfter(end, 'day')) {
+        if (current.day() === start.day()) {
+            weeks.push([]);
+        }
+
+        weeks[weeks.length - 1].push(current);
         current = current.add(1, 'day');
     }
 
-    return days;
-});
-
-const calendarWeeks = computed(() => {
-    const weeks = [];
-    for (let i = 0; i < calendarDays.value.length; i += 7) {
-        weeks.push(calendarDays.value.slice(i, i + 7));
-    }
     return weeks;
 });
 
-// Header title based on view
-const headerTitle = computed(() => {
-    if (effectiveView.value === 'day') return dayHeaderTitle.value;
-    if (effectiveView.value === 'month') return monthHeaderTitle.value;
-    return weekHeaderTitle.value;
-});
+const headerTitle = computed(() =>
+    props.view === 'month'
+        ? monthDate.value.format('MMMM YYYY')
+        : weekHeaderTitle.value,
+);
 
-const getPostsForDay = (day: dayjs.Dayjs): Post[] => {
-    const dateKey = day.format('YYYY-MM-DD');
-    return props.posts[dateKey] || [];
-};
+const currentDateQuery = (
+    view: CalendarView = props.view,
+): Record<string, string> =>
+    view === 'month'
+        ? { month: props.currentMonth }
+        : { week: props.currentWeekStart };
 
-const navigateDay = (direction: number) => {
-    const newDay = currentDay.value.add(direction, 'day');
-    router.get(calendar.url({ query: { view: 'day', day: newDay.format('YYYY-MM-DD') } }), {}, {
-        preserveState: true,
-    });
-};
-
-const navigateWeek = (direction: number) => {
-    const newStart = weekStart.value.add(direction * 7, 'day');
-    router.get(calendar.url({ query: { view: 'week', week: newStart.format('YYYY-MM-DD') } }), {}, {
-        preserveState: true,
-    });
-};
-
-const navigateMonth = (direction: number) => {
-    const newMonth = monthDate.value.add(direction, 'month');
-    router.get(calendar.url({ query: { view: 'month', month: newMonth.format('YYYY-MM-DD') } }), {}, {
-        preserveState: true,
-    });
-};
-
-const navigate = (direction: number) => {
-    if (effectiveView.value === 'day') {
-        navigateDay(direction);
-    } else if (effectiveView.value === 'month') {
-        navigateMonth(direction);
+const navigate = (direction: number): void => {
+    if (props.view === 'month') {
+        visit(
+            calendarUrl('month', {
+                month: monthDate.value
+                    .add(direction, 'month')
+                    .format('YYYY-MM-DD'),
+            }),
+        );
     } else {
-        navigateWeek(direction);
+        visit(
+            calendarUrl('week', {
+                week: weekStart.value
+                    .add(direction * 7, 'day')
+                    .format('YYYY-MM-DD'),
+            }),
+        );
     }
 };
 
-const goToToday = () => {
-    router.get(calendar.url({ query: { view: effectiveView.value } }), {}, {
-        preserveState: true,
+const goToToday = (): void => visit(calendarUrl(props.view));
+
+const switchView = (view: CalendarView): void => visit(calendarUrl(view));
+
+const dayKey = (day: dayjs.Dayjs): string => day.format('YYYY-MM-DD');
+
+const isToday = (day: dayjs.Dayjs): boolean => dayKey(day) === todayKey.value;
+
+const isPast = (day: dayjs.Dayjs): boolean => dayKey(day) < todayKey.value;
+
+const isCurrentMonth = (day: dayjs.Dayjs): boolean =>
+    day.month() === monthDate.value.month();
+
+const visibleSlots = computed<Record<string, CalendarSlot[]>>(() =>
+    showSlots.value ? (props.slots ?? {}) : {},
+);
+
+const slotChannels = computed<Record<string, PublishSocialAccount>>(() =>
+    Object.fromEntries(
+        (props.channel ? [props.channel] : props.filterAccounts).map(
+            (account) => [account.id, account],
+        ),
+    ),
+);
+
+const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
+    calendarItems(
+        props.posts[dayKey(day)] ?? [],
+        visibleSlots.value[dayKey(day)] ?? [],
+    );
+
+const composerAccounts = (): string[] =>
+    props.channel ? [props.channel.id] : [];
+
+const newPost = (): void =>
+    openPostComposer({ socialAccountIds: composerAccounts() });
+
+const composeAt = (utcIso: string): void =>
+    openPostComposer({
+        date: date.formatUtcForDateTimeLocalInput(utcIso),
+        socialAccountIds: composerAccounts(),
     });
+
+const composeOn = (day: dayjs.Dayjs): void =>
+    composeAt(dayjs.tz(`${dayKey(day)}T09:00`, timezone.value).utc().format());
+
+const expandedDays = ref<string[]>([]);
+
+const toggleDay = (key: string): void => {
+    expandedDays.value = expandedDays.value.includes(key)
+        ? expandedDays.value.filter((day) => day !== key)
+        : [...expandedDays.value, key];
 };
 
-const goToDate = (dateStr: string) => {
-    if (!dateStr) return;
-    router.get(calendar.url({ query: { view: 'day', day: dateStr } }), {}, {
-        preserveState: true,
-    });
-};
-
-const switchView = (view: string | number) => {
-    router.get(calendar.url({ query: { view } }), {}, {
-        preserveState: true,
-    });
-};
-
-const isToday = (day: dayjs.Dayjs): boolean => {
-    return day.isSame(dayjs(), 'day');
-};
-
-const isCurrentMonth = (day: dayjs.Dayjs): boolean => {
-    return day.month() === monthDate.value.month();
-};
-
-const getStatusColor = (status: string): string => {
-    const colors: Record<string, string> = {
-        draft: 'bg-card text-foreground',
-        scheduled: 'bg-violet-100 text-foreground',
-        publishing: 'bg-amber-100 text-foreground',
-        published: 'bg-emerald-100 text-foreground',
-        partially_published: 'bg-amber-100 text-foreground',
-        failed: 'bg-rose-100 text-foreground',
-    };
-    return colors[status] ?? colors.draft;
-};
-
-const EDITABLE_STATUSES: readonly string[] = [PostStatus.Draft, PostStatus.Scheduled];
-
-const getPostUrl = (post: Post): string => {
-    return EDITABLE_STATUSES.includes(post.status)
-        ? editPost.url(post.id)
-        : showPost.url(post.id);
-};
-
-const formatTime = (scheduledAt: string): string => {
-    return date.formatTime(scheduledAt) || '';
-};
+const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
+    expandedDays.value.includes(dayKey(day))
+        ? itemsFor(day)
+        : itemsFor(day).slice(0, MONTH_CHIPS);
 </script>
 
 <template>
-
     <Head :title="$t('calendar.title')" />
 
-    <AppLayout :fullWidth="true">
-        <div class="flex flex-col h-full">
-            <!-- Mobile header: nav + date jump on top, full-width New post below -->
-            <header class="flex shrink-0 flex-col gap-2 border-b-2 border-foreground bg-card px-4 py-3 lg:hidden">
-                <div class="flex items-center justify-between gap-2 pl-12">
-                    <div class="flex items-center gap-2">
-                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(-1)">
+    <AppLayout full-width>
+        <template #header>
+            <PublishHeader :channel="channel" />
+        </template>
+
+        <template #header-actions>
+            <div class="flex items-center gap-2">
+                <ScheduleViewSwitch
+                    active-view="calendar"
+                    :list-href="listHref"
+                    :calendar-href="calendarUrl('month')"
+                    :grid-href="
+                        channel?.has_grid ? grid.url(channel.id) : undefined
+                    "
+                />
+                <Button
+                    v-if="canCreatePost"
+                    variant="outline"
+                    class="max-sm:w-8 max-sm:px-0"
+                    :aria-label="$t('calendar.new_post')"
+                    data-testid="calendar-new-post"
+                    @click="newPost"
+                >
+                    <IconPlus class="size-4" />
+                    <span class="max-sm:sr-only">{{
+                        $t('calendar.new_post')
+                    }}</span>
+                </Button>
+            </div>
+        </template>
+
+        <div class="flex min-h-0 flex-1 flex-col">
+            <div
+                class="mx-4 mt-2 flex shrink-0 flex-col md:mx-8 md:h-12 md:flex-row md:items-center md:gap-4"
+                data-testid="calendar-toolbar"
+            >
+                <div class="flex h-12 min-w-0 items-center gap-4">
+                    <div class="flex min-w-0 items-center">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="-ms-2 shrink-0 md:-ms-3"
+                            :aria-label="$t('calendar.previous')"
+                            data-testid="calendar-previous"
+                            @click="navigate(-1)"
+                        >
                             <IconChevronLeft class="size-4" />
                         </Button>
-                        <Button variant="outline" @click="goToToday">
-                            {{ $t('calendar.today') }}
-                        </Button>
-                        <Button variant="outline" size="icon" class="shrink-0" @click="navigate(1)">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            class="shrink-0"
+                            :aria-label="$t('calendar.next')"
+                            data-testid="calendar-next"
+                            @click="navigate(1)"
+                        >
                             <IconChevronRight class="size-4" />
                         </Button>
+                        <h2
+                            class="ms-1 truncate font-heading text-base leading-5 font-medium text-foreground capitalize"
+                            data-testid="calendar-title"
+                        >
+                            {{ headerTitle }}
+                        </h2>
                     </div>
-                    <div class="w-36 shrink-0">
-                        <DatePicker v-model="selectedDate" :show-time="false" @update:model-value="(v: any) => goToDate(v)" />
-                    </div>
-                </div>
-                <Link v-if="canCreatePost" :href="createPost.url()" class="block">
-                    <Button class="w-full">{{ $t('calendar.new_post') }}</Button>
-                </Link>
-            </header>
-
-            <!-- Desktop header: nav · title · view switcher + new post -->
-            <header class="hidden shrink-0 grid-cols-[auto_1fr_auto] items-center gap-3 border-b-2 border-foreground bg-card px-6 py-3 lg:grid">
-                <div class="flex items-center gap-2">
-                    <Button variant="outline" size="icon" @click="navigate(-1)">
-                        <IconChevronLeft class="size-4" />
-                    </Button>
-                    <Button variant="outline" @click="goToToday">
+                    <Button
+                        variant="outline"
+                        class="shrink-0"
+                        data-testid="calendar-today"
+                        @click="goToToday"
+                    >
                         {{ $t('calendar.today') }}
                     </Button>
-                    <Button variant="outline" size="icon" @click="navigate(1)">
-                        <IconChevronRight class="size-4" />
-                    </Button>
-                </div>
-                <div class="flex items-center justify-center">
-                    <span class="truncate text-sm font-bold capitalize text-foreground">
-                        {{ headerTitle }}
-                    </span>
-                </div>
-                <div class="flex items-center justify-end gap-2">
-                    <Tabs :default-value="view" @update:model-value="switchView">
-                        <TabsList>
-                            <TabsTrigger value="day">{{ $t('calendar.day') }}</TabsTrigger>
-                            <TabsTrigger value="week">{{ $t('calendar.week') }}</TabsTrigger>
-                            <TabsTrigger value="month">{{ $t('calendar.month') }}</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-
-                    <Link v-if="canCreatePost" :href="createPost.url()">
-                        <Button>{{ $t('calendar.new_post') }}</Button>
-                    </Link>
-                </div>
-            </header>
-
-            <!-- Day View (mobile or when view=day) -->
-            <div v-if="effectiveView === 'day'" class="flex-1 overflow-y-auto">
-                <!-- Mobile Header Title -->
-                <div class="border-b-2 border-foreground/10 bg-card px-4 py-3 lg:hidden">
-                    <h2 class="text-center text-base font-bold capitalize text-foreground">
-                        {{ dayHeaderTitle }}
-                    </h2>
-                </div>
-
-                <div class="space-y-3 p-4">
-                    <!-- Posts List -->
-                    <div v-if="dayPosts.length > 0" class="space-y-3">
-                        <Link v-for="post in dayPosts" :key="post.id" :href="getPostUrl(post)" class="block">
-                            <div
-                                class="rounded-xl border-2 border-foreground p-4 shadow-2xs transition-all hover:shadow-md"
-                                :class="getStatusColor(post.status)"
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                class="shrink-0 data-[state=open]:bg-accent"
+                                data-testid="calendar-view-trigger"
                             >
-                                <div class="flex items-start justify-between gap-3">
-                                    <div class="min-w-0 flex-1">
-                                        <!-- Time -->
-                                        <div class="mb-2 text-sm font-bold">
-                                            {{ formatTime(post.scheduled_at) }}
-                                        </div>
-
-                                        <!-- Platforms -->
-                                        <div class="mb-2 flex -space-x-1.5">
-                                            <TooltipProvider v-for="pp in post.post_platforms.slice(0, 5)" :key="pp.id" :delay-duration="200">
-                                                <Tooltip>
-                                                    <TooltipTrigger as-child>
-                                                        <span class="inline-flex size-6 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
-                                                            <img :src="getPlatformLogo(pp.platform)" :alt="pp.platform" class="size-full object-cover" />
-                                                        </span>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <div class="space-y-0.5 text-xs">
-                                                            <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
-                                                            <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
-                                                        </div>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                            <span
-                                                v-if="post.post_platforms.length > 5"
-                                                class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-xs font-bold shadow-2xs"
-                                            >
-                                                +{{ post.post_platforms.length - 5 }}
-                                            </span>
-                                        </div>
-
-                                        <!-- Content Preview -->
-                                        <p class="line-clamp-2 text-sm font-medium text-foreground/80">
-                                            {{ post.content?.trim() || $t('calendar.no_content') }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </Link>
-                    </div>
-
-                    <!-- Empty State -->
-                    <div v-else class="py-12 text-center text-foreground/60">
-                        <p class="font-medium">{{ $t('calendar.no_content') }}</p>
-                    </div>
+                                {{ $t(`calendar.${view}`) }}
+                                <IconChevronDown
+                                    class="size-4 text-muted-foreground"
+                                />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start">
+                            <DropdownMenuItem
+                                v-for="option in VIEWS"
+                                :key="option"
+                                :data-testid="`calendar-view-${option}`"
+                                @click="switchView(option)"
+                            >
+                                <IconCheck
+                                    class="size-4"
+                                    :class="view === option ? '' : 'invisible'"
+                                />
+                                {{ $t(`calendar.${option}`) }}
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
-            </div>
 
-            <!-- Week View -->
-            <div v-else-if="effectiveView === 'week'" class="grid flex-1 grid-cols-7 divide-x-2 divide-foreground/10 overflow-hidden">
                 <div
-                    v-for="day in weekDays"
-                    :key="day.format('YYYY-MM-DD')"
-                    class="flex min-h-0 flex-col"
-                    :class="{ 'bg-violet-100/40': isToday(day) }"
+                    class="-mx-1 flex min-w-0 items-center gap-2 overflow-x-auto px-1 pb-2 md:ms-auto md:overflow-visible md:p-0"
+                    data-testid="calendar-filters"
                 >
-                    <!-- Day Header -->
-                    <div class="flex flex-col items-center border-b-2 border-foreground/10 bg-card py-3">
-                        <span class="text-[11px] font-black uppercase tracking-widest text-foreground/60">
-                            {{ day.format('dddd') }}
-                        </span>
-                        <span
-                            class="mt-1 text-sm font-bold capitalize"
-                            :class="isToday(day) ? 'text-foreground' : 'text-foreground/80'"
-                        >
-                            {{ formatDayMonth(day) }}
-                        </span>
-                    </div>
-
-                    <!-- Day Content -->
-                    <div class="flex-1 space-y-2 overflow-y-auto p-2">
-                        <!-- Add Post Button -->
-                        <Link
-                            v-if="canCreatePost"
-                            :href="createPostUrl(day.format('YYYY-MM-DD'))"
-                            class="flex w-full items-center justify-center rounded-md border-2 border-dashed border-foreground/25 p-2 text-foreground/60 transition-colors hover:border-foreground hover:bg-foreground/5 hover:text-foreground"
-                        >
-                            <IconPlus class="size-4" />
-                        </Link>
-
-                        <!-- Posts -->
-                        <Link v-for="post in getPostsForDay(day)" :key="post.id" :href="getPostUrl(post)" class="block">
-                            <div
-                                class="rounded-lg border-2 border-foreground p-2 text-sm shadow-2xs transition-all hover:shadow-sm"
-                                :class="getStatusColor(post.status)"
-                            >
-                                <!-- Time -->
-                                <div class="mb-1 text-xs font-bold">
-                                    {{ formatTime(post.scheduled_at) }}
-                                </div>
-
-                                <!-- Platforms -->
-                                <div class="mb-1.5 flex -space-x-1.5">
-                                    <TooltipProvider v-for="pp in post.post_platforms.slice(0, 4)" :key="pp.id" :delay-duration="200">
-                                        <Tooltip>
-                                            <TooltipTrigger as-child>
-                                                <span class="inline-flex size-5 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card">
-                                                    <img :src="getPlatformLogo(pp.platform)" :alt="pp.platform" class="size-full object-cover" />
-                                                </span>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                                <div class="space-y-0.5 text-xs">
-                                                    <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
-                                                    <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
-                                                </div>
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    </TooltipProvider>
-                                    <span
-                                        v-if="post.post_platforms.length > 4"
-                                        class="inline-flex size-5 items-center justify-center rounded-full border-2 border-foreground bg-card text-[10px] font-bold"
-                                    >
-                                        +{{ post.post_platforms.length - 4 }}
-                                    </span>
-                                </div>
-
-                                <!-- Content Preview -->
-                                <p class="line-clamp-2 text-xs font-medium text-foreground/80">
-                                    {{ post.content?.trim() || $t('calendar.no_content') }}
-                                </p>
-                            </div>
-                        </Link>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Month View -->
-            <div v-else class="flex flex-1 flex-col">
-                <!-- Weekday Headers -->
-                <div class="grid grid-cols-7 divide-x-2 divide-foreground/10 border-b-2 border-foreground/10 bg-card">
-                    <div
-                        v-for="day in weekdayNames"
-                        :key="day"
-                        class="py-3 text-center text-[11px] font-black uppercase tracking-widest text-foreground/60"
+                    <PostChannelFilter
+                        v-if="scope === 'all' && filterAccounts.length"
+                        v-model="selectedChannelIds"
+                        :channels="filterAccounts"
+                    />
+                    <CalendarStatusFilter v-model="selectedStatus" />
+                    <LabelFilter
+                        v-model="selectedLabelIds"
+                        v-model:untagged="selectedUntagged"
+                        :labels="labels"
+                    />
+                    <Button
+                        variant="ghost"
+                        class="shrink-0"
+                        :class="{ 'bg-accent': undatedOpen }"
+                        :aria-pressed="undatedOpen"
+                        data-testid="calendar-no-date"
+                        @click="toggleUndated"
                     >
-                        {{ day }}
-                    </div>
-                </div>
-
-                <!-- Calendar Grid -->
-                <div
-                    class="grid flex-1 divide-y-2 divide-foreground/10"
-                    :style="{ gridTemplateRows: `repeat(${calendarWeeks.length}, minmax(0, 1fr))` }"
-                >
+                        <IconLayoutSidebarRight
+                            class="size-4 text-muted-foreground"
+                        />
+                        {{ $t('calendar.no_date') }}
+                    </Button>
+                    <span
+                        class="h-5 w-px shrink-0 bg-border-strong"
+                        aria-hidden="true"
+                    />
                     <div
-                        v-for="(week, weekIndex) in calendarWeeks"
-                        :key="weekIndex"
-                        class="grid min-h-0 grid-cols-7 divide-x-2 divide-foreground/10"
+                        class="shrink-0"
+                        data-testid="publish-timezone-select"
+                        role="group"
+                        :aria-label="$t('posts.publish.timezone.label')"
+                    >
+                        <TimezoneSelect
+                            :model-value="timezone"
+                            :options="timezones"
+                            testid="publish-timezone"
+                            variant="ghost"
+                            compact
+                            @update:model-value="setTimezone"
+                        />
+                    </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger as-child>
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                class="shrink-0 data-[state=open]:bg-accent"
+                                :aria-label="$t('posts.table.actions')"
+                                data-testid="calendar-menu"
+                            >
+                                <IconDotsVertical class="size-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuCheckboxItem
+                                :model-value="showSlots"
+                                data-testid="calendar-toggle-slots"
+                                @update:model-value="toggleSlots"
+                            >
+                                {{
+                                    $t('posts.publish.menu.show_posting_times')
+                                }}
+                            </DropdownMenuCheckboxItem>
+                            <DropdownMenuItem
+                                v-if="channel && canManageAccounts"
+                                as-child
+                            >
+                                <Link
+                                    :href="settings.url(channel.id)"
+                                    data-testid="calendar-manage-slots"
+                                >
+                                    {{
+                                        $t(
+                                            'posts.publish.menu.manage_posting_times',
+                                        )
+                                    }}
+                                </Link>
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            <div class="mx-4 flex min-h-0 flex-1 gap-4 md:mx-8">
+                <div
+                    class="mb-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-strong md:mb-6"
+                    :class="{ 'max-md:hidden': undatedOpen }"
+                    data-testid="calendar-grid"
+                >
+                    <CalendarTimeGrid
+                        v-if="view !== 'month'"
+                        :days="weekDays"
+                        :posts="posts"
+                        :slots="visibleSlots"
+                        :channels="slotChannels"
+                        :timezone="timezone"
+                        :now="now"
+                        :can-create-post="canCreatePost"
+                        @compose="composeAt"
+                    />
+
+                    <div
+                        v-else
+                        class="flex-1 overflow-y-auto overscroll-contain"
+                        data-testid="calendar-month-grid"
                     >
                         <div
-                            v-for="day in week"
-                            :key="day.format('YYYY-MM-DD')"
-                            class="group flex min-h-0 flex-col overflow-hidden p-2"
-                            :class="{
-                                'bg-violet-100/40': isToday(day),
-                                'bg-foreground/[0.03]': !isCurrentMonth(day),
-                            }"
+                            class="sticky top-0 z-10 grid grid-cols-7 border-b border-border-strong bg-card"
                         >
-                            <!-- Day Header -->
-                            <div class="mb-2 flex items-center justify-between">
-                                <span
-                                    class="inline-flex size-7 items-center justify-center rounded-full text-sm font-bold"
-                                    :class="{
-                                        'border-2 border-foreground bg-foreground text-background shadow-2xs': isToday(day),
-                                        'text-foreground/40': !isCurrentMonth(day),
-                                        'text-foreground': isCurrentMonth(day) && !isToday(day),
-                                    }"
-                                >
-                                    {{ day.format('D') }}
-                                </span>
-                                <Link
-                                    v-if="canCreatePost"
-                                    :href="createPostUrl(day.format('YYYY-MM-DD'))"
-                                    class="inline-flex size-6 items-center justify-center rounded-full border-2 border-foreground bg-card text-foreground opacity-0 shadow-2xs transition-all hover:rotate-90 hover:bg-violet-100 focus:opacity-100 group-hover:opacity-100"
-                                >
-                                    <IconPlus class="size-3.5" stroke-width="3" />
-                                </Link>
+                            <div
+                                v-for="(name, index) in weekdayNames"
+                                :key="name"
+                                class="border-border-strong p-2.5 text-center text-sm font-medium text-muted-foreground capitalize"
+                                :class="{ 'border-l': index > 0 }"
+                            >
+                                {{ name }}
                             </div>
+                        </div>
 
-                            <!-- Posts -->
-                            <div class="min-h-0 flex-1 space-y-1 overflow-y-auto px-1">
-                                <Link v-for="post in getPostsForDay(day).slice(0, 3)" :key="post.id" :href="getPostUrl(post)" class="block">
-                                    <div
-                                        class="flex flex-col gap-1 rounded-md border-2 border-foreground px-2 py-1 text-xs shadow-2xs transition-all hover:shadow-sm"
-                                        :class="getStatusColor(post.status)"
-                                    >
-                                        <div class="flex items-center justify-between gap-1.5">
-                                        <span class="shrink-0 font-bold">{{ formatTime(post.scheduled_at) }}</span>
-                                        <div class="flex shrink-0 -space-x-1">
-                                            <TooltipProvider
-                                                v-for="pp in post.post_platforms.slice(0, post.post_platforms.length > 4 ? 3 : 4)"
-                                                :key="pp.id"
-                                                :delay-duration="200"
-                                            >
-                                                <Tooltip>
-                                                    <TooltipTrigger as-child>
-                                                        <span class="inline-flex size-4 items-center justify-center overflow-hidden rounded-full border border-foreground bg-card">
-                                                            <img :src="getPlatformLogo(pp.platform)" :alt="pp.platform" class="size-full object-cover" />
-                                                        </span>
-                                                    </TooltipTrigger>
-                                                    <TooltipContent>
-                                                        <div class="space-y-0.5 text-xs">
-                                                            <p class="font-semibold">{{ pp.social_account?.display_label ?? pp.platform }}<span v-if="pp.social_account?.username" class="font-normal opacity-80">&nbsp;·&nbsp;@{{ pp.social_account.username }}</span></p>
-                                                            <p class="opacity-70">{{ getPlatformLabel(pp.platform) }}</p>
-                                                        </div>
-                                                    </TooltipContent>
-                                                </Tooltip>
-                                            </TooltipProvider>
-                                            <span
-                                                v-if="post.post_platforms.length > 4"
-                                                class="inline-flex size-4 items-center justify-center rounded-full border border-foreground bg-card text-[9px] font-bold"
-                                            >
-                                                +{{ post.post_platforms.length - 3 }}
-                                            </span>
-                                        </div>
-                                        </div>
-                                        <p class="line-clamp-1 font-medium text-foreground/80">
-                                            {{ post.content?.trim() || $t('calendar.no_content') }}
-                                        </p>
-                                    </div>
-                                </Link>
+                        <div>
+                            <div
+                                v-for="(week, weekIndex) in calendarWeeks"
+                                :key="weekIndex"
+                                class="grid min-h-[208px] grid-cols-7 border-border-strong"
+                                :class="{ 'border-t': weekIndex > 0 }"
+                            >
                                 <div
-                                    v-if="getPostsForDay(day).length > 3"
-                                    class="px-2 py-0.5 text-xs font-medium text-foreground/60"
+                                    v-for="(day, index) in week"
+                                    :key="dayKey(day)"
+                                    class="group flex min-w-0 flex-col gap-1 border-border-strong p-2"
+                                    :class="{
+                                        'border-l': index > 0,
+                                        'bg-accent': isPast(day),
+                                    }"
+                                    :data-testid="`calendar-day-${dayKey(day)}`"
                                 >
-                                    {{ $t('calendar.more', { count: String(getPostsForDay(day).length - 3) }) }}
+                                    <div class="flex items-center justify-between">
+                                        <span
+                                            class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium"
+                                            :class="{
+                                                'bg-primary text-primary-foreground':
+                                                    isToday(day),
+                                                'text-subtle-foreground':
+                                                    !isToday(day) &&
+                                                    !isCurrentMonth(day),
+                                                'text-muted-foreground':
+                                                    !isToday(day) &&
+                                                    isCurrentMonth(day),
+                                            }"
+                                        >
+                                            {{ day.format('D') }}
+                                        </span>
+                                        <button
+                                            v-if="canCreatePost && !isPast(day)"
+                                            type="button"
+                                            :aria-label="$t('calendar.new_post')"
+                                            class="flex size-6 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+                                            :data-testid="`calendar-add-${dayKey(day)}`"
+                                            @click="composeOn(day)"
+                                        >
+                                            <IconPlus class="size-3.5" />
+                                        </button>
+                                    </div>
+
+                                    <div class="flex flex-col gap-1">
+                                        <template
+                                            v-for="item in visibleMonthItems(day)"
+                                            :key="item.key"
+                                        >
+                                            <CalendarPostChip
+                                                v-if="item.post"
+                                                :post="item.post"
+                                                :timezone="timezone"
+                                            />
+                                            <CalendarSlotChip
+                                                v-else-if="item.slot"
+                                                :posting-slot="item.slot"
+                                                :channel="
+                                                    slotChannels[
+                                                        item.slot.channel_id
+                                                    ] ?? null
+                                                "
+                                                :timezone="timezone"
+                                                :can-create-post="canCreatePost"
+                                            />
+                                        </template>
+                                        <button
+                                            v-if="
+                                                itemsFor(day).length > MONTH_CHIPS
+                                            "
+                                            type="button"
+                                            class="inline-flex h-6 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
+                                            :aria-expanded="
+                                                expandedDays.includes(dayKey(day))
+                                            "
+                                            :data-testid="`calendar-more-${dayKey(day)}`"
+                                            @click="toggleDay(dayKey(day))"
+                                        >
+                                            <IconChevronDown
+                                                class="size-3.5 transition-transform"
+                                                :class="{
+                                                    'rotate-180':
+                                                        expandedDays.includes(
+                                                            dayKey(day),
+                                                        ),
+                                                }"
+                                            />
+                                            {{
+                                                expandedDays.includes(
+                                                    dayKey(day),
+                                                )
+                                                    ? $t('calendar.less')
+                                                    : $t('calendar.more', {
+                                                          count: String(
+                                                              itemsFor(day)
+                                                                  .length -
+                                                                  MONTH_CHIPS,
+                                                          ),
+                                                      })
+                                            }}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                <CalendarUndatedPanel
+                    v-if="undatedOpen"
+                    :drafts="undatedDrafts?.data ?? null"
+                    @close="closeUndated"
+                />
             </div>
         </div>
     </AppLayout>
 
+    <ConfirmDeleteModal
+        ref="deleteModal"
+        :title="$t('posts.edit.delete_modal.title')"
+        :description="$t('posts.edit.delete_modal.description')"
+        :action="$t('posts.edit.delete_modal.action')"
+        :cancel="$t('posts.edit.delete_modal.cancel')"
+    />
 </template>

@@ -21,10 +21,10 @@ class AttachInviteWorkspaces
                 ->where('users.id', $user->id)
                 ->exists();
 
-            // Never overwrite an existing pivot role (avoids demoting admins).
             if (! $alreadyMember) {
                 $workspace->members()->attach($user->id, [
-                    'role' => $invite->role->value,
+                    'is_admin' => $invite->is_admin,
+                    'requires_approval' => $invite->requires_approval,
                 ]);
             }
 

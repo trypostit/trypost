@@ -6,6 +6,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\RefreshSocialToken;
 use App\Jobs\SendNotification;
 use App\Models\SocialAccount;
@@ -19,6 +21,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+
     $this->owner = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->owner->id]);
     $this->account = SocialAccount::factory()->x()->create([
@@ -191,7 +195,7 @@ test('refresh job does NOT mark account expired when platform is unavailable', f
 
 test('proactive refresh renews a still-valid X token without spending a billed user read', function () {
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
             'access_token' => 'rotated-access-token',
             'refresh_token' => 'rotated-refresh-token',
@@ -244,7 +248,7 @@ test('a rejected refresh does not disconnect an account whose access token still
             'error' => 'invalid_grant',
             'error_description' => 'Value passed for the token was invalid.',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $this->account->update([
@@ -265,7 +269,7 @@ test('an account with no refresh token stays connected while its access token wo
     Queue::fake();
 
     Http::fake([
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $this->account->update([
@@ -288,7 +292,7 @@ test('a rejected refresh DOES disconnect once the access token is dead too', fun
             'error' => 'invalid_grant',
             'error_description' => 'refresh_token revoked',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response([
+        config('trypost.platforms.x.api').'/users/me*' => Http::response([
             'title' => 'Unauthorized',
             'status' => 401,
         ], 401),
@@ -342,7 +346,7 @@ test('a refresh whose follow-up verify fails is not recorded as a verification',
             'refresh_token' => 'rt-new',
             'expires_in' => 7200,
         ], 200),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['title' => 'Unauthorized'], 401),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['title' => 'Unauthorized'], 401),
     ]);
 
     $this->account->update([
@@ -389,7 +393,7 @@ test('a rejected refresh is not re-sent before the access token is checked', fun
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response([
             'error' => 'invalid_grant',
         ], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $this->account->update([
@@ -416,7 +420,7 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
     Http::fake([
         // Our refresh_token was already consumed by the process that won.
         $api.'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        $api.'/users/me' => function ($request) {
+        $api.'/users/me*' => function ($request) {
             $auth = $request->header('Authorization')[0] ?? '';
 
             return str_contains($auth, 'winner-access-token')
@@ -442,10 +446,9 @@ test('a refresh lost to a concurrent one falls back to the token that won', func
 
     (new RefreshSocialToken($this->account))->handle(app(ConnectionVerifier::class));
 
-    // The recovery is the point: reload, find the winner's token, verify with
-    // it. Asserting the call proves we got that far rather than bailing early.
-    Http::assertSent(fn ($request) => str_contains($request->url(), '/users/me'));
-    expect($this->account->fresh()->status)->toBe(Status::Connected);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/oauth2/token'));
+    expect($this->account->access_token)->toBe('winner-access-token')
+        ->and($this->account->fresh()->status)->toBe(Status::Connected);
     Queue::assertNotPushed(SendNotification::class);
 });
 
@@ -734,7 +737,7 @@ test('a refresh already in flight on a dead token is transient, not something to
 test('a billed fallback check counts as a verification like any other', function () {
     Http::fake([
         config('trypost.platforms.x.api').'/oauth2/token' => Http::response(['error' => 'invalid_grant'], 400),
-        config('trypost.platforms.x.api').'/users/me' => Http::response(['data' => ['id' => '123']], 200),
+        config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => '123']], 200),
     ]);
 
     $this->account->update([

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +16,7 @@ test('delete workspace does not lazy load account while reassigning current work
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $current->members()->attach($owner->id, ['role' => Role::Admin->value]);
+    $current->members()->attach($owner->id, membershipPivot('admin'));
     $owner->update(['current_workspace_id' => $current->id]);
 
     $other = Workspace::factory()->create([
@@ -26,7 +25,7 @@ test('delete workspace does not lazy load account while reassigning current work
     ]);
 
     $member = User::factory()->create(['account_id' => $owner->account_id]);
-    $current->members()->attach($member->id, ['role' => Role::Member->value]);
+    $current->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $current->id]);
 
     expect(DeleteWorkspace::execute($current))->toBeTrue();

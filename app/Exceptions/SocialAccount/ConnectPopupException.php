@@ -37,6 +37,8 @@ class ConnectPopupException extends RuntimeException implements ShouldntReport
             'success' => false,
             'message' => __("accounts.popup_callback.{$this->messageKey}"),
             'platform' => $this->platform?->value,
+            'accountId' => null,
+            'created' => false,
         ]);
     }
 }

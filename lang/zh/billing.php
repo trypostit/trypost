@@ -46,8 +46,8 @@ return [
             'networks_all_tooltip' => '你可以在所有这些平台上发布。',
             'accounts_unlimited' => '社交账号不限',
             'accounts_unlimited_tooltip' => '想连接多少账号都可以，同一平台的多个账号也行。比如三个 Instagram。',
-            'calendar' => '日历：月、周、日视图',
-            'calendar_tooltip' => '一眼看清整个月：哪些在计划中、已排期、已发布。需要细节时切换到周或日视图。',
+            'calendar' => '日历：月、周视图',
+            'calendar_tooltip' => '一眼看清整个月：哪些在计划中、已排期、已发布。需要细节时切换到周视图。',
             'ai' => 'TryPost Copilot',
             'ai_tooltip' => '帮你撰写和检查帖子的 AI 助手。',
             'mcp' => 'MCP：用 Claude、ChatGPT 或 Grok 发布',
@@ -79,6 +79,7 @@ return [
         'title' => '发票',
         'description' => '下载你过往的发票。',
         'paid' => '已支付',
+        'download' => '下载发票',
     ],
 
     'flash' => [

@@ -4,33 +4,29 @@ declare(strict_types=1);
 
 use App\Support\PostMediaRules;
 
-test('hosted media rules require id and path', function () {
-    $rules = PostMediaRules::rules(hosted: true);
+test('hosted media rules require id, path and url', function () {
+    $rules = PostMediaRules::hostedRules();
 
     expect($rules['media.*.id'])->toContain('required')
         ->and($rules['media.*.path'])->toContain('required')
+        ->and($rules['media.*.url'])->toContain('required')
         ->and($rules['media.*.url'])->not->toContain('url:http,https');
 });
 
-test('api media rules accept a bare external url with nullable id/path', function () {
-    $rules = PostMediaRules::rules(hosted: false);
+test('api media rules accept one reference per item and drop the snapshot keys', function () {
+    $rules = PostMediaRules::rules();
 
-    expect($rules['media.*.id'])->toContain('nullable')
-        ->and($rules['media.*.path'])->toContain('nullable')
-        ->and($rules['media.*.url'])->toContain('url:http,https');
+    expect($rules)->toHaveKeys(['media', 'media.*', 'media.*.upload_token', 'media.*.url', 'media.*.id', 'media.*.alt', 'media.*.meta'])
+        ->and($rules['media.*.url'])->toContain('url:http,https')
+        ->and($rules['media.*.upload_token'])->toContain('uuid')
+        ->and($rules)->not->toHaveKeys(['media.*.path', 'media.*.type', 'media.*.mime_type', 'media.*.size', 'media.*.original_filename']);
 });
 
-test('both variants keep the shared item keys so validated() preserves them', function () {
-    foreach ([true, false] as $hosted) {
-        expect(PostMediaRules::rules(hosted: $hosted))->toHaveKeys([
-            'media.*.id',
-            'media.*.path',
-            'media.*.url',
-            'media.*.type',
-            'media.*.mime_type',
-            'media.*.original_filename',
-            'media.*.size',
-            'media.*.meta',
-        ]);
-    }
+test('api media rules can target a destination list', function () {
+    expect(PostMediaRules::rules('destinations.*.media'))->toHaveKeys(['destinations.*.media', 'destinations.*.media.*.upload_token']);
+});
+
+test('both variants keep the meta rule so validated() preserves it', function () {
+    expect(PostMediaRules::rules())->toHaveKey('media.*.meta')
+        ->and(PostMediaRules::hostedRules())->toHaveKey('media.*.meta');
 });

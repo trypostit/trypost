@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -27,8 +26,8 @@ test('backfill revokes mcp oauth tokens when the user has multiple workspaces', 
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $other->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $other->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -45,7 +44,7 @@ test('backfill binds the sole account workspace when current is missing', functi
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => null]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -85,7 +84,7 @@ test('backfill ignores oauth tokens without the mcp use scope', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null, scopes: []);
@@ -106,8 +105,8 @@ test('backfill revokes when multiple workspaces exist without a valid current', 
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $alpha->members()->attach($user->id, ['role' => Role::Admin->value]);
-    $beta->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $alpha->members()->attach($user->id, membershipPivot('admin'));
+    $beta->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => null]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -128,7 +127,7 @@ test('backfill binds the remaining membership when current workspace was left', 
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $other->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $other->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $current->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -145,7 +144,7 @@ test('backfill leaves dead expired mcp grants untouched', function () {
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -163,7 +162,7 @@ test('backfill binds expired access tokens that still have a live refresh token'
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);
@@ -188,7 +187,7 @@ test('backfill rolls back binds when the migration fails before commit', functio
         'account_id' => $user->account_id,
         'user_id' => $user->id,
     ]);
-    $workspace->members()->attach($user->id, ['role' => Role::Admin->value]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $token = mcpAccessToken($user, mcpOauthClient(), workspace: null);

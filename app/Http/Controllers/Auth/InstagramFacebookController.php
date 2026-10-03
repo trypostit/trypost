@@ -218,7 +218,7 @@ class InstagramFacebookController extends MetaController
         // A lookup we never made says nothing about the handle a reconnect already has.
         $described = (bool) data_get($pageData, 'ig_described');
 
-        SocialAccount::connectIdentity(
+        $account = SocialAccount::connectIdentity(
             $workspace,
             $this->platform,
             (string) data_get($pageData, 'ig_id'),
@@ -243,7 +243,7 @@ class InstagramFacebookController extends MetaController
             $existingAccount,
         );
 
-        return $this->connectedCallback($existingAccount);
+        return $this->connectedCallback($account, $existingAccount);
     }
 
     /**

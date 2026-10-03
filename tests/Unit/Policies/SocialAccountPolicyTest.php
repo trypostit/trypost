@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ beforeEach(function () {
 test('members of the current workspace can view a social account', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
@@ -27,7 +26,7 @@ test('members of the current workspace can view a social account', function () {
 test('cross-workspace social account lookups deny as not found', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, ['role' => Role::Member->value]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $otherWorkspace = Workspace::factory()->create();

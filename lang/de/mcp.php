@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 return [
     'title' => 'MCP',
-    'subtitle' => 'Verbinde KI-Assistenten mit deinem TryPost-Workspace. Sie nutzen dieselben Berechtigungen wie jeder angemeldete Nutzer.',
+    'subtitle' => 'Verbinde KI-Assistenten mit deinem Workspace.',
     'copy_step' => 'Kopiere deine TryPost-Server-URL',
     'open_step' => 'Öffne deinen KI-Assistenten',
     'copy' => 'URL kopieren',
@@ -15,7 +15,8 @@ return [
     'config_label' => 'Config',
     'connected_title' => 'Verbundene Apps',
     'connected_description' => 'Assistenten, mit denen du dich angemeldet hast. Trenne Verbindungen, die du nicht mehr brauchst.',
-    'connected_empty' => 'Noch nichts verbunden. Nutze Claude, ChatGPT oder einen anderen Client oben.',
+    'connected_empty_title' => 'Keine verbundenen Apps',
+    'connected_empty' => 'Nutze Claude, ChatGPT oder einen anderen Client oben.',
     'disconnect' => 'Trennen',
     'disconnect_title' => 'App trennen',
     'disconnect_confirm' => 'Dadurch wird die App von TryPost abgemeldet. Sie muss sich neu verbinden, bevor sie MCP wieder nutzen kann.',

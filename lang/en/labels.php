@@ -2,21 +2,24 @@
 
 return [
     'title' => 'Labels',
-    'description' => 'Create labels to organize and categorize your posts',
+    'description' => 'Organize and filter your posts with labels.',
     'search' => 'Search labels...',
     'new_label' => 'New Label',
     'no_labels_yet' => 'No labels yet',
     'no_search_results' => 'No labels match your search',
     'try_different_search' => 'Try a different keyword or clear the search.',
     'create_first_label' => 'Create your first label',
-    'table' => [
-        'name' => 'Name',
-        'created_at' => 'Created',
+
+    'meta' => [
+        'posts' => '{0} No posts|{1} :count post|[2,*] :count posts',
     ],
 
     'actions' => [
         'edit' => 'Edit label',
         'delete' => 'Delete label',
+        'more' => 'More actions',
+        'view_posts' => 'View posts',
+        'open_reporting' => 'Open reporting',
     ],
 
     'create' => [
@@ -44,11 +47,5 @@ return [
         'description' => 'Are you sure you want to delete this label? This action cannot be undone.',
         'confirm' => 'Delete',
         'cancel' => 'Cancel',
-    ],
-
-    'flash' => [
-        'created' => 'Label created successfully!',
-        'updated' => 'Label updated successfully!',
-        'deleted' => 'Label deleted successfully!',
     ],
 ];

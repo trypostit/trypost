@@ -5,14 +5,19 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Enums\Auth\SocialAuthProvider;
+use App\Enums\Media\Source as MediaSource;
+use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Locale;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
+use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
+use App\Support\HeicConverter;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -50,13 +55,30 @@ class HandleInertiaRequests extends Middleware
                 'hasActiveSubscription' => $account ? $account->hasActiveSubscription() : false,
                 'subscriptionPastDue' => $account ? $account->isPastDue() : false,
             ],
+            'channels' => fn (): array => $currentWorkspace
+                ? SidebarChannelResource::collection($currentWorkspace)
+                : [],
+            'mediaSources' => fn (): ?array => $user !== null ? ['menu' => MediaSource::menu()] : null,
+            'mediaUploadLimits' => fn (): ?array => $user !== null ? [
+                'max_bytes' => [
+                    MediaType::Image->value => MediaType::Image->maxSizeInBytes(),
+                    MediaType::Video->value => MediaType::Video->maxSizeInBytes(),
+                    MediaType::Document->value => MediaType::Document->maxSizeInBytes(),
+                ],
+                'extensions' => [
+                    MediaType::Image->value => MediaType::Image->extensions(),
+                    MediaType::Video->value => MediaType::Video->extensions(),
+                    MediaType::Document->value => MediaType::Document->extensions(),
+                ],
+                'upload_retention_hours' => (int) config('trypost.media.upload_retention_hours'),
+                'heic' => HeicConverter::available(),
+            ] : null,
             'legal' => [
                 'terms' => (string) config('trypost.legal.terms_url'),
                 'privacy' => (string) config('trypost.legal.privacy_url'),
             ],
             'usage' => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
@@ -76,7 +98,9 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::shareOnce($request),
+            'connectablePlatforms' => fn (): array => SocialPlatform::connectableOptions(),
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
+            'defaultCropPresets' => fn (): array => ContentType::defaultCropPresets(),
             'plans' => function (): array {
                 if (config('trypost.self_hosted') || auth()->user()?->account === null) {
                     return [];

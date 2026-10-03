@@ -19,7 +19,7 @@ class AuthWorkspaceResource
             'name' => $workspace->name,
             'logo_url' => $workspace->logo_url,
             'created_at' => $workspace->created_at->toIso8601String(),
-            'role' => $user ? self::resolveRole($workspace, $user) : null,
+            ...($user?->accessIn($workspace) ?? ['is_owner' => false, 'is_admin' => false, 'requires_approval' => false]),
         ];
     }
 
@@ -33,18 +33,5 @@ class AuthWorkspaceResource
             'name' => $workspace->name,
             'logo_url' => $workspace->logo_url,
         ];
-    }
-
-    private static function resolveRole(Workspace $workspace, User $user): ?string
-    {
-        if ($user->isAccountOwner() && $workspace->account_id === $user->account_id) {
-            return 'owner';
-        }
-
-        return $workspace->members()
-            ->where('users.id', $user->id)
-            ->first()
-            ?->pivot
-            ?->role;
     }
 }

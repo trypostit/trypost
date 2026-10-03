@@ -82,7 +82,7 @@ class ConnectTelegramChannel
             return null;
         }
 
-        TelegramChannelConnected::dispatch($workspace->id, $nonce);
+        TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $account->wasRecentlyCreated && $reconnect === null);
 
         return $account;
     }

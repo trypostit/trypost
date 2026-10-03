@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\Repurpose;
 use App\Models\User;
@@ -20,10 +19,10 @@ beforeEach(function () {
     $this->owner->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->member = User::factory()->create(['account_id' => $this->account->id, 'current_workspace_id' => $this->workspace->id]);
-    $this->viewer = User::factory()->create(['account_id' => $this->account->id, 'current_workspace_id' => $this->workspace->id]);
+    $this->requester = User::factory()->create(['account_id' => $this->account->id, 'current_workspace_id' => $this->workspace->id]);
 
-    $this->workspace->members()->attach($this->member->id, ['role' => Role::Member->value]);
-    $this->workspace->members()->attach($this->viewer->id, ['role' => Role::Viewer->value]);
+    $this->workspace->members()->attach($this->member->id, membershipPivot('member'));
+    $this->workspace->members()->attach($this->requester->id, membershipPivot('approval'));
 
     $this->repurpose = Repurpose::factory()->create(['workspace_id' => $this->workspace->id]);
 });
@@ -37,10 +36,10 @@ test('an owner and a member can manage repurposes', function () {
     }
 });
 
-test('a viewer cannot manage repurposes', function () {
-    expect($this->viewer->can('create', Repurpose::class))->toBeFalse()
-        ->and($this->viewer->can('update', $this->repurpose))->toBeFalse()
-        ->and($this->viewer->can('delete', $this->repurpose))->toBeFalse();
+test('a member who needs approval cannot manage repurposes', function () {
+    expect($this->requester->can('create', Repurpose::class))->toBeFalse()
+        ->and($this->requester->can('update', $this->repurpose))->toBeFalse()
+        ->and($this->requester->can('delete', $this->repurpose))->toBeFalse();
 });
 
 test('a repurpose from another workspace is invisible', function () {

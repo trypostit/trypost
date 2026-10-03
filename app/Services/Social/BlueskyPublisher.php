@@ -4,16 +4,19 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
-use App\Services\Brand\SafeHttpFetcher;
+use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
+use App\Services\Social\Concerns\PublishesThreads;
 use App\Services\Social\LinkCard\LinkCardFetcher;
 use App\Services\Social\LinkCard\LinkCardMetadata;
+use App\Support\Social\ThreadProgress;
 use App\Support\UrlDetector;
 use Carbon\CarbonInterface;
 use Exception;
@@ -21,12 +24,12 @@ use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
-use RuntimeException;
 use Throwable;
 
 class BlueskyPublisher
 {
     use HasSocialHttpClient;
+    use PublishesThreads;
 
     /** Seconds allowed for a remote media download (large videos need time). */
     private const DOWNLOAD_TIMEOUT = 600;
@@ -61,6 +64,65 @@ class BlueskyPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
+        $lookForLiveReply = ThreadProgress::rootHash($postPlatform->error_context) !== null;
+
+        return $this->publishThread(
+            $postPlatform,
+            ThreadProgress::hash((string) $content, $postPlatform->post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all()),
+            fn (): array => $this->publishRoot($postPlatform, $account, $service, $content),
+            function (string $text, array $parent, array $root) use ($account, $service, &$lookForLiveReply): array {
+                $live = $lookForLiveReply ? $this->liveReply($account, $text, $parent) : null;
+                $lookForLiveReply = false;
+
+                return $live ?? $this->publishReply($account, $service, $text, $parent, $root);
+            },
+        );
+    }
+
+    /**
+     * A resumed thread may have posted its next reply before the response was
+     * lost. Our own reply with the same text under the parent is that reply.
+     *
+     * @param  array<string, mixed>  $parent
+     * @return array{id: string, url: string, uri: string, cid: string}|null
+     */
+    private function liveReply(SocialAccount $account, string $text, array $parent): ?array
+    {
+        try {
+            $response = $this->socialHttp()->get(config('trypost.platforms.bluesky.public_appview').'/xrpc/'.BlueskyLexicon::GET_POST_THREAD, [
+                'uri' => (string) data_get($parent, 'uri'),
+                'depth' => 1,
+                'parentHeight' => 0,
+            ]);
+        } catch (Throwable) {
+            return null;
+        }
+
+        $reply = collect($response->successful() ? (array) data_get($response->json(), 'thread.replies', []) : [])
+            ->first(fn (mixed $reply): bool => data_get($reply, 'post.author.did') === $account->platform_user_id
+                && data_get($reply, 'post.record.text') === $text
+                && is_string(data_get($reply, 'post.uri'))
+                && is_string(data_get($reply, 'post.cid')));
+
+        if ($reply === null) {
+            return null;
+        }
+
+        $postId = basename((string) data_get($reply, 'post.uri'));
+
+        return [
+            'id' => $postId,
+            'url' => $this->buildPostUrl($account->username, $postId),
+            'uri' => (string) data_get($reply, 'post.uri'),
+            'cid' => (string) data_get($reply, 'post.cid'),
+        ];
+    }
+
+    /**
+     * @return array{id: string, url: string, uri: string, cid: string}
+     */
+    private function publishRoot(PostPlatform $postPlatform, SocialAccount $account, string $service, ?string $content): array
+    {
         $medias = $postPlatform->post->mediaItems;
         $embed = null;
 
@@ -107,7 +169,7 @@ class BlueskyPublisher
         // No image or video embed, so a bare link can carry a preview card.
         // Bluesky does not hydrate cards server-side: the client must attach an
         // app.bsky.embed.external built from the page's OpenGraph metadata.
-        if ($embed === null && $medias->isEmpty() && $content !== null) {
+        if ($embed === null && $medias->isEmpty() && $content !== null && $postPlatform->attachesLinkPreview()) {
             $embed = $this->buildExternalEmbed($postPlatform->socialAccount, $service, $content);
         }
 
@@ -130,6 +192,44 @@ class BlueskyPublisher
             $record['facets'] = $facets;
         }
 
+        return $this->createPostRecord($account, $service, $record);
+    }
+
+    /**
+     * A reply points at the thread's first post (root) and the post it answers
+     * (parent), each as a strong ref (uri + cid).
+     *
+     * @param  array<string, mixed>  $parent
+     * @param  array<string, mixed>  $root
+     * @return array{id: string, url: string, uri: string, cid: string}
+     */
+    private function publishReply(SocialAccount $account, string $service, string $text, array $parent, array $root): array
+    {
+        $record = [
+            '$type' => BlueskyLexicon::FEED_POST,
+            'text' => $text,
+            'createdAt' => now()->toIso8601ZuluString(),
+            'reply' => [
+                'root' => ['uri' => (string) data_get($root, 'uri'), 'cid' => (string) data_get($root, 'cid')],
+                'parent' => ['uri' => (string) data_get($parent, 'uri'), 'cid' => (string) data_get($parent, 'cid')],
+            ],
+        ];
+
+        $facets = $this->parseFacets($text);
+
+        if ($facets !== []) {
+            $record['facets'] = $facets;
+        }
+
+        return $this->createPostRecord($account, $service, $record);
+    }
+
+    /**
+     * @param  array<string, mixed>  $record
+     * @return array{id: string, url: string, uri: string, cid: string}
+     */
+    private function createPostRecord(SocialAccount $account, string $service, array $record): array
+    {
         $response = $this->socialHttp()->withToken($account->access_token)
             ->post("{$service}/xrpc/".BlueskyLexicon::CREATE_RECORD, [
                 'repo' => $account->platform_user_id,
@@ -146,15 +246,14 @@ class BlueskyPublisher
             $this->handleApiError($response);
         }
 
-        $data = $response->json();
-
-        // Extract post ID from URI (at://did/app.bsky.feed.post/xxx)
-        $uri = data_get($data, 'uri');
+        $uri = (string) data_get($response->json(), 'uri');
         $postId = basename($uri);
 
         return [
             'id' => $postId,
             'url' => $this->buildPostUrl($account->username, $postId),
+            'uri' => $uri,
+            'cid' => (string) data_get($response->json(), 'cid'),
         ];
     }
 
@@ -197,24 +296,23 @@ class BlueskyPublisher
      * the upload fails. A JPEG hint routes it through the image optimizer, which
      * re-encodes any static image and enforces Bluesky's 1MB blob limit.
      */
+    private function safeHttp(): SafeHttpFetcher
+    {
+        return app(SafeHttpFetcher::class);
+    }
+
     private function uploadCardThumb(SocialAccount $account, string $service, LinkCardMetadata $card): ?array
     {
         if ($card->imageUrl === null) {
             return null;
         }
 
-        try {
-            app(SafeHttpFetcher::class)->guardAgainstSsrf($card->imageUrl);
-        } catch (RuntimeException) {
-            return null;
-        }
-
-        return $this->uploadBlob($account, $service, $card->imageUrl, 'image/jpeg', self::THUMB_DOWNLOAD_TIMEOUT, followRedirects: false);
+        return $this->uploadBlob($account, $service, $card->imageUrl, 'image/jpeg', self::THUMB_DOWNLOAD_TIMEOUT, untrusted: true);
     }
 
-    private function uploadBlob(SocialAccount $account, string $service, string $url, string $mimeType, int $downloadTimeout = self::DOWNLOAD_TIMEOUT, bool $followRedirects = true): ?array
+    private function uploadBlob(SocialAccount $account, string $service, string $url, string $mimeType, int $downloadTimeout = self::DOWNLOAD_TIMEOUT, bool $untrusted = false): ?array
     {
-        $tempFile = $this->downloadToTempFile($url, 'bsky_blob_', $downloadTimeout, $followRedirects);
+        $tempFile = $this->downloadToTempFile($url, 'bsky_blob_', $downloadTimeout, $untrusted);
 
         if ($tempFile === null) {
             return null;
@@ -273,14 +371,12 @@ class BlueskyPublisher
      * null (after cleaning up) if the temp file can't be created, the download
      * fails, or the downloaded file is empty.
      *
-     * $followRedirects defaults to true for the media/video paths, which
-     * download from our own storage/CDN URLs. The card thumb path passes
-     * false because the source is an attacker-influenceable og:image that
-     * was only guarded against SSRF on its original URL — a redirect on that
-     * hop must not be followed without re-guarding, so it is simply not
-     * followed at all (the thumb degrades to null instead).
+     * The media/video paths download from our own storage/CDN URLs. The card
+     * thumb is an attacker-influenceable og:image, so `$untrusted` sends it
+     * through SafeHttpFetcher: SSRF guard with the address pinned, no
+     * redirects, and the image size cap (the thumb degrades to null instead).
      */
-    private function downloadToTempFile(string $url, string $prefix, int $timeoutSeconds = self::DOWNLOAD_TIMEOUT, bool $followRedirects = true): ?string
+    private function downloadToTempFile(string $url, string $prefix, int $timeoutSeconds = self::DOWNLOAD_TIMEOUT, bool $untrusted = false): ?string
     {
         $tempFile = tempnam(sys_get_temp_dir(), $prefix);
 
@@ -291,13 +387,9 @@ class BlueskyPublisher
         }
 
         try {
-            $options = ['sink' => $tempFile];
-
-            if (! $followRedirects) {
-                $options['allow_redirects'] = false;
-            }
-
-            $response = Http::withOptions($options)->timeout($timeoutSeconds)->get($url);
+            $response = $untrusted
+                ? $this->safeHttp()->limitTransfer($this->safeHttp()->guardedRequest($url, followRedirects: false), MediaType::Image->maxSizeInBytes(), timeoutSeconds: $timeoutSeconds)->sink($tempFile)->get($url)
+                : Http::withOptions(['sink' => $tempFile])->timeout($timeoutSeconds)->get($url);
 
             if ($response->failed()) {
                 throw new Exception('HTTP '.$response->status());

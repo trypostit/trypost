@@ -2,15 +2,14 @@
 import { Form } from '@inertiajs/vue3';
 
 import WorkspaceController from '@/actions/App/Http/Controllers/App/WorkspaceController';
-import HeadingSmall from '@/components/HeadingSmall.vue';
-import InputError from '@/components/InputError.vue';
 import PhotoUpload from '@/components/PhotoUpload.vue';
 import DeleteWorkspace from '@/components/settings/DeleteWorkspace.vue';
+import SettingsField from '@/components/settings/SettingsField.vue';
+import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { useWorkspaceRole } from '@/composables/useWorkspaceRole';
+import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { uploadLogo, deleteLogo } from '@/routes/app/workspace';
 
 interface Workspace {
@@ -26,53 +25,54 @@ defineProps<{
     otherMemberCount: number;
 }>();
 
-const { canManageBilling } = useWorkspaceRole();
+const { canManageBilling } = useWorkspaceAbilities();
 </script>
 
 <template>
-    <div class="space-y-12">
-        <div class="flex flex-col space-y-6">
-            <HeadingSmall
-                :title="$t('settings.workspace.logo_heading')"
-                :description="$t('settings.workspace.logo_description')"
-            />
-
+    <div class="flex flex-col gap-10">
+        <SettingsSection
+            :title="$t('settings.workspace.logo_heading')"
+            :description="$t('settings.workspace.logo_description')"
+        >
             <PhotoUpload
                 :photo-url="workspace.logo_url"
                 :has-photo="workspace.has_logo"
                 :name="workspace.name"
                 :upload-url="uploadLogo().url"
                 :delete-url="deleteLogo().url"
+                size="sm"
             />
-        </div>
+        </SettingsSection>
 
         <Separator />
 
-        <div class="flex flex-col space-y-6">
-            <HeadingSmall
-                :title="$t('settings.workspace.heading')"
-                :description="$t('settings.workspace.description')"
-            />
-
+        <SettingsSection
+            :title="$t('settings.workspace.heading')"
+            :description="$t('settings.workspace.description')"
+        >
             <Form
                 v-bind="WorkspaceController.updateSettings.form()"
                 v-slot="{ errors, processing }"
-                class="space-y-6"
+                class="flex flex-col gap-6"
             >
-                <div class="grid gap-2">
-                    <Label for="name">{{ $t('settings.workspace.name') }}</Label>
+                <SettingsField
+                    :label="$t('settings.workspace.name')"
+                    for="name"
+                    :error="errors.name"
+                >
                     <Input
                         id="name"
                         name="name"
                         :default-value="workspace.name"
                         :placeholder="$t('settings.workspace.name_placeholder')"
                     />
-                    <InputError :message="errors.name" />
-                </div>
+                </SettingsField>
 
-                <Button :disabled="processing">{{ $t('settings.workspace.save') }}</Button>
+                <Button :disabled="processing" class="self-start">
+                    {{ $t('settings.workspace.save') }}
+                </Button>
             </Form>
-        </div>
+        </SettingsSection>
 
         <template v-if="canManageBilling">
             <Separator />

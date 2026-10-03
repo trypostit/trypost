@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Ontvang realtime meldingen wanneer posts worden aangemaakt, gepland, ontpland, gepubliceerd of mislukken.',
+    'description' => 'Ontvang realtime updates over je posts.',
     'new' => 'Webhook maken',
     'empty_title' => 'Nog geen webhooks',
     'empty_description' => 'Maak een webhook om realtime gebeurtenismeldingen te ontvangen.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Luistert naar',
         'status' => 'Status',
         'last_sent' => 'Laatst verzonden',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Uitgeschakeld',
         'paused' => 'Gepauzeerd',
     ],
+    'row_actions' => 'Webhook-acties',
     'actions' => [
         'view' => 'Details bekijken',
-        'copy_id' => 'Webhook-ID kopiëren',
         'delete' => 'Verwijderen',
         'edit' => 'Endpoint bewerken',
         'enable' => 'Endpoint inschakelen',
@@ -40,11 +38,9 @@ return [
         'description' => 'Stel een endpoint in om webhookmeldingen te ontvangen.',
         'endpoint' => 'Endpoint-URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'We sturen een POST-verzoek met JSON naar deze URL.',
         'events' => 'Gebeurtenissen',
-        'events_placeholder' => 'Gebeurtenissen selecteren...',
-        'events_selected' => '{1} :count gebeurtenis geselecteerd|[2,*] :count gebeurtenissen geselecteerd',
-        'search_events' => 'Gebeurtenissen zoeken...',
-        'no_events' => 'Geen gebeurtenissen gevonden',
+        'events_count_selected' => ':count van :total geselecteerd',
         'submit' => 'Webhook maken',
         'cancel' => 'Annuleren',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Ondertekeningssecret',
-        'last_sent' => 'Laatst verzonden :time',
-        'listening_for' => 'Luistert naar',
+        'edit' => 'Bewerken',
         'http_status' => 'HTTP-status',
         'status_code' => ':code - :reason',
         'attempts' => 'Pogingen',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Geen antwoordtekst',
         'no_response' => 'Geen antwoord',
         'payload' => 'Berichtpayload',
-        'empty_title' => 'Nog geen webhookgebeurtenissen',
-        'empty_description' => 'Zodra posts worden aangemaakt, gepland, ontpland of gepubliceerd, zie je de webhookgebeurtenissen hier.',
+    ],
+    'deliveries' => [
+        'title' => 'Leveringen',
+        'empty_title' => 'Nog geen leveringen',
+        'empty_description' => 'Stuur een testevent om het hier te zien.',
+        'pending' => 'In afwachting',
     ],
     'events' => [
         'group_posts' => 'Posts',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Post gedeeltelijk gepubliceerd',
         'post_failed' => 'Post mislukt',
         'post_deleted' => 'Post verwijderd',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Wanneer een nieuwe post wordt aangemaakt.',
+        'post_scheduled' => 'Wanneer een post wordt ingepland.',
+        'post_unscheduled' => 'Wanneer een geplande post terug naar concepten gaat.',
+        'post_published' => 'Wanneer een post live gaat op een kanaal.',
+        'post_partially_published' => 'Wanneer sommige kanalen publiceren en andere falen.',
+        'post_failed' => 'Wanneer het publiceren van een post mislukt.',
+        'post_deleted' => 'Wanneer een post wordt verwijderd.',
     ],
     'http_reasons' => [
         'unknown' => 'Onbekend',
@@ -111,7 +119,6 @@ return [
         '504' => 'Gateway-time-out',
     ],
     'copied' => [
-        'id' => 'Webhook-ID naar klembord gekopieerd',
         'secret' => 'Ondertekeningssecret naar klembord gekopieerd',
         'response' => 'Antwoordtekst gekopieerd',
         'payload' => 'Payload gekopieerd',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'Het endpoint gaf HTTP :status terug.',
     ],
     'flash' => [
-        'created' => 'Webhook gemaakt.',
         'updated' => 'Webhook bijgewerkt.',
         'deleted' => 'Webhook verwijderd.',
         'secret_rotated' => 'Ondertekeningssecret geroteerd.',

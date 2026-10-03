@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\PostPlatform;
+use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Mail\RecipientTime;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -24,30 +26,31 @@ class PostAtRisk extends Mailable implements ShouldQueue
      */
     private ?Collection $atRiskGroups = null;
 
+    public ?User $recipient = null;
+
     /**
-     * Only the workspace (a real Eloquent model, reduced to a lightweight
-     * identifier by SerializesModels), the post_platform IDs, and the count
+     * Only the workspace and the recipient (real Eloquent models, reduced to
+     * lightweight identifiers by SerializesModels), the post_platform IDs, and the count
      * observed at dispatch time are carried on the queue payload. The rows
      * themselves are rehydrated in atRiskGroups() so the queued job's
      * serialized size stays small and the account/post details reflect
      * state as of send time, not as of dispatch time.
      *
-     * $count drives the subject and preview text specifically — kept as the
-     * dispatch-time value (rather than re-derived from the rehydrated rows)
-     * so it always matches the in-app notification's title, which is built
-     * from this same count in VerifyUpcomingPostConnections::notifyOwner().
-     * If a row disappears between dispatch and send, the subject may then
-     * differ from the number of rows actually listed in the body — an
-     * acceptable rare edge case, in exchange for the subject never
-     * disagreeing with the in-app notification.
+     * $count drives the subject and preview text and is the dispatch-time
+     * value, not re-derived from the rehydrated rows. If a row disappears
+     * between dispatch and send, the subject may differ from the number of
+     * rows actually listed in the body — an acceptable rare edge case.
      *
      * @param  array<int, string>  $postPlatformIds
      */
     public function __construct(
         public Workspace $workspace,
         public array $postPlatformIds,
-        public int $count
-    ) {}
+        public int $count,
+        ?User $recipient = null,
+    ) {
+        $this->recipient = $recipient;
+    }
 
     public function envelope(): Envelope
     {
@@ -70,8 +73,9 @@ class PostAtRisk extends Mailable implements ShouldQueue
                     'workspace' => $this->workspace->name,
                 ]),
                 'workspaceName' => $this->workspace->name,
+                'timezone' => RecipientTime::timezone($this->recipient()),
                 'atRiskGroups' => $this->atRiskGroups(),
-                'url' => route('app.accounts'),
+                'url' => route('app.workspace.channels'),
             ],
         );
     }
@@ -101,10 +105,15 @@ class PostAtRisk extends Mailable implements ShouldQueue
                     'postPlatforms' => $group,
                     'postCount' => $group->count(),
                     'times' => $group->sortBy(fn ($pp) => $pp->post->scheduled_at)
-                        ->map(fn ($pp) => $pp->post->scheduled_at->format('H:i'))
+                        ->map(fn ($pp) => RecipientTime::clock($pp->post->scheduled_at, $this->recipient()))
                         ->implode(', '),
                 ];
             })->values();
+    }
+
+    private function recipient(): User
+    {
+        return $this->recipient ?? $this->workspace->owner;
     }
 
     public function attachments(): array

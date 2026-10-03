@@ -68,61 +68,67 @@ const alignCenter = computed(() => props.centered || summary.value === null);
 <template>
     <div
         :class="[
-            'min-h-svh bg-background',
+            'min-h-svh bg-muted',
             summary
                 ? 'lg:grid lg:grid-cols-[minmax(0,1fr)_28rem] xl:grid-cols-[minmax(0,1fr)_32rem] 2xl:grid-cols-[minmax(0,1fr)_36rem]'
                 : '',
         ]"
     >
-        <div class="relative flex min-h-svh flex-col">
+        <div class="relative flex min-h-svh min-w-0 flex-col">
             <header
-                class="flex items-center justify-between gap-4 px-6 pt-6 md:px-10 lg:px-14"
+                class="flex items-center justify-between gap-4 px-4 pt-4 sm:px-8 sm:pt-6 lg:px-12"
             >
-                <nav
-                    v-if="currentIndex >= 0"
-                    class="flex items-center gap-3"
-                    :aria-label="$t('welcome.progress')"
-                >
-                    <span
-                        class="text-sm font-semibold whitespace-nowrap text-muted-foreground tabular-nums"
+                <div class="flex min-w-0 items-center gap-4">
+                    <img
+                        src="/images/trypost/icon.png"
+                        alt="TryPost"
+                        class="motion-auth-logo h-8 w-auto shrink-0"
+                    />
+                    <nav
+                        v-if="currentIndex >= 0"
+                        class="flex min-w-0 items-center gap-3"
+                        :aria-label="$t('welcome.progress')"
                     >
-                        {{
-                            $t('welcome.step_of', {
-                                step: String(currentIndex + 1),
-                                total: String(steps.length),
-                            })
-                        }}
-                    </span>
-                    <ol class="flex items-center gap-1.5">
-                        <li
-                            v-for="(entry, index) in steps"
-                            :key="entry.key"
-                            class="flex h-6 items-center"
-                            :title="$t(`welcome.steps.${entry.key}`)"
-                            :data-testid="`welcome-step-${entry.key}`"
-                            :aria-current="
-                                index === currentIndex ? 'step' : undefined
-                            "
+                        <span
+                            class="hidden text-sm font-medium whitespace-nowrap text-muted-foreground tabular-nums sm:inline"
                         >
-                            <span
-                                :class="[
-                                    'h-1.5 w-6 rounded-full transition-colors sm:w-8',
-                                    index <= currentIndex
-                                        ? 'bg-primary'
-                                        : 'bg-foreground/15',
-                                ]"
-                            />
-                        </li>
-                    </ol>
-                </nav>
-                <span v-else />
+                            {{
+                                $t('welcome.step_of', {
+                                    step: String(currentIndex + 1),
+                                    total: String(steps.length),
+                                })
+                            }}
+                        </span>
+                        <ol class="flex items-center gap-1">
+                            <li
+                                v-for="(entry, index) in steps"
+                                :key="entry.key"
+                                class="flex h-6 items-center"
+                                :title="$t(`welcome.steps.${entry.key}`)"
+                                :data-testid="`welcome-step-${entry.key}`"
+                                :aria-current="
+                                    index === currentIndex ? 'step' : undefined
+                                "
+                            >
+                                <span
+                                    :class="[
+                                        'h-1 w-6 rounded-full transition-[background-color] duration-200 ease-out sm:w-8',
+                                        index <= currentIndex
+                                            ? 'bg-primary-strong'
+                                            : 'bg-border-strong',
+                                    ]"
+                                />
+                            </li>
+                        </ol>
+                    </nav>
+                </div>
 
                 <LocaleSwitcher />
             </header>
 
             <main
                 :class="[
-                    'flex flex-1 flex-col px-6 pt-8 pb-8 md:px-10 lg:px-14 lg:pt-10',
+                    'flex flex-1 flex-col px-4 pt-8 pb-8 sm:px-8 lg:px-12 lg:pt-10',
                     summary ? '' : 'items-center',
                 ]"
             >
@@ -135,9 +141,12 @@ const alignCenter = computed(() => props.centered || summary.value === null);
                 >
                     <div
                         v-if="title || description"
-                        class="flex flex-col gap-3"
+                        class="flex flex-col gap-2"
                     >
-                        <h1 v-if="title" class="h3 text-foreground">
+                        <h1
+                            v-if="title"
+                            class="motion-auth-reveal font-heading text-2xl font-medium text-balance text-foreground sm:text-[28px] sm:leading-8"
+                        >
                             {{ title }}
                         </h1>
                         <p
@@ -151,7 +160,7 @@ const alignCenter = computed(() => props.centered || summary.value === null);
                         </p>
                     </div>
 
-                    <div class="mt-6 flex flex-col gap-8">
+                    <div class="mt-8 flex flex-col gap-8">
                         <slot />
                     </div>
                 </div>
@@ -159,15 +168,15 @@ const alignCenter = computed(() => props.centered || summary.value === null);
 
             <footer
                 v-if="$slots.actions || previousStep"
-                class="sticky bottom-0 z-10 mt-auto border-t border-foreground/10 bg-background/90 px-6 py-4 backdrop-blur-sm md:px-10 lg:px-14"
+                class="sticky bottom-0 z-10 mt-auto border-t border-border bg-muted/90 px-4 py-4 backdrop-blur-sm sm:px-8 lg:px-12"
             >
                 <div
-                    class="flex w-full flex-col-reverse gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+                    class="flex w-full flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
                 >
                     <Button
                         v-if="previousStep"
                         as-child
-                        variant="outline"
+                        variant="ghost"
                         size="lg"
                         class="w-full sm:w-auto"
                     >
@@ -175,10 +184,7 @@ const alignCenter = computed(() => props.centered || summary.value === null);
                             :href="previousStep.route"
                             data-testid="welcome-back"
                         >
-                            <IconArrowLeft
-                                class="size-4 rtl:rotate-180"
-                                stroke-width="2.25"
-                            />
+                            <IconArrowLeft class="size-4 rtl:rotate-180" />
                             {{ $t('welcome.back') }}
                         </Link>
                     </Button>
@@ -194,28 +200,14 @@ const alignCenter = computed(() => props.centered || summary.value === null);
 
         <aside
             v-if="summary"
-            class="relative hidden overflow-hidden border-s-2 border-foreground bg-accent lg:sticky lg:top-0 lg:flex lg:h-svh lg:flex-col lg:justify-center lg:px-10 xl:px-14"
+            class="hidden p-8 ps-0 lg:sticky lg:top-0 lg:block lg:h-svh"
         >
             <div
-                class="pointer-events-none absolute -top-24 -right-24 size-[440px] rounded-full bg-violet-200/50 blur-3xl"
-            />
-            <div
-                class="pointer-events-none absolute -bottom-32 -left-32 size-[440px] rounded-full bg-fuchsia-200/40 blur-3xl"
-            />
-            <div
-                class="pointer-events-none absolute inset-0 opacity-[0.06]"
-                style="
-                    background-image: radial-gradient(
-                        circle,
-                        #0a0a0a 1px,
-                        transparent 1px
-                    );
-                    background-size: 28px 28px;
-                "
-            />
-
-            <div class="relative mx-auto w-full max-w-lg">
-                <WelcomeWorkspacePreview :summary="summary" :step="step" />
+                class="flex h-full flex-col justify-center overflow-y-auto rounded-[20px] bg-primary-subtle px-10 py-10 xl:px-14"
+            >
+                <div class="mx-auto w-full max-w-lg">
+                    <WelcomeWorkspacePreview :summary="summary" :step="step" />
+                </div>
             </div>
         </aside>
     </div>

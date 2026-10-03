@@ -27,7 +27,7 @@ test('fails when content type requires media and none provided', function () {
     $errors = runMediaRule(ContentType::InstagramReel->value, []);
 
     expect($errors)->toHaveCount(1);
-    expect($errors[0])->toContain('requires at least one image or video');
+    expect($errors[0])->toBe('Please include an image or video.');
 });
 
 test('fails when content type does not support images and an image is present', function () {
@@ -394,3 +394,15 @@ test('request media takes precedence over the stored fallback', function () {
 test('does nothing for invalid content type values', function () {
     expect(runMediaRule('not_a_real_content_type', []))->toBe([]);
 });
+
+test('pinterest content types accept only the media their pin type is made of', function (ContentType $type, array $media, bool $passes) {
+    expect(runMediaRule($type->value, $media) === [])->toBe($passes);
+})->with([
+    'photo pin with one image' => [ContentType::PinterestPin, [['type' => 'image', 'mime_type' => 'image/jpeg']], true],
+    'photo pin without media' => [ContentType::PinterestPin, [], false],
+    'video pin with a video' => [ContentType::PinterestVideoPin, [['type' => 'video', 'mime_type' => 'video/mp4']], true],
+    'video pin with an image' => [ContentType::PinterestVideoPin, [['type' => 'image', 'mime_type' => 'image/jpeg']], false],
+    'carousel with two images' => [ContentType::PinterestCarousel, array_fill(0, 2, ['type' => 'image', 'mime_type' => 'image/png']), true],
+    'carousel with five images' => [ContentType::PinterestCarousel, array_fill(0, 5, ['type' => 'image', 'mime_type' => 'image/png']), true],
+    'carousel with a video' => [ContentType::PinterestCarousel, [['type' => 'image', 'mime_type' => 'image/png'], ['type' => 'video', 'mime_type' => 'video/mp4']], false],
+]);

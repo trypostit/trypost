@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Observers;
 
+use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
@@ -13,9 +14,23 @@ use App\Services\Repurpose\RepurposeAccountSync;
 
 class SocialAccountObserver
 {
+    public function creating(SocialAccount $socialAccount): void
+    {
+        if ($socialAccount->position !== null) {
+            return;
+        }
+
+        $last = SocialAccount::withoutGlobalScopes()
+            ->where('workspace_id', $socialAccount->workspace_id)
+            ->max('position');
+
+        $socialAccount->position = $last === null ? 0 : ((int) $last) + 1;
+    }
+
     public function created(SocialAccount $socialAccount): void
     {
         $this->syncUsageAndIdentify($socialAccount);
+        app(DispatchAccountAnalytics::class)->handle($socialAccount);
     }
 
     public function deleted(SocialAccount $socialAccount): void
@@ -32,15 +47,16 @@ class SocialAccountObserver
     {
         app(RepurposeAccountSync::class)->accountChanged($socialAccount);
 
-        if (! $socialAccount->wasChanged('status')) {
-            return;
-        }
-
         $wasConnected = $socialAccount->getRawOriginal('status') === Status::Connected->value;
         $isConnected = $socialAccount->status === Status::Connected;
+        $connectionChanged = $socialAccount->wasChanged('status') && $wasConnected !== $isConnected;
 
-        if ($wasConnected !== $isConnected) {
+        if ($connectionChanged) {
             $this->identifyConnectedPlatforms($socialAccount);
+        }
+
+        if ($connectionChanged && $isConnected) {
+            app(DispatchAccountAnalytics::class)->handle($socialAccount);
         }
     }
 

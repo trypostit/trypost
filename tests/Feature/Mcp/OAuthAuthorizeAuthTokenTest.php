@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,7 +21,7 @@ beforeEach(function () {
         'user_id' => $this->user->id,
         'name' => 'Owner Workspace',
     ]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     subscribeAccount($account);
@@ -60,7 +59,7 @@ test('account owner can approve oauth consent with the auth token from the conse
 
 test('workspace member can approve oauth consent with the auth token from the consent page', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($member->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
 
     $this->actingAs($member)

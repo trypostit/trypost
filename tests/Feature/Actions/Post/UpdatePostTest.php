@@ -52,7 +52,7 @@ test('execute prunes a google business jpeg when the target is switched off', fu
     Storage::assertMissing($path);
 });
 
-test('execute leaves a scheduled post scheduled when its only google business review is switched off', function () {
+test('execute rejects switching off the sole social account', function () {
     Storage::fake();
 
     $user = User::factory()->create();
@@ -71,15 +71,15 @@ test('execute leaves a scheduled post scheduled when its only google business re
     $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
     Storage::put($path, 'image');
 
-    UpdatePost::execute($workspace, $post, [
+    expect(fn () => UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Scheduled->value,
         'platforms' => [],
-    ]);
+    ]))->toThrow(ValidationException::class);
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($target->fresh()->enabled)->toBeFalse()
+    expect($target->fresh()->status)->toBe(PlatformStatus::PendingReview)
+        ->and($target->fresh()->enabled)->toBeTrue()
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
-    Storage::assertMissing($path);
+    Storage::assertExists($path);
 });
 
 test('execute keeps the google business jpeg when the target stays enabled', function () {
@@ -90,6 +90,7 @@ test('execute keeps the google business jpeg when the target stays enabled', fun
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
+        'content' => 'Current promotion',
     ]);
     $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
         'post_id' => $post->id,

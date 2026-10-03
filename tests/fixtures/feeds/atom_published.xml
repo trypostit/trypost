@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:media="http://search.yahoo.com/mrss/">
+    <title type="text">Atom Example</title>
+    <link rel="self" href="https://example.net/atom.xml"/>
+    <link rel="alternate" type="text/html" href="https://example.net/"/>
+    <id>urn:uuid:60a76c80-d399-11d9-b93C-0003939e0af6</id>
+    <updated>2026-09-20T12:00:00Z</updated>
+    <author><name>Feed Author</name></author>
+    <entry>
+        <title type="html">&lt;b&gt;Published&lt;/b&gt; wins</title>
+        <link rel="related" href="https://other.example.net/related"/>
+        <link href="/entries/no-rel"/>
+        <link rel="alternate" href="/entries/one"/>
+        <link rel="enclosure" type="image/jpeg" href="https://example.net/one.jpg"/>
+        <id>tag:example.net,2026:1</id>
+        <published>2026-09-10T09:00:00Z</published>
+        <updated>2026-09-15T09:00:00Z</updated>
+        <author><name>Grace Hopper</name></author>
+        <summary>Short summary.</summary>
+    </entry>
+    <entry>
+        <title>Feed author fallback</title>
+        <link href="https://example.net/entries/two"/>
+        <id>tag:example.net,2026:2</id>
+        <updated>2026-09-16T09:00:00Z</updated>
+        <content type="xhtml"><div xmlns="http://www.w3.org/1999/xhtml"><p>XHTML <em>content</em></p></div></content>
+    </entry>
+</feed>

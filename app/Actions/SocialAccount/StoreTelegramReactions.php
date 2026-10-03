@@ -6,13 +6,12 @@ namespace App\Actions\SocialAccount;
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\PostPlatform;
-use Illuminate\Support\Facades\Cache;
 
 class StoreTelegramReactions
 {
     /**
      * Persist the reaction counts pushed by a `message_reaction_count` update
-     * onto the matching published post, so they surface as post metrics.
+     * onto the matching published post platform.
      *
      * @param  array<string, mixed>  $update  The `message_reaction_count` payload.
      */
@@ -43,7 +42,5 @@ class StoreTelegramReactions
         ], is_array($rawReactions) ? $rawReactions : []));
 
         $postPlatform->update(['meta' => [...$postPlatform->meta ?? [], 'reactions' => $reactions]]);
-
-        Cache::forget("post_metrics:{$postPlatform->id}");
     }
 }

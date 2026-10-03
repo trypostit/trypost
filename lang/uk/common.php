@@ -8,11 +8,10 @@ return [
     'back' => 'Назад',
 
     'confirm_modal' => [
-        'cannot_be_undone' => 'Цю дію не можна скасувати.',
         'type' => 'Введіть',
         'to_confirm' => 'для підтвердження.',
         'copy_to_clipboard' => 'Копіювати в буфер обміну',
-        'delete_keyword' => 'delete',
+        'delete_keyword' => 'ВИДАЛИТИ',
     ],
 
     'photo_upload' => [
@@ -65,5 +64,16 @@ return [
         'copy' => 'Копіювати',
         'copied' => 'Скопійовано',
         'copy_failed' => 'Не вдалося скопіювати в буфер обміну',
+    ],
+
+    'media_lightbox' => [
+        'title' => 'Перегляд медіа',
+        'previous' => 'Назад',
+        'next' => 'Далі',
+        'zoom_in' => 'Збільшити',
+        'zoom_out' => 'Зменшити',
+        'counter' => ':current / :total',
+        'go_to' => 'Показати елемент :number',
+        'open' => 'Відкрити перегляд',
     ],
 ];

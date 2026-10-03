@@ -9,7 +9,6 @@ use App\Actions\Repurpose\ResumeRepurpose;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\Status;
-use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Support\Repurpose\RepurposeTransition;
@@ -22,7 +21,7 @@ use Throwable;
 class RepurposeAccountSync
 {
     /** @var array<int, string> */
-    private const WATCHED_ATTRIBUTES = ['status', 'is_active', 'platform'];
+    private const WATCHED_ATTRIBUTES = ['status', 'platform'];
 
     public function accountRemoved(SocialAccount $account): void
     {
@@ -62,8 +61,7 @@ class RepurposeAccountSync
     {
         return SocialAccount::query()
             ->whereKey($account->id)
-            ->where('is_active', true)
-            ->where('status', AccountStatus::Connected)
+            ->connected()
             ->exists();
     }
 

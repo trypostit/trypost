@@ -116,3 +116,15 @@ test('uploadFromUrl attempts the internal fetch when allow_private_network is en
     expect($result)->not->toBeNull();
     Http::assertSent(fn ($request) => str_contains($request->url(), '127.0.0.1'));
 });
+
+test('uploadFromUrl requests the image uncompressed', function () {
+    Storage::fake();
+
+    Http::fake([
+        '*' => Http::response('fake-image-content', 200, ['Content-Type' => 'image/jpeg']),
+    ]);
+
+    uploadFromUrl('https://example.com/image.jpg');
+
+    Http::assertSent(fn ($request) => $request->hasHeader('Accept-Encoding', 'identity'));
+});

@@ -1,8 +1,14 @@
 import type { MediaType } from '@/lib/mediaType';
 
-export type MediaSource = 'ai' | 'unsplash' | 'giphy';
+export type MediaSource = 'ai' | 'unsplash' | 'google_drive' | 'google_photos' | 'canva';
 
 export type SourceMetaValue = string | number | boolean | null | SourceMetaValue[];
+
+export interface MediaUserTag {
+    username: string;
+    x: number;
+    y: number;
+}
 
 export interface MediaItem {
     id: string;
@@ -12,6 +18,8 @@ export interface MediaItem {
     mime_type?: string;
     original_filename?: string;
     size?: number;
+    upload_token?: string | null;
+    created_at?: string;
     source?: MediaSource;
     source_meta?: Record<string, SourceMetaValue>;
     meta?: {
@@ -19,5 +27,9 @@ export interface MediaItem {
         height?: number;
         duration?: number;
         alt_text?: string;
+        user_tags?: MediaUserTag[];
+        cover_offset_ms?: number;
+        source?: MediaSource;
+        source_meta?: Record<string, SourceMetaValue>;
     };
 }

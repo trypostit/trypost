@@ -2,15 +2,14 @@
 
 declare(strict_types=1);
 
-use App\Enums\Notification\Channel;
-use App\Enums\Notification\Type;
 use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\Analytics\BootstrapAccountAnalytics;
+use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\VerifyUpcomingPostConnections;
 use App\Mail\PostAtRisk;
-use App\Models\Notification;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -21,6 +20,11 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
+
+beforeEach(function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+});
 
 /**
  * Whether a logged query is a plain select against $table, asking the connection
@@ -62,11 +66,12 @@ test('marks the account expired and queues a notification when verify throws Tok
     Mail::assertQueued(PostAtRisk::class, function ($mail) use ($workspace, $postPlatform) {
         return $mail->workspace->id === $workspace->id
             && count($mail->postPlatformIds) === 1
-            && in_array($postPlatform->id, $mail->postPlatformIds, true);
+            && in_array($postPlatform->id, $mail->postPlatformIds, true)
+            && $mail->recipient->is($workspace->owner);
     });
 });
 
-test('creates an in-app notification for the workspace owner alongside the email', function () {
+test('emails the workspace owner with the dispatch-time post count', function () {
     Mail::fake();
 
     $workspace = Workspace::factory()->create();
@@ -91,18 +96,8 @@ test('creates an in-app notification for the workspace owner alongside the email
 
     VerifyUpcomingPostConnections::dispatchSync($workspace->id);
 
-    expect(Notification::count())->toBe(1);
-
-    $notification = Notification::first();
-    expect($notification->user_id)->toBe($workspace->owner->id)
-        ->and($notification->workspace_id)->toBe($workspace->id)
-        ->and($notification->type)->toBe(Type::PostAtRisk)
-        ->and($notification->channel)->toBe(Channel::Both)
-        ->and($notification->title)->toBe('1 upcoming post is at risk');
-
-    // The in-app title and the email subject are built from the same count,
-    // captured once at dispatch time — they must never disagree.
-    Mail::assertQueued(PostAtRisk::class, fn ($mail) => $mail->count === 1);
+    Mail::assertQueued(PostAtRisk::class, fn (PostAtRisk $mail) => $mail->count === 1
+        && $mail->hasTo($workspace->owner->email));
 });
 
 test('defers to the next run instead of warning when markAsTokenExpired loses the account status lock', function () {
@@ -979,183 +974,6 @@ test('a post deleted between the main query and the eager-loaded post relation r
     });
 });
 
-test('does not verify or warn about a post_platform on a paused account', function () {
-    Mail::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::Connected,
-        'is_active' => false,
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(20),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldNotReceive('verify');
-    app()->instance(ConnectionVerifier::class, $verifier);
-
-    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
-
-    expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
-});
-
-test('still verifies and warns about an active account when another account in the same workspace is paused', function () {
-    Mail::fake();
-
-    $workspace = Workspace::factory()->create();
-
-    $pausedAccount = SocialAccount::factory()->threads()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::Connected,
-        'is_active' => false,
-    ]);
-    $pausedPost = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(20),
-    ]);
-    $pausedPostPlatform = PostPlatform::factory()->create([
-        'post_id' => $pausedPost->id,
-        'social_account_id' => $pausedAccount->id,
-        'platform' => $pausedAccount->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    $activeAccount = SocialAccount::factory()->threads()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::Connected,
-    ]);
-    $activePost = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(25),
-    ]);
-    $activePostPlatform = PostPlatform::factory()->create([
-        'post_id' => $activePost->id,
-        'social_account_id' => $activeAccount->id,
-        'platform' => $activeAccount->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    // andReturnUsing (rather than a single ->with()-constrained expectation)
-    // deliberately avoids a Mockery expectation-mismatch exception: the job's
-    // own catch (Exception $e) around verify() would silently swallow that,
-    // masking a missing is_active guard instead of failing the test.
-    $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldReceive('verify')
-        ->andReturnUsing(function (SocialAccount $account) use ($activeAccount) {
-            if ($account->id !== $activeAccount->id) {
-                // Only reachable if the is_active guard fails to exclude the paused account.
-                return true;
-            }
-
-            throw new TokenExpiredException('Threads access token is invalid or expired');
-        });
-    app()->instance(ConnectionVerifier::class, $verifier);
-
-    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
-
-    expect($pausedAccount->fresh()->last_verified_at)->toBeNull();
-    expect($pausedPostPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    expect($activePostPlatform->fresh()->connection_warning_sent_at)->not->toBeNull();
-
-    Mail::assertQueued(PostAtRisk::class, function ($mail) use ($activePostPlatform, $pausedPostPlatform) {
-        return count($mail->postPlatformIds) === 1
-            && in_array($activePostPlatform->id, $mail->postPlatformIds, true)
-            && ! in_array($pausedPostPlatform->id, $mail->postPlatformIds, true);
-    });
-});
-
-test('does not verify or warn about an account paused mid-run, after atRiskPostPlatforms() already selected its post_platform', function () {
-    Mail::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::Connected,
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(20),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    // atRiskPostPlatforms()'s is_active guard is query-time only — pause the
-    // account right after its main select runs (already passed the guard)
-    // but before the per-account loop reaches it, reproducing the race the
-    // fresh() re-check at the top of each account's iteration exists to close.
-    $listener = function ($query) use ($account) {
-        if (verifyUpcomingSelectsFrom($query->sql, 'post_platforms')) {
-            $account->update(['is_active' => false]);
-        }
-    };
-    DB::listen($listener);
-
-    $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldNotReceive('verify');
-    app()->instance(ConnectionVerifier::class, $verifier);
-
-    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
-
-    expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
-});
-
-test('does not warn about an already token_expired account paused mid-run, after atRiskPostPlatforms() already selected its post_platform', function () {
-    Mail::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create([
-        'workspace_id' => $workspace->id,
-        'status' => SocialAccountStatus::TokenExpired,
-        'error_message' => 'Threads access token is invalid or expired',
-    ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(30),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
-    ]);
-
-    // The "already known broken" branch (no verify() call, straight to
-    // $atRisk) must respect the same mid-run pause race as the verify()
-    // path — an account paused between the main select and the loop
-    // reaching it shouldn't get warned about a connection its owner
-    // deliberately paused, even though it's already broken.
-    $listener = function ($query) use ($account) {
-        if (verifyUpcomingSelectsFrom($query->sql, 'post_platforms')) {
-            $account->update(['is_active' => false]);
-        }
-    };
-    DB::listen($listener);
-
-    $verifier = mock(ConnectionVerifier::class);
-    $verifier->shouldNotReceive('verify');
-    app()->instance(ConnectionVerifier::class, $verifier);
-
-    VerifyUpcomingPostConnections::dispatchSync($workspace->id);
-
-    expect($postPlatform->fresh()->connection_warning_sent_at)->toBeNull();
-    Mail::assertNothingQueued();
-});
-
 test('does not crash or warn when the account is hard-deleted mid-run, after atRiskPostPlatforms() already selected its post_platform', function () {
     Mail::fake();
 
@@ -1175,11 +993,9 @@ test('does not crash or warn when the account is hard-deleted mid-run, after atR
         'status' => PostPlatformStatus::Pending,
     ]);
 
-    // Same race as the two tests above, but the account is hard-deleted
-    // instead of paused — social_account_id is nullOnDelete(), so the
-    // post_platform row survives with a dangling reference. The re-fetch
-    // guard must handle "row is gone" the same way it handles "row is
-    // paused": SocialAccount::active()->find() returns null either way.
+    // Same race as the two tests above, but the account is hard-deleted —
+    // social_account_id is nullOnDelete(), so the post_platform row survives
+    // with a dangling reference and the re-fetch guard finds no account row.
     // Deleting after the socialAccount eager-load query (rather than the
     // main post_platforms select, like the two tests above) is deliberate:
     // deleting that early would instead hit the pre-existing, unrelated

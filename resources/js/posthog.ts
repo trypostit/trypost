@@ -66,7 +66,6 @@ export const syncPostHogContext = (page: Page): void => {
             social_accounts_count: usage?.socialAccountCount,
             members_count: usage?.memberCount,
             posts_count: usage?.postCount,
-            credits_used: usage?.creditsUsed,
         });
     }
 

@@ -1,27 +1,14 @@
-import { router } from '@inertiajs/vue3';
-import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue';
-import { toast } from 'vue-sonner';
+import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
-import { oauthConnectUrl, useOAuthPopup } from '@/composables/useOAuthPopup';
+import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { oauthConnectUrl, openOAuthPopupWindow } from '@/composables/useOAuthPopup';
 import { Platform } from '@/types/platform';
 import type { AvailablePlatform } from '@/types/social-account';
 
 export const useNetworkConnect = (
     platforms: MaybeRefOrGetter<AvailablePlatform[]>,
 ) => {
-    const telegramOpen = ref(false);
-    const telegramReconnectId = ref<string>();
-    const instagramOpen = ref(false);
-
-    const { openOAuthPopup } = useOAuthPopup((result) => {
-        if (result.success) {
-            toast.success(result.message);
-            router.reload();
-            return;
-        }
-
-        toast.error(result.message);
-    });
+    const dialog = useConnectChannelDialog();
 
     const connectEntry = (platform: string): string =>
         platform === Platform.LinkedInPage ? Platform.LinkedIn : platform;
@@ -30,7 +17,7 @@ export const useNetworkConnect = (
         const url = oauthConnectUrl(platform, reconnectId);
 
         if (url) {
-            openOAuthPopup(url);
+            openOAuthPopupWindow(url);
         }
     };
 
@@ -38,13 +25,12 @@ export const useNetworkConnect = (
         const entry = connectEntry(platform);
 
         if (entry === Platform.Telegram) {
-            telegramReconnectId.value = reconnectId;
-            telegramOpen.value = true;
+            dialog.openAt('telegram', reconnectId);
             return;
         }
 
         if (entry === Platform.Instagram && !reconnectId) {
-            instagramOpen.value = true;
+            dialog.openAt('instagram');
             return;
         }
 
@@ -61,12 +47,5 @@ export const useNetworkConnect = (
             ],
     );
 
-    return {
-        telegramOpen,
-        telegramReconnectId,
-        instagramOpen,
-        instagramMethods,
-        startConnect,
-        openConnect,
-    };
+    return { startConnect, openConnect, instagramMethods };
 };

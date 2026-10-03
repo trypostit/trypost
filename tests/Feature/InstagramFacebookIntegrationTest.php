@@ -28,7 +28,6 @@ beforeEach(function () {
         'refresh_token' => null,
         'token_expires_at' => null,
         'status' => AccountStatus::Connected,
-        'is_active' => true,
         'meta' => [
             'page_id' => 'page_123',
             'page_name' => 'Test Page',
@@ -135,7 +134,6 @@ test('instagram standalone publisher uses graph.instagram.com', function () {
         'access_token' => 'ig_token_123',
         'token_expires_at' => now()->addDays(30),
         'status' => AccountStatus::Connected,
-        'is_active' => true,
     ]);
 
     $post = Post::factory()->create([

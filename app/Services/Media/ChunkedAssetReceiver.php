@@ -5,11 +5,14 @@ declare(strict_types=1);
 namespace App\Services\Media;
 
 use App\Enums\Media\Type as MediaType;
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\VideoDurationProbe;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Throwable;
 
 final class ChunkedAssetReceiver
@@ -33,6 +36,25 @@ final class ChunkedAssetReceiver
         return $this->cloud->shouldUseMultipart($fileName)
             ? $this->receiveViaMultipart($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize, $meta)
             : $this->receiveViaLocalAssemble($workspace, $identifier, $fileName, $chunk, $rangeStart, $rangeEnd, $totalSize, $meta);
+    }
+
+    /**
+     * The assembled file must fit the cap of the type its name announced and
+     * of the type its bytes are, so neither a renamed file nor a declared
+     * size smaller than the bytes sent gets past the per-type limit.
+     */
+    private static function assertWithinCap(string $fileName, string $mimeType, int $size): void
+    {
+        $type = collect([MediaType::fromExtension(MediaType::extensionOf($fileName)), MediaType::classify($mimeType)])
+            ->filter()
+            ->sortBy(fn (MediaType $type): int => $type->maxSizeInBytes())
+            ->first();
+
+        if ($type !== null && $size > $type->maxSizeInBytes()) {
+            throw ValidationException::withMessages([
+                'total_size' => __('posts.composer.upload_errors.too_large', ['size' => $type->maxSizeInMb()]),
+            ]);
+        }
     }
 
     /**
@@ -76,12 +98,14 @@ final class ChunkedAssetReceiver
         $size = (int) data_get($result, 'size');
 
         try {
+            self::assertWithinCap($fileName, $mimeType, $size);
+
             $media = $workspace->addMediaFromStoredPath(
                 $path,
                 $fileName,
                 $mimeType,
                 $size,
-                'assets',
+                Media::COLLECTION_UPLOADS,
                 $this->withStoredVideoDuration($meta, $mimeType, $path, $size),
             );
         } catch (Throwable $exception) {
@@ -144,7 +168,9 @@ final class ChunkedAssetReceiver
         }
 
         try {
-            $media = $workspace->addMediaFromPath($tempFile, $fileName, 'assets', $meta);
+            self::assertWithinCap($fileName, (string) File::mimeType($tempFile), (int) filesize($tempFile));
+
+            $media = $workspace->addMediaFromPath($tempFile, $fileName, Media::COLLECTION_UPLOADS, $meta);
         } finally {
             @unlink($tempFile);
         }

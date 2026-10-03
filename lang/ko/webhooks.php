@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => '게시물이 생성되거나, 예약되거나, 예약이 취소되거나, 게시되거나, 실패하면 실시간으로 알림을 받습니다.',
+    'description' => '게시물 변경 사항을 실시간으로 받아보세요.',
     'new' => '웹훅 만들기',
     'empty_title' => '아직 웹훅이 없습니다',
     'empty_description' => '웹훅을 만들어 이벤트 알림을 실시간으로 받으세요.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => '수신 중',
         'status' => '상태',
         'last_sent' => '마지막 전송',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => '사용 안 함',
         'paused' => '일시정지됨',
     ],
+    'row_actions' => '웹훅 작업',
     'actions' => [
         'view' => '세부정보 보기',
-        'copy_id' => '웹훅 ID 복사',
         'delete' => '삭제',
         'edit' => 'Endpoint 편집',
         'enable' => 'Endpoint 사용',
@@ -40,11 +38,9 @@ return [
         'description' => '웹훅 알림을 받을 endpoint를 설정하세요.',
         'endpoint' => 'Endpoint URL',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => '이 URL로 JSON 페이로드가 담긴 POST 요청을 보냅니다.',
         'events' => '이벤트',
-        'events_placeholder' => '이벤트 선택...',
-        'events_selected' => '{1} 이벤트 :count개 선택됨|[2,*] 이벤트 :count개 선택됨',
-        'search_events' => '이벤트 검색...',
-        'no_events' => '이벤트를 찾을 수 없습니다',
+        'events_count_selected' => ':total개 중 :count개 선택됨',
         'submit' => '웹훅 만들기',
         'cancel' => '취소',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => '서명 시크릿',
-        'last_sent' => '마지막 전송 :time',
-        'listening_for' => '수신 중',
+        'edit' => '편집',
         'http_status' => 'HTTP 상태',
         'status_code' => ':code - :reason',
         'attempts' => '시도',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => '응답 본문 없음',
         'no_response' => '응답 없음',
         'payload' => '메시지 페이로드',
-        'empty_title' => '아직 웹훅 이벤트가 없습니다',
-        'empty_description' => '게시물이 생성되거나, 예약되거나, 예약이 취소되거나, 게시되면 웹훅 이벤트가 여기에 나타납니다.',
+    ],
+    'deliveries' => [
+        'title' => '전송 기록',
+        'empty_title' => '아직 전송 기록이 없습니다',
+        'empty_description' => '테스트 이벤트를 보내면 여기에 표시됩니다.',
+        'pending' => '대기 중',
     ],
     'events' => [
         'group_posts' => '게시물',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => '부분 게시됨',
         'post_failed' => '게시 실패',
         'post_deleted' => '게시물 삭제됨',
+    ],
+    'event_descriptions' => [
+        'post_created' => '새 게시물이 생성될 때.',
+        'post_scheduled' => '게시물 게시가 예약될 때.',
+        'post_unscheduled' => '예약된 게시물이 초안으로 돌아갈 때.',
+        'post_published' => '게시물이 채널에 게시될 때.',
+        'post_partially_published' => '일부 채널은 게시되고 나머지는 실패할 때.',
+        'post_failed' => '게시물 게시에 실패할 때.',
+        'post_deleted' => '게시물이 삭제될 때.',
     ],
     'http_reasons' => [
         'unknown' => '알 수 없음',
@@ -111,7 +119,6 @@ return [
         '504' => '게이트웨이 시간 초과',
     ],
     'copied' => [
-        'id' => '웹훅 ID를 클립보드에 복사했습니다',
         'secret' => '서명 시크릿을 클립보드에 복사했습니다',
         'response' => '응답 본문을 복사했습니다',
         'payload' => '페이로드를 복사했습니다',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'endpoint가 HTTP :status를 반환했습니다.',
     ],
     'flash' => [
-        'created' => '웹훅을 만들었습니다.',
         'updated' => '웹훅을 업데이트했습니다.',
         'deleted' => '웹훅을 삭제했습니다.',
         'secret_rotated' => '서명 시크릿을 교체했습니다.',

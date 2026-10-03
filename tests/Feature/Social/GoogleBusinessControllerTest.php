@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Enums\UserWorkspace\Role;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -19,7 +18,7 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Member->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 });
 
 test('connect redirects to the google-business oauth driver', function () {
@@ -160,7 +159,7 @@ test('google business callback reconnects the original location when google retu
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.reconnected'))
+            ->where('message', null)
         );
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1)
@@ -425,7 +424,7 @@ test('select reconnects an existing account when a reconnect id is present', fun
     $response->assertOk();
     $response->assertInertia(fn (AssertableInertia $page) => $page
         ->where('success', true)
-        ->where('message', __('accounts.popup_callback.reconnected'))
+        ->where('message', null)
     );
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
@@ -582,7 +581,7 @@ test('google business callback reconnects a single matching location', function 
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->where('success', true)
-            ->where('message', __('accounts.popup_callback.reconnected'))
+            ->where('message', null)
         );
 
     expect($this->workspace->socialAccounts()->where('platform', Platform::GoogleBusiness)->count())->toBe(1);
@@ -727,7 +726,7 @@ test('select keeps the existing refresh token when google omits a new one', func
     $response->assertOk();
     $response->assertInertia(fn (AssertableInertia $page) => $page
         ->where('success', true)
-        ->where('message', __('accounts.popup_callback.reconnected'))
+        ->where('message', null)
     );
 
     $existingAccount->refresh();

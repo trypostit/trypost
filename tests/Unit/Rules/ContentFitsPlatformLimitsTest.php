@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\SocialAccount;
 use App\Rules\ContentFitsPlatformLimits;
 
 function runFitsRule(string $content, array $platforms): array
@@ -89,4 +91,57 @@ test('measures telegram against the rendered text, not the escaped markup', func
 
     expect(mb_strlen($content))->toBeLessThan(Platform::Telegram->maxContentLength())
         ->and(runFitsRule($content, [Platform::Telegram]))->toBe([]);
+});
+
+test('youtube content is the description and fits up to 5000 characters', function () {
+    expect(runFitsRule(str_repeat('a', 5000), [Platform::YouTube]))->toBe([])
+        ->and(runFitsRule(str_repeat('a', 5001), [Platform::YouTube]))->toHaveCount(1);
+});
+
+test('fails when instagram content has more than five hashtags', function () {
+    $errors = runFitsRule('#a #b #c #d #e #f', [Platform::Instagram, Platform::InstagramFacebook, Platform::Threads]);
+
+    expect($errors)->toBe([
+        __('posts.form.hashtags_exceed_platform', ['platform' => Platform::Instagram->label(), 'limit' => 5]),
+        __('posts.form.hashtags_exceed_platform', ['platform' => Platform::InstagramFacebook->label(), 'limit' => 5]),
+    ]);
+});
+
+test('passes with exactly five hashtags on instagram', function () {
+    expect(runFitsRule('#a #b #c #d #e', [Platform::Instagram]))->toBe([]);
+});
+
+test('reports the hashtag limit once per platform however many accounts share it', function () {
+    $accounts = SocialAccount::factory()->count(2)->instagram()->create();
+
+    expect(runFitsRule('#a #b #c #d #e #f', $accounts->all()))->toHaveCount(1);
+});
+
+test('counts hashtags on the plain text of an html caption', function () {
+    expect(runFitsRule('<p><a href="#top">go</a> #a #b #c #d #e</p>', [Platform::Instagram]))->toBe([]);
+});
+
+test('a captionless story is measured for neither hashtags nor length', function (ContentType $type, Platform $platform) {
+    $errors = [];
+    $rule = new ContentFitsPlatformLimits(collect(['story' => $platform]), contentTypes: ['story' => $type->value]);
+
+    $rule->validate('content', str_repeat('a', 70000).' #a #b #c #d #e #f', function (string $message) use (&$errors): void {
+        $errors[] = $message;
+    });
+
+    expect($errors)->toBe([]);
+})->with([
+    'instagram story' => [ContentType::InstagramStory, Platform::Instagram],
+    'facebook story' => [ContentType::FacebookStory, Platform::Facebook],
+]);
+
+test('an instagram feed post is still held to five hashtags when a content type is given', function () {
+    $errors = [];
+    $rule = new ContentFitsPlatformLimits(collect(['feed' => Platform::Instagram]), contentTypes: ['feed' => ContentType::InstagramFeed->value]);
+
+    $rule->validate('content', 'Launch #a #b #c #d #e #f', function (string $message) use (&$errors): void {
+        $errors[] = $message;
+    });
+
+    expect($errors)->toBe([__('posts.form.hashtags_exceed_platform', ['platform' => Platform::Instagram->label(), 'limit' => 5])]);
 });

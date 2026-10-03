@@ -1,147 +1,47 @@
 <script setup lang="ts">
-import { IconChevronDown, IconChevronUp } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
-import MediaRulesWarning from '@/components/posts/editor/MediaRulesWarning.vue';
-import { Avatar } from '@/components/ui/avatar';
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
-import { AspectRatio, type AspectRatioValue } from '@/types/aspect-ratio';
+import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
+import SettingsSection from '@/components/posts/editor/SettingsSection.vue';
+import { Switch } from '@/components/ui/switch';
 import { ContentType } from '@/types/content-type';
-import type { MediaItem } from '@/types/media';
-import { Platform } from '@/types/platform';
 
-interface SocialAccount {
-    id: string;
-    platform: string;
-    display_name: string;
-    username: string;
-    display_label: string;
-    avatar_url: string | null;
-}
+const props = withDefaults(
+    defineProps<{
+        contentType: string;
+        meta?: Record<string, any>;
+        disabled?: boolean;
+    }>(),
+    { meta: () => ({}), disabled: false },
+);
 
-interface Props {
-    socialAccount: SocialAccount | null;
-    contentType: string;
-    media: MediaItem[];
-    meta?: Record<string, any>;
-    disabled?: boolean;
-}
+const emit = defineEmits<{ 'update:meta': [value: Record<string, any>] }>();
 
-const props = withDefaults(defineProps<Props>(), {
-    disabled: false,
-    meta: () => ({}),
+const isReel = computed(() => props.contentType === ContentType.InstagramReel);
+const shareToFeed = computed({
+    get: (): boolean => props.meta.share_to_feed ?? true,
+    set: (value: boolean) =>
+        emit('update:meta', { ...props.meta, share_to_feed: value }),
 });
-
-const emit = defineEmits<{
-    'update:contentType': [value: string];
-    'update:meta': [meta: Record<string, any>];
-}>();
-
-const open = ref(false);
-
-const variants = [
-    { value: ContentType.InstagramFeed, labelKey: 'posts.form.instagram.variant.feed' },
-    { value: ContentType.InstagramReel, labelKey: 'posts.form.instagram.variant.reel' },
-    { value: ContentType.InstagramStory, labelKey: 'posts.form.instagram.variant.story' },
-] as const;
-
-
-const aspectRatios = [
-    { value: AspectRatio.Square, labelKey: 'posts.form.instagram.aspect.square' },
-    { value: AspectRatio.Portrait, labelKey: 'posts.form.instagram.aspect.portrait' },
-    { value: AspectRatio.Landscape, labelKey: 'posts.form.instagram.aspect.landscape' },
-    { value: AspectRatio.Original, labelKey: 'posts.form.instagram.aspect.original' },
-] as const;
-
-const isFeed = computed(() => props.contentType === ContentType.InstagramFeed);
-const selectedAspectRatio = computed(() => props.meta.aspect_ratio ?? AspectRatio.Original);
-
-const pickVariant = (value: string) => {
-    if (props.disabled) return;
-    emit('update:contentType', value);
-};
-
-const pickAspectRatio = (value: AspectRatioValue) => {
-    if (props.disabled) return;
-    emit('update:meta', { ...props.meta, aspect_ratio: value });
-};
 </script>
 
 <template>
-    <div class="rounded-xl border-2 border-foreground bg-card shadow-2xs">
-        <button
-            type="button"
-            class="flex w-full cursor-pointer items-center justify-between gap-3 p-4 text-sm"
-            data-testid="instagram-settings-toggle"
-            @click="open = !open"
-        >
-            <span class="flex min-w-0 items-center gap-2">
-                <span class="inline-flex size-6 shrink-0 items-center justify-center overflow-hidden rounded-full border-2 border-foreground bg-card shadow-2xs">
-                    <img :src="getPlatformLogo(socialAccount?.platform ?? 'instagram')" alt="Instagram" class="size-full object-cover" />
-                </span>
-                <span class="truncate font-bold text-foreground">{{ $t('posts.form.instagram.settings') }}</span>
-                <span v-if="socialAccount?.username" class="truncate font-medium text-foreground/60">·&nbsp;@{{ socialAccount.username }}</span>
-            </span>
-            <IconChevronUp v-if="open" class="size-4 shrink-0 text-foreground/60" />
-            <IconChevronDown v-else class="size-4 shrink-0 text-foreground/60" />
-        </button>
-
-        <div v-if="open" class="space-y-5 border-t-2 border-foreground/10 px-4 pb-4 pt-4">
-            <div v-if="socialAccount" class="flex items-center gap-3 rounded-lg bg-foreground/5 p-3">
-                <Avatar
-                    :src="socialAccount.avatar_url"
-                    :name="socialAccount.display_label"
-                    class="size-9 shrink-0 rounded-full border-2 border-foreground shadow-2xs"
+    <SettingsSection v-if="isReel">
+        <SettingsRow :label="$t('posts.form.instagram.share_to_feed')">
+            <template #label>
+                <span data-single-line>{{
+                    $t('posts.form.instagram.share_to_feed')
+                }}</span>
+            </template>
+            <div class="flex min-h-8 items-center">
+                <Switch
+                    v-model="shareToFeed"
+                    size="sm"
+                    data-testid="instagram-share-to-feed"
+                    :disabled="disabled"
+                    :aria-label="$t('posts.form.instagram.share_to_feed')"
                 />
-                <div class="min-w-0 flex-1">
-                    <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.posting_to') }}</p>
-                    <p class="truncate text-sm">
-                        <span class="font-bold text-foreground">{{ socialAccount.display_label }}</span>
-                        <span v-if="socialAccount?.username" class="font-medium text-foreground/60">&nbsp;@{{ socialAccount.username }}</span>
-                    </p>
-                </div>
             </div>
-
-            <div class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.variant_label') }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        v-for="variant in variants"
-                        :key="variant.value"
-                        type="button"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="contentType === variant.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="disabled"
-                        @click="pickVariant(variant.value)"
-                    >
-                        {{ $t(variant.labelKey) }}
-                    </button>
-                </div>
-            </div>
-
-            <div v-if="isFeed" class="space-y-2">
-                <p class="text-[11px] font-black uppercase tracking-widest text-foreground/60">{{ $t('posts.form.instagram.aspect_label') }}</p>
-                <div class="flex flex-wrap gap-2">
-                    <button
-                        v-for="ratio in aspectRatios"
-                        :key="ratio.value"
-                        type="button"
-                        :data-testid="`instagram-aspect-${ratio.value.replace(':', '-')}`"
-                        class="cursor-pointer rounded-full border-2 px-3 py-1 text-xs font-bold uppercase tracking-widest transition-colors disabled:cursor-not-allowed disabled:opacity-50"
-                        :class="selectedAspectRatio === ratio.value
-                            ? 'border-foreground bg-violet-100 text-foreground shadow-2xs'
-                            : 'border-foreground/30 text-foreground/70 hover:border-foreground hover:text-foreground'"
-                        :disabled="disabled"
-                        @click="pickAspectRatio(ratio.value)"
-                    >
-                        {{ $t(ratio.labelKey) }}
-                    </button>
-                </div>
-            </div>
-
-            <MediaRulesWarning :content-type="contentType" :media="media" :platform="Platform.Instagram" />
-        </div>
-    </div>
+        </SettingsRow>
+    </SettingsSection>
 </template>

@@ -4,13 +4,11 @@ declare(strict_types=1);
 
 return [
     'title' => 'Webhooks',
-    'description' => 'Отримуйте сповіщення в реальному часі, коли пости створюються, плануються, знімаються з плану, публікуються або завершуються помилкою.',
+    'description' => 'Миттєві сповіщення про ваші дописи.',
     'new' => 'Створити вебхук',
     'empty_title' => 'Вебхуків ще немає',
     'empty_description' => 'Створіть вебхук, щоб отримувати сповіщення про події в реальному часі.',
     'table' => [
-        'endpoint' => 'Endpoint',
-        'events' => 'Слухає',
         'status' => 'Статус',
         'last_sent' => 'Остання відправка',
     ],
@@ -21,9 +19,9 @@ return [
         'disabled' => 'Вимкнено',
         'paused' => 'Призупинено',
     ],
+    'row_actions' => 'Дії з вебхуком',
     'actions' => [
         'view' => 'Переглянути деталі',
-        'copy_id' => 'Скопіювати ID вебхука',
         'delete' => 'Видалити',
         'edit' => 'Редагувати endpoint',
         'enable' => 'Увімкнути endpoint',
@@ -40,11 +38,9 @@ return [
         'description' => 'Налаштуйте endpoint, щоб отримувати сповіщення вебхука.',
         'endpoint' => 'URL endpoint',
         'endpoint_placeholder' => 'https://example.com/webhooks',
+        'endpoint_help' => 'Ми надішлемо POST-запит із JSON на цю URL-адресу.',
         'events' => 'Події',
-        'events_placeholder' => 'Виберіть події...',
-        'events_selected' => '{1} :count подію вибрано|[2,*] :count подій вибрано',
-        'search_events' => 'Шукати події...',
-        'no_events' => 'Подій не знайдено',
+        'events_count_selected' => 'Вибрано :count з :total',
         'submit' => 'Створити вебхук',
         'cancel' => 'Скасувати',
     ],
@@ -68,8 +64,7 @@ return [
     ],
     'show' => [
         'signing_secret' => 'Секрет підпису',
-        'last_sent' => 'Остання відправка :time',
-        'listening_for' => 'Слухає',
+        'edit' => 'Змінити',
         'http_status' => 'Статус HTTP',
         'status_code' => ':code - :reason',
         'attempts' => 'Спроби',
@@ -79,8 +74,12 @@ return [
         'no_response_body' => 'Немає тіла відповіді',
         'no_response' => 'Немає відповіді',
         'payload' => 'Payload повідомлення',
-        'empty_title' => 'Подій ще немає',
-        'empty_description' => 'Коли пости створюються, плануються, знімаються з плану або публікуються, події вебхука з\'являться тут.',
+    ],
+    'deliveries' => [
+        'title' => 'Доставки',
+        'empty_title' => 'Доставок поки немає',
+        'empty_description' => 'Надішліть тестову подію, щоб побачити її тут.',
+        'pending' => 'Очікує',
     ],
     'events' => [
         'group_posts' => 'Пости',
@@ -91,6 +90,15 @@ return [
         'post_partially_published' => 'Пост частково опубліковано',
         'post_failed' => 'Помилка публікації',
         'post_deleted' => 'Пост видалено',
+    ],
+    'event_descriptions' => [
+        'post_created' => 'Коли створено новий пост.',
+        'post_scheduled' => 'Коли пост заплановано до публікації.',
+        'post_unscheduled' => 'Коли запланований пост повертається до чернеток.',
+        'post_published' => 'Коли пост опубліковано в каналі.',
+        'post_partially_published' => 'Коли одні канали публікують, а інші ні.',
+        'post_failed' => 'Коли пост не вдалося опублікувати.',
+        'post_deleted' => 'Коли пост видалено.',
     ],
     'http_reasons' => [
         'unknown' => 'Невідомо',
@@ -111,7 +119,6 @@ return [
         '504' => 'Час очікування шлюзу минув',
     ],
     'copied' => [
-        'id' => 'ID вебхука скопійовано в буфер обміну',
         'secret' => 'Секрет підпису скопійовано в буфер обміну',
         'response' => 'Тіло відповіді скопійовано',
         'payload' => 'Payload скопійовано',
@@ -122,7 +129,6 @@ return [
         'endpoint_http_status' => 'Endpoint повернув HTTP :status.',
     ],
     'flash' => [
-        'created' => 'Вебхук створено.',
         'updated' => 'Вебхук оновлено.',
         'deleted' => 'Вебхук видалено.',
         'secret_rotated' => 'Секрет підпису змінено.',

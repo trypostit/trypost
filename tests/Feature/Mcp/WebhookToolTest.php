@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\UserWorkspace\Role;
 use App\Enums\Webhook\EventType;
 use App\Enums\Webhook\Status;
 use App\Jobs\DispatchWebhook;
@@ -27,7 +26,7 @@ use Illuminate\Testing\Fluent\AssertableJson;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->workspace->members()->attach($this->user->id, ['role' => Role::Admin->value]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $mock = Mockery::mock(WebhookService::class);
@@ -434,9 +433,9 @@ test('cannot send test rotate or list logs for a webhook from another workspace'
         ->assertHasErrors(['Webhook not found.']);
 });
 
-test('members and viewers cannot manage webhooks through mcp', function (Role $role) {
+test('members who are not admins cannot manage webhooks through mcp', function (string $role) {
     $teammate = User::factory()->create(['account_id' => $this->user->account_id]);
-    $this->workspace->members()->attach($teammate->id, ['role' => $role->value]);
+    $this->workspace->members()->attach($teammate->id, membershipPivot($role));
     $teammate->update(['current_workspace_id' => $this->workspace->id]);
 
     $webhook = Webhook::factory()->create([
@@ -496,6 +495,6 @@ test('members and viewers cannot manage webhooks through mcp', function (Role $r
         'endpoint' => 'https://member.example.com/webhooks',
     ]);
 })->with([
-    Role::Member,
-    Role::Viewer,
+    'member',
+    'approval',
 ]);

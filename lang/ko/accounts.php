@@ -1,56 +1,6 @@
 <?php
 
 return [
-    'title' => '연결',
-    'page_title' => '소셜 계정',
-    'description' => '연결된 모든 소셜 계정 개요',
-    'connect_cta' => '연결',
-    'connect_another' => '다른 계정 연결',
-    'actions' => '계정 작업',
-    'activate' => '켜기',
-    'deactivate' => '끄기',
-    'active' => '활성',
-    'paused' => '꺼짐',
-    'accounts_count' => '계정 :count개',
-
-    'variants' => [
-        'linkedin-page' => '페이지',
-        'instagram-facebook' => 'Facebook 경유',
-    ],
-
-    'not_connected' => '연결 안 됨',
-    'connect' => '연결',
-    'connection_lost' => '연결 끊김',
-    'reconnect' => '재연결',
-    'reconnect_account' => '계정 재연결',
-    'view_profile' => '프로필 보기',
-    'disconnect' => '연결 해제',
-
-    'descriptions' => [
-        'linkedin' => 'LinkedIn 프로필 또는 회사 페이지를 연결하세요',
-        'linkedin-page' => 'LinkedIn 회사 페이지를 연결하세요',
-        'x' => 'X (Twitter) 계정을 연결하세요',
-        'tiktok' => 'TikTok 계정을 연결하세요',
-        'youtube' => 'YouTube 채널을 연결하세요',
-        'facebook' => 'Facebook 페이지를 연결하세요',
-        'instagram' => 'Instagram Login 또는 Facebook 페이지로 연결하세요',
-        'instagram-facebook' => 'Facebook 페이지를 통해 Instagram을 연결하세요',
-        'threads' => 'Threads 계정을 연결하세요',
-        'pinterest' => 'Pinterest 계정을 연결하세요',
-        'bluesky' => 'Bluesky 계정을 연결하세요',
-        'mastodon' => 'Mastodon 계정을 연결하세요',
-        'telegram' => 'Telegram 채널 또는 그룹을 연결하세요',
-        'discord' => 'Discord 서버를 연결하세요',
-        'google_business' => 'Google 비즈니스 프로필 위치를 연결하세요',
-    ],
-
-    'disconnect_modal' => [
-        'title' => '계정 연결 해제',
-        'description' => '이 계정의 연결을 해제하시겠습니까? 언제든지 다시 연결할 수 있습니다.',
-        'confirm' => '연결 해제',
-        'cancel' => '취소',
-    ],
-
     'bluesky' => [
         'title' => 'Bluesky 연결',
         'description' => '연결하려면 인증 정보를 입력하세요',
@@ -76,20 +26,23 @@ return [
     'telegram' => [
         'title' => 'Telegram 연결',
         'description' => '채널 또는 그룹 연결',
+        'steps' => '단계',
         'step_admin' => ':bot을(를) Telegram 채널 또는 그룹의 관리자로 추가하세요.',
+        'open_bot' => 'Telegram에서 열기',
         'step_command' => '채널 또는 그룹에 이 명령어를 게시하세요:',
         'waiting' => '채널 연결을 기다리는 중…',
-        'connected' => '채널이 연결되었습니다!',
-        'connected_toast' => 'Telegram 채널이 성공적으로 연결되었습니다!',
-        'copied_toast' => '명령어가 클립보드에 복사되었습니다',
-        'copy_tooltip' => '명령어 복사',
-        'expired' => '이 코드는 만료되었습니다. 새 코드를 생성하여 다시 시도하세요.',
-        'new_code' => '새 코드 생성',
-        'retry' => '다시 시도',
+        'copy_command' => '명령어 복사',
+        'expired' => '이 명령어가 만료되었습니다. 새 명령어를 생성해 다시 시도하세요.',
+        'new_command' => '새 명령어 생성',
         'error_generic' => '연결을 시작할 수 없습니다. 다시 시도해 주세요.',
         'network_taken' => '이 워크스페이스에는 이미 Telegram 채널이 연결되어 있습니다. 먼저 연결을 해제하세요.',
         'wrong_chat' => '다시 연결하려는 채널에 명령을 게시하세요.',
         'busy' => '다른 연결이 아직 완료되지 않았습니다. 잠시 후 명령을 다시 보내주세요.',
+        'help' => [
+            'channel_admins' => '채널에 관리자 추가하기',
+            'group_admins' => '그룹에 관리자 추가하기',
+            'bot_privacy' => '그룹에서 봇이 읽을 수 있는 메시지',
+        ],
     ],
 
     'facebook' => [
@@ -112,12 +65,56 @@ return [
     ],
 
     'instagram_connect' => [
-        'title' => 'Instagram 연결',
-        'description' => 'Instagram 계정을 연결할 방법을 선택하세요',
-        'standalone_title' => 'Instagram Login',
-        'standalone_description' => 'Instagram 프로페셔널 계정으로 로그인하세요',
-        'facebook_title' => 'Facebook 페이지',
-        'facebook_description' => 'Facebook 페이지에 연결된 Instagram 계정을 연결하세요',
+        'title' => 'Instagram 계정을 어떻게 연결하시겠어요?',
+        'description' => '사용 가능한 기능은 Instagram 계정 유형과 선택한 연결 방식에 따라 다릅니다.',
+        'professional_title' => '프로페셔널',
+        'professional_types' => '(비즈니스 및 크리에이터)',
+        'badge' => '자동 게시',
+        'features' => [
+            'automatic' => [
+                'title' => '자동 게시',
+                'description' => '예약만 하면 저희가 게시합니다',
+            ],
+            'metrics' => [
+                'title' => '게시된 게시물 지표',
+                'description' => '지난 게시물의 성과 확인',
+            ],
+        ],
+        'connect' => 'Instagram에 연결',
+        'convert_hint' => '필요한 경우 Instagram에서 프로페셔널 계정으로 쉽게 전환하도록 안내합니다.',
+        'facebook_link' => 'Facebook을 통해 Instagram 연결',
+        'facebook_suffix' => '(Instagram 계정이 현재 Facebook에 연결되어 있는 경우)',
+        'help' => [
+            'account_type' => 'Instagram 계정 유형 확인하기',
+            'convert' => 'Instagram 계정을 프로페셔널 계정으로 전환하기',
+        ],
+    ],
+
+    'instagram_facebook_requirements' => [
+        'title' => 'Facebook을 통해 Instagram 연결',
+        'subtitle' => '알아두어야 할 사항 👇',
+        'heading' => '요구 사항',
+        'items' => [
+            'account_type' => [
+                'lead' => '비즈니스 또는 크리에이터',
+                'rest' => 'Instagram 계정이어야 합니다(개인 프로필 불가).',
+            ],
+            'page' => [
+                'lead' => 'Facebook 페이지에 연결됨',
+                'rest' => '(Facebook 개인 프로필 불가). Meta에서 Instagram을 Facebook에 연결해야 하나요?',
+            ],
+            'admin' => [
+                'lead' => 'Facebook 페이지 관리자로 로그인',
+                'rest' => '(“전체 권한” 보유).',
+            ],
+            'permissions' => [
+                'lead' => '모든 페이지와 Instagram 계정에 대해 모든 권한 선택',
+                'rest' => '(연결 시, TryPost에 연결하지 않을 계정 포함).',
+            ],
+        ],
+        'learn_how' => '방법 알아보기.',
+        'note' => '이 요구 사항 중 하나라도 충족되지 않으면 연결이 작동하지 않습니다.',
+        'connect' => 'Facebook을 통해 연결',
     ],
 
     'linkedin' => [
@@ -135,27 +132,19 @@ return [
     ],
 
     'flash' => [
-        'activated_resumed_repurposes' => '계정을 켰습니다. 자동화 :count개를 재개했습니다.|계정을 켰습니다. 자동화 :count개를 재개했습니다.',
         'disconnected_paused_repurposes' => '계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.|계정 연결을 해제했습니다. 자동화 :count개를 중단했습니다.',
-        'deactivated_paused_repurposes' => '계정을 껐습니다. 자동화 :count개를 중단했습니다.|계정을 껐습니다. 자동화 :count개를 중단했습니다.',
         'disconnected' => '계정 연결이 해제되었습니다!',
-        'connected' => '계정이 연결되었습니다!',
         'session_expired' => '세션이 만료되었습니다. 다시 시도해 주세요.',
         'workspace_not_found' => '워크스페이스를 찾을 수 없습니다.',
-        'activated' => '계정이 활성화되었습니다!',
-        'deactivated' => '계정이 비활성화되었습니다!',
         'already_connected' => '이 플랫폼은 이미 연결되어 있습니다.',
         'no_youtube_channels' => 'YouTube 채널을 찾을 수 없습니다. 먼저 채널을 만드세요.',
     ],
 
     'popup_callback' => [
-        'title_success' => '연결됨',
         'title_error' => '오류',
         'closing' => '이 창은 자동으로 닫힙니다...',
         'manual_close' => '이 창을 닫아도 됩니다.',
         'popup_blocked' => '연결 창을 열 수 없습니다. 팝업을 허용한 후 다시 시도하세요.',
-        'connected' => '계정이 연결되었습니다!',
-        'reconnected' => '계정이 다시 연결되었습니다!',
         'error_connecting' => '계정 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
         'network_taken' => '이 워크스페이스에는 이미 이 네트워크의 계정이 있습니다. 먼저 연결을 해제하세요.',
         'wrong_account' => '다른 계정입니다. 다시 연결하려는 계정을 인증하세요.',
