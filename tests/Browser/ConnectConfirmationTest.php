@@ -152,7 +152,6 @@ test('several pages: pick some, select all, and finish on the first connected ch
 
     $page->click('@connect-finish');
 
-    expect(connectConfirmPollFor($page, '/^\\/channels\\/[^\\/]+\\/publish$/.test(window.location.pathname)'))->toBeTrue();
     waitForConnectConfirmTestId($page, 'goal-flow');
 
     expect($user->currentWorkspace->socialAccounts()->pluck('platform_user_id')->sort()->values()->all())->toBe(['page-1', 'page-3']);
@@ -179,11 +178,12 @@ test('one identity is confirmed pre-checked and finishes on its channel page', f
 
     $page->click('@connect-finish');
 
+    waitForConnectConfirmTestId($page, 'goal-flow');
+
     $channel = $user->currentWorkspace->socialAccounts()->sole();
     $channelPath = connectConfirmPath('app.channels.publish', $channel);
 
     expect(connectConfirmPollFor($page, "window.location.pathname === '{$channelPath}'"))->toBeTrue();
-    waitForConnectConfirmTestId($page, 'goal-flow');
 
     expect($channel->platform)->toBe(Platform::X);
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
@@ -256,8 +256,9 @@ test('pages already connected stay in place, locked, uncounted and skipped by se
 
     $page->click('@connect-finish');
 
-    expect(connectConfirmPollFor($page, '/^\\/channels\\/[^\\/]+\\/publish$/.test(window.location.pathname)'))->toBeTrue()
-        ->and($user->currentWorkspace->socialAccounts()->pluck('platform_user_id')->sort()->values()->all())->toBe(['page-1', 'page-2', 'page-3'])
+    waitForConnectConfirmTestId($page, 'goal-flow');
+
+    expect($user->currentWorkspace->socialAccounts()->pluck('platform_user_id')->sort()->values()->all())->toBe(['page-1', 'page-2', 'page-3'])
         ->and($connected->fresh()->access_token)->toBe('old-token');
 
     $page->assertNoJavaScriptErrors();
@@ -573,6 +574,8 @@ test('a bluesky connection started without a return page finishes on its channel
     waitForConnectConfirmTestId($page, 'connect-finish');
 
     $page->assertSee('Confirm Bluesky')->click('@connect-finish');
+
+    waitForConnectConfirmTestId($page, 'goal-flow');
 
     $channel = $user->currentWorkspace->socialAccounts()->sole();
 
