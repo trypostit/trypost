@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Concerns;
 
-use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\SocialPublishException;
 use App\Services\Media\MediaOptimizer;
-use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -26,11 +24,7 @@ trait FitsImageToCanvas
         $tempInput = tempnam(sys_get_temp_dir(), 'fit_in_');
 
         try {
-            try {
-                $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
-            } catch (ConnectionException $exception) {
-                throw new PlatformUnavailableException("Story image download failed: {$exception->getMessage()}");
-            }
+            $download = Http::sink($tempInput)->timeout(120)->get($imageUrl);
 
             if ($download->failed()) {
                 throw $this->cropFailureException('Failed to download image for story fitting');
