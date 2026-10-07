@@ -37,11 +37,14 @@ abstract class AbstractPublicationSync implements ShouldQueue
 
     private const int MAX_TRANSIENT_RETRIES = 5;
 
+    public int $transientRetries = 0;
+
     public function __construct(
         public string $socialAccountId,
         public string $syncStateId,
-        public int $transientRetries = 0,
+        int $transientRetries = 0,
     ) {
+        $this->transientRetries = $transientRetries;
         $this->onQueue('analytics');
     }
 

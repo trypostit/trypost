@@ -517,6 +517,24 @@ test('a rate limited failure waits for the provider retry time when it is later 
     expect($state->fresh()->last_error_category)->toBe('rate_limited');
 });
 
+test('a job queued before the retry counter existed still retries a transient failure', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
+
+    $queuedBeforeDeploy = (new ReflectionClass(BackfillAccountPublications::class))->newInstanceWithoutConstructor();
+    $queuedBeforeDeploy->socialAccountId = $account->id;
+    $queuedBeforeDeploy->syncStateId = $state->id;
+
+    app()->call([$queuedBeforeDeploy, 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->transientRetries === 1);
+});
+
 test('the transient backoff follows our own retry counter', function () {
     Bus::fake();
     $account = SocialAccount::factory()->instagram()->create();
