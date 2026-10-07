@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -74,7 +75,8 @@ test('an account that lost premium fails the long post at publish', function () 
     ]);
     Http::fake();
 
-    expect(fn () => (new XPublisher)->publish($postPlatform))->toThrow(Exception::class, 'limit of 280 characters');
+    expect(fn () => (new XPublisher)->publish($postPlatform))
+        ->toThrow(ContentLimitException::class, __('posts.errors.content_too_long', ['platform' => 'X', 'max' => 280, 'provided' => 2000]));
     Http::assertNothingSent();
 });
 
