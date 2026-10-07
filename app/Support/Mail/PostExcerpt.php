@@ -17,10 +17,6 @@ class PostExcerpt
 {
     public static function from(?string $html, int $limit): string
     {
-        $text = app(ContentSanitizer::class)->plainText((string) $html);
-        $text = preg_replace("/[ \t]*\n[ \t]*/", "\n", $text);
-        $text = preg_replace("/\n{3,}/", "\n\n", (string) $text);
-
-        return Str::limit(trim((string) $text), $limit);
+        return Str::limit(app(ContentSanitizer::class)->plainText((string) $html), $limit);
     }
 }
