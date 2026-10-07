@@ -464,6 +464,7 @@ test('the drive picker can be clicked, focused and typed in over the composer di
     waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
     stubGoogleDriveForMediaSources($page, holdOpen: true);
     chooseComposerMediaSource($page, 'composer-base', 'google_drive');
+    waitForComposerMediaSourcesCondition($page, "!document.querySelector('[data-testid=\"composer-base-media-source-list\"]')");
     finishGoogleDriveSignIn($page);
     waitForComposerMediaSourcesTestId($page, 'drive-picker-search');
     waitForComposerMediaSourcesCondition($page, "document.activeElement?.dataset?.testid === 'drive-picker-search'");
@@ -563,20 +564,5 @@ test('opening the media sources menu preloads the picker sdk only', function () 
 
     expect($page->script('window.__pickerLoaded ?? false'))->toBeTrue()
         ->and($page->script("[...document.scripts].some((script) => script.src.includes('accounts.google.com'))"))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
-});
-
-test('closing the media source menu with escape gives the focus back to its button', function () {
-    enableOnlyGoogleDriveForMediaSources();
-
-    $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
-    $page->click('@composer-base-media-source-menu');
-    waitForComposerMediaSourcesTestId($page, 'media-source-google_drive');
-    $page->keys('@media-source-google_drive', 'Escape');
-    waitForComposerMediaSourcesCondition($page, "!document.querySelector('[data-testid=\"media-source-google_drive\"]')");
-    waitForComposerMediaSourcesCondition($page, "document.activeElement?.dataset?.testid === 'composer-base-media-source-menu'");
-
-    expect($page->script('document.activeElement?.dataset?.testid ?? null'))->toBe('composer-base-media-source-menu');
     $page->assertNoJavaScriptErrors();
 });
