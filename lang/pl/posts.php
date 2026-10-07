@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
         'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
+        'x' => [
+            'duplicate_content' => 'X nie pozwala opublikować tego samego tekstu dwa razy. Zmień tekst i spróbuj ponownie.',
+        ],
         'content_too_long' => 'Ten post ma :provided znaków, a :platform pozwala na :max.',
         'linkedin' => [
             'server_error' => 'LinkedIn zgłosił błąd serwera. Spróbuj ponownie.',

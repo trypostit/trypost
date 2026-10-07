@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
         'rejected_in_review' => 'Google rechazó esta publicación durante la revisión. Edita el contenido o la imagen e inténtalo de nuevo.',
         'review_unconfirmed' => 'Google nunca confirmó esta publicación. Revisa tu Perfil de Empresa e inténtalo de nuevo.',
+        'x' => [
+            'duplicate_content' => 'X no permite publicar el mismo texto dos veces. Cambia el texto e inténtalo de nuevo.',
+        ],
         'content_too_long' => 'Esta publicación tiene :provided caracteres, pero :platform permite :max.',
         'linkedin' => [
             'server_error' => 'LinkedIn tuvo un error del servidor. Inténtalo de nuevo.',

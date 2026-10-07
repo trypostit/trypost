@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',
         'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
         'review_unconfirmed' => 'Google n\'a jamais confirmé ce post. Vérifie ta fiche d\'établissement et réessaie.',
+        'x' => [
+            'duplicate_content' => 'X n\'autorise pas à publier deux fois le même texte. Modifie le texte et réessaie.',
+        ],
         'content_too_long' => 'Cette publication contient :provided caractères, mais :platform en autorise :max.',
         'linkedin' => [
             'server_error' => 'LinkedIn a rencontré une erreur serveur. Réessayez.',

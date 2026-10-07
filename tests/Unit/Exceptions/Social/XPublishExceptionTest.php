@@ -119,6 +119,23 @@ test('body containing "invalid URL" maps to ContentPolicy category', function ()
         ->and($exception->userMessage)->toBe('Post contains an invalid URL.');
 });
 
+test('a duplicate post maps to ContentPolicy with a translated message', function () {
+    $response = Http::response([
+        'detail' => 'You are not allowed to create a Tweet with duplicate content.',
+        'type' => 'about:blank',
+        'title' => 'Forbidden',
+        'status' => 403,
+    ], 403);
+
+    $fakeResponse = Http::fake(['*' => $response])->post(config('trypost.platforms.x.api').'/tweets');
+
+    $exception = XPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+        ->and($exception->userMessage)->toBe(__('posts.errors.x.duplicate_content'))
+        ->and($exception->platformErrorCode)->toBe('duplicate-content');
+});
+
 test('body containing "video longer than 2 minutes" maps to MediaFormat category', function () {
     $response = Http::response([
         'type' => 'https://api.x.com/2/problems/invalid-request',

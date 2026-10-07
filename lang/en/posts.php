@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
         'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
         'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
+        'x' => [
+            'duplicate_content' => 'X does not allow posting the same text twice. Change the text and try again.',
+        ],
         'content_too_long' => 'This post has :provided characters, but :platform allows :max.',
         'linkedin' => [
             'server_error' => 'LinkedIn had a server error. Please try again.',

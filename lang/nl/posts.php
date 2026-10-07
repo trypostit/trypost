@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
         'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
         'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
+        'x' => [
+            'duplicate_content' => 'X staat niet toe dat je dezelfde tekst twee keer plaatst. Pas de tekst aan en probeer het opnieuw.',
+        ],
         'content_too_long' => 'Deze post heeft :provided tekens, maar :platform staat er :max toe.',
         'linkedin' => [
             'server_error' => 'LinkedIn had een serverfout. Probeer het opnieuw.',

@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
         'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
         'review_unconfirmed' => 'Google가 이 게시물을 확인해 주지 않았습니다. 비즈니스 프로필을 확인한 후 다시 시도하세요.',
+        'x' => [
+            'duplicate_content' => 'X에서는 같은 텍스트를 두 번 게시할 수 없습니다. 텍스트를 바꾼 뒤 다시 시도해 주세요.',
+        ],
         'content_too_long' => '이 게시물은 :provided자이지만 :platform은 :max자까지 허용합니다.',
         'linkedin' => [
             'server_error' => 'LinkedIn 서버 오류가 발생했습니다. 다시 시도해 주세요.',
