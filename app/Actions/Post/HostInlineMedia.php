@@ -48,7 +48,29 @@ class HostInlineMedia
             }
         }
 
-        return $data;
+        return self::threadReplies($workspace, $data, 'destinations', $fetched);
+    }
+
+    /**
+     * Host the media of a single post request and of the thread replies of
+     * its targets (`platforms.*.meta.thread_replies.*.media`), so a URL is
+     * accepted wherever a post takes media.
+     *
+     * @param  array<MediaType>  $allowedTypes
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    public static function forPost(Workspace $workspace, array $allowedTypes, array $data): array
+    {
+        $fetched = [];
+
+        if (array_key_exists('media', $data)) {
+            $data['media'] = self::execute($workspace, $allowedTypes, $data['media'], fetched: $fetched);
+        }
+
+        return self::threadReplies($workspace, $data, 'platforms', $fetched);
     }
 
     /**
@@ -121,6 +143,40 @@ class HostInlineMedia
 
             throw $exception;
         }
+    }
+
+    /**
+     * Host the reply media of every target listed under `$listKey` that
+     * carries a URL. Replies sent only as ids or upload tokens are left for
+     * the save to resolve, as before.
+     *
+     * @param  array<string, mixed>  $data
+     * @param  array<string, string>  $fetched
+     * @return array<string, mixed>
+     *
+     * @throws ValidationException
+     */
+    private static function threadReplies(Workspace $workspace, array $data, string $listKey, array &$fetched): array
+    {
+        foreach ((array) data_get($data, $listKey, []) as $target => $entry) {
+            foreach ((array) data_get($entry, 'meta.thread_replies', []) as $index => $reply) {
+                $media = (array) data_get($reply, 'media', []);
+
+                if (! collect($media)->contains(fn (mixed $item): bool => filled(data_get($item, 'url')))) {
+                    continue;
+                }
+
+                $data[$listKey][$target]['meta']['thread_replies'][$index]['media'] = self::execute(
+                    $workspace,
+                    MediaType::cases(),
+                    $media,
+                    "{$listKey}.{$target}.meta.thread_replies.{$index}.media",
+                    $fetched,
+                );
+            }
+        }
+
+        return $data;
     }
 
     /**

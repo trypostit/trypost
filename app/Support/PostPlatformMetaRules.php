@@ -66,6 +66,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.thread_replies.*.media.*' => ['array'],
             'platforms.*.meta.thread_replies.*.media.*.id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.thread_replies.*.media.*.upload_token' => ['sometimes', 'nullable', 'string'],
+            'platforms.*.meta.thread_replies.*.media.*.url' => ['sometimes', 'nullable', 'string'],
 
             'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
 

@@ -51,11 +51,13 @@ class CreatePostTool extends Tool
             ->map(fn (SocialAccount $account): Platform => $account->platform)
             ->values();
 
+        $validated = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($platforms), $validated);
+
         try {
             $post = CreatePosts::execute($workspace, $request->user(), [
                 'status' => $validated['status'] ?? Status::Draft->value,
                 'content' => $validated['content'] ?? '',
-                'media' => HostInlineMedia::execute($workspace, Post::allowedMediaTypesFor($platforms), $validated['media'] ?? []),
+                'media' => $validated['media'] ?? [],
                 'scheduled_at' => $validated['scheduled_at'] ?? $validated['queue_slot'] ?? null,
                 'queue' => $validated['queue'] ?? null,
                 'queue_slot' => $validated['queue_slot'] ?? null,

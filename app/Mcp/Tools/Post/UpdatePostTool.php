@@ -56,9 +56,7 @@ class UpdatePostTool extends Tool
             ->after(fn (ValidatorContract $validator) => PostRequestRules::afterUpdate($validator, $post, $input))
             ->validate();
 
-        if (array_key_exists('media', $validated)) {
-            $validated['media'] = HostInlineMedia::execute($workspace, $post->allowedMediaTypes(), $validated['media']);
-        }
+        $validated = HostInlineMedia::forPost($workspace, $post->allowedMediaTypes(), $validated);
 
         try {
             $result = UpdatePost::execute($workspace, $post, $validated, $request->user());

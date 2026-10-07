@@ -76,13 +76,7 @@ class PostController extends Controller
         $workspace = $request->user()->currentWorkspace;
         $data = $request->validated();
 
-        if (array_key_exists('media', $data)) {
-            $data['media'] = HostInlineMedia::execute(
-                $workspace,
-                Post::allowedMediaTypesFor($request->selectedPlatforms()),
-                $data['media'],
-            );
-        }
+        $data = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($request->selectedPlatforms()), $data);
 
         $post = CreatePosts::execute($workspace, $request->user(), [
             'status' => $data['status'] ?? 'draft',
@@ -126,13 +120,7 @@ class PostController extends Controller
 
         $data = $request->validated();
 
-        if (array_key_exists('media', $data)) {
-            $data['media'] = HostInlineMedia::execute(
-                $request->user()->currentWorkspace,
-                $post->allowedMediaTypes(),
-                $data['media'],
-            );
-        }
+        $data = HostInlineMedia::forPost($request->user()->currentWorkspace, $post->allowedMediaTypes(), $data);
 
         $result = UpdatePost::execute($request->user()->currentWorkspace, $post, $data, $request->user());
 
