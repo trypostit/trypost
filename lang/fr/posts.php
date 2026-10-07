@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'Cette publication contient :provided caractères, mais :platform en autorise :max.',
         'unrecognized_error' => ':platform a renvoyé une erreur que nous n\'avons pas pu identifier. Réessaie.',
+        'facebook' => [
+            'processing_failed' => 'Facebook n\'a pas pu traiter cette vidéo. Vérifie qu\'elle respecte les exigences des Reels et réessaie.',
+            'upload_incomplete' => 'Facebook n\'a pas reçu la vidéo en entier. Réessaie.',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn a rencontré une erreur serveur. Réessayez.',
         ],

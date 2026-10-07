@@ -23,8 +23,6 @@ class FacebookPublishException extends SocialPublishException
      */
     private const string FACEBOOK_URL_SUBCODE = '1609008';
 
-    private const string RETRYABLE_UPLOAD_ERROR = 'ProcessingFailedError';
-
     public function __construct(
         string $userMessage,
         ErrorCategory $category,
@@ -36,15 +34,13 @@ class FacebookPublishException extends SocialPublishException
     }
 
     /**
-     * A resumable upload (rupload) failure Meta asks to retry: a 5xx, a
-     * failure flagged retriable, or ProcessingFailedError ("Please try
-     * uploading again").
+     * A resumable upload (rupload) failure Meta asks to retry: a 5xx or a
+     * failure flagged retriable.
      */
     public static function isRetryableUpload(Response $response): bool
     {
         return $response->serverError()
-            || data_get($response->json(), 'debug_info.retriable') === true
-            || data_get($response->json(), 'debug_info.type') === self::RETRYABLE_UPLOAD_ERROR;
+            || data_get($response->json(), 'debug_info.retriable') === true;
     }
 
     public static function fromApiResponse(mixed $response): static
@@ -53,11 +49,19 @@ class FacebookPublishException extends SocialPublishException
         $body = $response->json();
         $rawResponse = $response->body();
 
-        if (data_get($body, 'error') === null && filled(data_get($body, 'debug_info.message'))) {
+        if (data_get($body, 'error') === null && filled(data_get($body, 'debug_info'))) {
+            $uploadErrorType = data_get($body, 'debug_info.type');
+
+            [$message, $category] = match ($uploadErrorType) {
+                'ProcessingFailedError' => [__('posts.errors.facebook.processing_failed'), ErrorCategory::MediaFormat],
+                'PartialRequestError', 'OffsetInvalidError' => [__('posts.errors.facebook.upload_incomplete'), ErrorCategory::ServerError],
+                default => [__('posts.errors.unrecognized_error', ['platform' => 'Facebook']), ErrorCategory::Unknown],
+            };
+
             return new static(
-                userMessage: (string) data_get($body, 'debug_info.message'),
-                category: ErrorCategory::Unknown,
-                platformErrorCode: filled(data_get($body, 'debug_info.type')) ? (string) data_get($body, 'debug_info.type') : null,
+                userMessage: $message,
+                category: $category,
+                platformErrorCode: is_string($uploadErrorType) && $uploadErrorType !== '' ? $uploadErrorType : null,
                 rawResponse: $rawResponse,
             );
         }

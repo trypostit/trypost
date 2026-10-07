@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'Deze post heeft :provided tekens, maar :platform staat er :max toe.',
         'unrecognized_error' => ':platform gaf een fout die we niet konden herkennen. Probeer het opnieuw.',
+        'facebook' => [
+            'processing_failed' => 'Facebook kon deze video niet verwerken. Controleer of hij aan de eisen voor Reels voldoet en probeer het opnieuw.',
+            'upload_incomplete' => 'Facebook heeft niet de hele video ontvangen. Probeer het opnieuw.',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn had een serverfout. Probeer het opnieuw.',
         ],

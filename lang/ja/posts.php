@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'この投稿は :provided 文字ですが、:platform の上限は :max 文字です。',
         'unrecognized_error' => ':platform で特定できないエラーが発生しました。もう一度お試しください。',
+        'facebook' => [
+            'processing_failed' => 'Facebook でこの動画を処理できませんでした。リール動画の要件を満たしているか確認して、もう一度お試しください。',
+            'upload_incomplete' => 'Facebook が動画全体を受信できませんでした。もう一度お試しください。',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn でサーバーエラーが発生しました。もう一度お試しください。',
         ],

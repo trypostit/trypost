@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'يحتوي هذا المنشور على :provided حرفًا، لكن :platform يسمح بـ :max.',
         'unrecognized_error' => 'أعاد :platform خطأً لم نتمكن من تحديده. حاول مرة أخرى.',
+        'facebook' => [
+            'processing_failed' => 'تعذّر على Facebook معالجة هذا الفيديو. تأكد من أنه يستوفي متطلبات Reels وحاول مرة أخرى.',
+            'upload_incomplete' => 'لم يستلم Facebook الفيديو كاملًا. حاول مرة أخرى.',
+        ],
         'linkedin' => [
             'server_error' => 'حدث خطأ في خادم LinkedIn. حاول مرة أخرى.',
         ],

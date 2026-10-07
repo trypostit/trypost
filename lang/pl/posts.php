@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'Ten post ma :provided znaków, a :platform pozwala na :max.',
         'unrecognized_error' => ':platform zwrócił błąd, którego nie udało się rozpoznać. Spróbuj ponownie.',
+        'facebook' => [
+            'processing_failed' => 'Facebook nie mógł przetworzyć tego filmu. Sprawdź, czy spełnia wymagania dla Reels, i spróbuj ponownie.',
+            'upload_incomplete' => 'Facebook nie otrzymał całego filmu. Spróbuj ponownie.',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn zgłosił błąd serwera. Spróbuj ponownie.',
         ],

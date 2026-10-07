@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => 'Este post tem :provided caracteres, mas o :platform permite :max.',
         'unrecognized_error' => 'O :platform retornou um erro que não conseguimos identificar. Tente novamente.',
+        'facebook' => [
+            'processing_failed' => 'O Facebook não conseguiu processar este vídeo. Confira se ele atende aos requisitos de Reels e tente novamente.',
+            'upload_incomplete' => 'O Facebook não recebeu o vídeo inteiro. Tente novamente.',
+        ],
         'linkedin' => [
             'server_error' => 'O LinkedIn teve um erro no servidor. Tente novamente.',
         ],

@@ -836,6 +836,10 @@ return [
         ],
         'content_too_long' => '此帖子有 :provided 个字符，但 :platform 最多允许 :max 个。',
         'unrecognized_error' => ':platform 返回了无法识别的错误，请重试。',
+        'facebook' => [
+            'processing_failed' => 'Facebook 无法处理此视频。请确认它符合 Reels 的要求后重试。',
+            'upload_incomplete' => 'Facebook 未收到完整的视频，请重试。',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn 服务器出错，请重试。',
         ],

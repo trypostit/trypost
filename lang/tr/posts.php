@@ -838,6 +838,10 @@ return [
         ],
         'content_too_long' => 'Bu gönderi :provided karakter, ancak :platform en fazla :max karaktere izin veriyor.',
         'unrecognized_error' => ':platform tanımlayamadığımız bir hata döndürdü. Lütfen tekrar deneyin.',
+        'facebook' => [
+            'processing_failed' => 'Facebook bu videoyu işleyemedi. Reels gereksinimlerini karşıladığından emin olup tekrar deneyin.',
+            'upload_incomplete' => 'Facebook videonun tamamını almadı. Lütfen tekrar deneyin.',
+        ],
         'linkedin' => [
             'server_error' => 'LinkedIn\'de bir sunucu hatası oluştu. Lütfen tekrar deneyin.',
         ],
