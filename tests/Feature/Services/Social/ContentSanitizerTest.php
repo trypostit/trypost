@@ -412,3 +412,16 @@ test('it strips mastodon markup for length without decoding its entities twice',
 
     expect($sanitizer->displayText($content, Platform::Mastodon))->toBe('Tom &amp; Jerry');
 });
+
+test('a less-than sign typed as text is published, not read as a tag', function (Platform $platform) {
+    expect(app(ContentSanitizer::class)->displayText("I <3 TryPost\nprice < 10 and > 5", $platform))
+        ->toBe("I <3 TryPost\nprice < 10 and > 5");
+})->with([Platform::X, Platform::LinkedIn, Platform::Instagram, Platform::Mastodon, Platform::Telegram]);
+
+test('telegram receives a typed less-than sign escaped for its html parser', function () {
+    expect(app(ContentSanitizer::class)->sanitize('I <3 TryPost & co', Platform::Telegram))->toBe('I &lt;3 TryPost &amp; co');
+});
+
+test('content written by the former rich editor still loses its tags', function () {
+    expect(app(ContentSanitizer::class)->sanitize('<p>Hello <strong>world</strong> &lt;3</p><p>Bye</p>', Platform::X))->toBe("Hello world <3\nBye");
+});

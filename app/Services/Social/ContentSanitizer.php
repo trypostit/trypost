@@ -23,8 +23,14 @@ class ContentSanitizer
      */
     private const LINK_PATTERN = '~(^|[^\p{L}\p{N}\p{M}_@/.])((?:https?://(?:[^\s/@]+@)?)?(?:www\.)?)((?:[\p{L}\p{N}](?:[\p{L}\p{N}\p{M}-]*[\p{L}\p{N}\p{M}])?\.)+([\p{L}\p{N}\p{M}-]{2,63}))(?![\p{L}\p{N}\p{M}-])((?:/\S*)?)~iu';
 
+    private const TYPED_BRACKET_PATTERN = '~<(?!/?[a-z][^<>]*>)~i';
+
+    private const TAG_PATTERN = '~</?[a-z][^<>]*>~i';
+
     public function sanitize(string $content, Platform $platform): string
     {
+        $content = $this->escapeTypedBrackets($content);
+
         return match ($platform) {
             Platform::LinkedIn, Platform::LinkedInPage => $this->convertBoldAndStrip($content),
             Platform::Mastodon => $this->stripUnsafeHtml($content),
@@ -53,7 +59,7 @@ class ContentSanitizer
 
         return match ($platform) {
             Platform::Telegram => html_entity_decode(strip_tags($sanitized), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-            Platform::Mastodon => strip_tags($sanitized),
+            Platform::Mastodon => preg_replace(self::TAG_PATTERN, '', $sanitized) ?? $sanitized,
             default => $sanitized,
         };
     }
@@ -63,7 +69,18 @@ class ContentSanitizer
      */
     public function plainText(string $content): string
     {
-        return $this->stripHtml($content);
+        return $this->stripHtml($this->escapeTypedBrackets($content));
+    }
+
+    /**
+     * The composer stores plain text, so a `<` that does not open a tag is
+     * something the person typed (`I <3 TryPost`, `price < 10`). It becomes
+     * `&lt;`, or stripping tags would drop everything after it. Tags, from the
+     * former rich editor in older posts or typed, are still removed.
+     */
+    private function escapeTypedBrackets(string $content): string
+    {
+        return preg_replace(self::TYPED_BRACKET_PATTERN, '&lt;', $content) ?? $content;
     }
 
     /**

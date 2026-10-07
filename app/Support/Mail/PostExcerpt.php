@@ -4,19 +4,21 @@ declare(strict_types=1);
 
 namespace App\Support\Mail;
 
+use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Str;
 
 /**
- * Plain-text excerpt of a post's editor HTML for emails: block tags and line
- * breaks become newlines, the rest of the markup is stripped and entities are
- * decoded, so the paragraphs of the post survive in a `pre-line` block.
+ * Plain-text excerpt of a post for emails, read like the networks read it
+ * (`ContentSanitizer::plainText()`): a typed `<` stays, the block tags of
+ * older rich-editor posts become newlines, so the paragraphs survive in a
+ * `pre-line` block.
  */
 class PostExcerpt
 {
     public static function from(?string $html, int $limit): string
     {
-        $text = preg_replace('/<br\s*\/?>|<\/(p|div|li|h[1-6]|blockquote)>/i', "\n", (string) $html);
-        $text = html_entity_decode(strip_tags((string) $text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/<\/(div|h[1-6]|blockquote)>/i', "\n", (string) $html);
+        $text = app(ContentSanitizer::class)->plainText((string) $text);
         $text = preg_replace("/[ \t]*\n[ \t]*/", "\n", $text);
         $text = preg_replace("/\n{3,}/", "\n\n", (string) $text);
 

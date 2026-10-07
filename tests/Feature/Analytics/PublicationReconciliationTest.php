@@ -278,3 +278,10 @@ function discoveredPublication(
         providerMetadata: ['source' => 'provider'],
     );
 }
+
+test('a less-than sign typed in a TryPost post stays in its analytics excerpt', function () {
+    [, $postPlatform] = publicationFixture('remote-lt');
+    $postPlatform->post->update(['content' => 'I <3 TryPost and price < 10']);
+
+    expect(app(SyncTryPostPublication::class)->handle($postPlatform->fresh())->excerpt)->toBe('I <3 TryPost and price < 10');
+});

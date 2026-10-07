@@ -10,6 +10,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Models\AnalyticsPublication;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Services\Social\ContentSanitizer;
 use Illuminate\Support\Str;
 use LogicException;
 
@@ -82,7 +83,7 @@ class SyncTryPostPublication
 
     private function excerpt(PostPlatform $postPlatform): ?string
     {
-        $content = trim(html_entity_decode(strip_tags((string) $postPlatform->post?->content)));
+        $content = app(ContentSanitizer::class)->plainText((string) $postPlatform->post?->content);
 
         return $content === '' ? null : Str::limit($content, 500);
     }

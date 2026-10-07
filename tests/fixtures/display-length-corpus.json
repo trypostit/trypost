@@ -16,5 +16,9 @@
     "#hashtag @mention https://example.com/path?x=1",
     "",
     "   ",
-    "\n\n\n"
+    "\n\n\n",
+    "I <3 TryPost and everything after it",
+    "price < 10 and > 5",
+    "a<b c<d",
+    "<3 at the start"
 ]
