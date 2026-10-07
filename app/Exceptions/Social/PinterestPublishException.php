@@ -24,12 +24,12 @@ class PinterestPublishException extends SocialPublishException
         }
 
         if ($status === 403) {
-            return new static(
+            return (new static(
                 userMessage: 'Not authorized to create pins on this board.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($status === 429) {
@@ -38,7 +38,7 @@ class PinterestPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         // Documented for /pins, /media, and /boards alike (Pinterest's public
@@ -47,24 +47,24 @@ class PinterestPublishException extends SocialPublishException
         // upload) referenced by the request no longer exists or isn't
         // accessible to this account.
         if ($status === 404) {
-            return new static(
+            return (new static(
                 userMessage: 'Pinterest could not find the selected board. It may have been deleted or you no longer have access to it.',
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         // Pinterest's own JSON error code 1 ("Sorry! This site doesn't allow
         // you to save Pins.") is a content-policy rejection reused from their
         // legacy "nopin" crawler-block message, not an HTTP/technical error.
         if ($status === 400 && (int) data_get($body, 'code') === 1) {
-            return new static(
+            return (new static(
                 userMessage: "Pinterest rejected this pin. This usually means the content violates Pinterest's content policies (e.g. adult or sexual content).",
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($status === 400 && str_contains(strtolower($rawResponse), 'board')) {
@@ -96,12 +96,12 @@ class PinterestPublishException extends SocialPublishException
     public static function fromProcessingStatus(string $status, ?string $rawResponse = null): static
     {
         if ($status === 'failed') {
-            return new static(
+            return (new static(
                 userMessage: 'Media processing failed. Please try a different file.',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: null,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         return new static(

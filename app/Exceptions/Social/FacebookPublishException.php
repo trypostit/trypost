@@ -58,12 +58,12 @@ class FacebookPublishException extends SocialPublishException
                 default => [__('posts.errors.unrecognized_error', ['platform' => 'Facebook']), ErrorCategory::Unknown],
             };
 
-            return new static(
+            return (new static(
                 userMessage: $message,
                 category: $category,
                 platformErrorCode: is_string($uploadErrorType) && $uploadErrorType !== '' ? $uploadErrorType : null,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         $errorCode = data_get($body, 'error.code');
@@ -118,7 +118,7 @@ class FacebookPublishException extends SocialPublishException
             platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
             rawResponse: $rawResponse,
             platformErrorSubcode: $errorSubcode !== null ? (string) $errorSubcode : null,
-        ))->withNetworkReset($response);
+        ))->withNetworkReset($response)->asNetworkRejection();
     }
 
     /**

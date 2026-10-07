@@ -25,30 +25,30 @@ class GoogleBusinessPublishException extends SocialPublishException
         }
 
         if ($reason === 'PERMISSION_DENIED') {
-            return new static(
+            return (new static(
                 userMessage: __('posts.errors.google_business.permission_denied'),
                 category: ErrorCategory::Permission,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($reason === 'NOT_FOUND') {
-            return new static(
+            return (new static(
                 userMessage: __('posts.errors.google_business.not_found'),
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($reason === 'INVALID_ARGUMENT') {
-            return new static(
+            return (new static(
                 userMessage: $message !== '' ? $message : __('posts.errors.google_business.invalid_content'),
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: $reason,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($reason === 'RESOURCE_EXHAUSTED' || $status === 429) {
@@ -57,7 +57,7 @@ class GoogleBusinessPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: $reason !== '' ? $reason : (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         if ($status >= 500) {

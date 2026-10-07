@@ -49,7 +49,7 @@ class TikTokPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response);
+        ))->withNetworkReset($response)->asNetworkRejection();
     }
 
     public static function fromFailReason(string $failReason, ?string $rawResponse = null): static
@@ -71,12 +71,12 @@ class TikTokPublishException extends SocialPublishException
             default => [$failReason, ErrorCategory::Unknown],
         };
 
-        return new static(
+        return (new static(
             userMessage: $message,
             category: $category,
             platformErrorCode: $failReason,
             rawResponse: $rawResponse,
-        );
+        ))->asNetworkRejection();
     }
 
     public function platform(): string

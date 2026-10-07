@@ -49,7 +49,7 @@ class InstagramPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $errorSubcode !== null ? (string) $errorSubcode : ($category === ErrorCategory::RateLimit && $errorCode !== null ? (string) $errorCode : null),
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response);
+        ))->withNetworkReset($response)->asNetworkRejection();
     }
 
     /**
@@ -98,12 +98,12 @@ class InstagramPublishException extends SocialPublishException
         $subcode = is_int($status) || (is_string($status) && ctype_digit(trim($status))) ? (int) $status : null;
         $mapped = self::forSubcode($subcode);
 
-        return new self(
+        return (new self(
             userMessage: $mapped[0] ?? __('posts.errors.instagram.processing_failed'),
             category: $mapped[1] ?? ErrorCategory::Unknown,
             platformErrorCode: $subcode !== null ? (string) $subcode : null,
             rawResponse: $rawResponse,
-        );
+        ))->asNetworkRejection();
     }
 
     public function platform(): string

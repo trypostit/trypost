@@ -18,6 +18,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\Social\SocialPublishException;
+use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
@@ -248,7 +249,7 @@ test('publish reports an unmapped publish exception so Nightwatch sees it', func
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 });
 
-test('publish logs but does not report a categorized publish exception', function (LinkedInPublishException $exception) {
+test('publish logs but does not report a documented rejection the user must act on', function (LinkedInPublishException $exception) {
     Event::fake();
     Exceptions::fake();
     Log::spy();
@@ -269,18 +270,8 @@ test('publish logs but does not report a categorized publish exception', functio
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 })->with([
-    'content policy' => fn () => new LinkedInPublishException(
-        userMessage: 'LinkedIn rejected this post.',
-        category: ErrorCategory::ContentPolicy,
-    ),
-    'media format' => fn () => new LinkedInPublishException(
-        userMessage: 'Unsupported video format.',
-        category: ErrorCategory::MediaFormat,
-    ),
-    'permission' => fn () => new LinkedInPublishException(
-        userMessage: 'Not authorized to post to this account.',
-        category: ErrorCategory::Permission,
-    ),
+    'content policy' => fn () => linkedInRejection(422),
+    'permission' => fn () => linkedInRejection(403),
 ]);
 
 test('publish reports a failure that can be ours, even when categorized', function (SocialPublishException $exception) {
@@ -305,7 +296,55 @@ test('publish reports a failure that can be ours, even when categorized', functi
         rawResponse: '{"status":"ERROR"}',
     ),
     'content over the limit at publish time' => fn () => ContentLimitException::exceeds(Platform::LinkedIn, 3000, 3200),
+    'our own media failure' => fn () => new LinkedInPublishException(
+        userMessage: 'Unsupported video format.',
+        category: ErrorCategory::MediaFormat,
+    ),
+    'our own configuration failure' => fn () => new LinkedInPublishException(
+        userMessage: 'LinkedIn organization ID not configured.',
+        category: ErrorCategory::Permission,
+    ),
+    'a mapped server error' => fn () => linkedInRejection(500),
 ]);
+
+test('publish reports a YouTube download that came back empty, though it is a media format failure', function () {
+    Event::fake();
+    Exceptions::fake();
+
+    $account = SocialAccount::factory()->youtube()->create([
+        'workspace_id' => $this->workspace->id,
+        'token_expires_at' => now()->addDays(7),
+    ]);
+    $this->post->update(['content' => 'A short', 'media' => [[
+        'id' => 'video-1',
+        'type' => 'video',
+        'path' => 'medias/video.mp4',
+        'url' => 'https://example.com/video.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'video.mp4',
+    ]]]);
+    $postPlatform = PostPlatform::factory()->youtube()->create([
+        'post_id' => $this->post->id,
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort,
+        'scheduled_before_media_checks' => true,
+    ]);
+    Http::fake(['https://example.com/video.mp4' => Http::response('tiny')]);
+
+    (new PublishToSocialPlatform($postPlatform))->handle();
+
+    Exceptions::assertReported(fn (YouTubePublishException $exception): bool => $exception->category === ErrorCategory::MediaFormat
+        && str_contains($exception->userMessage, 'Downloaded video is too small or empty'));
+    expect($postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+});
+
+function linkedInRejection(int $status): LinkedInPublishException
+{
+    return LinkedInPublishException::fromApiResponse(
+        Http::fake(['*' => Http::response(['message' => 'Rejected', 'status' => $status], $status)])
+            ->post(config('trypost.platforms.linkedin.api').'/rest/posts'),
+    );
+}
 
 test('publish reports unexpected errors so Nightwatch sees them', function () {
     Event::fake();

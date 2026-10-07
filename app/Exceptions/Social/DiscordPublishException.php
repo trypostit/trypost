@@ -18,32 +18,32 @@ class DiscordPublishException extends SocialPublishException
 
         // Missing access / missing permissions: the bot can't see or post in the channel.
         if (in_array($code, [50001, 50013], true) || $status === 403) {
-            return new static(
+            return (new static(
                 userMessage: "The bot can't post in this channel. Make sure it has access and permission to send messages there.",
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $code,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         // Unknown channel — it was deleted or the id is stale.
         if ($code === 10003) {
-            return new static(
+            return (new static(
                 userMessage: 'That Discord channel no longer exists. Pick a different channel.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $code,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         // Attachment too large.
         if ($code === 40005 || $status === 413) {
-            return new static(
+            return (new static(
                 userMessage: "A media file exceeds Discord's upload size limit.",
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $code,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         // 401: the configured bot token is invalid (operator-level misconfiguration).
@@ -62,7 +62,7 @@ class DiscordPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         if ($status >= 500) {

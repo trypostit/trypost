@@ -26,12 +26,12 @@ class MastodonPublishException extends SocialPublishException
         }
 
         if ($status === 403) {
-            return new static(
+            return (new static(
                 userMessage: 'This action is not allowed.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($status === 422 && str_contains(strtolower($rawResponse), "text can't be blank")) {
@@ -44,21 +44,21 @@ class MastodonPublishException extends SocialPublishException
         }
 
         if ($status === 422) {
-            return new static(
+            return (new static(
                 userMessage: 'Media validation failed.',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($status === 413) {
-            return new static(
+            return (new static(
                 userMessage: 'File is too large for this Mastodon instance.',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if ($status === 429) {
@@ -67,7 +67,7 @@ class MastodonPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         if ($status === 503) {

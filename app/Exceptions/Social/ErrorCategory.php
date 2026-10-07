@@ -25,6 +25,14 @@ enum ErrorCategory: string
         };
     }
 
+    public function needsUserAction(): bool
+    {
+        return match ($this) {
+            self::MediaFormat, self::RateLimit, self::Permission, self::ContentPolicy => true,
+            default => false,
+        };
+    }
+
     /**
      * @param  array<string, mixed>|null  $context
      */

@@ -17,6 +17,8 @@ abstract class SocialPublishException extends RuntimeException
      */
     public ?CarbonInterface $retryAt = null;
 
+    private bool $rejectedByNetwork = false;
+
     public function __construct(
         public readonly string $userMessage,
         public readonly ErrorCategory $category,
@@ -43,6 +45,23 @@ abstract class SocialPublishException extends RuntimeException
     public function isLimit(): bool
     {
         return $this->category === ErrorCategory::RateLimit;
+    }
+
+    /**
+     * Set by a provider mapper on a documented rejection code: the network
+     * refused the post and only the user can fix it. Our own failures
+     * (downloads, storage, configuration, invariants) are never marked.
+     */
+    public function asNetworkRejection(): static
+    {
+        $this->rejectedByNetwork = $this->category->needsUserAction();
+
+        return $this;
+    }
+
+    public function isNetworkRejection(): bool
+    {
+        return $this->rejectedByNetwork;
     }
 
     /**

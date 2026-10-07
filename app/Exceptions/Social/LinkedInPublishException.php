@@ -31,7 +31,7 @@ class LinkedInPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         if ($response->serverError()) {
@@ -49,12 +49,12 @@ class LinkedInPublishException extends SocialPublishException
             default => [__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']), ErrorCategory::Unknown],
         };
 
-        return new static(
+        return (new static(
             userMessage: $message,
             category: $category,
             platformErrorCode: (string) $statusCode,
             rawResponse: $rawResponse,
-        );
+        ))->asNetworkRejection();
     }
 
     public function platform(): string

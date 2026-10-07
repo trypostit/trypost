@@ -96,3 +96,22 @@ test('platform returns linkedin', function () {
 
     expect($exception->platform())->toBe('linkedin');
 });
+
+test('only a documented rejection the user must act on is marked as a network rejection', function (int $status, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response(['message' => 'Rejected'], $status)])
+        ->post(config('trypost.platforms.linkedin.api').'/rest/posts');
+
+    expect(LinkedInPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'permission' => [403, true],
+    'content' => [422, true],
+    'rate limit' => [429, true],
+    'server error' => [500, false],
+    'unknown' => [400, false],
+]);
+
+test('an exception we raise ourselves is never a network rejection', function () {
+    $exception = new LinkedInPublishException(userMessage: 'LinkedIn organization ID not configured.', category: ErrorCategory::Permission);
+
+    expect($exception->isNetworkRejection())->toBeFalse();
+});

@@ -42,7 +42,7 @@ class ThreadsPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         if ($statusCode >= 500) {

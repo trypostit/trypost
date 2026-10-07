@@ -30,12 +30,12 @@ class XPublishException extends SocialPublishException
         }
 
         if ($statusCode === 413) {
-            return new static(
+            return (new static(
                 userMessage: 'Media chunk rejected by X (payload too large).',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            );
+            ))->asNetworkRejection();
         }
 
         if (in_array($statusCode, [500, 502, 503, 504], true)) {
@@ -53,7 +53,7 @@ class XPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response);
+            ))->withNetworkReset($response)->asNetworkRejection();
         }
 
         [$message, $category] = match ($typeSuffix) {
@@ -71,7 +71,7 @@ class XPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $typeSuffix ?: null,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response);
+        ))->withNetworkReset($response)->asNetworkRejection();
     }
 
     public function platform(): string

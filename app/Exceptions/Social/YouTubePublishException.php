@@ -36,7 +36,7 @@ class YouTubePublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $reason,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response);
+        ))->withNetworkReset($response)->asNetworkRejection();
     }
 
     public static function fromGoogleException(GoogleServiceException $e): static
@@ -63,12 +63,12 @@ class YouTubePublishException extends SocialPublishException
 
         [$message, $category] = self::mapReasonToMessageAndCategory($reason);
 
-        return new static(
+        return (new static(
             userMessage: $message,
             category: $category,
             platformErrorCode: $reason,
             rawResponse: $e->getMessage(),
-        );
+        ))->asNetworkRejection();
     }
 
     public static function isServerError(GoogleServiceException $e): bool
