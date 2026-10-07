@@ -742,7 +742,7 @@ test('publish honors a platform-specific retry delay and retry limit', function 
             && Carbon::instance($job->delay)->equalTo($now->copy()->addSeconds(30));
     });
 
-    $this->postPlatform->update(['error_context' => ['retry_count' => 2]]);
+    $this->postPlatform->update(['error_context' => [...$this->postPlatform->error_context, 'retry_count' => 2]]);
     (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
 
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
@@ -807,10 +807,11 @@ test('publish preserves resumable context when a later transient error has no co
         ->and($context['http_status'] ?? null)->toBe(503);
 });
 
-test('publish preserves a resumable retry policy after the global retry limit', function () {
+test('an unrelated outage after a processing reschedule does not inherit the processing retry policy', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
     Mail::fake();
+    $this->freezeTime();
 
     $this->postPlatform->update([
         'error_context' => [
@@ -835,9 +836,37 @@ test('publish preserves a resumable retry policy after the global retry limit', 
     $context = $this->postPlatform->fresh()->error_context;
 
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['instagram_workflow']['container_id'] ?? null)->toBe('container-123')
+        ->and($context['retry_count'] ?? null)->toBe(1)
+        ->and($context)->not->toHaveKey('max_retries')
+        ->and($context)->not->toHaveKey('retry_delay_seconds')
+        ->and($context['next_attempt_at'] ?? null)->toBe(now()->addSeconds(600)->toIso8601String());
+});
+
+test('a processing reschedule keeps counting against its own retry policy', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    $this->freezeTime();
+
+    $this->postPlatform->update([
+        'error_context' => ['retry_count' => 7, 'max_retries' => 30, 'retry_delay_seconds' => 60],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Still processing', retryDelaySeconds: 60, maxRetries: 30)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh()))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
         ->and($context['retry_count'] ?? null)->toBe(8)
-        ->and($context['max_retries'] ?? null)->toBe(90)
-        ->and($context['retry_delay_seconds'] ?? null)->toBe(10);
+        ->and($context['max_retries'] ?? null)->toBe(30)
+        ->and($context['retry_delay_seconds'] ?? null)->toBe(60)
+        ->and($context['next_attempt_at'] ?? null)->toBe(now()->addSeconds(60)->toIso8601String());
 });
 
 test('post stays in Publishing while one platform is still Retrying', function () {

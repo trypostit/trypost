@@ -290,21 +290,19 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
-        $retryCount = (int) data_get($this->postPlatform->error_context, 'retry_count', 0) + 1;
-        $maxRetries = (int) ($e->maxRetries
-            ?? data_get($this->postPlatform->error_context, 'max_retries')
-            ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES);
-        $retryDelaySeconds = (int) ($e->retryDelaySeconds
-            ?? data_get($this->postPlatform->error_context, 'retry_delay_seconds')
-            ?? self::DEFAULT_RETRY_DELAY_SECONDS);
+        $previousContext = $this->postPlatform->error_context ?? [];
+        $hasOwnPolicy = $e->maxRetries !== null || $e->retryDelaySeconds !== null;
+        $policyChanged = $hasOwnPolicy !== array_key_exists('max_retries', $previousContext);
+        $retryCount = $policyChanged ? 1 : (int) data_get($previousContext, 'retry_count', 0) + 1;
+        $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
+        $retryDelaySeconds = $e->retryDelaySeconds ?? self::DEFAULT_RETRY_DELAY_SECONDS;
         $context = [
-            ...($this->postPlatform->error_context ?? []),
+            ...Arr::except($previousContext, ['max_retries', 'retry_delay_seconds']),
             ...$e->context,
             'category' => ErrorCategory::PlatformUnavailable->value,
             'http_status' => $e->httpStatus,
             'retry_count' => $retryCount,
-            'max_retries' => $maxRetries,
-            'retry_delay_seconds' => $retryDelaySeconds,
+            ...($hasOwnPolicy ? ['max_retries' => $maxRetries, 'retry_delay_seconds' => $retryDelaySeconds] : []),
             'detail' => $e->getMessage(),
         ];
 
