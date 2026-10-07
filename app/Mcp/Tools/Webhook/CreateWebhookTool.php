@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use RuntimeException;
 
-#[Description('Create an outgoing webhook for the current workspace. Returns the signing secret — it can be read later with get-webhook-tool or rotated with rotate-webhook-secret-tool. Private or local endpoints are rejected. Creating does not send a test request.')]
+#[Description('Create an outgoing webhook for the current workspace. Returns the signing secret — it can be read later with get-webhook-tool or rotated with rotate-webhook-secret-tool. Private or local endpoints are rejected. Creating does not send a test request. Each delivery is a JSON POST signed in the X-Webhook-Signature header (HMAC-SHA256 of the body with the signing secret). After 5 failed deliveries in a row the webhook is paused and the account owner is emailed.')]
 class CreateWebhookTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -54,7 +54,7 @@ class CreateWebhookTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'endpoint' => $schema->string()->required()->description('Public URL that will receive signed webhook payloads. Private or local addresses are rejected.'),
+            'endpoint' => $schema->string()->required()->description('Public URL, up to 255 characters, that will receive signed webhook payloads. Private or local addresses are rejected.'),
             'events' => $schema->array()
                 ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
                 ->required()

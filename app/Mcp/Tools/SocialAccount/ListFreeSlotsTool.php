@@ -18,7 +18,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('List the next free queue slots of a channel as UTC instants, soonest first. A slot is free when no scheduled post and no queue request pending approval holds it.')]
+#[Description('List the next free queue slots of a channel as UTC instants, soonest first: at most 30, within the next 90 days. A slot is free when no scheduled post and no queue request pending approval holds it. Pass one as queue_slot to create-post-tool, or use move-post-to-slot-tool for an existing post.')]
 class ListFreeSlotsTool extends Tool
 {
     use AuthorizesMcpTool;

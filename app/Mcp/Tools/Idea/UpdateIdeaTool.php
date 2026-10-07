@@ -60,9 +60,9 @@ class UpdateIdeaTool extends Tool
         return [
             'idea_id' => $schema->string()->required()->description('The idea ID.'),
             'title' => $schema->string()->description('The idea title (max 255 characters).'),
-            'body' => $schema->string()->description('The idea text.'),
+            'body' => $schema->string()->description('The idea text, up to 10000 characters.'),
             'idea_stage_id' => $schema->string()->description('Move the idea to this stage ID (placed last); to move an idea to no stage use move-ideas-tool.'),
-            'media_ids' => $schema->array()->items($schema->string())->description('The full media ID list (max 10).'),
+            'media_ids' => $schema->array()->items($schema->string())->description('The full list of IDs of media already in the current workspace (max 10); upload tokens and URLs are not accepted.'),
             'label_ids' => $schema->array()->items($schema->string())->description('The full label ID list.'),
         ];
     }

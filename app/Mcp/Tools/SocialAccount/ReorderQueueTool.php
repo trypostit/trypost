@@ -53,7 +53,7 @@ class ReorderQueueTool extends Tool
     {
         return [
             'account_id' => $schema->string()->required()->description('The UUID of the connected social account.'),
-            'post_ids' => $schema->array()->items($schema->string())->required()->description('UUIDs of the first queued posts of the channel, in the new order.'),
+            'post_ids' => $schema->array()->items($schema->string())->required()->description('UUIDs of the first queued posts of the channel, in the new order (at most 500).'),
         ];
     }
 }

@@ -58,7 +58,7 @@ class GeneratePostingScheduleTool extends Tool
         return [
             'account_id' => $schema->string()->required()->description('The UUID of the connected social account.'),
             'mode' => $schema->string()->enum(['goal', 'recommended'])->required()->description('goal or recommended; accepted for parity, both generate from the goal.'),
-            'goal' => $schema->integer()->nullable()->description('Posts per week; defaults to the channel goal, else 3.'),
+            'goal' => $schema->integer()->nullable()->description('Posts per week, 1 to 28; defaults to the channel goal, else 3.'),
         ];
     }
 }

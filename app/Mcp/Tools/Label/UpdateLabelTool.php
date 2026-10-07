@@ -49,7 +49,7 @@ class UpdateLabelTool extends Tool
         return [
             'label_id' => $schema->string()->required()->description('The label ID.'),
             'name' => $schema->string()->required()->description('The new name.'),
-            'color' => $schema->string()->required()->description('Hex color code (e.g. #FF5733).'),
+            'color' => $schema->string()->required()->description('Hex color as #RRGGBB with the leading # (e.g. #FF5733).'),
         ];
     }
 }

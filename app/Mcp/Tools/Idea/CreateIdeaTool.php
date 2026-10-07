@@ -45,9 +45,9 @@ class CreateIdeaTool extends Tool
     {
         return [
             'title' => $schema->string()->description('The idea title (max 255 characters).'),
-            'body' => $schema->string()->description('The idea text.'),
+            'body' => $schema->string()->description('The idea text, up to 10000 characters.'),
             'idea_stage_id' => $schema->string()->description('The stage ID; omit for no stage.'),
-            'media_ids' => $schema->array()->items($schema->string())->description('Media IDs from the current workspace (max 10).'),
+            'media_ids' => $schema->array()->items($schema->string())->description('IDs of media already in the current workspace (max 10), for example from a post media; upload tokens and URLs are not accepted.'),
             'label_ids' => $schema->array()->items($schema->string())->description('Label IDs from the current workspace.'),
         ];
     }

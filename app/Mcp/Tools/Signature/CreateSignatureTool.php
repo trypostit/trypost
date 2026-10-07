@@ -16,7 +16,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Create a new signature with a name and content (hashtags, links, custom text, etc.).')]
+#[Description('Create a new signature with a name and content (hashtags, links, custom text, etc.). A signature is not added automatically to any post: append its content to the post content yourself.')]
 class CreateSignatureTool extends Tool
 {
     use AuthorizesMcpTool;

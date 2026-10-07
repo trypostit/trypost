@@ -20,7 +20,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Replace the posting schedule of a channel: time zone, weekly posting goal and the seven days (day 0 is Sunday) with their local HH:mm posting times. A null posting_schedule clears it. Queued posts whose slot no longer exists are re-placed into the first free slots, and a time zone change moves every queued post to the same local clock time in the new zone. Only workspace admins can edit it.')]
+#[Description('Replace the posting schedule of a channel: time zone, weekly posting goal and the seven days (day 0 is Sunday) with their posting times: at most 4 unique HH:mm times per day, in the channel time zone. A null posting_schedule clears it. Queued posts whose slot no longer exists are re-placed into the first free slots, and a time zone change moves every queued post to the same local clock time in the new zone. Only workspace admins can edit it.')]
 class UpdatePostingScheduleTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -77,11 +77,11 @@ class UpdatePostingScheduleTool extends Tool
         return [
             'account_id' => $schema->string()->required()->description('The UUID of the connected social account.'),
             'timezone' => $schema->string()->required()->description('IANA time zone of the channel, e.g. America/Sao_Paulo.'),
-            'posting_goal' => $schema->integer()->nullable()->description('Weekly posting goal.'),
+            'posting_goal' => $schema->integer()->nullable()->description('Weekly posting goal, 1 to 28 posts, or null.'),
             'posting_schedule' => $schema->array()->nullable()->items($schema->object([
                 'day' => $schema->integer()->required()->description('0 (Sunday) to 6 (Saturday).'),
                 'enabled' => $schema->boolean()->required(),
-                'times' => $schema->array()->items($schema->string())->required()->description('Local HH:mm times of that day.'),
+                'times' => $schema->array()->items($schema->string())->required()->description('At most 4 unique HH:mm times of that day, in the channel time zone.'),
             ]))->description('Exactly seven days, or null to clear the schedule.'),
         ];
     }
