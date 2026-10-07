@@ -431,12 +431,28 @@ class XPublisher
 
     private function isKnownMedia(string $mediaId): bool
     {
-        return ! $this->getHttpClient()
+        $response = $this->getHttpClient()
             ->get("{$this->baseUrl}/media/upload", [
                 'media_id' => $mediaId,
                 'command' => 'STATUS',
-            ])
-            ->clientError();
+            ]);
+
+        if (in_array($response->status(), [400, 404], true)) {
+            return false;
+        }
+
+        if ($response->serverError()) {
+            throw new PlatformUnavailableException(
+                message: "X returned {$response->status()} checking media {$mediaId}",
+                httpStatus: $response->status(),
+            );
+        }
+
+        if ($response->failed()) {
+            $this->handleApiError($response);
+        }
+
+        return true;
     }
 
     private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
