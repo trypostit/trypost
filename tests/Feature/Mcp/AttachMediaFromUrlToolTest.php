@@ -246,3 +246,28 @@ test('requests the url uncompressed so a compressed bomb cannot expand on disk',
     Http::assertSent(fn ($request) => $request->hasHeader('Accept-Encoding', 'identity'));
     expect(Media::where('mediable_id', $this->workspace->id)->count())->toBe(0);
 });
+
+test('attaches an image from url to a tiktok photo post', function () {
+    Http::fake([
+        'example.com/photo.jpg' => Http::response(
+            file_get_contents(__DIR__.'/../../fixtures/1x1.png'),
+            200,
+            ['Content-Type' => 'image/png'],
+        ),
+    ]);
+
+    $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
+    PostPlatform::factory()->create([
+        'post_id' => $this->post->id, 'social_account_id' => $tiktok->id,
+        'platform' => Platform::TikTok, 'content_type' => ContentType::TikTokPhoto, 'enabled' => true,
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(AttachMediaFromUrlTool::class, [
+            'post_id' => $this->post->id,
+            'urls' => [['url' => 'https://example.com/photo.jpg']],
+        ])
+        ->assertOk();
+
+    expect($this->post->fresh()->media)->toHaveCount(1);
+});

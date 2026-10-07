@@ -40,7 +40,7 @@ test('platform has correct allowed media types', function () {
     expect(Platform::LinkedInPage->allowedMediaTypes())->toContain(MediaType::Image, MediaType::Video, MediaType::Document);
     expect(Platform::X->allowedMediaTypes())->toContain(MediaType::Image, MediaType::Video);
     expect(Platform::X->allowedMediaTypes())->not->toContain(MediaType::Document);
-    expect(Platform::TikTok->allowedMediaTypes())->toBe([MediaType::Video]);
+    expect(Platform::TikTok->allowedMediaTypes())->toBe([MediaType::Image, MediaType::Video]);
     expect(Platform::YouTube->allowedMediaTypes())->toBe([MediaType::Video]);
     expect(Platform::Instagram->allowedMediaTypes())->toContain(MediaType::Image, MediaType::Video);
 });

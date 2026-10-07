@@ -32,7 +32,11 @@ function mediaParityPost(object $test, string $platform = 'linkedin'): Post
     $post = Post::factory()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id]);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $test->workspace->id,
-        'platform' => $platform === 'tiktok' ? Platform::TikTok : Platform::LinkedIn,
+        'platform' => match ($platform) {
+            'tiktok' => Platform::TikTok,
+            'youtube' => Platform::YouTube,
+            default => Platform::LinkedIn,
+        },
     ]);
     PostPlatform::factory()->{$platform}()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
@@ -122,8 +126,8 @@ test('an expired or unknown upload token is refused by both surfaces', function 
 });
 
 test('a media type the enabled network does not accept is refused by both surfaces', function () {
-    $apiPost = mediaParityPost($this, 'tiktok');
-    $mcpPost = mediaParityPost($this, 'tiktok');
+    $apiPost = mediaParityPost($this, 'youtube');
+    $mcpPost = mediaParityPost($this, 'youtube');
     $apiUpload = mediaParityUpload($this);
     $mcpUpload = mediaParityUpload($this);
 
@@ -266,8 +270,8 @@ test('user tags and a video cover frame set through the api update and the mcp u
 });
 
 test('a media type the network does not accept gets the same translated message on both surfaces', function () {
-    $apiPost = mediaParityPost($this, 'tiktok');
-    $mcpPost = mediaParityPost($this, 'tiktok');
+    $apiPost = mediaParityPost($this, 'youtube');
+    $mcpPost = mediaParityPost($this, 'youtube');
     $message = __('posts.errors.media_type_unsupported');
 
     $this->withHeaders(parityApi($this->token))

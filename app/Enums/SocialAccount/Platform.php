@@ -138,7 +138,7 @@ enum Platform: string
         return match ($this) {
             self::LinkedIn, self::LinkedInPage => [MediaType::Image, MediaType::Video, MediaType::Document],
             self::X => [MediaType::Image, MediaType::Video],
-            self::TikTok => [MediaType::Video],
+            self::TikTok => [MediaType::Image, MediaType::Video],
             self::YouTube => [MediaType::Video],
             self::Facebook => [MediaType::Image, MediaType::Video],
             self::Instagram, self::InstagramFacebook => [MediaType::Image, MediaType::Video],

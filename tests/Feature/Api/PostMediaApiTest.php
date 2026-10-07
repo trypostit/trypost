@@ -273,18 +273,18 @@ it('rejects upload of an unsupported mime type', function () {
 });
 
 it('rejects upload when the file type is not supported by enabled platforms', function () {
-    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
+    $youtubeAccount = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 
-    $tiktokOnlyPost = Post::factory()->create([
+    $youtubeOnlyPost = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
 
-    PostPlatform::factory()->tiktok()->create([
-        'post_id' => $tiktokOnlyPost->id,
-        'social_account_id' => $tiktokAccount->id,
+    PostPlatform::factory()->youtube()->create([
+        'post_id' => $youtubeOnlyPost->id,
+        'social_account_id' => $youtubeAccount->id,
         'enabled' => true,
     ]);
 
@@ -294,7 +294,7 @@ it('rejects upload when the file type is not supported by enabled platforms', fu
     );
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken, 'Accept' => 'application/json'])
-        ->post(route('api.posts.store-media', $tiktokOnlyPost), ['media' => $file])
+        ->post(route('api.posts.store-media', $youtubeOnlyPost), ['media' => $file])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media']);
 });
