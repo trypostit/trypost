@@ -227,7 +227,7 @@ class ImportExternalPosts
     private static function sentPostsMatching(SocialAccount $account, AnalyticsPublication $publication): Collection
     {
         $window = (int) config('trypost.external_posts.match_window_minutes');
-        $text = self::normalizedText((string) $publication->excerpt);
+        $text = Str::squish((string) $publication->excerpt);
 
         if ($window < 1 || $text === '' || ! in_array($account->platform, self::PROVISIONAL_ID_PLATFORMS, true)) {
             return new Collection;
@@ -274,7 +274,7 @@ class ImportExternalPosts
      */
     private static function sameText(string $content, string $text, Platform $platform): bool
     {
-        $sent = self::normalizedText(app(ContentSanitizer::class)->displayText($content, $platform));
+        $sent = Str::squish(app(ContentSanitizer::class)->displayText($content, $platform));
 
         if ($sent === '') {
             return false;
@@ -289,11 +289,6 @@ class ImportExternalPosts
         return $truncated !== $text
             && mb_strlen($truncated) >= self::MIN_TRUNCATED_MATCH_LENGTH
             && str_starts_with($sent, $truncated);
-    }
-
-    private static function normalizedText(string $text): string
-    {
-        return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
 
     private static function createPost(SocialAccount $account, AnalyticsPublication $publication): PostPlatform

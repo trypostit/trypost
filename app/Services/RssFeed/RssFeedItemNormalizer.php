@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\RssFeed;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 use Symfony\Component\DomCrawler\Crawler;
 use Symfony\Component\DomCrawler\UriResolver;
 use Throwable;
@@ -30,10 +31,10 @@ final class RssFeedItemNormalizer
         $html = $this->nonEmpty(data_get($raw, 'html'));
         $excerpt = $html !== null
             ? $this->textFromHtml($html)
-            : $this->collapse((string) data_get($raw, 'text', ''));
+            : Str::squish((string) data_get($raw, 'text', ''));
         $excerpt = $excerpt === '' ? null : $this->truncate($excerpt, self::MAX_EXCERPT_LENGTH, '…');
 
-        $title = $this->collapse($this->decode(strip_tags((string) data_get($raw, 'title', ''))));
+        $title = Str::squish($this->decode(strip_tags((string) data_get($raw, 'title', ''))));
 
         if ($title === '' && $excerpt !== null) {
             $title = rtrim(mb_substr($excerpt, 0, self::FALLBACK_TITLE_LENGTH));
@@ -47,7 +48,7 @@ final class RssFeedItemNormalizer
             $title = (string) $url;
         }
 
-        $author = $this->collapse($this->decode(strip_tags((string) data_get($raw, 'author', ''))));
+        $author = Str::squish($this->decode(strip_tags((string) data_get($raw, 'author', ''))));
 
         return new ParsedRssFeedItem(
             guid: $this->nonEmpty(data_get($raw, 'guid')) ?? $url,
@@ -62,7 +63,7 @@ final class RssFeedItemNormalizer
 
     public function feedTitle(?string $title, string $baseUrl): string
     {
-        $title = $this->collapse($this->decode(strip_tags((string) $title)));
+        $title = Str::squish($this->decode(strip_tags((string) $title)));
 
         if ($title === '') {
             $title = (string) parse_url($baseUrl, PHP_URL_HOST);
@@ -153,17 +154,12 @@ final class RssFeedItemNormalizer
         $html = (string) preg_replace('~<(script|style)\b[^>]*>.*?</\1>~is', ' ', $html);
         $html = (string) preg_replace(self::BLOCK_TAGS, ' ', $html);
 
-        return $this->collapse($this->decode(strip_tags($html)));
+        return Str::squish($this->decode(strip_tags($html)));
     }
 
     private function decode(string $value): string
     {
         return html_entity_decode($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    }
-
-    private function collapse(string $value): string
-    {
-        return trim((string) preg_replace('/[\s\x{00A0}]+/u', ' ', $value));
     }
 
     private function truncate(string $value, int $limit, string $end): string
