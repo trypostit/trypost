@@ -20,7 +20,10 @@ class DestinationMetaRules
      */
     public static function rules(): array
     {
-        return self::reKey(PostPlatformMetaRules::rules());
+        return [
+            ...self::reKey(PostPlatformMetaRules::rules()),
+            'destinations.*.meta.thread_replies.*.media.*.url' => ['prohibited'],
+        ];
     }
 
     /**

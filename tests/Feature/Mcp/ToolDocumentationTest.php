@@ -34,6 +34,11 @@ function mcpToolText(string $tool): string
     return json_encode(app($tool)->toArray(), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 }
 
+function mcpToolDescription(string $tool): string
+{
+    return app($tool)->toArray()['description'];
+}
+
 function mcpServerInstructions(): string
 {
     return (new ReflectionClass(TryPostServer::class))->getAttributes(Instructions::class)[0]->newInstance()->value;
@@ -46,7 +51,7 @@ dataset('post writing tools', [
 ]);
 
 test('post writing tools explain how to publish a thread', function (string $tool) {
-    expect(mcpToolText($tool))->toContain('thread_replies')->toContain('X, Bluesky or Mastodon');
+    expect(mcpToolDescription($tool))->toContain('thread_replies')->toContain('X, Bluesky or Mastodon');
 })->with('post writing tools');
 
 test('post writing tools explain that content is html', function (string $tool) {
@@ -157,4 +162,11 @@ test('repurpose tools give real schemas for formats, modes and destinations', fu
 })->with([
     'create-repurpose' => [CreateRepurposeTool::class],
     'update-repurpose' => [UpdateRepurposeTool::class],
+]);
+
+test('media url descriptions give the server limits, pixels included', function (string $tool) {
+    expect(mcpToolText($tool))->toContain('megapixels')->not->toContain('workspace size limits')->not->toContain('workspace-wide');
+})->with([
+    'attach-media-from-url' => [AttachMediaFromUrlTool::class],
+    'create-post' => [CreatePostTool::class],
 ]);

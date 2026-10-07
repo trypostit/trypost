@@ -67,7 +67,7 @@ class UpdateRepurposeTool extends Tool
                 ->items($schema->object(fn (JsonSchema $destination): array => [
                     'social_account_id' => $destination->string()->required()->description('UUID of a connected account of this workspace (not Google Business, not the source account).'),
                     'content_type' => $destination->string()->required()->description('A content type of that account that accepts video (list-content-types-tool).'),
-                    'meta' => $destination->object()->description(PostPlatformMetaRules::documentation()),
+                    'meta' => $destination->object()->description(PostPlatformMetaRules::documentation().' In a repurpose, thread reply media are given by media id only.'),
                 ]))
                 ->description('Replaces the destination list.'),
         ];

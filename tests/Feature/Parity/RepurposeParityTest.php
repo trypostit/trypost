@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
+use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Repurpose\ActivateRepurposeTool;
 use App\Mcp\Tools\Repurpose\CreateRepurposeTool;
@@ -346,4 +347,34 @@ test('the shared repurpose rules validate from an explicit workspace without a r
 
     expect(fn () => RepurposeRequestRules::validate(['source_format' => 'reel'], $this->workspace->id))
         ->toThrow(ValidationException::class);
+});
+
+test('a reply media url in a repurpose destination is refused by the web update, the api and mcp', function () {
+    $x = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X]);
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'source_social_account_id' => $this->instagram->id,
+    ]);
+    $destinations = [[
+        'social_account_id' => $x->id,
+        'content_type' => ContentType::XPost->value,
+        'meta' => ['thread_replies' => [['text' => 'Two', 'media' => [['url' => 'https://example.com/reply.png']]]]],
+    ]];
+    $field = 'destinations.0.meta.thread_replies.0.media.0.url';
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.repurposes.update', $repurpose), ['destinations' => $destinations])
+        ->assertJsonValidationErrors([$field]);
+
+    auth()->forgetGuards();
+    $this->withHeaders(parityApi($this->token))
+        ->putJson(route('api.repurposes.update', $repurpose), ['destinations' => $destinations])
+        ->assertJsonValidationErrors([$field]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(UpdateRepurposeTool::class, ['repurpose_id' => $repurpose->id, 'destinations' => $destinations])
+        ->assertHasErrors();
+
+    expect($repurpose->fresh()->destinations)->toBe([]);
 });
