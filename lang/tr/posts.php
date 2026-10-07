@@ -833,6 +833,9 @@ return [
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
         'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
         'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
+        'youtube' => [
+            'unexpected_response' => 'YouTube beklenmeyen bir hata döndürdü. Lütfen tekrar deneyin.',
+        ],
         'google_business' => [
             'no_location' => 'Bu Google Business Profile hesabında yapılandırılmış bir konum yok. Yeniden bağlayın.',
             'permission_denied' => 'İzin reddedildi. Yeniden bağlanın ve bu konuma erişimi onaylayın.',

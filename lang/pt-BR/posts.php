@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'A publicação excedeu o tempo limite. Tente novamente.',
         'rejected_in_review' => 'O Google recusou este post na revisão. Edite o conteúdo ou a imagem e tente novamente.',
         'review_unconfirmed' => 'O Google nunca confirmou este post. Confira seu Perfil da Empresa e tente novamente.',
+        'youtube' => [
+            'unexpected_response' => 'O YouTube retornou um erro inesperado. Tente novamente.',
+        ],
         'google_business' => [
             'no_location' => 'Esta conta do Google Business Profile não tem um local configurado. Reconecte-a.',
             'permission_denied' => 'Permissão negada. Reconecte e confirme o acesso a este local.',

@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
         'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
         'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
+        'youtube' => [
+            'unexpected_response' => 'YouTube gaf een onverwachte fout. Probeer het opnieuw.',
+        ],
         'google_business' => [
             'no_location' => 'Dit Google Business Profile-account heeft geen locatie ingesteld. Verbind het opnieuw.',
             'permission_denied' => 'Toegang geweigerd. Verbind opnieuw en bevestig toegang tot deze locatie.',

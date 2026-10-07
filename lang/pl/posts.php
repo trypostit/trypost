@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
         'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
+        'youtube' => [
+            'unexpected_response' => 'YouTube zwrócił nieoczekiwany błąd. Spróbuj ponownie.',
+        ],
         'google_business' => [
             'no_location' => 'To konto Google Business Profile nie ma skonfigurowanej lokalizacji. Połącz je ponownie.',
             'permission_denied' => 'Brak uprawnień. Połącz ponownie i potwierdź dostęp do tej lokalizacji.',

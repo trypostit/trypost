@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
@@ -65,6 +66,28 @@ test('unknown reason falls through to Unknown category with original message', f
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
         ->and($exception->userMessage)->toBe('original error message');
+});
+
+test('a Google 5xx is a transient outage, not a failed post', function (int $status, array $errors) {
+    $e = new Exception('<!DOCTYPE html><html lang=en><title>Error 502 (Server Error)!!1</title></html>', $status, null, $errors);
+
+    expect(fn () => YouTubePublishException::fromGoogleException($e))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe($status));
+})->with([
+    '502 html page' => [502, []],
+    '503 backendError' => [503, [['reason' => 'backendError', 'message' => 'Backend Error']]],
+    '500 internalError' => [500, [['reason' => 'internalError', 'message' => 'Internal error']]],
+]);
+
+test('an unmapped failure with an html body never reaches the user message', function () {
+    $e = new Exception('<!DOCTYPE html><html lang=en><p><b>400.</b> That’s an error.</html>', 400);
+
+    $exception = YouTubePublishException::fromGoogleException($e);
+
+    expect($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->userMessage)->toBe(__('posts.errors.youtube.unexpected_response'))
+        ->and($exception->userMessage)->not->toContain('<')
+        ->and($exception->rawResponse)->toContain('<!DOCTYPE html>');
 });
 
 test('platform returns youtube', function () {

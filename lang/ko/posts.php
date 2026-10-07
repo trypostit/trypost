@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
         'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
         'review_unconfirmed' => 'Google가 이 게시물을 확인해 주지 않았습니다. 비즈니스 프로필을 확인한 후 다시 시도하세요.',
+        'youtube' => [
+            'unexpected_response' => 'YouTube에서 예기치 않은 오류가 발생했습니다. 다시 시도해 주세요.',
+        ],
         'google_business' => [
             'no_location' => '이 Google 비즈니스 프로필 계정에 설정된 위치가 없습니다. 다시 연결하세요.',
             'permission_denied' => '권한이 거부되었습니다. 다시 연결하고 이 위치에 대한 액세스를 확인하세요.',

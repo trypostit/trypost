@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',
         'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
         'review_unconfirmed' => 'Google n\'a jamais confirmé ce post. Vérifie ta fiche d\'établissement et réessaie.',
+        'youtube' => [
+            'unexpected_response' => 'YouTube a renvoyé une erreur inattendue. Réessayez.',
+        ],
         'google_business' => [
             'no_location' => 'Ce compte Google Business Profile n\'a aucun établissement configuré. Reconnecte-le.',
             'permission_denied' => 'Autorisation refusée. Reconnecte le compte et confirme l\'accès à cet établissement.',
