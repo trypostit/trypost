@@ -55,8 +55,8 @@ test('post writing tools explain how to publish a thread', function (string $too
     expect(mcpToolDescription($tool))->toContain('thread_replies')->toContain('X, Bluesky or Mastodon');
 })->with('post writing tools');
 
-test('post writing tools explain that content is html', function (string $tool) {
-    expect(mcpToolText($tool))->toContain('<strong>')->toContain('&lt;');
+test('post writing tools say content is plain text', function (string $tool) {
+    expect(mcpToolText($tool))->toContain('plain text')->not->toContain('<strong>')->not->toContain('or HTML');
 })->with('post writing tools');
 
 test('tools that schedule or publish list the required meta', function (string $tool) {
