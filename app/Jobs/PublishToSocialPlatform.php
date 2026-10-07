@@ -12,6 +12,7 @@ use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -395,9 +396,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     /**
      * Every caught publish failure is logged with the post/platform ids that
-     * Nightwatch's exception record lacks. Only failures the publishers could
-     * not classify reach Nightwatch: an expired token or a categorized network
-     * rejection already reaches the user with its own message.
+     * Nightwatch's exception record lacks. Failures the user has to act on (an
+     * expired token, content, format, permission or rate limit rejections) are
+     * not reported; server errors, unknown failures and a content limit missed
+     * at save time can be ours, so they reach Nightwatch.
      *
      * @param  array<string, mixed>  $context
      */
@@ -414,20 +416,22 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             'media' => $this->mediaSnapshot($this->postPlatform),
         ]);
 
-        if ($this->isClassifiedFailure($e)) {
+        if ($this->isUserActionableFailure($e)) {
             return;
         }
 
         report($e);
     }
 
-    private function isClassifiedFailure(Throwable $e): bool
+    private function isUserActionableFailure(Throwable $e): bool
     {
         if ($e instanceof TokenExpiredException) {
             return true;
         }
 
-        return $e instanceof SocialPublishException && $e->category !== ErrorCategory::Unknown;
+        return $e instanceof SocialPublishException
+            && ! $e instanceof ContentLimitException
+            && in_array($e->category, [ErrorCategory::ContentPolicy, ErrorCategory::MediaFormat, ErrorCategory::Permission, ErrorCategory::RateLimit], true);
     }
 
     /**

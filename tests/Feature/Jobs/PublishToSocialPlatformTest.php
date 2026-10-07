@@ -13,9 +13,11 @@ use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\LinkedInPublishException;
+use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
@@ -267,12 +269,6 @@ test('publish logs but does not report a categorized publish exception', functio
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 })->with([
-    'server error' => fn () => new LinkedInPublishException(
-        userMessage: 'LinkedIn could not process the media.',
-        category: ErrorCategory::ServerError,
-        platformErrorCode: 'media-processing-timeout',
-        rawResponse: '{"status":"ERROR"}',
-    ),
     'content policy' => fn () => new LinkedInPublishException(
         userMessage: 'LinkedIn rejected this post.',
         category: ErrorCategory::ContentPolicy,
@@ -281,6 +277,34 @@ test('publish logs but does not report a categorized publish exception', functio
         userMessage: 'Unsupported video format.',
         category: ErrorCategory::MediaFormat,
     ),
+    'permission' => fn () => new LinkedInPublishException(
+        userMessage: 'Not authorized to post to this account.',
+        category: ErrorCategory::Permission,
+    ),
+]);
+
+test('publish reports a failure that can be ours, even when categorized', function (SocialPublishException $exception) {
+    Event::fake();
+    Exceptions::fake();
+    Log::spy();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow($exception);
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertReported($exception::class);
+    expect($this->postPlatform->refresh()->status)->toBe(PlatformStatus::Failed);
+})->with([
+    'server error' => fn () => new LinkedInPublishException(
+        userMessage: 'LinkedIn could not process the media.',
+        category: ErrorCategory::ServerError,
+        platformErrorCode: 'media-processing-timeout',
+        rawResponse: '{"status":"ERROR"}',
+    ),
+    'content over the limit at publish time' => fn () => ContentLimitException::exceeds(Platform::LinkedIn, 3000, 3200),
 ]);
 
 test('publish reports unexpected errors so Nightwatch sees them', function () {
