@@ -419,6 +419,14 @@ class FacebookPublisher
             Log::error('Facebook video upload failed', [
                 'body' => $this->redactResponseBody($response->body()),
             ]);
+
+            if (FacebookPublishException::isRetryableUpload($response)) {
+                throw new PlatformUnavailableException(
+                    message: "Facebook video upload failed with {$response->status()}",
+                    httpStatus: $response->status(),
+                );
+            }
+
             $this->handleApiError($response);
         }
 

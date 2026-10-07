@@ -439,6 +439,48 @@ test('facebook publisher waits for meta to fetch the video before finishing', fu
     ]);
 })->with('facebook resumable video formats');
 
+test('facebook publisher retries a rupload failure meta documents as retryable', function (int $status, array $body) {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
+
+    Http::fake([
+        ...facebookVideoUploadFakes('video_reels'),
+        "{$rupload}/*" => Http::response($body, $status),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+
+    Http::assertNotSent(fn ($request) => ($request['upload_phase'] ?? null) === 'finish');
+})->with([
+    'processing failed' => [400, ['debug_info' => ['retriable' => false, 'type' => 'ProcessingFailedError', 'message' => 'Request processing failed']]],
+    'retriable flag' => [400, ['debug_info' => ['retriable' => true, 'type' => 'OtherError', 'message' => 'Temporary failure']]],
+    'server error' => [503, ['debug_info' => ['retriable' => false, 'type' => 'ServiceUnavailable', 'message' => 'Service unavailable']]],
+]);
+
+test('facebook publisher shows the rupload reason instead of an unknown error', function () {
+    $this->postPlatform->update(['content_type' => ContentType::FacebookReel]);
+    $this->post->update(['media' => facebookVideoMedia()]);
+
+    $rupload = 'https://'.config('trypost.platforms.facebook.rupload_host');
+
+    Http::fake([
+        ...facebookVideoUploadFakes('video_reels'),
+        "{$rupload}/*" => Http::response(['debug_info' => [
+            'retriable' => false,
+            'type' => 'InvalidFileError',
+            'message' => 'The video file could not be read from file_url.',
+        ]], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(fn (FacebookPublishException $exception) => expect($exception->userMessage)
+            ->toBe('The video file could not be read from file_url.')
+            ->and($exception->platformErrorCode)->toBe('InvalidFileError'));
+});
+
 test('facebook publisher fails when start does not return upload_url', function (ContentType $contentType, string $edge) {
     $this->postPlatform->update(['content_type' => $contentType]);
     $this->post->update(['media' => facebookVideoMedia()]);

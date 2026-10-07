@@ -23,6 +23,8 @@ class FacebookPublishException extends SocialPublishException
      */
     private const string FACEBOOK_URL_SUBCODE = '1609008';
 
+    private const string RETRYABLE_UPLOAD_ERROR = 'ProcessingFailedError';
+
     public function __construct(
         string $userMessage,
         ErrorCategory $category,
@@ -33,11 +35,32 @@ class FacebookPublishException extends SocialPublishException
         parent::__construct($userMessage, $category, $platformErrorCode, $rawResponse);
     }
 
+    /**
+     * A resumable upload (rupload) failure Meta asks to retry: a 5xx, a
+     * failure flagged retriable, or ProcessingFailedError ("Please try
+     * uploading again").
+     */
+    public static function isRetryableUpload(Response $response): bool
+    {
+        return $response->serverError()
+            || data_get($response->json(), 'debug_info.retriable') === true
+            || data_get($response->json(), 'debug_info.type') === self::RETRYABLE_UPLOAD_ERROR;
+    }
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
         $body = $response->json();
         $rawResponse = $response->body();
+
+        if (data_get($body, 'error') === null && filled(data_get($body, 'debug_info.message'))) {
+            return new static(
+                userMessage: (string) data_get($body, 'debug_info.message'),
+                category: ErrorCategory::Unknown,
+                platformErrorCode: filled(data_get($body, 'debug_info.type')) ? (string) data_get($body, 'debug_info.type') : null,
+                rawResponse: $rawResponse,
+            );
+        }
 
         $errorCode = data_get($body, 'error.code');
         $errorSubcode = data_get($body, 'error.error_subcode');
