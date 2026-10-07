@@ -104,12 +104,12 @@ jobs:
         run: '[ "${{ needs.tests.result }}" = "success" ]'
 
   browser:
-    name: Browser (${{ matrix.shard }}/5)
+    name: Browser (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4, 5]
+        shard: [1, 2, 3]
 
     services:
       postgres:
@@ -157,7 +157,7 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports['5432'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
-        run: php artisan test tests/Browser --compact --shard=${{ matrix.shard }}/5
+        run: ./vendor/bin/pest tests/Browser --compact --parallel --processes=4 --shard=${{ matrix.shard }}/3
 
       - name: Upload Playwright artifacts
         if: failure()
