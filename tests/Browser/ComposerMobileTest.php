@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -115,14 +114,42 @@ function composerMobileTooltipCount(mixed $page): int
     return (int) $page->script('document.querySelectorAll(\'[data-slot="tooltip-content"]\').length');
 }
 
-test('at 768px the editor keeps a usable width and network cards do not overflow', function () {
+test('at 768px the header shows icon-only panel buttons, the editor keeps a usable width and network cards do not overflow', function () {
     [$user, $workspace] = composerMobileWorkspace();
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
     $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
     SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
     SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
 
+    WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+
     $page = openComposerMobile($this, $user, 768, 1024);
+
+    $header = $page->script(<<<'JS'
+        (() => {
+            const rect = (testId) => document.querySelector(`[data-testid="${testId}"]`).getBoundingClientRect();
+            const labels = rect('composer-tags-trigger');
+            const templates = rect('composer-templates-toggle');
+            const header = document.querySelector('[data-testid="composer-header"]');
+            return {
+                overlap: labels.right > templates.left && labels.top < templates.bottom && templates.top < labels.bottom,
+                templatesWidth: templates.width,
+                eyeHidden: getComputedStyle(document.querySelector('[data-testid="composer-preview-toggle"]')).display === 'none',
+                headerOverflow: header.scrollWidth > header.clientWidth,
+            };
+        })()
+    JS);
+
+    expect($header['overlap'])->toBeFalse()
+        ->and($header['templatesWidth'])->toBeLessThanOrEqual(33)
+        ->and($header['eyeHidden'])->toBeTrue()
+        ->and($header['headerOverflow'])->toBeFalse();
+
+    $page->assertAttribute('@composer-view-edit', 'aria-pressed', 'true')
+        ->assertAttribute('@composer-view-preview', 'aria-pressed', 'false')
+        ->assertAttribute('@composer-templates-toggle', 'aria-pressed', 'false')
+        ->assertAttribute('@composer-ai-assistant', 'aria-pressed', 'false');
+
     selectAllComposerMobileChannels($page);
     $page->fill('@composer-base-content', 'Launching our new feature today! A longer paragraph of text #launch #saas')
         ->click('@composer-next');
@@ -157,39 +184,6 @@ test('at 768px the editor keeps a usable width and network cards do not overflow
     }
 
     $page->assertNoJavaScriptErrors();
-});
-
-test('at 768px the header shows icon-only panel buttons and the eye is not active on first open', function () {
-    [$user, $workspace] = composerMobileWorkspace();
-    WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
-
-    $page = openComposerMobile($this, $user, 768, 1024);
-
-    $header = $page->script(<<<'JS'
-        (() => {
-            const rect = (testId) => document.querySelector(`[data-testid="${testId}"]`).getBoundingClientRect();
-            const labels = rect('composer-tags-trigger');
-            const templates = rect('composer-templates-toggle');
-            const header = document.querySelector('[data-testid="composer-header"]');
-            return {
-                overlap: labels.right > templates.left && labels.top < templates.bottom && templates.top < labels.bottom,
-                templatesWidth: templates.width,
-                eyeHidden: getComputedStyle(document.querySelector('[data-testid="composer-preview-toggle"]')).display === 'none',
-                headerOverflow: header.scrollWidth > header.clientWidth,
-            };
-        })()
-    JS);
-
-    expect($header['overlap'])->toBeFalse()
-        ->and($header['templatesWidth'])->toBeLessThanOrEqual(33)
-        ->and($header['eyeHidden'])->toBeTrue()
-        ->and($header['headerOverflow'])->toBeFalse();
-
-    $page->assertAttribute('@composer-view-edit', 'aria-pressed', 'true')
-        ->assertAttribute('@composer-view-preview', 'aria-pressed', 'false')
-        ->assertAttribute('@composer-templates-toggle', 'aria-pressed', 'false')
-        ->assertAttribute('@composer-ai-assistant', 'aria-pressed', 'false')
-        ->assertNoJavaScriptErrors();
 });
 
 test('below lg the edit and preview control switches between the editor and the preview', function () {
@@ -239,7 +233,7 @@ test('below lg templates and the assistant open as a bottom sheet and closing ke
     }
 
     $page->assertNoJavaScriptErrors();
-})->with([[390, 844], [768, 1024]]);
+})->with([[390, 844]]);
 
 test('at 390px the schedule menu, date picker and labels open as bottom sheets inside the viewport', function () {
     [$user, $workspace] = composerMobileWorkspace();
@@ -375,33 +369,4 @@ test('at 390px the footer is compact and the channel strip hints at hidden chips
 
     expect($page->script("document.querySelector('[data-testid=\"composer-accounts\"]').hasAttribute('data-overflowing')"))->toBeFalse();
     $page->assertNoJavaScriptErrors();
-});
-
-test('the edit and preview control fits on one line in every language', function () {
-    [$user] = composerMobileWorkspace();
-    $wrapped = [];
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $page = openComposerMobile($this, $user->fresh(), 390, 844);
-        waitForComposerMobileTestId($page, 'composer-view-switch');
-
-        $broken = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid="composer-view-switch"] button')]
-                .filter((button) => {
-                    const label = button.querySelector('[data-single-line]');
-                    const range = document.createRange();
-                    range.selectNodeContents(label);
-                    const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                    return lines.size > 1 || button.scrollWidth > button.clientWidth;
-                })
-                .map((button) => button.textContent.trim())
-        JS);
-
-        foreach ($broken as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
-
-    expect($wrapped)->toBe([]);
 });

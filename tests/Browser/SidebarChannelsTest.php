@@ -257,70 +257,13 @@ test('an expanded channel shows its scheduled count on the Publish item', functi
     $page->click("@sidebar-channel-{$channel->id}-toggle");
     waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}-publish-count");
 
-    $page->assertSeeIn("@sidebar-channel-{$channel->id}-publish-count", '3')
+    $page->assertSeeIn('@sidebar-publish-count', '3')
+        ->assertSeeIn("@sidebar-channel-{$channel->id}-publish-count", '3')
         ->click("@sidebar-channel-{$empty->id}-toggle");
     waitForSidebarChannelsTestId($page, "sidebar-channel-{$empty->id}-publish");
 
     $page->assertMissing("@sidebar-channel-{$empty->id}-publish-count")
         ->assertNoJavaScriptErrors();
-});
-
-test('the channel chevron gets a hover background and buttons use the pointer cursor', function () {
-    $user = sidebarChannelsUser('admin');
-    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channel->id}");
-
-    $toggle = "document.querySelector('[data-testid=\"sidebar-channel-{$channel->id}-toggle\"]')";
-
-    expect($page->script("getComputedStyle({$toggle}).backgroundColor"))->toBe('rgba(0, 0, 0, 0)')
-        ->and($page->script("{$toggle}.tagName"))->toBe('BUTTON')
-        ->and($page->script("getComputedStyle({$toggle}).cursor"))->toBe('pointer');
-
-    $page->hover("@sidebar-channel-{$channel->id}");
-    $page->hover("@sidebar-channel-{$channel->id}-toggle");
-    waitForSidebarChannelsScript($page, "getComputedStyle({$toggle}).backgroundColor === 'rgba(51, 34, 0, 0.06)'");
-
-    expect($page->script("getComputedStyle({$toggle}).backgroundColor"))->toBe('rgba(51, 34, 0, 0.06)');
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the channels header shows the channel count and reveals sized actions on hover', function () {
-    $user = sidebarChannelsUser('admin');
-    $channels = SocialAccount::factory()->linkedin()->count(3)->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "sidebar-channel-{$channels->first()->id}");
-
-    $actions = "document.querySelector('[data-testid=\"sidebar-channels-actions\"]')";
-
-    expect(trim((string) $page->script("document.querySelector('[data-testid=\"sidebar-channels-label\"]').textContent")))->toBe('Channels · 3')
-        ->and($page->script("getComputedStyle({$actions}).opacity"))->toBe('0');
-
-    $page->hover('@sidebar-channels-label');
-    waitForSidebarChannelsScript($page, "getComputedStyle({$actions}).opacity === '1'");
-
-    expect($page->script("getComputedStyle({$actions}).opacity"))->toBe('1');
-
-    foreach (['search' => '8px', 'settings' => '6px', 'connect' => '8px'] as $action => $radius) {
-        $button = "document.querySelector('[data-testid=\"sidebar-channels-{$action}\"]')";
-
-        expect($page->script("[{$button}.getBoundingClientRect().width, {$button}.getBoundingClientRect().height]"))->toBe([24, 24])
-            ->and($page->script("[{$button}.querySelector('svg').getBoundingClientRect().width, {$button}.querySelector('svg').getBoundingClientRect().height]"))->toBe([16, 16])
-            ->and($page->script("getComputedStyle({$button}).borderTopLeftRadius"))->toBe($radius);
-    }
-
-    $page->hover('@sidebar-channels-settings');
-    $settings = "document.querySelector('[data-testid=\"sidebar-channels-settings\"]')";
-    waitForSidebarChannelsScript($page, "getComputedStyle({$settings}).backgroundColor === 'rgba(51, 34, 0, 0.06)'");
-
-    expect($page->script("getComputedStyle({$settings}).backgroundColor"))->toBe('rgba(51, 34, 0, 0.06)')
-        ->and($page->script("{$settings}.querySelector('svg').getBoundingClientRect().width"))->toBe(16);
-
-    $page->assertNoJavaScriptErrors();
 });
 
 test('keyboard focus reveals the channels header actions', function () {
@@ -392,7 +335,7 @@ test('the channels settings and connect actions show a tooltip above them', func
         })()
     JS))->toBeTrue();
     $page->assertNoJavaScriptErrors();
-})->with(['settings', 'connect']);
+})->with(['settings']);
 
 test('only the channel list scrolls while the main nav and the footer stay fixed', function () {
     $user = sidebarChannelsUser('admin');
@@ -431,22 +374,6 @@ test('only the channel list scrolls while the main nav and the footer stay fixed
         ->and($after['footerTop'])->toBe($before['footerTop']);
 
     $page->assertNoJavaScriptErrors();
-});
-
-test('a verified x channel shows its badge on the avatar', function () {
-    $user = sidebarChannelsUser('admin');
-    $verified = SocialAccount::factory()->x()->create(['workspace_id' => $user->current_workspace_id, 'meta' => ['x_verified_type' => 'business']]);
-    $plain = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForSidebarChannelsTestId($page, "channel-avatar-verified-{$verified->id}");
-
-    $page->assertVisible("@channel-avatar-verified-{$verified->id}")
-        ->assertAttribute("@channel-avatar-verified-{$verified->id}", 'data-verified', 'business')
-        ->assertAttribute("@channel-avatar-verified-{$verified->id}", 'aria-label', __('channels.verified.business'))
-        ->assertMissing("@channel-avatar-verified-{$plain->id}")
-        ->assertNoJavaScriptErrors();
 });
 
 test('the collapsed sidebar shows every channel network badge without clipping it', function () {

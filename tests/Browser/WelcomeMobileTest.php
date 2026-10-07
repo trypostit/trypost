@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\User\Goal;
-use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Models\SocialAccount;
@@ -114,78 +113,41 @@ function welcomeMobileContinueFits(mixed $page, string $testId, string $optionPr
     JS);
 }
 
-test('the welcome header fits a phone in every language on the persona step', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = welcomeMobileOwner();
-    $this->actingAs($user);
-
-    $failures = [];
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-
-        $page = visit(route('app.welcome.persona'))->resize(390, 844);
-        waitForWelcomeMobileTestId($page, 'theme-toggle-cycle');
-        waitForWelcomeMobileTestId($page, 'welcome-step-persona');
-
-        $result = welcomeMobileHeaderProblems($page);
-
-        foreach ($result['problems'] as $problem) {
-            $failures[] = "{$locale->value}: {$problem}";
-        }
-
-        if (! $result['stepsAboveTitle']) {
-            $failures[] = "{$locale->value}: step dots are not centered above the title";
-        }
-    }
-
-    expect($failures)->toBe([]);
-});
-
-test('the welcome header fits a phone on the goals and plan steps', function (string $route, array $attributes) {
+test('the welcome header fits a phone and the continue button stays on screen', function (string $route, array $attributes, ?string $continue, ?string $optionPrefix, bool $hasBack) {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMobileOwner($attributes));
 
     $page = visit(route($route))->resize(390, 844);
     waitForWelcomeMobileTestId($page, 'theme-toggle-cycle');
-    waitForWelcomeMobileTestId($page, 'welcome-back');
+    waitForWelcomeMobileTestId($page, $hasBack ? 'welcome-back' : 'welcome-step-persona');
 
     $result = welcomeMobileHeaderProblems($page);
 
     expect($result['problems'])->toBe([])
         ->and($result['stepsAboveTitle'])->toBeTrue();
 
-    $page->assertVisible('@welcome-back')
-        ->assertMissing('@theme-toggle')
+    if ($continue !== null) {
+        $fits = welcomeMobileContinueFits($page, $continue, $optionPrefix);
+
+        expect($fits['visible'])->toBeTrue()
+            ->and($fits['lastClear'])->toBeTrue();
+    }
+
+    if ($hasBack) {
+        $page->assertVisible('@welcome-back');
+    }
+
+    $page->assertMissing('@theme-toggle')
         ->assertNoJavaScriptErrors();
 })->with([
-    'goals' => ['app.welcome.goals', ['persona' => Persona::Agency->value]],
+    'persona' => ['app.welcome.persona', [], 'welcome-persona-continue', 'welcome-persona-', false],
+    'goals' => ['app.welcome.goals', ['persona' => Persona::Agency->value], 'welcome-goals-continue', 'welcome-goal-', true],
     'plan' => ['app.welcome.plan', [
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
         'referral_source' => ReferralSource::ProductHunt->value,
-    ]],
-]);
-
-test('the continue button stays on screen on a phone', function (string $route, array $attributes, string $continue, string $optionPrefix) {
-    config(['trypost.self_hosted' => false]);
-
-    $this->actingAs(welcomeMobileOwner($attributes));
-
-    $page = visit(route($route))->resize(390, 844);
-    waitForWelcomeMobileTestId($page, $continue);
-
-    $result = welcomeMobileContinueFits($page, $continue, $optionPrefix);
-
-    expect($result['visible'])->toBeTrue()
-        ->and($result['lastClear'])->toBeTrue();
-
-    $page->assertNoJavaScriptErrors();
-})->with([
-    'persona' => ['app.welcome.persona', [], 'welcome-persona-continue', 'welcome-persona-'],
-    'goals' => ['app.welcome.goals', ['persona' => Persona::Agency->value], 'welcome-goals-continue', 'welcome-goal-'],
+    ], null, null, true],
 ]);
 
 test('the plan step lists the features once on a phone and per plan on desktop', function () {

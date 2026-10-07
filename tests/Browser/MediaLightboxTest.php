@@ -153,6 +153,15 @@ test('five images open at the clicked one and move with the buttons and arrow ke
     $page->assertPresent("@post-thumbnail-more-{$post->id}")
         ->assertNotPresent("@post-thumbnail-{$post->id}-4");
 
+    $expandOpacity = "getComputedStyle(document.querySelector('[data-testid=\"post-thumbnail-expand-{$post->id}-1\"]')).opacity";
+
+    expect($page->script($expandOpacity))->toBe('0');
+
+    $page->hover("@post-thumbnail-{$post->id}-1");
+    waitForMediaLightboxCondition($page, "{$expandOpacity} === '1'");
+
+    expect($page->script($expandOpacity))->toBe('1');
+
     $page->click("@post-thumbnail-{$post->id}-1");
     waitForMediaLightboxTestId($page, 'media-lightbox-counter');
 
@@ -190,24 +199,12 @@ test('five images open at the clicked one and move with the buttons and arrow ke
 
     expect(mediaLightboxCounter($page))->toBe('5 / 5')
         ->and(mediaLightboxImageLabel($page))->toBe('5');
-    $page->assertNotPresent("@post-details-{$post->id}")
-        ->assertNoJavaScriptErrors();
-});
-
-test('the thumbnail strip jumps to the clicked item and marks it active', function () {
-    [$user, $post] = mediaLightboxSetup(array_map(mediaLightboxImage(...), range(1, 5)));
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-0");
-
-    $page->click("@post-thumbnail-{$post->id}-0");
-    waitForMediaLightboxTestId($page, 'media-lightbox-thumbnails');
+    $page->assertNotPresent("@post-details-{$post->id}");
 
     $active = "[...document.querySelectorAll('[data-testid^=\"media-lightbox-thumbnail-\"]')].map((thumb) => thumb.dataset.active)";
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"media-lightbox-thumbnail-\"]').length"))->toBe(5)
-        ->and($page->script($active))->toBe(['true', 'false', 'false', 'false', 'false']);
+        ->and($page->script($active))->toBe(['false', 'false', 'false', 'false', 'true']);
 
     $page->click('@media-lightbox-thumbnail-3');
     waitForMediaLightboxCondition($page, "document.querySelector('[data-testid=\"media-lightbox-counter\"]').textContent.trim() === '4 / 5'");
@@ -235,76 +232,6 @@ test('the thumbnail strip jumps to the clicked item and marks it active', functi
     JS);
 
     expect($layout)->toBe(['imageAboveStrip' => true, 'zoomAboveStrip' => true, 'counterOnTop' => true, 'thumbSize' => 80]);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('a video plays in the lightbox', function () {
-    [$user, $post] = mediaLightboxSetup([mediaLightboxImage(1), mediaLightboxVideo()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-1");
-
-    $page->click("@post-thumbnail-{$post->id}-1");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
-
-    expect(mediaLightboxCounter($page))->toBe('2 / 2')
-        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]')?.tagName"))->toBe('VIDEO')
-        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]').getAttribute('src')"))->toBe('https://cdn.example.test/clip.mp4')
-        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]').controls"))->toBeTrue();
-    $page->assertNotPresent('@media-lightbox-image')
-        ->assertNotPresent('@media-lightbox-zoom-in')
-        ->assertNoJavaScriptErrors();
-});
-
-test('hovering a thumbnail shows the expand icon', function () {
-    [$user, $post] = mediaLightboxSetup([mediaLightboxImage(1)]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-0");
-
-    $opacity = "getComputedStyle(document.querySelector('[data-testid=\"post-thumbnail-expand-{$post->id}-0\"]')).opacity";
-
-    expect($page->script($opacity))->toBe('0');
-
-    $page->hover("@post-thumbnail-{$post->id}-0");
-    waitForMediaLightboxCondition($page, "{$opacity} === '1'");
-
-    expect($page->script($opacity))->toBe('1');
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the details dialog media strip opens the same lightbox', function () {
-    [$user, $post] = mediaLightboxSetup(array_map(mediaLightboxImage(...), range(1, 3)));
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['post' => $post->id]));
-    waitForMediaLightboxTestId($page, "post-details-media-item-{$post->id}-2");
-
-    $page->click("@post-details-media-item-{$post->id}-2");
-    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
-
-    expect(mediaLightboxCounter($page))->toBe('3 / 3')
-        ->and(mediaLightboxImageLabel($page))->toBe('3');
-
-    $page->keys('@media-lightbox', 'Escape');
-    waitForMediaLightboxGone($page);
-
-    $page->assertNotPresent('@media-lightbox')
-        ->assertVisible("@post-details-{$post->id}")
-        ->assertNoJavaScriptErrors();
-});
-
-test('the zoom buttons scale the image', function () {
-    [$user, $post] = mediaLightboxSetup([mediaLightboxImage(1)]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-0");
-
-    $page->click("@post-thumbnail-{$post->id}-0");
-    waitForMediaLightboxTestId($page, 'media-lightbox-image');
 
     $scale = "new DOMMatrix(getComputedStyle(document.querySelector('[data-testid=\"media-lightbox-image\"]')).transform).a";
 
@@ -329,5 +256,45 @@ test('the zoom buttons scale the image', function () {
 
     expect($page->script($scale))->toEqual(2.5);
     $page->assertVisible('@media-lightbox')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a video plays in the lightbox', function () {
+    [$user, $post] = mediaLightboxSetup([mediaLightboxImage(1), mediaLightboxVideo()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'sent']));
+    waitForMediaLightboxTestId($page, "post-thumbnail-{$post->id}-1");
+
+    $page->click("@post-thumbnail-{$post->id}-1");
+    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+
+    expect(mediaLightboxCounter($page))->toBe('2 / 2')
+        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]')?.tagName"))->toBe('VIDEO')
+        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]').getAttribute('src')"))->toBe('https://cdn.example.test/clip.mp4')
+        ->and($page->script("document.querySelector('[data-testid=\"media-lightbox-video\"]').controls"))->toBeTrue();
+    $page->assertNotPresent('@media-lightbox-image')
+        ->assertNotPresent('@media-lightbox-zoom-in')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the details dialog media strip opens the same lightbox', function () {
+    [$user, $post] = mediaLightboxSetup(array_map(mediaLightboxImage(...), range(1, 3)));
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['post' => $post->id]));
+    waitForMediaLightboxTestId($page, "post-details-media-item-{$post->id}-2");
+
+    $page->click("@post-details-media-item-{$post->id}-2");
+    waitForMediaLightboxTestId($page, 'media-lightbox-counter');
+
+    expect(mediaLightboxCounter($page))->toBe('3 / 3')
+        ->and(mediaLightboxImageLabel($page))->toBe('3');
+
+    $page->keys('@media-lightbox', 'Escape');
+    waitForMediaLightboxGone($page);
+
+    $page->assertNotPresent('@media-lightbox')
+        ->assertVisible("@post-details-{$post->id}")
         ->assertNoJavaScriptErrors();
 });

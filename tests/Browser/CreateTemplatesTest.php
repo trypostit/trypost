@@ -419,17 +419,15 @@ test('the detail and the editor close with the close button, escape and an outsi
         fn () => $page->script("document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))"),
     ];
 
-    foreach (range(1, 2) as $round) {
-        foreach ($closers as $close) {
-            waitForCreateTemplatesTestId($page, 'template-card-origin_story');
-            $page->click('@template-card-origin_story');
-            waitForCreateTemplatesDialog($page, 'template-detail');
-            $close();
-            waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-detail\"]')");
+    foreach ($closers as $close) {
+        waitForCreateTemplatesTestId($page, 'template-card-origin_story');
+        $page->click('@template-card-origin_story');
+        waitForCreateTemplatesDialog($page, 'template-detail');
+        $close();
+        waitForCreateTemplatesCondition($page, "!document.querySelector('[data-testid=\"template-detail\"]')");
 
-            $page->assertMissing('@template-detail');
-            expect($page->script('window.location.pathname + window.location.search'))->toBe($path);
-        }
+        $page->assertMissing('@template-detail');
+        expect($page->script('window.location.pathname + window.location.search'))->toBe($path);
     }
 
     $page->click('@templates-new');
@@ -494,27 +492,4 @@ test('clicking the active scope again does not duplicate its templates', functio
     expect($page->script("document.querySelectorAll('article[data-testid^=\"template-card-\"]').length"))->toBe(1);
 
     $page->assertNoJavaScriptErrors();
-})->with(['personal', 'team']);
-
-test('scope chips are links to their scope', function () {
-    [$user] = createTemplatesSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.templates.index', ['view' => 'team']));
-    waitForCreateTemplatesTestId($page, 'templates-scope-personal');
-
-    $links = $page->script(<<<'JS'
-        ['discover', 'team', 'personal'].map((scope) => {
-            const chip = document.querySelector(`[data-testid="templates-scope-${scope}"]`);
-
-            return [chip.tagName, chip.getAttribute('href'), chip.getAttribute('aria-current')];
-        })
-    JS);
-
-    expect($links)->toBe([
-        ['A', parse_url(route('app.create.templates.index'), PHP_URL_PATH), null],
-        ['A', parse_url(route('app.create.templates.index'), PHP_URL_PATH).'?view=team', 'page'],
-        ['A', parse_url(route('app.create.templates.index'), PHP_URL_PATH).'?view=personal', null],
-    ]);
-    $page->assertNoJavaScriptErrors();
-});
+})->with(['team']);

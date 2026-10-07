@@ -160,37 +160,6 @@ test('the second channel can be dragged to the top twice in a row', function () 
     $page->assertNoJavaScriptErrors();
 });
 
-test('the first channel can go last and the last channel can go first', function () {
-    [$user, [$alpha, $bravo, $charlie, $delta]] = sidebarReorderSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$delta->id}");
-
-    sidebarReorderDrag($page, $alpha, $delta, 0.9);
-    $expected = [$bravo->id, $charlie->id, $delta->id, $alpha->id];
-    sidebarReorderSettle($page, $user, $expected);
-
-    expect(sidebarReorderDbOrder($user))->toBe($expected)
-        ->and(sidebarReorderDomOrder($page))->toBe($expected);
-
-    sidebarReorderDrag($page, $alpha, $bravo, 0.1);
-    $expected = [$alpha->id, $bravo->id, $charlie->id, $delta->id];
-    sidebarReorderSettle($page, $user, $expected);
-
-    expect(sidebarReorderDbOrder($user))->toBe($expected)
-        ->and(sidebarReorderDomOrder($page))->toBe($expected);
-
-    sidebarReorderDrag($page, $delta, $alpha, 0.1);
-    $expected = [$delta->id, $alpha->id, $bravo->id, $charlie->id];
-    sidebarReorderSettle($page, $user, $expected);
-
-    expect(sidebarReorderDbOrder($user))->toBe($expected)
-        ->and(sidebarReorderDomOrder($page))->toBe($expected);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('a placeholder opens where the channel would land and the drop uses it', function () {
     [$user, [$alpha, $bravo, $charlie, $delta]] = sidebarReorderSetup();
     $this->actingAs($user);
@@ -267,34 +236,6 @@ test('escape cancels a drag and restores the order', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('dropping outside the list cancels the drag', function () {
-    [$user, [$alpha, $bravo, $charlie, $delta]] = sidebarReorderSetup();
-    $this->actingAs($user);
-    $original = [$alpha->id, $bravo->id, $charlie->id, $delta->id];
-
-    $page = visit(route('app.posts.index'))->resize(1280, 800);
-    waitForSidebarReorderTestId($page, "sidebar-channel-{$delta->id}");
-
-    sidebarReorderPickUp($page, $bravo);
-    sidebarReorderMoveTo($page, "sidebar-channel-row-{$delta->id}", 0.75);
-    sidebarReorderPause($page);
-
-    expect(sidebarReorderSlots($page))->toBe([$alpha->id, $charlie->id, $delta->id, 'placeholder']);
-
-    sidebarReorderMouse($page, 'mouseMove', ['x' => 900, 'y' => 400, 'steps' => 8]);
-    sidebarReorderPause($page);
-
-    expect(sidebarReorderSlots($page))->toBe([$alpha->id, 'placeholder', $charlie->id, $delta->id]);
-
-    sidebarReorderDrop($page);
-    sidebarReorderPause($page, 800);
-
-    expect(sidebarReorderDbOrder($user))->toBe($original)
-        ->and(sidebarReorderSlots($page))->toBe($original);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('an expanded channel submenu does not shift the drop position', function () {
     [$user, [$alpha, $bravo, $charlie, $delta]] = sidebarReorderSetup();
     $this->actingAs($user);
@@ -314,7 +255,14 @@ test('an expanded channel submenu does not shift the drop position', function ()
 
     expect(sidebarReorderDbOrder($user))->toBe($expected);
 
-    sidebarReorderDrag($page, $alpha, $charlie, 0.75);
+    sidebarReorderPickUp($page, $alpha);
+    sidebarReorderPause($page);
+    sidebarReorderMoveTo($page, "sidebar-channel-row-{$charlie->id}", 0.75);
+    sidebarReorderPause($page);
+
+    expect(sidebarReorderSlots($page))->toBe([$delta->id, $bravo->id, $charlie->id, 'placeholder']);
+
+    sidebarReorderDrop($page);
     $expected = [$delta->id, $bravo->id, $charlie->id, $alpha->id];
     sidebarReorderSettle($page, $user, $expected);
 

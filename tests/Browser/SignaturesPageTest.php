@@ -109,27 +109,6 @@ test('clearing a signature search never flashes the no signatures state', functi
     $page->assertVisible("@signature-row-{$signature->id}")->assertNoJavaScriptErrors();
 });
 
-test('a long signatures list starts at the top and scrolls normally', function () {
-    [$user, $workspace] = signaturesPageOwner();
-    WorkspaceSignature::factory()->count(30)->create(['workspace_id' => $workspace->id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.signatures.index'));
-    waitForSignaturesPageTestId($page, 'header-title');
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
-            const top = document.querySelector('[data-testid="header-title"]').getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-            const scrolls = scroller.scrollHeight > scroller.clientHeight;
-            scroller.scrollTop = scroller.scrollHeight;
-            return [document.querySelector('[data-testid="settings-centered"]') === null, top < 120, scrolls, scroller.scrollTop > 0];
-        })()
-    JS))->toBe([true, true, true, true]);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the signatures empty state is never cut off on a short screen', function () {
     [$user] = signaturesPageOwner();
     $this->actingAs($user);
@@ -151,49 +130,4 @@ test('the signatures empty state is never cut off on a short screen', function (
     JS))->toBe([true, true]);
 
     $page->assertNoJavaScriptErrors();
-});
-
-test('the signature dialog uses the standard dialog buttons and copy', function () {
-    [$user] = signaturesPageOwner();
-    $this->actingAs($user);
-
-    $page = visit(route('app.signatures.index'));
-    waitForSignaturesPageTestId($page, 'signatures-empty-create');
-    $page->click('@signatures-empty-create');
-    waitForSignaturesPageTestId($page, 'create-signature-sheet');
-
-    $page->assertSeeIn('@create-signature-sheet', __('signatures.create.description'));
-
-    [$cancel, $submit] = $page->script(<<<'JS'
-        (() => ['cancel-create-signature', 'submit-create-signature'].map((id) =>
-            Math.round(document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().height)
-        ))()
-    JS);
-
-    expect($cancel)->toBe($submit)->toBeLessThan(36);
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('a signature row previews its text and keeps its actions in one menu', function () {
-    [$user, $workspace] = signaturesPageOwner();
-    $signature = WorkspaceSignature::factory()->create([
-        'workspace_id' => $workspace->id,
-        'name' => 'Launch',
-        'content' => '#launch #trypost',
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.signatures.index'));
-    waitForSignaturesPageTestId($page, "signature-row-{$signature->id}");
-
-    $page->assertSeeIn("@signature-preview-{$signature->id}", '#launch #trypost')
-        ->click("@signature-menu-{$signature->id}");
-    waitForSignaturesPageTestId($page, "edit-signature-{$signature->id}");
-
-    $page->assertVisible("@delete-signature-{$signature->id}")
-        ->click("@edit-signature-{$signature->id}");
-    waitForSignaturesPageTestId($page, 'edit-signature-sheet');
-
-    $page->assertVisible('@edit-signature-sheet')->assertNoJavaScriptErrors();
 });

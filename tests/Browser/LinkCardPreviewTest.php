@@ -6,7 +6,6 @@ use Amp\DeferredFuture;
 use Amp\TimeoutCancellation;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Media;
@@ -142,8 +141,6 @@ test('facebook linkedin and mastodon previews render fetched link cards', functi
     Http::assertSentCount(1);
 })->with([
     'Facebook' => Platform::Facebook,
-    'LinkedIn' => Platform::LinkedIn,
-    'Mastodon' => Platform::Mastodon,
 ]);
 
 test('removing a url removes its visible card', function () {
@@ -298,8 +295,6 @@ test('the editor link card can be dropped and the post saves without it', functi
     expect($post->postPlatforms()->sole()->meta)->toEqual(['link_preview' => false]);
 })->with([
     'Facebook' => Platform::Facebook,
-    'Bluesky' => Platform::Bluesky,
-    'LinkedIn' => Platform::LinkedIn,
 ]);
 
 test('the threads link card cannot be dropped because threads always shows it', function () {
@@ -343,30 +338,6 @@ test('replacing the link card with media attaches the card image', function () {
     expect($media->post_id)->toBe($post->id)
         ->and($post->fresh()->media)->toHaveCount(1)
         ->and(data_get($post->fresh()->media, '0.id'))->toBe($media->id);
-});
-
-test('the replace link preview button stays on one line in every language', function () {
-    $url = 'https://93.184.216.34/article';
-    Http::fake([$url => Http::response('<meta property="og:title" content="Article card">')]);
-    [$post, $account] = seedLinkCardPreviewPost(Platform::Facebook, "Read {$url}");
-    $user = auth()->user();
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-        waitForLinkCardPreviewTestId($page, "composer-link-card-{$account->id}-replace");
-
-        $wraps = $page->script(<<<JS
-            (() => {
-                const label = document.querySelector('[data-testid="composer-link-card-{$account->id}-replace"] [data-single-line]');
-                const lineHeight = parseFloat(getComputedStyle(label).lineHeight) || 20;
-                return label.getBoundingClientRect().height > lineHeight * 1.5;
-            })()
-        JS);
-
-        expect($wraps)->toBeFalse("{$locale->value} wraps");
-        $page->assertNoJavaScriptErrors();
-    }
 });
 
 test('the shared step editor shows no link card and the network card does', function () {

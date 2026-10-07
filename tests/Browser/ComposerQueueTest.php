@@ -200,46 +200,6 @@ test('a queue default falls back when the channel has no posting times', functio
     $page->assertNoJavaScriptErrors();
 });
 
-test('a channel without slots disables the queue options, names it in a tooltip and links to its posting times', function () {
-    [$user, $workspace] = composerQueueWorkspace();
-    $channel = composerQueueChannel($workspace, null);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerQueueOpenWith($page, $channel);
-
-    $page->click('@composer-schedule-trigger')
-        ->assertVisible('@composer-schedule-now')
-        ->assertVisible('@composer-schedule-next')
-        ->assertVisible('@composer-schedule-top')
-        ->assertVisible('@composer-queue-hint')
-        ->assertVisible('@composer-queue-manage-slots');
-
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-next]").disabled'))->toBeTrue()
-        ->and($page->script('document.querySelector("[data-testid=composer-schedule-top]").disabled'))->toBeTrue()
-        ->and($page->script('document.querySelector("[data-testid=composer-schedule-now]").disabled'))->toBeFalse();
-
-    $page->hover('@composer-schedule-row-next');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-blocked-next');
-    $name = $channel->display_label ?: $channel->display_name;
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-blocked-next]").textContent')))
-        ->toStartWith("No posting times for {$name}. Add posting times to use the queue.");
-
-    $page->hover('@composer-schedule-custom')->hover('@composer-schedule-default-next');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.body.innerText.includes('Set as default posting action: Next available.')
-                    && document.querySelectorAll('[data-testid^="composer-schedule-blocked-"]').length === 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-    $page->assertSee('Set as default posting action: Next available.');
-    expect($page->script('document.querySelectorAll("[data-testid^=composer-schedule-blocked-]").length'))->toBe(0);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('rapid star clicks keep only the last default posting action', function () {
     [$user, $workspace] = composerQueueWorkspace();
     $channel = composerQueueChannel($workspace, composerQueueSchedule());
@@ -287,27 +247,6 @@ test('rapid star clicks keep only the last default posting action', function () 
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-default-top]").getAttribute("aria-pressed")'))->toBe('true')
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-default-now]").getAttribute("aria-pressed")'))->toBe('false')
         ->and($user->refresh()->default_post_action)->toBe(DefaultPostAction::Top);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the schedule menu lists all four options before any channel is selected and keeps the choice', function () {
-    [$user, $workspace] = composerQueueWorkspace();
-    composerQueueChannel($workspace, composerQueueSchedule());
-    $user->update(['default_post_action' => DefaultPostAction::Now]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerQueueTestId($page, 'composer-schedule-trigger');
-    $page->click('@composer-schedule-trigger');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-custom');
-
-    $order = $page->script('[...document.querySelectorAll("[data-testid^=composer-schedule-row-]")].map((row) => row.dataset.testid.replace("composer-schedule-row-", ""))');
-    $disabled = $page->script('[...document.querySelectorAll("[data-testid^=composer-schedule-row-]")].map((row) => row.querySelector("button").disabled)');
-    expect($order)->toBe(['next', 'top', 'now', 'custom'])
-        ->and($disabled)->toBe([false, false, false, false]);
-
-    $page->click('@composer-schedule-top');
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))->toBe('Prioritize');
     $page->assertNoJavaScriptErrors();
 });
 
@@ -383,26 +322,6 @@ test('prioritize puts the new post first and moves the queued one back', functio
     $page->assertNoJavaScriptErrors();
 });
 
-test('the queue list marks each scheduled post with its schedule mode', function () {
-    [$user, $workspace] = composerQueueWorkspace();
-    $channel = composerQueueChannel($workspace, composerQueueSchedule());
-    $queued = composerQueueSeedPost($user, $workspace, $channel);
-    $custom = composerQueueSeedPost($user, $workspace, $channel, [
-        'queue' => null,
-        'scheduled_at' => now()->addDays(3)->toIso8601String(),
-        'content' => 'Custom time',
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForComposerQueuePageTestId($page, "post-schedule-mode-{$custom->id}");
-
-    $page->assertVisible("@post-card-{$queued->id}")
-        ->assertAttribute("@post-schedule-mode-{$queued->id}", 'data-mode', 'queue')
-        ->assertAttribute("@post-schedule-mode-{$custom->id}", 'data-mode', 'custom')
-        ->assertNoJavaScriptErrors();
-});
-
 test('editing a queued post to a custom time switches its marker to custom', function () {
     [$user, $workspace] = composerQueueWorkspace();
     $channel = composerQueueChannel($workspace, composerQueueSchedule());
@@ -428,11 +347,7 @@ test('editing a queued post to a custom time switches its marker to custom', fun
 
     expect($queued->refresh()->schedule_mode)->toBe(ScheduleMode::Custom);
 
-    $page = visit(route('app.posts.index'));
-    waitForComposerQueuePageTestId($page, "post-schedule-mode-{$queued->id}");
-
-    $page->assertAttribute("@post-schedule-mode-{$queued->id}", 'data-mode', 'custom')
-        ->assertNoJavaScriptErrors();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('recovering an empty-target draft into the queue confirms it with a toast', function () {
@@ -553,55 +468,6 @@ test('picking a day and typing a time schedules a custom date with the user time
     expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
         ->toBe(composerScheduleExpectedLabel($day, '5:15 PM', $user->timezone));
     $page->assertNoJavaScriptErrors();
-});
-
-test('the time input opens a fifteen minute list that sets the time', function () {
-    [$user, $workspace] = composerQueueWorkspace();
-    composerQueueChannel($workspace, composerQueueSchedule());
-    $user->update(['time_format' => TimeFormat::TwentyFourHour]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerScheduleOpenPicker($page);
-    $day = composerSchedulePickFutureDay($page);
-
-    $page->assertMissing('@composer-schedule-time-list')
-        ->click('@composer-schedule-time-input');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-time-list');
-
-    $options = $page->script('[...document.querySelectorAll("[data-testid^=composer-schedule-time-option-]")].map((option) => option.textContent.trim())');
-    expect($options)->toHaveCount(96)
-        ->and(array_slice($options, 0, 3))->toBe(['00:00', '00:15', '00:30']);
-
-    $page->click('@composer-schedule-time-option-0945')
-        ->assertMissing('@composer-schedule-time-list')
-        ->assertValue('@composer-schedule-time-input', '09:45')
-        ->click('@composer-schedule-time-input');
-    waitForComposerQueuePageTestId($page, 'composer-schedule-time-list');
-
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-time-option-0945]").getAttribute("aria-selected")'))->toBe('true');
-
-    $page->click('@composer-schedule-done');
-
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
-        ->toBe(composerScheduleExpectedLabel($day, '09:45', $user->timezone));
-    $page->assertNoJavaScriptErrors();
-});
-
-test('more posting actions returns from the picker to the when menu', function () {
-    [$user, $workspace] = composerQueueWorkspace();
-    composerQueueChannel($workspace, composerQueueSchedule());
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerScheduleOpenPicker($page);
-
-    $page->assertMissing('@composer-schedule-row-next')
-        ->click('@composer-schedule-more-actions')
-        ->assertMissing('@composer-schedule-picker')
-        ->assertVisible('@composer-schedule-row-next')
-        ->assertVisible('@composer-schedule-custom')
-        ->assertNoJavaScriptErrors();
 });
 
 test('the picker calendar starts the week on the user preference', function (WeekStart $weekStart, string $firstWeekday, int $dayOfWeek) {

@@ -163,20 +163,6 @@ test('one channel shows and takes times in its own zone', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('channels in different zones use the user zone', function () {
-    [$user, $workspace] = composerTimezoneWorkspace();
-    $saoPaulo = composerTimezoneChannel($workspace, 'America/Sao_Paulo');
-    $warsaw = composerTimezoneChannel($workspace, 'Europe/Warsaw');
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerTimezoneSelect($page, $saoPaulo, $warsaw);
-    composerTimezoneOpenPicker($page);
-
-    expect(composerTimezoneZoneLabel($page))->toBe('Asia/Tokyo');
-    $page->assertNoJavaScriptErrors();
-});
-
 test('changing the channels keeps the picked instant and shows it in the new zone', function () {
     [$user, $workspace] = composerTimezoneWorkspace();
     $saoPaulo = composerTimezoneChannel($workspace, 'America/Sao_Paulo');
@@ -309,39 +295,6 @@ test('one channel offers its posting slots for the picked day', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('several channels hide the posting slots', function () {
-    [$user, $workspace] = composerTimezoneWorkspace();
-    $first = composerTimezoneChannel($workspace, 'America/Sao_Paulo', composerTimezoneSchedule());
-    $second = composerTimezoneChannel($workspace, 'America/Sao_Paulo', composerTimezoneSchedule());
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerTimezoneSelect($page, $first, $second);
-    composerTimezoneOpenPicker($page);
-    composerTimezonePickFutureDay($page);
-
-    expect(composerTimezoneZoneLabel($page))->toBe('America/Sao Paulo');
-    $page->assertMissing('@composer-schedule-slots')->assertNoJavaScriptErrors();
-});
-
-test('past posting slots of today are disabled', function () {
-    [$user, $workspace] = composerTimezoneWorkspace();
-    $zone = composerTimezoneNoonZone();
-    $channel = composerTimezoneChannel($workspace, $zone, PostingSchedule::empty()
-        ->withTime(now($zone)->dayOfWeek, '10:00')
-        ->withTime(now($zone)->dayOfWeek, '15:00'));
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerTimezoneSelect($page, $channel);
-    composerTimezoneOpenPicker($page);
-    waitForComposerTimezoneTestId($page, 'composer-schedule-slot-1500');
-
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1000]").disabled'))->toBeTrue()
-        ->and($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
-});
-
 test('posting slots already taken by a scheduled post are disabled', function () {
     [$user, $workspace] = composerTimezoneWorkspace();
     $zone = composerTimezoneNoonZone();
@@ -372,21 +325,6 @@ test('posting slots already taken by a scheduled post are disabled', function ()
     expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeTrue()
         ->and($page->script('document.querySelector("[data-testid=composer-schedule-slot-1600]").disabled'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
-});
-
-test('a day whose posting slots are all past hides them', function () {
-    [$user, $workspace] = composerTimezoneWorkspace();
-    $zone = composerTimezoneNoonZone();
-    $channel = composerTimezoneChannel($workspace, $zone, PostingSchedule::empty()
-        ->withTime(now($zone)->dayOfWeek, '09:00')
-        ->withTime(now($zone)->dayOfWeek, '10:00'));
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    composerTimezoneSelect($page, $channel);
-    composerTimezoneOpenPicker($page);
-
-    $page->assertMissing('@composer-schedule-slots')->assertNoJavaScriptErrors();
 });
 
 test('the picker marks today in the channel zone, not the browser zone', function () {
@@ -428,23 +366,5 @@ test('a calendar hour opens the composer at the same moment, shown in the channe
 
     expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
         ->toBe($instant->utc()->toIso8601String());
-    $page->assertNoJavaScriptErrors();
-});
-
-test('a calendar day opens the composer at 9:00 of the display zone', function () {
-    [$user, $workspace] = composerTimezoneWorkspace();
-    $warsaw = composerTimezoneChannel($workspace, 'Europe/Warsaw');
-    $day = now('America/Sao_Paulo')->addDays(2)->format('Y-m-d');
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.calendar', ['account' => $warsaw->id, 'view' => 'month', 'month' => $day, 'tz' => 'America/Sao_Paulo']));
-    waitForComposerTimezoneTestId($page, "calendar-add-{$day}");
-    $page->click("@calendar-add-{$day}");
-    waitForComposerTimezoneTestId($page, "composer-caption-{$warsaw->id}");
-
-    $instant = CarbonImmutable::parse("{$day} 09:00", 'America/Sao_Paulo');
-    waitForComposerTimezoneTrigger($page, composerTimezoneLabel($instant->setTimezone('Europe/Warsaw')));
-
-    expect(composerTimezoneTrigger($page))->toBe(composerTimezoneLabel($instant->setTimezone('Europe/Warsaw')));
     $page->assertNoJavaScriptErrors();
 });

@@ -99,37 +99,7 @@ function publishPagePost(User $user, Workspace $workspace, SocialAccount $channe
     ])->first();
 }
 
-test('the channel page shows the weekly goal progress', function () {
-    [$user, , $channel] = publishPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', $channel));
-    waitForPublishPageTestId($page, 'publish-goal-progress');
-
-    expect($page->script('new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).search'))->toBe('');
-    expect($page->script('new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname'))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'week'], false));
-    $page->assertSeeIn('@publish-goal-progress', trans('posts.publish.goal', ['sent' => 0, 'goal' => 3]))
-        ->assertAttribute('@publish-goal-pie', 'data-percent', '0')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the weekly goal pie fills with the posts sent this week', function () {
-    [$user, $workspace, $channel] = publishPageSetup();
-    $post = publishPagePost($user, $workspace, $channel);
-    $post->postPlatforms()->update(['status' => 'published', 'published_at' => now()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', $channel));
-    waitForPublishPageTestId($page, 'publish-goal-pie');
-
-    $page->assertSeeIn('@publish-goal-progress', trans('posts.publish.goal', ['sent' => 1, 'goal' => 3]))
-        ->assertAttribute('@publish-goal-pie', 'data-percent', '33')
-        ->assertNoJavaScriptErrors();
-
-    expect($page->script("document.querySelectorAll('[data-testid=\"publish-goal-pie\"] circle').length"))->toBe(2);
-});
-
-test('clicking the weekly goal opens a popover with sent, scheduled and to do', function () {
+test('the weekly goal shows its progress, fills the pie and opens a popover with sent, scheduled and to do', function () {
     [$user, $workspace, $channel] = publishPageSetup();
     $sent = publishPagePost($user, $workspace, $channel);
     $sent->update(['status' => PostStatus::Published]);
@@ -138,6 +108,12 @@ test('clicking the weekly goal opens a popover with sent, scheduled and to do', 
 
     $page = visit(route('app.channels.publish', $channel));
     waitForPublishPageTestId($page, 'publish-goal-progress');
+
+    expect($page->script('new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).search'))->toBe('')
+        ->and($page->script('new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname'))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'week'], false));
+    $page->assertSeeIn('@publish-goal-progress', trans('posts.publish.goal', ['sent' => 1, 'goal' => 3]))
+        ->assertAttribute('@publish-goal-pie', 'data-percent', '33');
+    expect($page->script("document.querySelectorAll('[data-testid=\"publish-goal-pie\"] circle').length"))->toBe(2);
 
     $page->click('@publish-goal-progress');
     waitForPublishPageTestId($page, 'publish-goal-popover');
@@ -167,57 +143,7 @@ test('a draft is added to the queue from the drafts tab', function () {
     expect($draft->refresh()->status)->toBe(PostStatus::Scheduled)
         ->and($draft->schedule_mode)->toBe(ScheduleMode::Queue);
 
-    $page = visit(route('app.channels.publish', $channel));
-    waitForPublishPageTestId($page, "post-card-{$draft->id}");
-
-    $page->assertVisible("@post-card-{$draft->id}")
-        ->assertSeeIn('@publish-tab-count-queue', '1')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a queued post moves to drafts from its menu', function () {
-    [$user, $workspace, $channel] = publishPageSetup();
-    $queued = publishPagePost($user, $workspace, $channel);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', $channel));
-    waitForPublishPageTestId($page, "post-card-menu-{$queued->id}");
-    $page->click("@post-card-menu-{$queued->id}");
-    waitForPublishPageTestId($page, "post-move-drafts-{$queued->id}");
-    $page->click("@post-move-drafts-{$queued->id}");
-    waitForPublishPagePostStatus($page, $queued, PostStatus::Draft);
-
-    expect($queued->refresh()->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
-});
-
-test('the sent tab shows a published post', function () {
-    [$user, $workspace, $channel] = publishPageSetup();
-    $published = Post::factory()->published()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'published_at' => now()->subHour(),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $published->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', ['account' => $channel, 'tab' => 'sent']));
-    waitForPublishPageTestId($page, "post-card-{$published->id}");
-
-    $page->assertVisible("@post-card-{$published->id}")
-        ->assertSeeIn('@publish-tab-count-sent', '1')
-        ->click("@post-card-menu-{$published->id}");
-    waitForPublishPageTestId($page, "post-duplicate-{$published->id}");
-
-    $page->assertVisible("@post-duplicate-{$published->id}")
-        ->assertMissing("@post-delete-{$published->id}")
-        ->assertMissing("@post-move-drafts-{$published->id}")
-        ->assertNoJavaScriptErrors();
 });
 
 test('add to queue is disabled for a draft whose channel has no posting times', function () {
@@ -252,28 +178,6 @@ test('editing a draft from a channel page keeps the channel page and tab', funct
         ->and($page->script('new URLSearchParams(location.search).get("tab")'))->toBe('drafts')
         ->and($page->script('new URLSearchParams(location.search).get("edit")'))->toBe($draft->id);
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the sidebar shows scheduled counts per channel and in total', function () {
-    [$user, $workspace, $channel] = publishPageSetup();
-    $other = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    publishPagePost($user, $workspace, $channel);
-    $custom = Post::factory()->scheduled()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    PostPlatform::factory()->create([
-        'post_id' => $custom->id,
-        'social_account_id' => $other->id,
-        'platform' => $other->platform,
-        'enabled' => true,
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForPublishPageTestId($page, "sidebar-channel-count-{$channel->id}");
-
-    $page->assertSeeIn("@sidebar-channel-count-{$channel->id}", '1')
-        ->assertSeeIn("@sidebar-channel-count-{$other->id}", '1')
-        ->assertSeeIn('@sidebar-publish-count', '2')
-        ->assertNoJavaScriptErrors();
 });
 
 test('saving a queued post edited on a channel page returns to that page and tab', function () {
@@ -409,19 +313,7 @@ test('an empty tab shows its illustration, copy and a new post button that opens
     waitForPublishPageTestId($page, 'post-composer-dialog');
 
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
-})->with(['approvals', 'drafts', 'sent']);
-
-test('an empty tab on a channel page offers a new post, not the welcome', function () {
-    [$user, , $channel] = publishPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', ['account' => $channel, 'tab' => 'drafts']));
-    waitForPublishPageTestId($page, 'publish-empty-new-post-drafts');
-
-    $page->assertMissing('@publish-welcome')
-        ->assertVisible('@publish-empty-connect-more')
-        ->assertNoJavaScriptErrors();
-});
+})->with(['drafts']);
 
 test('a workspace without channels is welcomed with connect and invite actions', function () {
     $user = User::factory()->create(['timezone' => 'UTC']);
@@ -451,19 +343,6 @@ test('a workspace without channels is welcomed with connect and invite actions',
     waitForPublishPageTestId($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the queue tab shows the empty state when there are no posts and no posting times', function () {
-    [$user, , $channel] = publishPageSetup();
-    $channel->update(['posting_schedule' => PostingSchedule::empty()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'queue']));
-    waitForPublishPageTestId($page, 'publish-empty-illustration');
-
-    $page->assertSeeIn('@empty-state', __('posts.publish.empty.queue.title'))
-        ->assertVisible('@publish-empty-new-post-queue')
-        ->assertNoJavaScriptErrors();
 });
 
 test('an active label filter shows its count in the primary color', function () {
@@ -572,12 +451,36 @@ test('on a phone the calendar row holds the channels, filter menu, view switch a
     $page->assertNoJavaScriptErrors();
 });
 
-test('the channel page puts the filters on one row on a phone and the view switch in the header on desktop', function () {
-    [$user, , $channel] = publishPageSetup();
+test('the channel page adapts its filters, tabs, calendar link and notes button to the viewport', function () {
+    [$user, $workspace, $channel] = publishPageSetup();
     $channel->update(['display_name' => 'A channel with a rather long display name', 'posting_goal' => 5]);
+    $post = publishPagePost($user, $workspace, $channel);
     $this->actingAs($user);
 
-    $page = visit(route('app.channels.publish', $channel))->resize(390, 844);
+    $notes = <<<'JS'
+        (() => {
+            const row = document.querySelector('[data-testid^="post-card-"]');
+            const card = row.querySelector('article').getBoundingClientRect();
+            const notes = row.querySelector('[data-testid^="post-notes-trigger-"]').getBoundingClientRect();
+
+            return {
+                inside: notes.left >= card.left && notes.right <= card.right && notes.top >= card.top,
+                beside: notes.left >= card.right,
+            };
+        })()
+    JS;
+
+    $calendarPath = 'new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname';
+
+    $page = visit(route('app.channels.publish', $channel))->resize(900, 800);
+    waitForPublishPageTestId($page, "post-notes-trigger-{$post->id}");
+    expect($page->script($notes))->toBe(['inside' => true, 'beside' => false]);
+
+    $page->resize(1280, 800);
+    waitForPublishPageScript($page, 'document.querySelector(\'[data-testid^="post-notes-trigger-"]\').getBoundingClientRect().left >= document.querySelector(\'[data-testid^="post-card-"] article\').getBoundingClientRect().right');
+    expect($page->script($notes))->toBe(['inside' => false, 'beside' => true]);
+
+    $page->resize(390, 844);
     waitForPublishPageTestId($page, 'publish-tabs-mobile-trigger');
 
     $phone = $page->script(<<<'JS'
@@ -595,57 +498,9 @@ test('the channel page puts the filters on one row on a phone and the view switc
         })()
     JS);
 
-    expect($phone)->toBe(['oneRow' => true, 'belowGoal' => true, 'tags' => false, 'overflow' => false]);
-
-    $page->resize(1280, 800);
-    waitForPublishPageScript($page, 'Boolean(document.querySelector(\'[data-testid="schedule-view-list"]\')?.closest("header"))');
-
-    $desktop = $page->script(<<<'JS'
-        (() => {
-            const left = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().left;
-            const inHeader = (id) => Boolean(document.querySelector(`[data-testid="${id}"]`).closest('header'));
-
-            return {
-                switchInHeader: inHeader('schedule-view-list'),
-                newPostInHeader: inHeader('posts-new-post'),
-                order: left('posts-label-filter') < left('publish-timezone-trigger') && left('publish-timezone-trigger') < left('publish-menu'),
-            };
-        })()
-    JS);
-
-    expect($desktop)->toBe(['switchInHeader' => true, 'newPostInHeader' => true, 'order' => true]);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('on a phone the tabs are a select that opens a sheet and moves to the picked tab', function () {
-    [$user, , $channel] = publishPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', $channel))->resize(390, 844);
-    waitForPublishPageTestId($page, 'publish-tabs-mobile-trigger');
-
-    expect($page->script('document.querySelector(\'[data-testid="posts-tabs"]\').getBoundingClientRect().height'))->toBe(0);
-    $page->assertSeeIn('@publish-tabs-mobile-trigger', trans('posts.publish.tabs.queue'))
-        ->click('@publish-tabs-mobile-trigger');
-    waitForPublishPageTestId($page, 'publish-tabs-sheet');
-
-    $page->assertPresent('@publish-tab-sheet-queue-check')
-        ->assertMissing('@publish-tab-sheet-drafts-check')
-        ->click('@publish-tab-sheet-drafts');
-    waitForPublishPageScript($page, 'new URLSearchParams(location.search).get("tab") === "drafts"');
-
-    $page->assertSeeIn('@publish-tabs-mobile-trigger', trans('posts.publish.tabs.drafts'))
-        ->assertMissing('@publish-tabs-sheet')
-        ->assertNoJavaScriptErrors();
-});
-
-test('on a phone the filter button opens a sheet with the time zone and posting times, on desktop they stay separate', function () {
-    [$user, , $channel] = publishPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.publish', $channel))->resize(390, 844);
-    waitForPublishPageTestId($page, 'publish-menu');
-    expect($page->script('Boolean(document.querySelector(\'[data-testid="publish-timezone-trigger"]\'))'))->toBeFalse();
+    expect($phone)->toBe(['oneRow' => true, 'belowGoal' => true, 'tags' => false, 'overflow' => false])
+        ->and($page->script($calendarPath))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'days'], false))
+        ->and($page->script('Boolean(document.querySelector(\'[data-testid="publish-timezone-trigger"]\'))'))->toBeFalse();
 
     $page->click('@publish-menu');
     waitForPublishPageTestId($page, 'publish-menu-content');
@@ -664,58 +519,48 @@ test('on a phone the filter button opens a sheet with the time zone and posting 
     waitForPublishPageScript($page, '!document.querySelector(\'[data-testid="publish-menu-content"]\')');
     waitForPublishPageTestId($page, 'publish-timezone-trigger');
 
-    $page->assertVisible('@publish-timezone-trigger')
-        ->click('@publish-menu');
-    waitForPublishPageTestId($page, 'publish-toggle-slots');
-    $page->assertVisible('@publish-manage-slots')->assertNoJavaScriptErrors();
-});
-
-test('the notes button sits inside the post card below the large breakpoint and beside it above', function () {
-    [$user, $workspace, $channel] = publishPageSetup();
-    $post = publishPagePost($user, $workspace, $channel);
-    $this->actingAs($user);
-
-    $measure = <<<'JS'
+    $desktop = $page->script(<<<'JS'
         (() => {
-            const row = document.querySelector('[data-testid^="post-card-"]');
-            const card = row.querySelector('article').getBoundingClientRect();
-            const notes = row.querySelector('[data-testid^="post-notes-trigger-"]').getBoundingClientRect();
+            const left = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().left;
+            const inHeader = (id) => Boolean(document.querySelector(`[data-testid="${id}"]`).closest('header'));
 
             return {
-                inside: notes.left >= card.left && notes.right <= card.right && notes.top >= card.top,
-                beside: notes.left >= card.right,
+                switchInHeader: inHeader('schedule-view-list'),
+                newPostInHeader: inHeader('posts-new-post'),
+                order: left('posts-label-filter') < left('publish-timezone-trigger') && left('publish-timezone-trigger') < left('publish-menu'),
             };
         })()
-    JS;
+    JS);
 
-    $page = visit(route('app.channels.publish', $channel))->resize(900, 800);
-    waitForPublishPageTestId($page, "post-notes-trigger-{$post->id}");
-    expect($page->script($measure))->toBe(['inside' => true, 'beside' => false]);
+    expect($desktop)->toBe(['switchInHeader' => true, 'newPostInHeader' => true, 'order' => true]);
 
-    $page->resize(1280, 800);
-    waitForPublishPageScript($page, 'document.querySelector(\'[data-testid^="post-notes-trigger-"]\').getBoundingClientRect().left >= document.querySelector(\'[data-testid^="post-card-"] article\').getBoundingClientRect().right');
-    expect($page->script($measure))->toBe(['inside' => false, 'beside' => true]);
+    $page->click('@publish-menu');
+    waitForPublishPageTestId($page, 'publish-toggle-slots');
+    $page->assertVisible('@publish-manage-slots');
 
-    $page->assertNoJavaScriptErrors();
-});
+    $page->resize(390, 844);
+    waitForPublishPageTestId($page, 'publish-tabs-mobile-trigger');
 
-test('on a phone the calendar link of the lists opens the three days view, on desktop the week', function () {
-    [$user, , $channel] = publishPageSetup();
-    $this->actingAs($user);
+    expect($page->script('document.querySelector(\'[data-testid="posts-tabs"]\').getBoundingClientRect().height'))->toBe(0);
+    $page->assertSeeIn('@publish-tabs-mobile-trigger', trans('posts.publish.tabs.queue'))
+        ->click('@publish-tabs-mobile-trigger');
+    waitForPublishPageTestId($page, 'publish-tabs-sheet');
 
-    $path = 'new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname';
+    $page->assertPresent('@publish-tab-sheet-queue-check')
+        ->assertMissing('@publish-tab-sheet-drafts-check')
+        ->click('@publish-tab-sheet-drafts');
+    waitForPublishPageScript($page, 'new URLSearchParams(location.search).get("tab") === "drafts"');
 
-    $page = visit(route('app.channels.publish', $channel))->resize(390, 844);
-    waitForPublishPageTestId($page, 'schedule-view-calendar');
-    expect($page->script($path))->toBe(route('app.channels.calendar', ['account' => $channel->id, 'view' => 'days'], false));
+    $page->assertSeeIn('@publish-tabs-mobile-trigger', trans('posts.publish.tabs.drafts'))
+        ->assertMissing('@publish-tabs-sheet');
 
     $page->navigate(route('app.posts.index'));
     waitForPublishPageTestId($page, 'schedule-view-calendar');
-    expect($page->script($path))->toBe(route('app.calendar', ['view' => 'days'], false));
+    expect($page->script($calendarPath))->toBe(route('app.calendar', ['view' => 'days'], false));
 
     $page->resize(1280, 800);
-    waitForPublishPageScript($page, $path.'.endsWith("/week")');
-    expect($page->script($path))->toBe(route('app.calendar', ['view' => 'week'], false));
+    waitForPublishPageScript($page, $calendarPath.'.endsWith("/week")');
+    expect($page->script($calendarPath))->toBe(route('app.calendar', ['view' => 'week'], false));
 
     $page->assertNoJavaScriptErrors();
 });

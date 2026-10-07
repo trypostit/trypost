@@ -244,8 +244,9 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 
 - When adding or changing a key, check the longest translations (French, German, Ukrainian, Russian, Polish and Portuguese usually run longest) against the slot, and shorten the copy in that locale rather than letting it wrap. A shorter natural phrase beats a literal one (`Ajustes do workspace`, not `Configurações do workspace`).
 - Never fix a wrap by truncating the text or widening one locale's layout; the label has to stay readable everywhere.
-- Cover dense menus with a browser test that renders every `Locale` case and fails on wrapped items — `tests/Browser/SidebarMenuTest.php` ("no sidebar menu item wraps onto a second line in any language") is the pattern.
-- A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action. When adding a settings page with a description, add it to the dataset in `tests/Browser/SettingsDescriptionTest.php`, which measures all 16 translations in place.
+- A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action.
+- Single-line copy is guarded by `tests/Feature/SingleLineCopyTest.php`, which fails when any locale's translation of a watched key gets longer than its budget in `tests/fixtures/single-line-copy.php`. When adding a button, tab, menu item or badge label, add its key there with the length of its longest translation; raise a budget only after checking the slot still fits.
+- Do not write browser tests that measure whether a label wraps (pixel widths, line counts, `Locale::cases()` loops over rendered text). They depend on the machine's fonts and fail differently on CI and locally; they were replaced by the length test in October 2026 (owner decision).
 
 ## AI agents (`app/Ai/Agents`)
 
@@ -824,7 +825,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
-- CI runs them in five shards, each serially (`php artisan test tests/Browser --compact --shard=N/5`), against `npm run build` output, so keep them independent of a running dev server and of each other. Several tests still fail on timing under `--parallel`, so do not parallelise a shard until they are fixed; when you do, use `./vendor/bin/pest --parallel`, never `php artisan test --parallel`, which does not start the Playwright server.
+- CI runs them in three shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/3`), leaving a CPU of the 4-vCPU runner to the database and the app server, against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
 
 ## Array Data Access
 

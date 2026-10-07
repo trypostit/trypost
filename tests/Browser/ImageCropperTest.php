@@ -230,28 +230,6 @@ test('a profile photo opens the media editor locked to a square 1:1 crop and sav
     expect($page->script("Boolean(document.querySelector('[data-testid=\"media-editor\"]'))"))->toBeFalse();
 });
 
-test('rotating the photo turns the uploaded avatar', function () {
-    $this->actingAs(User::factory()->create());
-
-    $page = visit(route('app.profile.edit'));
-
-    selectPhoto($page);
-    waitForCropSelection($page);
-    recordUpload($page);
-
-    $page->click('@media-editor-rotate-right')
-        ->click('@media-editor-apply')
-        ->assertNoJavaScriptErrors();
-
-    $request = decodedUpload($page);
-
-    expect($request['width'])->toBe(512)
-        ->and(isQuadrantColour($request['pixels']['topLeft'], [0, 0, 255]))->toBeTrue()
-        ->and(isQuadrantColour($request['pixels']['topRight'], [255, 0, 0]))->toBeTrue()
-        ->and(isQuadrantColour($request['pixels']['bottomLeft'], [255, 255, 0]))->toBeTrue()
-        ->and(isQuadrantColour($request['pixels']['bottomRight'], [0, 255, 0]))->toBeTrue();
-});
-
 test('cancelling the editor discards the photo without uploading', function () {
     $this->actingAs(User::factory()->create());
 

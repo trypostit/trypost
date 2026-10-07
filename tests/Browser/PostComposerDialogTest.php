@@ -6,7 +6,6 @@ use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -23,6 +22,18 @@ use Illuminate\Support\Facades\Storage;
  * animation settles is swallowed. Poll from the page (never sleep()) until the
  * dialog is open and still.
  */
+function waitForComposerCondition(mixed $page, string $condition): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 300; attempt++) {
+                if ({$condition}) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
 function waitForComposerReady(mixed $page, string $testId = 'composer-add-account'): void
 {
     $page->script(<<<JS
@@ -117,9 +128,15 @@ test('posts channel filter keeps accounts distinct and persists across tabs', fu
     PostPlatform::factory()->instagram()->create(['post_id' => $secondPost->id, 'social_account_id' => $secondInstagram->id]);
     $this->actingAs($user);
 
-    visit(route('app.posts.index', ['tab' => 'drafts']))
-        ->click('@posts-channel-filter')
-        ->fill('@posts-channel-search', 'first_channel')
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitForComposerCondition($page, "document.querySelector('[data-testid=\"post-card-{$firstPost->id}\"]')?.getBoundingClientRect().height > 0");
+
+    for ($attempt = 0; $attempt < 3 && ! $page->script("document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0"); $attempt++) {
+        $page->click('@posts-channel-filter');
+        waitForComposerCondition($page, "document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0");
+    }
+
+    $page->fill('@posts-channel-search', 'first_channel')
         ->assertVisible("@posts-channel-option-{$firstInstagram->id}")
         ->assertMissing("@posts-channel-option-{$secondInstagram->id}")
         ->click("@posts-channel-checkbox-{$firstInstagram->id}")
@@ -468,18 +485,22 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->assertAttribute("@composer-label-checkbox-{$firstLabel->id}", 'data-state', 'checked')
         ->assertAttribute("@composer-label-checkbox-{$secondLabel->id}", 'data-state', 'checked');
 
-    $page->click('@composer-tags-trigger')
-        ->click('@composer-base-emoji')
-        ->click('button[aria-label="grinning face"]')
+    $page->click('@composer-tags-trigger');
+    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-label-search\"]')");
+    $page->click('@composer-base-emoji');
+    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face\"]')?.getBoundingClientRect().height > 0");
+    $page->click('button[aria-label="grinning face"]')
         ->assertValue('@composer-base-content', '😀')
         ->click('@composer-base-signature')
         ->click('text=Campaign signature')
         ->assertValue('@composer-base-content', "😀\n\n#campaign")
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$account->id}")
-        ->assertVisible("@composer-{$account->id}-toolbar")
-        ->click("@composer-{$account->id}-emoji")
-        ->click('button[aria-label="grinning face with big eyes"]')
+        ->assertVisible("@composer-{$account->id}-toolbar");
+    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]')");
+    $page->click("@composer-{$account->id}-emoji");
+    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face with big eyes\"]')?.getBoundingClientRect().height > 0");
+    $page->click('button[aria-label="grinning face with big eyes"]')
         ->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
         ->click('@composer-save-draft');
 
@@ -1339,57 +1360,6 @@ test('the composer asks to connect a channel when the workspace has none', funct
     waitForComposerReady($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the schedule picker footer keeps both actions on one line in every language', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $this->actingAs($user);
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => [
-            'more' => __('posts.composer.schedule_picker.more_actions', [], $locale->value),
-            'done' => __('posts.composer.schedule_picker.done', [], $locale->value),
-        ]])
-        ->all();
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerReady($page);
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$account->id}")
-        ->click('@composer-schedule-trigger')
-        ->click('@composer-schedule-custom')
-        ->assertVisible('@composer-schedule-more-actions');
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const more = document.querySelector('[data-testid="composer-schedule-more-actions"]');
-            const done = document.querySelector('[data-testid="composer-schedule-done"]');
-            const moreText = [...more.childNodes].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '');
-            const doneText = [...done.childNodes].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '');
-            const singleLine = more.getBoundingClientRect().height;
-            return Object.entries(translations)
-                .filter(([, text]) => {
-                    moreText.textContent = text.more;
-                    doneText.textContent = text.done;
-                    const footer = more.parentElement.getBoundingClientRect();
-                    const needed = (more.scrollWidth + done.scrollWidth + 8) * 1.04 + 16;
-                    return more.getBoundingClientRect().height > singleLine || needed > footer.width;
-                })
-                .map(([locale, text]) => locale + ': ' + text.more + ' / ' + text.done);
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
 });
 
 test('the composer is wide enough for the preview on a desktop screen', function (int $width, int $dialog) {

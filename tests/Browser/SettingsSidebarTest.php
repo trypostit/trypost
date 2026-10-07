@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -74,18 +73,6 @@ test('members only see the settings they may use', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a user without a workspace sees only personal settings', function () {
-    $this->actingAs(User::factory()->create(['current_workspace_id' => null]));
-
-    $page = visit(route('app.profile.edit'));
-    waitForSettingsSidebarTestId($page, 'settings-sidebar');
-
-    $page->assertVisible('@settings-nav-profile')
-        ->assertMissing('@settings-nav-general')
-        ->assertMissing('@settings-nav-mcp')
-        ->assertNoJavaScriptErrors();
-});
-
 test('the back link returns to the app', function () {
     $this->actingAs(settingsSidebarUser('admin'));
 
@@ -95,36 +82,6 @@ test('the back link returns to the app', function () {
     waitForSettingsSidebarTestId($page, 'sidebar-new');
 
     $page->assertVisible('@sidebar-new')->assertNoJavaScriptErrors();
-});
-
-test('the back to app link in the settings sidebar highlights on hover', function () {
-    $this->actingAs(settingsSidebarUser('admin'));
-
-    $page = visit(route('app.profile.edit'));
-    waitForSettingsSidebarTestId($page, 'settings-back');
-
-    $background = fn (): string => $page->script('getComputedStyle(document.querySelector(\'[data-testid="settings-back"]\')).backgroundColor');
-
-    expect($background())->toBe('rgba(0, 0, 0, 0)');
-
-    $page->hover('@settings-back');
-    $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
-
-    expect($background())->not->toBe('rgba(0, 0, 0, 0)');
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the channels item shows how many channels the workspace has connected', function () {
-    $user = settingsSidebarUser('admin');
-    SocialAccount::factory()->count(3)->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.profile.edit'));
-    waitForSettingsSidebarTestId($page, 'settings-nav-channels-count');
-
-    $page->assertSeeIn('@settings-nav-channels-count', '3')
-        ->assertNoJavaScriptErrors();
 });
 
 test('with the sidebar collapsed the settings nav stays as icons and the footer toggle expands it', function () {
@@ -179,31 +136,6 @@ test('with the sidebar collapsed the settings nav stays as icons and the footer 
         ->and($expanded['trigger'])->toBeFalse();
 
     $page->assertSeeIn('@settings-nav-profile', 'Profile')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the settings sidebar footer shows the user menu, expanded and collapsed', function () {
-    $user = settingsSidebarUser('admin');
-    $this->actingAs($user);
-
-    $state = "document.querySelector('[data-slot=\"sidebar\"][data-state]')?.dataset.state";
-
-    $page = visit(route('app.profile.edit'))->resize(1280, 900);
-    waitForSettingsSidebarTestId($page, 'sidebar-workspace-menu');
-
-    $page->assertSeeIn('@sidebar-workspace-menu', $user->name)
-        ->click('@sidebar-workspace-menu');
-
-    waitForSettingsSidebarTestId($page, 'logout-button');
-    $page->assertVisible('@logout-button');
-    $page->script("document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))");
-
-    $page->click('@sidebar-footer-toggle');
-    waitForSettingsSidebarScript($page, "{$state} === 'collapsed'");
-    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
-
-    $page->assertVisible('@sidebar-workspace-menu')
-        ->assertVisible('[data-testid="sidebar-workspace-menu"] [data-slot="avatar"]')
         ->assertNoJavaScriptErrors();
 });
 

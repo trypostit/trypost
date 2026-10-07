@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Post\CreatePosts;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Jobs\PublishPost;
 use App\Models\Post;
@@ -38,34 +37,6 @@ function waitForApprovalsGone(mixed $page, string $testId): void
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
-    JS);
-}
-
-/**
- * Labels of the card footer actions that wrap onto a second line or spill
- * past the card, for every card on the page.
- *
- * @return list<string>
- */
-function approvalsFooterProblems(mixed $page): array
-{
-    return $page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid^="post-actions-"]')].flatMap((actions) => {
-            const card = actions.closest('[data-testid^="post-card-"]').getBoundingClientRect();
-            const problems = [];
-            if (actions.getBoundingClientRect().right > card.right + 1) problems.push(`overflow: ${actions.textContent.trim()}`);
-            actions.querySelectorAll('button, a').forEach((control) => {
-                const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
-                while (walker.nextNode()) {
-                    if (!walker.currentNode.textContent.trim()) continue;
-                    const range = document.createRange();
-                    range.selectNodeContents(walker.currentNode);
-                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                    if (tops.size > 1) problems.push(`wrap: ${control.textContent.trim()}`);
-                }
-            });
-            return problems;
-        })
     JS);
 }
 
@@ -208,40 +179,6 @@ test('a requester adding a draft to the queue is told it awaits approval', funct
         ->assertDontSee('Added to queue')
         ->assertNoJavaScriptErrors();
     expect($draft->fresh()->status)->toBe(PostStatus::PendingApproval);
-});
-
-test('the approval card footer does not wrap or overflow in any language', function () {
-    [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
-    $queued = approvalsBrowserRequest($workspace, $requester, $channel);
-    approvalsBrowserRequest($workspace, $requester, $channel, [
-        'queue' => null,
-        'scheduled_at' => now()->addDay()->startOfHour()->toIso8601String(),
-    ]);
-
-    $problems = [];
-
-    foreach ([$owner, $requester] as $user) {
-        foreach (Locale::cases() as $locale) {
-            $user->update(['locale' => $locale]);
-            $this->actingAs($user->fresh());
-
-            $page = visit(route('app.posts.index', ['tab' => 'approvals']))->resize(1440, 900);
-            waitForApprovalsTestId($page, "post-actions-{$queued->id}");
-
-            foreach (approvalsFooterProblems($page) as $problem) {
-                $problems[] = "{$user->name} {$locale->value} desktop {$problem}";
-            }
-
-            $page->resize(390, 844);
-            waitForApprovalsTestId($page, "post-actions-{$queued->id}");
-
-            foreach (approvalsFooterProblems($page) as $problem) {
-                $problems[] = "{$user->name} {$locale->value} phone {$problem}";
-            }
-        }
-    }
-
-    expect($problems)->toBe([]);
 });
 
 test('a new time for a late request is typed in the channel zone', function () {

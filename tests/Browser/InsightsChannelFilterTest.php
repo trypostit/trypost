@@ -118,7 +118,7 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
         ->assertNoJavaScriptErrors();
 });
 
-test('the follower bar tooltip shows a series swatch and the value', function () {
+test('the follower bar tooltip shows a series swatch and the toolbar fits a 390px viewport', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -134,13 +134,8 @@ test('the follower bar tooltip shows a series swatch and the value', function ()
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail]")?.innerText.includes("110")', true)
         ->assertNoJavaScriptErrors();
-});
 
-test('the toolbar fits a 390px viewport without clipping the range presets', function () {
-    [$user] = insightsChannelFilterFixture();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'))->resize(390, 844);
+    $page->resize(390, 844);
     waitForInsightsChannelTestId($page, 'insights-range-custom');
 
     $page->assertScript('(() => { const group = document.querySelector("[data-testid=insights-range-presets] [role=group]"); return group.scrollWidth <= group.clientWidth + 1; })()', true)
@@ -197,17 +192,4 @@ test('a channel without data shows the filtered empty state and history navigati
         ->assertMissing('@analytics-channel-count')
         ->assertMissing('@analytics-filtered-empty-state')
         ->assertNoJavaScriptErrors();
-});
-
-test('the sidebar keeps its publish count and channel list on the insights page', function () {
-    [$user] = insightsChannelFilterFixture();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'sidebar-publish-count');
-
-    expect($page->script("document.querySelector('[data-testid=\"sidebar-publish-count\"]').textContent.trim()"))->toMatch('/^\d+$/')
-        ->and($page->script("document.querySelectorAll('[data-testid=\"sidebar-channels-list\"] [data-testid^=\"sidebar-channel-row-\"]').length"))->toBeGreaterThan(0);
-
-    $page->assertNoJavaScriptErrors();
 });

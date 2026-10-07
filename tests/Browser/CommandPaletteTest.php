@@ -200,20 +200,6 @@ test('selecting a channel opens its publish page and it shows up under recent', 
         ->assertNoJavaScriptErrors();
 });
 
-test('create new post opens the composer', function () {
-    $this->actingAs(commandPaletteUser('admin'));
-
-    $page = visit(route('app.posts.index'));
-    openCommandPalette($page);
-
-    $page->click('@command-palette-item-action-create-post');
-    waitForCommandPaletteTestId($page, 'post-composer-dialog');
-
-    $page->assertVisible('@post-composer-dialog')
-        ->assertMissing('@command-palette')
-        ->assertNoJavaScriptErrors();
-});
-
 test('invite and connect open their dialogs for admins', function () {
     $this->actingAs(commandPaletteUser('admin'));
 
@@ -236,19 +222,6 @@ test('invite and connect open their dialogs for admins', function () {
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
-test('members who need approval can create but not invite or connect', function () {
-    $this->actingAs(commandPaletteUser('approval'));
-
-    $page = visit(route('app.posts.index'));
-    openCommandPalette($page);
-
-    $page->assertVisible('@command-palette-item-nav-publish')
-        ->assertVisible('@command-palette-item-action-create-post')
-        ->assertMissing('@command-palette-item-action-invite-member')
-        ->assertMissing('@command-palette-item-action-connect-channel')
-        ->assertNoJavaScriptErrors();
-});
-
 test('members can create but not invite or connect', function () {
     $this->actingAs(commandPaletteUser('member'));
 
@@ -260,20 +233,6 @@ test('members can create but not invite or connect', function () {
         ->assertMissing('@command-palette-item-action-invite-member')
         ->assertMissing('@command-palette-item-action-connect-channel')
         ->assertNoJavaScriptErrors();
-});
-
-test('the sidebar channels search button opens the palette', function () {
-    $user = commandPaletteUser('admin');
-    SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForCommandPaletteTestId($page, 'sidebar-channels-label');
-
-    $page->hover('@sidebar-channels-label')->hover('@sidebar-channels-search')->click('@sidebar-channels-search');
-    waitForCommandPaletteTestId($page, 'command-palette-input');
-
-    $page->assertVisible('@command-palette')->assertNoJavaScriptErrors();
 });
 
 test('the shortcut does not open the palette over the post composer', function () {

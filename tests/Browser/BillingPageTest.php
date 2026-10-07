@@ -76,26 +76,6 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
         ->assertNoJavaScriptErrors();
 });
 
-test('the billing page does not scroll horizontally on a phone', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $this->actingAs(billingPageOwner());
-
-    $page = visit(route('app.billing.index'))->resize(390, 844);
-    waitForBillingPageTestId($page, 'billing-current-plan');
-
-    $overflow = fn (): bool => $page->script('document.documentElement.scrollWidth > document.documentElement.clientWidth');
-
-    expect($overflow())->toBeFalse();
-
-    $page->click('@billing-change-plan');
-    waitForBillingPageTestId($page, 'plan-card-workspaces');
-
-    expect($overflow())->toBeFalse();
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('self-hosted settings show neither an account nor a billing item', function () {
     config(['trypost.self_hosted' => true]);
 

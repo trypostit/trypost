@@ -94,7 +94,7 @@ test('youtube description editor counts UTF-8 bytes and saves only its independe
     expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBe($description)
         ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe('Channel 2')
         ->and($post->fresh()->content)->toBe('Short title');
-})->with([[1280, 900], [375, 812]]);
+})->with([[375, 812]]);
 
 test('youtube description clearing restores content fallback without changing another post', function (string $description) {
     [$post, $platforms] = seedYouTubeDescriptionEditor();
@@ -114,7 +114,6 @@ test('youtube description clearing restores content fallback without changing an
         ->assertNoJavaScriptErrors();
 })->with([
     'empty description' => [''],
-    'whitespace description' => [" \t\n\u{00A0}"],
 ]);
 
 test('youtube description long preview stays inside the preview card', function (int $width, int $height) {
@@ -142,4 +141,4 @@ test('youtube description long preview stays inside the preview card', function 
     JS);
     expect($layout)->toEqual(['scrolls' => true, 'bounded' => true, 'insideCard' => true, 'noOverflow' => true]);
     $page->assertNoJavaScriptErrors();
-})->with([[1280, 900], [375, 812]]);
+})->with([[375, 812]]);

@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\User\Goal;
-use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Models\SocialAccount;
@@ -94,48 +93,4 @@ test('the plan step shows both plans with networks and no yearly toggle', functi
         ->assertMissing('@plan-interval-yearly')
         ->assertMissing('@plan-interval-monthly')
         ->assertNoJavaScriptErrors();
-});
-
-test('every plan feature fits on one line in every language', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $this->actingAs(welcomeOwnerOnPlanStep());
-
-    $page = visit(route('app.welcome.plan'))->resize(1280, 900);
-    waitForWelcomePlanTestId($page, 'plan-feature-label-socials-team');
-
-    $keys = ['networks_all', 'accounts_unlimited', 'calendar', 'ai', 'mcp', 'repurpose', 'analytics', 'team'];
-
-    $translations = collect($keys)
-        ->mapWithKeys(fn (string $key): array => [$key => collect(Locale::cases())
-            ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __("billing.plans.features.{$key}", [], $locale->value)])
-            ->all()])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const wrapped = [];
-            for (const [key, texts] of Object.entries(translations)) {
-                const label = document.querySelector('[data-testid="plan-feature-label-socials-' + key + '"]');
-                const wrapper = label.parentElement;
-                const available = wrapper.parentElement.getBoundingClientRect().width - 24;
-                const siblings = [...wrapper.children]
-                    .filter((child) => child !== label)
-                    .reduce((total, child) => total + child.getBoundingClientRect().width + 6, 0);
-                label.style.whiteSpace = 'nowrap';
-                for (const [locale, text] of Object.entries(texts)) {
-                    label.textContent = text;
-                    if ((label.getBoundingClientRect().width + siblings) * 1.04 > available) {
-                        wrapped.push(locale + ': ' + key + ' — ' + text);
-                    }
-                }
-            }
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
 });

@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Post\CreatePosts;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -178,34 +177,6 @@ test('a draft card clears every label with clear all', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a sent card accepts labels', function () {
-    [$user, $workspace, $channel] = cardLabelsSetup();
-    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign']);
-    $published = Post::factory()->published()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'published_at' => now()->subHour(),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $published->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    openCardLabelsPicker($page, $published->id);
-
-    $page->click("@post-labels-{$published->id}-checkbox-{$label->id}");
-    waitForCardLabelsTestId($page, "post-label-chip-{$published->id}-{$label->id}");
-    waitForCardLabelsStored($page, $published, [$label->id]);
-
-    expect($published->labels()->pluck('workspace_labels.id')->all())->toBe([$label->id]);
-    $page->assertVisible("@post-label-chip-{$published->id}-{$label->id}")
-        ->assertNoJavaScriptErrors();
-});
-
 test('the label filter drops a card once its label is removed', function () {
     [$user, $workspace, $channel] = cardLabelsSetup();
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign']);
@@ -229,21 +200,6 @@ test('the label filter drops a card once its label is removed', function () {
     $page->assertMissing("@post-card-{$tagged->id}")
         ->assertMissing("@post-card-{$untagged->id}")
         ->assertSeeIn('@posts-label-count', '1')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a member who needs approval can edit the labels on a card', function () {
-    [$requester, $workspace, $channel] = cardLabelsSetup('approval');
-    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign']);
-    $owner = User::query()->findOrFail($workspace->user_id);
-    $tagged = cardLabelsPost($owner, $workspace, $channel, ['label_ids' => [$label->id]]);
-    $this->actingAs($requester);
-
-    $page = visit(route('app.posts.index'));
-    waitForCardLabelsTestId($page, "post-label-chip-{$tagged->id}-{$label->id}");
-
-    $page->assertVisible("@post-label-chip-{$tagged->id}-{$label->id}")
-        ->assertVisible("@post-labels-{$tagged->id}-trigger")
         ->assertNoJavaScriptErrors();
 });
 

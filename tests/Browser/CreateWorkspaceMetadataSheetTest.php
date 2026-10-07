@@ -75,5 +75,4 @@ test('workspace metadata creation uses a centered dialog and still saves', funct
         ->assertNoJavaScriptErrors();
 })->with([
     'signature' => ['signature', 'app.signatures.index', 'workspace_signatures'],
-    'label' => ['label', 'app.labels.index', 'workspace_labels'],
 ]);

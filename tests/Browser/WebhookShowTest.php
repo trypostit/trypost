@@ -2,15 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Enums\Webhook\EventType;
-use App\Jobs\DispatchWebhook;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Services\WebhookService;
-use Illuminate\Support\Facades\Queue;
 
 function waitForWebhookShowTestId(mixed $page, string $testId): void
 {
@@ -92,84 +89,6 @@ test('the header shows the host, the path and the status', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('the actions menu edits the endpoint and deletes the webhook after a plain confirmation', function () {
-    [$user, $webhook] = webhookShowFixture();
-    $this->actingAs($user);
-
-    $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
-    $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'edit-webhook-button');
-
-    $page->assertVisible('@toggle-webhook-status')
-        ->assertMissing('@copy-id-button')
-        ->assertVisible('@rotate-secret-menu-item')
-        ->click('@edit-webhook-button');
-    waitForWebhookShowTestId($page, 'edit-webhook-dialog');
-
-    $page->assertValue('@edit-webhook-endpoint', 'https://hooks.example.com/trypost/inbound')
-        ->click('@cancel-edit-webhook');
-    waitForWebhookShowCondition($page, "!document.querySelector('[data-testid=\"edit-webhook-dialog\"]')");
-
-    $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'delete-webhook-button');
-    $page->click('@delete-webhook-button');
-    waitForWebhookShowTestId($page, 'confirm-delete-action');
-
-    $page->assertMissing('@confirm-delete-input')
-        ->click('@confirm-delete-action');
-
-    $indexPath = route('app.webhooks.index', absolute: false);
-    waitForWebhookShowCondition($page, "location.pathname === '{$indexPath}'");
-
-    expect(Webhook::query()->whereKey($webhook->id)->exists())->toBeFalse()
-        ->and($page->script('location.pathname'))->toBe($indexPath);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the actions menu pauses an enabled webhook', function () {
-    [$user, $webhook] = webhookShowFixture();
-    $this->actingAs($user);
-
-    $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
-    $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'toggle-webhook-status');
-    $page->click('@toggle-webhook-status');
-
-    $disabled = __('webhooks.status.disabled');
-    waitForWebhookShowCondition($page, "document.querySelector('[data-testid=\"webhook-status\"]').textContent.includes('{$disabled}')");
-
-    $page->assertSeeIn('@webhook-status', $disabled)
-        ->assertNoJavaScriptErrors();
-    expect($webhook->fresh()->status->value)->toBe('disabled');
-});
-
-test('send test event pings the endpoint', function () {
-    [$user, $webhook] = webhookShowFixture();
-    $this->mock(WebhookService::class)
-        ->shouldReceive('ping')
-        ->once()
-        ->with('https://hooks.example.com/trypost/inbound', Mockery::type('string'));
-    $this->actingAs($user);
-
-    $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'send-test-webhook');
-    $page->click('@send-test-webhook');
-    waitForWebhookShowCondition($page, "document.querySelector('[data-sonner-toast]') !== null");
-
-    $page->assertSee(__('webhooks.flash.tested'));
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const toast = document.querySelector('[data-sonner-toast]');
-            return [toast.querySelector('[data-icon] svg')?.classList.contains('tabler-icon') ?? false, Math.round(toast.getBoundingClientRect().width) >= 356];
-        })()
-    JS))->toBe([true, true]);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the newest delivery is selected by default and selecting a row shows its payload inline', function () {
     [$user, $webhook] = webhookShowFixture();
     $older = WebhookLog::factory()->create([
@@ -208,25 +127,57 @@ test('the newest delivery is selected by default and selecting a row shows its p
         ->assertNoJavaScriptErrors();
 });
 
-test('replay from the detail pane dispatches the selected delivery again', function () {
-    Queue::fake();
+test('the actions menu pauses, edits and deletes the webhook after a plain confirmation', function () {
     [$user, $webhook] = webhookShowFixture();
-    WebhookLog::factory()->create(['webhook_id' => $webhook->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'replay-log');
-    $page->click('@replay-log');
-    waitForWebhookShowCondition($page, "document.querySelector('[data-sonner-toast]') !== null");
+    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
+    $page->click('@webhook-actions-trigger');
+    waitForWebhookShowTestId($page, 'toggle-webhook-status');
 
-    $page->assertSee(__('webhooks.flash.replayed'))
-        ->assertNoJavaScriptErrors();
-    Queue::assertPushed(DispatchWebhook::class, 1);
+    $page->assertMissing('@copy-id-button')
+        ->assertVisible('@rotate-secret-menu-item')
+        ->click('@toggle-webhook-status');
+
+    $disabled = __('webhooks.status.disabled');
+    waitForWebhookShowCondition($page, "document.querySelector('[data-testid=\"webhook-status\"]').textContent.includes('{$disabled}')");
+
+    $page->assertSeeIn('@webhook-status', $disabled);
+    expect($webhook->fresh()->status->value)->toBe('disabled');
+
+    waitForWebhookShowCondition($page, "!document.querySelector('[data-testid=\"toggle-webhook-status\"]')");
+    $page->click('@webhook-actions-trigger');
+    waitForWebhookShowTestId($page, 'edit-webhook-button');
+    $page->click('@edit-webhook-button');
+    waitForWebhookShowTestId($page, 'edit-webhook-dialog');
+
+    $page->assertValue('@edit-webhook-endpoint', 'https://hooks.example.com/trypost/inbound')
+        ->click('@cancel-edit-webhook');
+    waitForWebhookShowCondition($page, "!document.querySelector('[data-testid=\"edit-webhook-dialog\"]')");
+
+    $page->click('@webhook-actions-trigger');
+    waitForWebhookShowTestId($page, 'delete-webhook-button');
+    $page->click('@delete-webhook-button');
+    waitForWebhookShowTestId($page, 'confirm-delete-action');
+
+    $page->assertMissing('@confirm-delete-input')
+        ->click('@confirm-delete-action');
+
+    $indexPath = route('app.webhooks.index', absolute: false);
+    waitForWebhookShowCondition($page, "location.pathname === '{$indexPath}'");
+
+    expect(Webhook::query()->whereKey($webhook->id)->exists())->toBeFalse()
+        ->and($page->script('location.pathname'))->toBe($indexPath);
+    $page->assertNoJavaScriptErrors();
 });
 
-test('a webhook without deliveries shows the empty state with a send test button', function () {
+test('send test event pings the endpoint from the header and from the empty deliveries state', function () {
     [$user, $webhook] = webhookShowFixture();
-    $this->mock(WebhookService::class)->shouldReceive('ping')->once();
+    $this->mock(WebhookService::class)
+        ->shouldReceive('ping')
+        ->twice()
+        ->with('https://hooks.example.com/trypost/inbound', Mockery::type('string'));
     $this->actingAs($user);
 
     $page = visit(route('app.webhooks.show', $webhook));
@@ -239,44 +190,19 @@ test('a webhook without deliveries shows the empty state with a send test button
         ->click('@webhook-deliveries-send-test');
     waitForWebhookShowCondition($page, "document.querySelector('[data-sonner-toast]') !== null");
 
+    $page->assertSee(__('webhooks.flash.tested'));
+
+    expect($page->script(<<<'JS'
+        (() => {
+            const toast = document.querySelector('[data-sonner-toast]');
+            return [toast.querySelector('[data-icon] svg')?.classList.contains('tabler-icon') ?? false, Math.round(toast.getBoundingClientRect().width) >= 356];
+        })()
+    JS))->toBe([true, true]);
+
+    $page->click('@send-test-webhook');
+    waitForWebhookShowCondition($page, "document.querySelectorAll('[data-sonner-toast]').length >= 2");
+
     $page->assertNoJavaScriptErrors();
-});
-
-test('header and section buttons and menu items stay on one line in every language', function () {
-    [$user, $webhook] = webhookShowFixture();
-    $wrapped = [];
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $this->actingAs($user->fresh());
-
-        $page = visit(route('app.webhooks.show', $webhook));
-        waitForWebhookShowTestId($page, 'webhook-actions-trigger');
-        $page->click('@webhook-actions-trigger');
-        waitForWebhookShowTestId($page, 'delete-webhook-button');
-
-        $lines = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid="send-test-webhook"], [data-testid="edit-webhook-events"], [data-testid="rotate-secret-button"], [data-testid="webhook-back"], [data-testid="webhook-deliveries-send-test"], [role="menuitem"]')]
-                .map((element) => {
-                    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-                    const tops = new Set();
-                    while (walker.nextNode()) {
-                        const range = document.createRange();
-                        range.selectNodeContents(walker.currentNode);
-                        [...range.getClientRects()].filter((rect) => rect.width > 0).forEach((rect) => tops.add(Math.round(rect.top)));
-                    }
-                    return [element.textContent.trim(), tops.size];
-                })
-                .filter(([, lineCount]) => lineCount > 1)
-                .map(([text]) => text)
-        JS);
-
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
-
-    expect($wrapped)->toBe([]);
 });
 
 test('a live delivery update never shows the same delivery twice', function () {

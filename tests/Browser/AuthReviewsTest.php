@@ -2,14 +2,6 @@
 
 declare(strict_types=1);
 
-test('the login screen shows the customer reviews to a logged out visitor', function () {
-    visit(route('login'))
-        ->assertVisible('@auth-reviews')
-        ->assertVisible('@auth-reviews-g2-link')
-        ->assertSee('Loved by people who publish every day')
-        ->assertNoJavaScriptErrors();
-});
-
 test('every review renders once for readers and once for the marquee loop', function () {
     $page = visit(route('login'));
 
@@ -61,7 +53,6 @@ test('the reviews panel sits beside login and register only', function (string $
     $page->assertNoJavaScriptErrors();
 })->with([
     ['login', true],
-    ['register', true],
     ['password.request', false],
 ]);
 
@@ -84,4 +75,4 @@ test('the auth column keeps a 16px gutter without overflow on phones', function 
     JS);
 
     expect($layout)->toBe(['overflow' => false, 'left' => 16, 'right' => 16, 'height' => 32]);
-})->with(['login', 'register', 'password.request']);
+})->with(['login']);

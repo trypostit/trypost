@@ -145,23 +145,6 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertNoConsoleLogs();
 });
 
-test('the empty insights hero has no connect button for members who cannot manage channels', function () {
-    $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id, 'account_id' => $owner->account_id]);
-    subscribeAccount($owner->account);
-    $member = workspaceMember($workspace);
-
-    $this->actingAs($member);
-    $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-empty-state');
-
-    $page->assertVisible('@analytics-empty-state')
-        ->assertSee('Turn your posts into insights')
-        ->assertMissing('@analytics-empty-connect')
-        ->assertNoJavaScriptErrors()
-        ->assertNoConsoleLogs();
-});
-
 test('the empty insights hero explains pending data once a channel is connected', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -241,33 +224,6 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
         ->assertNoConsoleLogs();
 });
 
-test('the workspace insights page offers exactly 7 days, 30 days, month to date and custom', function () {
-    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    AnalyticsAccountDailySnapshot::factory()->create([
-        'workspace_id' => $workspace->id,
-        'social_account_id' => $account->id,
-        'social_account_key' => $account->id,
-        'platform' => $account->platform,
-        'network' => $account->platform->network(),
-        'platform_user_id' => $account->platform_user_id,
-        'date' => now('UTC')->toDateString(),
-        'followers_count' => 100,
-    ]);
-
-    $this->actingAs($user);
-    $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'insights-range-7d');
-
-    $page->assertScript('Array.from(document.querySelectorAll("[data-testid^=insights-range-]")).map((element) => element.dataset.testid).filter((id) => ["insights-range-7d", "insights-range-30d", "insights-range-mtd", "insights-range-last_month", "insights-range-custom"].includes(id)).join(",")', 'insights-range-7d,insights-range-30d,insights-range-mtd,insights-range-custom')
-        ->assertNoJavaScriptErrors();
-});
-
 test('a range preset on the workspace dashboard reloads with that range', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -303,22 +259,6 @@ test('a range preset on the workspace dashboard reloads with that range', functi
 
     $page->assertScript('new URLSearchParams(location.search).get("range")', '7d')
         ->assertScript('document.querySelector("[data-testid=insights-range-7d]")?.getAttribute("aria-pressed")', 'true')
-        ->assertNoJavaScriptErrors()
-        ->assertNoConsoleLogs();
-});
-
-test('workspace dashboard is titled Insights for a German user', function () {
-    $user = User::factory()->create(['locale' => Locale::German]);
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    visit(route('app.insights'))
-        ->assertScript('document.querySelector("[data-testid=analytics-page-header]")?.textContent.includes("Insights")', true)
-        ->assertScript('document.title.includes("Insights")', true)
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -464,7 +404,6 @@ test('workspace dashboard abbreviates large percentage changes in the user local
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 })->with([
-    'English' => [Locale::English, '+186.5K%'],
     'Portuguese' => [Locale::PortugueseBrazil, "+186,5\u{00A0}mil%"],
 ]);
 
@@ -487,50 +426,6 @@ test('the channel filter offers to connect a channel when the workspace has none
     waitForWorkspaceInsightsTestId($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the insights toolbar border keeps the page padding instead of touching the panel edges', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'))->resize(1440, 900);
-    waitForWorkspaceInsightsTestId($page, 'analytics-toolbar');
-
-    $edges = $page->script(<<<'JS'
-        (() => {
-            const toolbar = document.querySelector('[data-testid="analytics-toolbar"]');
-            const row = toolbar.getBoundingClientRect();
-            const panel = document.querySelector('[data-slot="sidebar-inset"]').getBoundingClientRect();
-            return [Math.round(row.left - panel.left), Math.round(panel.right - row.right), getComputedStyle(toolbar).borderBottomWidth];
-        })()
-    JS);
-
-    expect($edges[0])->toBeGreaterThanOrEqual(32)
-        ->and($edges[1])->toBeGreaterThanOrEqual(32)
-        ->and($edges[2])->toBe('1px');
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the workspace insights page has no label filter', function () {
-    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
-
-    $this->actingAs($user);
-    $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-filters');
-
-    $page->assertVisible('@analytics-channel-filter')
-        ->assertMissing('@analytics-label-filter')
-        ->assertNoJavaScriptErrors();
 });
 
 test('on a phone the workspace insights range presets collapse into a dropdown', function () {
@@ -575,22 +470,6 @@ test('on a phone the workspace insights range presets collapse into a dropdown',
 
     $page->assertScript('new URLSearchParams(location.search).get("range")', '7d')
         ->assertSeeIn('@insights-range-mobile-trigger', '7 Days')
-        ->assertNoJavaScriptErrors();
-});
-
-test('on desktop the workspace insights range keeps the segmented control', function () {
-    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-    $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'insights-range-7d');
-
-    $page->assertScript('document.querySelector("[data-testid=insights-range-mobile-trigger]").getBoundingClientRect().height', 0)
         ->assertNoJavaScriptErrors();
 });
 

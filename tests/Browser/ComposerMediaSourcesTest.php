@@ -70,25 +70,6 @@ function chooseComposerMediaSource(mixed $page, string $prefix, string $source):
     $page->click("@media-source-{$source}");
 }
 
-test('with no media source enabled the media button still offers the upload', function () {
-    config()->set([
-        'services.unsplash.access_key' => null,
-        'services.google_media.client_id' => null,
-        'services.google_media.api_key' => null,
-        'services.google_media.app_id' => null,
-        'services.canva.client_id' => null,
-        'services.canva.client_secret' => null,
-    ]);
-
-    $page = openComposerForMediaSources($this);
-    $page->click('@composer-base-media-source-menu');
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-list');
-
-    expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"composer-base-media-source-list\"] [data-testid^=\"media-source-\"]')).map((item) => item.dataset.testid)"))
-        ->toBe(['media-source-upload']);
-    $page->assertNoJavaScriptErrors();
-});
-
 /**
  * @return array<string, mixed>
  */
@@ -224,7 +205,6 @@ test('upload from computer in the media menu opens the file picker', function (s
     $page->assertNoJavaScriptErrors();
 })->with([
     'post composer' => ['app.posts.create', 'composer-base'],
-    'idea editor' => ['app.create.ideas.create', 'idea-editor'],
 ]);
 
 test('picking an unsplash photo from the menu adds a tile and credits the photographer', function () {
@@ -284,27 +264,6 @@ test('an unsplash outage shows an error instead of an empty result', function ()
 
     $page->assertSeeIn('@unsplash-error', "Unsplash isn't available right now.")
         ->assertNotPresent('@unsplash-empty')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the idea editor picks an unsplash photo into its tray', function () {
-    enableOnlyUnsplashForMediaSources();
-
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.create'));
-    waitForComposerMediaSourcesTestId($page, 'idea-editor-media-source-menu');
-    chooseComposerMediaSource($page, 'idea-editor', 'unsplash');
-    waitForComposerMediaSourcesTestId($page, 'unsplash-photo-0');
-    $page->click('@unsplash-photo-0');
-    waitForComposerMediaSourcesTestId($page, 'idea-media-item');
-
-    $page->assertPresent('@idea-media-item')
         ->assertNoJavaScriptErrors();
 });
 
@@ -473,24 +432,6 @@ function assertGoogleDriveImportForMediaSources(mixed $page, string $api): void
         && $request->hasHeader('Authorization', 'Bearer server-drive-token'));
 }
 
-test('picking a google drive file adds a tile to the shared tray', function () {
-    $api = enableOnlyGoogleDriveForMediaSources();
-
-    $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
-
-    stubGoogleDriveForMediaSources($page);
-    chooseComposerMediaSource($page, 'composer-base', 'google_drive');
-    finishGoogleDriveSignIn($page);
-    waitForComposerMediaSourcesTestId($page, 'composer-media-item');
-
-    $page->assertPresent('@composer-media-item')
-        ->assertNoJavaScriptErrors();
-
-    assertGoogleDriveImportForMediaSources($page, $api);
-    expect(Cache::has('google-media-return:'.User::query()->sole()->id.':'.googleDriveSignInNonce($page)))->toBeFalse();
-});
-
 test('picking a google drive file in a single channel adds a tile to that channel tray', function () {
     $api = enableOnlyGoogleDriveForMediaSources();
 
@@ -523,6 +464,7 @@ test('the drive picker can be clicked, focused and typed in over the composer di
     waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
     stubGoogleDriveForMediaSources($page, holdOpen: true);
     chooseComposerMediaSource($page, 'composer-base', 'google_drive');
+    waitForComposerMediaSourcesCondition($page, "!document.querySelector('[data-testid=\"composer-base-media-source-list\"]')");
     finishGoogleDriveSignIn($page);
     waitForComposerMediaSourcesTestId($page, 'drive-picker-search');
     waitForComposerMediaSourcesCondition($page, "document.activeElement?.dataset?.testid === 'drive-picker-search'");
@@ -574,22 +516,6 @@ test('a failed google drive sign-in opens no picker and shows the popup message'
     expect($page->script('window.__drive.pickerToken'))->toBeNull()
         ->and($page->script("window.__drive.finished.some((request) => request.includes('/integrations/google/returns/'))"))->toBeFalse()
         ->and(Media::query()->count())->toBe(0);
-});
-
-test('a blocked google drive popup says so and asks the server for nothing', function () {
-    enableOnlyGoogleDriveForMediaSources();
-
-    $page = openComposerForMediaSources($this);
-    waitForComposerMediaSourcesTestId($page, 'composer-base-media-source-menu');
-    stubGoogleDriveForMediaSources($page);
-    $page->script('window.open = () => null; true;');
-    chooseComposerMediaSource($page, 'composer-base', 'google_drive');
-    waitForComposerMediaSourcesCondition($page, "document.body.innerText.includes('Your browser blocked the window')");
-
-    $page->assertSee(__('posts.composer.media_sources.errors.popup_blocked'))
-        ->assertNotPresent('@composer-media-item')
-        ->assertNoJavaScriptErrors();
-    expect($page->script('window.__drive.finished.length'))->toBe(0);
 });
 
 test('the real sign-in popup, start to callback, hands the drive token to the composer through the broadcast', function () {

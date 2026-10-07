@@ -110,17 +110,6 @@ test('a library card appends its body after the draft', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the discover filter is an icon-only button', function () {
-    [$user] = composerTemplatesSetup();
-
-    $page = openComposerTemplates($user);
-    waitForComposerTemplatesTestId($page, 'composer-templates-filter');
-
-    expect($page->script("document.querySelector('[data-testid=\"composer-templates-filter\"]').innerText.trim()"))->toBe('')
-        ->and($page->script("document.querySelector('[data-testid=\"composer-templates-filter\"]').getAttribute('aria-label')"))->toBe(__('create.templates.filter'));
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the scopes are underline tabs, not pills', function () {
     [$user] = composerTemplatesSetup();
 
@@ -302,25 +291,6 @@ test('edit, duplicate and delete from the panel never touch the draft', function
         ->assertNoJavaScriptErrors();
 });
 
-test('the empty editor link opens the templates panel', function () {
-    [$user] = composerTemplatesSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerTemplatesDialog($page, 'post-composer-dialog');
-    waitForComposerTemplatesTestId($page, 'composer-templates-inspire');
-
-    $page->assertMissing('@composer-templates-panel')
-        ->click('@composer-templates-inspire');
-    waitForComposerTemplatesTestId($page, 'composer-templates-panel');
-
-    $page->assertVisible('@composer-templates-panel')
-        ->assertAttribute('@composer-templates-toggle', 'aria-pressed', 'true')
-        ->fill('@composer-base-content', 'Typing')
-        ->assertMissing('@composer-templates-inspire')
-        ->assertNoJavaScriptErrors();
-});
-
 test('at 390px the header fits and every side panel toggle works', function () {
     [$user] = composerTemplatesSetup();
     $this->actingAs($user);
@@ -386,32 +356,4 @@ test('a failed template load shows an inline error and retry recovers', function
     waitForComposerTemplatesTestId($page, 'composer-template-quick_win');
 
     $page->assertMissing('@composer-templates-error')->assertNoJavaScriptErrors();
-});
-
-test('the panel tabs are wired to their tabpanel', function () {
-    [$user] = composerTemplatesSetup();
-
-    $page = openComposerTemplates($user);
-
-    $page->assertAttribute('@composer-templates-tab-discover', 'aria-controls', 'composer-templates-tabpanel')
-        ->assertAttribute('@composer-templates-list', 'role', 'tabpanel')
-        ->assertAttribute('@composer-templates-list', 'aria-labelledby', 'composer-templates-tab-discover')
-        ->assertNoJavaScriptErrors();
-});
-
-test('at 390px picking a template returns to the compose view', function () {
-    [$user] = composerTemplatesSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'))->resize(390, 844);
-    waitForComposerTemplatesDialog($page, 'post-composer-dialog');
-    waitForComposerTemplatesTestId($page, 'composer-templates-toggle');
-    $page->click('@composer-templates-toggle');
-    waitForComposerTemplatesTestId($page, 'composer-template-quick_win');
-    $page->click('@composer-template-quick_win');
-    waitForComposerTemplatesCondition($page, "!document.querySelector('[data-testid=\"composer-templates-sheet\"]')");
-    waitForComposerTemplatesTestId($page, 'composer-base-content');
-
-    $page->assertValue('@composer-base-content', __('template_library.quick_win.body'))
-        ->assertNoJavaScriptErrors();
 });

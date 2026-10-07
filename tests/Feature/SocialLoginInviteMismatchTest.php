@@ -9,7 +9,7 @@ use App\Models\Workspace;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
-test('login page displays the wrong-invite-email error flashed from the oauth callback', function () {
+beforeEach(function () {
     config([
         'trypost.self_hosted' => false,
         'trypost.google_auth_enabled' => true,
@@ -17,7 +17,9 @@ test('login page displays the wrong-invite-email error flashed from the oauth ca
         'services.google-auth.client_secret' => 'test-client-secret',
         'services.google-auth.redirect' => 'https://app.trypost.test/auth/google/callback',
     ]);
+});
 
+test('a google login whose email is not the invited one is sent to login with the wrong email error', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -32,6 +34,8 @@ test('login page displays the wrong-invite-email error flashed from the oauth ca
         'workspaces' => [$workspace->id],
     ]);
 
+    $this->get(route('auth.google.redirect', ['invite' => $invite->id]));
+
     $socialiteUser = new SocialiteUser;
     $socialiteUser->map([
         'id' => 'g-wrong-email',
@@ -42,11 +46,12 @@ test('login page displays the wrong-invite-email error flashed from the oauth ca
     Socialite::shouldReceive('driver')
         ->with('google-auth')
         ->andReturn($driver = Mockery::mock());
-    $driver->shouldReceive('redirect')->andReturn(redirect(route('auth.google.callback')));
     $driver->shouldReceive('user')->andReturn($socialiteUser);
 
-    $page = visit(route('auth.google.redirect', ['invite' => $invite->id]));
+    $this->get(route('auth.google.callback'))
+        ->assertRedirect(route('login'))
+        ->assertSessionHasErrors(['email' => __('settings.members.flash.wrong_email')]);
 
-    $page->assertRoute('login')
-        ->assertSee(__('settings.members.flash.wrong_email'));
+    $this->assertGuest();
+    expect(User::where('email', 'someone-else@example.com')->exists())->toBeFalse();
 });

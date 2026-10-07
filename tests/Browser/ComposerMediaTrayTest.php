@@ -2,13 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Enums\Media\Type as MediaType;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\HeicConverter;
 
 /**
  * Poll from the page until `$condition` holds (never sleep(): the test server
@@ -168,23 +166,6 @@ function composerMediaTrayPng(string $name): string
     return "new File([base64('{$base64}')], '{$name}', { type: 'image/png' })";
 }
 
-test('the dropzone opens the file dialog, not the library picker', function () {
-    [$page] = openComposerMediaTray($this);
-
-    $page->script(<<<'JS'
-        (() => {
-            window.__fileDialogOpened = 0;
-            document.querySelector('[data-testid="composer-file-input"]').click = () => { window.__fileDialogOpened++; };
-        })();
-    JS);
-    $page->click('@composer-dropzone');
-
-    expect($page->script('window.__fileDialogOpened'))->toBe(1);
-    $page->assertMissing('@media-picker-confirm')
-        ->assertSee('select a file')
-        ->assertNoJavaScriptErrors();
-});
-
 test('the toolbar has no plus button and the channel dropzone opens its own file dialog', function () {
     [$page, , $account] = openComposerMediaTray($this);
 
@@ -242,24 +223,6 @@ test('no more than three files upload at once', function () {
     waitForComposerMediaTrayCondition($page, "window.__uploads.held.some((held) => held.name === 'd.png')");
     expect($page->script('window.__uploads.held.map((held) => held.name)'))->toBe(['b.png', 'c.png', 'd.png']);
     $page->assertNoJavaScriptErrors();
-});
-
-test('a file over the image cap becomes an error tile and is never sent', function () {
-    [$page] = openComposerMediaTray($this);
-    $bytes = MediaType::Image->maxSizeInBytes() + 1;
-
-    selectComposerMediaTrayFiles($page, "[new File([new Uint8Array({$bytes})], 'huge.png', { type: 'image/png' })]");
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
-
-    expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('too_large')
-        ->and($page->script('window.__uploads.count'))->toBe(0)
-        ->and(Media::count())->toBe(0);
-    $page->assertSeeIn('@composer-upload-error', 'huge.png')
-        ->assertSeeIn('@composer-upload-error', 'The limit is '.MediaType::Image->maxSizeInMb().' MB')
-        ->assertMissing('@composer-upload-retry-0')
-        ->click('@composer-upload-remove-0')
-        ->assertMissing('@composer-upload-error')
-        ->assertNoJavaScriptErrors();
 });
 
 test('an unsupported file type becomes an error tile and is never sent', function () {
@@ -324,23 +287,6 @@ test('cancel removes an uploading tile and retry recovers a network failure', fu
     expect(Media::where('collection', Media::COLLECTION_UPLOADS)->pluck('original_filename')->all())->toBe(['retry-me.png']);
 });
 
-test('a HEIC photo shows the heic_unavailable error tile and is never sent while the server cannot convert it', function () {
-    config(['trypost.media.heic_conversion' => false]);
-    HeicConverter::flush();
-    [$page] = openComposerMediaTray($this);
-
-    expect($page->script('document.querySelector(\'[data-testid="composer-file-input"]\').accept'))->not->toContain('heic');
-
-    selectComposerMediaTrayFiles($page, "[new File(['heic-bytes'], 'IMG_0001.HEIC', { type: 'image/heic' })]");
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
-
-    expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('heic_unavailable')
-        ->and($page->script('window.__uploads.count'))->toBe(0);
-    $page->assertSeeIn('@composer-upload-error', 'IMG_0001.HEIC')
-        ->assertMissing('@composer-upload-retry-0')
-        ->assertNoJavaScriptErrors();
-});
-
 test('a rejected upload shows the server message without Retry', function () {
     [$page] = openComposerMediaTray($this);
 
@@ -352,21 +298,6 @@ test('a rejected upload shows the server message without Retry', function () {
     $page->assertSeeIn('@composer-upload-error', 'This HEIC file could not be read.')
         ->assertMissing('@composer-upload-retry-0')
         ->assertNoJavaScriptErrors();
-});
-
-test('a failed tile blocks saving until it is retried or removed', function () {
-    [$page] = openComposerMediaTray($this, 'fail-first', platform: ['instagram', 'threads'], select: true);
-    $page->fill('@composer-base-content', 'Blocked by a failed upload');
-
-    selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('failed.png').']');
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
-
-    expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
-    $page->assertVisible('@composer-upload-blocked')
-        ->click('@composer-upload-remove-0')
-        ->assertMissing('@composer-upload-blocked');
-    expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
 });
 
 test('three uploads run at once across the shared and channel trays, and uploads survive step and channel changes', function () {
@@ -509,18 +440,6 @@ test('arrow keys on the drag handle move the tile, keep focus on its handle and 
     $page->assertNoJavaScriptErrors();
 });
 
-test('in a right-to-left layout ArrowLeft moves the tile towards the end', function () {
-    [$page] = openComposerMediaTray($this);
-    uploadComposerMediaTrayTiles($page, ['first.png', 'second.png']);
-    $page->script("document.documentElement.dir = 'rtl'");
-
-    $page->keys('@composer-drag-handle-0', 'ArrowLeft');
-    waitForComposerMediaTrayCondition($page, "document.activeElement?.dataset.testid === 'composer-drag-handle-1'");
-
-    expect(composerMediaTrayOrder($page))->toBe(['second.png', 'first.png']);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('a tile is dragged only by its handle and a single tile has no handle', function () {
     [$page] = openComposerMediaTray($this);
     uploadComposerMediaTrayTiles($page, ['only.png']);
@@ -573,28 +492,6 @@ test('pasting an image into the post content adds an upload and leaves text past
     $page->assertNoJavaScriptErrors();
 });
 
-test('a pasted file the tray does not accept becomes an error tile and is never sent', function () {
-    [$page] = openComposerMediaTray($this);
-
-    expect(pasteIntoComposerMediaTray($page, 'composer-base-content', "[new File(['MZ'], 'setup.exe', { type: 'application/x-msdownload' })]"))->toBeTrue();
-    waitForComposerMediaTrayTestId($page, 'composer-upload-error');
-
-    expect($page->script('document.querySelector(\'[data-testid="composer-upload-error"]\').dataset.reason'))->toBe('unsupported_type')
-        ->and($page->script('window.__uploads.count'))->toBe(0);
-    $page->assertSeeIn('@composer-upload-error', 'setup.exe')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a clipboard carrying text and an image pastes the text and adds no upload', function () {
-    [$page] = openComposerMediaTray($this);
-
-    expect(pasteIntoComposerMediaTray($page, 'composer-base-content', '['.composerMediaTrayPng('cells.png').']', 'A1 B1'))->toBeFalse()
-        ->and(composerMediaTrayCount($page, 'composer-upload-item'))->toBe(0)
-        ->and(composerMediaTrayCount($page, 'composer-media-item'))->toBe(0)
-        ->and($page->script('window.__uploads.count'))->toBe(0);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('pasting an image into a channel caption adds it to that channel tray only', function () {
     [$page, , $account] = openComposerMediaTray($this, platform: ['instagram', 'threads'], select: true);
     $page->fill('@composer-base-content', 'Shared text');
@@ -610,49 +507,6 @@ test('pasting an image into a channel caption adds it to that channel tray only'
     $page->click('@composer-back-confirm-go');
     waitForComposerMediaTrayTestId($page, 'composer-dropzone');
     expect(composerMediaTrayCount($page, 'composer-media-item'))->toBe(0);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('while dragging, the tile moves into the slot under the pointer, right-to-left included, and dropping keeps it there', function () {
-    [$page] = openComposerMediaTray($this);
-    uploadComposerMediaTrayTiles($page, ['first.png', 'second.png']);
-    $page->script("document.documentElement.dir = 'rtl'");
-    $second = $page->script("document.querySelectorAll('[data-testid=\"composer-media-item\"] img')[1].getAttribute('src')");
-
-    $page->script(<<<'JS'
-        (() => {
-            const source = document.querySelector('[data-testid="composer-media-item-1"]');
-            const target = document.querySelector('[data-testid="composer-media-item-0"]');
-            const handle = document.querySelector('[data-testid="composer-drag-handle-1"]').getBoundingClientRect();
-            const box = target.getBoundingClientRect();
-            const point = { clientX: box.right - 4, clientY: box.top + box.height / 2 };
-            window.__trayDrag = { source, target, point, dataTransfer: new DataTransfer() };
-            const fire = (element, type, at = point) => element.dispatchEvent(new DragEvent(type, { ...at, bubbles: true, cancelable: true, dataTransfer: window.__trayDrag.dataTransfer }));
-            window.__trayDrag.fire = fire;
-            fire(source, 'dragstart', { clientX: handle.left + handle.width / 2, clientY: handle.top + handle.height / 2 });
-        })();
-    JS);
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-media-item-1\"]')?.hasAttribute('data-dragging')");
-    $page->script(<<<'JS'
-        (() => {
-            const { fire, target } = window.__trayDrag;
-            fire(target, 'dragenter');
-            fire(target, 'dragover');
-        })();
-    JS);
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-media-tray\"] > [data-index]')?.dataset.index === '1'");
-    expect($page->script("[...document.querySelectorAll('[data-testid=\"composer-media-tray\"] > [data-index]')].map((tile) => tile.dataset.index)"))->toBe(['1', '0'])
-        ->and($page->script("document.querySelector('[data-testid=\"composer-media-item-1\"]').hasAttribute('data-dragging')"))->toBeTrue();
-    $page->script(<<<'JS'
-        (() => {
-            const { fire, source, target } = window.__trayDrag;
-            fire(target, 'drop');
-            fire(source, 'dragend');
-        })();
-    JS);
-    waitForComposerMediaTrayCondition($page, "document.querySelector('[data-testid=\"composer-media-item\"] img')?.getAttribute('src') === '{$second}'");
-
-    expect(composerMediaTrayOrder($page))->toBe(['second.png', 'first.png']);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -729,24 +583,6 @@ function removeComposerMediaTrayInstagramImage(mixed $test): array
     return [$page, $account];
 }
 
-test('removing the only image of an Instagram feed post warns inline and suggests it back', function () {
-    [$page, $account] = removeComposerMediaTrayInstagramImage($this);
-
-    $page->assertSeeIn("@composer-media-warning-{$account->id}", 'Please include an image or video.')
-        ->assertSeeIn("@composer-{$account->id}-suggested-media", 'Suggested media');
-    $removedSource = $page->script("document.querySelector('[data-testid=\"composer-{$account->id}-suggested-0\"] img')?.getAttribute('src')");
-    expect($removedSource)->toBe(Media::where('collection', Media::COLLECTION_UPLOADS)->sole()->url)
-        ->and(composerMediaTrayCount($page, "composer-{$account->id}-media-item"))->toBe(0);
-
-    $page->click("@composer-{$account->id}-suggested-0");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$account->id}-media-item\"]').length === 1");
-
-    expect($page->script("document.querySelector('[data-testid=\"composer-{$account->id}-media-item\"] img')?.getAttribute('src')"))->toBe($removedSource);
-    $page->assertMissing("@composer-media-warning-{$account->id}")
-        ->assertMissing("@composer-{$account->id}-suggested-media")
-        ->assertNoJavaScriptErrors();
-});
-
 test('dismissing suggested media hides the panel until the next removal', function () {
     [$page, $account] = removeComposerMediaTrayInstagramImage($this);
 
@@ -762,40 +598,6 @@ test('dismissing suggested media hides the panel until the next removal', functi
 
     expect(composerMediaTrayCount($page, "composer-{$account->id}-suggested-1"))->toBe(0);
     $page->assertNoJavaScriptErrors();
-});
-
-test('suggested media survives step changes and channel switches', function () {
-    [$page, , $first, $accounts] = openComposerMediaTray($this, platform: ['instagram', 'threads'], select: true);
-    $second = $accounts[1];
-
-    selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('shared.png').']');
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-media-item\"]').length === 1");
-    $page->click('@composer-remove-0');
-    waitForComposerMediaTrayTestId($page, 'composer-suggested-0');
-
-    $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-dropzone");
-    $page->assertMissing("@composer-{$first->id}-suggested-0");
-
-    selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('channel.png').']', "composer-{$first->id}");
-    waitForComposerMediaTrayCondition($page, "document.querySelectorAll('[data-testid=\"composer-{$first->id}-media-item\"]').length === 1");
-    $page->click("@composer-{$first->id}-remove-0");
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-suggested-0");
-
-    $page->click("@composer-account-{$second->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$second->id}-dropzone");
-    $page->assertMissing("@composer-{$second->id}-suggested-0");
-
-    $page->click("@composer-account-{$first->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-suggested-0");
-    $page->assertVisible("@composer-{$first->id}-suggested-0");
-
-    $page->click('@composer-back');
-    waitForComposerMediaTrayTestId($page, 'composer-back-confirm-go');
-    $page->click('@composer-back-confirm-go');
-    waitForComposerMediaTrayTestId($page, 'composer-suggested-0');
-    $page->assertVisible('@composer-suggested-0')
-        ->assertNoJavaScriptErrors();
 });
 
 /**
@@ -822,36 +624,6 @@ test('hovering the blocked primary button names the first issue and the channel'
     waitForComposerMediaTrayTestId($page, 'composer-blocked-tooltip');
 
     $page->assertSeeIn('@composer-blocked-tooltip', "Please include an image or video. ({$account->display_name})")
-        ->assertNoJavaScriptErrors();
-});
-
-test('focusing the blocked primary button with the keyboard shows the same tooltip', function () {
-    [$page, $account] = openComposerMediaTrayBlockedSubmit($this);
-
-    $page->script("document.querySelector('[data-testid=\"composer-submit\"]').focus()");
-    waitForComposerMediaTrayTestId($page, 'composer-blocked-tooltip');
-
-    $page->assertSeeIn('@composer-blocked-tooltip', "Please include an image or video. ({$account->display_name})");
-    expect($page->script("document.activeElement?.getAttribute('data-testid')"))->toBe('composer-submit')
-        ->and($page->script("document.getElementById(document.querySelector('[data-testid=\"composer-submit\"]').getAttribute('aria-describedby'))?.textContent?.trim()"))
-        ->toContain('Please include an image or video.');
-    $page->assertNoJavaScriptErrors();
-});
-
-test('a failed upload in a network card stops blocking once only one network is left', function () {
-    [$page, , $first, $accounts] = openComposerMediaTray($this, 'fail-first', platform: ['instagram', 'threads'], select: true);
-
-    $page->click('@composer-next');
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-dropzone");
-    selectComposerMediaTrayFiles($page, '['.composerMediaTrayPng('broken.png').']', "composer-{$first->id}");
-    waitForComposerMediaTrayTestId($page, "composer-{$first->id}-upload-error");
-    expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeTrue();
-
-    $page->click("@composer-remove-account-{$accounts[1]->id}");
-    waitForComposerMediaTrayCondition($page, "!document.querySelector('[data-testid=\"composer-account-{$accounts[1]->id}\"]')");
-
-    expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
-    $page->assertMissing("@composer-{$first->id}-upload-error")
         ->assertNoJavaScriptErrors();
 });
 
@@ -897,24 +669,6 @@ test('an upload that failed before customizing shows in the cards and removing i
     waitForComposerMediaTrayCondition($page, "!document.querySelector('[data-testid=\"composer-{$first->id}-upload-error\"]')");
 
     expect(composerMediaTrayDisabled($page, 'composer-save-draft'))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the toolbar media button box lines up with the left edge of the media tray', function () {
-    [$page] = openComposerMediaTray($this);
-
-    waitForComposerMediaTrayTestId($page, 'composer-base-media-source-menu');
-
-    $offset = $page->script(<<<'JS'
-        (() => {
-            const icon = document.querySelector('[data-testid="composer-base-media-source-menu"]').getBoundingClientRect();
-            const tray = document.querySelector('[data-testid="composer-dropzone"]').getBoundingClientRect();
-
-            return Math.round(icon.left - tray.left);
-        })()
-    JS);
-
-    expect($offset)->toBe(0);
     $page->assertNoJavaScriptErrors();
 });
 

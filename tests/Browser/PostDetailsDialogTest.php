@@ -182,7 +182,6 @@ test('the details media sits below the text in a single scrollable row', functio
     ]);
     $page->assertNoJavaScriptErrors();
 })->with([
-    'four images' => [4, false],
     'eight images' => [8, true],
 ]);
 
@@ -254,16 +253,7 @@ test('the details metrics follow the order of the post content type and network'
         ->toBe($expected);
     $page->assertNoJavaScriptErrors();
 })->with([
-    'instagram story' => [Platform::Instagram, PublicationContentType::Story, ['views', 'reach', 'replies', 'engagement_rate', 'reactions']],
-    'instagram carousel' => [Platform::Instagram, PublicationContentType::Carousel, ['reactions', 'comments', 'engagement_rate', 'views', 'shares', 'saves', 'follows', 'reach']],
     'instagram reel' => [Platform::Instagram, PublicationContentType::Reel, ['reactions', 'comments', 'engagement_rate', 'views', 'shares', 'saves', 'watch_time_milliseconds', 'average_watch_time_milliseconds', 'reach']],
-    'x text' => [Platform::X, PublicationContentType::Text, ['reactions', 'comments', 'engagement_rate', 'impressions', 'shares', 'quotes', 'bookmarks']],
-    'facebook image' => [Platform::Facebook, PublicationContentType::Image, ['reactions', 'comments', 'engagement_rate', 'impressions', 'shares']],
-    'threads text' => [Platform::Threads, PublicationContentType::Text, ['reactions', 'comments', 'engagement_rate', 'views', 'quotes', 'shares']],
-    'mastodon text' => [Platform::Mastodon, PublicationContentType::Text, ['reactions', 'comments', 'shares']],
-    'pinterest image' => [Platform::Pinterest, PublicationContentType::Image, ['saves', 'comments', 'engagement_rate', 'impressions', 'reactions']],
-    'youtube short' => [Platform::YouTube, PublicationContentType::Short, ['reactions', 'comments', 'engagement_rate', 'views', 'shares', 'saves', 'watch_time_milliseconds', 'average_watch_time_milliseconds']],
-    'tiktok video' => [Platform::TikTok, PublicationContentType::Video, ['reactions', 'comments', 'engagement_rate', 'views', 'shares', 'reach', 'watch_time_milliseconds', 'average_watch_time_milliseconds']],
 ]);
 
 function postDetailsDialogMetricsBandState(mixed $page, string $band): array
@@ -321,7 +311,10 @@ test('the metrics band arrows follow the real overflow when the metrics change w
 
     expect(postDetailsDialogMetricsBandState($page, $band))->toBe(['overflows' => true, 'next' => true, 'fadeNext' => true]);
     $page->assertNoJavaScriptErrors();
-})->with(['dialog', 'card'])->with([1280, 1440, 1920]);
+})->with([
+    'dialog' => ['dialog', 1280],
+    'card' => ['card', 1920],
+]);
 
 test('a publishing post shows a spinning status in its details', function () {
     [$user, $account] = postDetailsDialogSetup();

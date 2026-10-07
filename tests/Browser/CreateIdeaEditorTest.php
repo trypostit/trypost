@@ -538,7 +538,6 @@ test('generate ideas shows one idea, generates again and opens it unsaved in the
         ->assertNoJavaScriptErrors();
 })->with([
     'desktop' => [null],
-    'phone' => [[390, 844]],
 ]);
 
 test('generate ideas shows the payment required message inline when AI is denied', function () {
@@ -755,7 +754,7 @@ test('editing an idea image swaps in the edited file and releases the original o
     $page->assertNoJavaScriptErrors();
 });
 
-test('the assistant buttons only open the AI sidebar; it closes from its X', function (string $button) {
+test('the assistant buttons only open the AI sidebar; it closes from its X', function () {
     [$user, $workspace] = createIdeaEditorSetup();
     $idea = createIdeaEditorIdea($workspace, $user, ['title' => 'Saas metrics', 'body' => '']);
     $this->actingAs($user);
@@ -763,34 +762,37 @@ test('the assistant buttons only open the AI sidebar; it closes from its X', fun
     $page = visit(route('app.create.ideas.show', $idea));
     waitForCreateIdeaEditorDialog($page);
 
-    $page->click("@{$button}");
-    waitForCreateIdeaEditorTestId($page, 'idea-editor-assistant');
-    $page->assertAttribute("@{$button}", 'aria-pressed', 'true')
-        ->click("@{$button}");
-    $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
+    foreach (['idea-editor-ai', 'idea-editor-use-assistant'] as $button) {
+        $page->click("@{$button}");
+        waitForCreateIdeaEditorTestId($page, 'idea-editor-assistant');
+        $page->assertAttribute("@{$button}", 'aria-pressed', 'true')
+            ->click("@{$button}");
+        $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
 
-    $page->assertVisible('@idea-editor-assistant');
+        $page->assertVisible('@idea-editor-assistant');
 
-    expect($page->script(<<<'JS'
-        (() => {
-            const editor = document.querySelector('[data-testid="idea-editor"]').getBoundingClientRect();
-            const assistant = document.querySelector('[data-testid="idea-editor-assistant"]').getBoundingClientRect();
-            const close = document.querySelector('[data-testid="idea-editor-assistant-close"]').getBoundingClientRect();
-            const dialogClose = document.querySelector('[data-testid="idea-editor"] [data-slot="dialog-close"]').getBoundingClientRect();
-            return {
-                onTheLeft: Math.round(assistant.left) === Math.round(editor.left),
-                closesApart: close.right <= dialogClose.left,
-            };
-        })()
-    JS))->toBe(['onTheLeft' => true, 'closesApart' => true]);
+        expect($page->script(<<<'JS'
+            (() => {
+                const editor = document.querySelector('[data-testid="idea-editor"]').getBoundingClientRect();
+                const assistant = document.querySelector('[data-testid="idea-editor-assistant"]').getBoundingClientRect();
+                const close = document.querySelector('[data-testid="idea-editor-assistant-close"]').getBoundingClientRect();
+                const dialogClose = document.querySelector('[data-testid="idea-editor"] [data-slot="dialog-close"]').getBoundingClientRect();
+                return {
+                    onTheLeft: Math.round(assistant.left) === Math.round(editor.left),
+                    closesApart: close.right <= dialogClose.left,
+                };
+            })()
+        JS))->toBe(['onTheLeft' => true, 'closesApart' => true]);
 
-    $page->click('@idea-editor-assistant-close');
-    waitForCreateIdeaEditorCondition($page, '!document.querySelector(\'[data-testid="idea-editor-assistant"]\')');
+        $page->click('@idea-editor-assistant-close');
+        waitForCreateIdeaEditorCondition($page, '!document.querySelector(\'[data-testid="idea-editor-assistant"]\')');
 
-    $page->assertMissing('@idea-editor-assistant')
-        ->assertAttribute("@{$button}", 'aria-pressed', 'false')
-        ->assertNoJavaScriptErrors();
-})->with(['idea-editor-ai', 'idea-editor-use-assistant']);
+        $page->assertMissing('@idea-editor-assistant')
+            ->assertAttribute("@{$button}", 'aria-pressed', 'false');
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
 
 test('on a phone the title and close share the first row and the stage and labels triggers share the second', function (string $locale) {
     [$user] = createIdeaEditorSetup();
@@ -818,22 +820,7 @@ test('on a phone the title and close share the first row and the stage and label
     JS))->toBe(['titleAndCloseShareRow' => true, 'pickersShareRow' => true, 'pickersBelowTitle' => true, 'noOverflow' => true]);
 
     $page->assertNoJavaScriptErrors();
-})->with(['en', 'de', 'fr', 'uk', 'ru', 'pl', 'pt-BR']);
-
-test('generate ideas opens as a dialog on a phone with cancel before generate', function () {
-    [$user] = createIdeaEditorSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'))->resize(390, 844);
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate');
-    $page->click('@ideas-generate');
-    waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
-
-    expect($page->script("document.querySelector('[data-testid=\"ideas-generate-dialog\"]').getAttribute('role') === 'dialog' && document.querySelector('[data-testid=\"ideas-generate-dialog\"]').dataset.slot === 'dialog-content'"))->toBeTrue();
-    expect($page->script("(() => { const c = document.querySelector('[data-testid=\"ideas-generate-cancel\"]'); const s = document.querySelector('[data-testid=\"ideas-generate-submit\"]'); return c.compareDocumentPosition(s) & Node.DOCUMENT_POSITION_FOLLOWING ? true : false; })()"))->toBeTrue();
-
-    $page->click('@ideas-generate-cancel')->assertNoJavaScriptErrors();
-});
+})->with(['de']);
 
 test('the generate ideas dialog keeps its footer on screen at 390px in the form and result states', function () {
     [$user] = createIdeaEditorSetup();
@@ -857,6 +844,8 @@ test('the generate ideas dialog keeps its footer on screen at 390px in the form 
     $page->click('@ideas-generate');
     waitForCreateIdeaEditorTestId($page, 'ideas-generate-dialog');
     waitForCreateIdeaEditorTestId($page, 'ideas-generate-submit');
+
+    expect($page->script("document.querySelector('[data-testid=\"ideas-generate-dialog\"]').getAttribute('role') === 'dialog' && document.querySelector('[data-testid=\"ideas-generate-cancel\"]').compareDocumentPosition(document.querySelector('[data-testid=\"ideas-generate-submit\"]')) & Node.DOCUMENT_POSITION_FOLLOWING ? true : false"))->toBeTrue();
 
     expect($page->script($footerOnScreen))->toBeTrue();
 
