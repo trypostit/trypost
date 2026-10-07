@@ -22,6 +22,18 @@ use Illuminate\Support\Facades\Storage;
  * animation settles is swallowed. Poll from the page (never sleep()) until the
  * dialog is open and still.
  */
+function waitForComposerCondition(mixed $page, string $condition): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 300; attempt++) {
+                if ({$condition}) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
 function waitForComposerReady(mixed $page, string $testId = 'composer-add-account'): void
 {
     $page->script(<<<JS
@@ -116,9 +128,15 @@ test('posts channel filter keeps accounts distinct and persists across tabs', fu
     PostPlatform::factory()->instagram()->create(['post_id' => $secondPost->id, 'social_account_id' => $secondInstagram->id]);
     $this->actingAs($user);
 
-    visit(route('app.posts.index', ['tab' => 'drafts']))
-        ->click('@posts-channel-filter')
-        ->fill('@posts-channel-search', 'first_channel')
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitForComposerCondition($page, "document.querySelector('[data-testid=\"post-card-{$firstPost->id}\"]')?.getBoundingClientRect().height > 0");
+
+    for ($attempt = 0; $attempt < 3 && ! $page->script("document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0"); $attempt++) {
+        $page->click('@posts-channel-filter');
+        waitForComposerCondition($page, "document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0");
+    }
+
+    $page->fill('@posts-channel-search', 'first_channel')
         ->assertVisible("@posts-channel-option-{$firstInstagram->id}")
         ->assertMissing("@posts-channel-option-{$secondInstagram->id}")
         ->click("@posts-channel-checkbox-{$firstInstagram->id}")
@@ -467,9 +485,11 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->assertAttribute("@composer-label-checkbox-{$firstLabel->id}", 'data-state', 'checked')
         ->assertAttribute("@composer-label-checkbox-{$secondLabel->id}", 'data-state', 'checked');
 
-    $page->click('@composer-tags-trigger')
-        ->click('@composer-base-emoji')
-        ->click('button[aria-label="grinning face"]')
+    $page->click('@composer-tags-trigger');
+    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-label-search\"]')");
+    $page->click('@composer-base-emoji');
+    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face\"]')?.getBoundingClientRect().height > 0");
+    $page->click('button[aria-label="grinning face"]')
         ->assertValue('@composer-base-content', '😀')
         ->click('@composer-base-signature')
         ->click('text=Campaign signature')

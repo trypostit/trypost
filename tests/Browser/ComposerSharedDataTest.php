@@ -168,8 +168,13 @@ test('editing from the calendar opens the post with its board', function () {
 
 function clickComposerSharedDataNewPost(mixed $page): void
 {
-    $page->click('@sidebar-new');
-    waitForComposerSharedDataTestId($page, 'sidebar-new-post');
+    $item = "document.querySelector('[data-testid=\"sidebar-new-post\"]')?.getBoundingClientRect().height > 0";
+
+    for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
+        $page->click('@sidebar-new');
+        waitForComposerSharedDataCondition($page, $item);
+    }
+
     $page->click('@sidebar-new-post');
 }
 
