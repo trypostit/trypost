@@ -384,7 +384,7 @@ class InstagramPublisher
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
 
-            if (GraphError::isTransientFailure($publishResponse)) {
+            if (GraphError::isTransientFailure($publishResponse) || InstagramPublishException::isMediaNotReady($publishResponse)) {
                 throw $this->pendingContainerException($containerId, $workflow, $publishResponse->status());
             }
 

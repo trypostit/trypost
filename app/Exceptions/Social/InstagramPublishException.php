@@ -10,6 +10,17 @@ use Illuminate\Http\Client\Response;
 
 class InstagramPublishException extends SocialPublishException
 {
+    private const int MEDIA_NOT_READY_SUBCODE = 2207027;
+
+    /**
+     * media_publish answered that the container is not publishable yet: the
+     * documented action is to wait for FINISHED and publish again.
+     */
+    public static function isMediaNotReady(Response $response): bool
+    {
+        return (int) $response->json('error.error_subcode') === self::MEDIA_NOT_READY_SUBCODE;
+    }
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */

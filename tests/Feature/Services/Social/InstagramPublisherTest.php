@@ -831,6 +831,45 @@ test('instagram publisher retries a transient Graph failure on media_publish', f
         });
 });
 
+test('instagram publisher waits for a container media_publish reports as not ready yet', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $graph = config('trypost.platforms.instagram.graph_api');
+
+    Http::fake([
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123']),
+        "{$graph}/container-123*" => Http::response(['status_code' => 'FINISHED']),
+        "{$graph}/ig_123456789/media_publish" => Http::response([
+            'error' => [
+                'message' => 'Media ID is not available',
+                'type' => 'OAuthException',
+                'code' => 9007,
+                'error_subcode' => 2207027,
+                'error_user_msg' => 'The media is not ready for publishing, please wait for a moment',
+            ],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->httpStatus)->toBe(400)
+                ->and($exception->context)->toBe([
+                    'instagram_workflow' => [
+                        'stage' => 'final_container',
+                        'container_id' => 'container-123',
+                    ],
+                ]);
+        });
+});
+
 test('instagram publisher retries a dropped connection on media_publish', function () {
     $this->post->update([
         'media' => [[
