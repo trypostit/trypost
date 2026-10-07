@@ -577,3 +577,25 @@ test('the live part of a thread that failed midway is never imported as external
         ->and(PostPlatform::where('platform_post_id', 'other-1')->exists())->toBeTrue()
         ->and(AnalyticsPublication::whereIn('remote_id', ['root-1', 'reply-1'])->whereNotNull('post_platform_id')->exists())->toBeFalse();
 });
+
+test('captions that differ only after a less-than sign are not linked', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = sentByTryPost($account, 'container-1', 'We <3 apples and pears', now()->subHour()->toImmutable());
+    externalPublication($account, ['remote_id' => 'media-1', 'excerpt' => 'We <3 bananas', 'provider_published_at' => now()->subHour()]);
+
+    ImportExternalPosts::execute($account);
+
+    expect(Post::query()->imported()->count())->toBe(1)
+        ->and($tryPost->fresh()->platform_post_id)->toBe('container-1');
+});
+
+test('a caption with a less-than sign links to its own publication', function () {
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = sentByTryPost($account, 'container-1', 'We <3 apples and pears', now()->subHour()->toImmutable());
+    externalPublication($account, ['remote_id' => 'media-1', 'excerpt' => 'We <3 apples and pears', 'provider_published_at' => now()->subHour()]);
+
+    ImportExternalPosts::execute($account);
+
+    expect(Post::query()->imported()->count())->toBe(0)
+        ->and($tryPost->fresh()->platform_post_id)->toBe('media-1');
+});

@@ -17,8 +17,7 @@ class PostExcerpt
 {
     public static function from(?string $html, int $limit): string
     {
-        $text = preg_replace('/<\/(div|h[1-6]|blockquote)>/i', "\n", (string) $html);
-        $text = app(ContentSanitizer::class)->plainText((string) $text);
+        $text = app(ContentSanitizer::class)->plainText((string) $html);
         $text = preg_replace("/[ \t]*\n[ \t]*/", "\n", $text);
         $text = preg_replace("/\n{3,}/", "\n\n", (string) $text);
 

@@ -105,7 +105,7 @@ test('it keeps telegram-allowed html and converts strong/em', function () {
 test('it strips disallowed tags but keeps links for telegram', function () {
     $sanitizer = new ContentSanitizer;
     $result = $sanitizer->sanitize('<div>see <a href="https://example.com">link</a></div><script>x</script>', Platform::Telegram);
-    expect($result)->toBe('see <a href="https://example.com">link</a>x');
+    expect($result)->toBe("see <a href=\"https://example.com\">link</a>\nx");
 });
 
 test('it escapes bare ampersands for telegram', function () {

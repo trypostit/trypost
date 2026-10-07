@@ -293,9 +293,7 @@ class ImportExternalPosts
 
     private static function normalizedText(string $text): string
     {
-        $plain = html_entity_decode(strip_tags($text), ENT_QUOTES | ENT_HTML5, 'UTF-8');
-
-        return trim((string) preg_replace('/\s+/u', ' ', $plain));
+        return trim((string) preg_replace('/\s+/u', ' ', $text));
     }
 
     private static function createPost(SocialAccount $account, AnalyticsPublication $publication): PostPlatform
