@@ -6,21 +6,18 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed, getCurrentInstance } from 'vue';
+import { computed, getCurrentInstance, h, onBeforeUnmount, render } from 'vue';
 
+import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
-import {
-    getPlatformLabel,
-    getPlatformLogo,
-} from '@/composables/usePlatformLogo';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { accountColor } from '@/lib/analyticsColors';
 import type { AccountIdentityData } from '@/types/analytics';
-import { isConnectionLost } from '@/types/social-account';
 
 import {
     formatCountTick,
@@ -107,129 +104,57 @@ const tickAttributes = {
     },
 };
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
-const AVATAR_SIZE = 20;
-const BADGE_SIZE = 12;
-const AVATAR_GAP = 6;
-const chartUid = getCurrentInstance()?.uid ?? 0;
-
-const svgElement = (
-    name: string,
-    attributes: Record<string, string>,
-): SVGElement => {
-    const element = document.createElementNS(SVG_NAMESPACE, name);
-    Object.entries(attributes).forEach(([key, value]) =>
-        element.setAttribute(key, value),
-    );
-
-    return element;
-};
+const AVATAR_SIZE = 24;
+const AVATAR_OVERHANG = 4;
+const AVATAR_GAP = 8;
+const appContext = getCurrentInstance()?.appContext ?? null;
+const avatarHosts: HTMLElement[] = [];
 
 const accountLabel = (account: AccountIdentityData): string =>
     account.username
         ? `@${account.username}`
         : account.name || getPlatformLabel(account.platform);
 
-const buildAxisChannel = (
-    account: AccountIdentityData,
-    index: number,
-): SVGGElement => {
-    const radius = AVATAR_SIZE / 2;
-    const left = -AVATAR_SIZE - AVATAR_GAP;
-    const centerX = left + radius;
-    const clipId = `axis-avatar-clip-${chartUid}-${index}`;
-    const group = svgElement('g', {
-        'data-account-logo': '',
-        'data-testid': 'analytics-axis-channel',
-    }) as SVGGElement;
+const unmountAvatars = (): void => {
+    avatarHosts.splice(0).forEach((host) => render(null, host));
+};
 
-    const clip = svgElement('clipPath', { id: clipId });
-    clip.appendChild(
-        svgElement('circle', { cx: String(centerX), cy: '0', r: String(radius) }),
-    );
-    group.appendChild(clip);
+const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
+    const box = AVATAR_SIZE + AVATAR_OVERHANG * 2;
+    const frame = document.createElementNS(SVG_NAMESPACE, 'foreignObject');
+    frame.setAttribute('x', String(-AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG));
+    frame.setAttribute('y', String(-AVATAR_SIZE / 2 - AVATAR_OVERHANG));
+    frame.setAttribute('width', String(box));
+    frame.setAttribute('height', String(box));
+    frame.setAttribute('data-account-logo', '');
+    frame.setAttribute('data-testid', 'analytics-axis-channel');
+    frame.setAttribute('data-platform', account.platform);
+    frame.style.overflow = 'visible';
 
-    const fallback = svgElement('g', {
-        'data-testid': 'analytics-axis-avatar-fallback',
+    const host = document.createElement('div');
+    host.style.padding = `${AVATAR_OVERHANG}px`;
+    host.style.lineHeight = '0';
+
+    const avatar = h(ChannelAvatar, {
+        platform: account.platform,
+        src: account.avatar_url,
+        name: accountLabel(account),
+        size: AVATAR_SIZE,
+        ring: 'card',
+        status: account.status ?? null,
+        accountId: account.social_account_key,
+        reserveSpace: false,
     });
-    const fallbackCircle = svgElement('circle', {
-        cx: String(centerX),
-        cy: '0',
-        r: String(radius),
-    });
-    fallbackCircle.style.fill = 'var(--secondary)';
-    const initial = svgElement('text', {
-        x: String(centerX),
-        y: '0',
-        'text-anchor': 'middle',
-        'dominant-baseline': 'central',
-        'font-size': '9',
-        'font-weight': '700',
-    });
-    initial.style.fill = 'var(--foreground)';
-    initial.textContent = (
-        account.name ||
-        account.username ||
-        getPlatformLabel(account.platform)
-    )
-        .charAt(0)
-        .toUpperCase();
-    fallback.append(fallbackCircle, initial);
-    group.appendChild(fallback);
+    avatar.appContext = appContext;
+    render(avatar, host);
+    avatarHosts.push(host);
+    frame.appendChild(host);
 
-    if (account.avatar_url) {
-        const photo = svgElement('image', {
-            href: account.avatar_url,
-            x: String(left),
-            y: String(-radius),
-            width: String(AVATAR_SIZE),
-            height: String(AVATAR_SIZE),
-            'clip-path': `url(#${clipId})`,
-            preserveAspectRatio: 'xMidYMid slice',
-            'data-testid': 'analytics-axis-avatar',
-            'aria-label': accountLabel(account),
-        });
-        photo.addEventListener('error', () => photo.remove());
-        group.appendChild(photo);
-    }
-
-    const badgeCenterX = left + AVATAR_SIZE - BADGE_SIZE / 2 + 3;
-    const badgeCenterY = radius - BADGE_SIZE / 2 + 2;
-    const badgeRing = svgElement('circle', {
-        cx: String(badgeCenterX),
-        cy: String(badgeCenterY),
-        r: String(BADGE_SIZE / 2 + 1),
-    });
-    badgeRing.style.fill = 'var(--card)';
-    group.appendChild(badgeRing);
-    group.appendChild(
-        svgElement('image', {
-            href: getPlatformLogo(account.platform),
-            x: String(badgeCenterX - BADGE_SIZE / 2),
-            y: String(badgeCenterY - BADGE_SIZE / 2),
-            width: String(BADGE_SIZE),
-            height: String(BADGE_SIZE),
-            'data-testid': 'analytics-axis-logo',
-            'aria-label': getPlatformLabel(account.platform),
-        }),
-    );
-
-    if (isConnectionLost({ status: account.status ?? null })) {
-        const dot = svgElement('circle', {
-            cx: String(left + 2),
-            cy: String(-radius + 2),
-            r: '4',
-            'data-testid': 'analytics-axis-disconnected',
-        });
-        dot.style.fill = 'var(--destructive)';
-        dot.style.stroke = 'var(--card)';
-        dot.style.strokeWidth = '1.5';
-        group.appendChild(dot);
-    }
-
-    return group as SVGGElement;
+    return frame;
 };
 
 const decorateTicks = (svg: SVGSVGElement): void => {
+    unmountAvatars();
     svg.querySelectorAll('[data-account-logo]').forEach((logo) =>
         logo.remove(),
     );
@@ -242,10 +167,12 @@ const decorateTicks = (svg: SVGSVGElement): void => {
                 return;
             }
 
-            tick.appendChild(buildAxisChannel(account, index));
+            tick.appendChild(buildAxisChannel(account));
         },
     );
 };
+onBeforeUnmount(unmountAvatars);
+
 const barAttributes = {
     [VisStackedBarSelectors.bar]: { 'data-testid': 'analytics-account-bar' },
 };

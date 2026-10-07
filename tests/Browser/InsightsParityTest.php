@@ -228,19 +228,19 @@ test('followers and posts charts show network logos and say how many channels ar
 
     $page = visit(route('app.insights'));
     waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-logo]").length >= 4');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
 
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-logo]").length', 4)
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 4)
         ->assertScript('document.querySelector("[data-testid=analytics-followers-subtitle]")?.textContent.includes("Showing")', false);
 
     $page->navigate(route('app.insights', ['channels' => [$instagram->id]]));
     waitForInsightsParityTestId($page, 'analytics-followers-subtitle');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-logo]").length >= 2');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 2');
 
     $page->assertSeeIn('@analytics-followers-subtitle', 'Showing 1 of 2 channels. Filter by channel to see a different set.')
         ->assertSeeIn('@analytics-posts-subtitle', 'Showing 1 of 2 channels.')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-logo]").length', 2)
-        ->assertScript('document.querySelector("[data-testid=analytics-axis-logo]").getAttribute("aria-label")', 'Instagram')
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 2)
+        ->assertScript('document.querySelector("[data-testid=analytics-axis-channel]").getAttribute("data-platform")', 'instagram')
         ->assertNoJavaScriptErrors();
 });
 
@@ -252,9 +252,9 @@ test('performance and follower charts show each channel as avatar plus network b
     waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
     waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
 
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-avatar]").length', 2)
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-avatar-fallback]").length', 4)
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid=analytics-axis-logo]").length', 4)
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] img").length', 2)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] > div").length', 2)
+        ->assertScript('[...document.querySelectorAll("[data-testid=analytics-axis-channel]")].every((channel) => channel.querySelectorAll("img").length >= 1)', true)
         ->assertScript('document.querySelectorAll("[data-testid=analytics-top-post-channel]").length >= 2', true)
         ->assertNoJavaScriptErrors();
 });
@@ -266,9 +266,9 @@ test('a channel whose connection is lost shows the disconnected dot in the filte
 
     $page = visit(route('app.insights'));
     waitForInsightsParityTestId($page, 'analytics-channel-filter');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-disconnected]").length >= 2');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length >= 2');
 
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-disconnected]").length', 2)
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length', 2)
         ->assertScript("document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 1", true)
         ->click('@analytics-channel-filter');
     waitForInsightsParityCondition($page, "document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 2");
