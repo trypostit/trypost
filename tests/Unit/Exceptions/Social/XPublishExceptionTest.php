@@ -89,7 +89,7 @@ test('HTTP 413 with empty body maps to MediaFormat category', function () {
         ->and($exception->platformErrorCode)->toBe('413');
 });
 
-test('unknown type maps to Unknown category with detail as message', function () {
+test('unknown type maps to Unknown category with the generic message', function () {
     $response = Http::response([
         'type' => 'https://api.x.com/2/problems/some-unknown-problem',
         'title' => 'Some Unknown Problem',
@@ -101,22 +101,8 @@ test('unknown type maps to Unknown category with detail as message', function ()
     $exception = XPublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe('An unknown issue occurred.');
-});
-
-test('body containing "invalid URL" maps to ContentPolicy category', function () {
-    $response = Http::response([
-        'type' => 'https://api.x.com/2/problems/invalid-request',
-        'title' => 'Invalid Request',
-        'detail' => 'The post contains an invalid URL in the content.',
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
-
-    $exception = XPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
-        ->and($exception->userMessage)->toBe('Post contains an invalid URL.');
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'X']))
+        ->and($exception->rawResponse)->toContain('An unknown issue occurred.');
 });
 
 test('a duplicate post has no documented code and stays unclassified', function () {
@@ -134,52 +120,24 @@ test('a duplicate post has no documented code and stays unclassified', function 
     expect($exception->category)->toBe(ErrorCategory::Unknown);
 });
 
-test('body containing "video longer than 2 minutes" maps to MediaFormat category', function () {
-    $response = Http::response([
+test('the free-text detail never changes how an invalid-request is classified', function (array $body) {
+    $fakeResponse = Http::fake(['*' => Http::response([
         'type' => 'https://api.x.com/2/problems/invalid-request',
         'title' => 'Invalid Request',
-        'detail' => 'The video longer than 2 minutes cannot be uploaded.',
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
+        ...$body,
+    ], 400)])->post(config('trypost.platforms.x.api').'/tweets');
 
     $exception = XPublishException::fromApiResponse($fakeResponse);
 
-    expect($exception->category)->toBe(ErrorCategory::MediaFormat)
-        ->and($exception->userMessage)->toBe('Video exceeds the 2-minute limit.');
-});
-
-test('invalid media IDs maps to MediaFormat category', function () {
-    $response = Http::response([
-        'type' => 'https://api.x.com/2/problems/invalid-request',
-        'title' => 'Invalid Request',
-        'detail' => 'One or more parameters to your request was invalid.',
-        'errors' => [['message' => 'Your media IDs are invalid.']],
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
-
-    $exception = XPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::MediaFormat)
-        ->and($exception->userMessage)->toBe('X rejected the attached media. Please re-upload and try again.');
-});
-
-test('JSON object body requirement maps to ServerError category', function () {
-    $response = Http::response([
-        'type' => 'https://api.x.com/2/problems/invalid-request',
-        'title' => 'Invalid Request',
-        'detail' => 'One or more parameters to your request was invalid.',
-        'errors' => [['message' => 'Request body must be a JSON object.']],
-    ], 400);
-
-    $fakeResponse = Http::fake(['*' => $response])->post('https://api.x.com/test');
-
-    $exception = XPublishException::fromApiResponse($fakeResponse);
-
-    expect($exception->category)->toBe(ErrorCategory::ServerError)
-        ->and($exception->userMessage)->toBe('X rejected the media upload request. Please try again.');
-});
+    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+        ->and($exception->userMessage)->toBe('Invalid request. Check your post content.')
+        ->and($exception->platformErrorCode)->toBe('invalid-request');
+})->with([
+    'invalid URL' => [['detail' => 'The post contains an invalid URL in the content.']],
+    'video longer than 2 minutes' => [['detail' => 'The video longer than 2 minutes cannot be uploaded.']],
+    'invalid media IDs' => [['detail' => 'One or more parameters to your request was invalid.', 'errors' => [['message' => 'Your media IDs are invalid.']]]],
+    'JSON body requirement' => [['detail' => 'One or more parameters to your request was invalid.', 'errors' => [['message' => 'Request body must be a JSON object.']]]],
+]);
 
 test('platform returns x', function () {
     $response = Http::response([

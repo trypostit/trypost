@@ -25,24 +25,6 @@ class LinkedInPublishException extends SocialPublishException
             );
         }
 
-        if (str_contains((string) $rawResponse, 'Unable to obtain activity')) {
-            return new static(
-                userMessage: 'LinkedIn server error. Please try again.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: (string) $statusCode,
-                rawResponse: $rawResponse,
-            );
-        }
-
-        if (str_contains((string) $rawResponse, 'resource is forbidden')) {
-            return new static(
-                userMessage: 'Not authorized to post to this account.',
-                category: ErrorCategory::Permission,
-                platformErrorCode: (string) $statusCode,
-                rawResponse: $rawResponse,
-            );
-        }
-
         if ($statusCode === 429) {
             return (new static(
                 userMessage: 'LinkedIn rate limit reached. Please try again later.',
@@ -64,7 +46,7 @@ class LinkedInPublishException extends SocialPublishException
         [$message, $category] = match ($statusCode) {
             403 => ['Not authorized to post to this account.', ErrorCategory::Permission],
             422 => ['Invalid post data. Please check your content.', ErrorCategory::ContentPolicy],
-            default => [$errorMessage ?? 'An unknown LinkedIn error occurred.', ErrorCategory::Unknown],
+            default => [__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']), ErrorCategory::Unknown],
         };
 
         return new static(

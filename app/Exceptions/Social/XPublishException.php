@@ -29,50 +29,6 @@ class XPublishException extends SocialPublishException
             );
         }
 
-        if (str_contains((string) $rawResponse, 'invalid URL')) {
-            return new static(
-                userMessage: 'Post contains an invalid URL.',
-                category: ErrorCategory::ContentPolicy,
-                platformErrorCode: $typeSuffix ?: null,
-                rawResponse: $rawResponse,
-            );
-        }
-
-        if (str_contains((string) $rawResponse, 'video longer than 2 minutes')) {
-            return new static(
-                userMessage: 'Video exceeds the 2-minute limit.',
-                category: ErrorCategory::MediaFormat,
-                platformErrorCode: $typeSuffix ?: null,
-                rawResponse: $rawResponse,
-            );
-        }
-
-        $firstErrorMessage = (string) data_get($body, 'errors.0.message', '');
-
-        if (
-            str_contains((string) $rawResponse, 'media IDs are invalid')
-            || str_contains($firstErrorMessage, 'media IDs are invalid')
-        ) {
-            return new static(
-                userMessage: 'X rejected the attached media. Please re-upload and try again.',
-                category: ErrorCategory::MediaFormat,
-                platformErrorCode: $typeSuffix ?: null,
-                rawResponse: $rawResponse,
-            );
-        }
-
-        if (
-            str_contains((string) $rawResponse, 'Request body must be a JSON object')
-            || str_contains($firstErrorMessage, 'Request body must be a JSON object')
-        ) {
-            return new static(
-                userMessage: 'X rejected the media upload request. Please try again.',
-                category: ErrorCategory::ServerError,
-                platformErrorCode: $typeSuffix ?: null,
-                rawResponse: $rawResponse,
-            );
-        }
-
         if ($statusCode === 413) {
             return new static(
                 userMessage: 'Media chunk rejected by X (payload too large).',
@@ -107,7 +63,7 @@ class XPublishException extends SocialPublishException
             'client-forbidden' => ['App not enrolled or lacks required access.', ErrorCategory::Permission],
             'not-authorized-for-resource' => ['Not authorized for this resource.', ErrorCategory::Permission],
             'resource-not-found' => ['Resource not found.', ErrorCategory::ContentPolicy],
-            default => [$detail ?: $title ?: 'An unknown X error occurred.', ErrorCategory::Unknown],
+            default => [__('posts.errors.unrecognized_error', ['platform' => 'X']), ErrorCategory::Unknown],
         };
 
         return (new static(

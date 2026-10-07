@@ -1032,7 +1032,7 @@ test('x publisher fails when chunked finalize is rejected by X', function () {
     });
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(XPublishException::class, 'X rejected the media upload request');
+        ->toThrow(XPublishException::class, 'Invalid request. Check your post content.');
 });
 
 test('x publisher fails when append is rejected by X', function () {
@@ -1368,7 +1368,7 @@ test('x publisher fails when tweet rejects invalid media ids', function () {
     });
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(XPublishException::class, 'X rejected the attached media');
+        ->toThrow(XPublishException::class, 'Invalid request. Check your post content.');
 });
 
 test('x publisher sends the tweet with links defused', function () {
