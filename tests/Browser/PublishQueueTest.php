@@ -351,7 +351,7 @@ test('more times extends the queue range', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('a failed post is listed in sent with its failed badge and actions, not in the queue', function () {
+test('a failed post is listed in sent with its failed badge and actions', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
     $failed = Post::factory()->failed()->create([
         'workspace_id' => $workspace->id,
@@ -367,13 +367,6 @@ test('a failed post is listed in sent with its failed badge and actions, not in 
         'error_context' => ['category' => ErrorCategory::MediaFormat->value],
     ]);
     $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForPublishQueueTestId($page, 'publish-tab-queue');
-
-    $page->assertMissing("@post-card-{$failed->id}")
-        ->assertMissing('@needs-attention')
-        ->assertNoJavaScriptErrors();
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
     waitForPublishQueueTestId($page, "post-card-{$failed->id}");

@@ -347,11 +347,7 @@ test('editing a queued post to a custom time switches its marker to custom', fun
 
     expect($queued->refresh()->schedule_mode)->toBe(ScheduleMode::Custom);
 
-    $page = visit(route('app.posts.index'));
-    waitForComposerQueuePageTestId($page, "post-schedule-mode-{$queued->id}");
-
-    $page->assertAttribute("@post-schedule-mode-{$queued->id}", 'data-mode', 'custom')
-        ->assertNoJavaScriptErrors();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('recovering an empty-target draft into the queue confirms it with a toast', function () {

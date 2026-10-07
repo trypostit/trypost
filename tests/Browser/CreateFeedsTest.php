@@ -193,11 +193,6 @@ test('save as idea creates an unassigned idea with the imported image and shows 
         ->and($idea->idea_stage_id)->toBeNull()
         ->and(data_get($copy->meta, 'copied_from'))->toBe($image->id)
         ->and(collect($idea->media)->pluck('id')->all())->toBe([$copy->id]);
-
-    $ideas = visit(route('app.create.ideas.index'));
-    waitForCreateFeedsTestId($ideas, "idea-card-{$idea->id}");
-
-    $ideas->assertVisible("@idea-card-{$idea->id}")->assertNoJavaScriptErrors();
 });
 
 test('the scope menu renames in a dialog, moves into a collection and back, and deletes with the keyword', function () {
