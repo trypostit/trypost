@@ -17,7 +17,7 @@ test('showing the workspace returns the same fields on the api and mcp, without 
 
     TryPostServer::actingAs($this->user)->tool(GetWorkspaceTool::class)->assertOk()->assertStructuredContent($api);
 
-    expect(array_keys($api))->toBe(['id', 'name', 'created_at', 'updated_at'])
+    expect(array_keys($api))->toBe(['id', 'name', 'created_at', 'updated_at', 'me'])
         ->and($api['id'])->toBe($this->workspace->id)
         ->and($api['name'])->toBe($this->workspace->name);
 });

@@ -23,7 +23,7 @@ test('get workspace returns sanitized WorkspaceResource shape', function () {
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->where('id', $this->workspace->id)
                 ->where('name', $this->workspace->name)
-                ->hasAll(['created_at', 'updated_at'])
+                ->hasAll(['created_at', 'updated_at', 'me'])
                 ->missing('account_id')
                 ->missing('user_id')
                 ->missing('brand_color')

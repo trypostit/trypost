@@ -36,7 +36,7 @@ test('listing channels returns the same accounts on the api and mcp, including t
     TryPostServer::actingAs($this->user)->tool(ListSocialAccountsTool::class)->assertOk()->assertStructuredContent(parityMcpPage('social_accounts', $apiResponse));
 
     expect(collect($api)->pluck('id')->sort()->values()->all())->toBe(collect([$first->id, $second->id])->sort()->values()->all())
-        ->and(array_keys($api[0]))->toEqual(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal'])
+        ->and(array_keys($api[0]))->toEqual(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal', 'max_content_length'])
         ->and(collect($api)->firstWhere('id', $first->id)['timezone'])->toBe('America/Sao_Paulo');
 });
 

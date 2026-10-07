@@ -33,7 +33,7 @@ test('list returns wrapped social_accounts array with SocialAccountResource shap
     $response->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->where('current_page', 1)->where('per_page', (int) config('app.pagination.default'))->etc()->has('social_accounts', 2, function (AssertableJson $account) {
-                $account->hasAll(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal'])
+                $account->hasAll(['id', 'platform', 'display_name', 'username', 'status', 'has_posting_schedule', 'timezone', 'posting_goal', 'max_content_length'])
                     ->missing('is_active')
                     ->missing('access_token')
                     ->missing('refresh_token')
