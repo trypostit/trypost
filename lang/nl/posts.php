@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube gaf een onverwachte fout. Probeer het opnieuw.',
+            'upload_unconfirmed' => 'YouTube faalde bij het afronden van de upload. Controleer je kanaal voordat je het opnieuw probeert: de video staat er misschien al.',
         ],
         'google_business' => [
             'no_location' => 'Dit Google Business Profile-account heeft geen locatie ingesteld. Verbind het opnieuw.',

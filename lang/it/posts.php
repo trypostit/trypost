@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube ha restituito un errore imprevisto. Riprova.',
+            'upload_unconfirmed' => 'YouTube non è riuscito a completare il caricamento. Controlla il tuo canale prima di riprovare: il video potrebbe essere già lì.',
         ],
         'google_business' => [
             'no_location' => 'Questo account Google Business Profile non ha una sede configurata. Ricollegalo.',

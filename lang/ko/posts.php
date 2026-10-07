@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube에서 예기치 않은 오류가 발생했습니다. 다시 시도해 주세요.',
+            'upload_unconfirmed' => 'YouTube에서 업로드를 마무리하지 못했습니다. 다시 시도하기 전에 채널을 확인해 주세요. 동영상이 이미 올라가 있을 수 있습니다.',
         ],
         'google_business' => [
             'no_location' => '이 Google 비즈니스 프로필 계정에 설정된 위치가 없습니다. 다시 연결하세요.',

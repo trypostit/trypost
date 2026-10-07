@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'O YouTube retornou um erro inesperado. Tente novamente.',
+            'upload_unconfirmed' => 'O YouTube falhou ao concluir o envio. Confira seu canal antes de tentar de novo: o vídeo pode já estar lá.',
         ],
         'google_business' => [
             'no_location' => 'Esta conta do Google Business Profile não tem um local configurado. Reconecte-a.',

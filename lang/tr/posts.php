@@ -846,6 +846,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube beklenmeyen bir hata döndürdü. Lütfen tekrar deneyin.',
+            'upload_unconfirmed' => 'YouTube yüklemeyi tamamlarken başarısız oldu. Tekrar denemeden önce kanalınızı kontrol edin: video zaten orada olabilir.',
         ],
         'google_business' => [
             'no_location' => 'Bu Google Business Profile hesabında yapılandırılmış bir konum yok. Yeniden bağlayın.',

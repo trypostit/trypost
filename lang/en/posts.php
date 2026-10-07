@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube returned an unexpected error. Please try again.',
+            'upload_unconfirmed' => 'YouTube failed while finishing the upload. Check your channel before trying again: the video may already be there.',
         ],
         'google_business' => [
             'no_location' => 'This Google Business Profile account has no location configured. Please reconnect it.',

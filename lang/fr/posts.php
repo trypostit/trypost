@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube a renvoyé une erreur inattendue. Réessayez.',
+            'upload_unconfirmed' => 'YouTube a échoué en finalisant l\'envoi. Vérifie ta chaîne avant de réessayer : la vidéo y est peut-être déjà.',
         ],
         'google_business' => [
             'no_location' => 'Ce compte Google Business Profile n\'a aucun établissement configuré. Reconnecte-le.',

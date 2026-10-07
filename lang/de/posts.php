@@ -846,6 +846,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube hat einen unerwarteten Fehler gemeldet. Bitte versuche es erneut.',
+            'upload_unconfirmed' => 'YouTube ist beim Abschließen des Uploads fehlgeschlagen. Prüfe deinen Kanal, bevor du es erneut versuchst: Das Video ist dort vielleicht schon.',
         ],
         'google_business' => [
             'no_location' => 'Dieses Google-Business-Profile-Konto hat keinen Standort konfiguriert. Bitte erneut verbinden.',

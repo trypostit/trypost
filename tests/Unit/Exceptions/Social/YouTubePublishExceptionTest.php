@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
@@ -68,11 +67,14 @@ test('unknown reason falls through to Unknown category with original message', f
         ->and($exception->userMessage)->toBe('original error message');
 });
 
-test('a Google 5xx is a transient outage, not a failed post', function (int $status, array $errors) {
+test('a Google 5xx that reaches the mapper fails as an unconfirmed upload', function (int $status, array $errors) {
     $e = new Exception('<!DOCTYPE html><html lang=en><title>Error 502 (Server Error)!!1</title></html>', $status, null, $errors);
 
-    expect(fn () => YouTubePublishException::fromGoogleException($e))
-        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe($status));
+    $exception = YouTubePublishException::fromGoogleException($e);
+
+    expect(YouTubePublishException::isServerError($e))->toBeTrue()
+        ->and($exception->category)->toBe(ErrorCategory::ServerError)
+        ->and($exception->userMessage)->toBe(__('posts.errors.youtube.upload_unconfirmed'));
 })->with([
     '502 html page' => [502, []],
     '503 backendError' => [503, [['reason' => 'backendError', 'message' => 'Backend Error']]],

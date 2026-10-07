@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTubeで予期しないエラーが発生しました。もう一度お試しください。',
+            'upload_unconfirmed' => 'YouTubeでアップロードの完了中にエラーが発生しました。再試行する前にチャンネルを確認してください。動画がすでに公開されている可能性があります。',
         ],
         'google_business' => [
             'no_location' => 'この Google ビジネス プロフィール アカウントには店舗が設定されていません。再接続してください。',

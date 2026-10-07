@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube zwrócił nieoczekiwany błąd. Spróbuj ponownie.',
+            'upload_unconfirmed' => 'YouTube nie zdołał dokończyć przesyłania. Sprawdź swój kanał, zanim spróbujesz ponownie: film może już tam być.',
         ],
         'google_business' => [
             'no_location' => 'To konto Google Business Profile nie ma skonfigurowanej lokalizacji. Połącz je ponownie.',

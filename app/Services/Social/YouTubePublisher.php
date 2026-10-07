@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Models\PostPlatform;
@@ -134,6 +135,8 @@ class YouTubePublisher
             ];
         } catch (Exception $e) {
             throw YouTubePublishException::fromGoogleException($e);
+        } catch (PlatformUnavailableException $e) {
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('YouTube upload failed', [
                 'error' => $e->getMessage(),
@@ -197,11 +200,23 @@ class YouTubePublisher
             );
             $mediaUpload->setFileSize($fileSize);
 
+            try {
+                $mediaUpload->getResumeUri();
+            } catch (Exception $e) {
+                throw YouTubePublishException::isServerError($e) ? $this->uploadUnavailable($e) : $e;
+            }
+
             $uploadStatus = false;
 
             while (! $uploadStatus && ! feof($handle)) {
                 $chunk = fread($handle, self::CHUNK_SIZE);
-                $uploadStatus = $mediaUpload->nextChunk($chunk);
+                $isFinalChunk = ftell($handle) >= $fileSize;
+
+                try {
+                    $uploadStatus = $mediaUpload->nextChunk($chunk);
+                } catch (Exception $e) {
+                    throw ! $isFinalChunk && YouTubePublishException::isServerError($e) ? $this->uploadUnavailable($e) : $e;
+                }
             }
 
             if (! $uploadStatus instanceof Video) {
@@ -216,6 +231,14 @@ class YouTubePublisher
             fclose($handle);
             $client->setDefer(false);
         }
+    }
+
+    private function uploadUnavailable(Exception $e): PlatformUnavailableException
+    {
+        return new PlatformUnavailableException(
+            message: "YouTube returned {$e->getCode()} during upload",
+            httpStatus: $e->getCode() >= 500 ? $e->getCode() : null,
+        );
     }
 
     private function resolveDescription(PostPlatform $postPlatform, ?string $content): string

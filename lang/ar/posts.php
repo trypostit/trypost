@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'أعاد YouTube خطأً غير متوقع. حاول مرة أخرى.',
+            'upload_unconfirmed' => 'فشل YouTube في إنهاء الرفع. تحقق من قناتك قبل المحاولة مرة أخرى: قد يكون الفيديو موجودًا بالفعل.',
         ],
         'google_business' => [
             'no_location' => 'حساب Google Business Profile هذا بلا موقع مُعد. أعد ربطه.',

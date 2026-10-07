@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube 返回了意外错误，请重试。',
+            'upload_unconfirmed' => 'YouTube 在完成上传时失败。重试前请先检查你的频道：视频可能已经在那里了。',
         ],
         'google_business' => [
             'no_location' => '此 Google 商家资料账号尚未配置地点。请重新连接。',

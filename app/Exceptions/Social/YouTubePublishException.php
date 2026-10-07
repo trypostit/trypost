@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
-use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use Google\Service\Exception as GoogleServiceException;
 use Illuminate\Http\Client\Response;
@@ -12,7 +11,7 @@ use Illuminate\Http\Client\Response;
 class YouTubePublishException extends SocialPublishException
 {
     /** @var list<string> */
-    private const array TRANSIENT_REASONS = ['backendError', 'internalError'];
+    private const array SERVER_ERROR_REASONS = ['backendError', 'internalError'];
 
     public static function fromApiResponse(mixed $response): static
     {
@@ -56,10 +55,12 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        if ($e->getCode() >= 500 || in_array($reason, self::TRANSIENT_REASONS, true)) {
-            throw new PlatformUnavailableException(
-                message: "YouTube returned {$e->getCode()} during upload",
-                httpStatus: $e->getCode() >= 500 ? $e->getCode() : null,
+        if (self::isServerError($e)) {
+            return new static(
+                userMessage: __('posts.errors.youtube.upload_unconfirmed'),
+                category: ErrorCategory::ServerError,
+                platformErrorCode: $reason ?? (string) $e->getCode(),
+                rawResponse: $e->getMessage(),
             );
         }
 
@@ -74,6 +75,11 @@ class YouTubePublishException extends SocialPublishException
             platformErrorCode: $reason,
             rawResponse: $e->getMessage(),
         );
+    }
+
+    public static function isServerError(GoogleServiceException $e): bool
+    {
+        return $e->getCode() >= 500 || in_array(data_get($e->getErrors(), '0.reason'), self::SERVER_ERROR_REASONS, true);
     }
 
     private static function isMarkup(string $message): bool

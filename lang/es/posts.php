@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube devolvió un error inesperado. Inténtalo de nuevo.',
+            'upload_unconfirmed' => 'YouTube falló al terminar la subida. Revisa tu canal antes de volver a intentarlo: puede que el vídeo ya esté allí.',
         ],
         'google_business' => [
             'no_location' => 'Esta cuenta de Google Business Profile no tiene una ubicación configurada. Vuelve a conectarla.',

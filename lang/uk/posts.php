@@ -844,6 +844,7 @@ return [
         ],
         'youtube' => [
             'unexpected_response' => 'YouTube повернув неочікувану помилку. Спробуйте ще раз.',
+            'upload_unconfirmed' => 'YouTube не зміг завершити завантаження. Перевірте канал, перш ніж пробувати знову: відео може вже бути там.',
         ],
         'google_business' => [
             'no_location' => 'У цього акаунта Google Business Profile немає налаштованої локації. Підключіть його знову.',
