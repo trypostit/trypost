@@ -473,7 +473,7 @@ function bindFailingPublicationPage(SocialAccount $account, Throwable $failure):
     app()->instance(PublicationHistoryCollectorFactory::class, $factory);
 }
 
-test('a transient failure releases the job and preserves the cursor for a later attempt', function (Throwable $failure) {
+test('a transient failure dispatches a delayed retry and preserves the cursor', function (Throwable $failure) {
     Bus::fake();
     Exceptions::fake();
     $account = SocialAccount::factory()->instagram()->create();
@@ -488,7 +488,10 @@ test('a transient failure releases the job and preserves the cursor for a later 
     $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
     app()->call([$job, 'handle']);
 
-    $job->assertReleased(300);
+    $job->assertNotReleased();
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->syncStateId === $state->id
+        && $retry->transientRetries === 1
+        && $retry->delay === 300);
     Exceptions::assertNothingReported();
     expect(data_get($state->fresh()->checkpoint, 'cursor'))->toBe('resume-here')
         ->and($state->fresh()->status)->toBe(SyncStatus::Running)
@@ -508,14 +511,46 @@ test('a rate limited failure waits for the provider retry time when it is later 
     ]);
     bindFailingPublicationPage($account, new AnalyticsCollectionException('rate_limited', 'slow down', CarbonImmutable::now()->addMinutes(20)));
 
-    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
-    app()->call([$job, 'handle']);
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
-    $job->assertReleased(1200);
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->delay === 1200);
     expect($state->fresh()->last_error_category)->toBe('rate_limited');
 });
 
-test('a transient failure on the last allowed attempt fails the sync instead of releasing it again', function () {
+test('the transient backoff follows our own retry counter', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id, transientRetries: 2), 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->transientRetries === 3
+        && $retry->delay === 7200);
+});
+
+test('middleware releases do not consume the transient retry cap', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
+
+    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
+    $job->job->attempts = 9;
+    app()->call([$job, 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->transientRetries === 1
+        && $retry->delay === 300);
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+});
+
+test('a transient failure at the retry cap fails the sync so the scheduler restarts it', function () {
     Bus::fake();
     Exceptions::fake();
     $account = SocialAccount::factory()->instagram()->create();
@@ -525,15 +560,19 @@ test('a transient failure on the last allowed attempt fails the sync instead of 
     ]);
     bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
 
-    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
-    $job->job->attempts = 6;
+    $job = (new BackfillAccountPublications($account->id, $state->id, transientRetries: 5))->withFakeQueueInteractions();
     app()->call([$job, 'handle']);
 
     $job->assertNotReleased();
+    Bus::assertNotDispatched(BackfillAccountPublications::class);
     Exceptions::assertNothingReported();
     expect(data_get($state->fresh()->checkpoint, 'cursor'))->toBe('resume-here')
         ->and($state->fresh()->status)->toBe(SyncStatus::Failed)
-        ->and($state->fresh()->last_error_category)->toBe('transient');
+        ->and($state->fresh()->last_error_category)->toBe('queue_failed');
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    Bus::assertDispatched(BootstrapAccountAnalytics::class, fn (BootstrapAccountAnalytics $job): bool => $job->socialAccountId === $account->id);
 });
 
 test('an invalid provider cursor clears only the cursor and restarts the bounded backfill', function () {

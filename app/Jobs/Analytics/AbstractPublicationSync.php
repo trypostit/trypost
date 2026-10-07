@@ -35,11 +35,12 @@ abstract class AbstractPublicationSync implements ShouldQueue
 
     public int $timeout = 180;
 
-    private const int MAX_TRANSIENT_ATTEMPTS = 6;
+    private const int MAX_TRANSIENT_RETRIES = 5;
 
     public function __construct(
         public string $socialAccountId,
         public string $syncStateId,
+        public int $transientRetries = 0,
     ) {
         $this->onQueue('analytics');
     }
@@ -156,26 +157,26 @@ abstract class AbstractPublicationSync implements ShouldQueue
         ?CarbonImmutable $providerRetryAt,
     ): void {
         $collector = $this->collector()->value;
-        $retryable = in_array($category, ['transient', 'rate_limited'], true)
-            && $this->attempts() < self::MAX_TRANSIENT_ATTEMPTS;
+        $transient = in_array($category, ['transient', 'rate_limited'], true);
 
-        $sync->recordFailure($this->syncStateId, $revision, $category, ! $retryable, $account->id);
-
-        if (! $retryable) {
+        if (! $transient || $this->transientRetries >= self::MAX_TRANSIENT_RETRIES) {
+            $sync->recordFailure($this->syncStateId, $revision, $transient ? 'queue_failed' : $category, true, $account->id);
             $log->record($account, $collector, $cursorLabel, $this->attempts(), $category);
 
             return;
         }
 
+        $sync->recordFailure($this->syncStateId, $revision, $category, false, $account->id);
+
         $delay = $this->transientDelaySeconds($providerRetryAt);
         $log->record($account, $collector, $cursorLabel, $this->attempts(), $category, CarbonImmutable::now('UTC')->addSeconds($delay)->toIso8601String());
-        $this->release($delay);
+        static::dispatch($account->id, $this->syncStateId, $this->transientRetries + 1)->delay($delay);
     }
 
     private function transientDelaySeconds(?CarbonImmutable $providerRetryAt): int
     {
         $backoff = $this->backoff();
-        $delay = $backoff[min(max($this->attempts(), 1), count($backoff)) - 1];
+        $delay = $backoff[min($this->transientRetries, count($backoff) - 1)];
         $providerDelay = $providerRetryAt ? (int) ceil(CarbonImmutable::now('UTC')->diffInSeconds($providerRetryAt, false)) : 0;
 
         return max($delay, $providerDelay);
