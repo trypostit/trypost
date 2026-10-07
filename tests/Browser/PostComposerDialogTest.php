@@ -496,9 +496,11 @@ test('composer searches and selects multiple labels and exposes emoji and signat
         ->assertValue('@composer-base-content', "😀\n\n#campaign")
         ->click('@composer-add-account')
         ->click("@composer-account-option-{$account->id}")
-        ->assertVisible("@composer-{$account->id}-toolbar")
-        ->click("@composer-{$account->id}-emoji")
-        ->click('button[aria-label="grinning face with big eyes"]')
+        ->assertVisible("@composer-{$account->id}-toolbar");
+    waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]')");
+    $page->click("@composer-{$account->id}-emoji");
+    waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face with big eyes\"]')?.getBoundingClientRect().height > 0");
+    $page->click('button[aria-label="grinning face with big eyes"]')
         ->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
         ->click('@composer-save-draft');
 
