@@ -21,6 +21,8 @@ final class PublishCheckpoint
 
     public const string INSTAGRAM_STATUS = 'instagram_status';
 
+    public const string X_MEDIA = 'x_media';
+
     /**
      * @param  array<string, mixed>|null  $context
      */
@@ -71,5 +73,25 @@ final class PublishCheckpoint
         $value = data_get($context, self::INSTAGRAM_STATUS);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * X media ids already uploaded for this target, keyed by media item id.
+     *
+     * @param  array<string, mixed>|null  $context
+     * @return array<string, string>
+     */
+    public static function xMedia(?array $context): array
+    {
+        $media = data_get($context, self::X_MEDIA);
+
+        if (! is_array($media)) {
+            return [];
+        }
+
+        return array_filter(
+            array_map(fn (mixed $id): ?string => is_scalar($id) && (string) $id !== '' ? (string) $id : null, $media),
+            fn (?string $id): bool => $id !== null,
+        );
     }
 }
