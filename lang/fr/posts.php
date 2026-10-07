@@ -841,7 +841,7 @@ return [
             'upload_incomplete' => 'Facebook n\'a pas reçu la vidéo en entier. Réessaie.',
         ],
         'linkedin' => [
-            'server_error' => 'LinkedIn a rencontré une erreur serveur. Réessayez.',
+            'server_error' => 'LinkedIn a rencontré une erreur serveur. Réessaie.',
         ],
         'youtube' => [
             'upload_unconfirmed' => 'YouTube a échoué en finalisant l\'envoi. Vérifie ta chaîne avant de réessayer : la vidéo y est peut-être déjà.',

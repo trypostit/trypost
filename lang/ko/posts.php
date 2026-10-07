@@ -834,17 +834,17 @@ return [
         'instagram' => [
             'processing_failed' => 'Instagram에서 이 미디어를 처리하지 못했습니다. 다른 파일을 사용해 보세요.',
         ],
-        'content_too_long' => '이 게시물은 :provided자이지만 :platform은 :max자까지 허용합니다.',
+        'content_too_long' => '이 게시물은 :provided자이지만 :platform에서는 최대 :max자까지 허용됩니다.',
         'unrecognized_error' => ':platform에서 확인할 수 없는 오류가 발생했습니다. 다시 시도하세요.',
         'facebook' => [
             'processing_failed' => 'Facebook에서 이 동영상을 처리하지 못했습니다. 릴스 요구 사항을 충족하는지 확인한 후 다시 시도하세요.',
             'upload_incomplete' => 'Facebook에서 동영상 전체를 받지 못했습니다. 다시 시도하세요.',
         ],
         'linkedin' => [
-            'server_error' => 'LinkedIn 서버 오류가 발생했습니다. 다시 시도해 주세요.',
+            'server_error' => 'LinkedIn 서버 오류가 발생했습니다. 다시 시도하세요.',
         ],
         'youtube' => [
-            'upload_unconfirmed' => 'YouTube에서 업로드를 마무리하지 못했습니다. 다시 시도하기 전에 채널을 확인해 주세요. 동영상이 이미 올라가 있을 수 있습니다.',
+            'upload_unconfirmed' => 'YouTube에서 업로드를 마무리하지 못했습니다. 다시 시도하기 전에 채널을 확인하세요. 동영상이 이미 올라가 있을 수 있습니다.',
         ],
         'google_business' => [
             'no_location' => '이 Google 비즈니스 프로필 계정에 설정된 위치가 없습니다. 다시 연결하세요.',

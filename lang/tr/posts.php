@@ -834,7 +834,7 @@ return [
         'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
         'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
         'instagram' => [
-            'processing_failed' => 'Instagram bu medyayı işleyemedi. Başka bir dosya dene.',
+            'processing_failed' => 'Instagram bu medyayı işleyemedi. Başka bir dosya deneyin.',
         ],
         'content_too_long' => 'Bu gönderi :provided karakter, ancak :platform en fazla :max karaktere izin veriyor.',
         'unrecognized_error' => ':platform tanımlayamadığımız bir hata döndürdü. Lütfen tekrar deneyin.',
