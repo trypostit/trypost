@@ -136,3 +136,15 @@ test('platform returns threads', function () {
 
     expect($exception->platform())->toBe('threads');
 });
+
+test('only an account rate limit from Threads is marked as a network rejection', function (int $status, ?int $code, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'error' => array_filter(['code' => $code, 'message' => 'Rejected']),
+    ], $status)])->post('https://graph.threads.net/v1.0/me/threads');
+
+    expect(ThreadsPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'user request limit' => [400, 17, true],
+    'app request limit' => [400, 4, false],
+    'bare 429' => [429, null, false],
+]);

@@ -143,3 +143,28 @@ test('fromApiResponse with unknown reason uses the generic message and Unknown c
     expect($exception->category)->toBe(ErrorCategory::Unknown)
         ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
 });
+
+test('only a reason YouTube documents as caused by the user is marked as a network rejection', function (string $reason, int $status, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'error' => ['code' => $status, 'message' => 'Rejected', 'errors' => [['reason' => $reason, 'message' => 'Rejected']]],
+    ], $status)])->post(config('trypost.platforms.youtube.data_api').'/videos');
+
+    expect(YouTubePublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'invalid title' => ['invalidTitle', 400, true],
+    'channel upload limit' => ['uploadLimitExceeded', 400, true],
+    'our project quota' => ['quotaExceeded', 403, false],
+    'category we send' => ['invalidCategoryId', 400, false],
+    'privacy value we send' => ['forbiddenPrivacySetting', 403, false],
+    'undescribed forbidden' => ['forbidden', 403, false],
+    'video body missing from our request' => ['mediaBodyRequired', 400, false],
+]);
+
+test('a Google exception is marked only for a reason caused by the user', function (string $reason, bool $marked) {
+    $exception = new Exception('Rejected', 400, null, [['reason' => $reason, 'message' => 'Rejected']]);
+
+    expect(YouTubePublishException::fromGoogleException($exception)->isNetworkRejection())->toBe($marked);
+})->with([
+    'invalid title' => ['invalidTitle', true],
+    'our project quota' => ['quotaExceeded', false],
+]);

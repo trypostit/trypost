@@ -13,6 +13,20 @@ class InstagramPublishException extends SocialPublishException
     private const int MEDIA_NOT_READY_SUBCODE = 2207027;
 
     /**
+     * Subcodes Instagram documents as caused by the user's media, caption,
+     * tags, cover offset, account or daily limit. 2207005 (its documented
+     * fix is a permission or token), 2207023 (the media_type we send), the
+     * product tag subcodes (we never send product tags) and every server
+     * subcode stay reported.
+     *
+     * @var list<int>
+     */
+    private const array USER_REJECTION_SUBCODES = [
+        2207026, 2207004, 2207009, 2207057, 2207010, 2207028, 2207051,
+        2207040, 2207042, 2207050, 2207081,
+    ];
+
+    /**
      * media_publish answered that the container is not publishable yet: the
      * documented action is to wait for FINISHED and publish again.
      */
@@ -39,17 +53,24 @@ class InstagramPublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = self::forSubcode(is_numeric($errorSubcode) ? (int) $errorSubcode : null)
+        $subcode = is_numeric($errorSubcode) ? (int) $errorSubcode : null;
+        $mapped = self::forSubcode($subcode);
+
+        [$message, $category] = $mapped
             ?? (in_array($errorCode, GraphError::RATE_LIMIT_CODES, true)
                 ? ['Too many API calls. Please try again later.', ErrorCategory::RateLimit]
                 : [$errorUserMsg ?? $errorMessage, ErrorCategory::Unknown]);
+
+        $causedByUser = $mapped !== null
+            ? in_array($subcode, self::USER_REJECTION_SUBCODES, true)
+            : in_array($errorCode, GraphError::ACCOUNT_RATE_LIMIT_CODES, true);
 
         return (new static(
             userMessage: $message,
             category: $category,
             platformErrorCode: $errorSubcode !== null ? (string) $errorSubcode : ($category === ErrorCategory::RateLimit && $errorCode !== null ? (string) $errorCode : null),
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response)->asNetworkRejection();
+        ))->withNetworkReset($response)->asNetworkRejectionIf($causedByUser);
     }
 
     /**
@@ -103,7 +124,7 @@ class InstagramPublishException extends SocialPublishException
             category: $mapped[1] ?? ErrorCategory::Unknown,
             platformErrorCode: $subcode !== null ? (string) $subcode : null,
             rawResponse: $rawResponse,
-        ))->asNetworkRejection();
+        ))->asNetworkRejectionIf(in_array($subcode, self::USER_REJECTION_SUBCODES, true));
     }
 
     public function platform(): string

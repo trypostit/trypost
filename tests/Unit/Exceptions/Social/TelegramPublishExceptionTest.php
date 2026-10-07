@@ -62,3 +62,10 @@ test('platform returns telegram', function () {
 
     expect($exception->platform())->toBe('telegram');
 });
+
+test('only a Telegram bot removed from the channel is marked as a network rejection', function (int $status, bool $marked) {
+    expect(TelegramPublishException::fromApiResponse(telegramErrorResponse(['ok' => false, 'description' => 'Rejected'], $status))->isNetworkRejection())->toBe($marked);
+})->with([
+    'bot not an admin' => [403, true],
+    'our bot flood limit' => [429, false],
+]);

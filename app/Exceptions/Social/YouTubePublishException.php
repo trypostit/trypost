@@ -13,6 +13,22 @@ class YouTubePublishException extends SocialPublishException
     /** @var list<string> */
     private const array SERVER_ERROR_REASONS = ['backendError', 'internalError'];
 
+    /**
+     * Reasons YouTube documents as caused by the user's title, description
+     * or channel limits. Metadata we build or never send (category, tags,
+     * publishAt, recording details, game rating, filename, media body), the
+     * license and privacy values we send, an undescribed `forbidden`,
+     * failedPrecondition and the project quota and rate limits stay reported.
+     *
+     * @var list<string>
+     */
+    private const array USER_REJECTION_REASONS = [
+        'invalidTitle',
+        'invalidDescription',
+        'uploadLimitExceeded',
+        'uploadRateLimitExceeded',
+    ];
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -36,7 +52,7 @@ class YouTubePublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $reason,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response)->asNetworkRejection();
+        ))->withNetworkReset($response)->asNetworkRejectionIf(in_array($reason, self::USER_REJECTION_REASONS, true));
     }
 
     public static function fromGoogleException(GoogleServiceException $e): static
@@ -68,7 +84,7 @@ class YouTubePublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $reason,
             rawResponse: $e->getMessage(),
-        ))->asNetworkRejection();
+        ))->asNetworkRejectionIf(in_array($reason, self::USER_REJECTION_REASONS, true));
     }
 
     public static function isServerError(GoogleServiceException $e): bool

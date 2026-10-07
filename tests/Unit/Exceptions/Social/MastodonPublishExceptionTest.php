@@ -82,3 +82,15 @@ test('platform returns mastodon', function () {
 
     expect($exception->platform())->toBe('mastodon');
 });
+
+test('only a Mastodon rejection of the user content is marked as a network rejection', function (int $status, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response(['error' => 'Validation failed: File content type is invalid'], $status)])
+        ->post('https://mastodon.social/api/v2/media');
+
+    expect(MastodonPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'media validation' => [422, true],
+    'file too large for the instance' => [413, true],
+    'undocumented forbidden' => [403, false],
+    'an account or IP rate limit' => [429, false],
+]);

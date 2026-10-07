@@ -270,7 +270,6 @@ test('publish logs but does not report a documented rejection the user must act 
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 })->with([
-    'content policy' => fn () => linkedInRejection(422),
     'permission' => fn () => linkedInRejection(403),
 ]);
 
@@ -305,6 +304,7 @@ test('publish reports a failure that can be ours, even when categorized', functi
         category: ErrorCategory::Permission,
     ),
     'a mapped server error' => fn () => linkedInRejection(500),
+    'a request LinkedIn could not process' => fn () => linkedInRejection(422),
 ]);
 
 test('publish reports a YouTube download that came back empty, though it is a media format failure', function () {

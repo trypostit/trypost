@@ -9,6 +9,17 @@ use Illuminate\Http\Client\Response;
 
 class XPublishException extends SocialPublishException
 {
+    /**
+     * Problem types X documents as caused by the account itself:
+     * not-authorized-for-resource is "No access to private/protected
+     * content". invalid-request (our request), resource-not-found (an id we
+     * sent), client-forbidden (our app's enrollment), usage-capped (our app's
+     * cap) and rate-limit-exceeded (per user or per app) stay reported.
+     *
+     * @var list<string>
+     */
+    private const array USER_REJECTION_TYPES = ['not-authorized-for-resource'];
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -30,12 +41,12 @@ class XPublishException extends SocialPublishException
         }
 
         if ($statusCode === 413) {
-            return (new static(
+            return new static(
                 userMessage: 'Media chunk rejected by X (payload too large).',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if (in_array($statusCode, [500, 502, 503, 504], true)) {
@@ -53,7 +64,7 @@ class XPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         [$message, $category] = match ($typeSuffix) {
@@ -71,7 +82,7 @@ class XPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $typeSuffix ?: null,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response)->asNetworkRejection();
+        ))->withNetworkReset($response)->asNetworkRejectionIf(in_array($typeSuffix, self::USER_REJECTION_TYPES, true));
     }
 
     public function platform(): string

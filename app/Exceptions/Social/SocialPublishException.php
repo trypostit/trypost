@@ -54,7 +54,17 @@ abstract class SocialPublishException extends RuntimeException
      */
     public function asNetworkRejection(): static
     {
-        $this->rejectedByNetwork = $this->category->needsUserAction();
+        return $this->asNetworkRejectionIf(true);
+    }
+
+    /**
+     * Marks the exception only when the mapper lists its documented code as
+     * caused by the user's own content, media, account or grants. A code
+     * caused by our app, request or credentials stays reported.
+     */
+    public function asNetworkRejectionIf(bool $causedByUser): static
+    {
+        $this->rejectedByNetwork = $causedByUser && $this->category->needsUserAction();
 
         return $this;
     }

@@ -9,6 +9,43 @@ use Illuminate\Http\Client\Response;
 
 class TikTokPublishException extends SocialPublishException
 {
+    /**
+     * Error codes TikTok documents as caused by the creator's grants, file or
+     * account limits. rate_limit_exceeded is per user access_token. App
+     * audit, domain verification, the client's active user cap, invalid
+     * params, privacy options we must honor and the MEDIA_UPLOAD app version
+     * check (we only send DIRECT_POST) stay reported.
+     *
+     * @var list<string>
+     */
+    private const array USER_REJECTION_CODES = [
+        'scope_not_authorized',
+        'scope_permission_missed',
+        'rate_limit_exceeded',
+        'invalid_file_upload',
+        'spam_risk_too_many_posts',
+        'spam_risk_too_many_pending_share',
+        'spam_risk_user_banned_from_posting',
+    ];
+
+    /**
+     * Post status fail reasons caused by the creator's media, text or account.
+     * publish_cancelled (a developer cancel) and spam_risk (a request flagged
+     * without naming the cause) stay reported.
+     *
+     * @var list<string>
+     */
+    private const array USER_FAIL_REASONS = [
+        'file_format_check_failed',
+        'duration_check_failed',
+        'frame_rate_check_failed',
+        'picture_size_check_failed',
+        'auth_removed',
+        'spam_risk_too_many_posts',
+        'spam_risk_user_banned_from_posting',
+        'spam_risk_text',
+    ];
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -49,7 +86,7 @@ class TikTokPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response)->asNetworkRejection();
+        ))->withNetworkReset($response)->asNetworkRejectionIf(in_array($errorCode, self::USER_REJECTION_CODES, true));
     }
 
     public static function fromFailReason(string $failReason, ?string $rawResponse = null): static
@@ -76,7 +113,7 @@ class TikTokPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: $failReason,
             rawResponse: $rawResponse,
-        ))->asNetworkRejection();
+        ))->asNetworkRejectionIf(in_array($failReason, self::USER_FAIL_REASONS, true));
     }
 
     public function platform(): string

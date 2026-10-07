@@ -26,12 +26,12 @@ class MastodonPublishException extends SocialPublishException
         }
 
         if ($status === 403) {
-            return (new static(
+            return new static(
                 userMessage: 'This action is not allowed.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if ($status === 422 && str_contains(strtolower($rawResponse), "text can't be blank")) {
@@ -67,7 +67,7 @@ class MastodonPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         if ($status === 503) {

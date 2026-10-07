@@ -36,12 +36,12 @@ class BlueskyPublishException extends SocialPublishException
         }
 
         if ($error === 'InvalidRequest') {
-            return (new static(
+            return new static(
                 userMessage: 'Invalid post data.',
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: $error,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if ($status === 429) {
@@ -50,7 +50,7 @@ class BlueskyPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: $error ?: null,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         if ($status >= 500) {

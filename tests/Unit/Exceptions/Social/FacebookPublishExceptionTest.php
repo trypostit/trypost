@@ -171,3 +171,33 @@ test('subcode 463 throws TokenExpiredException', function () {
 
     FacebookPublishException::fromApiResponse($fakeResponse);
 })->throws(TokenExpiredException::class);
+
+test('only a Graph code caused by the Page is marked as a network rejection', function (int $code, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'error' => ['code' => $code, 'message' => 'Rejected'],
+    ], 400)])->post(config('trypost.platforms.facebook.graph_api').'/123/feed');
+
+    expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'unsupported video format' => [1363024, true],
+    'caption too long' => [1390008, true],
+    'duplicate post' => [506, true],
+    'user request limit' => [17, true],
+    'Page BUC limit' => [80001, true],
+    'app request limit' => [4, false],
+    'user or app Page limit' => [32, false],
+    'application limit' => [341, false],
+    'custom limit' => [613, false],
+    'no video file in our request' => [1363020, false],
+    'undocumented rate limit' => [1349125, false],
+]);
+
+test('only a rupload processing failure is marked as a network rejection', function (string $type, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response(['debug_info' => ['type' => $type, 'message' => 'Failed']], 400)])
+        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v25.0/1');
+
+    expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'processing failed' => ['ProcessingFailedError', true],
+    'our partial request' => ['PartialRequestError', false],
+]);

@@ -41,7 +41,7 @@ class TelegramPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         if ($status >= 500) {

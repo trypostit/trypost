@@ -152,3 +152,26 @@ test('platform returns x', function () {
 
     expect($exception->platform())->toBe('x');
 });
+
+test('only a problem type X documents as caused by the account is marked as a network rejection', function (int $status, string $type, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'type' => "https://api.twitter.com/2/problems/{$type}",
+        'title' => 'Rejected',
+    ], $status)])->post(config('trypost.platforms.x.api').'/tweets');
+
+    expect(XPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'no access to protected content' => [403, 'not-authorized-for-resource', true],
+    'our app is not enrolled' => [403, 'client-forbidden', false],
+    'our malformed request' => [400, 'invalid-request', false],
+    'an id we sent that does not exist' => [404, 'resource-not-found', false],
+    'our app usage cap' => [429, 'usage-capped', false],
+    'a user or app rate limit' => [429, 'rate-limit-exceeded', false],
+]);
+
+test('a payload too large and a bare 429 from X are not network rejections', function (int $status) {
+    $fakeResponse = Http::fake(['*' => Http::response([], $status)])
+        ->post(config('trypost.platforms.x.api').'/media/upload');
+
+    expect(XPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
+})->with([413, 429]);

@@ -92,3 +92,15 @@ test('platform returns pinterest', function () {
 
     expect($exception->platform())->toBe('pinterest');
 });
+
+test('only a Pinterest rejection caused by the user is marked as a network rejection', function (int $status, array $body, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response($body, $status)])
+        ->post('https://api.pinterest.com/v5/pins');
+
+    expect(PinterestPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'user lacks permission' => [403, ['code' => 403, 'message' => 'Forbidden'], true],
+    'content policy' => [400, ['code' => 1, 'message' => "Sorry! This site doesn't allow you to save Pins."], true],
+    'a board we sent that does not exist' => [404, ['code' => 404, 'message' => 'Not found'], false],
+    'rate limit' => [429, ['code' => 429, 'message' => 'Too many requests'], false],
+]);

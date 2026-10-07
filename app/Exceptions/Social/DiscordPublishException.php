@@ -28,12 +28,12 @@ class DiscordPublishException extends SocialPublishException
 
         // Unknown channel — it was deleted or the id is stale.
         if ($code === 10003) {
-            return (new static(
+            return new static(
                 userMessage: 'That Discord channel no longer exists. Pick a different channel.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $code,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         // Attachment too large.
@@ -62,7 +62,7 @@ class DiscordPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         if ($status >= 500) {

@@ -182,3 +182,30 @@ test('platform returns instagram', function () {
 
     expect($exception->platform())->toBe('instagram');
 });
+
+test('only an Instagram error caused by the account is marked as a network rejection', function (int $code, ?int $subcode, bool $marked) {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'error' => array_filter(['code' => $code, 'error_subcode' => $subcode, 'message' => 'Rejected']),
+    ], 400)])->post(config('trypost.platforms.instagram.graph_api').'/123/media');
+
+    expect(InstagramPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+})->with([
+    'unsupported video format' => [352, 2207026, true],
+    'caption too long' => [36004, 2207010, true],
+    'daily publishing limit' => [9, 2207042, true],
+    'account restricted' => [25, 2207050, true],
+    'user request limit' => [17, null, true],
+    'Instagram BUC limit' => [80002, null, true],
+    'the media type we send' => [100, 2207023, false],
+    'product tags we never send' => [100, 2207037, false],
+    'image format whose fix is a permission or token' => [36001, 2207005, false],
+    'app request limit' => [4, null, false],
+    'server error' => [-1, 2207001, false],
+]);
+
+test('a container status is marked only for a subcode caused by the account', function (int $status, bool $marked) {
+    expect(InstagramPublishException::fromContainerStatus($status, null)->isNetworkRejection())->toBe($marked);
+})->with([
+    'unsupported video format' => [2207026, true],
+    'the media type we send' => [2207023, false],
+]);

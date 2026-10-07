@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Exceptions\Social;
 
 use App\Exceptions\TokenExpiredException;
+use App\Services\Social\Meta\GraphError;
 use Illuminate\Http\Client\Response;
 
 class FacebookPublishException extends SocialPublishException
@@ -22,6 +23,21 @@ class FacebookPublishException extends SocialPublishException
      * pointed at facebook.com, which Pages may not share through the API.
      */
     private const string FACEBOOK_URL_SUBCODE = '1609008';
+
+    /**
+     * Graph codes caused by the Page's own file, caption, permission, limit
+     * or duplicate post. Upload-session failures, "no video file" (our
+     * request), Reel-without-video (our composer check), editing a video
+     * (ours), 1609008 (also the facebook.com link subcode), the undocumented
+     * 1349125 and the app-level limits 4, 32, 341 and 613 stay reported.
+     *
+     * @var list<int>
+     */
+    private const array USER_REJECTION_CODES = [
+        6000, 1363042, 1363023, 1363022, 1363031, 1363032, 1363024, 1363025,
+        1363026, 1363047, 1609010, 2061006, 1390008, 1346003, 506,
+        ...GraphError::ACCOUNT_RATE_LIMIT_CODES,
+    ];
 
     public function __construct(
         string $userMessage,
@@ -63,7 +79,7 @@ class FacebookPublishException extends SocialPublishException
                 category: $category,
                 platformErrorCode: is_string($uploadErrorType) && $uploadErrorType !== '' ? $uploadErrorType : null,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            ))->asNetworkRejectionIf($uploadErrorType === 'ProcessingFailedError');
         }
 
         $errorCode = data_get($body, 'error.code');
@@ -118,7 +134,7 @@ class FacebookPublishException extends SocialPublishException
             platformErrorCode: $errorCode !== null ? (string) $errorCode : null,
             rawResponse: $rawResponse,
             platformErrorSubcode: $errorSubcode !== null ? (string) $errorSubcode : null,
-        ))->withNetworkReset($response)->asNetworkRejection();
+        ))->withNetworkReset($response)->asNetworkRejectionIf(in_array($errorCode, self::USER_REJECTION_CODES, true));
     }
 
     /**

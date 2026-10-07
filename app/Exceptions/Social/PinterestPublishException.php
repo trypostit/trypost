@@ -38,7 +38,7 @@ class PinterestPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         // Documented for /pins, /media, and /boards alike (Pinterest's public
@@ -47,12 +47,12 @@ class PinterestPublishException extends SocialPublishException
         // upload) referenced by the request no longer exists or isn't
         // accessible to this account.
         if ($status === 404) {
-            return (new static(
+            return new static(
                 userMessage: 'Pinterest could not find the selected board. It may have been deleted or you no longer have access to it.',
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         // Pinterest's own JSON error code 1 ("Sorry! This site doesn't allow

@@ -9,6 +9,16 @@ use Illuminate\Http\Client\Response;
 
 class LinkedInPublishException extends SocialPublishException
 {
+    /**
+     * Statuses LinkedIn documents as caused by the member: 403 ACCESS_DENIED
+     * is the scope the member granted or their company page role. 422
+     * (semantic errors in the fields we send) and 429 (member or
+     * application limits) stay reported.
+     *
+     * @var list<int>
+     */
+    private const array USER_REJECTION_STATUSES = [403];
+
     public static function fromApiResponse(mixed $response): static
     {
         /** @var Response $response */
@@ -31,7 +41,7 @@ class LinkedInPublishException extends SocialPublishException
                 category: ErrorCategory::RateLimit,
                 platformErrorCode: (string) $statusCode,
                 rawResponse: $rawResponse,
-            ))->withNetworkReset($response)->asNetworkRejection();
+            ))->withNetworkReset($response);
         }
 
         if ($response->serverError()) {
@@ -54,7 +64,7 @@ class LinkedInPublishException extends SocialPublishException
             category: $category,
             platformErrorCode: (string) $statusCode,
             rawResponse: $rawResponse,
-        ))->asNetworkRejection();
+        ))->asNetworkRejectionIf(in_array($statusCode, self::USER_REJECTION_STATUSES, true));
     }
 
     public function platform(): string
