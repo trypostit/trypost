@@ -58,13 +58,13 @@ test('unauthorized reason throws TokenExpiredException', function () {
     YouTubePublishException::fromGoogleException($e);
 })->throws(TokenExpiredException::class);
 
-test('unknown reason falls through to Unknown category with the generic message', function () {
+test('an unknown reason shows the message Google sent', function () {
     $e = new Exception('original error message', 400, null, [['reason' => 'someUnknownReason', 'message' => 'original error message']]);
 
     $exception = YouTubePublishException::fromGoogleException($e);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']))
+        ->and($exception->userMessage)->toBe('original error message')
         ->and($exception->rawResponse)->toBe('original error message');
 });
 
@@ -125,7 +125,7 @@ test('fromApiResponse with invalidTitle reason maps to ContentPolicy', function 
         ->and($exception->platformErrorCode)->toBe('invalidTitle');
 });
 
-test('fromApiResponse with unknown reason uses the generic message and Unknown category', function () {
+test('fromApiResponse with an unknown reason shows the message Google sent', function () {
     $response = Http::response([
         'error' => [
             'code' => 400,
@@ -141,7 +141,7 @@ test('fromApiResponse with unknown reason uses the generic message and Unknown c
     $exception = YouTubePublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
+        ->and($exception->userMessage)->toBe('Something went wrong on YouTube.');
 });
 
 test('only a reason YouTube documents as caused by the user is marked as a network rejection', function (string $reason, int $status, bool $marked) {
@@ -167,4 +167,22 @@ test('a Google exception is marked only for a reason caused by the user', functi
 })->with([
     'invalid title' => ['invalidTitle', true],
     'our project quota' => ['quotaExceeded', false],
+]);
+
+test('an unknown reason without a Google message shows the generic message', function () {
+    $e = new Exception('{"error":{}}', 400, null, [['reason' => 'someUnknownReason']]);
+
+    expect(YouTubePublishException::fromGoogleException($e)->userMessage)
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
+});
+
+test('fromApiResponse shows the generic message without a Google message or on a 5xx', function (int $status, array $body) {
+    $fakeResponse = Http::fake(['*' => Http::response($body, $status)])
+        ->post(config('trypost.platforms.youtube.data_api').'/videos');
+
+    expect(YouTubePublishException::fromApiResponse($fakeResponse)->userMessage)
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
+})->with([
+    'no message' => [400, ['error' => ['code' => 400, 'errors' => [['reason' => 'weirdUnknownReason']]]]],
+    'a 5xx' => [503, ['error' => ['code' => 503, 'message' => 'Backend unavailable', 'errors' => [['reason' => 'weirdUnknownReason']]]]],
 ]);

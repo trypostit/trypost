@@ -45,7 +45,7 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = self::mapReasonToMessageAndCategory($reason);
+        [$message, $category] = self::mapReasonToMessageAndCategory($reason, self::providerMessage($response, 'error.message'));
 
         return (new static(
             userMessage: $message,
@@ -77,7 +77,12 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = self::mapReasonToMessageAndCategory($reason);
+        $providerMessage = data_get($errors, '0.message');
+
+        [$message, $category] = self::mapReasonToMessageAndCategory(
+            $reason,
+            is_string($providerMessage) && trim($providerMessage) !== '' ? $providerMessage : null,
+        );
 
         return (new static(
             userMessage: $message,
@@ -111,7 +116,7 @@ class YouTubePublishException extends SocialPublishException
     /**
      * @return array{string, ErrorCategory}
      */
-    private static function mapReasonToMessageAndCategory(?string $reason): array
+    private static function mapReasonToMessageAndCategory(?string $reason, ?string $providerMessage): array
     {
         return match ($reason) {
             'invalidTitle' => ['Video title is invalid or empty.', ErrorCategory::ContentPolicy],
@@ -131,7 +136,7 @@ class YouTubePublishException extends SocialPublishException
             'forbidden' => ["You don't have permission to upload to this channel.", ErrorCategory::Permission],
             'forbiddenLicenseSetting' => ['Invalid video license setting.', ErrorCategory::Permission],
             'forbiddenPrivacySetting' => ['Invalid video privacy setting.', ErrorCategory::Permission],
-            default => [__('posts.errors.unrecognized_error', ['platform' => 'YouTube']), ErrorCategory::Unknown],
+            default => [$providerMessage ?? __('posts.errors.unrecognized_error', ['platform' => 'YouTube']), ErrorCategory::Unknown],
         };
     }
 }

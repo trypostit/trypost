@@ -89,7 +89,7 @@ test('HTTP 413 with empty body maps to MediaFormat category', function () {
         ->and($exception->platformErrorCode)->toBe('413');
 });
 
-test('unknown type maps to Unknown category with the generic message', function () {
+test('an unmapped type shows the detail X sent', function () {
     $response = Http::response([
         'type' => 'https://api.x.com/2/problems/some-unknown-problem',
         'title' => 'Some Unknown Problem',
@@ -101,8 +101,7 @@ test('unknown type maps to Unknown category with the generic message', function 
     $exception = XPublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'X']))
-        ->and($exception->rawResponse)->toContain('An unknown issue occurred.');
+        ->and($exception->userMessage)->toBe('An unknown issue occurred.');
 });
 
 test('a duplicate post has no documented code and stays unclassified', function () {
@@ -175,3 +174,26 @@ test('a payload too large and a bare 429 from X are not network rejections', fun
 
     expect(XPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([413, 429]);
+
+test('an unmapped type without a detail shows the title X sent', function () {
+    $fakeResponse = Http::fake(['*' => Http::response([
+        'type' => 'about:blank',
+        'title' => 'Forbidden',
+        'detail' => '',
+    ], 403)])->post(config('trypost.platforms.x.api').'/tweets');
+
+    expect(XPublishException::fromApiResponse($fakeResponse)->userMessage)->toBe('Forbidden');
+});
+
+test('an unmapped error shows the generic message when X sent no explanation', function (int $status, array $body) {
+    $fakeResponse = Http::fake(['*' => Http::response($body, $status)])
+        ->post(config('trypost.platforms.x.api').'/tweets');
+
+    $exception = XPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'X']));
+})->with([
+    'no message' => [400, ['type' => 'about:blank']],
+    'an unlisted 5xx' => [501, ['type' => 'about:blank', 'title' => 'Not Implemented', 'detail' => 'Upstream failed.']],
+]);

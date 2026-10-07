@@ -36,10 +36,10 @@ test('a 400 saying "Unable to obtain activity" is not a server error', function 
     $exception = LinkedInPublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']));
+        ->and($exception->userMessage)->toBe('Unable to obtain activity for URN');
 });
 
-test('unknown error maps to Unknown category with the generic message', function () {
+test('an unmapped error shows the message LinkedIn sent', function () {
     $response = Http::response(['message' => 'Something went wrong.'], 400);
 
     $fakeResponse = Http::fake(['*' => $response])->post('https://api.linkedin.com/test');
@@ -47,8 +47,7 @@ test('unknown error maps to Unknown category with the generic message', function
     $exception = LinkedInPublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']))
-        ->and($exception->rawResponse)->toContain('Something went wrong.');
+        ->and($exception->userMessage)->toBe('Something went wrong.');
 });
 
 test('HTTP 422 maps to ContentPolicy category', function () {
@@ -115,3 +114,14 @@ test('an exception we raise ourselves is never a network rejection', function ()
 
     expect($exception->isNetworkRejection())->toBeFalse();
 });
+
+test('an unmapped error without a message shows the generic message', function (array $body) {
+    $fakeResponse = Http::fake(['*' => Http::response($body, 400)])
+        ->post(config('trypost.platforms.linkedin.api').'/rest/posts');
+
+    expect(LinkedInPublishException::fromApiResponse($fakeResponse)->userMessage)
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']));
+})->with([
+    'no message' => [['status' => 400]],
+    'an empty message' => [['message' => '  ', 'status' => 400]],
+]);

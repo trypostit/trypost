@@ -86,6 +86,28 @@ abstract class SocialPublishException extends RuntimeException
         return $this;
     }
 
+    /**
+     * The provider's own explanation for an error we do not map, read from
+     * its documented message fields in order. Display only: never classify
+     * by it. A 5xx body is never shown.
+     */
+    protected static function providerMessage(Response $response, string ...$paths): ?string
+    {
+        if ($response->serverError()) {
+            return null;
+        }
+
+        foreach ($paths as $path) {
+            $message = data_get($response->json(), $path);
+
+            if (is_string($message) && trim($message) !== '') {
+                return $message;
+            }
+        }
+
+        return null;
+    }
+
     abstract public static function fromApiResponse(mixed $response): static;
 
     abstract public function platform(): string;

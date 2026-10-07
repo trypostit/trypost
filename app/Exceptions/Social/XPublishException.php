@@ -74,7 +74,7 @@ class XPublishException extends SocialPublishException
             'client-forbidden' => ['App not enrolled or lacks required access.', ErrorCategory::Permission],
             'not-authorized-for-resource' => ['Not authorized for this resource.', ErrorCategory::Permission],
             'resource-not-found' => ['Resource not found.', ErrorCategory::ContentPolicy],
-            default => [__('posts.errors.unrecognized_error', ['platform' => 'X']), ErrorCategory::Unknown],
+            default => [self::providerMessage($response, 'detail', 'title') ?? __('posts.errors.unrecognized_error', ['platform' => 'X']), ErrorCategory::Unknown],
         };
 
         return (new static(

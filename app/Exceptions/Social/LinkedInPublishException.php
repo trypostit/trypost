@@ -56,7 +56,7 @@ class LinkedInPublishException extends SocialPublishException
         [$message, $category] = match ($statusCode) {
             403 => ['Not authorized to post to this account.', ErrorCategory::Permission],
             422 => ['Invalid post data. Please check your content.', ErrorCategory::ContentPolicy],
-            default => [__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']), ErrorCategory::Unknown],
+            default => [self::providerMessage($response, 'message') ?? __('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']), ErrorCategory::Unknown],
         };
 
         return (new static(
