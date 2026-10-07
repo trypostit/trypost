@@ -640,7 +640,9 @@ test('tiktok publisher throws TokenExpiredException when refresh_token is reject
 
     Http::fake([
         $this->api.'/oauth/token/' => Http::response([
-            'error' => ['code' => 'invalid_grant', 'message' => 'Refresh token expired'],
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token expired',
+            'log_id' => '20261007182924',
         ], 400),
     ]);
 
