@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
         'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
         'instagram' => [
-            'processing_failed' => 'Instagram kon dit bestand niet verwerken: :reason',
-            'processing_failed_without_reason' => 'Instagram kon dit bestand niet verwerken. Probeer een ander bestand.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X staat niet toe dat je dezelfde tekst twee keer plaatst. Pas de tekst aan en probeer het opnieuw.',
+            'processing_failed' => 'Instagram kon dit bestand niet verwerken. Probeer een ander bestand.',
         ],
         'content_too_long' => 'Deze post heeft :provided tekens, maar :platform staat er :max toe.',
+        'unrecognized_error' => ':platform gaf een fout die we niet konden herkennen. Probeer het opnieuw.',
         'linkedin' => [
             'server_error' => 'LinkedIn had een serverfout. Probeer het opnieuw.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube gaf een onverwachte fout. Probeer het opnieuw.',
             'upload_unconfirmed' => 'YouTube faalde bij het afronden van de upload. Controleer je kanaal voordat je het opnieuw probeert: de video staat er misschien al.',
         ],
         'google_business' => [

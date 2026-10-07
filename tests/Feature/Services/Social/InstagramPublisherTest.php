@@ -659,9 +659,8 @@ test('instagram publisher handles media processing error', function () {
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(function (InstagramPublishException $exception): void {
-            expect($exception->getMessage())->toBe(__('posts.errors.instagram.processing_failed', [
-                'reason' => 'Media download has failed. Please check the video URL.',
-            ]))
+            expect($exception->getMessage())->toBe(__('posts.errors.instagram.processing_failed'))
+                ->and($exception->category)->toBe(ErrorCategory::Unknown)
                 ->and($exception->rawResponse)->toContain('Media download has failed')
                 ->and($exception->rawResponse)->toContain('ERROR');
         });
@@ -696,7 +695,37 @@ test('instagram publisher explains a container error reported as an error subcod
         });
 })->with([
     'bare subcode' => '2207026',
-    'subcode in a sentence' => 'Error: Media upload has failed with error code 2207026',
+    'padded subcode' => ' 2207026 ',
+]);
+
+test('instagram publisher never reads a subcode out of a container status sentence', function (string $status, ?string $code) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $graph = config('trypost.platforms.instagram.graph_api');
+
+    Http::fake([
+        "{$graph}/ig_123456789/media" => Http::response(['id' => 'container-123']),
+        "{$graph}/container-123*" => Http::response(['status_code' => 'ERROR', 'status' => $status]),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (InstagramPublishException $exception) use ($status, $code): void {
+            expect($exception->userMessage)->toBe(__('posts.errors.instagram.processing_failed'))
+                ->and($exception->userMessage)->not->toContain($status)
+                ->and($exception->category)->toBe(ErrorCategory::Unknown)
+                ->and($exception->platformErrorCode)->toBe($code);
+        });
+})->with([
+    'subcode in a sentence' => ['Error: Media upload has failed with error code 2207026', null],
+    'unmapped bare subcode' => ['2207999', '2207999'],
 ]);
 
 test('instagram publisher says processing failed when the container gives no reason', function () {
@@ -719,7 +748,7 @@ test('instagram publisher says processing failed when the container gives no rea
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(fn (InstagramPublishException $exception) => expect($exception->userMessage)
-            ->toBe(__('posts.errors.instagram.processing_failed_without_reason')));
+            ->toBe(__('posts.errors.instagram.processing_failed')));
 });
 
 test('instagram publisher resumes media processing without creating another container', function () {
@@ -1119,9 +1148,7 @@ test('instagram publisher fails a resumed container that reports ERROR', functio
 
     expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
         ->toThrow(function (InstagramPublishException $exception): void {
-            expect($exception->getMessage())->toBe(__('posts.errors.instagram.processing_failed', [
-                'reason' => 'Media download has failed. Please check the video URL.',
-            ]))
+            expect($exception->getMessage())->toBe(__('posts.errors.instagram.processing_failed'))
                 ->and($exception->rawResponse)->toContain('Media download has failed');
         });
 

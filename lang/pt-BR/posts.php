@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'O Google recusou este post na revisão. Edite o conteúdo ou a imagem e tente novamente.',
         'review_unconfirmed' => 'O Google nunca confirmou este post. Confira seu Perfil da Empresa e tente novamente.',
         'instagram' => [
-            'processing_failed' => 'O Instagram não conseguiu processar esta mídia: :reason',
-            'processing_failed_without_reason' => 'O Instagram não conseguiu processar esta mídia. Tente outro arquivo.',
-        ],
-        'x' => [
-            'duplicate_content' => 'O X não permite publicar o mesmo texto duas vezes. Altere o texto e tente novamente.',
+            'processing_failed' => 'O Instagram não conseguiu processar esta mídia. Tente outro arquivo.',
         ],
         'content_too_long' => 'Este post tem :provided caracteres, mas o :platform permite :max.',
+        'unrecognized_error' => 'O :platform retornou um erro que não conseguimos identificar. Tente novamente.',
         'linkedin' => [
             'server_error' => 'O LinkedIn teve um erro no servidor. Tente novamente.',
         ],
         'youtube' => [
-            'unexpected_response' => 'O YouTube retornou um erro inesperado. Tente novamente.',
             'upload_unconfirmed' => 'O YouTube falhou ao concluir o envio. Confira seu canal antes de tentar de novo: o vídeo pode já estar lá.',
         ],
         'google_business' => [

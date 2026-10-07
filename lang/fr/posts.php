@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
         'review_unconfirmed' => 'Google n\'a jamais confirmé ce post. Vérifie ta fiche d\'établissement et réessaie.',
         'instagram' => [
-            'processing_failed' => 'Instagram n\'a pas pu traiter ce média : :reason',
-            'processing_failed_without_reason' => 'Instagram n\'a pas pu traiter ce média. Essaie un autre fichier.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X n\'autorise pas à publier deux fois le même texte. Modifie le texte et réessaie.',
+            'processing_failed' => 'Instagram n\'a pas pu traiter ce média. Essaie un autre fichier.',
         ],
         'content_too_long' => 'Cette publication contient :provided caractères, mais :platform en autorise :max.',
+        'unrecognized_error' => ':platform a renvoyé une erreur que nous n\'avons pas pu identifier. Réessaie.',
         'linkedin' => [
             'server_error' => 'LinkedIn a rencontré une erreur serveur. Réessayez.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube a renvoyé une erreur inattendue. Réessayez.',
             'upload_unconfirmed' => 'YouTube a échoué en finalisant l\'envoi. Vérifie ta chaîne avant de réessayer : la vidéo y est peut-être déjà.',
         ],
         'google_business' => [

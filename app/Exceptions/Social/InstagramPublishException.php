@@ -90,29 +90,17 @@ class InstagramPublishException extends SocialPublishException
     }
 
     /**
-     * A container that reached status_code ERROR. Its status field carries
-     * the error subcode, alone or inside a sentence.
+     * A container that reached status_code ERROR. Only a status that is a
+     * bare error subcode is mapped; any other status is free text.
      */
     public static function fromContainerStatus(mixed $status, ?string $rawResponse): self
     {
-        $status = is_scalar($status) && filled($status) ? trim((string) $status) : null;
-        $subcode = $status !== null && preg_match('/\b(2207\d{3})\b/', $status, $matches) === 1 ? (int) $matches[1] : null;
+        $subcode = is_int($status) || (is_string($status) && ctype_digit(trim($status))) ? (int) $status : null;
         $mapped = self::forSubcode($subcode);
 
-        if ($mapped !== null) {
-            return new self(
-                userMessage: $mapped[0],
-                category: $mapped[1],
-                platformErrorCode: (string) $subcode,
-                rawResponse: $rawResponse,
-            );
-        }
-
         return new self(
-            userMessage: $status !== null
-                ? __('posts.errors.instagram.processing_failed', ['reason' => $status])
-                : __('posts.errors.instagram.processing_failed_without_reason'),
-            category: ErrorCategory::ServerError,
+            userMessage: $mapped[0] ?? __('posts.errors.instagram.processing_failed'),
+            category: $mapped[1] ?? ErrorCategory::Unknown,
             platformErrorCode: $subcode !== null ? (string) $subcode : null,
             rawResponse: $rawResponse,
         );

@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
         'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
         'instagram' => [
-            'processing_failed' => 'Instagram could not process this media: :reason',
-            'processing_failed_without_reason' => 'Instagram could not process this media. Try another file.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X does not allow posting the same text twice. Change the text and try again.',
+            'processing_failed' => 'Instagram could not process this media. Try another file.',
         ],
         'content_too_long' => 'This post has :provided characters, but :platform allows :max.',
+        'unrecognized_error' => ':platform returned an error we could not identify. Please try again.',
         'linkedin' => [
             'server_error' => 'LinkedIn had a server error. Please try again.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube returned an unexpected error. Please try again.',
             'upload_unconfirmed' => 'YouTube failed while finishing the upload. Check your channel before trying again: the video may already be there.',
         ],
         'google_business' => [

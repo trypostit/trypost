@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google 在审核中拒绝了这篇帖子。请修改内容或图片后重试。',
         'review_unconfirmed' => 'Google 始终未确认这篇帖子。请检查你的商家资料后重试。',
         'instagram' => [
-            'processing_failed' => 'Instagram 无法处理此媒体：:reason',
-            'processing_failed_without_reason' => 'Instagram 无法处理此媒体，请换一个文件。',
-        ],
-        'x' => [
-            'duplicate_content' => 'X 不允许重复发布相同的文本。请修改文本后重试。',
+            'processing_failed' => 'Instagram 无法处理此媒体，请换一个文件。',
         ],
         'content_too_long' => '此帖子有 :provided 个字符，但 :platform 最多允许 :max 个。',
+        'unrecognized_error' => ':platform 返回了无法识别的错误，请重试。',
         'linkedin' => [
             'server_error' => 'LinkedIn 服务器出错，请重试。',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube 返回了意外错误，请重试。',
             'upload_unconfirmed' => 'YouTube 在完成上传时失败。重试前请先检查你的频道：视频可能已经在那里了。',
         ],
         'google_business' => [

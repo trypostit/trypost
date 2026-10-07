@@ -29,10 +29,7 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = self::mapReasonToMessageAndCategory(
-            reason: $reason,
-            fallbackMessage: $fallbackMessage,
-        );
+        [$message, $category] = self::mapReasonToMessageAndCategory($reason);
 
         return (new static(
             userMessage: $message,
@@ -64,10 +61,7 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = self::mapReasonToMessageAndCategory(
-            reason: $reason,
-            fallbackMessage: self::isMarkup($rawMessage) ? __('posts.errors.youtube.unexpected_response') : $rawMessage,
-        );
+        [$message, $category] = self::mapReasonToMessageAndCategory($reason);
 
         return new static(
             userMessage: $message,
@@ -80,11 +74,6 @@ class YouTubePublishException extends SocialPublishException
     public static function isServerError(GoogleServiceException $e): bool
     {
         return $e->getCode() >= 500 || in_array(data_get($e->getErrors(), '0.reason'), self::SERVER_ERROR_REASONS, true);
-    }
-
-    private static function isMarkup(string $message): bool
-    {
-        return str_contains($message, '<') && str_contains($message, '>');
     }
 
     public function platform(): string
@@ -106,7 +95,7 @@ class YouTubePublishException extends SocialPublishException
     /**
      * @return array{string, ErrorCategory}
      */
-    private static function mapReasonToMessageAndCategory(?string $reason, string $fallbackMessage): array
+    private static function mapReasonToMessageAndCategory(?string $reason): array
     {
         return match ($reason) {
             'invalidTitle' => ['Video title is invalid or empty.', ErrorCategory::ContentPolicy],
@@ -126,7 +115,7 @@ class YouTubePublishException extends SocialPublishException
             'forbidden' => ["You don't have permission to upload to this channel.", ErrorCategory::Permission],
             'forbiddenLicenseSetting' => ['Invalid video license setting.', ErrorCategory::Permission],
             'forbiddenPrivacySetting' => ['Invalid video privacy setting.', ErrorCategory::Permission],
-            default => [$fallbackMessage, ErrorCategory::Unknown],
+            default => [__('posts.errors.unrecognized_error', ['platform' => 'YouTube']), ErrorCategory::Unknown],
         };
     }
 }

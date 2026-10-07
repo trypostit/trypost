@@ -58,13 +58,14 @@ test('unauthorized reason throws TokenExpiredException', function () {
     YouTubePublishException::fromGoogleException($e);
 })->throws(TokenExpiredException::class);
 
-test('unknown reason falls through to Unknown category with original message', function () {
+test('unknown reason falls through to Unknown category with the generic message', function () {
     $e = new Exception('original error message', 400, null, [['reason' => 'someUnknownReason', 'message' => 'original error message']]);
 
     $exception = YouTubePublishException::fromGoogleException($e);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe('original error message');
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']))
+        ->and($exception->rawResponse)->toBe('original error message');
 });
 
 test('a Google 5xx that reaches the mapper fails as an unconfirmed upload', function (int $status, array $errors) {
@@ -81,13 +82,13 @@ test('a Google 5xx that reaches the mapper fails as an unconfirmed upload', func
     '500 internalError' => [500, [['reason' => 'internalError', 'message' => 'Internal error']]],
 ]);
 
-test('an unmapped failure with an html body never reaches the user message', function () {
+test('a failure without a documented reason never reaches the user message', function () {
     $e = new Exception('<!DOCTYPE html><html lang=en><p><b>400.</b> That’s an error.</html>', 400);
 
     $exception = YouTubePublishException::fromGoogleException($e);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.youtube.unexpected_response'))
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']))
         ->and($exception->userMessage)->not->toContain('<')
         ->and($exception->rawResponse)->toContain('<!DOCTYPE html>');
 });
@@ -124,7 +125,7 @@ test('fromApiResponse with invalidTitle reason maps to ContentPolicy', function 
         ->and($exception->platformErrorCode)->toBe('invalidTitle');
 });
 
-test('fromApiResponse with unknown reason uses fallback message and Unknown category', function () {
+test('fromApiResponse with unknown reason uses the generic message and Unknown category', function () {
     $response = Http::response([
         'error' => [
             'code' => 400,
@@ -140,5 +141,5 @@ test('fromApiResponse with unknown reason uses fallback message and Unknown cate
     $exception = YouTubePublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe('Something went wrong on YouTube.');
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
 });

@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
         'review_unconfirmed' => 'Google가 이 게시물을 확인해 주지 않았습니다. 비즈니스 프로필을 확인한 후 다시 시도하세요.',
         'instagram' => [
-            'processing_failed' => 'Instagram에서 이 미디어를 처리하지 못했습니다: :reason',
-            'processing_failed_without_reason' => 'Instagram에서 이 미디어를 처리하지 못했습니다. 다른 파일을 사용해 보세요.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X에서는 같은 텍스트를 두 번 게시할 수 없습니다. 텍스트를 바꾼 뒤 다시 시도해 주세요.',
+            'processing_failed' => 'Instagram에서 이 미디어를 처리하지 못했습니다. 다른 파일을 사용해 보세요.',
         ],
         'content_too_long' => '이 게시물은 :provided자이지만 :platform은 :max자까지 허용합니다.',
+        'unrecognized_error' => ':platform에서 확인할 수 없는 오류가 발생했습니다. 다시 시도하세요.',
         'linkedin' => [
             'server_error' => 'LinkedIn 서버 오류가 발생했습니다. 다시 시도해 주세요.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube에서 예기치 않은 오류가 발생했습니다. 다시 시도해 주세요.',
             'upload_unconfirmed' => 'YouTube에서 업로드를 마무리하지 못했습니다. 다시 시도하기 전에 채널을 확인해 주세요. 동영상이 이미 올라가 있을 수 있습니다.',
         ],
         'google_business' => [

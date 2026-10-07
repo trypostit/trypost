@@ -834,18 +834,14 @@ return [
         'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
         'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
         'instagram' => [
-            'processing_failed' => 'Instagram bu medyayı işleyemedi: :reason',
-            'processing_failed_without_reason' => 'Instagram bu medyayı işleyemedi. Başka bir dosya dene.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X aynı metni iki kez paylaşmana izin vermiyor. Metni değiştirip tekrar dene.',
+            'processing_failed' => 'Instagram bu medyayı işleyemedi. Başka bir dosya dene.',
         ],
         'content_too_long' => 'Bu gönderi :provided karakter, ancak :platform en fazla :max karaktere izin veriyor.',
+        'unrecognized_error' => ':platform tanımlayamadığımız bir hata döndürdü. Lütfen tekrar deneyin.',
         'linkedin' => [
             'server_error' => 'LinkedIn\'de bir sunucu hatası oluştu. Lütfen tekrar deneyin.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube beklenmeyen bir hata döndürdü. Lütfen tekrar deneyin.',
             'upload_unconfirmed' => 'YouTube yüklemeyi tamamlarken başarısız oldu. Tekrar denemeden önce kanalınızı kontrol edin: video zaten orada olabilir.',
         ],
         'google_business' => [

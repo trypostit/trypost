@@ -38,15 +38,6 @@ class XPublishException extends SocialPublishException
             );
         }
 
-        if (str_contains((string) $detail, 'duplicate content')) {
-            return new static(
-                userMessage: __('posts.errors.x.duplicate_content'),
-                category: ErrorCategory::ContentPolicy,
-                platformErrorCode: 'duplicate-content',
-                rawResponse: $rawResponse,
-            );
-        }
-
         if (str_contains((string) $rawResponse, 'video longer than 2 minutes')) {
             return new static(
                 userMessage: 'Video exceeds the 2-minute limit.',

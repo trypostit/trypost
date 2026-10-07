@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google отклонил эту публикацию при проверке. Измените текст или изображение и попробуйте снова.',
         'review_unconfirmed' => 'Google так и не подтвердил эту публикацию. Проверьте профиль компании и попробуйте снова.',
         'instagram' => [
-            'processing_failed' => 'Instagram не смог обработать этот файл: :reason',
-            'processing_failed_without_reason' => 'Instagram не смог обработать этот файл. Попробуйте другой.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X не позволяет публиковать один и тот же текст дважды. Измените текст и попробуйте ещё раз.',
+            'processing_failed' => 'Instagram не смог обработать этот файл. Попробуйте другой.',
         ],
         'content_too_long' => 'В этом посте :provided символов, а :platform допускает :max.',
+        'unrecognized_error' => ':platform вернул ошибку, которую нам не удалось определить. Попробуйте снова.',
         'linkedin' => [
             'server_error' => 'На сервере LinkedIn произошла ошибка. Попробуйте ещё раз.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube вернул непредвиденную ошибку. Попробуйте ещё раз.',
             'upload_unconfirmed' => 'YouTube не смог завершить загрузку. Проверьте канал, прежде чем пробовать снова: видео может уже быть там.',
         ],
         'google_business' => [

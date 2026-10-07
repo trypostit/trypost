@@ -119,7 +119,7 @@ test('body containing "invalid URL" maps to ContentPolicy category', function ()
         ->and($exception->userMessage)->toBe('Post contains an invalid URL.');
 });
 
-test('a duplicate post maps to ContentPolicy with a translated message', function () {
+test('a duplicate post has no documented code and stays unclassified', function () {
     $response = Http::response([
         'detail' => 'You are not allowed to create a Tweet with duplicate content.',
         'type' => 'about:blank',
@@ -131,9 +131,7 @@ test('a duplicate post maps to ContentPolicy with a translated message', functio
 
     $exception = XPublishException::fromApiResponse($fakeResponse);
 
-    expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
-        ->and($exception->userMessage)->toBe(__('posts.errors.x.duplicate_content'))
-        ->and($exception->platformErrorCode)->toBe('duplicate-content');
+    expect($exception->category)->toBe(ErrorCategory::Unknown);
 });
 
 test('body containing "video longer than 2 minutes" maps to MediaFormat category', function () {

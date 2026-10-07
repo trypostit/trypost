@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
         'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
         'instagram' => [
-            'processing_failed' => 'Instagram nie mógł przetworzyć tego pliku: :reason',
-            'processing_failed_without_reason' => 'Instagram nie mógł przetworzyć tego pliku. Spróbuj innego.',
-        ],
-        'x' => [
-            'duplicate_content' => 'X nie pozwala opublikować tego samego tekstu dwa razy. Zmień tekst i spróbuj ponownie.',
+            'processing_failed' => 'Instagram nie mógł przetworzyć tego pliku. Spróbuj innego.',
         ],
         'content_too_long' => 'Ten post ma :provided znaków, a :platform pozwala na :max.',
+        'unrecognized_error' => ':platform zwrócił błąd, którego nie udało się rozpoznać. Spróbuj ponownie.',
         'linkedin' => [
             'server_error' => 'LinkedIn zgłosił błąd serwera. Spróbuj ponownie.',
         ],
         'youtube' => [
-            'unexpected_response' => 'YouTube zwrócił nieoczekiwany błąd. Spróbuj ponownie.',
             'upload_unconfirmed' => 'YouTube nie zdołał dokończyć przesyłania. Sprawdź swój kanał, zanim spróbujesz ponownie: film może już tam być.',
         ],
         'google_business' => [

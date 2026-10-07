@@ -832,18 +832,14 @@ return [
         'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
         'review_unconfirmed' => 'لم تؤكد Google حالة هذا المنشور. تحقّق من ملفك التجاري وحاول مرة أخرى.',
         'instagram' => [
-            'processing_failed' => 'تعذّر على Instagram معالجة هذا الملف: :reason',
-            'processing_failed_without_reason' => 'تعذّر على Instagram معالجة هذا الملف. جرّب ملفًا آخر.',
-        ],
-        'x' => [
-            'duplicate_content' => 'لا يسمح X بنشر النص نفسه مرتين. غيّر النص وحاول مرة أخرى.',
+            'processing_failed' => 'تعذّر على Instagram معالجة هذا الملف. جرّب ملفًا آخر.',
         ],
         'content_too_long' => 'يحتوي هذا المنشور على :provided حرفًا، لكن :platform يسمح بـ :max.',
+        'unrecognized_error' => 'أعاد :platform خطأً لم نتمكن من تحديده. حاول مرة أخرى.',
         'linkedin' => [
             'server_error' => 'حدث خطأ في خادم LinkedIn. حاول مرة أخرى.',
         ],
         'youtube' => [
-            'unexpected_response' => 'أعاد YouTube خطأً غير متوقع. حاول مرة أخرى.',
             'upload_unconfirmed' => 'فشل YouTube في إنهاء الرفع. تحقق من قناتك قبل المحاولة مرة أخرى: قد يكون الفيديو موجودًا بالفعل.',
         ],
         'google_business' => [
