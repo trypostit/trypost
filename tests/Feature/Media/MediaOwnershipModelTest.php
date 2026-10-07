@@ -87,7 +87,7 @@ test('a feed item owns its image row', function () {
         ->and($image->collection)->toBe(Media::COLLECTION_MEDIA);
 });
 
-test('the migration backfills workspace_id for workspace-owned rows', function () {
+test('the migration backfills workspace_id for workspace-owned rows and skips rows of deleted workspaces', function () {
     $workspace = Workspace::factory()->create();
     $user = User::factory()->create();
     $row = fn (string $type, string $id): array => [
@@ -104,12 +104,14 @@ test('the migration backfills workspace_id for workspace-owned rows', function (
     ];
     $workspaceRow = $row($workspace->getMorphClass(), $workspace->id);
     $avatarRow = $row($user->getMorphClass(), $user->id);
-    DB::table('medias')->insert([$workspaceRow, $avatarRow]);
+    $deletedWorkspaceRow = $row($workspace->getMorphClass(), (string) Str::uuid());
+    DB::table('medias')->insert([$workspaceRow, $avatarRow, $deletedWorkspaceRow]);
 
     (require database_path('migrations/2026_10_01_000001_add_owners_to_medias_table.php'))->backfillWorkspaceIds();
 
     expect(DB::table('medias')->where('id', $workspaceRow['id'])->value('workspace_id'))->toBe($workspace->id)
-        ->and(DB::table('medias')->where('id', $avatarRow['id'])->value('workspace_id'))->toBeNull();
+        ->and(DB::table('medias')->where('id', $avatarRow['id'])->value('workspace_id'))->toBeNull()
+        ->and(DB::table('medias')->where('id', $deletedWorkspaceRow['id'])->value('workspace_id'))->toBeNull();
 });
 
 test('workspace-owned rows get their workspace_id from the mediable', function () {

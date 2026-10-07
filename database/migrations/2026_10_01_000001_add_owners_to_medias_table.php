@@ -29,6 +29,7 @@ return new class extends Migration
         DB::table('medias')
             ->where('mediable_type', 'workspace')
             ->whereNull('workspace_id')
+            ->whereIn('mediable_id', DB::table('workspaces')->select('id'))
             ->update(['workspace_id' => DB::raw('mediable_id')]);
     }
 
