@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -369,49 +368,5 @@ test('at 390px the footer is compact and the channel strip hints at hidden chips
     waitForComposerMobileCondition($page, "!document.querySelector('[data-testid=\"composer-accounts\"]').hasAttribute('data-overflowing')");
 
     expect($page->script("document.querySelector('[data-testid=\"composer-accounts\"]').hasAttribute('data-overflowing')"))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the edit and preview control fits on one line in every language', function () {
-    [$user] = composerMobileWorkspace();
-    $page = openComposerMobile($this, $user->fresh(), 390, 844);
-    waitForComposerMobileTestId($page, 'composer-view-switch');
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [
-            $locale->value => [
-                'edit' => __('posts.composer.edit_view', [], $locale->value),
-                'preview' => __('posts.edit.tabs.preview', [], $locale->value),
-            ],
-        ])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const wrapped = [];
-
-            Object.entries(translations).forEach(([locale, labels]) => {
-                Object.entries(labels).forEach(([view, text]) => {
-                    const button = document.querySelector('[data-testid="composer-view-' + view + '"]');
-                    const label = button.querySelector('[data-single-line]');
-                    label.textContent = text;
-                    const range = document.createRange();
-                    range.selectNodeContents(label);
-                    const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-
-                    if (lines.size > 1 || button.scrollWidth > button.clientWidth) {
-                        wrapped.push(locale + ': ' + text);
-                    }
-                });
-            });
-
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });

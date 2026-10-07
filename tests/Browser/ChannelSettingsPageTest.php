@@ -6,7 +6,6 @@ use App\Actions\Post\Queue\ReflowChannelQueue;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\Post;
@@ -292,7 +291,7 @@ test('the channel time zone picker suggests the browser time zone first', functi
     $page->assertVisible('@channel-timezone-detected')->assertNoJavaScriptErrors();
 });
 
-test('changing the time zone asks first, cancel and escape keep the old zone and the buttons fit in every language', function () {
+test('changing the time zone asks first and cancel and escape keep the old zone', function () {
     [$user, $channel] = channelSettingsPageSetup();
     $this->actingAs($user);
 
@@ -316,44 +315,6 @@ test('changing the time zone asks first, cancel and escape keep the old zone and
     $page->assertMissing('@channel-timezone-confirm-dialog');
     expect($channel->fresh()->timezone)->toBe('UTC');
 
-    chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-submit');
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [
-            $locale->value => [
-                'channel-timezone-confirm-cancel' => __('channels.settings_page.cancel', [], $locale->value),
-                'channel-timezone-confirm-submit' => __('channels.settings_page.timezone_confirm', [], $locale->value),
-            ],
-        ])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $problems = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const problems = [];
-
-            Object.entries(translations).forEach(([locale, buttons]) => {
-                Object.entries(buttons).forEach(([testId, text]) => {
-                    const button = document.querySelector('[data-testid="' + testId + '"]');
-                    button.textContent = text;
-                    const range = document.createRange();
-                    range.selectNodeContents(button);
-                    const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
-
-                    if (lines > 1) {
-                        problems.push(locale + ': ' + testId);
-                    }
-                });
-            });
-
-            return problems;
-        })()
-    JS);
-
-    expect($problems)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });
 

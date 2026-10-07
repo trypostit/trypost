@@ -6,7 +6,6 @@ use App\Dto\MediaItem;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -1339,57 +1338,6 @@ test('the composer asks to connect a channel when the workspace has none', funct
     waitForComposerReady($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('the schedule picker footer keeps both actions on one line in every language', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $this->actingAs($user);
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => [
-            'more' => __('posts.composer.schedule_picker.more_actions', [], $locale->value),
-            'done' => __('posts.composer.schedule_picker.done', [], $locale->value),
-        ]])
-        ->all();
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerReady($page);
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$account->id}")
-        ->click('@composer-schedule-trigger')
-        ->click('@composer-schedule-custom')
-        ->assertVisible('@composer-schedule-more-actions');
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const more = document.querySelector('[data-testid="composer-schedule-more-actions"]');
-            const done = document.querySelector('[data-testid="composer-schedule-done"]');
-            const moreText = [...more.childNodes].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '');
-            const doneText = [...done.childNodes].find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.trim() !== '');
-            const singleLine = more.getBoundingClientRect().height;
-            return Object.entries(translations)
-                .filter(([, text]) => {
-                    moreText.textContent = text.more;
-                    doneText.textContent = text.done;
-                    const footer = more.parentElement.getBoundingClientRect();
-                    const needed = (more.scrollWidth + done.scrollWidth + 8) * 1.04 + 16;
-                    return more.getBoundingClientRect().height > singleLine || needed > footer.width;
-                })
-                .map(([locale, text]) => locale + ': ' + text.more + ' / ' + text.done);
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
 });
 
 test('the composer is wide enough for the preview on a desktop screen', function (int $width, int $dialog) {

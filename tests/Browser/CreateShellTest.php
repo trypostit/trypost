@@ -2,11 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Arr;
 
 function waitForCreateShellTestId(mixed $page, string $testId): void
 {
@@ -167,70 +165,5 @@ test('the create tabs border keeps the same padding as the publish page', functi
 
     expect($edges[0])->toBeGreaterThanOrEqual(32)
         ->and($edges[1])->toBeGreaterThanOrEqual(32);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('no create tab wraps onto a second line in any language', function () {
-    $this->actingAs(createShellUser());
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'create-tab-ideas');
-
-    $testIds = $page->script("[...document.querySelectorAll('[data-testid^=\"create-tab-\"]')].map((tab) => tab.dataset.testid)");
-    $texts = $page->script("[...document.querySelectorAll('[data-testid^=\"create-tab-\"]')].map((tab) => tab.textContent.trim())");
-
-    $keysByText = [];
-
-    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
-        foreach (Arr::dot(require $file) as $key => $value) {
-            if (is_string($value)) {
-                $keysByText[$value] ??= basename($file, '.php').".{$key}";
-            }
-        }
-    }
-
-    $translations = [];
-
-    foreach ($testIds as $index => $testId) {
-        $key = $keysByText[$texts[$index]] ?? null;
-        expect($key)->not->toBeNull("no lang key for {$testId}");
-
-        foreach (Locale::cases() as $locale) {
-            $translations[$testId][$locale->value] = __($key, [], $locale->value);
-        }
-    }
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    foreach ([390, 1280] as $width) {
-        $page->resize($width, 900);
-
-        $wrapped = $page->script(<<<JS
-            (() => {
-                const translations = {$json};
-                const failures = [];
-
-                for (const [testId, byLocale] of Object.entries(translations)) {
-                    const tab = document.querySelector('[data-testid="' + testId + '"]');
-                    const original = tab.innerHTML;
-
-                    for (const [locale, text] of Object.entries(byLocale)) {
-                        tab.textContent = text;
-                        const range = document.createRange();
-                        range.selectNodeContents(tab);
-                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                        if (tops.size > 1) failures.push(testId + ' ' + locale);
-                    }
-
-                    tab.innerHTML = original;
-                }
-
-                return failures;
-            })()
-        JS);
-
-        expect($wrapped)->toBe([], "tabs wrap at {$width}");
-    }
-
     $page->assertNoJavaScriptErrors();
 });

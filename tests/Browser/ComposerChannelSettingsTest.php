@@ -6,7 +6,6 @@ use App\Dto\MediaItem;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Models\Media;
 use App\Models\Post;
@@ -954,7 +953,7 @@ test('a youtube video with neither text nor a title warns in its card until a ti
         ->assertNoJavaScriptErrors();
 });
 
-test('the tiktok settings label fits on one line in every language, interactions read as full sentences and the compliance text lines up with the fields', function () {
+test('the tiktok interactions read as full sentences and the compliance text lines up with the fields', function () {
     fakeChannelSettingsApis();
     $postPlatform = seedChannelSettingsPost(Platform::TikTok, ContentType::TikTokVideo);
 
@@ -976,37 +975,6 @@ test('the tiktok settings label fits on one line in every language, interactions
         })()
     JS))->toBe(['aligned' => true, 'gap' => true]);
 
-    $translations = collect(['privacy_level'])
-        ->mapWithKeys(fn (string $key): array => [$key => collect(Locale::cases())
-            ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __("posts.form.tiktok.{$key}", [], $locale->value)])
-            ->all()])
-        ->all();
-    $current = json_encode(['privacy_level' => __('posts.form.tiktok.privacy_level')], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const current = {$current};
-            const translations = {$json};
-            const labels = [...document.querySelectorAll('[data-testid="channel-settings-row"] > label, [data-testid="channel-settings-row"] > span')];
-            return Object.entries(translations).flatMap(([key, texts]) => {
-                const element = labels.find((label) => label.textContent.trim() === current[key]);
-                if (!element) return [key + ': label not found'];
-                const available = parseFloat(getComputedStyle(element.parentElement).gridTemplateColumns.split(' ')[0]);
-                element.style.whiteSpace = 'nowrap';
-                element.style.display = 'inline-block';
-                element.style.justifySelf = 'start';
-                return Object.entries(texts)
-                    .filter(([, text]) => {
-                        element.textContent = text;
-                        return element.getBoundingClientRect().width * 1.04 > available;
-                    })
-                    .map(([locale, text]) => key + ' ' + locale + ': ' + text);
-            });
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });
 

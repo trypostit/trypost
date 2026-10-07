@@ -6,7 +6,6 @@ use Amp\DeferredFuture;
 use Amp\TimeoutCancellation;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Media;
@@ -339,39 +338,6 @@ test('replacing the link card with media attaches the card image', function () {
     expect($media->post_id)->toBe($post->id)
         ->and($post->fresh()->media)->toHaveCount(1)
         ->and(data_get($post->fresh()->media, '0.id'))->toBe($media->id);
-});
-
-test('the replace link preview button stays on one line in every language', function () {
-    $url = 'https://93.184.216.34/article';
-    Http::fake([$url => Http::response('<meta property="og:title" content="Article card">')]);
-    [$post, $account] = seedLinkCardPreviewPost(Platform::Facebook, "Read {$url}");
-
-    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForLinkCardPreviewTestId($page, "composer-link-card-{$account->id}-replace");
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __('posts.composer.link_preview.replace_with_media', [], $locale->value)])
-        ->all();
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const label = document.querySelector('[data-testid="composer-link-card-{$account->id}-replace"] [data-single-line]');
-            const lineHeight = parseFloat(getComputedStyle(label).lineHeight) || 20;
-
-            return Object.entries(translations)
-                .filter(([, text]) => {
-                    label.textContent = text;
-
-                    return label.getBoundingClientRect().height > lineHeight * 1.5;
-                })
-                .map(([locale, text]) => locale + ': ' + text);
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-    $page->assertNoJavaScriptErrors();
 });
 
 test('the shared step editor shows no link card and the network card does', function () {

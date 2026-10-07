@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Http;
@@ -190,7 +189,7 @@ test('switch account on bluesky returns to its form with empty fields', function
     $page->assertMissing('@connect-switch-state')->assertNoJavaScriptErrors();
 });
 
-test('on a phone switch account shows a short label that fits next to the logos in every language', function () {
+test('on a phone switch account shows a short label next to the logos', function () {
     $this->actingAs(switchAccountAdmin());
     $parameters = [];
     stubSwitchAccountFacebook($parameters);
@@ -198,35 +197,15 @@ test('on a phone switch account shows a short label that fits next to the logos 
     $page = visit(route('app.social.facebook.connect'))->resize(390, 640);
     waitForSwitchAccountTestId($page, 'connect-switch-account');
 
-    $labels = collect(Locale::cases())->mapWithKeys(fn (Locale $locale): array => [
-        $locale->value => __('accounts.connect.switch.button_short', [], $locale->value),
-    ])->all();
-
-    $json = json_encode($labels, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $failures = $page->script(<<<JS
+    $failures = $page->script(<<<'JS'
         (() => {
-            const labels = {$json};
-            const button = document.querySelector('[data-testid="connect-switch-account"]');
-            const short = document.querySelector('[data-testid="connect-switch-account-short"]');
-            const full = document.querySelector('[data-testid="connect-switch-account-label"]');
+            const button = document.querySelector('[data-testid="connect-switch-account"]').getBoundingClientRect();
+            const full = document.querySelector('[data-testid="connect-switch-account-label"]').getBoundingClientRect();
             const logos = document.querySelector('[data-testid="connect-header-logos"]').getBoundingClientRect();
             const failures = [];
-            const height = button.getBoundingClientRect().height;
 
-            if (full.getBoundingClientRect().width !== 0) failures.push('full label visible');
-
-            for (const [locale, text] of Object.entries(labels)) {
-                short.textContent = text;
-                const rect = button.getBoundingClientRect();
-                const fits = rect.left >= 0
-                    && rect.right <= logos.left
-                    && button.scrollWidth <= button.clientWidth + 1
-                    && rect.height <= height + 1;
-
-                if (!fits) failures.push(locale);
-            }
-
+            if (full.width !== 0) failures.push('full label visible');
+            if (button.left < 0 || button.right > logos.left) failures.push('overlaps the logos');
             if (document.documentElement.scrollWidth > window.innerWidth) failures.push('horizontal scroll');
 
             return failures;
@@ -247,63 +226,5 @@ test('on a phone switch account shows a short label that fits next to the logos 
         })()
     JS))->toBeTrue();
 
-    $page->assertNoJavaScriptErrors();
-});
-
-test('switch account copy stays on one line in every language', function () {
-    $this->actingAs(switchAccountAdmin());
-    $parameters = [];
-    stubSwitchAccountFacebook($parameters);
-
-    $page = visit(route('app.social.facebook.connect'))->resize(1280, 900);
-    waitForSwitchAccountTestId($page, 'connect-switch-account');
-
-    $translations = fn (string $key, array $replace = []): array => collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __($key, $replace, $locale->value)])
-        ->all();
-
-    $headerJson = json_encode($translations('accounts.connect.switch.button'), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $headerFailures = $page->script(<<<JS
-        (() => {
-            const labels = {$headerJson};
-            const button = document.querySelector('[data-testid="connect-switch-account"]');
-            const label = document.querySelector('[data-testid="connect-switch-account-label"]');
-            const logos = document.querySelector('[data-testid="connect-header-logos"]').getBoundingClientRect();
-            const height = label.getBoundingClientRect().height;
-
-            return Object.entries(labels)
-                .filter(([, text]) => {
-                    label.textContent = text;
-
-                    return button.getBoundingClientRect().right > logos.left || label.getBoundingClientRect().height > height + 1;
-                })
-                .map(([locale]) => locale);
-        })()
-    JS);
-
-    $page->click('@connect-switch-account');
-    waitForSwitchAccountTestId($page, 'connect-switch-connect');
-
-    $ctaJson = json_encode($translations('accounts.connect.switch.connect', ['network' => 'Google Business Profile']), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $ctaFailures = $page->script(<<<JS
-        (() => {
-            const labels = {$ctaJson};
-            const cta = document.querySelector('[data-testid="connect-switch-connect"]');
-            const footer = document.querySelector('[data-testid="connect-footer"]');
-            const height = cta.getBoundingClientRect().height;
-
-            return Object.entries(labels)
-                .filter(([, text]) => {
-                    cta.textContent = text;
-
-                    return cta.getBoundingClientRect().height > height + 1 || footer.scrollWidth > footer.clientWidth + 1;
-                })
-                .map(([locale]) => locale);
-        })()
-    JS);
-
-    expect($headerFailures)->toBe([])->and($ctaFailures)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });

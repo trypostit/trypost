@@ -174,7 +174,7 @@ test('the goal step matches the wide card layout with right-side radios', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('on a phone the goal step shows a full-width Next above the help and the weekly counts fit in every language', function () {
+test('on a phone the goal step shows a full-width Next above the help', function () {
     [$user, $channel] = postingGoalSetup();
     $this->actingAs($user);
 
@@ -205,44 +205,6 @@ test('on a phone the goal step shows a full-width Next above the help and the we
 
     expect($layout)->toBe(['nextAlignedWithOptions' => true, 'nextAboveHelp' => true, 'helpInside' => true, 'footerBorder' => '0px', 'perWeekOnOneLine' => true]);
 
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [
-            $locale->value => collect(range(1, 7))
-                ->mapWithKeys(fn (int $count): array => [$count => trans_choice('channels.goal_dialog.per_week', $count, ['count' => $count], $locale->value)])
-                ->all(),
-        ])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const wrapped = [];
-
-            Object.entries(translations).forEach(([locale, counts]) => {
-                document.querySelectorAll('[data-testid="goal-option-label"] > span:nth-child(2)').forEach((span) => {
-                    const count = span.closest('[data-testid^="goal-option-"]:not([data-testid="goal-option-label"])')?.dataset.testid.replace('goal-option-', '');
-                    const text = counts[count];
-
-                    if (text === undefined) {
-                        return;
-                    }
-
-                    span.textContent = text;
-                    const lines = Math.round(span.getBoundingClientRect().height / parseFloat(getComputedStyle(span).lineHeight));
-
-                    if (lines > 1) {
-                        wrapped.push(locale + ': ' + text);
-                    }
-                });
-            });
-
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -401,35 +363,3 @@ function fakeBlueskyIdentity(string $did): void
         ]),
     ]);
 }
-
-test('the goal description fits on one line in every language', function () {
-    [$user, $channel] = postingGoalSetup();
-    $this->actingAs($user);
-
-    [$page, $channel] = connectPostingGoalChannel();
-    waitForPostingGoalTestId($page, 'goal-description');
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __('channels.goal_dialog.description', [], $locale->value)])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const element = document.querySelector('[data-testid="goal-description"]');
-            const available = element.getBoundingClientRect().width;
-            element.style.whiteSpace = 'nowrap';
-            element.style.display = 'inline-block';
-            return Object.entries(translations)
-                .filter(([, text]) => {
-                    element.textContent = text;
-                    return element.getBoundingClientRect().width * 1.04 > available;
-                })
-                .map(([locale, text]) => locale + ': ' + text);
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-});

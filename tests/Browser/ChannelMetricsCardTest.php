@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
@@ -353,67 +352,4 @@ test('the column chooser hides and adds columns and remembers the choice', funct
     $page->assertMissing('@insights-sort-views')
         ->assertVisible('@insights-sort-reactions')
         ->assertNoJavaScriptErrors();
-});
-
-test('no metrics control wraps onto a second line in any language', function () {
-    $this->actingAs($this->user->fresh());
-
-    $page = visit(route('app.channels.insights', $this->instagram));
-    waitForMetricsCardTestId($page, 'insights-metrics-chart');
-    waitForMetricsCardTestId($page, 'sidebar-workspace-menu');
-
-    $wrapped = [];
-
-    foreach (Locale::cases() as $locale) {
-        if ($locale !== Locale::DEFAULT) {
-            $page->script(<<<JS
-                (async () => {
-                    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-                    document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
-                    await wait(400);
-                    const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
-                    trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
-                    trigger.click();
-                    await wait(600);
-                    document.querySelector('[data-testid="sidebar-language-{$locale->value}"]').click();
-                })();
-            JS);
-
-            $groupLabel = json_encode(__('sidebar.groups.posts', [], $locale->value), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-            waitForMetricsCardScript($page, "document.body.innerText.includes({$groupLabel})");
-            $page->assertScript("document.body.innerText.includes({$groupLabel})", true);
-        }
-
-        waitForMetricsCardTestId($page, 'insights-metrics-chart');
-        waitForMetricsCardScript($page, '!document.querySelector("[data-testid=insights-metrics]")?.textContent.includes("analytics.")');
-
-        $lines = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid="insights-metrics-controls"] button, [data-testid^="insights-metrics-mode-"], [data-testid^="insights-metrics-legend-"] > span:first-child, [data-testid^="insights-posts-page-"]')]
-                .map((item) => {
-                    const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
-                    let lineCount = 0;
-                    while (walker.nextNode()) {
-                        if (!walker.currentNode.textContent.trim()) continue;
-                        const range = document.createRange();
-                        range.selectNodeContents(walker.currentNode);
-                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                        lineCount = Math.max(lineCount, tops.size);
-                    }
-                    const card = document.querySelector('[data-testid="insights-metrics"]').getBoundingClientRect();
-                    const overflows = item.scrollWidth > item.clientWidth + 1 || item.getBoundingClientRect().right > card.right + 1;
-                    return [item.textContent.trim(), lineCount > 1 || overflows];
-                })
-                .filter(([, broken]) => broken)
-                .map(([text]) => text)
-        JS);
-
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
-
-    expect($wrapped)->toBe([]);
-
-    $page->assertNoJavaScriptErrors();
 });

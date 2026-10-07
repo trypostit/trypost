@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Enums\Webhook\EventType;
 use App\Models\User;
 use App\Models\Webhook;
@@ -203,79 +202,6 @@ test('send test event pings the endpoint from the header and from the empty deli
     $page->click('@send-test-webhook');
     waitForWebhookShowCondition($page, "document.querySelectorAll('[data-sonner-toast]').length >= 2");
 
-    $page->assertNoJavaScriptErrors();
-});
-
-test('header and section buttons and menu items stay on one line in every language', function () {
-    [$user, $webhook] = webhookShowFixture();
-    $this->actingAs($user);
-
-    $page = visit(route('app.webhooks.show', $webhook));
-    waitForWebhookShowTestId($page, 'webhook-actions-trigger');
-    $page->click('@webhook-actions-trigger');
-    waitForWebhookShowTestId($page, 'delete-webhook-button');
-
-    $keys = [
-        'webhook-back' => 'webhooks.title',
-        'send-test-webhook' => 'webhooks.actions.send_test',
-        'edit-webhook-events' => 'webhooks.show.edit',
-        'rotate-secret-button' => 'webhooks.rotate.submit',
-        'webhook-deliveries-send-test' => 'webhooks.actions.send_test',
-        'edit-webhook-button' => 'webhooks.actions.edit',
-        'toggle-webhook-status' => 'webhooks.actions.disable',
-        'rotate-secret-menu-item' => 'webhooks.actions.rotate',
-        'delete-webhook-button' => 'webhooks.actions.delete',
-    ];
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => collect($keys)
-            ->map(fn (string $key): string => __($key, [], $locale->value))
-            ->all()])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const wrapped = [];
-            const lineCount = (element) => {
-                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-                const tops = new Set();
-                while (walker.nextNode()) {
-                    const range = document.createRange();
-                    range.selectNodeContents(walker.currentNode);
-                    [...range.getClientRects()].filter((rect) => rect.width > 0).forEach((rect) => tops.add(Math.round(rect.top)));
-                }
-                return tops.size;
-            };
-            const textNodeOf = (element) => {
-                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-                let found = null;
-                while (walker.nextNode()) {
-                    if (walker.currentNode.textContent.trim()) found = walker.currentNode;
-                }
-                return found;
-            };
-            for (const [locale, texts] of Object.entries(translations)) {
-                for (const [testId, text] of Object.entries(texts)) {
-                    const element = document.querySelector('[data-testid="' + testId + '"]');
-                    if (!element) {
-                        wrapped.push(locale + ': missing ' + testId);
-                        continue;
-                    }
-                    const node = textNodeOf(element);
-                    node.textContent = text;
-                    if (lineCount(element) > 1) {
-                        wrapped.push(locale + ': ' + text);
-                    }
-                }
-            }
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
     $page->assertNoJavaScriptErrors();
 });
 

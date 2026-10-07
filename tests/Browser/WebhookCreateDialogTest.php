@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
 use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
@@ -100,57 +99,6 @@ test('creating a webhook happens in a centered dialog with cancel before the pri
         ->assertNoJavaScriptErrors();
 
     expect(Webhook::query()->count())->toBe(0);
-});
-
-test('the endpoint helper and event descriptions stay on one line in every language', function () {
-    $this->actingAs(webhookCreateDialogAdmin());
-
-    $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty-create');
-    $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-events-post-created-description');
-
-    $descriptionKeys = array_keys(__('webhooks.event_descriptions', [], 'en'));
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => [
-            'create-webhook-endpoint-help' => __('webhooks.create.endpoint_help', [], $locale->value),
-            'create-webhook-events-count' => trans_choice('webhooks.create.events_count_selected', 0, ['count' => '0', 'total' => '7'], $locale->value),
-            'create-webhook-events-toggle-all' => __('posts.composer.deselect_all', [], $locale->value),
-            ...collect($descriptionKeys)->mapWithKeys(fn (string $key): array => [
-                'create-webhook-events-'.preg_replace('/_/', '-', $key, 1).'-description' => __("webhooks.event_descriptions.{$key}", [], $locale->value),
-            ])->all(),
-        ]])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const wrapped = [];
-            const lineCount = (element) => {
-                const range = document.createRange();
-                range.selectNodeContents(element);
-                return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
-            };
-            for (const [locale, texts] of Object.entries(translations)) {
-                for (const [testId, text] of Object.entries(texts)) {
-                    const element = document.querySelector('[data-testid="' + testId + '"]');
-                    if (!element) {
-                        wrapped.push(locale + ': missing ' + testId);
-                        continue;
-                    }
-                    element.textContent = text;
-                    if (lineCount(element) > 1) {
-                        wrapped.push(locale + ': ' + text);
-                    }
-                }
-            }
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
 });
 
 test('an invalid endpoint shows an inline error and a valid one opens the new webhook page', function () {

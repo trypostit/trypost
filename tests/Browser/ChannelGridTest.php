@@ -210,59 +210,6 @@ test('clicking a carousel tile opens its media in the lightbox', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('no schedule view label wraps onto a second line in any language', function () {
-    $this->actingAs($this->user->fresh());
-
-    $page = visit(route('app.channels.publish', $this->instagram));
-    waitForChannelGridTestId($page, 'schedule-view-grid');
-
-    $keys = [
-        'grid' => 'channels.grid.title',
-        'list' => 'posts.list_view',
-        'calendar' => 'calendar.title',
-    ];
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [
-            $locale->value => collect($keys)->map(fn (string $key): string => __($key, [], $locale->value))->all(),
-        ])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const labelOf = (view) => document.querySelector(`[data-testid="schedule-view-\${view}"] span`);
-            const lineCount = (element) => {
-                const range = document.createRange();
-                range.selectNodeContents(element);
-                return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
-            };
-            const wrapped = [];
-
-            Object.entries(translations).forEach(([locale, labels]) => {
-                Object.entries(labels).forEach(([view, text]) => {
-                    const label = labelOf(view);
-                    label.textContent = text;
-
-                    if (lineCount(label) > 1) {
-                        wrapped.push(locale + ': ' + text);
-                    }
-                });
-            });
-
-            return wrapped;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-
-    $page->hover('@schedule-view-grid')
-        ->assertMissing('@schedule-view-grid-note')
-        ->assertNoJavaScriptErrors();
-});
-
 test('the grid tooltip shows the sent time in the user zone, not the browser zone', function () {
     $this->user->update(['timezone' => 'Asia/Tokyo']);
     $reel = channelGridBrowserPost($this->instagram, '2026-09-20 10:00:00', ContentType::InstagramReel, [

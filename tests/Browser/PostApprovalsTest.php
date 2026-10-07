@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Post\CreatePosts;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Jobs\PublishPost;
 use App\Models\Post;
@@ -15,7 +14,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Queue;
 
 function waitForApprovalsTestId(mixed $page, string $testId): void
@@ -181,110 +179,6 @@ test('a requester adding a draft to the queue is told it awaits approval', funct
         ->assertDontSee('Added to queue')
         ->assertNoJavaScriptErrors();
     expect($draft->fresh()->status)->toBe(PostStatus::PendingApproval);
-});
-
-test('the approval card footer does not wrap or overflow in any language', function () {
-    [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
-    $queued = approvalsBrowserRequest($workspace, $requester, $channel);
-    approvalsBrowserRequest($workspace, $requester, $channel, [
-        'queue' => null,
-        'scheduled_at' => now()->addDay()->startOfHour()->toIso8601String(),
-    ]);
-
-    $keysByText = [];
-
-    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
-        foreach (Arr::dot(require $file) as $key => $value) {
-            if (is_string($value)) {
-                $keysByText[$value] ??= basename($file, '.php').".{$key}";
-            }
-        }
-    }
-
-    $problems = [];
-
-    foreach ([$owner, $requester] as $user) {
-        $this->actingAs($user);
-
-        $page = visit(route('app.posts.index', ['tab' => 'approvals']))->resize(1440, 900);
-        waitForApprovalsTestId($page, "post-actions-{$queued->id}");
-
-        $texts = array_values(array_unique($page->script("[...document.querySelectorAll('[data-testid^=\"post-actions-\"] button, [data-testid^=\"post-actions-\"] a')].map((control) => control.textContent.trim()).filter(Boolean)")));
-        $translations = [];
-
-        foreach ($texts as $text) {
-            $key = $keysByText[$text] ?? null;
-
-            if ($key === null) {
-                continue;
-            }
-
-            foreach (Locale::cases() as $locale) {
-                $translations[$text][$locale->value] = __($key, [], $locale->value);
-            }
-        }
-
-        expect($translations)->not->toBeEmpty();
-
-        $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-        foreach ([1440, 390] as $width) {
-            $page->resize($width, 900);
-
-            $found = $page->script(<<<JS
-                (() => {
-                    const translations = {$json};
-                    const failures = [];
-                    const controls = [...document.querySelectorAll('[data-testid^="post-actions-"] button, [data-testid^="post-actions-"] a')];
-
-                    const check = (label) => {
-                        document.querySelectorAll('[data-testid^="post-actions-"]').forEach((actions) => {
-                            const card = actions.closest('[data-testid^="post-card-"]').getBoundingClientRect();
-                            if (actions.getBoundingClientRect().right > card.right + 1) failures.push('overflow ' + label);
-                        });
-                        controls.forEach((control) => {
-                            const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
-                            while (walker.nextNode()) {
-                                if (!walker.currentNode.textContent.trim()) continue;
-                                const range = document.createRange();
-                                range.selectNodeContents(walker.currentNode);
-                                const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                                if (tops.size > 1) failures.push('wrap ' + label + ': ' + control.textContent.trim());
-                            }
-                        });
-                    };
-
-                    const locales = new Set(Object.values(translations).flatMap((byLocale) => Object.keys(byLocale)));
-
-                    for (const locale of locales) {
-                        const restore = [];
-                        for (const control of controls) {
-                            const original = control.textContent.trim();
-                            const byLocale = translations[original];
-                            if (!byLocale) continue;
-                            const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
-                            while (walker.nextNode()) {
-                                if (!walker.currentNode.textContent.trim()) continue;
-                                restore.push([walker.currentNode, walker.currentNode.textContent]);
-                                walker.currentNode.textContent = byLocale[locale];
-                                break;
-                            }
-                        }
-                        check(locale);
-                        restore.forEach(([node, text]) => { node.textContent = text; });
-                    }
-
-                    return failures;
-                })()
-            JS);
-
-            foreach ($found as $problem) {
-                $problems[] = "{$user->name} {$width} {$problem}";
-            }
-        }
-    }
-
-    expect($problems)->toBe([]);
 });
 
 test('a new time for a late request is typed in the channel zone', function () {

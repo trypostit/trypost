@@ -13,53 +13,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Storage;
 
-/**
- * A post carrying a PDF with one deselected X channel. X never accepts a
- * document, so the channel has a media issue before the user touches it.
- */
-function seedChannelMediaIssuePost(): PostPlatform
-{
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('member'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'content' => 'hello',
-        'media' => [[
-            'id' => 'd1',
-            'type' => 'document',
-            'mime_type' => 'application/pdf',
-            'path' => 'uploads/deck.pdf',
-            'url' => 'https://cdn.test/deck.pdf',
-            'size' => 1024,
-        ]],
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
-    ]);
-
-    test()->actingAs($user);
-
-    return $postPlatform;
-}
-
 function waitForChannelIssueTestId(mixed $page, string $testId): void
 {
     waitForChannelIssueCondition($page, $testId, 'el.getBoundingClientRect().height > 0');
-}
-
-function waitForChannelIssuePressed(mixed $page, string $testId): void
-{
-    waitForChannelIssueCondition($page, $testId, "el.getAttribute('aria-pressed') === 'true'");
 }
 
 /**

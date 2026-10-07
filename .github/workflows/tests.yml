@@ -89,7 +89,7 @@ jobs:
         env:
           DB_PORT: ${{ job.services.database.ports[matrix.port] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
-        run: php artisan test --compact --parallel --shard=${{ matrix.shard }}/2
+        run: ./vendor/bin/pest --compact --parallel --shard=${{ matrix.shard }}/2
 
       - name: Show logged warnings of failed tests
         if: failure()

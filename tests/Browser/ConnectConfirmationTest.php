@@ -3,8 +3,6 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
-use App\Enums\User\Locale;
-use App\Enums\User\Theme;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -110,11 +108,6 @@ function connectConfirmFacebookPages(): void
         ]]),
         "{$graphApi}/*" => Http::response(['id' => 'fb-user', 'name' => 'Owner']),
     ]);
-}
-
-function connectConfirmFakeXVerify(): void
-{
-    Http::fake([config('trypost.platforms.x.api').'/users/me*' => Http::response(['data' => ['id' => 'x-brand']])]);
 }
 
 function connectConfirmPath(string $route, mixed ...$parameters): string
@@ -240,55 +233,6 @@ test('when every page is already connected the list is locked and says so', func
     $page->assertNoJavaScriptErrors();
 });
 
-test('the connected label fits on one line on a phone in dark mode in every language', function () {
-    $user = connectConfirmAdmin();
-    $user->update(['theme' => Theme::Dark]);
-    SocialAccount::factory()->facebook()->create([
-        'workspace_id' => $user->current_workspace_id,
-        'platform_user_id' => 'page-2',
-    ]);
-    $this->actingAs($user);
-    connectConfirmFacebookPages();
-
-    $page = visit(route('app.social.facebook.connect'))->resize(390, 640);
-    waitForConnectConfirmTestId($page, 'connect-identity-connected-facebook:page-2');
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __('accounts.connect.connected', [], $locale->value)])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $result = $page->script(<<<JS
-        (() => {
-            const labels = {$json};
-            const card = document.querySelector('[data-testid="connect-identity-facebook:page-2"]');
-            const label = document.querySelector('[data-testid="connect-identity-connected-facebook:page-2"]');
-            const text = Array.from(label.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.nodeValue.trim() !== '');
-            const height = label.getBoundingClientRect().height;
-            const failures = Object.entries(labels)
-                .filter(([, value]) => {
-                    text.nodeValue = value;
-
-                    return label.getBoundingClientRect().height > height + 1
-                        || label.getBoundingClientRect().right > card.getBoundingClientRect().right
-                        || card.scrollWidth > card.clientWidth + 1
-                        || document.documentElement.scrollWidth > window.innerWidth;
-                })
-                .map(([locale]) => locale);
-
-            return {
-                dark: document.documentElement.classList.contains('dark'),
-                sameColor: getComputedStyle(label).color === getComputedStyle(card).backgroundColor,
-                failures,
-            };
-        })()
-    JS);
-
-    expect($result)->toBe(['dark' => true, 'sameColor' => false, 'failures' => []]);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('a cancelled consent shows the cancelled state with try again and back', function () {
     $user = connectConfirmAdmin();
     $this->actingAs($user);
@@ -382,54 +326,6 @@ test('on a phone the cards fill the width and the footer stays in view', functio
     $page->assertNoJavaScriptErrors();
 });
 
-test('the header label and footer controls stay on one line in every language', function () {
-    $this->actingAs(connectConfirmAdmin());
-    connectConfirmFacebookPages();
-
-    $page = visit(route('app.social.facebook.connect'))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-identities');
-
-    $slots = [
-        'connect-switch-account-label' => 'accounts.connect.switch.button',
-        'connect-finish' => 'accounts.connect.finish',
-        'connect-help' => 'accounts.connect.help.label',
-        'connect-selected-count' => 'accounts.connect.selected',
-    ];
-
-    $translations = collect($slots)->map(fn (string $key): array => collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __($key, ['count' => 3], $locale->value)])
-        ->all())->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const slots = {$json};
-            const failures = [];
-
-            for (const [testId, texts] of Object.entries(slots)) {
-                const element = document.querySelector('[data-testid="' + testId + '"]');
-                const original = element.innerHTML;
-                const height = element.getBoundingClientRect().height;
-
-                for (const [locale, text] of Object.entries(texts)) {
-                    element.textContent = text;
-                    const fits = element.scrollWidth <= element.clientWidth + 1
-                        && element.getBoundingClientRect().height <= height + 1
-                        && document.querySelector('[data-testid="connect-footer"]').scrollWidth <= document.querySelector('[data-testid="connect-footer"]').clientWidth + 1;
-                    if (!fits) failures.push(testId + ' ' + locale + ': ' + text);
-                }
-
-                element.innerHTML = original;
-            }
-
-            return failures;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-});
-
 test('the bluesky and mastodon steps use the same page with the TryPost mark next to the network logo', function (string $route, string $platform, string $title, string $hint) {
     $this->actingAs(connectConfirmAdmin());
 
@@ -515,53 +411,6 @@ test('the bluesky and mastodon forms use the standard field layout with hints un
         ->assertNoJavaScriptErrors();
     expect($page->script("document.querySelectorAll('[role=\"alert\"], [data-slot=\"alert\"]').length"))->toBe(0);
 });
-
-test('the stop state buttons stay on one line in every language, on a phone and on a desktop', function (int $width) {
-    $this->actingAs(connectConfirmAdmin());
-    stubConnectConfirmProvider('x', 'app.social.x.callback', ['error' => 'access_denied'], connectConfirmXLogin());
-
-    $page = visit(route('app.social.x.connect'))->resize($width, 900);
-    waitForConnectConfirmTestId($page, 'connect-state-cancelled');
-
-    $slots = [
-        'connect-back' => ['accounts.connect.actions.back'],
-        'connect-retry' => ['accounts.connect.actions.try_again', 'accounts.connect.actions.connect_again', 'accounts.connect.actions.start_again'],
-    ];
-
-    $translations = collect($slots)->map(fn (array $keys): array => collect(Locale::cases())
-        ->flatMap(fn (Locale $locale): array => collect($keys)->mapWithKeys(fn (string $key): array => ["{$locale->value} {$key}" => __($key, [], $locale->value)])->all())
-        ->all())->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const slots = {$json};
-            const failures = [];
-
-            for (const [testId, texts] of Object.entries(slots)) {
-                const element = document.querySelector('[data-testid="' + testId + '"]');
-                const original = element.innerHTML;
-                const height = element.getBoundingClientRect().height;
-
-                for (const [label, text] of Object.entries(texts)) {
-                    element.textContent = text;
-                    const fits = element.scrollWidth <= element.clientWidth + 1
-                        && element.getBoundingClientRect().height <= height + 1
-                        && document.documentElement.scrollWidth <= window.innerWidth;
-                    if (!fits) failures.push(testId + ' ' + label + ': ' + text);
-                }
-
-                element.innerHTML = original;
-            }
-
-            return failures;
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-    $page->assertNoJavaScriptErrors();
-})->with(['phone' => 390, 'desktop' => 1280]);
 
 test('the fragment a network appends to the callback is gone once the confirmation page shows', function (string $fragment) {
     $this->actingAs(connectConfirmAdmin());

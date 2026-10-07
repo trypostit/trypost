@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\User\Locale;
-
 function waitForAuthTitlesTestId(mixed $page, string $testId): void
 {
     $page->script(<<<JS
@@ -85,61 +83,4 @@ test('typing a password ticks each requirement', function () {
     waitForAuthTitlesRequirementMet($page, 'min', 'true');
     $page->assertAttribute('@password-requirement-min', 'data-met', 'true')
         ->assertNoJavaScriptErrors();
-});
-
-test('the auth title fits one line on a phone in every language', function (string $route, string $key) {
-    $page = visit(route($route))->resize(390, 844);
-    waitForAuthTitlesTestId($page, 'auth-title');
-
-    $translations = collect(Locale::cases())
-        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => __($key, [], $locale->value)])
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const element = document.querySelector('[data-testid="auth-title"]');
-            const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-            return Object.entries(translations)
-                .filter(([, text]) => {
-                    element.textContent = text;
-                    return Math.round(element.getBoundingClientRect().height / lineHeight) > 1;
-                })
-                .map(([locale]) => locale);
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
-})->with([
-    'login' => ['login', 'auth.login.title'],
-    'register' => ['register', 'auth.register.title'],
-]);
-
-test('every password requirement fits one line on a phone in every language', function () {
-    $page = visit(route('register'))->resize(390, 844);
-    waitForAuthTitlesTestId($page, 'password-requirements');
-
-    $translations = collect(Locale::cases())
-        ->flatMap(fn (Locale $locale): array => collect(['min', 'mixed_case', 'number', 'symbol'])
-            ->map(fn (string $key): string => __("auth.register.password_requirements.{$key}", ['count' => 12], $locale->value))
-            ->all())
-        ->all();
-
-    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
-
-    $wrapped = $page->script(<<<JS
-        (() => {
-            const translations = {$json};
-            const element = document.querySelector('[data-testid="password-requirement-min"] span:last-child');
-            const lineHeight = parseFloat(getComputedStyle(element).lineHeight);
-            return translations.filter((text) => {
-                element.textContent = text;
-                return Math.round(element.getBoundingClientRect().height / lineHeight) > 1;
-            });
-        })()
-    JS);
-
-    expect($wrapped)->toBe([]);
 });

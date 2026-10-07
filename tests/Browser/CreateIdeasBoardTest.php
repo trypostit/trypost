@@ -74,11 +74,6 @@ function createIdeasBoardIdea(Workspace $workspace, User $user, ?IdeaStage $stag
     ]);
 }
 
-function createIdeasBoardColumnIds(mixed $page): array
-{
-    return $page->script('[...document.querySelectorAll(\'[data-testid^="idea-column-"]\')].map((el) => el.dataset.testid).filter((id) => /^idea-column-(unassigned|[0-9a-f-]{36})$/.test(id))');
-}
-
 function createIdeasBoardMouse(mixed $page, string $method, array $params = []): void
 {
     $page->script('true');

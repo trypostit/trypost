@@ -244,8 +244,9 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 
 - When adding or changing a key, check the longest translations (French, German, Ukrainian, Russian, Polish and Portuguese usually run longest) against the slot, and shorten the copy in that locale rather than letting it wrap. A shorter natural phrase beats a literal one (`Ajustes do workspace`, not `Configurações do workspace`).
 - Never fix a wrap by truncating the text or widening one locale's layout; the label has to stay readable everywhere.
-- Cover dense menus with a browser test that renders every `Locale` case and fails on wrapped items — `tests/Browser/SidebarMenuTest.php` ("no sidebar menu item wraps onto a second line in any language") is the pattern.
-- A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action. When adding a settings page with a description, add it to the dataset in `tests/Browser/SettingsDescriptionTest.php`, which measures all 16 translations in place.
+- A settings page description (the line under the page title in `SettingsLayout`) stays on one line in every locale, next to the header action.
+- Single-line copy is guarded by `tests/Feature/SingleLineCopyTest.php`, which fails when any locale's translation of a watched key gets longer than its budget in `tests/fixtures/single-line-copy.php`. When adding a button, tab, menu item or badge label, add its key there with the length of its longest translation; raise a budget only after checking the slot still fits.
+- Do not write browser tests that measure whether a label wraps (pixel widths, line counts, `Locale::cases()` loops over rendered text). They depend on the machine's fonts and fail differently on CI and locally; they were replaced by the length test in October 2026 (owner decision).
 
 ## AI agents (`app/Ai/Agents`)
 
