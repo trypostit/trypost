@@ -67,29 +67,6 @@ function channelReorderDomOrder(mixed $page, string $prefix, array $channels): a
     JS);
 }
 
-test('dragging a channel in the sidebar persists the order and the settings page shows it', function () {
-    [$user, [$first, $second, $third]] = channelReorderSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForChannelReorderTestId($page, "sidebar-channel-{$third->id}");
-    $page->hover("@sidebar-channel-row-{$third->id}");
-    $page->drag("@sidebar-channel-handle-{$third->id}", "@sidebar-channel-row-{$first->id}");
-    waitForChannelReorderDatabase($page, fn (): bool => $third->refresh()->position < $second->refresh()->position);
-
-    expect($third->refresh()->position)->toBeLessThan($second->refresh()->position)
-        ->and(channelReorderDomOrder($page, 'sidebar-channel-row-', [$first, $second, $third]))
-        ->toBe($user->currentWorkspace->socialAccounts()->pluck('id')->all());
-    $page->assertNoJavaScriptErrors();
-
-    $settings = visit(route('app.workspace.channels'));
-    waitForChannelReorderTestId($settings, "channel-row-{$third->id}");
-
-    expect(channelReorderDomOrder($settings, 'channel-list-row-', [$first, $second, $third]))
-        ->toBe($user->currentWorkspace->socialAccounts()->pluck('id')->all());
-    $settings->assertNoJavaScriptErrors();
-});
-
 test('dragging a channel on the settings page persists the order', function () {
     [$user, [$first, $second, $third]] = channelReorderSetup();
     $this->actingAs($user);

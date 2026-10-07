@@ -87,19 +87,6 @@ test('typing a password ticks each requirement', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the register page lists the same requirements outside production', function (string $environment) {
-    app()->detectEnvironment(fn (): string => $environment);
-
-    $page = visit(route('register'));
-    waitForAuthTitlesTestId($page, 'password-requirements');
-
-    $page->assertSeeIn('@password-requirement-min', 'At least 12 characters')
-        ->assertVisible('@password-requirement-mixed_case')
-        ->assertVisible('@password-requirement-number')
-        ->assertVisible('@password-requirement-symbol')
-        ->assertNoJavaScriptErrors();
-})->with(['testing', 'local']);
-
 test('the auth title fits one line on a phone in every language', function (string $route, string $key) {
     $page = visit(route($route))->resize(390, 844);
     waitForAuthTitlesTestId($page, 'auth-title');

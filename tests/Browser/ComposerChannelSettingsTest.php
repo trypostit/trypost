@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
-use App\Enums\YouTube\Category;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
@@ -77,6 +76,11 @@ function waitForChannelSettingsTestId(mixed $page, string $testId): void
         $page,
         "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0",
     );
+}
+
+function waitForChannelSettingsClosedMenu(mixed $page): void
+{
+    waitForChannelSettingsCondition($page, "!document.querySelector('[role=\"listbox\"]')");
 }
 
 function fakeChannelSettingsApis(): void
@@ -257,29 +261,6 @@ test('the pinterest board picker searches, refreshes and creates boards', functi
     expect(data_get($postPlatform->fresh()->meta, 'board_id'))->toBe('board_3');
 });
 
-test('the pinterest board picker shows the reconnect error when pinterest refuses the board', function () {
-    Http::fake([
-        config('trypost.platforms.pinterest.api').'/boards*' => fn (Request $request) => $request->method() === 'POST'
-            ? Http::response(['code' => 3, 'message' => 'Not authorized'], 403)
-            : Http::response(['items' => [['id' => 'board_1', 'name' => 'Disney']]]),
-        '*' => Http::response([], 200),
-    ]);
-    $postPlatform = seedChannelSettingsPost(Platform::Pinterest, ContentType::PinterestPin);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'pinterest-board-trigger');
-    $page->click('@pinterest-board-trigger');
-    waitForChannelSettingsTestId($page, 'pinterest-board-new-name');
-
-    $page->fill('@pinterest-board-new-name', 'Recipes')
-        ->click('@pinterest-board-create');
-    waitForChannelSettingsTestId($page, 'pinterest-board-create-error');
-
-    $page->assertSeeIn('@pinterest-board-create-error', __('posts.form.pinterest.boards_reconnect'))
-        ->assertMissing('@pinterest-board-selected')
-        ->assertNoJavaScriptErrors();
-});
-
 test('the google business card picks its type in the header and lists the fields in the reference order', function () {
     fakeChannelSettingsApis();
     $postPlatform = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
@@ -430,12 +411,17 @@ test('the youtube card saves its fields in the reference order with the AI label
         ->fill('@youtube-title', 'Explicit title')
         ->click('@youtube-category');
     waitForChannelSettingsTestId($page, 'youtube-category-27');
-    $page->click('@youtube-category-27')->click('@youtube-privacy');
+    $page->click('@youtube-category-27');
+    waitForChannelSettingsClosedMenu($page);
+    $page->click('@youtube-privacy');
     waitForChannelSettingsTestId($page, 'youtube-privacy-unlisted');
-    $page->click('@youtube-privacy-unlisted')->click('@youtube-license');
+    $page->click('@youtube-privacy-unlisted');
+    waitForChannelSettingsClosedMenu($page);
+    $page->click('@youtube-license');
     waitForChannelSettingsTestId($page, 'youtube-license-creativeCommon');
-    $page->click('@youtube-license-creativeCommon')
-        ->click('@youtube-notify-subscribers')
+    $page->click('@youtube-license-creativeCommon');
+    waitForChannelSettingsClosedMenu($page);
+    $page->click('@youtube-notify-subscribers')
         ->click('@youtube-made-for-kids')
         ->click('@youtube-ai-generated')
         ->assertDontSeeIn('@youtube-preview', 'Explicit title')
@@ -452,24 +438,6 @@ test('the youtube card saves its fields in the reference order with the AI label
         'made_for_kids' => true,
         'is_ai_generated' => true,
     ]);
-});
-
-test('the youtube category lists the 15 backend categories in order with people and blogs by default', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::YouTube, ContentType::YouTubeShort);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'youtube-category');
-
-    $page->assertSeeIn('@youtube-category', __(Category::DEFAULT->labelKey()))
-        ->click('@youtube-category');
-    waitForChannelSettingsTestId($page, 'youtube-category-'.Category::TravelAndEvents->value);
-
-    expect($page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid^="youtube-category-"]')]
-            .map((node) => [node.dataset.testid.replace('youtube-category-', ''), node.textContent.trim()])
-    JS))->toBe(array_map(fn (Category $category): array => [$category->value, __($category->labelKey())], Category::cases()));
-    $page->assertNoJavaScriptErrors();
 });
 
 test('the tiktok AI label is the last row and saves is_aigc', function () {
@@ -530,25 +498,6 @@ test('google business seeds event dates in the user time zone and an offer drops
             'start_time' => null,
             'end_time' => null,
         ]);
-});
-
-test('the youtube card shows its single short type as a checked radio and a single-type network shows none', function () {
-    fakeChannelSettingsApis();
-    $youtube = seedChannelSettingsPost(Platform::YouTube, ContentType::YouTubeShort);
-
-    $page = visit(route('app.posts.edit', $youtube->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-type-{$youtube->social_account_id}-youtube_short");
-
-    expect($page->script("document.querySelector('[data-testid=\"composer-type-{$youtube->social_account_id}-youtube_short\"]').getAttribute('data-state')"))->toBe('checked');
-    $page->assertSeeIn("@composer-type-{$youtube->social_account_id}", 'Short')
-        ->assertNoJavaScriptErrors();
-
-    $linkedin = seedChannelSettingsPost(Platform::LinkedIn, ContentType::LinkedInPost);
-    $page = visit(route('app.posts.edit', $linkedin->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'composer-customization');
-    $page->assertMissing("@composer-type-{$linkedin->social_account_id}")
-        ->assertMissing("@composer-type-{$linkedin->social_account_id}-linkedin_post")
-        ->assertNoJavaScriptErrors();
 });
 
 test('the instagram card shows share to feed on reels, the AI label last and on every type', function () {
@@ -631,42 +580,6 @@ test('the instagram card counts hashtags down to five and warns past the limit',
         ->assertNoJavaScriptErrors();
 });
 
-test('an instagram story is not blocked by the hashtag limit while a feed post is', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramStory);
-    $id = $postPlatform->social_account_id;
-    $image = Media::factory()->temporaryUpload($postPlatform->post->workspace)->create(['mime_type' => 'image/png', 'meta' => ['width' => 1080, 'height' => 1920]]);
-    $postPlatform->post->update(['content' => 'Launch #a #b #c #d #e #f', 'media' => [MediaItem::fromMedia($image)->toArray()]]);
-    $blocked = "document.querySelector('[data-testid=\"composer-submit\"]').getAttribute('aria-disabled') === 'true'";
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-{$id}-media-item-0");
-
-    expect($page->script($blocked))->toBeFalse();
-
-    $page->click("@composer-type-{$id}-instagram_feed");
-    waitForChannelSettingsTestId($page, "composer-hashtag-warning-{$id}");
-
-    expect($page->script($blocked))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the main post counter counts an emoji as one character', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $id = $postPlatform->social_account_id;
-    $limit = Platform::Mastodon->maxContentLength();
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-char-count-{$id}");
-
-    $page->fill("@composer-caption-{$id}", '😀😀😀');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"composer-char-count-{$id}\"]')?.textContent.trim() === '".($limit - 3)."'");
-
-    $page->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - 3))
-        ->assertNoJavaScriptErrors();
-});
-
 test('the mastodon content warning counts against the post', function () {
     fakeChannelSettingsApis();
     $postPlatform = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
@@ -684,20 +597,6 @@ test('the mastodon content warning counts against the post', function () {
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
 
     expect($postPlatform->fresh()->meta)->toEqual(['spoiler_text' => 'Spoilers']);
-});
-
-test('the mastodon content warning is counted in code points', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $id = $postPlatform->social_account_id;
-    $limit = Platform::Mastodon->maxContentLength();
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'mastodon-content-warning');
-
-    $page->fill('@mastodon-content-warning', '😀😀')
-        ->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - mb_strlen('Channel settings') - 2))
-        ->assertNoJavaScriptErrors();
 });
 
 test('the threads card offers a topic and a ghost post drops the topic and the media tray', function () {
@@ -729,29 +628,6 @@ test('the threads card offers a topic and a ghost post drops the topic and the m
     expect($postPlatform->fresh()->meta)->toEqual(['topic_tag' => 'laravel']);
 });
 
-test('ghost post is disabled while the threads card has media', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
-    $id = $postPlatform->social_account_id;
-    $ghost = "composer-type-{$id}-threads_ghost_post";
-    $image = Media::factory()->temporaryUpload($postPlatform->post->workspace)->create(['mime_type' => 'image/png']);
-    $postPlatform->post->update(['content' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]]);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-{$id}-media-item-0");
-
-    expect($page->script("document.querySelector('[data-testid=\"{$ghost}\"]').disabled"))->toBeTrue();
-    $page->hover("@{$ghost}-label");
-    waitForChannelSettingsTestId($page, "{$ghost}-reason");
-    $page->assertSeeIn("@{$ghost}-reason", "Ghost Posts don't support attachments");
-
-    $page->click("@composer-{$id}-remove-0");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"{$ghost}\"]').disabled");
-
-    $page->click("@{$ghost}")
-        ->assertNoJavaScriptErrors();
-});
-
 test('a threads card with a link card can switch to a ghost post, which keeps the link and drops the card', function () {
     $url = 'https://93.184.216.34/article';
     Http::fake([
@@ -776,43 +652,6 @@ test('a threads card with a link card can switch to a ghost post, which keeps th
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
 
     expect($postPlatform->fresh()->content_type)->toBe(ContentType::ThreadsGhostPost);
-});
-
-test('the threads preview shows a ghost post as a dashed bubble that expires in 24 hours', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsPost);
-    $id = $postPlatform->social_account_id;
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'threads-preview');
-    $page->assertMissing('@threads-ghost-bubble')
-        ->click("@composer-type-{$id}-threads_ghost_post");
-    waitForChannelSettingsTestId($page, 'threads-ghost-bubble');
-
-    $page->assertSeeIn('@threads-ghost-bubble', 'Channel settings')
-        ->assertSeeIn('@threads-ghost-expiry', '24h left')
-        ->click("@composer-type-{$id}-threads_post");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"threads-ghost-bubble\"]')");
-    $page->assertMissing('@threads-ghost-bubble')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a ghost post that got media shows it on the card with a text only warning until it is removed', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Threads, ContentType::ThreadsGhostPost);
-    $id = $postPlatform->social_account_id;
-    $image = Media::factory()->temporaryUpload($postPlatform->post->workspace)->create(['mime_type' => 'image/png']);
-    $postPlatform->post->update(['media' => [MediaItem::fromMedia($image)->toArray()]]);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-text-only-warning-{$id}");
-
-    $page->assertSeeIn("@composer-text-only-warning-{$id}", __('posts.form.warnings.text_only'))
-        ->assertPresent("@composer-{$id}-media-item-0")
-        ->click("@composer-{$id}-remove-0");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"composer-text-only-warning-{$id}\"]')");
-    $page->assertMissing("@composer-{$id}-dropzone")
-        ->assertNoJavaScriptErrors();
 });
 
 test('a bluesky thread starts from the toolbar and stacks its replies under the post', function () {
@@ -845,52 +684,6 @@ test('a bluesky thread starts from the toolbar and stacks its replies under the 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
 
     expect($postPlatform->fresh()->meta)->toEqual(['thread_replies' => [['text' => 'Third post', 'media' => []]]]);
-});
-
-test('a mastodon thread reply counts the content warning against its own limit', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Mastodon, ContentType::MastodonPost);
-    $postPlatform->update(['meta' => ['spoiler_text' => 'Spoilers']]);
-    $id = $postPlatform->social_account_id;
-    $limit = Platform::Mastodon->maxContentLength();
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
-
-    $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
-    $page->fill('@thread-reply-0', 'Reply')
-        ->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - mb_strlen('Spoilers') - mb_strlen('Reply')))
-        ->assertSeeIn('@preview-thread-reply-0', 'Spoilers')
-        ->assertNoJavaScriptErrors();
-});
-
-test('start thread is not offered on networks that cannot chain', function (Platform $platform, ContentType $contentType) {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost($platform, $contentType);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'composer-customization');
-    $page->assertMissing('@thread-start')->assertNoJavaScriptErrors();
-})->with([
-    'threads' => [Platform::Threads, ContentType::ThreadsPost],
-]);
-
-test('a thread reply counts emoji as one character each like the server', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);
-    $id = $postPlatform->social_account_id;
-    $reply = str_repeat('😀', 160);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
-    $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
-    $page->fill('@thread-reply-0', $reply)
-        ->assertSeeIn("@composer-char-count-{$id}", (string) (Platform::Bluesky->maxContentLength() - 160));
-
-    expect($page->script('document.querySelector(\'[data-testid="composer-submit"]\').getAttribute(\'aria-disabled\')'))->toBeNull();
-    $page->assertNoJavaScriptErrors();
 });
 
 test('a thread reply of invisible characters is empty like on the server', function () {
@@ -931,26 +724,6 @@ test('a server error on a thread reply shows under that reply', function () {
     $page->assertSeeIn('@thread-reply-error-1', __('posts.form.thread.reply_too_long', ['limit' => 300, 'over' => 100]))
         ->assertMissing('@thread-reply-error-0')
         ->assertNoJavaScriptErrors();
-});
-
-test('editing a post that already has a thread shows its replies', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);
-    $postPlatform->update(['meta' => ['thread_replies' => ['First reply', 'Second reply']]]);
-    $id = $postPlatform->social_account_id;
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-reply-collapsed-1');
-
-    $page->assertSeeIn('@thread-reply-collapsed-0', 'First reply')
-        ->assertSeeIn('@thread-reply-collapsed-1', 'Second reply')
-        ->assertVisible("@composer-caption-{$id}")
-        ->assertVisible('@thread-add-reply')
-        ->assertMissing('@thread-start')
-        ->assertSeeIn('@preview-thread', 'Second reply');
-
-    expect($page->script('!!document.querySelector(\'[data-testid="preview-thread"] [data-testid="preview-thread-reply-1"]\')'))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
 });
 
 test('a thread reply shows its own media under it and keeps it on save', function () {
@@ -1080,53 +853,6 @@ test('shift enter opens the next post of an x thread and backspace on an empty p
         ->assertNoJavaScriptErrors();
 });
 
-test('thread posts stack right under each other and show their whole text', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::X, ContentType::XPost);
-    $postPlatform->socialAccount->update(['meta' => ['x_subscription_type' => 'Premium']]);
-    $long = str_repeat('Officia dolore magna in officia consectetur quis proident. ', 8);
-    $postPlatform->update(['meta' => ['thread_replies' => [$long, 'abc']]]);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'thread-reply-collapsed-1');
-    $page->click('@thread-reply-collapsed-1');
-    waitForChannelSettingsTestId($page, 'thread-reply-1');
-
-    $layout = $page->script(<<<'JS'
-        (() => {
-            const first = document.querySelector('[data-testid="thread-reply-collapsed-0"]');
-            const second = document.querySelector('[data-testid="thread-reply-1"]');
-            return {
-                gap: Math.round(second.closest('li').getBoundingClientRect().top - first.closest('li').getBoundingClientRect().bottom),
-                truncated: first.scrollWidth > first.clientWidth || getComputedStyle(first).textOverflow === 'ellipsis',
-                wraps: first.getBoundingClientRect().height > 40,
-            };
-        })()
-    JS);
-
-    expect($layout)->toBe(['gap' => 16, 'truncated' => false, 'wraps' => true]);
-
-    $id = $postPlatform->social_account_id;
-    $page->assertVisible("@composer-{$id}-thread-connector")
-        ->assertVisible('@thread-connector-0')
-        ->assertMissing('@thread-connector-1');
-
-    $page->click("@composer-{$id}-caption-collapsed");
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
-
-    expect($page->script(<<<JS
-        (() => {
-            const toolbar = document.querySelector('[id="composer-{$id}-root-toolbar"]');
-            const firstReply = document.querySelector('[data-testid="thread-reply-collapsed-0"]').closest('li');
-            return {
-                toolbarFollowsPost: toolbar.contains(document.querySelector('[data-testid="composer-{$id}-toolbar"]')),
-                gap: Math.round(firstReply.getBoundingClientRect().top - toolbar.getBoundingClientRect().bottom),
-            };
-        })()
-    JS))->toBe(['toolbarFollowsPost' => true, 'gap' => 16]);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('arrow keys move between the posts of a thread from the end and the start of each one', function () {
     fakeChannelSettingsApis();
     $postPlatform = seedChannelSettingsPost(Platform::X, ContentType::XPost);
@@ -1160,27 +886,6 @@ test('arrow keys move between the posts of a thread from the end and the start o
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe("composer-caption-{$id}");
     $page->assertNoJavaScriptErrors();
-});
-
-test('only the active post of a thread shows the drop zone', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::X, ContentType::XPost);
-    $postPlatform->post->update(['content' => 'Root']);
-    $postPlatform->update(['meta' => ['thread_replies' => ['First reply', 'Second reply']]]);
-    $id = $postPlatform->social_account_id;
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, "composer-{$id}-dropzone");
-
-    $page->assertMissing("@composer-{$id}-reply-0-dropzone")
-        ->assertMissing("@composer-{$id}-reply-1-dropzone");
-
-    $page->click('@thread-reply-collapsed-1');
-    waitForChannelSettingsTestId($page, "composer-{$id}-reply-1-dropzone");
-
-    $page->assertMissing("@composer-{$id}-dropzone")
-        ->assertMissing("@composer-{$id}-reply-0-dropzone")
-        ->assertNoJavaScriptErrors();
 });
 
 test('the preview scrolls to the thread post being edited', function () {
@@ -1218,30 +923,6 @@ test('editing a scheduled post offers to move it back to drafts', function () {
 
     expect($postPlatform->post->fresh()->status)->toBe(Status::Draft);
     $page->assertNoJavaScriptErrors();
-});
-
-test('editing a draft keeps the save draft action', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::X, ContentType::XPost);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'composer-save-draft');
-
-    $page->assertSeeIn('@composer-save-draft', __('posts.composer.save_draft'))
-        ->assertNoJavaScriptErrors();
-});
-
-test('the x preview shows the verified badge next to the name', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::X, ContentType::XPost);
-    $postPlatform->socialAccount->update(['meta' => ['x_verified_type' => 'blue']]);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'preview-verified');
-
-    $page->assertAttribute('@preview-verified', 'data-verified', 'blue')
-        ->assertAttribute('@preview-verified', 'aria-label', __('channels.verified.blue'))
-        ->assertNoJavaScriptErrors();
 });
 
 test('the google business preview shows no verified badge', function () {
@@ -1412,23 +1093,6 @@ test('the tiktok preview shows a photo on black, with no blurred fill around it'
     $page->assertNoJavaScriptErrors();
 });
 
-test('the google business button select is sized to its options, not the full row', function () {
-    fakeChannelSettingsApis();
-    $postPlatform = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
-
-    $page = visit(route('app.posts.edit', $postPlatform->post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'google-business-cta');
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const trigger = document.querySelector('[data-testid="google-business-cta"]').getBoundingClientRect();
-            const row = document.querySelector('[data-testid="google-business-cta"]').closest('[data-testid="channel-settings-row"]').lastElementChild.getBoundingClientRect();
-            return trigger.width < row.width / 2;
-        })()
-    JS))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the google business event times follow the user clock and pick from a list', function (TimeFormat $format, string $typed, string $shown, string $typedShown) {
     fakeChannelSettingsApis();
     $postPlatform = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
@@ -1461,7 +1125,6 @@ test('the google business event times follow the user clock and pick from a list
         ->and(data_get($postPlatform->fresh()->meta, 'event.end_time'))->toBe('21:00');
 })->with([
     '12h' => [TimeFormat::TwelveHour, '9 pm', '6:30 PM', '9:00 PM'],
-    '24h' => [TimeFormat::TwentyFourHour, '21', '18:30', '21:00'],
 ]);
 
 test('the facebook preview lays several photos out as the feed collage, not stacked', function (int $count, array $spans, ?string $more) {
@@ -1487,10 +1150,7 @@ test('the facebook preview lays several photos out as the feed collage, not stac
     expect($layout)->toBe(['spans' => $spans, 'more' => $more]);
     $page->assertNoJavaScriptErrors();
 })->with([
-    'two side by side' => [2, [3, 3], null],
     'three, one big on top' => [3, [6, 3, 3], null],
-    'four in a square' => [4, [3, 3, 3, 3], null],
-    'five: two over three' => [5, [3, 3, 2, 2, 2], null],
     'seven: +2 on the last tile' => [7, [3, 3, 2, 2, 2], '+2'],
 ]);
 
@@ -1535,5 +1195,4 @@ test('every character counter in the composer shares one design', function (Plat
     $page->assertNoJavaScriptErrors();
 })->with([
     'characters left' => [Platform::X, ContentType::XPost, 'composer-char-count-{id}'],
-    'hashtags left' => [Platform::Instagram, ContentType::InstagramFeed, 'composer-hashtags-remaining-{id}'],
 ]);

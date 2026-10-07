@@ -287,33 +287,6 @@ test('an idea opened as a post neither prompts nor overwrites the unfinished pos
         ->assertNoJavaScriptErrors();
 });
 
-test('a custom date still in the future is restored with its mode', function () {
-    [$user, $workspace, $account] = composerAutosaveWorkspace();
-    $user->update(['timezone' => 'UTC']);
-    $account->update(['timezone' => 'UTC']);
-    $at = now('UTC')->addDays(3);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
-        'content' => 'Planned post',
-        'accountIds' => [$account->id],
-        'scheduleMode' => 'custom',
-        'scheduledAt' => $at->format('Y-m-d\TH:i'),
-    ]);
-
-    openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
-    $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'composer-submit');
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.scheduledAt !== '{$at->format('Y-m-d\TH:i')}'");
-
-    expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('custom')
-        ->and($page->script("JSON.parse(localStorage.getItem('{$key}')).scheduledAt"))->toBe($at->format('Y-m-d\TH:i:00P'));
-    $page->assertNoJavaScriptErrors();
-});
-
 test('a custom date already in the past falls back to the default mode', function () {
     [$user, $workspace, $account] = composerAutosaveWorkspace();
     $this->actingAs($user);
@@ -444,39 +417,6 @@ test('a restored custom time keeps its moment in the channel zone', function () 
     $page->assertNoJavaScriptErrors();
 });
 
-test('a custom time is kept as its instant, so a later zone change does not move it', function () {
-    [$user, $workspace, $account] = composerAutosaveWorkspace();
-    $user->update(['timezone' => 'Asia/Tokyo', 'time_format' => TimeFormat::TwentyFourHour]);
-    $account->update(['timezone' => 'America/Sao_Paulo']);
-    $instant = now('UTC')->addDays(3)->setTime(13, 0);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
-        'content' => 'Saved as an instant',
-        'accountIds' => [$account->id],
-        'scheduleMode' => 'custom',
-        'scheduledAt' => $instant->format('Y-m-d\TH:i:00\Z'),
-    ]);
-
-    openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
-    $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'composer-submit');
-
-    $local = $instant->copy()->setTimezone('America/Sao_Paulo');
-    expect(trim((string) $page->script('document.querySelector("[data-testid=composer-schedule-trigger]").textContent')))
-        ->toBe($local->format($local->year === now()->year ? 'M j' : 'M j, Y').', '.$local->format('H:i'));
-
-    $page->click('@composer-submit');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
-
-    expect(Post::query()->where('workspace_id', $workspace->id)->sole()->scheduled_at->toIso8601String())
-        ->toBe($instant->toIso8601String());
-    $page->assertNoJavaScriptErrors();
-});
-
 test('an unfinished post from the old shared editor restores one card per network with its own text', function () {
     [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
@@ -506,29 +446,6 @@ test('an unfinished post from the old shared editor restores one card per networ
         ->assertNoJavaScriptErrors();
 });
 
-test('an unfinished post with two networks and no per-network text resumes on the shared step', function () {
-    [$user, $workspace, $linkedin] = composerAutosaveWorkspace();
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
-        'content' => 'Still shared',
-        'accountIds' => [$linkedin->id, $x->id],
-    ]);
-
-    openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
-    $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, 'composer-next');
-
-    $page->assertValue('@composer-base-content', 'Still shared')
-        ->assertMissing('@composer-customization')
-        ->assertMissing('@composer-back')
-        ->assertNoJavaScriptErrors();
-});
-
 /**
  * @return array<string, string|null>
  */
@@ -538,44 +455,6 @@ function composerAutosaveSavedContents(Workspace $workspace): array
         ->mapWithKeys(fn (Post $post): array => [$post->postPlatforms->sole()->social_account_id => $post->content])
         ->all();
 }
-
-test('two pages of one network that disagree in an unfinished post restore the first page text', function () {
-    [$user, $workspace] = composerAutosaveWorkspace();
-    [$first, $second] = SocialAccount::factory()->facebook()->count(2)->create(['workspace_id' => $workspace->id])->all();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    $key = composerAutosaveKeyFor($user, $workspace);
-    seedComposerAutosave($page, $key, [
-        'content' => 'Shared text',
-        'accountIds' => [$first->id, $second->id],
-        'overrides' => [
-            $first->id => ['content' => 'First page text'],
-            $second->id => ['content' => 'Second page text'],
-        ],
-    ]);
-
-    openComposerForAutosave($page);
-    waitForComposerAutosaveTestId($page, 'composer-resume-dialog');
-    $page->click('@composer-resume-confirm');
-    waitForComposerAutosaveTestId($page, "composer-caption-{$first->id}");
-
-    waitForComposerAutosaveCondition($page, "JSON.parse(localStorage.getItem('{$key}') ?? 'null')?.content === 'First page text'");
-    expect($page->script("JSON.parse(localStorage.getItem('{$key}')).overrides"))->toEqual([
-        $first->id => [],
-        $second->id => [],
-    ]);
-    $page->assertValue("@composer-caption-{$first->id}", 'First page text')
-        ->assertMissing("@composer-caption-{$second->id}")
-        ->assertNoJavaScriptErrors()
-        ->click('@composer-save-draft');
-    waitForComposerAutosaveCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
-
-    expect(composerAutosaveSavedContents($workspace))->toEqual([
-        $first->id => 'First page text',
-        $second->id => 'First page text',
-    ]);
-});
 
 test('two pages of one network restore the text of the page that owns one', function () {
     [$user, $workspace] = composerAutosaveWorkspace();

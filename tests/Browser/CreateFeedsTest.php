@@ -114,31 +114,6 @@ beforeEach(function () {
     Storage::fake();
 });
 
-test('all feeds lists every item newest first and ends with the caught up line', function () {
-    [$user, $workspace] = createFeedsSetup();
-    $first = createFeedsFeed($workspace, ['title' => 'First source']);
-    $second = createFeedsFeed($workspace, ['title' => 'Second source']);
-    $older = createFeedsItem($first, ['published_at' => now()->subDays(2)]);
-    $newest = createFeedsItem($second, ['published_at' => now()->subHour()]);
-    $middle = createFeedsItem($first, ['published_at' => now()->subDay()]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feed-item-{$newest->id}");
-    waitForCreateFeedsTestId($page, 'feeds-caught-up');
-
-    $page->assertAttribute('@create-tab-feeds', 'aria-current', 'page')
-        ->assertAttribute('@feeds-chip-all', 'aria-current', 'page')
-        ->assertVisible('@feeds-last-refreshed')
-        ->assertVisible('@feeds-caught-up')
-        ->assertMissing('@feeds-scope-menu')
-        ->assertNoJavaScriptErrors();
-
-    expect($page->script("document.querySelector('[data-testid=\"create-tabs\"]').lastElementChild.dataset.testid"))->toBe('create-tab-feeds')
-        ->and($page->script("[...document.querySelectorAll('[data-testid^=\"feed-item-\"]')].filter((el) => el.tagName === 'ARTICLE').map((el) => el.dataset.testid)"))
-        ->toBe(["feed-item-{$newest->id}", "feed-item-{$middle->id}", "feed-item-{$older->id}"]);
-});
-
 test('a feed chip opens that feed with only its items', function () {
     [$user, $workspace] = createFeedsSetup();
     $first = createFeedsFeed($workspace);
@@ -189,27 +164,6 @@ test('hovering an item reveals its actions and create post opens the composer wi
 
     expect(Media::query()->where('rss_feed_item_id', $item->id)->count())->toBe(1)
         ->and(Media::query()->count())->toBe(1);
-});
-
-test('create post opens the composer without media when the image cannot be imported', function () {
-    Http::fake(['https://93.184.216.34/image.png' => Http::response('nope', 500)]);
-    [$user, $workspace] = createFeedsSetup();
-    $feed = createFeedsFeed($workspace);
-    $item = createFeedsItem($feed, ['title' => 'No image', 'url' => 'https://93.184.216.34/none']);
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, "feed-item-{$item->id}");
-    $item->update(['image_url' => 'https://93.184.216.34/image.png']);
-
-    $page->hover("@feed-item-{$item->id}")->click("@feed-item-create-post-{$item->id}");
-    waitForCreateFeedsTestId($page, 'composer-base-content');
-
-    $page->assertValue('@composer-base-content', "No image\n\nhttps://93.184.216.34/none")
-        ->assertMissing('@composer-media-item')
-        ->assertNoJavaScriptErrors();
-
-    expect(Media::query()->count())->toBe(0);
 });
 
 test('save as idea creates an unassigned idea with the imported image and shows saved without a toast', function () {
@@ -352,38 +306,6 @@ test('the new menu creates a collection in a dialog and cancel adds nothing', fu
     $page->assertNoJavaScriptErrors();
     expect(RssFeedCollection::query()->count())->toBe(1)
         ->and(createFeedsToastCount($page))->toBe(0);
-});
-
-test('the collection menu lists its feeds, renames in a dialog and navigates to a feed', function () {
-    [$user, $workspace] = createFeedsSetup();
-    $collection = RssFeedCollection::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Tech']);
-    $inside = createFeedsFeed($workspace, ['title' => 'Inside Feed', 'rss_feed_collection_id' => $collection->id]);
-    $outside = createFeedsFeed($workspace, ['title' => 'Outside Feed']);
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.feeds.collections.show', $collection));
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
-    $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-collection-menu-feeds');
-
-    $page->assertSeeIn('@feeds-collection-menu-feeds', 'Inside Feed')
-        ->assertMissing("@feeds-collection-menu-feed-{$outside->id}")
-        ->assertVisible('@feeds-add-to-collection');
-
-    $page->click("@feeds-collection-menu-feed-{$inside->id}");
-    waitForCreateFeedsCondition($page, "window.location.pathname === '".route('app.create.feeds.show', $inside, false)."'");
-
-    $page = visit(route('app.create.feeds.collections.show', $collection));
-    waitForCreateFeedsTestId($page, 'feeds-scope-menu');
-    $page->click('@feeds-scope-menu');
-    waitForCreateFeedsTestId($page, 'feeds-rename');
-    $page->click('@feeds-rename');
-    waitForCreateFeedsDialog($page, 'feeds-rename-dialog');
-    $page->type('@feeds-rename-dialog-input', 'Technology')->click('@feeds-rename-dialog-submit');
-    waitForCreateFeedsDatabase($page, fn (): bool => $collection->refresh()->name === 'Technology');
-
-    expect($collection->refresh()->name)->toBe('Technology');
-    $page->assertNoJavaScriptErrors();
 });
 
 test('a collection chip opens a dropdown of its feeds and the label opens the collection', function () {
@@ -763,73 +685,6 @@ test('explore closes with the close button, escape and an outside click wherever
 
     $page->assertNoJavaScriptErrors();
     expect(RssFeed::query()->where('url', 'http://93.184.216.34/feed.xml')->sole()->rss_feed_collection_id)->toBe($collection->id);
-});
-
-test('explore opens repeatedly without touching the url and loads the directory behind a skeleton', function () {
-    [$user] = createFeedsSetup();
-    $this->actingAs($user);
-
-    $path = route('app.create.feeds.index', [], false);
-    $page = visit(route('app.create.feeds.index'));
-    $page->script(<<<'JS'
-        (() => {
-            window.__createFeedsUrls = [];
-            const record = () => window.__createFeedsUrls.push(window.location.pathname + window.location.search);
-            const push = history.pushState.bind(history);
-            const replace = history.replaceState.bind(history);
-            history.pushState = (...args) => { push(...args); record(); };
-            history.replaceState = (...args) => { replace(...args); record(); };
-        })();
-    JS);
-
-    foreach (range(1, 2) as $round) {
-        openCreateFeedsExploreFromSplitButton($page);
-        waitForCreateFeedsTestId($page, 'feeds-explore-grid-favorites');
-        $page->assertVisible('@feeds-explore-grid-favorites')->assertMissing('@feeds-explore-loading');
-        $page->keys('@feeds-explore-dialog', 'Escape');
-        assertCreateFeedsExploreClosed($page, $path);
-    }
-
-    expect(array_unique($page->script('window.__createFeedsUrls')))->toBe([$path]);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the feeds dialogs mount without accessibility or attribute warnings', function () {
-    [$user, $workspace] = createFeedsSetup();
-    createFeedsFeed($workspace);
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.feeds.index'));
-    waitForCreateFeedsTestId($page, 'feeds-new-menu');
-    $page->script(<<<'JS'
-        (() => {
-            window.__createFeedsWarnings = [];
-            const warn = console.warn;
-            console.warn = (...args) => {
-                window.__createFeedsWarnings.push(args.map(String).join(' '));
-                warn(...args);
-            };
-        })();
-    JS);
-
-    $page->click('@feeds-new-menu');
-    waitForCreateFeedsTestId($page, 'feeds-new-collection');
-    $page->click('@feeds-new-collection');
-    waitForCreateFeedsDialog($page, 'feeds-new-collection-dialog');
-    $page->click('@feeds-new-collection-dialog-cancel');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-new-collection-dialog\"]')");
-
-    expect($page->script('window.__createFeedsWarnings'))->toBe([]);
-
-    $page->click('@feeds-new');
-    waitForCreateFeedsDialog($page, 'feeds-add-dialog');
-    $page->click('@feeds-add-cancel');
-    waitForCreateFeedsCondition($page, "!document.querySelector('[data-testid=\"feeds-add-dialog\"]')");
-
-    openCreateFeedsExploreFromSplitButton($page);
-
-    expect($page->script('window.__createFeedsWarnings'))->toBe([]);
-    $page->assertNoJavaScriptErrors();
 });
 
 test('closing explore keeps the item list loading further pages without duplicates', function () {

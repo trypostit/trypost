@@ -294,24 +294,27 @@ test('a draft shows no metrics band in its details', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the content type badge has an icon for stories and reels and is hidden for a regular post', function (ContentType $contentType, ?string $label) {
+test('the content type badge has an icon for stories and reels and is hidden for a regular post', function () {
     [$user, $workspace, $account] = importedCardSetup();
-    $post = importedCardPost($workspace, $account, $contentType);
+    $expectations = [
+        [importedCardPost($workspace, $account, ContentType::InstagramStory), 'posts.content_types.instagram_story.label'],
+        [importedCardPost($workspace, $account, ContentType::InstagramReel), 'posts.content_types.instagram_reel.label'],
+        [importedCardPost($workspace, $account, ContentType::InstagramFeed), null],
+    ];
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    waitForImportedCardTestId($page, "post-card-{$post->id}");
 
-    if ($label === null) {
-        $page->assertMissing("@post-content-type-{$post->id}");
-    } else {
-        $page->assertSeeIn("@post-content-type-{$post->id}", __($label))
-            ->assertScript("document.querySelector('[data-testid=\"post-content-type-{$post->id}\"] svg') !== null", true);
+    foreach ($expectations as [$post, $label]) {
+        waitForImportedCardTestId($page, "post-card-{$post->id}");
+
+        if ($label === null) {
+            $page->assertMissing("@post-content-type-{$post->id}");
+        } else {
+            $page->assertSeeIn("@post-content-type-{$post->id}", __($label))
+                ->assertScript("document.querySelector('[data-testid=\"post-content-type-{$post->id}\"] svg') !== null", true);
+        }
     }
 
     $page->assertNoJavaScriptErrors();
-})->with([
-    'story' => [ContentType::InstagramStory, 'posts.content_types.instagram_story.label'],
-    'reel' => [ContentType::InstagramReel, 'posts.content_types.instagram_reel.label'],
-    'regular post' => [ContentType::InstagramFeed, null],
-]);
+});

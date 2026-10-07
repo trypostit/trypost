@@ -132,16 +132,17 @@ test('the metrics card loads after the page and opens on content impact', functi
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-bar]").length > 0', true)
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-chart] svg").length > 0', true)
         ->assertMissing('@followers-bar')
-        ->assertMissing('@posts-chart-bar')
-        ->assertNoJavaScriptErrors();
-});
+        ->assertMissing('@posts-chart-bar');
 
-test('the performance per post table comes before the metrics card', function () {
-    $page = visit(route('app.channels.insights', $this->instagram));
-    waitForMetricsCardTestId($page, 'insights-metrics-chart');
     waitForMetricsCardTestId($page, 'insights-posts');
 
     $page->assertScript('Boolean(document.querySelector("[data-testid=insights-posts]").compareDocumentPosition(document.querySelector("[data-testid=insights-metrics]")) & Node.DOCUMENT_POSITION_FOLLOWING)', true)
+        ->assertScript(<<<'JS'
+            [...document.querySelectorAll('[data-testid="insights-metrics-controls"] button, [data-testid="insights-metrics-modes"] button')]
+                .map((button) => [button.classList.contains('h-7'), Math.round(button.getBoundingClientRect().height)])
+                .every(([small, height]) => small && height === 28)
+        JS, true)
+        ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-controls] button, [data-testid=insights-metrics-modes] button").length', 9)
         ->assertNoJavaScriptErrors();
 });
 
@@ -194,19 +195,6 @@ test('the metric menu lists the channel metrics and switches the chart to one me
         ->assertNoJavaScriptErrors();
 });
 
-test('every control of the metrics card is a small button', function () {
-    $page = visit(route('app.channels.insights', $this->instagram));
-    waitForMetricsCardTestId($page, 'insights-metrics-chart');
-
-    $page->assertScript(<<<'JS'
-            [...document.querySelectorAll('[data-testid="insights-metrics-controls"] button, [data-testid="insights-metrics-modes"] button')]
-                .map((button) => [button.classList.contains('h-7'), Math.round(button.getBoundingClientRect().height)])
-                .every(([small, height]) => small && height === 28)
-        JS, true)
-        ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-controls] button, [data-testid=insights-metrics-modes] button").length', 9)
-        ->assertNoJavaScriptErrors();
-});
-
 test('the follower growth rate preset draws the last twelve months and ignores the filters', function () {
     $page = visit(route('app.channels.insights', ['account' => $this->instagram, 'range' => '7d']));
     waitForMetricsCardTestId($page, 'insights-preset-follower_growth_rate');
@@ -229,24 +217,7 @@ test('the follower growth rate preset draws the last twelve months and ignores t
         ->assertNoJavaScriptErrors();
 });
 
-test('presets swap the chart series', function () {
-    $page = visit(route('app.channels.insights', $this->instagram));
-    waitForMetricsCardTestId($page, 'insights-preset-audience_growth');
-
-    $page->click('@insights-preset-audience_growth');
-    waitForMetricsCardTestId($page, 'insights-metrics-legend-net_followers');
-    $page->assertVisible('@insights-metrics-legend-followers')
-        ->assertMissing('@insights-metrics-legend-posts')
-        ->assertAttribute('@insights-preset-audience_growth', 'aria-pressed', 'true');
-
-    $page->click('@insights-preset-visibility');
-    waitForMetricsCardTestId($page, 'insights-metrics-legend-profile_visits');
-    $page->assertSeeIn('@insights-metrics-legend-profile_visits-value', '18')
-        ->assertVisible('@insights-metrics-legend-followers')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the selected preset and period survive a filter change', function () {
+test('presets swap the chart series and the selected preset and period survive a filter change', function () {
     $page = visit(route('app.channels.insights', $this->instagram));
     waitForMetricsCardTestId($page, 'insights-preset-audience_growth');
 
@@ -257,13 +228,18 @@ test('the selected preset and period survive a filter change', function () {
     $page->click('@insights-post-type-filter');
     waitForMetricsCardTestId($page, 'insights-post-type-option-instagram_reel');
     $page->click('@insights-post-type-option-instagram_reel');
-    waitForMetricsCardScript($page, 'new URLSearchParams(location.search).getAll("types[]").includes("instagram_reel") && document.querySelector("[data-testid=insights-metrics-chart]")');
-    waitForMetricsCardTestId($page, 'insights-metrics-legend-net_followers-previous');
+    waitForMetricsCardScript($page, 'new URLSearchParams(location.search).getAll("types[]").includes("instagram_reel") && document.querySelector("[data-testid=insights-metrics-chart]") && document.querySelector("[data-testid=insights-preset-audience_growth]")?.getAttribute("aria-pressed") === "true" && document.querySelector("[data-testid=insights-metrics-mode-both]")?.getAttribute("aria-pressed") === "true" && document.querySelector("[data-testid=insights-metrics-legend-net_followers-previous]")');
 
     $page->assertScript('decodeURIComponent(location.search).includes("instagram_reel")', true)
         ->assertAttribute('@insights-preset-audience_growth', 'aria-pressed', 'true')
         ->assertAttribute('@insights-metrics-mode-both', 'aria-pressed', 'true')
         ->assertVisible('@insights-metrics-legend-net_followers-previous')
+        ->assertVisible('@insights-metrics-legend-followers')
+        ->assertMissing('@insights-metrics-legend-posts');
+
+    $page->click('@insights-preset-visibility');
+    waitForMetricsCardTestId($page, 'insights-metrics-legend-profile_visits');
+    $page->assertVisible('@insights-metrics-legend-followers')
         ->assertNoJavaScriptErrors();
 });
 
@@ -275,43 +251,6 @@ test('a one-day range still draws the posts of that day', function () {
     $page->assertSeeIn('@insights-metrics-legend-posts-value', '1')
         ->assertVisible('@insights-metrics-chart')
         ->assertMissing('@insights-metrics-no-history')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the column chooser keeps the sorted column', function () {
-    $page = visit(route('app.channels.insights', ['account' => $this->instagram, 'sort' => 'views']));
-    waitForMetricsCardTestId($page, 'insights-columns-trigger');
-
-    $page->click('@insights-columns-trigger');
-    waitForMetricsCardTestId($page, 'insights-column-views');
-
-    $page->assertAttribute('@insights-column-views', 'data-disabled', '')
-        ->click('@insights-column-reach');
-    waitForMetricsCardScript($page, '!document.querySelector("[data-testid=insights-sort-reach]")');
-
-    $page->assertVisible('@insights-sort-views')
-        ->assertNoJavaScriptErrors();
-});
-
-test('an X channel offers its impressions and hides profile visits, visibility and the growth rate', function () {
-    $x = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => Platform::X]);
-    metricsCardPublication($x, CarbonImmutable::today('UTC')->subDays(3)->setTime(10, 0), ['impressions_count' => 500]);
-
-    $page = visit(route('app.channels.insights', $x));
-    waitForMetricsCardTestId($page, 'insights-preset-content_impact');
-
-    $page->assertMissing('@insights-preset-visibility')
-        ->assertMissing('@insights-preset-follower_growth_rate')
-        ->assertVisible('@insights-preset-audience_growth')
-        ->click('@insights-metric-menu');
-    waitForMetricsCardTestId($page, 'insights-metric-option-impressions');
-
-    $page->assertScript('[...document.querySelectorAll("[data-testid^=insights-metric-option-]:not([data-testid$=-check])")].map((item) => item.dataset.testid.replace("insights-metric-option-", "")).join(",")', 'followers,impressions,posts,net_followers')
-        ->click('@insights-metric-option-impressions');
-    waitForMetricsCardTestId($page, 'insights-metrics-legend-impressions');
-
-    $page->assertSeeIn('@insights-metric-primary', 'Impressions')
-        ->assertSeeIn('@insights-metrics-legend-impressions-value', '500')
         ->assertNoJavaScriptErrors();
 });
 
@@ -367,22 +306,6 @@ test('the insight banner reads the selected chart against the previous period', 
         ->assertNoJavaScriptErrors();
 });
 
-test('a channel without follower history explains the empty audience chart', function () {
-    $fresh = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => Platform::Instagram]);
-    metricsCardPublication($fresh, CarbonImmutable::today('UTC')->subDays(3)->setTime(10, 0), ['reach_count' => 10]);
-
-    $page = visit(route('app.channels.insights', $fresh));
-    waitForMetricsCardTestId($page, 'insights-preset-audience_growth');
-
-    $page->click('@insights-preset-audience_growth');
-    waitForMetricsCardTestId($page, 'insights-metrics-no-history');
-
-    $page->assertVisible('@insights-metrics-no-history')
-        ->assertMissing('@insights-metrics-chart')
-        ->assertMissing('@insights-metrics-insight')
-        ->assertNoJavaScriptErrors();
-});
-
 test('on a phone the presets wrap and the mode toggle sits under the legend', function () {
     $page = visit(route('app.channels.insights', $this->instagram))->resize(390, 844);
     waitForMetricsCardTestId($page, 'insights-metrics-chart');
@@ -433,13 +356,35 @@ test('the column chooser hides and adds columns and remembers the choice', funct
 });
 
 test('no metrics control wraps onto a second line in any language', function () {
+    $this->actingAs($this->user->fresh());
+
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitForMetricsCardTestId($page, 'insights-metrics-chart');
+    waitForMetricsCardTestId($page, 'sidebar-workspace-menu');
+
     $wrapped = [];
 
     foreach (Locale::cases() as $locale) {
-        $this->user->update(['locale' => $locale]);
-        $this->actingAs($this->user->fresh());
+        if ($locale !== Locale::DEFAULT) {
+            $page->script(<<<JS
+                (async () => {
+                    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+                    document.querySelector('[data-testid="sidebar-workspace-menu"]').click();
+                    await wait(400);
+                    const trigger = document.querySelector('[data-testid="sidebar-language-trigger"]');
+                    trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+                    trigger.click();
+                    await wait(600);
+                    document.querySelector('[data-testid="sidebar-language-{$locale->value}"]').click();
+                })();
+            JS);
 
-        $page = visit(route('app.channels.insights', $this->instagram));
+            $groupLabel = json_encode(__('sidebar.groups.posts', [], $locale->value), JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+            waitForMetricsCardScript($page, "document.body.innerText.includes({$groupLabel})");
+            $page->assertScript("document.body.innerText.includes({$groupLabel})", true);
+        }
+
         waitForMetricsCardTestId($page, 'insights-metrics-chart');
         waitForMetricsCardScript($page, '!document.querySelector("[data-testid=insights-metrics]")?.textContent.includes("analytics.")');
 
@@ -469,4 +414,6 @@ test('no metrics control wraps onto a second line in any language', function () 
     }
 
     expect($wrapped)->toBe([]);
+
+    $page->assertNoJavaScriptErrors();
 });

@@ -154,11 +154,59 @@ test('the header offers CSV and Markdown exports of the filtered page and explai
         ->assertNoJavaScriptErrors();
 });
 
-test('summary cards and sections explain themselves with info tooltips', function () {
-    ['user' => $user] = insightsParitySetup();
+test('followers and posts charts show network logos and say how many channels are shown', function () {
+    ['user' => $user, 'instagram' => $instagram] = insightsParitySetup();
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
+    waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
+
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 4)
+        ->assertScript('document.querySelector("[data-testid=analytics-followers-subtitle]")?.textContent.includes("Showing")', false);
+
+    $page->navigate(route('app.insights', ['channels' => [$instagram->id]]));
+    waitForInsightsParityTestId($page, 'analytics-followers-subtitle');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 2');
+
+    $page->assertSeeIn('@analytics-followers-subtitle', 'Showing 1 of 2 channels. Filter by channel to see a different set.')
+        ->assertSeeIn('@analytics-posts-subtitle', 'Showing 1 of 2 channels.')
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 2)
+        ->assertScript('document.querySelector("[data-testid=analytics-axis-channel]").getAttribute("data-platform")', 'instagram')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a channel whose connection is lost shows the disconnected dot in the filter, the table and the charts', function () {
+    ['user' => $user, 'facebook' => $facebook] = insightsParitySetup();
+    $facebook->update(['status' => SocialAccountStatus::TokenExpired]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsParityTestId($page, 'analytics-channel-filter');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length >= 2');
+
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length', 2)
+        ->assertScript("document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 1", true)
+        ->click('@analytics-channel-filter');
+    waitForInsightsParityCondition($page, "document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 2");
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the insights dashboard shows channel avatars, explains itself, sorts and customizes the table and opens top posts', function () {
+    ['user' => $user, 'post' => $post] = insightsParitySetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
+    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
+
+    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] img").length', 2)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] > div").length', 2)
+        ->assertScript('[...document.querySelectorAll("[data-testid=analytics-axis-channel]")].every((channel) => channel.querySelectorAll("img").length >= 1)', true)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-top-post-channel]").length >= 2', true)
+        ->assertNoJavaScriptErrors();
+
     waitForInsightsParityTestId($page, 'analytics-summary-posts-about');
 
     foreach (['posts', 'followers', 'reactions', 'comments', 'engagement_rate'] as $metric) {
@@ -177,13 +225,29 @@ test('summary cards and sections explain themselves with info tooltips', functio
     waitForInsightsParityTestId($page, 'analytics-performance-about-content');
     $page->assertSeeIn('@analytics-performance-about-content', 'Totals per channel')
         ->assertNoJavaScriptErrors();
-});
 
-test('the performance columns picker changes the table and remembers the choice', function () {
-    ['user' => $user] = insightsParitySetup();
-    $this->actingAs($user);
+    waitForInsightsParityTestId($page, 'analytics-performance-sort-reactions');
 
-    $page = visit(route('app.insights'));
+    $order = 'Array.from(document.querySelectorAll("tbody th[scope=row]")).map((cell) => (cell.innerText.match(/@\\w+/) || [""])[0]).join(",")';
+
+    $page->assertScript('document.querySelector("[data-testid=analytics-performance-columns]").closest("table") === null', true)
+        ->click('@analytics-performance-sort-reactions');
+    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-column-reactions]").getAttribute("aria-sort") === "descending"');
+    $descending = $page->script($order);
+
+    $page->click('@analytics-performance-sort-reactions');
+    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-column-reactions]").getAttribute("aria-sort") === "ascending"');
+    $ascending = $page->script($order);
+
+    expect($descending)->toContain('@alpha')
+        ->and($ascending)->toBe(implode(',', array_reverse(explode(',', $descending))));
+
+    $page->click('@analytics-performance-sort-channel');
+    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-channel-header]").getAttribute("aria-sort") === "ascending"');
+
+    expect($page->script($order))->toBe('@alpha,@bravo');
+    $page->assertNoJavaScriptErrors();
+
     waitForInsightsParityTestId($page, 'analytics-performance-columns');
 
     $headers = 'Array.from(document.querySelectorAll("[data-testid^=analytics-performance-column-]")).map((cell) => cell.dataset.testid.replace("analytics-performance-column-", "")).join(",")';
@@ -220,67 +284,7 @@ test('the performance columns picker changes the table and remembers the choice'
 
     $page->assertScript($headers, 'posts,reactions,engagement_rate,views')
         ->assertNoJavaScriptErrors();
-});
 
-test('followers and posts charts show network logos and say how many channels are shown', function () {
-    ['user' => $user, 'instagram' => $instagram] = insightsParitySetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
-
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 4)
-        ->assertScript('document.querySelector("[data-testid=analytics-followers-subtitle]")?.textContent.includes("Showing")', false);
-
-    $page->navigate(route('app.insights', ['channels' => [$instagram->id]]));
-    waitForInsightsParityTestId($page, 'analytics-followers-subtitle');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 2');
-
-    $page->assertSeeIn('@analytics-followers-subtitle', 'Showing 1 of 2 channels. Filter by channel to see a different set.')
-        ->assertSeeIn('@analytics-posts-subtitle', 'Showing 1 of 2 channels.')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel]").length', 2)
-        ->assertScript('document.querySelector("[data-testid=analytics-axis-channel]").getAttribute("data-platform")', 'instagram')
-        ->assertNoJavaScriptErrors();
-});
-
-test('performance and follower charts show each channel as avatar plus network badge', function () {
-    ['user' => $user] = insightsParitySetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    waitForInsightsParityTestId($page, 'accounts-unovis-bar-chart');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel]").length >= 4');
-
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] img").length', 2)
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-slot=avatar] > div").length', 2)
-        ->assertScript('[...document.querySelectorAll("[data-testid=analytics-axis-channel]")].every((channel) => channel.querySelectorAll("img").length >= 1)', true)
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-top-post-channel]").length >= 2', true)
-        ->assertNoJavaScriptErrors();
-});
-
-test('a channel whose connection is lost shows the disconnected dot in the filter, the table and the charts', function () {
-    ['user' => $user, 'facebook' => $facebook] = insightsParitySetup();
-    $facebook->update(['status' => SocialAccountStatus::TokenExpired]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    waitForInsightsParityTestId($page, 'analytics-channel-filter');
-    waitForInsightsParityCondition($page, 'document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length >= 2');
-
-    $page->assertScript('document.querySelectorAll("[data-testid=analytics-axis-channel] [data-testid^=channel-avatar-disconnected]").length', 2)
-        ->assertScript("document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 1", true)
-        ->click('@analytics-channel-filter');
-    waitForInsightsParityCondition($page, "document.querySelectorAll('[data-testid=\"channel-avatar-disconnected-{$facebook->id}\"]').length >= 2");
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('clicking a top post opens its post details on the insights page', function () {
-    ['user' => $user, 'post' => $post] = insightsParitySetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
     waitForInsightsParityTestId($page, 'analytics-top-post-link');
     $path = $page->script('location.pathname');
 
@@ -291,32 +295,4 @@ test('clicking a top post opens its post details on the insights page', function
         ->assertScript('new URLSearchParams(location.search).has("post")', false)
         ->assertSeeIn("@post-details-text-{$post->id}", 'Insights parity post alpha')
         ->assertNoJavaScriptErrors();
-});
-
-test('performance columns sort ascending and descending, with the columns menu above the table', function () {
-    ['user' => $user] = insightsParitySetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    waitForInsightsParityTestId($page, 'analytics-performance-sort-reactions');
-
-    $order = 'Array.from(document.querySelectorAll("tbody th[scope=row]")).map((cell) => (cell.innerText.match(/@\\w+/) || [""])[0]).join(",")';
-
-    $page->assertScript('document.querySelector("[data-testid=analytics-performance-columns]").closest("table") === null', true)
-        ->click('@analytics-performance-sort-reactions');
-    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-column-reactions]").getAttribute("aria-sort") === "descending"');
-    $descending = $page->script($order);
-
-    $page->click('@analytics-performance-sort-reactions');
-    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-column-reactions]").getAttribute("aria-sort") === "ascending"');
-    $ascending = $page->script($order);
-
-    expect($descending)->toContain('@alpha')
-        ->and($ascending)->toBe(implode(',', array_reverse(explode(',', $descending))));
-
-    $page->click('@analytics-performance-sort-channel');
-    waitForInsightsParityCondition($page, 'document.querySelector("[data-testid=analytics-performance-channel-header]").getAttribute("aria-sort") === "ascending"');
-
-    expect($page->script($order))->toBe('@alpha,@bravo');
-    $page->assertNoJavaScriptErrors();
 });

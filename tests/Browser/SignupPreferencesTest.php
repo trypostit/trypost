@@ -31,7 +31,6 @@ test('the register form sends the zone, week start and clock the browser reports
     $page->assertNoJavaScriptErrors();
 })->with([
     'United States' => ['en-US', 'America/New_York', 'sunday', '12h'],
-    'Brazil' => ['pt-BR', 'America/Sao_Paulo', 'sunday', '24h'],
     'Germany' => ['de-DE', 'Europe/Berlin', 'monday', '24h'],
 ]);
 

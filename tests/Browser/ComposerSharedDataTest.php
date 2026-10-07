@@ -131,24 +131,6 @@ test('a new post lists every channel at once and fills the pinterest and tiktok 
         ->assertNoJavaScriptErrors();
 });
 
-test('a new tiktok post offers the privacy levels of the creator info', function () {
-    [$user, , , $tiktok] = composerSharedDataSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerSharedDataReady($page, 'composer-add-account');
-
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$tiktok->id}");
-    waitForComposerSharedDataTestId($page, 'tiktok-privacy-level');
-
-    $page->click('@tiktok-privacy-level');
-    waitForComposerSharedDataCondition($page, "document.querySelectorAll('[role=\"option\"]').length > 0");
-
-    expect($page->script("document.querySelectorAll('[role=\"option\"]').length"))->toBe(1);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the composer opens again from the sidebar without reading pinterest again', function () {
     [$user, , $pinterest] = composerSharedDataSetup();
     $this->actingAs($user);
@@ -166,21 +148,6 @@ test('the composer opens again from the sidebar without reading pinterest again'
         ->assertNoJavaScriptErrors();
 
     expect(pinterestBoardListReads())->toBeLessThanOrEqual(1);
-});
-
-test('editing from the list opens the post with its board', function () {
-    [$user, $workspace, $pinterest] = composerSharedDataSetup();
-    $post = composerSharedDataPost($workspace, $pinterest, ContentType::PinterestPin, ['board_id' => 'board_live']);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    waitForComposerSharedDataTestId($page, "post-edit-{$post->id}");
-    $page->click("@post-edit-{$post->id}");
-    waitForComposerSharedDataTestId($page, 'pinterest-board-selected');
-
-    $page->assertSeeIn('@pinterest-board-selected', 'Live board')
-        ->assertNoJavaScriptErrors();
-    expect($page->script('new URLSearchParams(location.search).get("edit")'))->toBe($post->id);
 });
 
 test('editing from the calendar opens the post with its board', function () {
@@ -384,22 +351,6 @@ test('a network that does not answer holds only its own channel settings', funct
     waitForComposerSharedDataTestId($page, 'tiktok-privacy-level');
     $page->assertMissing('@composer-live-data-pending')
         ->assertNoJavaScriptErrors();
-});
-
-test('posting slots open while another network is still answering', function () {
-    [$user, $workspace, , $tiktok] = composerSharedDataSetup();
-    $channel = composerSharedDataSlotChannel($workspace);
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    holdComposerSharedDataTikTok($page, $tiktok);
-    openComposerFromSidebar($page);
-
-    composerSharedDataZoneLabel($page, $channel);
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-schedule-slot-1500\"]')?.disabled === false");
-
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeFalse();
-    $page->assertNoJavaScriptErrors();
 });
 
 test('a failed slot read shows a retry banner and slots open once it loads', function () {

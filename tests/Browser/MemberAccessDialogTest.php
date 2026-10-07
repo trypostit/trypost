@@ -6,6 +6,7 @@ use App\Enums\User\Locale;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Arr;
 
 function waitForMemberAccessTestId(mixed $page, string $testId): void
 {
@@ -113,40 +114,70 @@ test('editing a member saves the publishing choice and labels the member', funct
 
 test('the member access copy fits on one line in every locale', function () {
     [$owner] = memberAccessOwner();
-    $wrapped = [];
+    $this->actingAs($owner);
 
-    foreach (Locale::cases() as $locale) {
-        $owner->update(['locale' => $locale]);
-        $this->actingAs($owner->fresh());
+    $page = visit(route('app.members'));
+    waitForMemberAccessTestId($page, 'invite-member-button');
+    $page->click('@invite-member-button');
+    waitForMemberAccessTestId($page, 'member-access-publishing-trigger');
 
-        $page = visit(route('app.members'));
-        waitForMemberAccessTestId($page, 'invite-member-button');
-        $page->click('@invite-member-button');
-        waitForMemberAccessTestId($page, 'member-access-publishing-trigger');
+    $testIds = ['member-access-admin-label', 'member-access-admin-description', 'member-access-publishing-label', 'member-access-publishing-trigger', 'invite-member-cancel', 'invite-member-submit'];
+    $idsJson = json_encode($testIds);
+    $texts = $page->script("{$idsJson}.map((id) => document.querySelector('[data-testid=\"' + id + '\"]').textContent.trim())");
 
-        $lines = $page->script(<<<'JS'
-            ['member-access-admin-label', 'member-access-admin-description', 'member-access-publishing-label', 'member-access-publishing-trigger', 'invite-member-cancel', 'invite-member-submit']
-                .map((testId) => {
-                    const element = document.querySelector(`[data-testid="${testId}"]`);
-                    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-                    let lineCount = 0;
-                    while (walker.nextNode()) {
-                        if (!walker.currentNode.textContent.trim()) continue;
-                        const range = document.createRange();
-                        range.selectNodeContents(walker.currentNode);
-                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                        lineCount = Math.max(lineCount, tops.size);
-                    }
-                    return [element.textContent.trim(), lineCount];
-                })
-                .filter(([, lineCount]) => lineCount > 1)
-                .map(([text]) => text)
-        JS);
+    $keysByText = [];
 
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
+    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
+        foreach (Arr::dot(require $file) as $key => $value) {
+            if (is_string($value)) {
+                $keysByText[$value] ??= basename($file, '.php').".{$key}";
+            }
         }
     }
 
+    $translations = [];
+
+    foreach ($testIds as $index => $testId) {
+        $key = $keysByText[$texts[$index]] ?? null;
+        expect($key)->not->toBeNull("no lang key for {$testId}");
+
+        foreach (Locale::cases() as $locale) {
+            $translations[$testId][$locale->value] = __($key, [], $locale->value);
+        }
+    }
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const failures = [];
+
+            for (const [testId, byLocale] of Object.entries(translations)) {
+                const element = document.querySelector('[data-testid="' + testId + '"]');
+                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+                const textNodes = [];
+                while (walker.nextNode()) {
+                    if (walker.currentNode.textContent.trim()) textNodes.push(walker.currentNode);
+                }
+                const node = textNodes[0];
+                const original = node.textContent;
+
+                for (const [locale, text] of Object.entries(byLocale)) {
+                    node.textContent = text;
+                    const range = document.createRange();
+                    range.selectNodeContents(node);
+                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
+                    if (tops.size > 1) failures.push(locale + ': ' + text);
+                }
+
+                node.textContent = original;
+            }
+
+            return failures;
+        })()
+    JS);
+
     expect($wrapped)->toBe([]);
+    $page->assertNoJavaScriptErrors();
 });

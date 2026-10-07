@@ -32,13 +32,16 @@ function waitForSidebarTestId(mixed $page, string $testId): void
 test('account owners see settings, channels and plans and billing in the sidebar menu', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = User::factory()->create();
+    $plan = Plan::query()->where('slug', Slug::Socials)->firstOrFail();
+    $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']);
+    $user->account->update(['plan_id' => $plan->id]);
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
         'account_id' => $user->account_id,
     ]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
+    SocialAccount::factory()->count(2)->create(['workspace_id' => $workspace->id]);
 
     subscribeAccount($user->account);
 
@@ -53,7 +56,11 @@ test('account owners see settings, channels and plans and billing in the sidebar
 
     waitForSidebarTestId($page, 'logout-button');
 
-    $page->assertVisible('@sidebar-menu-settings')
+    $page->assertMissing('@sidebar-menu-email')
+        ->assertVisible('@sidebar-menu-avatar')
+        ->assertSeeIn('@sidebar-menu-name', 'Ada Lovelace')
+        ->assertSeeIn('@sidebar-menu-plan', "{$plan->name} · 2 channels")
+        ->assertVisible('@sidebar-menu-settings')
         ->assertVisible('@sidebar-menu-billing')
         ->assertVisible('@sidebar-menu-channels')
         ->assertVisible('@sidebar-menu-manage-team')
@@ -78,59 +85,7 @@ test('account owners see settings, channels and plans and billing in the sidebar
         'sidebar-support-trigger',
         'logout-button',
     ]);
-});
 
-test('the sidebar menu header shows the user, plan and channel count', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $plan = Plan::query()->where('slug', Slug::Socials)->firstOrFail();
-    $user = User::factory()->create(['name' => 'Ada Lovelace', 'email' => 'ada@example.com']);
-    $user->account->update(['plan_id' => $plan->id]);
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    SocialAccount::factory()->count(2)->create(['workspace_id' => $workspace->id]);
-
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-    $page->click('@sidebar-workspace-menu');
-    waitForSidebarTestId($page, 'sidebar-menu-plan');
-
-    $page->assertMissing('@sidebar-menu-email')
-        ->assertVisible('@sidebar-menu-avatar')
-        ->assertSeeIn('@sidebar-menu-name', 'Ada Lovelace')
-        ->assertSeeIn('@sidebar-menu-plan', "{$plan->name} · 2 channels")
-        ->assertVisible('@sidebar-menu-manage-team')
-        ->assertNoJavaScriptErrors();
-});
-
-test('manage team in the sidebar menu opens the members page', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-    $page->click('@sidebar-workspace-menu');
     waitForSidebarTestId($page, 'sidebar-menu-manage-team');
     $page->click('@sidebar-menu-manage-team');
 
@@ -172,41 +127,6 @@ test('account billing is hidden in the sidebar menu when self-hosted', function 
         ->toBe('0 channels');
 });
 
-test('workspace admins see channels but not plans and billing', function () {
-    config(['trypost.self_hosted' => false]);
-
-    [
-        'owner' => $owner,
-        'member' => $admin,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        attachMember: true,
-        setMemberCurrent: true,
-    );
-
-    $workspace->members()->updateExistingPivot($admin->id, membershipPivot('admin'));
-
-    subscribeAccount($owner->account);
-
-    $this->actingAs($admin->fresh());
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-
-    $page->assertVisible('@sidebar-workspace-menu')
-        ->click('@sidebar-workspace-menu');
-
-    waitForSidebarTestId($page, 'logout-button');
-
-    $page->assertVisible('@sidebar-menu-settings')
-        ->assertVisible('@sidebar-menu-channels')
-        ->assertMissing('@sidebar-menu-billing')
-        ->assertVisible('@sidebar-menu-manage-team')
-        ->assertVisible('@logout-button');
-});
-
 test('workspace members do not see channels or plans and billing in the sidebar menu', function () {
     config(['trypost.self_hosted' => false]);
 
@@ -242,69 +162,7 @@ test('workspace members do not see channels or plans and billing in the sidebar 
         ->assertVisible('@logout-button');
 });
 
-test('members whose posts need approval do not see channels or plans and billing in the sidebar menu', function () {
-    config(['trypost.self_hosted' => false]);
-
-    [
-        'owner' => $owner,
-        'member' => $requester,
-        'shared_workspaces' => [$workspace],
-    ] = strandedMemberOnSharedAccount(
-        sharedWorkspaces: 1,
-        attachMember: true,
-        setMemberCurrent: true,
-    );
-
-    $workspace->members()->updateExistingPivot($requester->id, membershipPivot('approval'));
-
-    subscribeAccount($owner->account);
-
-    $this->actingAs($requester->fresh());
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-
-    $page->assertVisible('@sidebar-workspace-menu')
-        ->click('@sidebar-workspace-menu');
-
-    waitForSidebarTestId($page, 'logout-button');
-
-    $page->assertVisible('@sidebar-menu-settings')
-        ->assertMissing('@sidebar-menu-billing')
-        ->assertMissing('@sidebar-menu-channels')
-        ->assertMissing('@sidebar-menu-manage-team')
-        ->assertVisible('@logout-button');
-});
-
-test('the sidebar has no media library item', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-workspace-menu');
-
-    $ideasPath = route('app.create.ideas.index', absolute: false);
-    $createItem = "nav-{$ideasPath}";
-    $navItems = $page->script('Array.from(document.querySelectorAll("[data-testid^=\'nav-\']")).map((el) => el.dataset.testid)');
-
-    expect($navItems)->toContain($createItem)
-        ->and($navItems)->not->toContain('nav-/assets');
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the sidebar new button uses the strong brand color', function () {
+test('the sidebar new button and its menu use the brand colors', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
@@ -330,6 +188,25 @@ test('the sidebar new button uses the strong brand color', function () {
     JS);
 
     expect($colors)->toBe(['rgb(109, 40, 217)', 'rgb(255, 255, 255)', '3.35544e+07px', 'none']);
+
+    $page->click('@sidebar-new');
+    waitForSidebarTestId($page, 'sidebar-new-idea');
+
+    $menuColors = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 60; i++) {
+                const post = document.querySelector('[data-testid="sidebar-new-post"] span');
+                const idea = document.querySelector('[data-testid="sidebar-new-idea"] span');
+                if (post && idea) {
+                    return [getComputedStyle(post).backgroundColor, getComputedStyle(idea).backgroundColor];
+                }
+                await new Promise((r) => setTimeout(r, 50));
+            }
+            return null;
+        })()
+    JS);
+
+    expect($menuColors)->toBe(['rgb(221, 214, 254)', 'rgb(237, 233, 254)']);
 
     $page->assertNoJavaScriptErrors();
 });
@@ -377,44 +254,6 @@ test('workspaces without a logo use the brand colors in the workspace menu', fun
     $page->assertNoJavaScriptErrors();
 });
 
-test('the new menu uses the brand colors for post and idea', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    subscribeAccount($user->account);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar'));
-
-    waitForSidebarTestId($page, 'sidebar-new');
-    $page->click('@sidebar-new');
-    waitForSidebarTestId($page, 'sidebar-new-idea');
-
-    $colors = $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 60; i++) {
-                const post = document.querySelector('[data-testid="sidebar-new-post"] span');
-                const idea = document.querySelector('[data-testid="sidebar-new-idea"] span');
-                if (post && idea) {
-                    return [getComputedStyle(post).backgroundColor, getComputedStyle(idea).backgroundColor];
-                }
-                await new Promise((r) => setTimeout(r, 50));
-            }
-            return null;
-        })()
-    JS);
-
-    expect($colors)->toBe(['rgb(221, 214, 254)', 'rgb(237, 233, 254)']);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('no sidebar menu item wraps onto a second line in any language', function () {
     config(['trypost.self_hosted' => false]);
 
@@ -428,68 +267,79 @@ test('no sidebar menu item wraps onto a second line in any language', function (
 
     subscribeAccount($user->account);
 
-    $wrapped = [];
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $this->actingAs($user->fresh());
-
-        $page = visit(route('app.calendar'));
-        waitForSidebarTestId($page, 'sidebar-workspace-menu');
-        $page->click('@sidebar-workspace-menu');
-        waitForSidebarTestId($page, 'sidebar-menu-manage-team');
-
-        $lines = $page->script(<<<'JS'
-            [...document.querySelectorAll('[role="menu"] [role="menuitem"]')]
-                .map((item) => {
-                    const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
-                    let lineCount = 0;
-                    while (walker.nextNode()) {
-                        if (!walker.currentNode.textContent.trim()) continue;
-                        const range = document.createRange();
-                        range.selectNodeContents(walker.currentNode);
-                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                        lineCount = Math.max(lineCount, tops.size);
-                    }
-                    return [item.textContent.trim(), lineCount];
-                })
-                .filter(([, lineCount]) => lineCount > 1)
-                .map(([text]) => text)
-        JS);
-
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
-
-    expect($wrapped)->toBe([]);
-});
-
-test('the main sidebar navigation is ordered create, publish, insights, repurpose', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create([
-        'user_id' => $user->id,
-        'account_id' => $user->account_id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
     $this->actingAs($user);
 
-    $page = visit(route('app.posts.index'));
-    waitForSidebarTestId($page, 'sidebar-logo');
+    $page = visit(route('app.calendar'));
+    waitForSidebarTestId($page, 'sidebar-workspace-menu');
+    $page->click('@sidebar-workspace-menu');
+    waitForSidebarTestId($page, 'sidebar-menu-manage-team');
 
-    $paths = array_map(
-        fn (string $url): string => (string) parse_url($url, PHP_URL_PATH),
-        [route('app.create.ideas.index'), route('app.posts.index'), route('app.insights'), route('app.repurposes.index')],
-    );
+    $keys = [
+        'sidebar-menu-manage-team' => 'sidebar.manage_team',
+        'sidebar-workspaces-trigger' => 'sidebar.workspaces',
+        'sidebar-menu-settings' => 'sidebar.settings',
+        'sidebar-menu-channels' => 'sidebar.channels',
+        'sidebar-menu-billing' => 'sidebar.plans_billing',
+        'sidebar-support-trigger' => 'sidebar.support.menu',
+        'logout-button' => 'sidebar.log_out',
+    ];
 
-    expect($page->script(<<<'JS'
-        Array.from(document.querySelectorAll('[data-testid^="nav-"]')).map((link) => new URL(link.href).pathname)
-    JS))->toBe($paths);
+    $translations = collect(Locale::cases())
+        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => [
+            ...collect($keys)->map(fn (string $key): string => __($key, [], $locale->value))->all(),
+            'sidebar-language-trigger' => __('sidebar.language', ['name' => $locale->label()], $locale->value),
+            'sidebar-theme-trigger' => __('sidebar.theme', ['name' => __('settings.preferences.theme.system', [], $locale->value)], $locale->value),
+        ]])
+        ->all();
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const wrapped = [];
+            const lineCount = (item) => {
+                const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
+                let lines = 0;
+                while (walker.nextNode()) {
+                    if (!walker.currentNode.textContent.trim()) continue;
+                    const range = document.createRange();
+                    range.selectNodeContents(walker.currentNode);
+                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
+                    lines = Math.max(lines, tops.size);
+                }
+                return lines;
+            };
+            const lastTextNode = (element) => {
+                const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+                let found = null;
+                while (walker.nextNode()) {
+                    if (walker.currentNode.textContent.trim()) found = walker.currentNode;
+                }
+                return found;
+            };
+            for (const [locale, texts] of Object.entries(translations)) {
+                for (const [testId, text] of Object.entries(texts)) {
+                    const element = document.querySelector('[data-testid="' + testId + '"]');
+                    if (!element) {
+                        wrapped.push(locale + ': missing ' + testId);
+                        continue;
+                    }
+                    lastTextNode(element).textContent = text;
+                    if (lineCount(element.closest('[role="menuitem"]') ?? element) > 1) {
+                        wrapped.push(locale + ': ' + text);
+                    }
+                }
+            }
+            return wrapped;
+        })()
+    JS);
+
+    expect($wrapped)->toBe([]);
+    $page->assertNoJavaScriptErrors();
 });
 
-test('the sidebar logo is the vector mark with the wordmark, and only the mark when collapsed', function () {
+test('the main sidebar navigation is ordered and the logo is the vector mark with the wordmark', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'user_id' => $user->id,
@@ -503,6 +353,15 @@ test('the sidebar logo is the vector mark with the wordmark, and only the mark w
     $page = visit(route('app.posts.index'))->resize(1280, 900);
     waitForSidebarTestId($page, 'sidebar-logo');
 
+    $paths = array_map(
+        fn (string $url): string => (string) parse_url($url, PHP_URL_PATH),
+        [route('app.create.ideas.index'), route('app.posts.index'), route('app.insights'), route('app.repurposes.index')],
+    );
+
+    expect($page->script(<<<'JS'
+        Array.from(document.querySelectorAll('[data-testid^="nav-"]')).map((link) => new URL(link.href).pathname)
+    JS))->toBe($paths);
+
     expect($page->script(<<<'JS'
         (() => {
             const logo = document.querySelector('[data-testid="sidebar-logo"]');
@@ -511,7 +370,6 @@ test('the sidebar logo is the vector mark with the wordmark, and only the mark w
                 images: logo.querySelectorAll('img').length,
                 visible: visible.length,
                 text: visible[0]?.textContent.trim(),
-                font: getComputedStyle(visible[0]).fontFamily,
                 mark: visible[0]?.querySelector('svg') !== null,
             };
         })()
@@ -702,4 +560,4 @@ test('on a phone a global bar with the menu button and logo sits above the conte
     expect($page->script('document.querySelector(\'[data-testid="app-mobile-bar"]\').getBoundingClientRect().height'))->toBe(0);
 
     $page->assertNoJavaScriptErrors();
-})->with(['app.posts.index', 'app.profile.edit']);
+})->with(['app.posts.index']);

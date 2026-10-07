@@ -75,7 +75,7 @@ test('the filtered posts page lands with the label selected', function () {
     assertLabelFilterSelected(visit(route('app.posts.index', ['labels' => [$label->id]])), 'posts-label', $label->id);
 });
 
-test('the labels page without labels shows the illustration and a create button', function () {
+test('the labels page without labels shows a centered illustration and a create button that is never cut off', function () {
     [$user, $label] = labelMenuOwner();
     $label->delete();
     $this->actingAs($user);
@@ -87,37 +87,7 @@ test('the labels page without labels shows the illustration and a create button'
         ->assertMissing('@header-title')
         ->assertMissing('@create-label-button')
         ->assertMissing('@header-search-input')
-        ->assertSeeIn('@labels-empty', __('labels.no_labels_yet'))
-        ->click('@labels-empty-create');
-    waitForLabelMenuTestId($page, 'create-label-sheet');
-
-    $page->assertVisible('@create-label-sheet')->assertNoJavaScriptErrors();
-});
-
-test('a search without results keeps the header and search and shows the illustration', function () {
-    [$user] = labelMenuOwner();
-    $this->actingAs($user);
-
-    $page = visit(route('app.labels.index', ['search' => 'nothing-matches']));
-    waitForLabelMenuTestId($page, 'empty-state');
-
-    $page->assertVisible('@header-title')
-        ->assertVisible('@create-label-button')
-        ->assertVisible('@header-search-input')
-        ->assertSeeIn('@empty-state', __('labels.no_search_results'))
-        ->assertMissing('@labels-empty')
-        ->assertMissing('@settings-centered')
-        ->assertVisible('@labels-empty-illustration')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the labels empty state sits in the middle of the page', function () {
-    [$user, $label] = labelMenuOwner();
-    $label->delete();
-    $this->actingAs($user);
-
-    $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, 'labels-empty');
+        ->assertSeeIn('@labels-empty', __('labels.no_labels_yet'));
 
     expect($page->script(<<<'JS'
         (() => {
@@ -130,7 +100,60 @@ test('the labels empty state sits in the middle of the page', function () {
         })()
     JS))->toBeTrue();
 
-    $page->assertNoJavaScriptErrors();
+    $page->resize(375, 480);
+
+    expect($page->script(<<<'JS'
+        (() => {
+            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
+            scroller.scrollTop = 0;
+            const illustration = document.querySelector('[data-testid="labels-empty-illustration"]').getBoundingClientRect();
+            const topVisible = illustration.top >= scroller.getBoundingClientRect().top;
+            scroller.scrollTop = scroller.scrollHeight;
+            const button = document.querySelector('[data-testid="labels-empty-create"]').getBoundingClientRect();
+            return [topVisible, button.bottom <= scroller.getBoundingClientRect().bottom];
+        })()
+    JS))->toBe([true, true]);
+
+    $page->click('@labels-empty-create');
+    waitForLabelMenuTestId($page, 'create-label-sheet');
+    $page->assertVisible('@create-label-sheet')->assertNoJavaScriptErrors();
+});
+
+test('a search without results keeps the header and search, and clearing it never flashes the no labels state', function () {
+    [$user, $label] = labelMenuOwner();
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index', ['search' => 'nothing-matches']));
+    waitForLabelMenuTestId($page, 'empty-state');
+
+    $page->assertVisible('@header-title')
+        ->assertVisible('@create-label-button')
+        ->assertVisible('@header-search-input')
+        ->assertSeeIn('@empty-state', __('labels.no_search_results'))
+        ->assertMissing('@labels-empty')
+        ->assertMissing('@settings-centered')
+        ->assertVisible('@labels-empty-illustration');
+
+    $flashed = $page->script(<<<'JS'
+        (async () => {
+            let flashed = false;
+            const observer = new MutationObserver(() => {
+                if (document.querySelector('[data-testid="labels-empty"]')) flashed = true;
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+            const input = document.querySelector('[data-testid="header-search-input"]');
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            for (let i = 0; i < 60 && !document.querySelector('[data-testid^="label-row-"]'); i++) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            observer.disconnect();
+            return flashed;
+        })()
+    JS);
+
+    expect($flashed)->toBeFalse();
+    $page->assertVisible("@label-row-{$label->id}")->assertNoJavaScriptErrors();
 });
 
 test('a long labels list starts at the top and scrolls normally', function () {
@@ -153,59 +176,6 @@ test('a long labels list starts at the top and scrolls normally', function () {
     JS))->toBe([true, true, true, true]);
 
     $page->assertNoJavaScriptErrors();
-});
-
-test('the labels empty state is never cut off on a short screen', function () {
-    [$user, $label] = labelMenuOwner();
-    $label->delete();
-    $this->actingAs($user);
-
-    $page = visit(route('app.labels.index'));
-    waitForLabelMenuTestId($page, 'labels-empty');
-    $page->resize(375, 480);
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
-            scroller.scrollTop = 0;
-            const illustration = document.querySelector('[data-testid="labels-empty-illustration"]').getBoundingClientRect();
-            const topVisible = illustration.top >= scroller.getBoundingClientRect().top;
-            scroller.scrollTop = scroller.scrollHeight;
-            const button = document.querySelector('[data-testid="labels-empty-create"]').getBoundingClientRect();
-            return [topVisible, button.bottom <= scroller.getBoundingClientRect().bottom];
-        })()
-    JS))->toBe([true, true]);
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('clearing a search without results never flashes the no labels state', function () {
-    [$user, $label] = labelMenuOwner();
-    $this->actingAs($user);
-
-    $page = visit(route('app.labels.index', ['search' => 'nothing-matches']));
-    waitForLabelMenuTestId($page, 'header-search-input');
-
-    $flashed = $page->script(<<<'JS'
-        (async () => {
-            let flashed = false;
-            const observer = new MutationObserver(() => {
-                if (document.querySelector('[data-testid="labels-empty"]')) flashed = true;
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-            const input = document.querySelector('[data-testid="header-search-input"]');
-            input.value = '';
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            for (let i = 0; i < 60 && !document.querySelector('[data-testid^="label-row-"]'); i++) {
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-            observer.disconnect();
-            return flashed;
-        })()
-    JS);
-
-    expect($flashed)->toBeFalse();
-    $page->assertVisible("@label-row-{$label->id}")->assertNoJavaScriptErrors();
 });
 
 test('a label row shows its color, how many posts use it and its actions in one menu', function () {

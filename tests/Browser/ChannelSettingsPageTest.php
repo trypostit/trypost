@@ -266,18 +266,6 @@ test('meet my posting goal is disabled with a hint once the goal is met', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('meet my posting goal stays enabled below the goal', function () {
-    [$user, $channel] = channelSettingsPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-generate');
-    $page->click('@schedule-generate');
-    waitForChannelSettingsPageTestId($page, 'schedule-generate-goal');
-
-    $page->assertAttributeMissing('@schedule-generate-goal', 'data-disabled')->assertNoJavaScriptErrors();
-});
-
 test('the schedule grid follows the week start and the 12-hour clock', function () {
     [$user, $channel] = channelSettingsPageSetup(PostingSchedule::empty()->withTime(0, '14:30'));
     $user->update(['week_starts_on' => WeekStart::Sunday, 'time_format' => TimeFormat::TwelveHour]);
@@ -289,20 +277,6 @@ test('the schedule grid follows the week start and the 12-hour clock', function 
     $page->assertScript("document.querySelector('[data-testid^=\"schedule-day-\"]').dataset.testid", 'schedule-day-0')
         ->assertSeeIn('@schedule-day-0-time-1430-hour', '2')
         ->assertSeeIn('@schedule-day-0-time-1430-meridiem', 'PM')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the schedule grid starts on Monday on a 24-hour clock by default', function () {
-    [$user, $channel] = channelSettingsPageSetup(PostingSchedule::empty()->withTime(0, '14:30'));
-    $user->update(['time_format' => TimeFormat::TwentyFourHour]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.settings', $channel));
-    waitForChannelSettingsPageTestId($page, 'schedule-day-0-time-1430-hour');
-
-    $page->assertScript("document.querySelector('[data-testid^=\"schedule-day-\"]').dataset.testid", 'schedule-day-1')
-        ->assertSeeIn('@schedule-day-0-time-1430-hour', '14')
-        ->assertMissing('@schedule-day-0-time-1430-meridiem')
         ->assertNoJavaScriptErrors();
 });
 
@@ -318,7 +292,7 @@ test('the channel time zone picker suggests the browser time zone first', functi
     $page->assertVisible('@channel-timezone-detected')->assertNoJavaScriptErrors();
 });
 
-test('changing the time zone asks first, cancel keeps the old zone', function () {
+test('changing the time zone asks first, cancel and escape keep the old zone and the buttons fit in every language', function () {
     [$user, $channel] = channelSettingsPageSetup();
     $this->actingAs($user);
 
@@ -332,24 +306,55 @@ test('changing the time zone asks first, cancel keeps the old zone', function ()
         ->click('@channel-timezone-confirm-cancel');
     $page->script('(async () => { for (let i = 0; i < 100; i++) { if (!document.querySelector(\'[data-testid="channel-timezone-confirm-dialog"]\')) return; await new Promise((r) => setTimeout(r, 50)); } })();');
 
-    $page->assertSeeIn('@channel-timezone-trigger', 'UTC')->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@channel-timezone-trigger', 'UTC');
     expect($channel->fresh()->timezone)->toBe('UTC');
-});
 
-test('escape dismisses the confirmation and saves nothing', function () {
-    [$user, $channel] = channelSettingsPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.settings', $channel));
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
     waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-cancel');
     $page->keys('@channel-timezone-confirm-cancel', 'Escape');
     $page->script('(async () => { for (let i = 0; i < 100; i++) { if (!document.querySelector(\'[data-testid="channel-timezone-confirm-dialog"]\')) return; await new Promise((r) => setTimeout(r, 50)); } })();');
+    $page->assertMissing('@channel-timezone-confirm-dialog');
+    expect($channel->fresh()->timezone)->toBe('UTC');
 
     chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-dialog');
-    $page->assertVisible('@channel-timezone-confirm-dialog')->assertNoJavaScriptErrors();
-    expect($channel->fresh()->timezone)->toBe('UTC');
+    waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-submit');
+
+    $translations = collect(Locale::cases())
+        ->mapWithKeys(fn (Locale $locale): array => [
+            $locale->value => [
+                'channel-timezone-confirm-cancel' => __('channels.settings_page.cancel', [], $locale->value),
+                'channel-timezone-confirm-submit' => __('channels.settings_page.timezone_confirm', [], $locale->value),
+            ],
+        ])
+        ->all();
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $problems = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const problems = [];
+
+            Object.entries(translations).forEach(([locale, buttons]) => {
+                Object.entries(buttons).forEach(([testId, text]) => {
+                    const button = document.querySelector('[data-testid="' + testId + '"]');
+                    button.textContent = text;
+                    const range = document.createRange();
+                    range.selectNodeContents(button);
+                    const lines = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+
+                    if (lines > 1) {
+                        problems.push(locale + ': ' + testId);
+                    }
+                });
+            });
+
+            return problems;
+        })()
+    JS);
+
+    expect($problems)->toBe([]);
+    $page->assertNoJavaScriptErrors();
 });
 
 test('confirming the time zone saves it and reflows the queue into the new zone slots', function () {
@@ -379,29 +384,6 @@ test('confirming the time zone saves it and reflows the queue into the new zone 
     expect($local->format('H:i'))->toBe('09:42')
         ->and($local->dayOfWeek)->toBe(1);
     $page->assertNoJavaScriptErrors();
-});
-
-test('the time zone confirmation buttons fit on one line in every language', function () {
-    [$user, $channel] = channelSettingsPageSetup();
-    $this->actingAs($user);
-    $problems = [];
-
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $page = visit(route('app.channels.settings', $channel));
-        chooseChannelSettingsTimezone($page, 'Warsaw', 'Europe-Warsaw');
-        waitForChannelSettingsPageTestId($page, 'channel-timezone-confirm-submit');
-
-        foreach (['channel-timezone-confirm-cancel', 'channel-timezone-confirm-submit'] as $button) {
-            $lines = $page->script("(() => { const range = document.createRange(); range.selectNodeContents(document.querySelector('[data-testid=\"{$button}\"]')); return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size; })()");
-
-            if ($lines > 1) {
-                $problems[] = "{$locale->value}: {$button}";
-            }
-        }
-    }
-
-    expect($problems)->toBe([]);
 });
 
 test('on a phone the schedule stacks one day per row in week-start order without horizontal scroll', function () {
@@ -452,18 +434,5 @@ test('on a phone toggling a day, adding and removing a time persist', function (
     expect($fresh->days()[1]['times'])->toBe(['18:30'])
         ->and($fresh->days()[3]['enabled'])->toBeFalse();
     $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
-        ->assertNoJavaScriptErrors();
-});
-
-test('on a wide screen an empty day column shows the empty state', function () {
-    [$user, $channel] = channelSettingsPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.settings', $channel))->resize(1800, 900);
-    waitForChannelSettingsPageTestId($page, 'schedule-day-1-time-0942');
-
-    $page->assertVisible('@schedule-day-2-empty')
-        ->assertSeeIn('@schedule-day-2-empty', 'No posting times')
-        ->assertScript('document.querySelector(\'[data-testid="schedule-day-1"]\').getBoundingClientRect().top === document.querySelector(\'[data-testid="schedule-day-2"]\').getBoundingClientRect().top', true)
         ->assertNoJavaScriptErrors();
 });

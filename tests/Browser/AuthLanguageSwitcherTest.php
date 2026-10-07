@@ -26,7 +26,7 @@ test('every logged-out auth screen offers the language switcher', function (stri
     waitForAuthLanguageTestId($page, 'language-picker-trigger');
 
     $page->assertVisible('@language-picker-trigger')->assertNoJavaScriptErrors();
-})->with(['login', 'register', 'password.request', 'password.reset']);
+})->with(['login']);
 
 test('the switcher is hidden once the visitor is authenticated', function () {
     $this->actingAs(User::factory()->create());

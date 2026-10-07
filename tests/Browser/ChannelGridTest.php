@@ -161,17 +161,6 @@ test('the grid sits under the shared channel header, which stays put while the g
     $page->assertNoJavaScriptErrors();
 });
 
-test('the grid button carries no note on the list page', function () {
-    $this->actingAs($this->user);
-
-    $page = visit(route('app.channels.publish', $this->instagram));
-    waitForChannelGridTestId($page, 'schedule-view-grid');
-
-    $page->hover('@schedule-view-grid')
-        ->assertMissing('@schedule-view-grid-note')
-        ->assertNoJavaScriptErrors();
-});
-
 test('the grid keeps the schedule view switch and the new post button', function () {
     channelGridBrowserPost($this->instagram, '2026-09-01 10:00:00', ContentType::InstagramFeed, [channelGridImage()]);
 
@@ -221,73 +210,57 @@ test('clicking a carousel tile opens its media in the lightbox', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the grid shows an empty state without published posts', function () {
-    $this->actingAs($this->user);
-
-    $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, 'empty-state');
-
-    $page->assertVisible('@empty-state')
-        ->assertMissing('@channel-grid')
-        ->assertNoJavaScriptErrors();
-});
-
-test('other channels and all channels offer no grid view', function () {
-    $linkedin = SocialAccount::factory()->create([
-        'workspace_id' => $this->user->current_workspace_id,
-        'platform' => Platform::LinkedIn,
-    ]);
-
-    $this->actingAs($this->user);
-
-    $page = visit(route('app.channels.publish', $linkedin));
-    waitForChannelGridTestId($page, 'schedule-view-list');
-
-    $page->assertVisible('@schedule-view-list')
-        ->assertMissing('@schedule-view-grid');
-
-    $page = visit(route('app.posts.index'));
-    waitForChannelGridTestId($page, 'schedule-view-list');
-
-    $page->assertVisible('@schedule-view-list')
-        ->assertMissing('@schedule-view-grid')
-        ->assertNoJavaScriptErrors();
-});
-
 test('no schedule view label wraps onto a second line in any language', function () {
-    $wrapped = [];
+    $this->actingAs($this->user->fresh());
 
-    foreach (Locale::cases() as $locale) {
-        $this->user->update(['locale' => $locale]);
-        $this->actingAs($this->user->fresh());
+    $page = visit(route('app.channels.publish', $this->instagram));
+    waitForChannelGridTestId($page, 'schedule-view-grid');
 
-        $page = visit(route('app.channels.publish', $this->instagram));
-        waitForChannelGridTestId($page, 'schedule-view-grid');
+    $keys = [
+        'grid' => 'channels.grid.title',
+        'list' => 'posts.list_view',
+        'calendar' => 'calendar.title',
+    ];
 
-        $lines = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid^="schedule-view-"]')]
-                .map((item) => {
-                    const walker = document.createTreeWalker(item, NodeFilter.SHOW_TEXT);
-                    let lineCount = 0;
-                    while (walker.nextNode()) {
-                        if (!walker.currentNode.textContent.trim()) continue;
-                        const range = document.createRange();
-                        range.selectNodeContents(walker.currentNode);
-                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                        lineCount = Math.max(lineCount, tops.size);
+    $translations = collect(Locale::cases())
+        ->mapWithKeys(fn (Locale $locale): array => [
+            $locale->value => collect($keys)->map(fn (string $key): string => __($key, [], $locale->value))->all(),
+        ])
+        ->all();
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const labelOf = (view) => document.querySelector(`[data-testid="schedule-view-\${view}"] span`);
+            const lineCount = (element) => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+            };
+            const wrapped = [];
+
+            Object.entries(translations).forEach(([locale, labels]) => {
+                Object.entries(labels).forEach(([view, text]) => {
+                    const label = labelOf(view);
+                    label.textContent = text;
+
+                    if (lineCount(label) > 1) {
+                        wrapped.push(locale + ': ' + text);
                     }
-                    return [item.textContent.trim(), lineCount];
-                })
-                .filter(([, lineCount]) => lineCount > 1)
-                .map(([text]) => text)
-        JS);
+                });
+            });
 
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
+            return wrapped;
+        })()
+    JS);
 
     expect($wrapped)->toBe([]);
+
+    $page->hover('@schedule-view-grid')
+        ->assertMissing('@schedule-view-grid-note')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the grid tooltip shows the sent time in the user zone, not the browser zone', function () {

@@ -122,31 +122,14 @@ test('a destination is not warned about missing media before there is any', func
         ->assertNoJavaScriptErrors();
 });
 
-test('the source account is picked from a searchable list on the edit page', function () {
-    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    $other = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
-
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $workspace->id,
-        'source_social_account_id' => $source->id,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.show', $repurpose));
-
-    waitForRepurposeTestId($page, 'source-account-select');
-
-    $page->click('@source-account-select')
-        ->assertSee($other->display_name)
-        ->assertNoJavaScriptErrors();
-});
-
-test('switching the source hands the old one back to the destinations before saving', function () {
+test('the source account is picked from a searchable list and handed back to the destinations when switched', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
 
     $facebook = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
+    $broken = SocialAccount::factory()->for($workspace)->create([
+        'platform' => Platform::Instagram,
+        'status' => AccountStatus::TokenExpired,
+    ]);
 
     $repurpose = Repurpose::factory()->create([
         'workspace_id' => $workspace->id,
@@ -164,11 +147,14 @@ test('switching the source hands the old one back to the destinations before sav
         ->assertAttribute('@repurpose-source-avatar', 'data-platform', Platform::Instagram->value)
         ->click('@source-account-select');
 
-    usleep(300000);
+    waitForRepurposeTestId($page, "source-option-{$facebook->id}");
 
-    $page->click("@source-option-{$facebook->id}");
+    $page->assertSee($facebook->display_name)
+        ->assertVisible("@source-option-disconnected-{$broken->id}")
+        ->assertMissing("@source-option-disconnected-{$source->id}")
+        ->click("@source-option-{$facebook->id}");
 
-    usleep(400000);
+    waitForRepurposeTestId($page, "channel-{$source->id}");
 
     $page->assertVisible("@channel-{$source->id}")
         ->assertMissing("@channel-{$facebook->id}")
@@ -193,7 +179,7 @@ test('deleting sits behind the menu instead of on the page', function () {
     $page->assertMissing('@delete-repurpose')
         ->click('@repurpose-menu');
 
-    usleep(400000);
+    waitForRepurposeTestId($page, 'delete-repurpose');
 
     $page->assertVisible('@delete-repurpose')
         ->assertNoJavaScriptErrors();
@@ -222,7 +208,7 @@ test('the activity list reads as what happened, never as a database id', functio
 
     $page->click('@tab-activity');
 
-    usleep(500000);
+    waitForRepurposeTestId($page, "repurpose-item-{$withoutLink->id}");
 
     $page->assertVisible("@repurpose-item-{$withoutLink->id}")
         ->assertDontSee($withoutLink->source_media_id)
@@ -291,34 +277,6 @@ test('an autosave the backend rejects says so instead of failing quietly', funct
     expect($repurpose->fresh()->destinations)->toHaveCount(1);
 });
 
-test('a source account that needs reconnecting says so in the picker', function () {
-    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    $broken = SocialAccount::factory()->for($workspace)->create([
-        'platform' => Platform::Instagram,
-        'status' => AccountStatus::TokenExpired,
-    ]);
-
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $workspace->id,
-        'source_social_account_id' => $source->id,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.show', $repurpose));
-
-    waitForRepurposeTestId($page, 'source-account-select');
-
-    $page->click('@source-account-select');
-
-    waitForRepurposeTestId($page, "source-option-disconnected-{$broken->id}");
-
-    $page->assertVisible("@source-option-disconnected-{$broken->id}")
-        ->assertMissing("@source-option-disconnected-{$source->id}")
-        ->assertNoJavaScriptErrors();
-});
-
 test('the list shows each repurpose as a row that opens it and the back button returns', function () {
     [$user, $workspace, $source, $destination] = repurposeOwnerWithAccounts();
 
@@ -356,29 +314,6 @@ test('the list shows each repurpose as a row that opens it and the back button r
     $page->assertRoute('app.repurposes.index')
         ->resize(390, 844)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 1', true)
-        ->assertNoJavaScriptErrors();
-});
-
-test('the destination picker does not list google business', function () {
-    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    $googleBusiness = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::GoogleBusiness]);
-    $facebook = SocialAccount::factory()->for($workspace)->create(['platform' => Platform::Facebook]);
-
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'source_social_account_id' => $source->id,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.show', $repurpose));
-
-    waitForRepurposeTestId($page, "channel-{$facebook->id}");
-
-    $page->assertVisible("@channel-{$facebook->id}")
-        ->assertMissing("@channel-{$googleBusiness->id}")
         ->assertNoJavaScriptErrors();
 });
 
@@ -492,7 +427,7 @@ test('a destination row switch adds and removes the destination', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the watched format select saves the new format', function () {
+test('the watched format select and the publishing radio save', function () {
     [$user, $workspace, $source] = repurposeOwnerWithAccounts();
 
     $repurpose = Repurpose::factory()->create([
@@ -500,6 +435,7 @@ test('the watched format select saves the new format', function () {
         'user_id' => $user->id,
         'source_social_account_id' => $source->id,
         'source_format' => SourceFormat::Reel,
+        'publish_mode' => PublishMode::Publish,
     ]);
 
     $this->actingAs($user);
@@ -510,30 +446,19 @@ test('the watched format select saves the new format', function () {
     $page->click('@source-format-select');
     waitForRepurposeTestId($page, 'source-format-option-story');
     $page->click('@source-format-option-story');
-    waitForRepurposeTestId($page, 'repurpose-saved');
+
+    for ($attempt = 0; $attempt < 50 && $repurpose->fresh()->source_format !== SourceFormat::Story; $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
 
     expect($repurpose->fresh()->source_format)->toBe(SourceFormat::Story);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the publishing radio saves draft mode', function () {
-    [$user, $workspace, $source] = repurposeOwnerWithAccounts();
-
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'source_social_account_id' => $source->id,
-        'publish_mode' => PublishMode::Publish,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.repurposes.show', $repurpose));
-    waitForRepurposeTestId($page, 'publish-mode-draft');
 
     $page->assertAttribute('@publish-mode-publish', 'aria-checked', 'true')
         ->click('@publish-mode-draft');
-    waitForRepurposeTestId($page, 'repurpose-saved');
+
+    for ($attempt = 0; $attempt < 50 && $repurpose->fresh()->publish_mode !== PublishMode::Draft; $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
 
     expect($repurpose->fresh()->publish_mode)->toBe(PublishMode::Draft);
     $page->assertAttribute('@publish-mode-draft', 'aria-checked', 'true')

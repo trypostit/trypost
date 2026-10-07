@@ -80,21 +80,30 @@ test('a dialog footer sits in a rounded muted panel inset from the dialog edges'
         })()
     JS))->toBeTrue();
 
-    $page->assertNoJavaScriptErrors();
-});
+    $geometry = $page->script(<<<'JS'
+        (() => {
+            const box = document.querySelector('[data-testid="create-label-sheet"]').getBoundingClientRect();
+            const close = document.querySelector('[data-testid="create-label-sheet"] [data-testid="dialog-close"]').getBoundingClientRect();
 
-test('on a phone the footer actions share one row, with the primary last filling the rest', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $this->actingAs($user->fresh());
+            return {
+                centeredX: Math.abs((box.left + box.right) / 2 - window.innerWidth / 2) <= 1,
+                centeredY: Math.abs((box.top + box.bottom) / 2 - window.innerHeight / 2) <= 1,
+                maxWidth: Math.round(box.width) === 512,
+                shorterThanViewport: box.height < window.innerHeight - 100,
+                closeInside: close.top >= box.top && close.right <= box.right,
+            };
+        })()
+    JS);
 
-    $page = visit(route('app.labels.index'))->resize(390, 844);
-    waitForDialogFooterTestId($page, 'labels-empty-create');
-    $page->click('@labels-empty-create');
-    waitForDialogFooterTestId($page, 'create-label-sheet');
+    expect($geometry)->toBe([
+        'centeredX' => true,
+        'centeredY' => true,
+        'maxWidth' => true,
+        'shorterThanViewport' => true,
+        'closeInside' => true,
+    ]);
+
+    $page->resize(390, 844);
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
 
     $layout = $page->script(<<<'JS'
@@ -117,24 +126,6 @@ test('on a phone the footer actions share one row, with the primary last filling
         'primaryLast' => true,
         'overflow' => false,
     ]);
-
-    $page->resize(1280, 900);
-    $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
-
-    $desktop = $page->script(<<<'JS'
-        (() => {
-            const footer = document.querySelector('[data-testid="create-label-sheet"] [data-slot="dialog-footer"]');
-            const cancel = footer.querySelector('[data-testid="cancel-create-label"]').getBoundingClientRect();
-            const submit = footer.querySelector('[data-testid="submit-create-label"]').getBoundingClientRect();
-            return {
-                sameRow: Math.round(cancel.top) === Math.round(submit.top),
-                hugsContent: submit.width < footer.getBoundingClientRect().width / 2,
-                primaryEnd: Math.round(footer.getBoundingClientRect().right - submit.right),
-            };
-        })()
-    JS);
-
-    expect($desktop)->toMatchArray(['sameRow' => true, 'hugsContent' => true, 'primaryEnd' => 12]);
 
     $page->assertNoJavaScriptErrors();
 });

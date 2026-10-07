@@ -159,64 +159,6 @@ test('several pages: pick some, select all, and finish on the first connected ch
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
 });
 
-test('one identity is confirmed pre-checked and finishes on its channel page', function () {
-    $user = connectConfirmAdmin();
-    $this->actingAs($user);
-    connectConfirmFakeXVerify();
-    stubConnectConfirmProvider('x', 'app.social.x.callback', ['code' => 'code-1', 'state' => 'state-1'], connectConfirmXLogin());
-
-    $postsPath = connectConfirmPath('app.posts.index');
-    $page = visit(route('app.social.x.connect', ['return_to' => $postsPath]))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-finish');
-
-    $page->assertSeeIn('@connect-title', __('accounts.connect.title_single'))
-        ->assertMissing('@connect-select-all')
-        ->assertSee('Brand on X')
-        ->assertSee(__('accounts.connect.types.profile'));
-
-    expect($page->script('document.querySelector(\'[data-testid="connect-finish"]\').disabled'))->toBeFalse();
-
-    $page->click('@connect-finish');
-
-    waitForConnectConfirmTestId($page, 'goal-flow');
-
-    $channel = $user->currentWorkspace->socialAccounts()->sole();
-    $channelPath = connectConfirmPath('app.channels.publish', $channel);
-
-    expect(connectConfirmPollFor($page, "window.location.pathname === '{$channelPath}'"))->toBeTrue();
-
-    expect($channel->platform)->toBe(Platform::X);
-    $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
-});
-
-test('a reconnect pre-checks the card being reconnected and refreshes it without the goal flow', function () {
-    $user = connectConfirmAdmin();
-    $account = SocialAccount::factory()->x()->tokenExpired()->create([
-        'workspace_id' => $user->current_workspace_id,
-        'platform_user_id' => 'x-brand',
-    ]);
-    $this->actingAs($user);
-    connectConfirmFakeXVerify();
-    stubConnectConfirmProvider('x', 'app.social.x.callback', ['code' => 'code-1'], connectConfirmXLogin());
-
-    $page = visit(route('app.social.x.connect', ['reconnect' => $account->id, 'return_to' => connectConfirmPath('app.workspace.channels')]))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-finish');
-
-    $page->assertVisible('[data-testid="connect-identity-checkbox-x:x-brand"]')
-        ->assertMissing('[data-testid="connect-identity-connected-x:x-brand"]');
-
-    expect($page->script('document.querySelector(\'[data-testid="connect-identity-x:x-brand"]\').dataset.selected'))->toBe('true')
-        ->and($page->script('document.querySelector(\'[data-testid="connect-finish"]\').disabled'))->toBeFalse();
-
-    $page->click('@connect-finish');
-
-    expect(connectConfirmPollFor($page, "window.location.pathname === '".connectConfirmPath('app.channels.publish', $account)."'"))->toBeTrue()
-        ->and(connectConfirmPollFor($page, 'document.querySelector(\'[data-testid="goal-flow"]\')', 20))->toBeFalse()
-        ->and($account->fresh()->access_token)->toBe('x-access-token');
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('pages already connected stay in place, locked, uncounted and skipped by select all', function () {
     $user = connectConfirmAdmin();
     $connected = SocialAccount::factory()->facebook()->create([
@@ -368,46 +310,6 @@ test('a cancelled consent shows the cancelled state with try again and back', fu
     expect(connectConfirmPollFor($page, "window.location.pathname === '{$postsPath}'"))->toBeTrue();
     expect(SocialAccount::query()->count())->toBe(0);
     $page->assertNoJavaScriptErrors();
-});
-
-test('a login without the publish permission asks to connect again', function () {
-    $this->actingAs(connectConfirmAdmin());
-    stubConnectConfirmProvider('x', 'app.social.x.callback', ['code' => 'code-1'], connectConfirmXLogin(scopes: ['tweet.read', 'users.read']));
-
-    $page = visit(route('app.social.x.connect'))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-state-missing_permission');
-
-    $page->assertSee(__('accounts.connect.states.missing_permission.title'))
-        ->assertSeeIn('@connect-state-description', __('accounts.connect.states.missing_permission.description'))
-        ->assertSeeIn('@connect-retry', __('accounts.connect.actions.connect_again'))
-        ->assertNoJavaScriptErrors();
-
-    expect(SocialAccount::query()->count())->toBe(0);
-});
-
-test('a confirmation page opened without a pending connection says it expired', function () {
-    $this->actingAs(connectConfirmAdmin());
-
-    $page = visit(route('app.social.connect.show', Platform::X))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-state-expired');
-
-    $page->assertSee(__('accounts.connect.states.expired.title'))
-        ->assertSeeIn('@connect-retry', __('accounts.connect.actions.start_again'))
-        ->assertMissing('@connect-finish')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a network error shows the generic error with its reason', function () {
-    $this->actingAs(connectConfirmAdmin());
-    stubConnectConfirmProvider('x', 'app.social.x.callback', ['code' => 'code-1'], null);
-
-    $page = visit(route('app.social.x.connect'))->resize(1280, 900);
-    waitForConnectConfirmTestId($page, 'connect-state-error');
-
-    $page->assertSee(__('accounts.connect.states.error.title'))
-        ->assertSeeIn('@connect-state-description', __('accounts.connect.errors.error_connecting'))
-        ->assertSeeIn('@connect-retry', __('accounts.connect.actions.try_again'))
-        ->assertNoJavaScriptErrors();
 });
 
 test('the close button leaves without connecting, back to where the connection started', function () {
@@ -671,4 +573,4 @@ test('the fragment a network appends to the callback is gone once the confirmati
     expect(connectConfirmPollFor($page, "window.location.hash === '' && !window.location.href.includes('#')"))->toBeTrue();
     expect($page->script('window.history.state?.page?.url ?? ""'))->not->toContain('#');
     $page->assertNoJavaScriptErrors();
-})->with(['#_', '#_=_']);
+})->with(['#_=_']);

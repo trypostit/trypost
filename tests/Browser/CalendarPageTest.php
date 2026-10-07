@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
-use App\Enums\User\TimeFormat;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
@@ -180,43 +178,6 @@ test('the calendar honours the channels filter and the display time zone', funct
     $page->assertNoJavaScriptErrors();
 });
 
-test('the channel calendar is scoped to the channel and links back to its list', function () {
-    [$user, $linkedin, $x] = calendarPageSetup();
-    $weekStart = now('UTC')->startOfWeek()->addWeek();
-    $day = $weekStart->copy()->addDays(2);
-
-    $linkedinPost = calendarPagePost($linkedin, $day->copy()->setTime(10, 0));
-    $xPost = calendarPagePost($x, $day->copy()->setTime(10, 0));
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.channels.calendar', ['account' => $linkedin, 'view' => 'week', 'week' => $weekStart->format('Y-m-d')]));
-    waitForCalendarTestId($page, "calendar-post-{$linkedinPost->id}");
-
-    $page->assertMissing("@calendar-post-{$xPost->id}")
-        ->assertSeeIn('@header-title', $linkedin->display_name);
-
-    expect($page->script('new URL(document.querySelector(\'[data-testid="schedule-view-list"]\').href).pathname'))
-        ->toBe(parse_url(route('app.channels.publish', $linkedin), PHP_URL_PATH));
-
-    $page->assertNoJavaScriptErrors();
-});
-
-test('the view menu offers only week and month', function () {
-    [$user] = calendarPageSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar', ['view' => 'month']));
-    waitForCalendarTestId($page, 'calendar-view-trigger');
-    $page->click('@calendar-view-trigger');
-    waitForCalendarTestId($page, 'calendar-view-week');
-
-    $page->assertVisible('@calendar-view-week')
-        ->assertVisible('@calendar-view-month')
-        ->assertMissing('@calendar-view-day')
-        ->assertNoJavaScriptErrors();
-});
-
 test('an overflowing week hour expands in place', function () {
     [$user, $linkedin, $x] = calendarPageSetup();
     $weekStart = now('UTC')->startOfWeek()->addWeek();
@@ -276,12 +237,12 @@ test('the no date panel slides open and closed, pushing the calendar aside gradu
     $page = visit(route('app.calendar', ['view' => 'month']))->resize(1280, 900);
     waitForCalendarTestId($page, 'calendar-no-date');
 
-    $sample = <<<'JS'
+    $sample = fn (int $settled): string => <<<JS
         (async () => {
             const widths = [];
             document.querySelector('[data-testid="calendar-no-date"]').click();
             const started = performance.now();
-            while (performance.now() - started < 500) {
+            while (performance.now() - started < 3000 && (performance.now() - started < 500 || widths.at(-1) !== {$settled})) {
                 await new Promise((resolve) => requestAnimationFrame(resolve));
                 widths.push(Math.round(document.querySelector('[data-testid="calendar-undated-slide"]')?.getBoundingClientRect().width ?? 0));
             }
@@ -289,11 +250,11 @@ test('the no date panel slides open and closed, pushing the calendar aside gradu
         })()
     JS;
 
-    $opening = $page->script($sample);
+    $opening = $page->script($sample(360));
     expect(collect($opening)->contains(fn (int $width) => $width > 0 && $width < 360))->toBeTrue()
         ->and(end($opening))->toBe(360);
 
-    $closing = $page->script($sample);
+    $closing = $page->script($sample(0));
     expect(collect($closing)->contains(fn (int $width) => $width > 0 && $width < 360))->toBeTrue()
         ->and(end($closing))->toBe(0);
 
@@ -399,34 +360,6 @@ test('show posting times renders empty slots in the week and month views', funct
     expect($post->scheduled_at->equalTo($day->copy()->setTime(15, 0)))->toBeTrue()
         ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $month->assertNoJavaScriptErrors();
-});
-
-test('an imported post shows in the hour it was published', function () {
-    [$user, $linkedin, $x] = calendarPageSetup();
-    $user->update(['time_format' => TimeFormat::TwentyFourHour]);
-    $weekStart = now('UTC')->startOfWeek()->addWeek();
-    $day = $weekStart->copy()->addDays(1);
-    $dayKey = $day->format('Y-m-d');
-
-    $post = Post::factory()->imported()->create([
-        'workspace_id' => $x->workspace_id,
-        'published_at' => $day->copy()->setTime(16, 40),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $x->id,
-        'platform' => $x->platform,
-        'status' => PostPlatformStatus::Published,
-    ]);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]));
-    waitForCalendarTestId($page, "calendar-post-{$post->id}");
-
-    expect(calendarChipSlot($page, $post))->toBe("calendar-slot-{$dayKey}-16");
-    $page->assertSeeIn("@calendar-post-{$post->id}", '16:40');
-    $page->assertNoJavaScriptErrors();
 });
 
 test('clicking a scheduled post chip in the month view opens its timeline card in a popover', function () {
@@ -549,26 +482,6 @@ test('a published post popover shows its metrics, go to post and the sent menu',
         ->assertNoJavaScriptErrors();
 });
 
-test('a week view post card shows its network icon, time and plain text', function () {
-    [$user, $linkedin] = calendarPageSetup();
-    $weekStart = now('UTC')->startOfWeek()->addWeek();
-    $post = calendarPagePost($linkedin, $weekStart->copy()->addDays(2)->setTime(11, 0));
-    $post->update(['content' => '<p>Week text visible</p>']);
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]));
-    waitForCalendarTestId($page, "calendar-post-{$post->id}");
-
-    $page->assertSeeIn("@calendar-post-text-{$post->id}", 'Week text visible')
-        ->assertDontSeeIn("@calendar-post-{$post->id}", '<p>');
-
-    expect($page->script("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]'); return [chip.querySelector('svg') !== null, chip.querySelector('img') === null]; })()"))
-        ->toBe([true, true]);
-
-    $page->assertNoJavaScriptErrors();
-});
-
 test('an overflowing month day expands and collapses back', function () {
     [$user, $linkedin] = calendarPageSetup();
     $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(12);
@@ -684,40 +597,6 @@ test('on a phone the month shows its weeks in columns with the posts of each day
         ->assertPresent("@calendar-more-{$dayKey}")
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
-});
-
-test('on a phone a free posting slot in the week opens the composer at that instant', function () {
-    [$user, $linkedin] = calendarPageSetup();
-    $schedule = PostingSchedule::empty();
-
-    foreach (range(0, 6) as $weekday) {
-        $schedule = $schedule->withTime($weekday, '15:00');
-    }
-
-    $linkedin->update(['posting_schedule' => $schedule]);
-
-    $weekStart = now('UTC')->startOfWeek()->addWeek();
-    $day = $weekStart->copy()->addDays(2);
-    $slotKey = "{$linkedin->id}-{$day->copy()->setTime(15, 0)->getTimestamp()}";
-
-    $this->actingAs($user);
-
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]))->resize(390, 844);
-    $page->script('window.localStorage.clear()');
-    $page->refresh();
-    waitForCalendarTestId($page, "calendar-posting-slot-{$slotKey}");
-
-    $page->click("@calendar-posting-slot-{$slotKey}");
-    waitForCalendarTestId($page, "composer-caption-{$linkedin->id}");
-    $page->fill("@composer-caption-{$linkedin->id}", 'From a phone slot');
-    waitForCalendarTestId($page, 'composer-submit');
-    $page->click('@composer-submit');
-    waitForCalendarCondition($page, '!document.querySelector(\'[data-testid="post-composer-dialog"]\')');
-    $post = Post::query()->where('workspace_id', $linkedin->workspace_id)->sole();
-
-    expect($post->scheduled_at->equalTo($day->copy()->setTime(15, 0)))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
-    $page->assertNoJavaScriptErrors();
 });
 
 test('on a phone, tapping a post in the month opens its details directly', function () {

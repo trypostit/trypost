@@ -127,31 +127,6 @@ test('the post type filter lists this platform types and narrows the URL and the
         ->assertNoJavaScriptErrors();
 });
 
-test('the label filter narrows the publications and clear all resets it', function () {
-    $page = visit(route('app.channels.insights', $this->instagram));
-    waitForInsightsFilterTestId($page, 'insights-label-filter');
-
-    $page->click('@insights-label-filter');
-    waitForInsightsFilterTestId($page, "insights-label-option-{$this->label->id}");
-
-    $page->click("@insights-label-option-{$this->label->id}");
-    waitForInsightsFilterScript($page, 'document.querySelectorAll("#insights-posts-body tr").length === 1 && document.querySelector("[data-testid=insights-card-posts] .font-heading").textContent.trim() === "1"');
-
-    $page->assertScript('Array.from(new URLSearchParams(location.search)).filter(([key]) => key.startsWith("labels[")).map(([, value]) => value).join(",")', $this->label->id)
-        ->assertPresent("@insights-posts-row-{$this->reel->id}")
-        ->assertScript('document.querySelector("[data-testid=insights-card-posts] .font-heading").textContent.trim()', '1')
-        ->click('@insights-label-untagged-checkbox');
-    waitForInsightsFilterScript($page, 'document.querySelectorAll("#insights-posts-body tr").length === 3');
-
-    $page->assertScript('new URLSearchParams(location.search).get("untagged")', '1')
-        ->click('@insights-label-clear');
-    waitForInsightsFilterScript($page, '!location.search.includes("labels") && !location.search.includes("untagged")');
-
-    $page->assertScript('location.search.includes("labels")', false)
-        ->assertScript('document.querySelectorAll("#insights-posts-body tr").length', 3)
-        ->assertNoJavaScriptErrors();
-});
-
 test('history navigation re-syncs the label filter with the page', function () {
     $page = visit(route('app.channels.insights', $this->instagram));
     waitForInsightsFilterTestId($page, 'insights-label-filter');

@@ -10,6 +10,7 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Http;
 
 function waitForNetworkOptionsTestId(mixed $page, string $testId): void
@@ -26,35 +27,88 @@ function waitForNetworkOptionsTestId(mixed $page, string $testId): void
     waitForWebFonts($page);
 }
 
+/**
+ * @return array<string, string>
+ */
+function networkOptionsEnglishKeysByText(): array
+{
+    $keys = [];
+
+    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
+        $group = basename($file, '.php');
+
+        foreach (Arr::dot(require $file) as $key => $value) {
+            if (is_string($value)) {
+                $keys[$value] ??= "{$group}.{$key}";
+            }
+        }
+    }
+
+    return $keys;
+}
+
 test('network card labels stay on one line in every language', function (Platform $platform, ContentType $contentType, string $readyTestId, array $meta) {
     Http::fake(['*' => Http::response([], 200)]);
 
-    foreach (Locale::cases() as $locale) {
-        $user = User::factory()->create(['locale' => $locale]);
-        $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-        $workspace->members()->attach($user->id, membershipPivot('member'));
-        $user->update(['current_workspace_id' => $workspace->id]);
-        $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform, 'token_expires_at' => now()->addDays(20)]);
-        $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'Options']);
-        PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => $platform, 'content_type' => $contentType, 'meta' => $meta]);
-        $this->actingAs($user);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform, 'token_expires_at' => now()->addDays(20)]);
+    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'Options']);
+    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => $platform, 'content_type' => $contentType, 'meta' => $meta]);
+    $this->actingAs($user);
 
-        $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-        waitForNetworkOptionsTestId($page, $readyTestId);
-        expect($page->script("document.querySelectorAll('[data-single-line]').length"))->toBeGreaterThan(0);
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForNetworkOptionsTestId($page, $readyTestId);
 
-        $wrapped = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-single-line]')]
-                .filter((el) => {
-                    const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
-                    return el.getBoundingClientRect().height > lineHeight * 1.5;
-                })
-                .map((el) => el.textContent.trim())
-        JS);
+    $texts = $page->script("[...document.querySelectorAll('[data-single-line]')].map((el) => el.textContent.trim())");
+    expect($texts)->not->toBeEmpty();
 
-        expect($wrapped)->toBe([], "{$locale->value} wraps: ".implode(', ', (array) $wrapped));
-        $page->assertNoJavaScriptErrors();
+    $keysByText = networkOptionsEnglishKeysByText();
+    $translations = [];
+
+    foreach ($texts as $index => $text) {
+        $key = $keysByText[$text] ?? null;
+
+        if ($key === null) {
+            continue;
+        }
+
+        foreach (Locale::cases() as $locale) {
+            $translations[$index][$locale->value] = __($key, [], $locale->value);
+        }
     }
+
+    expect($translations)->not->toBeEmpty();
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const elements = [...document.querySelectorAll('[data-single-line]')];
+            const failures = [];
+
+            for (const [index, byLocale] of Object.entries(translations)) {
+                const el = elements[index];
+                const original = el.textContent;
+                const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+
+                for (const [locale, text] of Object.entries(byLocale)) {
+                    el.textContent = text;
+                    if (el.getBoundingClientRect().height > lineHeight * 1.5) failures.push(locale + ': ' + text);
+                }
+
+                el.textContent = original;
+            }
+
+            return failures;
+        })()
+    JS);
+
+    expect($wrapped)->toBe([]);
+    $page->assertNoJavaScriptErrors();
 })->with([
     'instagram types' => [Platform::Instagram, ContentType::InstagramFeed, 'composer-customization', []],
     'facebook types' => [Platform::Facebook, ContentType::FacebookPost, 'composer-customization', []],

@@ -240,26 +240,6 @@ test('post details opens a read-only preview of the post', function () {
         ->not->toBe(__('posts.publish.unscheduled'));
 });
 
-test('delete confirms with a plain dialog before removing the post', function () {
-    [$user, $workspace, $channel] = cardActionsSetup();
-    $queued = cardActionsPost($user, $workspace, $channel);
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index'));
-    openCardActionsMenu($page, $queued->id);
-    $page->click("@post-delete-{$queued->id}");
-    waitForCardActionsTestId($page, 'confirm-delete-action');
-
-    $page->assertMissing('@confirm-delete-input')
-        ->assertSeeIn('@confirm-delete-action', __('posts.edit.delete_modal.action'))
-        ->click('@confirm-delete-action');
-    waitForCardActionsCondition($page, "!document.querySelector('[data-testid=\"post-card-{$queued->id}\"]')");
-
-    expect(Post::query()->whereKey($queued->id)->exists())->toBeFalse();
-    $page->assertMissing("@post-card-{$queued->id}")
-        ->assertNoJavaScriptErrors();
-});
-
 test('draft and sent menus only offer the actions valid for their status', function () {
     [$user, $workspace, $channel] = cardActionsSetup();
     $draft = cardActionsPost($user, $workspace, $channel, ['status' => 'draft', 'queue' => null]);

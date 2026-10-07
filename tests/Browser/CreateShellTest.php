@@ -6,6 +6,7 @@ use App\Enums\User\Locale;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Arr;
 
 function waitForCreateShellTestId(mixed $page, string $testId): void
 {
@@ -49,18 +50,53 @@ function createShellUser(): User
     return $user->fresh();
 }
 
-test('the new menu offers a post and an idea', function () {
+test('the new menu lists its items in order for an admin and each one opens its target', function () {
     $this->actingAs(createShellUser());
 
     $page = visit(route('app.create.ideas.index'));
     waitForCreateShellTestId($page, 'sidebar-new');
     $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-idea');
+    waitForCreateShellTestId($page, 'sidebar-new-member');
+    waitForCreateShellMenuSettled($page);
 
-    $page->assertVisible('@sidebar-new-post')
-        ->assertVisible('@sidebar-new-idea')
-        ->assertScript("getComputedStyle(document.querySelector('[data-testid=\"sidebar-new-post\"] svg')).color === getComputedStyle(document.documentElement).getPropertyValue('--info').trim() || getComputedStyle(document.querySelector('[data-testid=\"sidebar-new-post\"] svg')).color !== getComputedStyle(document.querySelector('[data-testid=\"sidebar-new-channel\"] svg')).color", true)
-        ->click('@sidebar-new-idea');
+    expect($page->script('[...document.querySelectorAll(\'[data-testid^="sidebar-new-"]:not([data-testid="sidebar-new-menu"]):not([data-testid$="-icon"])\')].map((el) => el.dataset.testid)'))
+        ->toBe(['sidebar-new-post', 'sidebar-new-idea', 'sidebar-new-channel', 'sidebar-new-member']);
+    expect($page->script("document.querySelector('[data-testid=\"sidebar-new-menu\"]').getBoundingClientRect().top >= document.querySelector('[data-testid=\"sidebar-new\"]').getBoundingClientRect().bottom"))->toBeTrue();
+
+    $page->click('@sidebar-new-channel');
+    waitForCreateShellTestId($page, 'connect-channel-dialog');
+    $page->assertVisible('@connect-channel-dialog')
+        ->keys('@connect-channel-dialog', 'Escape');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (!document.querySelector('[data-testid="connect-channel-dialog"]')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+
+    $page->click('@sidebar-new');
+    waitForCreateShellTestId($page, 'sidebar-new-member');
+    waitForCreateShellMenuSettled($page);
+    $page->click('@sidebar-new-member');
+    waitForCreateShellTestId($page, 'invite-member-dialog');
+    $page->assertVisible('@invite-member-dialog')
+        ->assertVisible('#invite-email')
+        ->click('@invite-member-cancel');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (!document.querySelector('[data-testid="invite-member-dialog"]')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+
+    $page->click('@sidebar-new');
+    waitForCreateShellTestId($page, 'sidebar-new-idea');
+    waitForCreateShellMenuSettled($page);
+    $page->click('@sidebar-new-idea');
     waitForCreateShellTestId($page, 'create-header');
 
     $page->assertVisible('@create-header')
@@ -81,43 +117,20 @@ test('the new menu opens the post composer', function () {
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
 });
 
-test('the create nav item links to ideas and is active there', function () {
+test('the create nav item links to ideas and the ideas tab is current', function () {
     $this->actingAs(createShellUser());
 
     $page = visit(route('app.create.ideas.index'));
     $href = parse_url(route('app.create.ideas.index'), PHP_URL_PATH);
     waitForCreateShellTestId($page, "nav-{$href}");
+    waitForCreateShellTestId($page, 'create-tab-ideas');
 
     $page->assertVisible("@nav-{$href}")
         ->assertScript("document.querySelector('[data-testid=\"nav-{$href}\"]').getAttribute('href')", $href)
         ->assertScript("document.querySelector('[data-testid=\"nav-{$href}\"]').dataset.active", 'true')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the ideas tab is the current page', function () {
-    $this->actingAs(createShellUser());
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'create-tab-ideas');
-
-    $page->assertVisible('@create-header')
+        ->assertVisible('@create-header')
         ->assertAttribute('@create-tab-ideas', 'aria-current', 'page')
         ->assertNoJavaScriptErrors();
-});
-
-test('the new menu lists post, idea, connect channel and invite member in order for an admin', function () {
-    $this->actingAs(createShellUser());
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
-    $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-member');
-    waitForCreateShellMenuSettled($page);
-
-    expect($page->script('[...document.querySelectorAll(\'[data-testid^="sidebar-new-"]:not([data-testid="sidebar-new-menu"]):not([data-testid$="-icon"])\')].map((el) => el.dataset.testid)'))
-        ->toBe(['sidebar-new-post', 'sidebar-new-idea', 'sidebar-new-channel', 'sidebar-new-member']);
-    expect($page->script("document.querySelector('[data-testid=\"sidebar-new-menu\"]').getBoundingClientRect().top >= document.querySelector('[data-testid=\"sidebar-new\"]').getBoundingClientRect().bottom"))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
 });
 
 test('the new menu hides connect channel and invite member from a member', function () {
@@ -138,42 +151,10 @@ test('the new menu hides connect channel and invite member from a member', funct
         ->assertNoJavaScriptErrors();
 });
 
-test('connect a new channel from the new menu opens the connect dialog', function () {
+test('the create tabs border keeps the same padding as the publish page', function () {
     $this->actingAs(createShellUser());
 
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
-    $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-channel');
-    $page->click('@sidebar-new-channel');
-    waitForCreateShellTestId($page, 'connect-channel-dialog');
-
-    $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('invite new member from the sidebar new menu opens the invite dialog', function () {
-    $this->actingAs(createShellUser());
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateShellTestId($page, 'sidebar-new');
-    $page->click('@sidebar-new');
-    waitForCreateShellTestId($page, 'sidebar-new-member');
-    waitForCreateShellMenuSettled($page);
-
-    expect($page->script("document.querySelector('[data-testid=\"sidebar-new-menu\"]').getBoundingClientRect().top >= document.querySelector('[data-testid=\"sidebar-new\"]').getBoundingClientRect().bottom"))->toBeTrue();
-
-    $page->click('@sidebar-new-member');
-    waitForCreateShellTestId($page, 'invite-member-dialog');
-
-    $page->assertVisible('@invite-member-dialog')
-        ->assertVisible('#invite-email')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the create tabs border keeps the same padding as the publish page on every create page', function (string $route) {
-    $this->actingAs(createShellUser());
-
-    $page = visit(route($route))->resize(1440, 900);
+    $page = visit(route('app.create.ideas.index'))->resize(1440, 900);
     waitForCreateShellTestId($page, 'create-tabs');
 
     $edges = $page->script(<<<'JS'
@@ -187,33 +168,69 @@ test('the create tabs border keeps the same padding as the publish page on every
     expect($edges[0])->toBeGreaterThanOrEqual(32)
         ->and($edges[1])->toBeGreaterThanOrEqual(32);
     $page->assertNoJavaScriptErrors();
-})->with([
-    'ideas' => 'app.create.ideas.index',
-    'templates' => 'app.create.templates.index',
-    'feeds' => 'app.create.feeds.index',
-]);
+});
 
-test('no create tab wraps onto a second line in any language', function (int $width) {
-    $user = createShellUser();
-    $this->actingAs($user);
+test('no create tab wraps onto a second line in any language', function () {
+    $this->actingAs(createShellUser());
 
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
+    $page = visit(route('app.create.ideas.index'));
+    waitForCreateShellTestId($page, 'create-tab-ideas');
 
-        $page = visit(route('app.create.ideas.index'))->resize($width, 900);
-        waitForCreateShellTestId($page, 'create-tab-ideas');
+    $testIds = $page->script("[...document.querySelectorAll('[data-testid^=\"create-tab-\"]')].map((tab) => tab.dataset.testid)");
+    $texts = $page->script("[...document.querySelectorAll('[data-testid^=\"create-tab-\"]')].map((tab) => tab.textContent.trim())");
 
-        $wrapped = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid^="create-tab-"]')]
-                .filter((tab) => {
-                    const range = document.createRange();
-                    range.selectNodeContents(tab);
-                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                    return tops.size > 1;
-                })
-                .map((tab) => tab.dataset.testid)
+    $keysByText = [];
+
+    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
+        foreach (Arr::dot(require $file) as $key => $value) {
+            if (is_string($value)) {
+                $keysByText[$value] ??= basename($file, '.php').".{$key}";
+            }
+        }
+    }
+
+    $translations = [];
+
+    foreach ($testIds as $index => $testId) {
+        $key = $keysByText[$texts[$index]] ?? null;
+        expect($key)->not->toBeNull("no lang key for {$testId}");
+
+        foreach (Locale::cases() as $locale) {
+            $translations[$testId][$locale->value] = __($key, [], $locale->value);
+        }
+    }
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    foreach ([390, 1280] as $width) {
+        $page->resize($width, 900);
+
+        $wrapped = $page->script(<<<JS
+            (() => {
+                const translations = {$json};
+                const failures = [];
+
+                for (const [testId, byLocale] of Object.entries(translations)) {
+                    const tab = document.querySelector('[data-testid="' + testId + '"]');
+                    const original = tab.innerHTML;
+
+                    for (const [locale, text] of Object.entries(byLocale)) {
+                        tab.textContent = text;
+                        const range = document.createRange();
+                        range.selectNodeContents(tab);
+                        const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
+                        if (tops.size > 1) failures.push(testId + ' ' + locale);
+                    }
+
+                    tab.innerHTML = original;
+                }
+
+                return failures;
+            })()
         JS);
 
-        expect($wrapped)->toBe([], "{$locale->value} wraps");
+        expect($wrapped)->toBe([], "tabs wrap at {$width}");
     }
-})->with([390, 1280]);
+
+    $page->assertNoJavaScriptErrors();
+});

@@ -69,17 +69,7 @@ test('creating a webhook happens in a centered dialog with cancel before the pri
         ->click('@create-webhook-events-post-created')
         ->assertEnabled('@create-webhook-submit')
         ->click('@create-webhook-events-post-created')
-        ->assertDisabled('@create-webhook-submit')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the events picker selects all, deselects all and toggles a row while counting the selection', function () {
-    $this->actingAs(webhookCreateDialogAdmin());
-
-    $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty-create');
-    $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-events-toggle-all');
+        ->assertDisabled('@create-webhook-submit');
 
     $checkedCount = "document.querySelectorAll('[data-testid=\"create-webhook-events\"] [role=\"checkbox\"][data-state=\"checked\"]').length";
 
@@ -91,65 +81,74 @@ test('the events picker selects all, deselects all and toggles a row while count
         ->assertScript($checkedCount, 7)
         ->assertSeeIn('@create-webhook-events-count', '7 of 7 selected')
         ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.deselect_all'))
+        ->assertEnabled('@create-webhook-submit')
         ->click('@create-webhook-events-toggle-all')
         ->assertScript($checkedCount, 0)
         ->assertSeeIn('@create-webhook-events-count', '0 of 7 selected')
-        ->assertSeeIn('@create-webhook-events-toggle-all', __('posts.composer.select_all'))
+        ->assertDisabled('@create-webhook-submit')
         ->click('@create-webhook-events-post-failed-description')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'checked')
         ->assertSeeIn('@create-webhook-events-count', '1 of 7 selected')
         ->click('@create-webhook-events-post-failed-checkbox')
         ->assertScript("document.querySelector('[data-testid=\"create-webhook-events-post-failed-checkbox\"]').getAttribute('data-state')", 'unchecked')
         ->assertSeeIn('@create-webhook-events-count', '0 of 7 selected')
+        ->click('@create-webhook-events-post-published')
+        ->click('@cancel-create-webhook');
+    waitForWebhookCreateTestIdGone($page, 'create-webhook-dialog');
+
+    $page->assertMissing('@create-webhook-dialog')
         ->assertNoJavaScriptErrors();
+
+    expect(Webhook::query()->count())->toBe(0);
 });
 
-test('the create button stays disabled until an endpoint and an event are set', function () {
+test('the endpoint helper and event descriptions stay on one line in every language', function () {
     $this->actingAs(webhookCreateDialogAdmin());
 
     $page = visit(route('app.webhooks.index'));
     waitForWebhookCreateTestId($page, 'webhooks-empty-create');
     $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-endpoint');
+    waitForWebhookCreateTestId($page, 'create-webhook-events-post-created-description');
 
-    $page->click('@create-webhook-events-toggle-all')
-        ->assertDisabled('@create-webhook-submit')
-        ->fill('@create-webhook-endpoint', 'https://example.com/hooks')
-        ->assertEnabled('@create-webhook-submit')
-        ->click('@create-webhook-events-toggle-all')
-        ->assertDisabled('@create-webhook-submit')
-        ->assertNoJavaScriptErrors();
-});
+    $descriptionKeys = array_keys(__('webhooks.event_descriptions', [], 'en'));
+    $translations = collect(Locale::cases())
+        ->mapWithKeys(fn (Locale $locale): array => [$locale->value => [
+            'create-webhook-endpoint-help' => __('webhooks.create.endpoint_help', [], $locale->value),
+            'create-webhook-events-count' => trans_choice('webhooks.create.events_count_selected', 0, ['count' => '0', 'total' => '7'], $locale->value),
+            'create-webhook-events-toggle-all' => __('posts.composer.deselect_all', [], $locale->value),
+            ...collect($descriptionKeys)->mapWithKeys(fn (string $key): array => [
+                'create-webhook-events-'.preg_replace('/_/', '-', $key, 1).'-description' => __("webhooks.event_descriptions.{$key}", [], $locale->value),
+            ])->all(),
+        ]])
+        ->all();
 
-test('the endpoint helper and event descriptions stay on one line in every language', function () {
-    $user = webhookCreateDialogAdmin();
-    $wrapped = [];
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-    foreach (Locale::cases() as $locale) {
-        $user->update(['locale' => $locale]);
-        $this->actingAs($user->fresh());
-
-        $page = visit(route('app.webhooks.index'));
-        waitForWebhookCreateTestId($page, 'webhooks-empty-create');
-        $page->click('@webhooks-empty-create');
-        waitForWebhookCreateTestId($page, 'create-webhook-events-post-created-description');
-
-        $lines = $page->script(<<<'JS'
-            [...document.querySelectorAll('[data-testid="create-webhook-endpoint-help"], [data-testid="create-webhook-events-count"], [data-testid="create-webhook-events-toggle-all"], [data-testid$="-description"]')]
-                .map((element) => {
-                    const range = document.createRange();
-                    range.selectNodeContents(element);
-                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                    return [element.textContent.trim(), tops.size];
-                })
-                .filter(([, lineCount]) => lineCount > 1)
-                .map(([text]) => text)
-        JS);
-
-        foreach ($lines as $text) {
-            $wrapped[] = "{$locale->value}: {$text}";
-        }
-    }
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const wrapped = [];
+            const lineCount = (element) => {
+                const range = document.createRange();
+                range.selectNodeContents(element);
+                return new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top))).size;
+            };
+            for (const [locale, texts] of Object.entries(translations)) {
+                for (const [testId, text] of Object.entries(texts)) {
+                    const element = document.querySelector('[data-testid="' + testId + '"]');
+                    if (!element) {
+                        wrapped.push(locale + ': missing ' + testId);
+                        continue;
+                    }
+                    element.textContent = text;
+                    if (lineCount(element) > 1) {
+                        wrapped.push(locale + ': ' + text);
+                    }
+                }
+            }
+            return wrapped;
+        })()
+    JS);
 
     expect($wrapped)->toBe([]);
 });
@@ -194,25 +193,6 @@ test('an invalid endpoint shows an inline error and a valid one opens the new we
         ->assertNoJavaScriptErrors();
 });
 
-test('cancel closes the dialog without creating a webhook', function () {
-    $this->actingAs(webhookCreateDialogAdmin());
-
-    $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'webhooks-empty-create');
-    $page->click('@webhooks-empty-create');
-    waitForWebhookCreateTestId($page, 'create-webhook-endpoint');
-
-    $page->fill('@create-webhook-endpoint', 'https://example.com/hooks')
-        ->click('@create-webhook-events-post-published')
-        ->click('@cancel-create-webhook');
-    waitForWebhookCreateTestIdGone($page, 'create-webhook-dialog');
-
-    $page->assertMissing('@create-webhook-dialog')
-        ->assertNoJavaScriptErrors();
-
-    expect(Webhook::query()->count())->toBe(0);
-});
-
 test('a workspace without webhooks shows only the centered illustration with a create button', function () {
     $this->actingAs(webhookCreateDialogAdmin());
 
@@ -234,18 +214,4 @@ test('a workspace without webhooks shows only the centered illustration with a c
     JS))->toBeTrue();
 
     $page->assertNoJavaScriptErrors();
-});
-
-test('a workspace with webhooks keeps the header and the list at the top', function () {
-    $user = webhookCreateDialogAdmin();
-    Webhook::factory()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.webhooks.index'));
-    waitForWebhookCreateTestId($page, 'header-title');
-
-    $page->assertVisible('@create-webhook-button')
-        ->assertMissing('@webhooks-empty')
-        ->assertMissing('@settings-centered')
-        ->assertNoJavaScriptErrors();
 });

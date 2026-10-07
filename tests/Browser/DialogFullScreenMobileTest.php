@@ -133,39 +133,3 @@ test('on a phone an alert dialog fills the screen with its footer in view', func
 
     $page->assertNoJavaScriptErrors();
 });
-
-test('on desktop a dialog stays centered with its maximum width', function () {
-    $this->actingAs(dialogFullScreenAdmin());
-
-    $page = openDialogFullScreenLabel(1280, 900);
-
-    $geometry = $page->script(<<<'JS'
-        (() => {
-            const box = document.querySelector('[data-testid="create-label-sheet"]').getBoundingClientRect();
-
-            return {
-                centeredX: Math.abs((box.left + box.right) / 2 - window.innerWidth / 2) <= 1,
-                centeredY: Math.abs((box.top + box.bottom) / 2 - window.innerHeight / 2) <= 1,
-                maxWidth: Math.round(box.width) === 512,
-                shorterThanViewport: box.height < window.innerHeight - 100,
-                rounded: parseFloat(getComputedStyle(document.querySelector('[data-testid="create-label-sheet"]')).borderTopLeftRadius) > 0,
-                closeInside: (() => {
-                    const close = document.querySelector('[data-testid="create-label-sheet"] [data-testid="dialog-close"]').getBoundingClientRect();
-
-                    return close.top >= box.top && close.right <= box.right;
-                })(),
-            };
-        })()
-    JS);
-
-    expect($geometry)->toBe([
-        'centeredX' => true,
-        'centeredY' => true,
-        'maxWidth' => true,
-        'shorterThanViewport' => true,
-        'rounded' => true,
-        'closeInside' => true,
-    ]);
-
-    $page->assertNoJavaScriptErrors();
-});

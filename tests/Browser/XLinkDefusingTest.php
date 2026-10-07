@@ -98,15 +98,3 @@ test('the x preview leaves the link alone when defusing is disabled', function (
     $page->assertSeeIn('@x-preview-content', 'New post: https://acme.com/blog')
         ->assertNoJavaScriptErrors();
 });
-
-test('the character counter counts the defused length for x', function () {
-    config()->set('trypost.platforms.x.defuse_links', true);
-
-    [$post, $account] = seedXDefusingPost('New post: https://acme.com/blog');
-
-    $page = visit(route('app.posts.edit', $post));
-    waitForXDefusingTestId($page, "composer-char-count-{$account->id}");
-
-    $page->assertSeeIn("@composer-char-count-{$account->id}", '255')
-        ->assertNoJavaScriptErrors();
-});

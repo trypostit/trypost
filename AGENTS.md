@@ -824,7 +824,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. Poll from the page with `$page->script(...)` (as the `waitFor*TestId()` helpers do) — that keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
-- CI runs them in five shards, each serially (`php artisan test tests/Browser --compact --shard=N/5`), against `npm run build` output, so keep them independent of a running dev server and of each other. Several tests still fail on timing under `--parallel`, so do not parallelise a shard until they are fixed; when you do, use `./vendor/bin/pest --parallel`, never `php artisan test --parallel`, which does not start the Playwright server.
+- CI runs them in two shards, each in parallel (`./vendor/bin/pest tests/Browser --compact --parallel --processes=4 --shard=N/2`), against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
 
 ## Array Data Access
 

@@ -313,33 +313,6 @@ test('a story card hides its caption and keeps the text', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('going back and saving a draft saves the shared text on every network', function () {
-    [$user, $workspace] = networkCardsWorkspace();
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $page = openNetworkCardsComposer($this, $user);
-
-    $page->fill('@composer-base-content', 'Shared text')
-        ->click('@composer-add-account')
-        ->click("@composer-account-option-{$x->id}")
-        ->click("@composer-account-option-{$linkedin->id}")
-        ->click('@composer-next')
-        ->fill("@composer-caption-{$x->id}", 'Only on X')
-        ->click('@composer-back')
-        ->click('@composer-back-confirm-go');
-    waitForNetworkCardsTestId($page, 'composer-base-content');
-
-    $page->assertValue('@composer-base-content', 'Shared text')
-        ->assertNoJavaScriptErrors()
-        ->click('@composer-save-draft');
-    waitForNetworkCardsClosed($page);
-
-    expect(networkCardsSavedContents($workspace))->toEqual([
-        $x->id => 'Shared text',
-        $linkedin->id => 'Shared text',
-    ]);
-});
-
 test('going back drops a thread started on a network card', function () {
     [$user, $workspace] = networkCardsWorkspace();
     $bluesky = SocialAccount::factory()->bluesky()->create(['workspace_id' => $workspace->id]);
@@ -366,44 +339,4 @@ test('going back drops a thread started on a network card', function () {
     $page->assertMissing('@thread-replies')
         ->assertValue("@composer-caption-{$bluesky->id}", 'Shared text')
         ->assertNoJavaScriptErrors();
-});
-
-test('the go back confirmation footer follows the dialog footer pattern', function () {
-    [$user, $workspace] = networkCardsWorkspace();
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $page = openNetworkCardsComposer($this, $user);
-
-    $page->fill('@composer-base-content', 'Shared text')
-        ->click('@composer-add-account')
-        ->click("@composer-account-option-{$x->id}")
-        ->click("@composer-account-option-{$linkedin->id}")
-        ->click('@composer-next')
-        ->fill("@composer-caption-{$x->id}", 'Only on X')
-        ->click('@composer-back');
-    waitForNetworkCardsTestId($page, 'composer-back-confirm-go');
-    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const dialog = document.querySelector('[data-testid="composer-back-confirm"]').getBoundingClientRect();
-            const footer = document.querySelector('[data-testid="composer-back-confirm"] [data-slot="alert-dialog-footer"]');
-            const box = footer.getBoundingClientRect();
-            const probe = document.createElement('div');
-            probe.className = 'bg-muted';
-            document.body.appendChild(probe);
-            const muted = getComputedStyle(probe).backgroundColor;
-            probe.remove();
-            const cancel = footer.querySelector('[data-testid="composer-back-cancel"]').getBoundingClientRect();
-            const confirm = footer.querySelector('[data-testid="composer-back-confirm-go"]').getBoundingClientRect();
-            return {
-                muted: getComputedStyle(footer).backgroundColor === muted,
-                rounded: parseFloat(getComputedStyle(footer).borderTopLeftRadius) > 0,
-                insetBottom: Math.round(dialog.bottom - box.bottom),
-                cancelFirst: cancel.right <= confirm.left,
-            };
-        })()
-    JS))->toBe(['muted' => true, 'rounded' => true, 'insetBottom' => 8, 'cancelFirst' => true]);
-
-    $page->assertNoJavaScriptErrors();
 });

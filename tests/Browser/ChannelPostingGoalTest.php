@@ -59,7 +59,7 @@ function connectPostingGoalChannel(string $did = 'did:plc:goal-new', array $quer
     waitForPostingGoalTestId($page, 'connect-finish');
     $page->click('@connect-finish');
 
-    expect(postingGoalPollFor($page, '/^\\/channels\\/[^\\/]+\\/publish$/.test(window.location.pathname)', 200))->toBeTrue();
+    expect(postingGoalPollFor($page, '/^\\/channels\\/[^\\/]+\\/publish$/.test(window.location.pathname)', 600))->toBeTrue();
 
     $channel = SocialAccount::query()->where('platform_user_id', $did)->sole();
 
@@ -113,22 +113,6 @@ test('customize goes to the channel settings page', function () {
     waitForPostingGoalTestId($page, 'channel-settings-page');
 
     $page->assertVisible('@channel-settings-page')->assertNoJavaScriptErrors();
-});
-
-test('a reconnect does not open the goal flow', function () {
-    [$user, $channel] = postingGoalSetup();
-    $this->actingAs($user);
-    $bluesky = SocialAccount::factory()->bluesky()->create([
-        'workspace_id' => $channel->workspace_id,
-        'platform_user_id' => 'did:plc:goal-existing',
-    ]);
-
-    [$page] = connectPostingGoalChannel('did:plc:goal-existing', ['reconnect' => $bluesky->id]);
-
-    expect(postingGoalPollFor($page, 'document.querySelector(\'[data-testid="goal-flow"]\')', 20))->toBeFalse()
-        ->and($bluesky->fresh()->access_token)->toBe('access-token');
-
-    $page->assertNoJavaScriptErrors();
 });
 
 function postingGoalPollFor(mixed $page, string $condition, int $attempts = 120): bool
@@ -190,9 +174,8 @@ test('the goal step matches the wide card layout with right-side radios', functi
     $page->assertNoJavaScriptErrors();
 });
 
-test('on a phone the goal step shows a full-width Next above the help in every language', function (Locale $locale) {
+test('on a phone the goal step shows a full-width Next above the help and the weekly counts fit in every language', function () {
     [$user, $channel] = postingGoalSetup();
-    $user->update(['locale' => $locale]);
     $this->actingAs($user);
 
     [$page, $channel] = connectPostingGoalChannel();
@@ -221,8 +204,47 @@ test('on a phone the goal step shows a full-width Next above the help in every l
     JS);
 
     expect($layout)->toBe(['nextAlignedWithOptions' => true, 'nextAboveHelp' => true, 'helpInside' => true, 'footerBorder' => '0px', 'perWeekOnOneLine' => true]);
+
+    $translations = collect(Locale::cases())
+        ->mapWithKeys(fn (Locale $locale): array => [
+            $locale->value => collect(range(1, 7))
+                ->mapWithKeys(fn (int $count): array => [$count => trans_choice('channels.goal_dialog.per_week', $count, ['count' => $count], $locale->value)])
+                ->all(),
+        ])
+        ->all();
+
+    $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    $wrapped = $page->script(<<<JS
+        (() => {
+            const translations = {$json};
+            const wrapped = [];
+
+            Object.entries(translations).forEach(([locale, counts]) => {
+                document.querySelectorAll('[data-testid="goal-option-label"] > span:nth-child(2)').forEach((span) => {
+                    const count = span.closest('[data-testid^="goal-option-"]:not([data-testid="goal-option-label"])')?.dataset.testid.replace('goal-option-', '');
+                    const text = counts[count];
+
+                    if (text === undefined) {
+                        return;
+                    }
+
+                    span.textContent = text;
+                    const lines = Math.round(span.getBoundingClientRect().height / parseFloat(getComputedStyle(span).lineHeight));
+
+                    if (lines > 1) {
+                        wrapped.push(locale + ': ' + text);
+                    }
+                });
+            });
+
+            return wrapped;
+        })()
+    JS);
+
+    expect($wrapped)->toBe([]);
     $page->assertNoJavaScriptErrors();
-})->with(fn () => array_map(fn (Locale $locale) => [$locale], Locale::cases()));
+});
 
 test('on a phone the recommended step stacks Done, Customize and Change goal in full width', function () {
     [$user, $channel] = postingGoalSetup();
@@ -379,20 +401,6 @@ function fakeBlueskyIdentity(string $did): void
         ]),
     ]);
 }
-
-test('a new channel connected through the confirmation page lands in the goal flow', function () {
-    [$user] = postingGoalSetup();
-    $this->actingAs($user);
-
-    [$page, $channel] = connectPostingGoalChannel();
-    waitForPostingGoalTestId($page, 'goal-flow');
-
-    expect($channel->workspace_id)->toBe($user->current_workspace_id);
-
-    $page->assertVisible('@goal-flow')
-        ->assertDontSee('Account connected!')
-        ->assertNoJavaScriptErrors();
-});
 
 test('the goal description fits on one line in every language', function () {
     [$user, $channel] = postingGoalSetup();

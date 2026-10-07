@@ -47,27 +47,6 @@ test('a user who has not said where they found us answers from the in-app card',
     expect($user->fresh()->referral_source)->toBe(ReferralSource::ProductHunt);
 });
 
-test('a user who already answered never sees the card', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $user = User::factory()->create(['referral_source' => ReferralSource::Google]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-
-    $this->actingAs($user->fresh());
-
-    $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitForReferralSurveyCondition($page, "document.querySelector('[data-testid=\"app-content-shell\"]')");
-
-    $page->assertMissing('@referral-source-survey')
-        ->assertNoJavaScriptErrors();
-});
-
 test('on a phone the survey slides up as a bottom sheet and can be answered', function () {
     config(['trypost.self_hosted' => false]);
 

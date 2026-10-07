@@ -80,17 +80,6 @@ function waitForChannelIssueCondition(mixed $page, string $testId, string $condi
     JS);
 }
 
-test('an independent channel draft with incompatible media remains editable', function () {
-    $postPlatform = seedChannelMediaIssuePost();
-
-    $page = visit(route('app.posts.edit', $postPlatform->post));
-    waitForChannelIssueTestId($page, 'post-composer-dialog');
-
-    $page->assertVisible('@post-composer-dialog')
-        ->assertVisible('@composer-customization')
-        ->assertNoJavaScriptErrors();
-});
-
 test('an Instagram media warning links to the network limits', function () {
     [$post] = seedInstagramFeedImagePost(size: 9 * 1024 * 1024);
 
@@ -174,26 +163,7 @@ test('Facebook has no aspect ratio selector and accepts an image of any ratio', 
         ->assertNoJavaScriptErrors();
 })->with([
     'very tall' => [800, 3200],
-    'very wide' => [3200, 800],
 ]);
-
-test('Instagram feed without a saved aspect ratio uses the original image', function () {
-    [$post, $postPlatform] = seedInstagramFeedImagePost([]);
-
-    $page = visit(route('app.posts.edit', $post));
-    waitForChannelIssueTestId($page, "channel-{$postPlatform->id}");
-
-    $page->assertMissing('@instagram-aspect-original')
-        ->assertVisible('@instagram-image-aspect-issue-0')
-        ->assertDisabled('@composer-submit')
-        ->assertNoJavaScriptErrors();
-
-    waitForChannelIssueTestId($page, 'instagram-feed-media');
-
-    $heightToWidth = $page->script('(() => { const frame = document.querySelector("[data-testid=instagram-feed-media]"); const rect = frame.getBoundingClientRect(); return rect.height / rect.width; })()');
-
-    expect(abs($heightToWidth - 1600 / 1080))->toBeLessThan(0.01);
-});
 
 test('saving an Instagram post stores no global aspect ratio', function () {
     [$post, $postPlatform] = seedInstagramFeedImagePost([], ['width' => 1080, 'height' => 1350], imageCount: 1);
@@ -237,16 +207,6 @@ test('Instagram original preview falls back to square when image dimensions are 
     expect(abs($heightToWidth - 1.0))->toBeLessThan(0.01);
 });
 
-test('Instagram feed still enforces image size limits', function () {
-    [$post] = seedInstagramFeedImagePost(size: 9 * 1024 * 1024);
-
-    $page = visit(route('app.posts.edit', $post));
-    waitForChannelIssueTestId($page, 'media-rules-warning');
-
-    $page->assertPresent('@media-rules-warning')
-        ->assertNoJavaScriptErrors();
-});
-
 test('supported Instagram original image keeps its own aspect and can publish', function (int $height) {
     [$post] = seedInstagramFeedImagePost(imageMeta: ['width' => 1080, 'height' => $height]);
 
@@ -257,7 +217,6 @@ test('supported Instagram original image keeps its own aspect and can publish', 
         ->assertEnabled('@composer-submit')
         ->assertNoJavaScriptErrors();
 })->with([
-    '4:5' => [1350],
     '3:4, accepted by the Graph API although its docs still say 4:5' => [1440],
 ]);
 

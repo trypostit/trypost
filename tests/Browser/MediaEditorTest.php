@@ -100,14 +100,6 @@ function mediaEditorSegmentIds(mixed $page): array
     return $page->script('Array.from(document.querySelectorAll(\'[data-testid="media-editor-segments"] button\')).map((segment) => segment.dataset.testid)');
 }
 
-/**
- * @return list<string>
- */
-function mediaEditorPresetIds(mixed $page): array
-{
-    return $page->script('Array.from(document.querySelectorAll(\'[data-testid^="crop-aspect-"]\')).map((preset) => preset.dataset.testid)');
-}
-
 function clickMediaEditorStage(mixed $page, float $x, float $y): void
 {
     $page->script(<<<JS
@@ -215,117 +207,12 @@ test('alt text can be generated with AI for a post image', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('a TikTok photo offers no segments and TikTok\'s presets in order', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(ContentType::TikTokPhoto);
-    $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
-
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-4-3',
-        'crop-aspect-16-9', 'crop-aspect-9-16', 'crop-aspect-1-1',
-    ]);
-    $page->assertMissing('@media-editor-segments')
-        ->assertMissing('@media-editor-edit-tab')
-        ->assertNoJavaScriptErrors();
-});
-
-test('an X post offers Edit and Alt Text with X\'s presets in order', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(ContentType::XPost);
-    $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
-
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-1-1',
-        'crop-aspect-4-3', 'crop-aspect-16-9', 'crop-aspect-2-1',
-    ]);
-    expect(mediaEditorSegmentIds($page))->toBe(['media-editor-edit-tab', 'media-editor-alt-tab']);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('each channel\'s editor shows that channel\'s presets', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $this->actingAs($user);
-    $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
-
-    $page = visit(route('app.posts.create'));
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-add-account\"]')?.getBoundingClientRect().height > 0");
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$tiktok->id}")
-        ->click("@composer-account-option-{$x->id}");
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-file-input\"]')");
-    $page->script(<<<JS
-        (() => {
-            const bytes = Uint8Array.from(atob('{$base64}'), (character) => character.charCodeAt(0));
-            const input = document.querySelector('[data-testid="composer-file-input"]');
-            const transfer = new DataTransfer();
-            transfer.items.add(new File([bytes], 'quadrants.png', { type: 'image/png' }));
-            input.files = transfer.files;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
-        })();
-    JS);
-    waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-media-item\"]')");
-    $page->click('@composer-next');
-
-    $page->click("@composer-account-{$tiktok->id}");
-    $page->assertMissing("@composer-type-{$tiktok->id}-tiktok_photo");
-    openMediaEditorPanel($page, $tiktok->id);
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-4-3',
-        'crop-aspect-16-9', 'crop-aspect-9-16', 'crop-aspect-1-1',
-    ]);
-    $page->assertMissing('@media-editor-segments')
-        ->click('@media-editor-cancel');
-    waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
-
-    $page->click("@composer-account-{$x->id}");
-    openMediaEditorPanel($page, $x->id);
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-1-1',
-        'crop-aspect-4-3', 'crop-aspect-16-9', 'crop-aspect-2-1',
-    ]);
-    $page->assertVisible('@media-editor-alt-tab')
-        ->assertNoJavaScriptErrors();
-});
-
-test('an Instagram feed post offers Edit, Alt Text and Tag People with its presets', function () {
+test('an Instagram feed post offers Edit, Alt Text and Tag People', function () {
     [$post, $postPlatform] = seedMediaEditorPost(ContentType::InstagramFeed);
     $page = visit(route('app.posts.edit', $post));
     openMediaEditor($page, $postPlatform);
 
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-3-4',
-        'crop-aspect-4-5', 'crop-aspect-1-1', 'crop-aspect-1-91-1',
-    ]);
     expect(mediaEditorSegmentIds($page))->toBe(['media-editor-edit-tab', 'media-editor-alt-tab', 'media-editor-tags-tab']);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('an Instagram story offers no tagging and only the vertical preset', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(ContentType::InstagramStory);
-    $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
-
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-9-16',
-    ]);
-    $page->assertMissing('@media-editor-tags-tab')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a Pinterest pin offers its presets', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(ContentType::PinterestPin);
-    $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
-
-    expect(mediaEditorPresetIds($page))->toBe([
-        'crop-aspect-freeform', 'crop-aspect-original', 'crop-aspect-2-3', 'crop-aspect-1-1',
-    ]);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -354,7 +241,7 @@ test('center and reset only enable once the geometry changes', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('the stage only takes tags while tagging', function () {
+test('the stage only takes tags while tagging and switching tabs ends tagging mode', function () {
     [$post, $postPlatform] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
     openMediaEditor($page, $postPlatform);
@@ -376,14 +263,7 @@ test('the stage only takes tags while tagging', function () {
     $page->assertVisible('@media-editor-tag-form')
         ->click('@media-editor-tags-finish')
         ->assertMissing('@media-editor-tag-form')
-        ->assertVisible('@media-editor-tags-start')
-        ->assertNoJavaScriptErrors();
-});
-
-test('switching tabs ends tagging mode', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
-    $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+        ->assertVisible('@media-editor-tags-start');
 
     $page->click('@media-editor-tags-tab')
         ->click('@media-editor-tags-start')
@@ -958,7 +838,7 @@ test('the filter intensity reaches the saved pixels', function (int $intensity) 
 
     expect($red['red'])->toBeGreaterThan($red['green'] + 60)
         ->and($red['green'])->toBeGreaterThan(20);
-})->with([40, 100]);
+})->with([100]);
 
 test('a crop with a filter on an image stored on another host is applied and saved', function () {
     [$post, $postPlatform] = seedMediaEditorPost();

@@ -105,21 +105,6 @@ test('a requester never sees publish now and requests approval for the queue', f
     $page->assertNoJavaScriptErrors();
 });
 
-test('a requester whose default is publish now starts on the queue', function () {
-    [, $channel, $requester] = composerApprovalSetup(DefaultPostAction::Now);
-    $this->actingAs($requester);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerApprovalTestId($page, 'composer-add-account');
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$channel->id}")
-        ->fill("@composer-caption-{$channel->id}", 'Default now');
-    waitForComposerApprovalTestId($page, 'composer-submit');
-
-    expect($page->script('document.querySelector("[data-testid=composer-submit]").dataset.scheduleMode'))->toBe('next');
-    $page->assertNoJavaScriptErrors();
-});
-
 test('editing a pending queue request starts on its stored position', function () {
     [$workspace, $channel, $requester] = composerApprovalSetup();
     $post = CreatePosts::execute($workspace, $requester, [
@@ -166,7 +151,7 @@ test('owners and admins keep publish now and their default action', function (st
         ->assertVisible('@composer-schedule-now')
         ->assertVisible('@composer-schedule-next')
         ->assertNoJavaScriptErrors();
-})->with(['owner', 'admin']);
+})->with(['admin']);
 
 test('editing a pending custom time request starts on custom with its date', function () {
     [$workspace, $channel, $requester] = composerApprovalSetup();

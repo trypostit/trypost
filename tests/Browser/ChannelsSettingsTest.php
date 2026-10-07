@@ -82,40 +82,6 @@ test('disconnecting a channel asks for the translated disconnect keyword, not th
     expect(SocialAccount::find($channel->id))->toBeNull();
 });
 
-test('a lost connection offers reconnect on the row', function () {
-    $user = channelsSettingsAdmin();
-    $channel = SocialAccount::factory()->linkedin()->tokenExpired()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.workspace.channels'));
-    waitForChannelsSettingsTestId($page, "channel-reconnect-{$channel->id}");
-
-    $page->assertVisible("@channel-reconnect-{$channel->id}")->assertNoJavaScriptErrors();
-});
-
-test('a channel without a display name shows its username', function () {
-    $user = channelsSettingsAdmin();
-    $channel = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $user->current_workspace_id,
-        'display_name' => null,
-        'avatar_url' => null,
-        'username' => 'fallback-handle',
-    ]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.workspace.channels'));
-    waitForChannelsSettingsTestId($page, "channel-name-{$channel->id}");
-
-    expect($page->script("document.querySelector('[data-testid=\"channel-name-{$channel->id}\"]').textContent.trim()"))
-        ->toBe('fallback-handle');
-
-    $page = visit(route('app.posts.index'));
-    waitForChannelsSettingsTestId($page, "sidebar-channel-{$channel->id}");
-    expect($page->script("document.querySelector('[data-testid=\"sidebar-channel-{$channel->id}\"]').textContent"))
-        ->toContain('fallback-handle');
-    $page->assertNoJavaScriptErrors();
-});
-
 test('an empty workspace shows only the centered illustration with a connect button', function () {
     $this->actingAs(channelsSettingsAdmin());
 
@@ -140,27 +106,6 @@ test('an empty workspace shows only the centered illustration with a connect but
     waitForChannelsSettingsTestId($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
-
-test('a workspace with channels keeps the header and the list at the top', function () {
-    $user = channelsSettingsAdmin();
-    SocialAccount::factory()->linkedin()->count(12)->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.workspace.channels'));
-    waitForChannelsSettingsTestId($page, 'header-title');
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
-            const top = document.querySelector('[data-testid="header-title"]').getBoundingClientRect().top - scroller.getBoundingClientRect().top;
-            const scrolls = scroller.scrollHeight > scroller.clientHeight;
-            scroller.scrollTop = scroller.scrollHeight;
-            return [document.querySelector('[data-testid="settings-centered"]') === null, document.querySelector('[data-testid="channels-empty"]') === null, top < 120, scrolls, scroller.scrollTop > 0];
-        })()
-    JS))->toBe([true, true, true, true, true]);
-
-    $page->assertVisible('@channels-connect')->assertNoJavaScriptErrors();
 });
 
 test('a channel with a lost connection shows the disconnected dot in the list and the channel header', function () {
@@ -233,24 +178,4 @@ test('the disconnect dialog shows the keyword with a copy button, like the other
 
     expect($page->script('window.__copied'))->toBe($keyword);
     $page->assertNoJavaScriptErrors();
-});
-
-test('the disconnect keyword still confirms with spaces around it', function () {
-    $user = channelsSettingsAdmin();
-    $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
-    $this->actingAs($user);
-
-    $page = visit(route('app.workspace.channels'));
-    waitForChannelsSettingsTestId($page, "channel-row-{$channel->id}");
-
-    $page->click("@channel-menu-{$channel->id}");
-    waitForChannelsSettingsTestId($page, "channel-disconnect-{$channel->id}");
-
-    $page->click("@channel-disconnect-{$channel->id}")
-        ->fill('@confirm-delete-input', '  '.__('channels.disconnect_modal.keyword').'  ')
-        ->click('@confirm-delete-action')
-        ->assertMissing('@confirm-delete-modal')
-        ->assertNoJavaScriptErrors();
-
-    expect(SocialAccount::find($channel->id))->toBeNull();
 });

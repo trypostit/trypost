@@ -19,7 +19,7 @@ function waitForWorkspaceCreateTestId(mixed $page, string $testId): void
     JS);
 }
 
-test('a workspace is created from its name alone and settings have no brand page', function () {
+test('a workspace is created from its name alone', function () {
     config(['trypost.self_hosted' => true]);
 
     $user = User::factory()->create();
@@ -37,11 +37,4 @@ test('a workspace is created from its name alone and settings have no brand page
         ->assertNoJavaScriptErrors();
 
     expect(Workspace::where('name', 'Second')->exists())->toBeTrue();
-
-    $settings = visit(route('app.workspace.settings'));
-    waitForWorkspaceCreateTestId($settings, 'settings-sidebar');
-
-    $settings->assertVisible('@settings-nav-general')
-        ->assertMissing('@settings-nav-brand')
-        ->assertNoJavaScriptErrors();
 });

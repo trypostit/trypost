@@ -213,7 +213,7 @@ function openInstagramConnectStep(): mixed
     return $page;
 }
 
-test('the instagram step offers the professional card and the facebook link only, without a logo row', function () {
+test('the instagram step offers the professional card, links its help, opens the facebook requirements and asks before closing', function () {
     $this->actingAs(connectDialogAdmin());
 
     $page = openInstagramConnectStep();
@@ -230,23 +230,32 @@ test('the instagram step offers the professional card and the facebook link only
     $dialogText = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').textContent');
 
     expect($dialogText)->not->toContain('Personal')->not->toContain('Notification');
-});
 
-test('connect to instagram leaves for the instagram login', function () {
-    $this->actingAs(connectDialogAdmin());
-    stubConnectDialogProviders();
+    $page->click('@instagram-connect-help');
+    waitForConnectDialogTestId($page, 'instagram-connect-help-convert');
 
-    $page = openInstagramConnectStep();
-    $page->click('@instagram-connect-standalone');
+    $links = $page->script(<<<'JS'
+        (() => ['account-type', 'convert'].map((key) => {
+            const link = document.querySelector(`[data-testid="instagram-connect-help-${key}"]`);
 
-    expect(connectDialogReachedProvider($page))->toBe('instagram');
-    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
-});
+            return { host: new URL(link.href).host, target: link.target, text: link.textContent.trim() };
+        }))();
+    JS);
 
-test('the facebook link opens the requirements step without starting oauth and back returns', function () {
-    $this->actingAs(connectDialogAdmin());
+    expect($links)->toBe([
+        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.account_type')],
+        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.convert')],
+    ]);
+    $page->keys('@instagram-connect-help', 'Escape');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (!document.querySelector('[data-testid="instagram-connect-help-convert"]')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
 
-    $page = openInstagramConnectStep();
     $page->click('@instagram-connect-facebook');
     waitForConnectDialogTestId($page, 'instagram-facebook-requirements');
 
@@ -261,6 +270,37 @@ test('the facebook link opens the requirements step without starting oauth and b
     $page->assertVisible('@instagram-connect-professional')
         ->assertMissing('@instagram-facebook-requirements')
         ->assertNoJavaScriptErrors();
+
+    $page->click('@dialog-close');
+    waitForConnectDialogTestId($page, 'connect-channel-exit-confirm');
+
+    $page->assertSeeIn('@connect-channel-exit-confirm', trans('channels.dialog.exit_confirm.title', ['network' => 'Instagram']));
+
+    $page->click('@connect-channel-exit-continue');
+    waitForConnectDialogTestId($page, 'instagram-connect-professional');
+
+    $page->assertMissing('@connect-channel-exit-confirm')
+        ->assertVisible('@instagram-connect-professional')
+        ->assertNoJavaScriptErrors();
+
+    $page->click('@dialog-close');
+    waitForConnectDialogTestId($page, 'connect-channel-exit-leave');
+    $page->click('@connect-channel-exit-leave');
+
+    $page->assertMissing('@connect-channel-exit-confirm')
+        ->assertMissing('@connect-channel-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('connect to instagram leaves for the instagram login', function () {
+    $this->actingAs(connectDialogAdmin());
+    stubConnectDialogProviders();
+
+    $page = openInstagramConnectStep();
+    $page->click('@instagram-connect-standalone');
+
+    expect(connectDialogReachedProvider($page))->toBe('instagram');
+    $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
 test('connect through facebook leaves for the facebook login', function () {
@@ -287,58 +327,6 @@ test('connect through facebook leaves for the facebook login', function () {
     $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
-test('the instagram help menu links to the instagram help center in a new tab', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openInstagramConnectStep();
-    $page->click('@instagram-connect-help');
-    waitForConnectDialogTestId($page, 'instagram-connect-help-convert');
-
-    $links = $page->script(<<<'JS'
-        (() => ['account-type', 'convert'].map((key) => {
-            const link = document.querySelector(`[data-testid="instagram-connect-help-${key}"]`);
-
-            return { host: new URL(link.href).host, target: link.target, text: link.textContent.trim() };
-        }))();
-    JS);
-
-    expect($links)->toBe([
-        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.account_type')],
-        ['host' => 'help.instagram.com', 'target' => '_blank', 'text' => trans('accounts.instagram_connect.help.convert')],
-    ]);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('closing a later step asks for confirmation and continue keeps the step', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openInstagramConnectStep();
-    $page->click('@dialog-close');
-    waitForConnectDialogTestId($page, 'connect-channel-exit-confirm');
-
-    $page->assertSeeIn('@connect-channel-exit-confirm', trans('channels.dialog.exit_confirm.title', ['network' => 'Instagram']));
-
-    $page->click('@connect-channel-exit-continue');
-    waitForConnectDialogTestId($page, 'instagram-connect-professional');
-
-    $page->assertMissing('@connect-channel-exit-confirm')
-        ->assertVisible('@instagram-connect-professional')
-        ->assertNoJavaScriptErrors();
-});
-
-test('exiting from the confirmation closes the connect dialog', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openInstagramConnectStep();
-    $page->click('@dialog-close');
-    waitForConnectDialogTestId($page, 'connect-channel-exit-leave');
-    $page->click('@connect-channel-exit-leave');
-
-    $page->assertMissing('@connect-channel-exit-confirm')
-        ->assertMissing('@connect-channel-dialog')
-        ->assertNoJavaScriptErrors();
-});
-
 function openTelegramConnectStep(): mixed
 {
     $page = visit(route('app.workspace.channels'));
@@ -352,7 +340,7 @@ function openTelegramConnectStep(): mixed
     return $page;
 }
 
-test('the telegram step shows no logo row, the steps and the waiting status', function () {
+test('the telegram step shows its instructions, copies and regenerates the command, links the help and asks before closing', function () {
     config()->set('trypost.platforms.telegram.bot_username', 'TryPost_Bot');
     $this->actingAs(connectDialogAdmin());
 
@@ -382,13 +370,8 @@ test('the telegram step shows no logo row, the steps and the waiting status', fu
 
     $live = $page->script('document.querySelector(\'[data-testid="telegram-connect-waiting"]\').parentElement.getAttribute("aria-live")');
     expect($live)->toBe('polite');
-});
 
-test('copying the telegram command shows an inline copied state without a toast', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openTelegramConnectStep();
-    $command = $page->script('document.querySelector(\'[data-testid="telegram-connect-command"]\').textContent.trim()');
+    $copiedCommand = $page->script('document.querySelector(\'[data-testid="telegram-connect-command"]\').textContent.trim()');
 
     $page->click('@telegram-connect-copy');
     waitForConnectDialogTestId($page, 'telegram-connect-copied');
@@ -397,14 +380,9 @@ test('copying the telegram command shows an inline copied state without a toast'
         ->assertMissing('@telegram-connect-copy')
         ->assertNoJavaScriptErrors();
 
-    expect($page->script('window.__copied'))->toBe([$command])
+    expect($page->script('window.__copied'))->toBe([$copiedCommand])
         ->and($page->script('document.querySelectorAll("[data-sonner-toast]").length'))->toBe(0);
-});
 
-test('generating a new telegram command replaces the previous one', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openTelegramConnectStep();
     $first = $page->script('document.querySelector(\'[data-testid="telegram-connect-command"]\').textContent.trim()');
 
     $page->click('@telegram-connect-regenerate');
@@ -422,12 +400,7 @@ test('generating a new telegram command replaces the previous one', function () 
 
     expect($second)->toStartWith('/connect ')->not->toBe($first);
     $page->assertVisible('@telegram-connect-waiting')->assertNoJavaScriptErrors();
-});
 
-test('the telegram help menu links to the official telegram faq in a new tab', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = openTelegramConnectStep();
     $page->click('@telegram-connect-help');
     waitForConnectDialogTestId($page, 'telegram-connect-help-bot-privacy');
 
@@ -445,17 +418,16 @@ test('the telegram help menu links to the official telegram faq in a new tab', f
         ['host' => 'telegram.org', 'target' => '_blank', 'text' => trans('accounts.telegram.help.bot_privacy')],
     ]);
     $page->assertNoJavaScriptErrors();
-});
 
-test('escape on the telegram step asks for confirmation too', function () {
-    $this->actingAs(connectDialogAdmin());
-
-    $page = visit(route('app.workspace.channels'));
-    waitForConnectDialogTestId($page, 'channels-empty-connect');
-    $page->click('@channels-empty-connect');
-    waitForConnectDialogTestId($page, 'connect-channel-telegram');
-    $page->click('@connect-channel-telegram');
-    waitForConnectDialogTestId($page, 'connect-channel-back');
+    $page->keys('@telegram-connect-help', 'Escape');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (!document.querySelector('[data-testid="telegram-connect-help-bot-privacy"]')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
 
     $page->keys('@connect-channel-back', 'Escape');
     waitForConnectDialogTestId($page, 'connect-channel-exit-confirm');

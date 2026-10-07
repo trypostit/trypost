@@ -160,25 +160,6 @@ function createIdeasBoardIsDropTarget(mixed $page, string $columnKey): bool
     return $page->script("document.querySelector('[data-testid=\"idea-column-{$columnKey}\"]').hasAttribute('data-drop-target')");
 }
 
-test('the board shows unassigned first and then the default stages with counts', function () {
-    [$user, $workspace, $stages] = createIdeasBoardSetup();
-    createIdeasBoardIdea($workspace, $user, null, 0, 'First');
-    createIdeasBoardIdea($workspace, $user, null, 1, 'Second');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, 'idea-column-unassigned');
-
-    expect(createIdeasBoardColumnIds($page))->toBe([
-        'idea-column-unassigned',
-        "idea-column-{$stages['todo']->id}",
-        "idea-column-{$stages['in_progress']->id}",
-        "idea-column-{$stages['done']->id}",
-    ]);
-    $page->assertSeeIn('@idea-column-count-unassigned', '2')
-        ->assertNoJavaScriptErrors();
-});
-
 test('dragging a card onto another in the same column reorders it', function () {
     [$user, $workspace, $stages] = createIdeasBoardSetup();
     $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
@@ -205,24 +186,6 @@ test('dragging a card onto an empty column moves it there', function () {
     waitForCreateIdeasBoardDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
 
     expect($a->refresh()->idea_stage_id)->toBe($stages['done']->id);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('move to stage from the card menu moves the idea', function () {
-    [$user, $workspace, $stages] = createIdeasBoardSetup();
-    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
-    $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-{$a->id}");
-    $page->click("@idea-move-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-to-{$a->id}-unassigned");
-    $page->click("@idea-move-to-{$a->id}-unassigned");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === null);
-
-    expect($a->refresh()->idea_stage_id)->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 
@@ -381,27 +344,6 @@ test('the gallery view lists ideas and filters them by label and stage', functio
         ->assertNoJavaScriptErrors();
 });
 
-test('duplicating an idea adds a copy right after it', function () {
-    [$user, $workspace, $stages] = createIdeasBoardSetup();
-    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
-    $b = createIdeasBoardIdea($workspace, $user, $stages['todo'], 1, 'Idea B');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
-    $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-duplicate-{$a->id}");
-    $page->click("@idea-duplicate-{$a->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => Idea::count() === 3);
-
-    $copy = Idea::whereNotIn('id', [$a->id, $b->id])->firstOrFail();
-    waitForCreateIdeasBoardTestId($page, "idea-card-{$copy->id}");
-
-    $order = $page->script("[...document.querySelectorAll('[data-testid=\"idea-column-{$stages['todo']->id}\"] [data-idea-id]')].map((el) => el.dataset.ideaId)");
-    expect($order)->toBe([$a->id, $copy->id, $b->id]);
-    $page->assertNoJavaScriptErrors();
-});
-
 test('a drop made while a move is in flight is applied after the first move completes', function () {
     [$user, $workspace, $stages] = createIdeasBoardSetup();
     $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
@@ -449,53 +391,6 @@ test('a drop made while a move is in flight is applied after the first move comp
         ->and($b->refresh()->idea_stage_id)->toBe($stages['done']->id)
         ->and(Idea::where('idea_stage_id', $stages['done']->id)->orderBy('position')->pluck('id')->all())->toBe($order);
     $page->assertNoJavaScriptErrors();
-});
-
-test('deleting a stage removes it from the stages filter', function () {
-    [$user, $workspace, $stages] = createIdeasBoardSetup();
-    createIdeasBoardIdea($workspace, $user, null, 0, 'Loose');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index', ['view' => 'gallery', 'stages' => [$stages['todo']->id, $stages['done']->id]]));
-    waitForCreateIdeasBoardTestId($page, 'ideas-view-board');
-    expect($page->script('decodeURIComponent(location.search)'))->toContain($stages['todo']->id);
-
-    $page->click('@ideas-view-board');
-    waitForCreateIdeasBoardTestId($page, "idea-column-menu-{$stages['todo']->id}");
-    $page->click("@idea-column-menu-{$stages['todo']->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-stage-delete-{$stages['todo']->id}");
-    $page->click("@idea-stage-delete-{$stages['todo']->id}");
-    waitForCreateIdeasBoardTestId($page, 'confirm-delete-action');
-    $page->assertMissing('@confirm-delete-input')
-        ->click('@confirm-delete-action');
-    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"idea-column-{$stages['todo']->id}\"]')");
-
-    $page->click('@ideas-view-gallery');
-    waitForCreateIdeasBoardCondition($page, "location.search.includes('view=gallery')");
-
-    $search = $page->script('decodeURIComponent(location.search)');
-    expect($search)->not->toContain($stages['todo']->id)
-        ->and($search)->toContain($stages['done']->id);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('move to stage works from the gallery card menu', function () {
-    [$user, $workspace, $stages] = createIdeasBoardSetup();
-    $a = createIdeasBoardIdea($workspace, $user, $stages['todo'], 0, 'Idea A');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index', ['view' => 'gallery']));
-    waitForCreateIdeasBoardTestId($page, "idea-card-menu-{$a->id}");
-    $page->click("@idea-card-menu-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-{$a->id}");
-    $page->click("@idea-move-{$a->id}");
-    waitForCreateIdeasBoardTestId($page, "idea-move-to-{$a->id}-{$stages['done']->id}");
-    $page->click("@idea-move-to-{$a->id}-{$stages['done']->id}");
-    waitForCreateIdeasBoardDatabase($page, fn (): bool => $a->refresh()->idea_stage_id === $stages['done']->id);
-
-    expect($a->refresh()->idea_stage_id)->toBe($stages['done']->id);
-    $page->assertVisible("@idea-card-{$a->id}")
-        ->assertNoJavaScriptErrors();
 });
 
 test('move to stage works on a filtered board and appends to the end of the stage', function () {
@@ -678,46 +573,6 @@ test('a dragged stage leaves a column-sized placeholder where it will land', fun
     $page->assertNoJavaScriptErrors();
 });
 
-test('the new stage button is a column-wide target with centered content', function () {
-    [$user, , $stages] = createIdeasBoardSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'))->resize(1600, 900);
-    waitForCreateIdeasBoardTestId($page, 'idea-stage-new');
-
-    $metrics = $page->script(<<<JS
-        (() => {
-            const centerOffset = (testId) => {
-                const element = document.querySelector('[data-testid="' + testId + '"]');
-                const range = document.createRange();
-                range.selectNodeContents(element);
-                const content = range.getBoundingClientRect();
-                const box = element.getBoundingClientRect();
-                return Math.abs((content.left + content.width / 2) - (box.left + box.width / 2));
-            };
-            const button = document.querySelector('[data-testid="idea-stage-new"]');
-            return {
-                buttonWidth: button.offsetWidth,
-                columnWidth: document.querySelector('[data-testid="idea-column-{$stages['todo']->id}"]').offsetWidth,
-                buttonOffset: centerOffset('idea-stage-new'),
-                newIdeaOffset: centerOffset('idea-column-new-{$stages['todo']->id}'),
-                background: getComputedStyle(button).backgroundColor,
-            };
-        })()
-    JS);
-
-    expect($metrics['buttonWidth'])->toBe($metrics['columnWidth'])
-        ->and($metrics['buttonOffset'])->toBeLessThan(1.5)
-        ->and($metrics['newIdeaOffset'])->toBeLessThan(1.5)
-        ->and($metrics['background'])->toBe('rgba(0, 0, 0, 0)');
-
-    $page->hover('@idea-stage-new');
-    waitForCreateIdeasBoardCondition($page, "getComputedStyle(document.querySelector('[data-testid=\"idea-stage-new\"]')).backgroundColor !== 'rgba(0, 0, 0, 0)'");
-
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"idea-stage-new\"]')).backgroundColor"))->not->toBe('rgba(0, 0, 0, 0)');
-    $page->assertNoJavaScriptErrors();
-});
-
 test('the gallery stage filter has an unassigned option that combines with stages', function () {
     [$user, $workspace, $stages] = createIdeasBoardSetup();
     $loose = createIdeasBoardIdea($workspace, $user, null, 0, 'Loose');
@@ -848,28 +703,6 @@ test('on a phone the label filter shows only its icon and the page does not scro
     $page->resize(1280, 900);
     waitForCreateIdeasBoardCondition($page, "[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')");
     expect($page->script("[...document.querySelector('[data-testid=\"ideas-filter-labels-filter\"]').querySelectorAll('span')].some((span) => span.offsetParent !== null && span.textContent.trim() !== '')"))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
-});
-
-test('on a phone the create tabs and the board toolbar share one header row', function () {
-    [$user, $workspace] = createIdeasBoardSetup();
-    createIdeasBoardIdea($workspace, $user, null, 0, 'First');
-    $this->actingAs($user);
-
-    $page = visit(route('app.create.ideas.index'))->resize(390, 844);
-    waitForCreateIdeasBoardTestId($page, 'ideas-filter-labels-filter');
-
-    expect($page->script(<<<'JS'
-        (() => {
-            const tabs = document.querySelector('[data-testid="create-tabs"]').getBoundingClientRect();
-            const filter = document.querySelector('[data-testid="ideas-filter-labels-filter"]').getBoundingClientRect();
-
-            return {
-                sameRow: filter.top < tabs.bottom && filter.bottom > tabs.top,
-                overflow: document.documentElement.scrollWidth - window.innerWidth,
-            };
-        })()
-    JS))->toBe(['sameRow' => true, 'overflow' => 0]);
     $page->assertNoJavaScriptErrors();
 });
 

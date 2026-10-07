@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Queue;
 
 function waitForApprovalsTestId(mixed $page, string $testId): void
@@ -38,34 +39,6 @@ function waitForApprovalsGone(mixed $page, string $testId): void
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
-    JS);
-}
-
-/**
- * Labels of the card footer actions that wrap onto a second line or spill
- * past the card, for every card on the page.
- *
- * @return list<string>
- */
-function approvalsFooterProblems(mixed $page): array
-{
-    return $page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid^="post-actions-"]')].flatMap((actions) => {
-            const card = actions.closest('[data-testid^="post-card-"]').getBoundingClientRect();
-            const problems = [];
-            if (actions.getBoundingClientRect().right > card.right + 1) problems.push(`overflow: ${actions.textContent.trim()}`);
-            actions.querySelectorAll('button, a').forEach((control) => {
-                const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
-                while (walker.nextNode()) {
-                    if (!walker.currentNode.textContent.trim()) continue;
-                    const range = document.createRange();
-                    range.selectNodeContents(walker.currentNode);
-                    const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
-                    if (tops.size > 1) problems.push(`wrap: ${control.textContent.trim()}`);
-                }
-            });
-            return problems;
-        })
     JS);
 }
 
@@ -218,25 +191,95 @@ test('the approval card footer does not wrap or overflow in any language', funct
         'scheduled_at' => now()->addDay()->startOfHour()->toIso8601String(),
     ]);
 
+    $keysByText = [];
+
+    foreach (glob(lang_path('en/*.php')) ?: [] as $file) {
+        foreach (Arr::dot(require $file) as $key => $value) {
+            if (is_string($value)) {
+                $keysByText[$value] ??= basename($file, '.php').".{$key}";
+            }
+        }
+    }
+
     $problems = [];
 
     foreach ([$owner, $requester] as $user) {
-        foreach (Locale::cases() as $locale) {
-            $user->update(['locale' => $locale]);
-            $this->actingAs($user->fresh());
+        $this->actingAs($user);
 
-            $page = visit(route('app.posts.index', ['tab' => 'approvals']))->resize(1440, 900);
-            waitForApprovalsTestId($page, "post-actions-{$queued->id}");
+        $page = visit(route('app.posts.index', ['tab' => 'approvals']))->resize(1440, 900);
+        waitForApprovalsTestId($page, "post-actions-{$queued->id}");
 
-            foreach (approvalsFooterProblems($page) as $problem) {
-                $problems[] = "{$user->name} {$locale->value} desktop {$problem}";
+        $texts = array_values(array_unique($page->script("[...document.querySelectorAll('[data-testid^=\"post-actions-\"] button, [data-testid^=\"post-actions-\"] a')].map((control) => control.textContent.trim()).filter(Boolean)")));
+        $translations = [];
+
+        foreach ($texts as $text) {
+            $key = $keysByText[$text] ?? null;
+
+            if ($key === null) {
+                continue;
             }
 
-            $page->resize(390, 844);
-            waitForApprovalsTestId($page, "post-actions-{$queued->id}");
+            foreach (Locale::cases() as $locale) {
+                $translations[$text][$locale->value] = __($key, [], $locale->value);
+            }
+        }
 
-            foreach (approvalsFooterProblems($page) as $problem) {
-                $problems[] = "{$user->name} {$locale->value} phone {$problem}";
+        expect($translations)->not->toBeEmpty();
+
+        $json = json_encode($translations, JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        foreach ([1440, 390] as $width) {
+            $page->resize($width, 900);
+
+            $found = $page->script(<<<JS
+                (() => {
+                    const translations = {$json};
+                    const failures = [];
+                    const controls = [...document.querySelectorAll('[data-testid^="post-actions-"] button, [data-testid^="post-actions-"] a')];
+
+                    const check = (label) => {
+                        document.querySelectorAll('[data-testid^="post-actions-"]').forEach((actions) => {
+                            const card = actions.closest('[data-testid^="post-card-"]').getBoundingClientRect();
+                            if (actions.getBoundingClientRect().right > card.right + 1) failures.push('overflow ' + label);
+                        });
+                        controls.forEach((control) => {
+                            const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
+                            while (walker.nextNode()) {
+                                if (!walker.currentNode.textContent.trim()) continue;
+                                const range = document.createRange();
+                                range.selectNodeContents(walker.currentNode);
+                                const tops = new Set([...range.getClientRects()].filter((rect) => rect.width > 0).map((rect) => Math.round(rect.top)));
+                                if (tops.size > 1) failures.push('wrap ' + label + ': ' + control.textContent.trim());
+                            }
+                        });
+                    };
+
+                    const locales = new Set(Object.values(translations).flatMap((byLocale) => Object.keys(byLocale)));
+
+                    for (const locale of locales) {
+                        const restore = [];
+                        for (const control of controls) {
+                            const original = control.textContent.trim();
+                            const byLocale = translations[original];
+                            if (!byLocale) continue;
+                            const walker = document.createTreeWalker(control, NodeFilter.SHOW_TEXT);
+                            while (walker.nextNode()) {
+                                if (!walker.currentNode.textContent.trim()) continue;
+                                restore.push([walker.currentNode, walker.currentNode.textContent]);
+                                walker.currentNode.textContent = byLocale[locale];
+                                break;
+                            }
+                        }
+                        check(locale);
+                        restore.forEach(([node, text]) => { node.textContent = text; });
+                    }
+
+                    return failures;
+                })()
+            JS);
+
+            foreach ($found as $problem) {
+                $problems[] = "{$user->name} {$width} {$problem}";
             }
         }
     }
