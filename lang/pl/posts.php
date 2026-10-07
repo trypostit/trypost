@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
         'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
+        'linkedin' => [
+            'server_error' => 'LinkedIn zgłosił błąd serwera. Spróbuj ponownie.',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTube zwrócił nieoczekiwany błąd. Spróbuj ponownie.',
         ],

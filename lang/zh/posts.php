@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => '发布超时。请重试。',
         'rejected_in_review' => 'Google 在审核中拒绝了这篇帖子。请修改内容或图片后重试。',
         'review_unconfirmed' => 'Google 始终未确认这篇帖子。请检查你的商家资料后重试。',
+        'linkedin' => [
+            'server_error' => 'LinkedIn 服务器出错，请重试。',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTube 返回了意外错误，请重试。',
         ],

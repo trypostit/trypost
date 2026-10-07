@@ -833,6 +833,9 @@ return [
         'publishing_timed_out' => 'Die Veröffentlichung ist abgelaufen. Bitte erneut versuchen.',
         'rejected_in_review' => 'Google hat diesen Beitrag bei der Prüfung abgelehnt. Bearbeite den Inhalt oder das Bild und versuche es erneut.',
         'review_unconfirmed' => 'Google hat den Status dieses Beitrags nicht bestätigt. Prüfe dein Unternehmensprofil und versuche es erneut.',
+        'linkedin' => [
+            'server_error' => 'LinkedIn hatte einen Serverfehler. Bitte versuche es erneut.',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTube hat einen unerwarteten Fehler gemeldet. Bitte versuche es erneut.',
         ],

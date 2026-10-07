@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Pubblicazione scaduta. Riprova.',
         'rejected_in_review' => 'Google ha rifiutato questo post durante la revisione. Modifica il contenuto o l\'immagine e riprova.',
         'review_unconfirmed' => 'Google non ha mai confermato questo post. Controlla il tuo profilo aziendale e riprova.',
+        'linkedin' => [
+            'server_error' => 'LinkedIn ha avuto un errore del server. Riprova.',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTube ha restituito un errore imprevisto. Riprova.',
         ],

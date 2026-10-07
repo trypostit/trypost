@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -1080,6 +1081,33 @@ test('linkedin publisher throws and does not post when document init fails', fun
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
 });
+
+test('linkedin publisher retries a LinkedIn 5xx while uploading media before the post exists', function (string $initPath, string $mimeType, string $file) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'media-1', 'path' => "media/2026-01/{$file}",
+            'url' => "https://example.com/media/2026-01/{$file}",
+            'mime_type' => $mimeType, 'original_filename' => $file,
+        ]],
+    ]);
+
+    Http::fake(function ($request) use ($initPath) {
+        if (str_contains($request->url(), $initPath)) {
+            return Http::response(['message' => 'RestException{_response=RestResponse[status=500]}', 'status' => 500], 500);
+        }
+
+        return Http::response('fake-bytes', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe(500));
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+})->with([
+    'image' => ['/rest/images', 'image/jpeg', 'photo.jpg'],
+    'video' => ['/rest/videos', 'video/mp4', 'clip.mp4'],
+    'document' => ['/rest/documents', 'application/pdf', 'deck.pdf'],
+]);
 
 test('linkedin publisher throws when document init response is missing the urn', function () {
     $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);

@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
         'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
         'review_unconfirmed' => 'لم تؤكد Google حالة هذا المنشور. تحقّق من ملفك التجاري وحاول مرة أخرى.',
+        'linkedin' => [
+            'server_error' => 'حدث خطأ في خادم LinkedIn. حاول مرة أخرى.',
+        ],
         'youtube' => [
             'unexpected_response' => 'أعاد YouTube خطأً غير متوقع. حاول مرة أخرى.',
         ],

@@ -72,6 +72,20 @@ test('body containing "resource is forbidden" maps to Permission category', func
         ->and($exception->userMessage)->toBe('Not authorized to post to this account.');
 });
 
+test('a LinkedIn 5xx maps to ServerError without the raw RestException dump', function () {
+    $body = ['message' => 'RestException{_response=RestResponse[headers={content-length=17616, content-type=application/json, x-restli-error-response=true},cookies=[],status=500,entityLength=17616]}', 'status' => 500];
+
+    $fakeResponse = Http::fake(['*' => Http::response($body, 500)])
+        ->post(config('trypost.platforms.linkedin.api').'/rest/posts');
+
+    $exception = LinkedInPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->category)->toBe(ErrorCategory::ServerError)
+        ->and($exception->userMessage)->toBe(__('posts.errors.linkedin.server_error'))
+        ->and($exception->userMessage)->not->toContain('RestException')
+        ->and($exception->rawResponse)->toContain('RestException');
+});
+
 test('platform returns linkedin', function () {
     $response = Http::response(['message' => 'Some error'], 400);
 

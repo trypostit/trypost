@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'Publishing timed out. Please try again.',
         'rejected_in_review' => 'Google rejected this post in review. Edit the content or image and try again.',
         'review_unconfirmed' => 'Google never confirmed this post. Check your Business Profile and try again.',
+        'linkedin' => [
+            'server_error' => 'LinkedIn had a server error. Please try again.',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTube returned an unexpected error. Please try again.',
         ],

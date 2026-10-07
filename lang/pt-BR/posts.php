@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => 'A publicação excedeu o tempo limite. Tente novamente.',
         'rejected_in_review' => 'O Google recusou este post na revisão. Edite o conteúdo ou a imagem e tente novamente.',
         'review_unconfirmed' => 'O Google nunca confirmou este post. Confira seu Perfil da Empresa e tente novamente.',
+        'linkedin' => [
+            'server_error' => 'O LinkedIn teve um erro no servidor. Tente novamente.',
+        ],
         'youtube' => [
             'unexpected_response' => 'O YouTube retornou um erro inesperado. Tente novamente.',
         ],

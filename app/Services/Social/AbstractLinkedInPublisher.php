@@ -6,6 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -432,7 +433,7 @@ abstract class AbstractLinkedInPublisher
 
         if ($initResponse->failed()) {
             Log::error("{$this->label()} image init failed", ['body' => $this->redactResponseBody($initResponse->body())]);
-            $this->handleApiError($initResponse);
+            $this->handleMediaApiError($initResponse);
         }
 
         $initData = $initResponse->json();
@@ -466,7 +467,7 @@ abstract class AbstractLinkedInPublisher
 
         if ($uploadResponse->failed()) {
             Log::error("{$this->label()} image upload failed", ['body' => $this->redactResponseBody($uploadResponse->body())]);
-            $this->handleApiError($uploadResponse);
+            $this->handleMediaApiError($uploadResponse);
         }
 
         return $imageUrn;
@@ -501,7 +502,7 @@ abstract class AbstractLinkedInPublisher
 
         if ($initResponse->failed()) {
             Log::error("{$this->label()} video init failed", ['body' => $this->redactResponseBody($initResponse->body())]);
-            $this->handleApiError($initResponse);
+            $this->handleMediaApiError($initResponse);
         }
 
         $initData = $initResponse->json();
@@ -539,7 +540,7 @@ abstract class AbstractLinkedInPublisher
                         'index' => $index,
                         'body' => $this->redactResponseBody($chunkResponse->body()),
                     ]);
-                    $this->handleApiError($chunkResponse);
+                    $this->handleMediaApiError($chunkResponse);
                 }
 
                 $etag = $chunkResponse->header('etag');
@@ -565,7 +566,7 @@ abstract class AbstractLinkedInPublisher
 
         if ($finalizeResponse->failed()) {
             Log::error("{$this->label()} video finalize failed", ['body' => $this->redactResponseBody($finalizeResponse->body())]);
-            $this->handleApiError($finalizeResponse);
+            $this->handleMediaApiError($finalizeResponse);
         }
 
         $this->waitForProcessing('videos', $videoUrn, 'video');
@@ -582,7 +583,7 @@ abstract class AbstractLinkedInPublisher
 
         if ($initResponse->failed()) {
             Log::error("{$this->label()} document init failed", ['body' => $this->redactResponseBody($initResponse->body())]);
-            $this->handleApiError($initResponse);
+            $this->handleMediaApiError($initResponse);
         }
 
         $initData = $initResponse->json();
@@ -616,7 +617,7 @@ abstract class AbstractLinkedInPublisher
 
             if ($uploadResponse->failed()) {
                 Log::error("{$this->label()} document upload failed", ['body' => $this->redactResponseBody($uploadResponse->body())]);
-                $this->handleApiError($uploadResponse);
+                $this->handleMediaApiError($uploadResponse);
             }
         } finally {
             @unlink($tempFile);
@@ -715,6 +716,22 @@ abstract class AbstractLinkedInPublisher
     private function label(): string
     {
         return $this->platform()->label();
+    }
+
+    /**
+     * Media steps run before the post exists, so a LinkedIn 5xx there is
+     * safe to retry; anything else is classified like a post failure.
+     */
+    private function handleMediaApiError(Response $response): never
+    {
+        if ($response->serverError()) {
+            throw new PlatformUnavailableException(
+                "{$this->label()} returned {$response->status()} while uploading media",
+                $response->status(),
+            );
+        }
+
+        $this->handleApiError($response);
     }
 
     private function handleApiError(Response $response): never

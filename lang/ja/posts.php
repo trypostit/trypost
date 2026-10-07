@@ -831,6 +831,9 @@ return [
         'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
         'rejected_in_review' => 'Google の審査でこの投稿が拒否されました。本文または画像を修正して、もう一度お試しください。',
         'review_unconfirmed' => 'Google からこの投稿の結果が返りませんでした。ビジネス プロフィールを確認して、もう一度お試しください。',
+        'linkedin' => [
+            'server_error' => 'LinkedIn でサーバーエラーが発生しました。もう一度お試しください。',
+        ],
         'youtube' => [
             'unexpected_response' => 'YouTubeで予期しないエラーが発生しました。もう一度お試しください。',
         ],

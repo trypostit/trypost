@@ -52,6 +52,15 @@ class LinkedInPublishException extends SocialPublishException
             ))->withNetworkReset($response);
         }
 
+        if ($response->serverError()) {
+            return new static(
+                userMessage: __('posts.errors.linkedin.server_error'),
+                category: ErrorCategory::ServerError,
+                platformErrorCode: (string) $statusCode,
+                rawResponse: $rawResponse,
+            );
+        }
+
         [$message, $category] = match ($statusCode) {
             403 => ['Not authorized to post to this account.', ErrorCategory::Permission],
             422 => ['Invalid post data. Please check your content.', ErrorCategory::ContentPolicy],
