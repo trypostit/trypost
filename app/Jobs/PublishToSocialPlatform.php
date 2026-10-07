@@ -394,9 +394,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Caught publish failures never reach Nightwatch unless we report() them.
-     * report() feeds Exceptions; the structured log carries post/platform ids
-     * Nightwatch's exception record does not. In-flight retries stay warnings.
+     * Every caught publish failure is logged with the post/platform ids that
+     * Nightwatch's exception record lacks. Only failures the publishers could
+     * not classify reach Nightwatch: an expired token or a categorized network
+     * rejection already reaches the user with its own message.
      *
      * @param  array<string, mixed>  $context
      */
@@ -413,7 +414,20 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             'media' => $this->mediaSnapshot($this->postPlatform),
         ]);
 
+        if ($this->isClassifiedFailure($e)) {
+            return;
+        }
+
         report($e);
+    }
+
+    private function isClassifiedFailure(Throwable $e): bool
+    {
+        if ($e instanceof TokenExpiredException) {
+            return true;
+        }
+
+        return $e instanceof SocialPublishException && $e->category !== ErrorCategory::Unknown;
     }
 
     /**

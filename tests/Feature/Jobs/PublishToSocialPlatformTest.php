@@ -223,9 +223,14 @@ test('publish keeps the vetted user message from a publish exception', function 
     expect($this->postPlatform->error_message)->toBe('LinkedIn rejected this post.');
 });
 
-test('publish reports caught publish exceptions so Nightwatch sees them', function (LinkedInPublishException $exception) {
+test('publish reports an unmapped publish exception so Nightwatch sees it', function () {
     Event::fake();
     Exceptions::fake();
+
+    $exception = new LinkedInPublishException(
+        userMessage: 'Something LinkedIn has not told us about.',
+        category: ErrorCategory::Unknown,
+    );
 
     $publisher = Mockery::mock(LinkedInPublisher::class);
     $publisher->shouldReceive('publish')->andThrow($exception);
@@ -239,6 +244,28 @@ test('publish reports caught publish exceptions so Nightwatch sees them', functi
     $this->postPlatform->refresh();
     expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
         ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
+});
+
+test('publish logs but does not report a categorized publish exception', function (LinkedInPublishException $exception) {
+    Event::fake();
+    Exceptions::fake();
+    Log::spy();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow($exception);
+
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    Exceptions::assertNothingReported();
+    Log::shouldHaveReceived('error')
+        ->withArgs(fn (string $message, array $context): bool => $message === 'Social publish failed'
+            && $context['exception'] === LinkedInPublishException::class)
+        ->once();
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe($exception->userMessage);
 })->with([
     'server error' => fn () => new LinkedInPublishException(
         userMessage: 'LinkedIn could not process the media.',
@@ -249,6 +276,10 @@ test('publish reports caught publish exceptions so Nightwatch sees them', functi
     'content policy' => fn () => new LinkedInPublishException(
         userMessage: 'LinkedIn rejected this post.',
         category: ErrorCategory::ContentPolicy,
+    ),
+    'media format' => fn () => new LinkedInPublishException(
+        userMessage: 'Unsupported video format.',
+        category: ErrorCategory::MediaFormat,
     ),
 ]);
 
@@ -269,7 +300,7 @@ test('publish reports unexpected errors so Nightwatch sees them', function () {
     expect($this->postPlatform->error_message)->toBe('An unexpected error occurred while publishing. Please try again.');
 });
 
-test('publish reports token expiry so Nightwatch sees it', function () {
+test('publish does not report a token expiry it settles', function () {
     Event::fake();
     Exceptions::fake();
     Mail::fake();
@@ -285,11 +316,11 @@ test('publish reports token expiry so Nightwatch sees it', function () {
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
-    Exceptions::assertReportedCount(1);
-    Exceptions::assertReported(TokenExpiredException::class);
+    Exceptions::assertNothingReported();
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
 });
 
-test('publish reports a failed token refresh once', function () {
+test('publish does not report a token refresh that confirms the token is dead', function () {
     Event::fake();
     Exceptions::fake();
     Mail::fake();
@@ -304,8 +335,27 @@ test('publish reports a failed token refresh once', function () {
 
     (new PublishToSocialPlatform($this->postPlatform))->handle();
 
+    Exceptions::assertNothingReported();
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+});
+
+test('publish reports an unexpected error from the token refresh once', function () {
+    Event::fake();
+    Exceptions::fake();
+    Mail::fake();
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(new TokenExpiredException('Token expired', '190'));
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    $verifier = Mockery::mock(ConnectionVerifier::class);
+    $verifier->shouldReceive('verify')->andThrow(new RuntimeException('Refresh exploded'));
+    $this->app->instance(ConnectionVerifier::class, $verifier);
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
     Exceptions::assertReportedCount(1);
-    Exceptions::assertReported(fn (TokenExpiredException $e): bool => $e->getMessage() === 'Refresh failed');
+    Exceptions::assertReported(fn (RuntimeException $e): bool => $e->getMessage() === 'Refresh exploded');
     expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
 });
 
