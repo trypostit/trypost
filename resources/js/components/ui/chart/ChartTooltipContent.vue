@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
+import ChannelAvatar from '@/components/ChannelAvatar.vue';
+
 import { activeLocale } from '@/language';
 
 import type { ChartConfig } from '.';
@@ -44,18 +46,20 @@ const entries = computed(() =>
         <div class="grid gap-1">
             <div v-for="entry in entries" :key="entry.key" class="grid gap-1">
                 <div class="flex items-center justify-between gap-4">
-                    <span class="inline-flex min-w-0 items-center gap-1.5">
+                    <span class="inline-flex min-w-0 items-center gap-2">
                         <span
                             data-testid="analytics-tooltip-swatch"
                             class="size-2.5 shrink-0 rounded-[3px]"
                             :style="{ backgroundColor: entry.item.color }"
                         />
-                        <img
-                            v-if="entry.item.icon"
-                            data-testid="analytics-tooltip-icon"
-                            :src="entry.item.icon"
-                            alt=""
-                            class="size-3 shrink-0 object-contain"
+                        <ChannelAvatar
+                            v-if="entry.item.avatar"
+                            :platform="entry.item.avatar.platform"
+                            :name="entry.item.avatar.name"
+                            :src="entry.item.avatar.src"
+                            :size="24"
+                            ring="popover"
+                            data-testid="analytics-tooltip-avatar"
                         />
                         <span class="truncate">{{ entry.item.label }}</span>
                     </span>

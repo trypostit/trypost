@@ -115,6 +115,8 @@ const rangeLabel = computed(
                     <AccountIdentity
                         :account="account"
                         :color="colors[account.social_account_key]"
+                        with-avatar
+                        :avatar-size="24"
                     />
                     <span class="shrink-0 text-sm font-semibold tabular-nums">
                         {{ formatNumberCompact(account.count) }}

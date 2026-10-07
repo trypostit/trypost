@@ -11,6 +11,7 @@ import type { AccountIdentityData } from '@/types/analytics';
 const props = defineProps<{
     account: AccountIdentityData;
     withAvatar?: boolean;
+    avatarSize?: 24 | 32;
     color?: string;
 }>();
 const label = computed(() =>
@@ -37,6 +38,7 @@ const label = computed(() =>
             :src="account.avatar_url"
             :name="label"
             ring="card"
+            :size="avatarSize ?? 32"
             :status="account.status"
             :account-id="account.social_account_key"
         />

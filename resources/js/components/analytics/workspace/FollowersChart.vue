@@ -205,6 +205,8 @@ const rangeLabel = computed(
                     <AccountIdentity
                         :account="account"
                         :color="colors[account.social_account_key]"
+                        with-avatar
+                        :avatar-size="24"
                     />
                     <span class="flex shrink-0 items-center gap-2">
                         <span class="text-sm font-semibold tabular-nums">

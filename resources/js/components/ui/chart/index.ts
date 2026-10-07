@@ -11,7 +11,11 @@ export { componentToString } from './utils';
 
 export type ChartConfig = Record<
     string,
-    { label: string; color: string; icon?: string }
+    {
+        label: string;
+        color: string;
+        avatar?: { platform: string; name: string; src: string | null };
+    }
 >;
 
 interface ChartContext {
