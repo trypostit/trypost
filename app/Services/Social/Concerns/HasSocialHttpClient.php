@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace App\Services\Social\Concerns;
 
+use App\Exceptions\Social\ContentLimitException;
 use App\Models\PostPlatform;
 use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
 use App\Support\ThreadReplies;
-use Exception;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 
@@ -36,7 +36,7 @@ trait HasSocialHttpClient
         $threadViolation = ThreadReplies::violation($postPlatform->socialAccount ?? $postPlatform->platform, $postPlatform->meta);
 
         if ($threadViolation !== null) {
-            throw new Exception($threadViolation[1]);
+            throw new ContentLimitException($postPlatform->platform, $threadViolation[1]);
         }
 
         $reserved = $postPlatform->platform->reservedLength($postPlatform->meta);
@@ -50,9 +50,7 @@ trait HasSocialHttpClient
 
         $contentLength = mb_strlen($content) + $reserved;
 
-        throw new Exception(
-            "Content exceeds {$postPlatform->platform->label()} limit of {$maxLength} characters ({$contentLength} provided)."
-        );
+        throw ContentLimitException::exceeds($postPlatform->platform, $maxLength, $contentLength);
     }
 
     private bool $interactiveHttp = false;

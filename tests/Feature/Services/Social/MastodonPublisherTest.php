@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MastodonPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -610,7 +612,9 @@ test('mastodon refuses a post whose content and content warning exceed the limit
     $this->postPlatform->update(['meta' => ['spoiler_text' => str_repeat('a', 10)]]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(Exception::class, 'limit of');
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(fn (ContentLimitException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+            ->and($exception->userMessage)->toBe(__('posts.errors.content_too_long', ['platform' => 'Mastodon', 'max' => $limit, 'provided' => $limit + 1])));
 
     Http::assertNothingSent();
 });

@@ -5,6 +5,8 @@ declare(strict_types=1);
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ContentLimitException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
@@ -1358,7 +1360,9 @@ test('x publisher rejects a post that only fits before its links are defused', f
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '1']], 200)]);
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
-        ->toThrow(Exception::class, 'Content exceeds X limit of 280 characters (282 provided).');
+        ->toThrow(fn (ContentLimitException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
+            ->and($exception->userMessage)->toBe(__('posts.errors.content_too_long', ['platform' => 'X', 'max' => 280, 'provided' => 282]))
+            ->and($exception->platform())->toBe('x'));
 
     Http::assertNothingSent();
 });
