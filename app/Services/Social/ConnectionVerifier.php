@@ -30,6 +30,14 @@ use Illuminate\Support\Facades\Http;
 class ConnectionVerifier
 {
     /**
+     * TikTok OAuth errors that mean the refresh token itself is dead and the
+     * user must reconnect; every other error is ours or temporary.
+     *
+     * @see https://developers.tiktok.com/doc/oauth-error-handling
+     */
+    private const array TIKTOK_DEAD_REFRESH_ERRORS = ['invalid_grant', 'access_denied'];
+
+    /**
      * Read and connect timeouts for a token refresh. Stated explicitly, even
      * though they match the client's defaults, so a change to those cannot
      * silently break the lock invariant below. Generous on purpose: giving up
@@ -409,11 +417,17 @@ class ConnectionVerifier
 
         $data = $response->json();
 
-        if (filled(data_get($data, 'error'))) {
+        $error = data_get($data, 'error');
+
+        if (in_array($error, self::TIKTOK_DEAD_REFRESH_ERRORS, true)) {
             throw new TokenExpiredException(
-                (string) (data_get($data, 'error_description') ?: data_get($data, 'error')),
-                platformErrorCode: (string) data_get($data, 'error'),
+                (string) (data_get($data, 'error_description') ?: $error),
+                platformErrorCode: (string) $error,
             );
+        }
+
+        if (filled($error)) {
+            throw new PlatformUnavailableException("TikTok refresh returned {$error}: ".data_get($data, 'error_description', ''));
         }
 
         $account->update([

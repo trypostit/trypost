@@ -191,6 +191,42 @@ test('tiktok refresh answered with 200 and an error body raises TokenExpiredExce
     expect($account->fresh()->access_token)->toBe('old_token');
 });
 
+test('tiktok refresh answered with 200 and a temporary or app configuration error stays transient', function (string $error) {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => $error,
+            'error_description' => 'Something went wrong.',
+            'log_id' => '20261007182924',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'access_token' => 'old_token',
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class);
+
+    expect($account->fresh()->access_token)->toBe('old_token');
+})->with(['server_error', 'temporarily_unavailable', 'invalid_client', 'invalid_request']);
+
+test('tiktok refresh answered with 200 and access_denied raises TokenExpiredException', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['error' => 'access_denied', 'error_description' => 'The user revoked access.'], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'access_token' => 'old_token',
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(TokenExpiredException::class, 'The user revoked access.');
+});
+
 test('tiktok refresh answered with 200 and neither a token nor an error stays transient', function () {
     Http::fake([
         config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['log_id' => '20261007182924'], 200),
