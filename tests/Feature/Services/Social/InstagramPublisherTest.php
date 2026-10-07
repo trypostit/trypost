@@ -1764,6 +1764,26 @@ test('story image throws when the source image cannot be downloaded for fitting'
         ->toThrow(InstagramPublishException::class, 'Failed to download image for story fitting');
 });
 
+test('story image retries later when downloading the source image times out', function () {
+    Storage::fake();
+
+    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->post->update([
+        'media' => [
+            ['id' => 'm1', 'path' => 'media/a.jpg', 'url' => 'https://example.com/media/a.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'a.jpg'],
+        ],
+    ]);
+
+    Http::fake([
+        'https://example.com/media/a.jpg' => fn () => throw new ConnectionException('cURL error 28: Operation timed out after 120000 milliseconds'),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(PlatformUnavailableException::class);
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/ig_123456789/media'));
+});
+
 test('feed image publishes the original url and ignores a legacy aspect ratio', function (string $legacyRatio) {
     Storage::fake();
 
