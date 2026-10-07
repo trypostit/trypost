@@ -26,6 +26,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -432,4 +433,54 @@ test('workspace report reuses date bounds already read by the controller', funct
     $report = app(BuildWorkspaceAnalyticsReport::class)->execute($workspace, $range, $bounds);
 
     expect($report['bounds'])->toBe($bounds);
+});
+
+test('a live account shows its current avatar instead of the url frozen in the analytics rows', function () {
+    Storage::fake(null, ['url' => 'https://current-cdn.test']);
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $account->forceFill(['avatar_url' => 'social-accounts/avatar.jpg'])->save();
+    analyticsReportFollower($account, '2026-09-05', 100);
+    $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
+    $publication->forceFill(['account_avatar_url' => 'https://old-cdn.test/social-accounts/avatar.jpg'])->save();
+    AnalyticsAccountDailySnapshot::query()->where('social_account_key', $account->id)->update(['account_avatar_url' => 'https://old-cdn.test/social-accounts/avatar.jpg']);
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+    $current = 'https://current-cdn.test/social-accounts/avatar.jpg';
+
+    expect($report['followers']['accounts'][0]['avatar_url'])->toBe($current)
+        ->and($report['posts']['accounts'][0]['avatar_url'])->toBe($current)
+        ->and($report['performance'][0]['avatar_url'])->toBe($current)
+        ->and($report['top_posts']['reactions'][0]['avatar_url'])->toBe($current);
+});
+
+test('a deleted account keeps the avatar stored in its analytics rows', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
+    $publication->forceFill(['account_avatar_url' => 'https://old-cdn.test/avatar.jpg'])->save();
+    $account->delete();
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+
+    expect($report['performance'][0]['avatar_url'])->toBe('https://old-cdn.test/avatar.jpg');
+});
+
+test('publication detail shows the current avatar of a live account', function () {
+    Storage::fake(null, ['url' => 'https://current-cdn.test']);
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $account->forceFill(['avatar_url' => 'social-accounts/avatar.jpg'])->save();
+    $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
+    $publication->forceFill(['account_avatar_url' => 'https://old-cdn.test/social-accounts/avatar.jpg'])->save();
+
+    $detail = app(ReadPublicationAnalytics::class)->latestForWorkspacePublication($workspace, $publication->id);
+
+    expect(data_get($detail, 'publication.account_avatar_url'))->toBe('https://current-cdn.test/social-accounts/avatar.jpg');
 });

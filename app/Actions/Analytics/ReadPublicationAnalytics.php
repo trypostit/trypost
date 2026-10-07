@@ -26,6 +26,7 @@ class ReadPublicationAnalytics
     public function latestForWorkspacePublication(Workspace $workspace, string $publicationId): array
     {
         $publication = AnalyticsPublication::query()
+            ->with('socialAccount')
             ->available()
             ->whereBelongsTo($workspace)
             ->whereIn('platform', Platform::analyticsValues())
@@ -102,7 +103,10 @@ class ReadPublicationAnalytics
                 return [$destination->id => $this->unavailable('platform_not_supported')];
             }
 
-            $publication = $publications->get($destination->id);
+            $publication = $publications->get($destination->id)?->setRelation(
+                'socialAccount',
+                $destination->relationLoaded('socialAccount') ? $destination->socialAccount : null,
+            );
 
             return [$destination->id => $publication
                 ? $this->detail($publication, $snapshots->get($publication->id))
@@ -122,6 +126,7 @@ class ReadPublicationAnalytics
         }
 
         $publication = AnalyticsPublication::query()
+            ->with('socialAccount')
             ->available()
             ->where('workspace_id', $postPlatform->post->workspace_id)
             ->where('post_platform_id', $postPlatform->id)
@@ -166,6 +171,8 @@ class ReadPublicationAnalytics
     /** @return array<string, mixed> */
     private function detail(AnalyticsPublication $publication, ?AnalyticsPublicationDailySnapshot $snapshot): array
     {
+        $publication->loadMissing('socialAccount');
+
         return [
             'available' => true,
             'reason' => null,
@@ -183,7 +190,7 @@ class ReadPublicationAnalytics
                 'preview_metadata' => $publication->preview_metadata,
                 'account_display_name' => $publication->account_display_name,
                 'account_username' => $publication->account_username,
-                'account_avatar_url' => $publication->account_avatar_url,
+                'account_avatar_url' => $publication->socialAccount?->avatar_url ?? $publication->account_avatar_url,
             ],
             'snapshot' => $snapshot ? $this->snapshot($snapshot) : null,
             'metrics' => $snapshot ? $this->withEngagementRate($snapshot) : [],

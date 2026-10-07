@@ -81,7 +81,7 @@ class BuildWorkspaceAnalyticsReport
         $postAccounts = data_get($publications, 'posts.accounts');
         $followerAccounts = data_get($followers, 'followers.accounts');
         $performance = data_get($publications, 'performance');
-        $statuses = $this->statusesByKey($workspace, [
+        $liveAccounts = $this->liveAccountsByKey($workspace, [
             ...array_column($postAccounts, 'social_account_key'),
             ...array_column($followerAccounts, 'social_account_key'),
             ...array_column($performance, 'social_account_key'),
@@ -122,51 +122,61 @@ class BuildWorkspaceAnalyticsReport
             ],
             'followers' => [
                 ...data_get($followers, 'followers'),
-                'accounts' => $this->withStatus($followerAccounts, $statuses),
+                'accounts' => $this->withLiveAccount($followerAccounts, $liveAccounts),
             ],
             'posts' => [
                 ...data_get($publications, 'posts'),
-                'accounts' => $this->withStatus($postAccounts, $statuses),
+                'accounts' => $this->withLiveAccount($postAccounts, $liveAccounts),
             ],
             'top_posts' => [
-                'reactions' => $this->withStatus(data_get($topPosts, 'reactions'), $statuses),
-                'comments' => $this->withStatus(data_get($topPosts, 'comments'), $statuses),
+                'reactions' => $this->withLiveAccount(data_get($topPosts, 'reactions'), $liveAccounts),
+                'comments' => $this->withLiveAccount(data_get($topPosts, 'comments'), $liveAccounts),
             ],
-            'performance' => $this->withStatus($performance, $statuses),
+            'performance' => $this->withLiveAccount($performance, $liveAccounts),
             'coverage' => $this->coverage($workspace, $channelKeys === null ? null : array_keys($channelKeys)),
         ];
     }
 
     /**
-     * The live connection status of each key that is still a social account of the workspace;
-     * a key whose account is gone is absent, so its row carries no status.
+     * The live connection status and current avatar of each key that is still a
+     * social account of the workspace. A key whose account is gone is absent, so
+     * its row keeps no status, and a row without a live avatar keeps the one its
+     * analytics rows stored.
      *
      * @param  list<string>  $keys
-     * @return array<string, string>
+     * @return array<string, array{status: string, avatar_url: string|null}>
      */
-    private function statusesByKey(Workspace $workspace, array $keys): array
+    private function liveAccountsByKey(Workspace $workspace, array $keys): array
     {
         $ids = array_values(array_unique(array_filter($keys, fn (string $key): bool => Str::isUuid($key))));
 
         return SocialAccount::query()
             ->whereBelongsTo($workspace)
             ->whereIn('id', $ids)
-            ->get(['id', 'status'])
-            ->mapWithKeys(fn (SocialAccount $account): array => [$account->id => $account->status->value])
+            ->get(['id', 'status', 'avatar_url'])
+            ->mapWithKeys(fn (SocialAccount $account): array => [$account->id => [
+                'status' => $account->status->value,
+                'avatar_url' => $account->avatar_url,
+            ]])
             ->all();
     }
 
     /**
      * @param  list<array<string, mixed>>  $rows
-     * @param  array<string, string>  $statuses
+     * @param  array<string, array{status: string, avatar_url: string|null}>  $liveAccounts
      * @return list<array<string, mixed>>
      */
-    private function withStatus(array $rows, array $statuses): array
+    private function withLiveAccount(array $rows, array $liveAccounts): array
     {
-        return array_map(fn (array $row): array => [
-            ...$row,
-            'status' => data_get($statuses, data_get($row, 'social_account_key')),
-        ], $rows);
+        return array_map(function (array $row) use ($liveAccounts): array {
+            $live = data_get($liveAccounts, data_get($row, 'social_account_key'));
+
+            return [
+                ...$row,
+                'avatar_url' => data_get($live, 'avatar_url') ?? data_get($row, 'avatar_url'),
+                'status' => data_get($live, 'status'),
+            ];
+        }, $rows);
     }
 
     /**
