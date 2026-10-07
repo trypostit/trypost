@@ -27,7 +27,6 @@ test('list content types returns all platforms with constraints', function () {
                         'platform',
                         'label',
                         'max_content_length',
-                        'long_post_content_length',
                         'max_hashtags',
                         'alt_text_max_length',
                         'required_meta',

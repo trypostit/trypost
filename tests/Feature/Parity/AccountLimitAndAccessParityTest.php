@@ -74,3 +74,20 @@ test('the workspace owner is an admin who publishes directly through api and mcp
     expect($this->withHeaders(parityApi($this->token))->getJson(route('api.workspace.show'))->assertOk()->json('me'))->toBe($expected)
         ->and(accountLimitMcpWorkspace($this->user)['me'])->toBe($expected);
 });
+
+test('each x account says whether it has long posts and which badge it shows through api and mcp', function () {
+    $premium = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'meta' => ['x_subscription_type' => 'Premium', 'x_verified_type' => 'blue']]);
+    $basic = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'meta' => ['x_subscription_type' => 'Basic']]);
+    $government = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X, 'meta' => ['x_verified_type' => 'government']]);
+    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
+
+    $api = collect($this->withHeaders(parityApi($this->token))->getJson(route('api.social-accounts.index'))->assertOk()->json('data'))->keyBy('id');
+    $mcp = collect(accountLimitMcpAccounts($this->user))->keyBy('id');
+
+    foreach ([$api, $mcp] as $listing) {
+        expect($listing[$premium->id])->toMatchArray(['long_posts' => true, 'verified_badge' => 'blue', 'max_content_length' => 25000])
+            ->and($listing[$basic->id])->toMatchArray(['long_posts' => true, 'verified_badge' => null, 'max_content_length' => 25000])
+            ->and($listing[$government->id])->toMatchArray(['long_posts' => false, 'verified_badge' => 'government', 'max_content_length' => 280])
+            ->and($listing[$linkedin->id])->toMatchArray(['long_posts' => false, 'verified_badge' => null]);
+    }
+});

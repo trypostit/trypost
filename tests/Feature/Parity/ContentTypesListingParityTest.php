@@ -77,6 +77,6 @@ test('platforms list hashtag, alt text and long post limits', function () {
         ->toMatchArray(['max_hashtags' => 5])
         ->and(contentTypesListingPlatform($platforms, 'linkedin')['max_hashtags'])->toBeNull()
         ->and(contentTypesListingPlatform($platforms, 'x'))
-        ->toMatchArray(['max_content_length' => 280, 'long_post_content_length' => 25000, 'alt_text_max_length' => 1000])
-        ->and(contentTypesListingPlatform($platforms, 'linkedin')['long_post_content_length'])->toBeNull();
+        ->toMatchArray(['max_content_length' => 280, 'alt_text_max_length' => 1000])
+        ->not->toHaveKey('long_post_content_length');
 });

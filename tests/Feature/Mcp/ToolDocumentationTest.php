@@ -23,6 +23,7 @@ use App\Mcp\Tools\Signature\ListSignaturesTool;
 use App\Mcp\Tools\SocialAccount\GeneratePostingScheduleTool;
 use App\Mcp\Tools\SocialAccount\GetTikTokCreatorInfoTool;
 use App\Mcp\Tools\SocialAccount\ListFreeSlotsTool;
+use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ReorderQueueTool;
 use App\Mcp\Tools\SocialAccount\UpdatePostingScheduleTool;
 use App\Mcp\Tools\Webhook\CreateWebhookTool;
@@ -169,4 +170,13 @@ test('media url descriptions give the server limits, pixels included', function 
 })->with([
     'attach-media-from-url' => [AttachMediaFromUrlTool::class],
     'create-post' => [CreatePostTool::class],
+]);
+
+test('the account listing and post text explain the x long post limit', function (string $tool) {
+    expect(mcpToolText($tool))->toContain('long_posts')->toContain('25000')->toContain('280');
+})->with([
+    'list-social-accounts' => [ListSocialAccountsTool::class],
+    'create-post' => [CreatePostTool::class],
+    'create-posts' => [CreatePostsTool::class],
+    'update-post' => [UpdatePostTool::class],
 ]);

@@ -77,7 +77,7 @@ class CreatePostTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'content' => $schema->string()->description('The post text: plain text or HTML (<p>, <br>, <strong>, <em>, <ul>/<ol>/<li>, <a>). Each network gets its own rendering (preview-post-tool shows it): LinkedIn turns bold into Unicode bold, Telegram keeps bold, italic, underline and links, and when link defusing is on an X post publishes its links non-clickable (example(.)com). Write a literal < or > as &lt; or &gt;, or it is read as a tag and removed. The text must fit the account limit (max_content_length in list-social-accounts-tool), Instagram takes at most 5 hashtags, and stories publish no text.'),
+            'content' => $schema->string()->description('The post text: plain text or HTML (<p>, <br>, <strong>, <em>, <ul>/<ol>/<li>, <a>). Each network gets its own rendering (preview-post-tool shows it): LinkedIn turns bold into Unicode bold, Telegram keeps bold, italic, underline and links, and when link defusing is on an X post publishes its links non-clickable (example(.)com). Write a literal < or > as &lt; or &gt;, or it is read as a tag and removed. The text must fit the account limit (max_content_length in list-social-accounts-tool; on X, 25000 for an account with long_posts, else 280), Instagram takes at most 5 hashtags, and stories publish no text.'),
             'media' => $this->mediaSchema($schema, 'Media for the post.'),
             'status' => $schema->string()
                 ->enum([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])

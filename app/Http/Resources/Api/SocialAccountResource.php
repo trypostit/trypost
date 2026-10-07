@@ -24,6 +24,8 @@ class SocialAccountResource extends JsonResource
             'timezone' => $this->timezone,
             'posting_goal' => $this->posting_goal,
             'max_content_length' => $this->maxContentLength(),
+            'long_posts' => $this->hasXLongPosts(),
+            'verified_badge' => $this->verified_badge,
         ];
     }
 }
