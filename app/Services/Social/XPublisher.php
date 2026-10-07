@@ -492,6 +492,20 @@ class XPublisher
             Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
         }
 
+        if (! in_array(data_get($lastProcessingInfo, 'state'), ['pending', 'in_progress'], true)) {
+            Log::error('X media processing timed out', [
+                'media_id' => $mediaId,
+                'processing_info' => $lastProcessingInfo,
+            ]);
+
+            throw new XPublishException(
+                userMessage: 'X media processing timed out. Please try again.',
+                category: ErrorCategory::ServerError,
+                platformErrorCode: 'media-processing-timeout',
+                rawResponse: is_array($lastProcessingInfo) ? json_encode($lastProcessingInfo) : null,
+            );
+        }
+
         Log::warning('X media still processing, publish rescheduled', [
             'media_id' => $mediaId,
             'processing_info' => $lastProcessingInfo,

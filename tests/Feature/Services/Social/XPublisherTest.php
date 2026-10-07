@@ -1181,6 +1181,52 @@ test('x publisher reschedules media still processing with its media id as a chec
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
 });
 
+test('x publisher fails once instead of rescheduling when no status check ever succeeds', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_status_broken']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_status_broken',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['errors' => [['message' => 'Bad request']]], 400);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'X media processing timed out. Please try again.');
+});
+
 test('x publisher resumes checkpointed media without uploading it again', function () {
     Sleep::fake();
 
