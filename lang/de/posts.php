@@ -833,6 +833,10 @@ return [
         'publishing_timed_out' => 'Die Veröffentlichung ist abgelaufen. Bitte erneut versuchen.',
         'rejected_in_review' => 'Google hat diesen Beitrag bei der Prüfung abgelehnt. Bearbeite den Inhalt oder das Bild und versuche es erneut.',
         'review_unconfirmed' => 'Google hat den Status dieses Beitrags nicht bestätigt. Prüfe dein Unternehmensprofil und versuche es erneut.',
+        'instagram' => [
+            'processing_failed' => 'Instagram konnte diese Datei nicht verarbeiten: :reason',
+            'processing_failed_without_reason' => 'Instagram konnte diese Datei nicht verarbeiten. Versuche eine andere Datei.',
+        ],
         'x' => [
             'duplicate_content' => 'X erlaubt es nicht, denselben Text zweimal zu posten. Ändere den Text und versuche es erneut.',
         ],

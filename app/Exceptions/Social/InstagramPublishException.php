@@ -39,7 +39,27 @@ class InstagramPublishException extends SocialPublishException
             );
         }
 
-        [$message, $category] = match ($errorSubcode) {
+        [$message, $category] = self::forSubcode(is_numeric($errorSubcode) ? (int) $errorSubcode : null)
+            ?? (in_array($errorCode, GraphError::RATE_LIMIT_CODES, true)
+                ? ['Too many API calls. Please try again later.', ErrorCategory::RateLimit]
+                : [$errorUserMsg ?? $errorMessage, ErrorCategory::Unknown]);
+
+        return (new static(
+            userMessage: $message,
+            category: $category,
+            platformErrorCode: $errorSubcode !== null ? (string) $errorSubcode : ($category === ErrorCategory::RateLimit && $errorCode !== null ? (string) $errorCode : null),
+            rawResponse: $rawResponse,
+        ))->withNetworkReset($response);
+    }
+
+    /**
+     * The user message and category Instagram's documented error subcodes map to.
+     *
+     * @return array{string, ErrorCategory}|null
+     */
+    public static function forSubcode(?int $subcode): ?array
+    {
+        return match ($subcode) {
             2207026 => ['Unsupported video format. Please upload MP4 or MOV.', ErrorCategory::MediaFormat],
             2207005 => ['Unsupported image format.', ErrorCategory::MediaFormat],
             2207004 => ['Image is too large (max 8MB).', ErrorCategory::MediaFormat],
@@ -65,17 +85,37 @@ class InstagramPublishException extends SocialPublishException
             2207042 => ['Daily publishing limit reached. Please try again tomorrow.', ErrorCategory::RateLimit],
             2207050 => ['Instagram account is restricted or inactive. Please check the Instagram app.', ErrorCategory::Permission],
             2207081 => ["This account doesn't support Trial Reels.", ErrorCategory::Permission],
-            default => in_array($errorCode, GraphError::RATE_LIMIT_CODES, true)
-                ? ['Too many API calls. Please try again later.', ErrorCategory::RateLimit]
-                : [$errorUserMsg ?? $errorMessage, ErrorCategory::Unknown],
+            default => null,
         };
+    }
 
-        return (new static(
-            userMessage: $message,
-            category: $category,
-            platformErrorCode: $errorSubcode !== null ? (string) $errorSubcode : ($category === ErrorCategory::RateLimit && $errorCode !== null ? (string) $errorCode : null),
+    /**
+     * A container that reached status_code ERROR. Its status field carries
+     * the error subcode, alone or inside a sentence.
+     */
+    public static function fromContainerStatus(mixed $status, ?string $rawResponse): self
+    {
+        $status = is_scalar($status) && filled($status) ? trim((string) $status) : null;
+        $subcode = $status !== null && preg_match('/\b(2207\d{3})\b/', $status, $matches) === 1 ? (int) $matches[1] : null;
+        $mapped = self::forSubcode($subcode);
+
+        if ($mapped !== null) {
+            return new self(
+                userMessage: $mapped[0],
+                category: $mapped[1],
+                platformErrorCode: (string) $subcode,
+                rawResponse: $rawResponse,
+            );
+        }
+
+        return new self(
+            userMessage: $status !== null
+                ? __('posts.errors.instagram.processing_failed', ['reason' => $status])
+                : __('posts.errors.instagram.processing_failed_without_reason'),
+            category: ErrorCategory::ServerError,
+            platformErrorCode: $subcode !== null ? (string) $subcode : null,
             rawResponse: $rawResponse,
-        ))->withNetworkReset($response);
+        );
     }
 
     public function platform(): string

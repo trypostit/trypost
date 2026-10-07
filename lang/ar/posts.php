@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => 'انتهت مهلة النشر. يرجى المحاولة مرة أخرى.',
         'rejected_in_review' => 'رفضت Google هذا المنشور أثناء المراجعة. عدّل المحتوى أو الصورة وحاول مرة أخرى.',
         'review_unconfirmed' => 'لم تؤكد Google حالة هذا المنشور. تحقّق من ملفك التجاري وحاول مرة أخرى.',
+        'instagram' => [
+            'processing_failed' => 'تعذّر على Instagram معالجة هذا الملف: :reason',
+            'processing_failed_without_reason' => 'تعذّر على Instagram معالجة هذا الملف. جرّب ملفًا آخر.',
+        ],
         'x' => [
             'duplicate_content' => 'لا يسمح X بنشر النص نفسه مرتين. غيّر النص وحاول مرة أخرى.',
         ],

@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => 'La publication a expiré. Veuillez réessayer.',
         'rejected_in_review' => 'Google a refusé ce post lors de l\'examen. Modifie le contenu ou l\'image et réessaie.',
         'review_unconfirmed' => 'Google n\'a jamais confirmé ce post. Vérifie ta fiche d\'établissement et réessaie.',
+        'instagram' => [
+            'processing_failed' => 'Instagram n\'a pas pu traiter ce média : :reason',
+            'processing_failed_without_reason' => 'Instagram n\'a pas pu traiter ce média. Essaie un autre fichier.',
+        ],
         'x' => [
             'duplicate_content' => 'X n\'autorise pas à publier deux fois le même texte. Modifie le texte et réessaie.',
         ],

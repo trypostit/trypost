@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => 'Publiceren is timed-out. Probeer het opnieuw.',
         'rejected_in_review' => 'Google heeft dit bericht bij de beoordeling afgewezen. Pas de inhoud of afbeelding aan en probeer het opnieuw.',
         'review_unconfirmed' => 'Google heeft dit bericht nooit bevestigd. Controleer je bedrijfsprofiel en probeer het opnieuw.',
+        'instagram' => [
+            'processing_failed' => 'Instagram kon dit bestand niet verwerken: :reason',
+            'processing_failed_without_reason' => 'Instagram kon dit bestand niet verwerken. Probeer een ander bestand.',
+        ],
         'x' => [
             'duplicate_content' => 'X staat niet toe dat je dezelfde tekst twee keer plaatst. Pas de tekst aan en probeer het opnieuw.',
         ],

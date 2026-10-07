@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => 'Publikowanie przekroczyło limit czasu. Spróbuj ponownie.',
         'rejected_in_review' => 'Google odrzuciło ten post podczas weryfikacji. Zmień treść lub obraz i spróbuj ponownie.',
         'review_unconfirmed' => 'Google nie potwierdziło tego posta. Sprawdź swój profil firmy i spróbuj ponownie.',
+        'instagram' => [
+            'processing_failed' => 'Instagram nie mógł przetworzyć tego pliku: :reason',
+            'processing_failed_without_reason' => 'Instagram nie mógł przetworzyć tego pliku. Spróbuj innego.',
+        ],
         'x' => [
             'duplicate_content' => 'X nie pozwala opublikować tego samego tekstu dwa razy. Zmień tekst i spróbuj ponownie.',
         ],

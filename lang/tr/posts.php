@@ -833,6 +833,10 @@ return [
         'publishing_timed_out' => 'Yayınlama zaman aşımına uğradı. Lütfen tekrar deneyin.',
         'rejected_in_review' => 'Google bu gönderiyi incelemede reddetti. İçeriği veya görseli düzenleyip tekrar deneyin.',
         'review_unconfirmed' => 'Google bu gönderiyi hiç onaylamadı. İşletme Profili\'ni kontrol edip tekrar deneyin.',
+        'instagram' => [
+            'processing_failed' => 'Instagram bu medyayı işleyemedi: :reason',
+            'processing_failed_without_reason' => 'Instagram bu medyayı işleyemedi. Başka bir dosya dene.',
+        ],
         'x' => [
             'duplicate_content' => 'X aynı metni iki kez paylaşmana izin vermiyor. Metni değiştirip tekrar dene.',
         ],

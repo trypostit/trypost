@@ -559,11 +559,7 @@ class InstagramPublisher
             'body' => $body,
         ]);
 
-        return new InstagramPublishException(
-            userMessage: 'Instagram media processing failed',
-            category: ErrorCategory::ServerError,
-            rawResponse: $body,
-        );
+        return InstagramPublishException::fromContainerStatus(data_get($response->json(), 'status'), $body);
     }
 
     /**

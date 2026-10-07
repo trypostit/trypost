@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => 'La publicación agotó el tiempo de espera. Inténtalo de nuevo.',
         'rejected_in_review' => 'Google rechazó esta publicación durante la revisión. Edita el contenido o la imagen e inténtalo de nuevo.',
         'review_unconfirmed' => 'Google nunca confirmó esta publicación. Revisa tu Perfil de Empresa e inténtalo de nuevo.',
+        'instagram' => [
+            'processing_failed' => 'Instagram no pudo procesar este archivo: :reason',
+            'processing_failed_without_reason' => 'Instagram no pudo procesar este archivo. Prueba con otro.',
+        ],
         'x' => [
             'duplicate_content' => 'X no permite publicar el mismo texto dos veces. Cambia el texto e inténtalo de nuevo.',
         ],

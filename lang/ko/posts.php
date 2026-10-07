@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => '게시에 시간이 초과되었습니다. 다시 시도하세요.',
         'rejected_in_review' => 'Google 검토에서 이 게시물이 거부되었습니다. 내용이나 이미지를 수정한 후 다시 시도하세요.',
         'review_unconfirmed' => 'Google가 이 게시물을 확인해 주지 않았습니다. 비즈니스 프로필을 확인한 후 다시 시도하세요.',
+        'instagram' => [
+            'processing_failed' => 'Instagram에서 이 미디어를 처리하지 못했습니다: :reason',
+            'processing_failed_without_reason' => 'Instagram에서 이 미디어를 처리하지 못했습니다. 다른 파일을 사용해 보세요.',
+        ],
         'x' => [
             'duplicate_content' => 'X에서는 같은 텍스트를 두 번 게시할 수 없습니다. 텍스트를 바꾼 뒤 다시 시도해 주세요.',
         ],

@@ -831,6 +831,10 @@ return [
         'publishing_timed_out' => '公開がタイムアウトしました。もう一度お試しください。',
         'rejected_in_review' => 'Google の審査でこの投稿が拒否されました。本文または画像を修正して、もう一度お試しください。',
         'review_unconfirmed' => 'Google からこの投稿の結果が返りませんでした。ビジネス プロフィールを確認して、もう一度お試しください。',
+        'instagram' => [
+            'processing_failed' => 'Instagram でこのメディアを処理できませんでした: :reason',
+            'processing_failed_without_reason' => 'Instagram でこのメディアを処理できませんでした。別のファイルをお試しください。',
+        ],
         'x' => [
             'duplicate_content' => 'X では同じテキストを2回投稿できません。テキストを変更してもう一度お試しください。',
         ],
