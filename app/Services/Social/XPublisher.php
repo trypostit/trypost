@@ -131,12 +131,17 @@ class XPublisher
                 $mediaId = data_get($this->uploadMedia($mediaItem), 'data.id');
             }
 
-            if ($mediaId) {
-                $this->uploadedMedia[$mediaItem->id] = (string) $mediaId;
-                // X expects media_ids as strings in the tweets payload.
-                $mediaIds[] = (string) $mediaId;
-                $this->uploadAltText((string) $mediaId, $mediaItem);
+            if (! $mediaId) {
+                throw new XPublishException(
+                    userMessage: 'X did not accept the media upload. Please try again.',
+                    category: ErrorCategory::ServerError,
+                );
             }
+
+            $this->uploadedMedia[$mediaItem->id] = (string) $mediaId;
+            // X expects media_ids as strings in the tweets payload.
+            $mediaIds[] = (string) $mediaId;
+            $this->uploadAltText((string) $mediaId, $mediaItem);
         }
 
         return $mediaIds === [] ? [] : ['media' => ['media_ids' => $mediaIds]];

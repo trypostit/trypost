@@ -885,6 +885,55 @@ test('x publisher uses simple upload for small images and skips chunked finalize
         && ! str_contains($request->url(), '/initialize'));
 });
 
+test('x publisher fails instead of posting without the image when the simple upload returns no media id', function () {
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/photo.jpg',
+                'url' => 'https://example.com/media/2026-01/photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'photo.jpg',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) {
+        if (str_contains($request->url(), '/media/upload')) {
+            return Http::response(['data' => []], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_without_image']], 200);
+        }
+
+        return Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200);
+    });
+
+    $exception = null;
+
+    try {
+        $this->publisher->publish($this->postPlatform);
+    } catch (XPublishException $caught) {
+        $exception = $caught;
+    }
+
+    expect($exception)->toBeInstanceOf(XPublishException::class)
+        ->and($exception->userMessage)->toBe('X did not accept the media upload. Please try again.')
+        ->and($exception->category)->toBe(ErrorCategory::ServerError)
+        ->and($exception->isNetworkRejection())->toBeFalse();
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+});
+
 test('x publisher uses chunked upload for images larger than 5MB', function () {
     $this->post->update([
         'media' => [
