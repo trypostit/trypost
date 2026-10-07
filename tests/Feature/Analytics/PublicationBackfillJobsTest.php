@@ -24,6 +24,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\AbstractPublicationHistoryCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
@@ -461,30 +462,77 @@ test('a stale page can reconcile facts but cannot move the current cursor backwa
         ->and(AnalyticsPublication::query()->where('remote_id', 'stale-fact')->exists())->toBeTrue();
 });
 
-test('a transient failure preserves the cursor for a later queue attempt', function () {
+function bindFailingPublicationPage(SocialAccount $account, Throwable $failure): void
+{
+    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
+    $collector->shouldReceive('page')->once()->withArgs(
+        fn (SocialAccount $received, ?string $cursor): bool => $received->is($account) && $cursor === 'resume-here',
+    )->andThrow($failure);
+    $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
+    $factory->shouldReceive('for')->once()->andReturn($collector);
+    app()->instance(PublicationHistoryCollectorFactory::class, $factory);
+}
+
+test('a transient failure releases the job and preserves the cursor for a later attempt', function (Throwable $failure) {
     Bus::fake();
+    Exceptions::fake();
     $account = SocialAccount::factory()->instagram()->create();
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
         'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
     ]);
-    $collector = Mockery::mock(AbstractPublicationHistoryCollector::class);
-    $collector->shouldReceive('page')->once()->withArgs(
-        fn (SocialAccount $received, ?string $cursor): bool => $received->is($account) && $cursor === 'resume-here',
-    )->andThrow(new AnalyticsCollectionException('transient', 'temporary'));
-    $factory = Mockery::mock(PublicationHistoryCollectorFactory::class);
-    $factory->shouldReceive('for')->once()->andReturn($collector);
-    app()->instance(PublicationHistoryCollectorFactory::class, $factory);
+    bindFailingPublicationPage($account, $failure);
 
-    expect(SocialAccount::query()->connected()->includedInAnalytics()->find($account->id))
-        ->not->toBeNull()
-        ->and($state->fresh()->status)->toBe(SyncStatus::Pending);
+    expect($state->fresh()->status)->toBe(SyncStatus::Pending);
 
-    expect(fn () => app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']))
-        ->toThrow(AnalyticsCollectionException::class);
+    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
+    app()->call([$job, 'handle']);
 
+    $job->assertReleased(300);
+    Exceptions::assertNothingReported();
     expect(data_get($state->fresh()->checkpoint, 'cursor'))->toBe('resume-here')
         ->and($state->fresh()->status)->toBe(SyncStatus::Running)
+        ->and($state->fresh()->last_error_category)->toBe('transient');
+})->with([
+    'provider 5xx' => fn () => new AnalyticsCollectionException('transient', 'publication history collection failed with HTTP 503'),
+    'connection reset' => fn () => new ConnectionException('cURL error 56: Recv failure: Connection reset by peer'),
+]);
+
+test('a rate limited failure waits for the provider retry time when it is later than the backoff', function () {
+    Bus::fake();
+    $this->freezeTime();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('rate_limited', 'slow down', CarbonImmutable::now()->addMinutes(20)));
+
+    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
+    app()->call([$job, 'handle']);
+
+    $job->assertReleased(1200);
+    expect($state->fresh()->last_error_category)->toBe('rate_limited');
+});
+
+test('a transient failure on the last allowed attempt fails the sync instead of releasing it again', function () {
+    Bus::fake();
+    Exceptions::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
+
+    $job = (new BackfillAccountPublications($account->id, $state->id))->withFakeQueueInteractions();
+    $job->job->attempts = 6;
+    app()->call([$job, 'handle']);
+
+    $job->assertNotReleased();
+    Exceptions::assertNothingReported();
+    expect(data_get($state->fresh()->checkpoint, 'cursor'))->toBe('resume-here')
+        ->and($state->fresh()->status)->toBe(SyncStatus::Failed)
         ->and($state->fresh()->last_error_category)->toBe('transient');
 });
 

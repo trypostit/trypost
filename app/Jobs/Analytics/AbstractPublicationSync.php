@@ -16,9 +16,11 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
 use App\Support\Analytics\AnalyticsJobLog;
 use App\Support\Analytics\AnalyticsRateLimits;
+use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Queue\Middleware\RateLimited;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Throwable;
@@ -32,6 +34,8 @@ abstract class AbstractPublicationSync implements ShouldQueue
     public int $maxExceptions = 6;
 
     public int $timeout = 180;
+
+    private const int MAX_TRANSIENT_ATTEMPTS = 6;
 
     public function __construct(
         public string $socialAccountId,
@@ -98,20 +102,18 @@ abstract class AbstractPublicationSync implements ShouldQueue
             $page = $collectors->for($account)->page($account, $capture['cursor'], $capture['cutoff']);
             $result = $sync->handle($this->syncStateId, $capture['revision'], $account, $page);
         } catch (AnalyticsCollectionException $exception) {
-            $log->record($account, $collector, $cursorLabel, $this->attempts(), $exception->category);
-
             if ($exception->category === 'invalid_cursor') {
+                $log->record($account, $collector, $cursorLabel, $this->attempts(), $exception->category);
                 $this->handleInvalidCursor($sync, $account, $capture['revision']);
 
                 return;
             }
 
-            $transient = in_array($exception->category, ['transient', 'rate_limited'], true);
-            $sync->recordFailure($this->syncStateId, $capture['revision'], $exception->category, ! $transient, $account->id);
+            $this->recordFailure($sync, $log, $account, $capture['revision'], $cursorLabel, $exception->category, $exception->retryAt);
 
-            if ($transient) {
-                throw $exception;
-            }
+            return;
+        } catch (ConnectionException) {
+            $this->recordFailure($sync, $log, $account, $capture['revision'], $cursorLabel, 'transient', null);
 
             return;
         }
@@ -142,6 +144,41 @@ abstract class AbstractPublicationSync implements ShouldQueue
                 'last_error_category' => 'queue_failed',
             ]);
         }
+    }
+
+    private function recordFailure(
+        AdvanceAnalyticsSyncState $sync,
+        AnalyticsJobLog $log,
+        SocialAccount $account,
+        int $revision,
+        string $cursorLabel,
+        string $category,
+        ?CarbonImmutable $providerRetryAt,
+    ): void {
+        $collector = $this->collector()->value;
+        $retryable = in_array($category, ['transient', 'rate_limited'], true)
+            && $this->attempts() < self::MAX_TRANSIENT_ATTEMPTS;
+
+        $sync->recordFailure($this->syncStateId, $revision, $category, ! $retryable, $account->id);
+
+        if (! $retryable) {
+            $log->record($account, $collector, $cursorLabel, $this->attempts(), $category);
+
+            return;
+        }
+
+        $delay = $this->transientDelaySeconds($providerRetryAt);
+        $log->record($account, $collector, $cursorLabel, $this->attempts(), $category, CarbonImmutable::now('UTC')->addSeconds($delay)->toIso8601String());
+        $this->release($delay);
+    }
+
+    private function transientDelaySeconds(?CarbonImmutable $providerRetryAt): int
+    {
+        $backoff = $this->backoff();
+        $delay = $backoff[min(max($this->attempts(), 1), count($backoff)) - 1];
+        $providerDelay = $providerRetryAt ? (int) ceil(CarbonImmutable::now('UTC')->diffInSeconds($providerRetryAt, false)) : 0;
+
+        return max($delay, $providerDelay);
     }
 
     protected function mayStart(SocialAccount $account): bool
