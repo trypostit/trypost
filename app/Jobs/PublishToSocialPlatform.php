@@ -292,8 +292,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         $previousContext = $this->postPlatform->error_context ?? [];
         $hasOwnPolicy = $e->maxRetries !== null || $e->retryDelaySeconds !== null;
-        $policyChanged = $hasOwnPolicy !== array_key_exists('max_retries', $previousContext);
-        $retryCount = $policyChanged ? 1 : (int) data_get($previousContext, 'retry_count', 0) + 1;
+        $counterKey = $hasOwnPolicy ? 'processing_retry_count' : 'retry_count';
+        $retryCount = (int) data_get($previousContext, $counterKey, 0) + 1;
         $maxRetries = $e->maxRetries ?? self::MAX_PLATFORM_UNAVAILABLE_RETRIES;
         $retryDelaySeconds = $e->retryDelaySeconds ?? self::DEFAULT_RETRY_DELAY_SECONDS;
         $context = [
@@ -301,7 +301,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ...$e->context,
             'category' => ErrorCategory::PlatformUnavailable->value,
             'http_status' => $e->httpStatus,
-            'retry_count' => $retryCount,
+            $counterKey => $retryCount,
             ...($hasOwnPolicy ? ['max_retries' => $maxRetries, 'retry_delay_seconds' => $retryDelaySeconds] : []),
             'detail' => $e->getMessage(),
         ];
