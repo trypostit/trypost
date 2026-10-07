@@ -128,10 +128,7 @@ class XPublisher
             if ($mediaId !== null) {
                 $this->waitForProcessing($mediaId);
             } else {
-                $uploadedMedia = $this->uploadMedia($mediaItem);
-
-                // v2 API returns data.id, v1 returns media_id
-                $mediaId = data_get($uploadedMedia, 'data.id', data_get($uploadedMedia, 'media_id'));
+                $mediaId = data_get($this->uploadMedia($mediaItem), 'data.id');
             }
 
             if ($mediaId) {
@@ -320,7 +317,7 @@ class XPublisher
         }
 
         $initData = $initResponse->json();
-        $mediaId = $initData['data']['id'] ?? $initData['media_id'] ?? null;
+        $mediaId = data_get($initData, 'data.id');
 
         if (! $mediaId) {
             throw new XPublishException(
@@ -477,8 +474,7 @@ class XPublisher
             }
 
             $responseData = $response->json();
-            $processingInfo = data_get($responseData, 'processing_info')
-                ?? data_get($responseData, 'data.processing_info');
+            $processingInfo = data_get($responseData, 'data.processing_info');
 
             // If processing_info doesn't exist, assume it's ready
             if ($processingInfo === null) {
