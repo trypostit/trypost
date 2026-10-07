@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Preview how a post will render on each enabled platform — applies platform-specific content sanitization (length truncation, forbidden chars, etc.) without publishing. Returns the original content alongside per-platform sanitized versions and length stats.')]
+#[Description('Preview how a post will be sent to each enabled platform without publishing: the text after each network rendering (HTML turned into that network format, LinkedIn bold as Unicode, X links defused when that is on), next to the original content, with length stats. Use it to check a text before scheduling.')]
 class PreviewPostTool extends Tool
 {
     use AuthorizesMcpTool;

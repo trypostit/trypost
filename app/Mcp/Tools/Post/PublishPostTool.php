@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Publish a draft post on its social account — immediately, at a future time (scheduled_at) or in the channel queue (queue). Use update-post-tool first to change its content, content_type or meta. Before publishing, the attached media is validated against the post\'s content_type (file size, video duration, GIF, MOV — see list-content-types-tool); a cap violation returns a per-platform error and nothing is published. When the acting member needs approval in this workspace, the post is stored with status pending_approval instead and waits for approve-post-tool.')]
+#[Description('Publish a post now, schedule it at a custom time (scheduled_at) or put it in the channel queue (queue). Works on drafts and on scheduled posts. Use update-post-tool first to change its content, content_type or meta. It is validated like a scheduled post: text limits, required meta, the media rules of its content_type (see list-content-types-tool) and thread replies; a failure names the platform and field, and nothing is published. Posts that are publishing, published, partially_published or failed cannot be changed or deleted. When the acting member needs approval in this workspace, the post is stored with status pending_approval instead and waits for approve-post-tool. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
 class PublishPostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -83,7 +83,7 @@ class PublishPostTool extends Tool
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to publish.'),
             'queue' => $schema->string()->enum(array_column(QueuePosition::cases(), 'value'))->description(PostStatusRules::QUEUE_DESCRIPTION),
-            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future. If provided, the post is queued for that time. If omitted, publishing starts immediately.'),
+            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future and before 2038-01-19, e.g. 2026-05-10T15:30:00Z; without an offset it is read as UTC. Times in responses are UTC (Y-m-d H:i:s). If provided, the post is scheduled at that custom time. If omitted, publishing starts immediately.'),
         ];
     }
 }

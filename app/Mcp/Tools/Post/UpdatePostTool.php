@@ -27,7 +27,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update one post for its existing social account. Caption, media, content_type, meta (platform settings, merged with the stored ones), status, schedule, queue and labels may change; content_type and meta are top-level fields because a post has exactly one social account, which is fixed. When the acting member needs approval in this workspace, a scheduled, queued or publish-now update is stored with status pending_approval instead.')]
+#[Description('Update one post for its existing social account. Caption, media, content_type, meta (platform settings, merged with the stored ones), status, schedule, queue and labels may change; content_type and meta are top-level fields because a post has exactly one social account, which is fixed. When the acting member needs approval in this workspace, a scheduled, queued or publish-now update is stored with status pending_approval instead. meta is merged with the stored settings: send null for a key to clear it; thread_replies replaces the whole list. To place the post in one specific free slot use move-post-to-slot-tool. Posts that are publishing, published, partially_published or failed cannot be changed or deleted. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
 class UpdatePostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -79,9 +79,9 @@ class UpdatePostTool extends Tool
     {
         return [
             'post_id' => $schema->string()->required()->description('UUID of the post to update.'),
-            'content' => $schema->string()->description('New caption/text body.'),
+            'content' => $schema->string()->description('The post text: plain text or HTML (<p>, <br>, <strong>, <em>, <ul>/<ol>/<li>, <a>). Each network gets its own rendering (preview-post-tool shows it): LinkedIn turns bold into Unicode bold, Telegram keeps bold, italic, underline and links, and when link defusing is on an X post publishes its links non-clickable (example(.)com). Write a literal < or > as &lt; or &gt;, or it is read as a tag and removed. The text must fit the account limit (max_content_length in list-social-accounts-tool), Instagram takes at most 5 hashtags, and stories publish no text.'),
             'media' => $this->mediaSchema($schema, 'Replaces the post media; omit to keep the current media.'),
-            'scheduled_at' => $schema->string()->description('Future ISO 8601 datetime. Required for status "scheduled" unless the post already has a future schedule.'),
+            'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future and before 2038-01-19, e.g. 2026-05-10T15:30:00Z; without an offset it is read as UTC. Times in responses are UTC (Y-m-d H:i:s). Required for status scheduled unless the post already has a future schedule or queue is sent.'),
             'queue' => $schema->string()->enum(array_column(QueuePosition::cases(), 'value'))->description(PostStatusRules::QUEUE_DESCRIPTION),
             'status' => $schema->string()
                 ->enum([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])
