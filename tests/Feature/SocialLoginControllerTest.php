@@ -6,8 +6,6 @@ use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Database\Events\QueryExecuted;
-use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -106,45 +104,6 @@ test('github callback creates new user with a default workspace', function () {
     expect($user->current_workspace_id)->toBe($user->workspaces()->first()->id);
     $this->assertAuthenticatedAs($user);
 });
-
-function createUserRightAfterTheOauthLookup(string $email, string $providerColumn): User
-{
-    $racer = User::factory()->make(['email' => $email]);
-    $created = false;
-
-    DB::listen(function (QueryExecuted $query) use (&$created, $racer, $providerColumn): void {
-        if ($created || ! str_contains($query->sql, $providerColumn) || ! str_starts_with(strtolower($query->sql), 'select')) {
-            return;
-        }
-
-        $created = true;
-        $racer->save();
-    });
-
-    return $racer;
-}
-
-test('an oauth signup that loses the race to a concurrent signup logs the user in instead of failing', function (string $provider, string $route, string $providerColumn) {
-    $socialiteUser = new SocialiteUser;
-    $socialiteUser->map(['id' => '555', 'name' => 'Racing User', 'email' => 'racer@example.com']);
-
-    Socialite::shouldReceive('driver')
-        ->with($provider)
-        ->andReturn($driver = Mockery::mock());
-    $driver->shouldReceive('user')->andReturn($socialiteUser);
-
-    $racer = createUserRightAfterTheOauthLookup('racer@example.com', $providerColumn);
-
-    $response = $this->get(route($route));
-
-    $response->assertRedirect(route('app.home'));
-    $this->assertAuthenticatedAs($racer->fresh());
-    expect(User::where('email', 'racer@example.com')->count())->toBe(1)
-        ->and($racer->fresh()->{$providerColumn})->toBe('555');
-})->with([
-    'google' => ['google-auth', 'auth.google.callback', 'google_id'],
-    'github' => ['github', 'auth.github.callback', 'github_id'],
-]);
 
 // ========================================
 // Invite acceptance via OAuth

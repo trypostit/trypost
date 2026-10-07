@@ -13,7 +13,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Invite;
 use App\Models\User;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -107,23 +106,6 @@ class GitHubController extends Controller
         return redirect()->route('app.home');
     }
 
-    /**
-     * Two callbacks for the same new identity can both miss the lookup; the
-     * one that loses the insert logs into the account the other created.
-     */
-    private function loginConcurrentSignup(UniqueConstraintViolationException $exception, ?string $email, string $providerId, ?Invite $invite): RedirectResponse
-    {
-        $user = User::where('email', $email)->first();
-
-        if (! $user) {
-            throw $exception;
-        }
-
-        $redirect = $this->loginExistingUser($user, $providerId);
-
-        return $invite ? redirect()->route('app.invites.show', $invite) : $redirect;
-    }
-
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
     {
         $invite = $this->resolveInviteForRegistration();
@@ -135,21 +117,17 @@ class GitHubController extends Controller
         $attributionParameters = $this->retrieveAttributionParameters();
         $preferences = $this->retrieveSignupPreferences();
 
-        try {
-            $user = CreateUser::execute([
-                'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
-                'email' => $githubUser->getEmail(),
-                'github_id' => (string) $githubUser->getId(),
-                'email_verified_at' => now(),
-                'is_invite' => $invite !== null,
-                'registration_ip' => request()->ip(),
-                'timezone' => data_get($preferences, 'timezone'),
-                'week_starts_on' => data_get($preferences, 'week_starts_on'),
-                'time_format' => data_get($preferences, 'time_format'),
-            ], $attributionParameters);
-        } catch (UniqueConstraintViolationException $exception) {
-            return $this->loginConcurrentSignup($exception, $githubUser->getEmail(), (string) $githubUser->getId(), $invite);
-        }
+        $user = CreateUser::execute([
+            'name' => $githubUser->getName() ?? $githubUser->getNickname() ?? explode('@', $githubUser->getEmail())[0],
+            'email' => $githubUser->getEmail(),
+            'github_id' => (string) $githubUser->getId(),
+            'email_verified_at' => now(),
+            'is_invite' => $invite !== null,
+            'registration_ip' => request()->ip(),
+            'timezone' => data_get($preferences, 'timezone'),
+            'week_starts_on' => data_get($preferences, 'week_starts_on'),
+            'time_format' => data_get($preferences, 'time_format'),
+        ], $attributionParameters);
 
         event(new Registered($user));
 
