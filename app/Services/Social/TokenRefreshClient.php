@@ -78,8 +78,8 @@ class TokenRefreshClient
                 );
             }
 
-            $message = data_get($body, 'error_description')
-                ?? data_get($body, 'error.message')
+            $message = collect([data_get($body, 'error_description'), data_get($body, 'error.message')])
+                ->first(fn (mixed $candidate): bool => is_string($candidate) && $candidate !== '')
                 ?? "Failed to refresh {$name} token";
 
             throw new TokenExpiredException($message, platformErrorCode: (string) $response->status());

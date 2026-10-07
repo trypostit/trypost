@@ -407,27 +407,30 @@ class ConnectionVerifier
             throw new TokenExpiredException('No refresh token available for TikTok account');
         }
 
-        $response = TokenRefreshClient::for(Platform::TikTok)->send(fn () => $this->refreshHttp()->asForm()
-            ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
-                'grant_type' => 'refresh_token',
-                'refresh_token' => $account->refresh_token,
-                'client_key' => config('services.tiktok.client_id'),
-                'client_secret' => config('services.tiktok.client_secret'),
-            ]));
+        $response = TokenRefreshClient::for(Platform::TikTok)->send(
+            fn () => $this->refreshHttp()->asForm()
+                ->post(config('trypost.platforms.tiktok.api').'/oauth/token/', [
+                    'grant_type' => 'refresh_token',
+                    'refresh_token' => $account->refresh_token,
+                    'client_key' => config('services.tiktok.client_id'),
+                    'client_secret' => config('services.tiktok.client_secret'),
+                ]),
+            fn (?array $body): bool => self::isDeadTikTokRefresh($body),
+        );
 
         $data = $response->json();
-
         $error = data_get($data, 'error');
+        $description = data_get($data, 'error_description');
+        $description = is_string($description) && $description !== '' ? $description : null;
 
-        if (in_array($error, self::TIKTOK_DEAD_REFRESH_ERRORS, true)) {
-            throw new TokenExpiredException(
-                (string) (data_get($data, 'error_description') ?: $error),
-                platformErrorCode: (string) $error,
-            );
+        if (self::isDeadTikTokRefresh($data)) {
+            throw new TokenExpiredException($description ?? $error, platformErrorCode: $error);
         }
 
         if (filled($error)) {
-            throw new PlatformUnavailableException("TikTok refresh returned {$error}: ".data_get($data, 'error_description', ''));
+            $code = is_string($error) ? $error : 'unrecognized error';
+
+            throw new PlatformUnavailableException(trim("TikTok refresh returned {$code}: {$description}", ': '));
         }
 
         $account->update([
@@ -437,6 +440,14 @@ class ConnectionVerifier
         ]);
 
         $account->refresh();
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $body
+     */
+    private static function isDeadTikTokRefresh(?array $body): bool
+    {
+        return in_array(data_get($body, 'error'), self::TIKTOK_DEAD_REFRESH_ERRORS, true);
     }
 
     private function refreshPinterestToken(SocialAccount $account): void
