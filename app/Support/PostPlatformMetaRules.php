@@ -421,6 +421,21 @@ class PostPlatformMetaRules
     }
 
     /**
+     * The meta keys a platform always needs before a post is scheduled or
+     * published, read from `requiredMetaViolation()` on empty meta. Meta that
+     * depends on other settings (a Google Business event) or that the text can
+     * stand in for (a YouTube title) is not listed.
+     *
+     * @return list<string>
+     */
+    public static function requiredMetaKeys(Platform $platform): array
+    {
+        $violation = self::requiredMetaViolation($platform, []);
+
+        return $violation === null ? [] : [$violation[0]];
+    }
+
+    /**
      * Required meta that the post text can stand in for, so it is only missing
      * once the text is known: a YouTube title falls back to the first line.
      *

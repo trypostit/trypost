@@ -27,6 +27,10 @@ test('list content types returns all platforms with constraints', function () {
                         'platform',
                         'label',
                         'max_content_length',
+                        'long_post_content_length',
+                        'max_hashtags',
+                        'alt_text_max_length',
+                        'required_meta',
                         'recommended_content_length',
                         'allowed_media_types',
                         'default_content_type',
@@ -63,6 +67,10 @@ test('list content types returns all platforms with constraints', function () {
                                 'supports_alt_text',
                                 'supports_user_tags',
                                 'supports_video_cover',
+                                'captionless',
+                                'document_must_be_alone',
+                                'supports_thread_replies',
+                                'max_thread_replies',
                             ])
                         )
                     )

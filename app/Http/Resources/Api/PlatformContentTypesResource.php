@@ -6,6 +6,8 @@ namespace App\Http\Resources\Api;
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Models\SocialAccount;
+use App\Support\PostPlatformMetaRules;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -29,6 +31,10 @@ class PlatformContentTypesResource extends JsonResource
             'platform' => $platform->value,
             'label' => $platform->label(),
             'max_content_length' => $platform->maxContentLength(),
+            'long_post_content_length' => $platform === Platform::X ? SocialAccount::X_LONG_POST_LENGTH : null,
+            'max_hashtags' => $platform->maxHashtags(),
+            'alt_text_max_length' => $platform->altTextMaxLength(),
+            'required_meta' => PostPlatformMetaRules::requiredMetaKeys($platform),
             'recommended_content_length' => $platform->recommendedAiContentLength(),
             'allowed_media_types' => array_map(
                 fn ($type) => $type->value,

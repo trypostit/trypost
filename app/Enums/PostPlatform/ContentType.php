@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Support\ThreadReplies;
 
 enum ContentType: string
 {
@@ -603,7 +604,11 @@ enum ContentType: string
      *     image_max_height: int|null,
      *     supports_alt_text: bool,
      *     supports_user_tags: bool,
-     *     supports_video_cover: bool
+     *     supports_video_cover: bool,
+     *     captionless: bool,
+     *     document_must_be_alone: bool,
+     *     supports_thread_replies: bool,
+     *     max_thread_replies: int|null
      * }
      */
     public function toListingArray(): array
@@ -641,6 +646,10 @@ enum ContentType: string
                 'supports_user_tags',
                 'supports_video_cover',
             ])),
+            'captionless' => $this->isCaptionless(),
+            'document_must_be_alone' => $this->supportsDocument(),
+            'supports_thread_replies' => ThreadReplies::supports($this->platform()),
+            'max_thread_replies' => ThreadReplies::supports($this->platform()) ? ThreadReplies::MAX_REPLIES : null,
         ];
     }
 
