@@ -7,6 +7,7 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\X\MediaProcessingState;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
@@ -485,13 +486,13 @@ class XPublisher
             }
 
             $lastProcessingInfo = $processingInfo;
-            $state = data_get($processingInfo, 'state', 'unknown');
+            $state = MediaProcessingState::tryFrom((string) data_get($processingInfo, 'state'));
 
-            if ($state === 'succeeded') {
+            if ($state === MediaProcessingState::Succeeded) {
                 return;
             }
 
-            if ($state === 'failed') {
+            if ($state === MediaProcessingState::Failed) {
                 $error = data_get($processingInfo, 'error', 'Unknown error');
                 $rawError = is_string($error) ? $error : json_encode($error);
 
@@ -508,7 +509,7 @@ class XPublisher
             Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
         }
 
-        if (! in_array(data_get($lastProcessingInfo, 'state'), ['pending', 'in_progress'], true)) {
+        if (MediaProcessingState::tryFrom((string) data_get($lastProcessingInfo, 'state'))?->isProcessing() !== true) {
             Log::error('X media processing timed out', [
                 'media_id' => $mediaId,
                 'processing_info' => $lastProcessingInfo,
