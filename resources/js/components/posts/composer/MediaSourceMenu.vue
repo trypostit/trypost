@@ -191,11 +191,23 @@ const onMenuOpenChange = (open: boolean): void => {
     }
 };
 
+const itemChosen = ref(false);
+
+const keepFocusOnChosenSource = (event: Event): void => {
+    if (itemChosen.value) {
+        event.preventDefault();
+    }
+
+    itemChosen.value = false;
+};
+
 const requestUpload = (): void => {
+    itemChosen.value = true;
     emit('upload');
 };
 
 const pick = (option: MediaSourceOption): void => {
+    itemChosen.value = true;
     void handlers[option.source]?.(option, startImport);
 };
 
@@ -203,6 +215,7 @@ const pickCanvaPreset = (
     option: MediaSourceOption,
     preset: string,
 ): void => {
+    itemChosen.value = true;
     void designInCanva(option, preset);
 };
 </script>
@@ -246,6 +259,7 @@ const pickCanvaPreset = (
             :side-offset="8"
             class="min-w-48"
             :data-testid="`${testIdPrefix}-media-source-list`"
+            @close-auto-focus="keepFocusOnChosenSource"
         >
             <DropdownMenuItem
                 data-testid="media-source-upload"
