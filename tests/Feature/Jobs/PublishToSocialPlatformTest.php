@@ -892,6 +892,25 @@ test('alternating processing reschedules and outages still exhausts the outage r
     Bus::assertNotDispatched(PublishToSocialPlatform::class);
 });
 
+test('an outage after a processing reschedule is dispatched under a new unique attempt', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+
+    $this->postPlatform->update([
+        'error_context' => ['processing_retry_count' => 1, 'max_retries' => 30, 'retry_delay_seconds' => 60],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh(), 1))->handle();
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->uniqueAttempt === 2);
+});
+
 test('post stays in Publishing while one platform is still Retrying', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();

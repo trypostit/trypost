@@ -339,7 +339,10 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ],
         ]);
 
-        self::dispatch($this->postPlatform, $retryCount)->delay($nextAttemptAt);
+        self::dispatch(
+            $this->postPlatform,
+            (int) data_get($context, 'retry_count', 0) + (int) data_get($context, 'processing_retry_count', 0),
+        )->delay($nextAttemptAt);
     }
 
     /**
