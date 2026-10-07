@@ -170,6 +170,44 @@ test('refreshes tiktok token before verifying when expired', function () {
     Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.tiktok.api').'/oauth/token'));
 });
 
+test('tiktok refresh answered with 200 and an error body raises TokenExpiredException', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
+            'error' => 'invalid_grant',
+            'error_description' => 'Refresh token is invalid or expired.',
+            'log_id' => '20261007182924',
+        ], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'access_token' => 'old_token',
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(TokenExpiredException::class, 'Refresh token is invalid or expired.');
+
+    expect($account->fresh()->access_token)->toBe('old_token');
+});
+
+test('tiktok refresh answered with 200 and neither a token nor an error stays transient', function () {
+    Http::fake([
+        config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response(['log_id' => '20261007182924'], 200),
+    ]);
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'access_token' => 'old_token',
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))
+        ->toThrow(PlatformUnavailableException::class);
+
+    expect($account->fresh()->access_token)->toBe('old_token');
+});
+
 test('refreshes pinterest token before verifying when expired', function () {
     Http::fake([
         config('trypost.platforms.pinterest.api').'/oauth/token' => Http::response([

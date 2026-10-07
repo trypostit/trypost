@@ -409,6 +409,13 @@ class ConnectionVerifier
 
         $data = $response->json();
 
+        if (filled(data_get($data, 'error'))) {
+            throw new TokenExpiredException(
+                (string) (data_get($data, 'error_description') ?: data_get($data, 'error')),
+                platformErrorCode: (string) data_get($data, 'error'),
+            );
+        }
+
         $account->update([
             'access_token' => $this->tokenFrom($data, $account->platform),
             'refresh_token' => $this->rotatedTokenFrom($data, 'refresh_token', $account->refresh_token),
