@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DB_CONNECTION: pgsql
   DB_DATABASE: trypost_test
@@ -99,8 +103,13 @@ jobs:
       - name: Fail unless every engine passed
         run: '[ "${{ needs.tests.result }}" = "success" ]'
 
-  e2e:
+  browser:
+    name: Browser (${{ matrix.shard }}/5)
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4, 5]
 
     services:
       postgres:
@@ -148,13 +157,23 @@ jobs:
         env:
           DB_PORT: ${{ job.services.postgres.ports['5432'] }}
           REDIS_PORT: ${{ job.services.redis.ports['6379'] }}
-        run: php artisan test tests/Browser --compact
+        run: php artisan test tests/Browser --compact --shard=${{ matrix.shard }}/5
 
       - name: Upload Playwright artifacts
         if: failure()
         uses: actions/upload-artifact@v7
         with:
-          name: playwright-artifacts
+          name: playwright-artifacts-${{ matrix.shard }}
           path: tests/Browser/Screenshots
           if-no-files-found: ignore
           retention-days: 7
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    needs: [browser]
+    if: always()
+
+    steps:
+      - name: Fail unless every browser shard passed
+        run: '[ "${{ needs.browser.result }}" = "success" ]'
