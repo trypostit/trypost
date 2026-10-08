@@ -344,6 +344,25 @@ test('throws exception when x refresh fails', function () {
         ->toThrow(TokenExpiredException::class, 'Failed to refresh X token');
 });
 
+test('a refresh failure without a usable error_description falls back to the next message', function (array $body, string $expected) {
+    Http::fake([
+        config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response($body, 400),
+    ]);
+
+    $account = SocialAccount::factory()->linkedin()->create([
+        'token_expires_at' => now()->subHour(),
+        'refresh_token' => 'old_refresh_token',
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->verify($account))
+        ->toThrow(fn (TokenExpiredException $exception) => expect($exception->getMessage())->toBe($expected));
+})->with([
+    'empty description' => [['error_description' => '', 'error' => ['message' => 'Refresh token revoked']], 'Refresh token revoked'],
+    'array description' => [['error_description' => ['a'], 'error' => ['message' => 'Refresh token revoked']], 'Refresh token revoked'],
+    'empty description and no message' => [['error_description' => ''], 'Failed to refresh LinkedIn token'],
+    'non-string description and message' => [['error_description' => 42, 'error' => ['message' => ['a']]], 'Failed to refresh LinkedIn token'],
+]);
+
 test('does not refresh facebook token as it uses long-lived tokens', function () {
     Http::fake([
         config('trypost.platforms.facebook.graph_api').'/*' => Http::response(['id' => '123', 'name' => 'Test'], 200),
