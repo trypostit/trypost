@@ -165,6 +165,7 @@ return [
             'start_again' => '重新开始',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => '请在 Bluesky 设置中验证邮箱，然后重新连接账号。通过 TryPost 发布视频需要先验证邮箱。',
             'error_connecting' => '连接账号时出错，请重试。',
             'network_taken' => '此工作区已连接了该网络的账号。请先断开该连接。',
             'wrong_account' => '这是另一个账号。请授权你正在重新连接的那个。',

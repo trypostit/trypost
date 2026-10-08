@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Exceptions\SocialAccount\ConnectFlowException;
+use App\Models\SocialAccount;
 use App\Services\Social\BlueskyLexicon;
 use App\Support\Social\PendingConnection;
 use Exception;
@@ -51,6 +53,10 @@ class BlueskyController extends SocialController
 
         $service = config('trypost.platforms.bluesky.default_service');
 
+        if (PendingConnection::current()?->platform() !== $this->platform) {
+            $this->rememberConnectSession($request, $workspace);
+        }
+
         try {
             // Authenticate with Bluesky
             $response = Http::post("{$service}/xrpc/".BlueskyLexicon::CREATE_SESSION, [
@@ -69,6 +75,12 @@ class BlueskyController extends SocialController
 
             $data = $response->json();
 
+            if (data_get($data, 'emailConfirmed') !== true) {
+                return $this->failConnection(data_get($data, 'emailConfirmed') === false
+                    ? 'bluesky_email_unconfirmed'
+                    : 'error_connecting');
+            }
+
             // Get profile
             $profileResponse = Http::withToken(data_get($data, 'accessJwt'))
                 ->get("{$service}/xrpc/".BlueskyLexicon::GET_PROFILE, [
@@ -76,10 +88,6 @@ class BlueskyController extends SocialController
                 ]);
 
             $profile = $profileResponse->successful() ? $profileResponse->json() : [];
-
-            if (PendingConnection::current()?->platform() !== $this->platform) {
-                $this->rememberConnectSession($request, $workspace);
-            }
 
             return $this->offerIdentities($workspace, [
                 PendingConnection::identity(
@@ -113,5 +121,25 @@ class BlueskyController extends SocialController
 
             throw ValidationException::withMessages(['password' => __('accounts.bluesky.connection_error')]);
         }
+    }
+
+    protected function accountValues(array $identity, ?SocialAccount $reconnect): array
+    {
+        $response = Http::withToken(data_get($identity, 'attributes.access_token'))
+            ->connectTimeout(10)
+            ->timeout(30)
+            ->get(config('trypost.platforms.bluesky.default_service').'/xrpc/'.BlueskyLexicon::GET_SESSION);
+
+        if (! $response->successful() || $response->json('did') !== data_get($identity, 'platform_user_id')) {
+            throw new ConnectFlowException('error_connecting', $this->platform);
+        }
+
+        if ($response->json('emailConfirmed') !== true) {
+            throw new ConnectFlowException($response->json('emailConfirmed') === false
+                ? 'bluesky_email_unconfirmed'
+                : 'error_connecting', $this->platform);
+        }
+
+        return parent::accountValues($identity, $reconnect);
     }
 }

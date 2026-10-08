@@ -167,6 +167,7 @@ return [
             'start_again' => 'Neu starten',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Bestätige deine E-Mail-Adresse in den Bluesky-Einstellungen und verbinde dein Konto erneut. TryPost benötigt eine bestätigte E-Mail-Adresse, um Videos zu veröffentlichen.',
             'error_connecting' => 'Fehler beim Verbinden des Kontos. Bitte versuche es erneut.',
             'network_taken' => 'Dieser Workspace hat bereits ein Konto für dieses Netzwerk. Trenne es zuerst.',
             'wrong_account' => 'Das ist ein anderes Konto. Autorisiere das Konto, das du neu verbindest.',

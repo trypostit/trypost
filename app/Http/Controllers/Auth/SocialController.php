@@ -127,6 +127,8 @@ class SocialController extends Controller
 
         try {
             $accounts = $this->connectIdentities($workspace, $pending->selected($request->validated('identities')), $reconnect);
+        } catch (ConnectFlowException $e) {
+            return $this->failConnection($e->messageKey);
         } catch (NetworkAlreadyConnectedException $e) {
             return $this->failConnection($e->messageKey);
         } catch (Exception $e) {

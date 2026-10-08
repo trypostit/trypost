@@ -158,11 +158,13 @@ test('switch account on bluesky returns to its form with empty fields', function
 
     Http::fake([
         "{$service}/xrpc/com.atproto.server.createSession" => Http::response([
+            'emailConfirmed' => true,
             'did' => 'did:plc:first',
             'handle' => 'first.bsky.social',
             'accessJwt' => 'access-token',
             'refreshJwt' => 'refresh-token',
         ]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:first', 'emailConfirmed' => true]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
             'did' => 'did:plc:first',
             'handle' => 'first.bsky.social',

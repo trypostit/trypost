@@ -165,6 +165,7 @@ return [
             'start_again' => 'Ricomincia',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Conferma la tua email nelle impostazioni di Bluesky, poi collega di nuovo il tuo account. TryPost richiede un’email confermata per pubblicare video.',
             'error_connecting' => 'Errore durante il collegamento dell\'account. Riprova.',
             'network_taken' => 'Questo workspace ha già un account per questa rete. Scollegalo prima.',
             'wrong_account' => 'Questo è un account diverso. Autorizza quello che stai ricollegando.',

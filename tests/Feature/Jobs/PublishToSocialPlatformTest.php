@@ -13,6 +13,7 @@ use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Events\PostPlatformStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
@@ -31,6 +32,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
+use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\FacebookPublisher;
 use App\Services\Social\LinkedInPagePublisher;
@@ -272,6 +274,35 @@ test('publish logs but does not report a documented rejection the user must act 
 })->with([
     'permission' => fn () => linkedInRejection(403),
 ]);
+
+test('a Bluesky email rejection saves actionable failure details without refreshing the valid account', function () {
+    $this->socialAccount->update(['platform' => Platform::Bluesky]);
+    $this->postPlatform->update(['platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost]);
+    Event::fake();
+    Exceptions::fake();
+    Queue::fake();
+
+    $body = ['jobStatus' => ['error' => 'unconfirmed_email']];
+    $response = Http::fake(['*' => Http::response($body, 401)])
+        ->post('https://video.bsky.app/xrpc/app.bsky.video.uploadVideo');
+    $exception = BlueskyPublishException::fromApiResponse($response);
+
+    $this->mock(BlueskyPublisher::class)->shouldReceive('publish')->once()->andThrow($exception);
+    $this->mock(ConnectionVerifier::class)->shouldNotReceive('refreshToken');
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    $this->postPlatform->refresh();
+    expect($this->postPlatform->status)->toBe(PlatformStatus::Failed)
+        ->and($this->postPlatform->error_message)->toBe('Confirm your email in Bluesky settings, then try publishing again.')
+        ->and(data_get($this->postPlatform->error_context, 'category'))->toBe(ErrorCategory::Permission->value)
+        ->and(data_get($this->postPlatform->error_context, 'platform_error_code'))->toBe('unconfirmed_email')
+        ->and(json_decode(data_get($this->postPlatform->error_context, 'raw_response'), true))->toBe($body)
+        ->and($this->socialAccount->fresh()->status)->toBe(AccountStatus::Connected);
+
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+    Exceptions::assertNothingReported();
+});
 
 test('publish reports a failure that can be ours, even when categorized', function (SocialPublishException $exception) {
     Event::fake();

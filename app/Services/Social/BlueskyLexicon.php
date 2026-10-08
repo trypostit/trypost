@@ -21,6 +21,8 @@ final class BlueskyLexicon
 
     public const CREATE_SESSION = 'com.atproto.server.createSession';
 
+    public const GET_SESSION = 'com.atproto.server.getSession';
+
     public const REFRESH_SESSION = 'com.atproto.server.refreshSession';
 
     public const GET_SERVICE_AUTH = 'com.atproto.server.getServiceAuth';

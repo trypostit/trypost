@@ -165,6 +165,7 @@ return [
             'start_again' => 'Opnieuw beginnen',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Bevestig je e-mailadres in de instellingen van Bluesky en verbind je account opnieuw. TryPost vereist een bevestigd e-mailadres om video’s te publiceren.',
             'error_connecting' => 'Fout bij het koppelen van het account. Probeer het opnieuw.',
             'network_taken' => 'Deze workspace heeft al een account voor dit netwerk. Koppel dat eerst los.',
             'wrong_account' => 'Dat is een ander account. Autoriseer het account dat je opnieuw koppelt.',

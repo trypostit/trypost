@@ -16,8 +16,17 @@ class BlueskyPublishException extends SocialPublishException
         $body = $response->json();
         $rawResponse = $response->body();
 
-        $error = data_get($body, 'error', '');
+        $error = data_get($body, 'jobStatus.error') ?? data_get($body, 'error', '');
         $errorMessage = data_get($body, 'message', 'An unknown Bluesky error occurred.');
+
+        if ($error === 'unconfirmed_email' && $response->clientError()) {
+            return (new static(
+                userMessage: 'Confirm your email in Bluesky settings, then try publishing again.',
+                category: ErrorCategory::Permission,
+                platformErrorCode: $error,
+                rawResponse: $rawResponse,
+            ))->asNetworkRejection();
+        }
 
         if (self::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException(

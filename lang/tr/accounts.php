@@ -167,6 +167,7 @@ return [
             'start_again' => 'Baştan başla',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Bluesky ayarlarından e-posta adresinizi doğrulayın, ardından hesabınızı yeniden bağlayın. TryPost ile video paylaşmak için doğrulanmış bir e-posta adresi gereklidir.',
             'error_connecting' => 'Hesap bağlanırken hata oluştu. Lütfen tekrar deneyin.',
             'network_taken' => 'Bu çalışma alanında bu ağa ait zaten bir hesap var. Önce bağlantısını kesin.',
             'wrong_account' => 'Bu farklı bir hesap. Yeniden bağladığınız hesabı yetkilendirin.',

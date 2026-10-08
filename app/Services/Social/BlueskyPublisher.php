@@ -510,6 +510,8 @@ class BlueskyPublisher
             }
 
             return null;
+        } catch (BlueskyPublishException $e) {
+            throw $e;
         } catch (Throwable $e) {
             Log::error('Bluesky video upload exception', [
                 'error' => $e->getMessage(),
@@ -554,6 +556,12 @@ class BlueskyPublisher
         // A re-upload of identical bytes returns 409 with the already-finished
         // job, whose blob we can embed directly.
         if ($response->failed() && $response->status() !== 409) {
+            $exception = BlueskyPublishException::fromApiResponse($response);
+
+            if ($exception->isNetworkRejection()) {
+                throw $exception;
+            }
+
             Log::error('Bluesky video upload failed', [
                 'status' => $response->status(),
                 'body' => $this->redactResponseBody($response->body()),

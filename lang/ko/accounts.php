@@ -165,6 +165,7 @@ return [
             'start_again' => '처음부터',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Bluesky 설정에서 이메일을 인증한 후 계정을 다시 연결하세요. TryPost에서 동영상을 게시하려면 이메일 인증이 필요합니다.',
             'error_connecting' => '계정 연결 중 오류가 발생했습니다. 다시 시도해 주세요.',
             'network_taken' => '이 워크스페이스에는 이미 이 네트워크의 계정이 있습니다. 먼저 연결을 해제하세요.',
             'wrong_account' => '다른 계정입니다. 다시 연결하려는 계정을 인증하세요.',

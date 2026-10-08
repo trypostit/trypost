@@ -165,6 +165,7 @@ return [
             'start_again' => 'Zacznij od nowa',
         ],
         'errors' => [
+            'bluesky_email_unconfirmed' => 'Potwierdź adres e-mail w ustawieniach Bluesky, a następnie ponownie połącz konto. TryPost wymaga potwierdzonego adresu e-mail, aby publikować filmy.',
             'error_connecting' => 'Błąd podczas łączenia konta. Spróbuj ponownie.',
             'network_taken' => 'Ta przestrzeń robocza ma już konto dla tej sieci. Najpierw je rozłącz.',
             'wrong_account' => 'To inne konto. Autoryzuj to, które ponownie łączysz.',

@@ -353,14 +353,44 @@ test('the bluesky and mastodon steps use the same page with the TryPost mark nex
     'mastodon' => ['app.social.mastodon.connect', 'mastodon', 'accounts.mastodon.title', 'mastodon-instance-hint'],
 ]);
 
+test('bluesky shows the email confirmation requirement instead of allowing connection', function () {
+    $user = connectConfirmAdmin();
+    $this->actingAs($user);
+
+    Http::fake([
+        config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.server.createSession' => Http::response([
+            'did' => 'did:plc:unconfirmed',
+            'handle' => 'unconfirmed.bsky.social',
+            'accessJwt' => 'access',
+            'refreshJwt' => 'refresh',
+            'emailConfirmed' => false,
+        ]),
+    ]);
+
+    $page = visit(route('app.social.bluesky.connect'))->resize(1280, 900);
+    waitForConnectConfirmTestId($page, 'bluesky-identifier');
+    $page->type('@bluesky-identifier', 'unconfirmed.bsky.social')
+        ->type('@bluesky-password', 'xxxx-xxxx-xxxx-xxxx')
+        ->click('@bluesky-submit');
+
+    waitForConnectConfirmTestId($page, 'connect-state-error');
+    $page->assertSee(__('accounts.connect.errors.bluesky_email_unconfirmed'))
+        ->assertMissing('@connect-finish')
+        ->assertNoJavaScriptErrors();
+
+    expect($user->currentWorkspace->socialAccounts()->count())->toBe(0);
+});
+
 test('a bluesky connection started without a return page finishes on its channel page', function () {
     $user = connectConfirmAdmin();
     $this->actingAs($user);
     $service = config('trypost.platforms.bluesky.default_service');
     Http::fake([
         "{$service}/xrpc/com.atproto.server.createSession" => Http::response([
+            'emailConfirmed' => true,
             'did' => 'did:plc:confirm', 'handle' => 'confirm.bsky.social', 'accessJwt' => 'access', 'refreshJwt' => 'refresh',
         ]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:confirm', 'emailConfirmed' => true]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response(['displayName' => 'Confirm Bluesky']),
     ]);
 
