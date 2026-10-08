@@ -8,6 +8,7 @@ use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Http\SafeHttpFetcher;
@@ -44,7 +45,7 @@ class BlueskyPublisher
     /** Poll getJobStatus up to this many times before timing out. */
     private const VIDEO_POLL_MAX_ATTEMPTS = 150;
 
-    /** Wall-clock budget (seconds) for the whole upload+poll+retry flow, kept under the 600s job timeout so a stuck transcode degrades to text instead of being killed mid-flight. */
+    /** Wall-clock budget (seconds) for the whole upload+poll+retry flow before media preparation fails. */
     private const VIDEO_PROCESSING_BUDGET = 420;
 
     private const JOB_STATE_COMPLETED = 'JOB_STATE_COMPLETED';
@@ -171,12 +172,17 @@ class BlueskyPublisher
         foreach ($medias->take(4) as $media) {
             if ($media->isImage()) {
                 $blob = $this->uploadBlob($account, $service, $media->url, $media->mime_type);
-                if ($blob) {
-                    $images[] = [
-                        'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
-                        'image' => $blob,
-                    ];
+                if (! $blob) {
+                    throw new BlueskyPublishException(
+                        userMessage: 'Media upload to Bluesky failed. Please try again.',
+                        category: ErrorCategory::ServerError,
+                    );
                 }
+
+                $images[] = [
+                    'alt' => $media->altTextFor(Platform::Bluesky) ?? '',
+                    'image' => $blob,
+                ];
             }
         }
 
@@ -189,6 +195,13 @@ class BlueskyPublisher
 
         $video = $medias->first(fn (MediaItem $media): bool => $media->isVideo());
         $videoBlob = $video ? $this->uploadVideo($account, $service, $video->url, $video->mime_type) : null;
+
+        if ($video && ! $videoBlob) {
+            throw new BlueskyPublishException(
+                userMessage: 'Media upload to Bluesky failed. Please try again.',
+                category: ErrorCategory::ServerError,
+            );
+        }
 
         return $videoBlob ? [
             '$type' => BlueskyLexicon::EMBED_VIDEO,
@@ -431,8 +444,8 @@ class BlueskyPublisher
      *   4. poll app.bsky.video.getJobStatus until the blob is ready,
      *      retrying the whole upload a few times on a transient transcode failure.
      *
-     * Returns null on any failure so the post still publishes as text rather
-     * than crashing the whole job (mirrors uploadBlob()).
+     * Returns null on failure so mediaEmbed stops publication. Only a link
+     * preview thumbnail may be omitted when its upload fails.
      */
     private function uploadVideo(SocialAccount $account, string $service, string $url, ?string $mimeType): ?array
     {
@@ -475,8 +488,7 @@ class BlueskyPublisher
 
             // Bound the whole upload+poll+retry flow to a wall-clock budget that
             // stays under the queue job timeout: a stuck transcode must give up
-            // and let the post publish as text, not run the worker to its
-            // timeout (which would drop the post entirely on a $tries=1 job).
+            // and fail publication instead of running the worker to its timeout.
             $deadline = now()->addSeconds(self::VIDEO_PROCESSING_BUDGET);
 
             // The transcoder occasionally fails a job transiently

@@ -608,7 +608,7 @@ test('bluesky publisher optimizes images before upload', function () {
     @unlink($tempFile);
 });
 
-test('bluesky publisher handles media download failure gracefully', function () {
+test('bluesky publisher stops publication when an image download fails', function () {
     $this->post->update([
         'media' => [
             [
@@ -635,21 +635,10 @@ test('bluesky publisher handles media download failure gracefully', function () 
         return Http::response('Not Found', 404);
     });
 
-    // When media download fails, uploadBlob returns null and post publishes as text-only
-    $result = $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    expect($result)->toHaveKey('id');
-    expect($result['id'])->toBe('3textonly');
-
-    // The createRecord request should NOT contain an embed (no images uploaded)
-    Http::assertSent(function ($request) {
-        if (! str_contains($request->url(), 'createRecord')) {
-            return false;
-        }
-        $record = $request['record'];
-
-        return ! isset($record['embed']);
-    });
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
 test('bluesky publisher limits images to 4', function () {
@@ -697,6 +686,42 @@ test('bluesky publisher limits images to 4', function () {
             && count($request['record']['embed']['images'] ?? []) === 4;
     });
 });
+
+test('bluesky publisher never publishes a partial image set', function (string $failure) {
+    $this->post->update(['media' => collect(['first', 'second'])->map(fn (string $id): array => [
+        'id' => $id,
+        'path' => "media/{$id}.gif",
+        'url' => "https://example.com/{$id}.gif",
+        'mime_type' => 'image/gif',
+        'original_filename' => "{$id}.gif",
+    ])->all()]);
+
+    $uploads = 0;
+    Http::fake(function ($request) use (&$uploads, $failure) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            $uploads++;
+
+            if ($uploads === 2) {
+                return match ($failure) {
+                    'refusal' => Http::response(['error' => 'BlobTooLarge'], 413),
+                    'server error' => Http::response(['error' => 'InternalServerError'], 500),
+                    'connection' => Http::failedConnection(),
+                    'missing blob' => Http::response([]),
+                };
+            }
+
+            return Http::response(['blob' => ['$type' => 'blob', 'ref' => ['$link' => 'first-blob'], 'mimeType' => 'image/gif', 'size' => 1024]]);
+        }
+
+        return Http::response(str_repeat('x', 1024));
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
+
+    expect($uploads)->toBe(2);
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
+})->with(['refusal', 'server error', 'connection', 'missing blob']);
 
 /**
  * Attach a single video to the post under test (mp4 by default).
@@ -807,7 +832,7 @@ test('bluesky publisher scopes the upload service-auth to the resolved PDS host'
     });
 });
 
-test('bluesky publisher publishes text-only when video processing fails', function () {
+test('bluesky publisher stops publication when video processing fails', function () {
     $this->post->update([
         'media' => [[
             'id' => 'test-video-id',
@@ -820,13 +845,10 @@ test('bluesky publisher publishes text-only when video processing fails', functi
 
     fakeBlueskyVideoPipeline('JOB_STATE_FAILED');
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    // A failed transcode must not crash the job; the post still goes out as text.
-    Http::assertSent(function ($request) {
-        return str_contains($request->url(), 'createRecord')
-            && ! isset($request['record']['embed']);
-    });
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
 test('bluesky publisher retries a transient video transcode failure', function () {
@@ -884,7 +906,7 @@ test('bluesky publisher retries a transient video transcode failure', function (
     });
 });
 
-test('bluesky publisher skips an oversized video and publishes text-only', function () {
+test('bluesky publisher stops publication for an oversized video', function () {
     attachBlueskyVideo($this->post);
     config(['trypost.platforms.bluesky.video_max_bytes' => 1024]);
 
@@ -897,14 +919,14 @@ test('bluesky publisher skips an oversized video and publishes text-only', funct
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    // Oversized video is dropped before any upload; the post still goes out as text.
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'app.bsky.video.uploadVideo'));
 });
 
-test('bluesky publisher publishes text-only when the video download fails', function () {
+test('bluesky publisher stops publication when the video download fails', function () {
     attachBlueskyVideo($this->post);
 
     Http::fake(function ($request) {
@@ -912,17 +934,17 @@ test('bluesky publisher publishes text-only when the video download fails', func
             return Http::response(['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3dl', 'cid' => 'bafdl'], 200);
         }
 
-        // The CDN download 404s — no video, no service-auth, just text.
         return Http::response('Not Found', 404);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'getServiceAuth'));
 });
 
-test('bluesky publisher publishes text-only when service-auth minting fails', function () {
+test('bluesky publisher stops publication when service-auth minting fails', function () {
     attachBlueskyVideo($this->post);
 
     Http::fake(function ($request) {
@@ -941,10 +963,10 @@ test('bluesky publisher publishes text-only when service-auth minting fails', fu
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    // Without a service-auth token the upload can't proceed; degrade to text.
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'app.bsky.video.uploadVideo'));
 });
 
@@ -993,7 +1015,7 @@ test('bluesky publisher embeds the existing blob when upload returns 409 already
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'xrpc/app.bsky.video.getJobStatus'));
 });
 
-test('bluesky publisher publishes text-only when upload returns no job id', function () {
+test('bluesky publisher stops publication when upload returns no job id', function () {
     attachBlueskyVideo($this->post);
     config(['trypost.platforms.bluesky.video_poll_seconds' => 0]);
 
@@ -1016,12 +1038,13 @@ test('bluesky publisher publishes text-only when upload returns no job id', func
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
-test('bluesky publisher publishes text-only when getJobStatus errors', function () {
+test('bluesky publisher stops publication when getJobStatus errors', function () {
     attachBlueskyVideo($this->post);
     config(['trypost.platforms.bluesky.video_poll_seconds' => 0]);
 
@@ -1047,11 +1070,12 @@ test('bluesky publisher publishes text-only when getJobStatus errors', function 
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
     // A failing getJobStatus bails immediately rather than sleeping to timeout.
     Http::assertSent(fn ($request) => str_contains($request->url(), 'xrpc/app.bsky.video.getJobStatus'));
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
 test('bluesky publisher backs off while video processing remains pending', function () {
@@ -1191,14 +1215,14 @@ test('bluesky publisher retries the upload up to three times before giving up', 
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    // Every attempt fails permanently → exactly VIDEO_UPLOAD_ATTEMPTS uploads, then text-only.
     expect($uploads)->toBe(3);
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
-test('bluesky publisher times out and publishes text-only when the job never completes', function () {
+test('bluesky publisher times out and stops publication when the job never completes', function () {
     attachBlueskyVideo($this->post);
     config(['trypost.platforms.bluesky.video_poll_seconds' => 0]);
 
@@ -1225,9 +1249,10 @@ test('bluesky publisher times out and publishes text-only when the job never com
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
 });
 
 test('bluesky publisher falls back to the entryway when the DID document is unavailable', function () {
@@ -1499,7 +1524,7 @@ test('bluesky publisher embeds images and skips the video when a post carries bo
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'xrpc/app.bsky.video.uploadVideo'));
 });
 
-test('bluesky publisher publishes text-only when only the status token fails', function () {
+test('bluesky publisher stops publication when only the status token fails', function () {
     attachBlueskyVideo($this->post);
 
     Http::fake(function ($request) {
@@ -1521,10 +1546,10 @@ test('bluesky publisher publishes text-only when only the status token fails', f
         return Http::response(str_repeat('v', 2048), 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(BlueskyPublishException::class, 'Media upload to Bluesky failed.');
 
-    // Without the status token the upload can't be polled, so we never upload — degrade to text.
-    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord') && ! isset($request['record']['embed']));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord'));
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'xrpc/app.bsky.video.uploadVideo'));
 });
 
@@ -2038,6 +2063,57 @@ test('a bluesky thread resumes from the stored segments without posting the root
     Http::assertSent(fn ($request): bool => str_contains($request->url(), 'getPostThread'));
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'record.text') === 'Three'
         && data_get($request->data(), 'record.reply.parent') === ['uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2']);
+});
+
+test('a bluesky thread stops on reply media failure and resumes without repeating its root', function () {
+    $image = [
+        'id' => 'reply-image',
+        'path' => 'media/reply.gif',
+        'url' => 'https://example.com/reply.gif',
+        'mime_type' => 'image/gif',
+        'original_filename' => 'reply.gif',
+    ];
+    $this->postPlatform->update(['meta' => ['thread_replies' => [['text' => 'Two', 'media' => [$image]]]]]);
+
+    $failUpload = true;
+    $records = 0;
+    Http::fake(function ($request) use (&$failUpload, &$records) {
+        if (str_contains($request->url(), 'uploadBlob')) {
+            return $failUpload
+                ? Http::response(['error' => 'InternalServerError'], 500)
+                : Http::response(['blob' => ['$type' => 'blob', 'ref' => ['$link' => 'reply-blob'], 'mimeType' => 'image/gif', 'size' => 1024]]);
+        }
+
+        if (str_contains($request->url(), 'getPostThread')) {
+            return Http::response(['thread' => ['replies' => []]]);
+        }
+
+        if (str_contains($request->url(), 'createRecord')) {
+            $records++;
+
+            return Http::response(['uri' => "at://did:plc:testuser123/app.bsky.feed.post/r{$records}", 'cid' => "c{$records}"]);
+        }
+
+        return Http::response(str_repeat('x', 1024));
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(BlueskyPublishException::class);
+
+    expect($records)->toBe(1)
+        ->and(data_get($this->postPlatform->fresh()->error_context, 'thread_progress.0.id'))->toBe('r1');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), 'createRecord')
+        && data_get($request->data(), 'record.text') === 'Two');
+
+    $failUpload = false;
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($records)->toBe(2)
+        ->and($result['id'])->toBe('r1')
+        ->and($result['thread_reply_ids'])->toBe(['r2']);
+    Http::assertSent(fn ($request) => str_contains($request->url(), 'createRecord')
+        && data_get($request->data(), 'record.text') === 'Two'
+        && data_get($request->data(), 'record.embed.images.0.image.ref.$link') === 'reply-blob');
 });
 
 function blueskyThreadCheckpoint(PostPlatform $postPlatform): void
