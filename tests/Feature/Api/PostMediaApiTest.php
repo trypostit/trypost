@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Http\Client\ConnectionException;
@@ -27,15 +26,8 @@ beforeEach(function () {
         'platform' => Platform::LinkedIn,
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     Storage::fake();
@@ -157,63 +149,47 @@ it('previews per platform with sanitized content and length', function () {
             'post_id',
             'original_content',
             'original_length',
-            'platforms' => [
-                '*' => [
-                    'post_platform_id',
-                    'platform',
-                    'content_type',
-                    'sanitized_content',
-                    'sanitized_length',
-                    'max_content_length',
-                    'truncated',
-                ],
-            ],
+            'platform',
+            'content_type',
+            'sanitized_content',
+            'sanitized_length',
+            'max_content_length',
+            'truncated',
         ])
         ->assertJsonPath('original_length', 500);
 });
 
-it('returns metrics shape including unsupported reason for unpublished platforms', function () {
+it('returns metrics shape including unsupported reason for an unpublished post', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.posts.metrics', $this->post))
         ->assertOk()
         ->assertJsonStructure([
             'post_id',
-            'platforms' => [
-                '*' => [
-                    'post_platform_id',
-                    'platform',
-                    'status',
-                    'platform_post_id',
-                    'platform_url',
-                    'metrics',
-                ],
-            ],
+            'platform',
+            'publish_status',
+            'platform_post_id',
+            'platform_url',
+            'metrics',
         ])
-        ->assertJsonPath('platforms.0.metrics.unsupported', true)
-        ->assertJsonPath('platforms.0.metrics.reason', 'not_published');
+        ->assertJsonPath('metrics.unsupported', true)
+        ->assertJsonPath('metrics.reason', 'not_published');
 });
 
 it('returns platform_not_supported for a published google business target', function () {
     $account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
     ]);
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->published()->create([
         'user_id' => $this->user->id,
-    ]);
-    PostPlatform::factory()->googleBusiness()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('platforms.0.platform', Platform::GoogleBusiness->value)
-        ->assertJsonPath('platforms.0.metrics.unsupported', true)
-        ->assertJsonPath('platforms.0.metrics.reason', 'platform_not_supported');
+        ->assertJsonPath('platform', Platform::GoogleBusiness->value)
+        ->assertJsonPath('metrics.unsupported', true)
+        ->assertJsonPath('metrics.reason', 'platform_not_supported');
 });
 
 it('cannot get metrics from another workspace post', function () {
@@ -272,20 +248,13 @@ it('rejects upload of an unsupported mime type', function () {
         ->assertJsonValidationErrors(['media']);
 });
 
-it('rejects upload when the file type is not supported by enabled platforms', function () {
+it('rejects upload when the file type is not supported by the post channel', function () {
     $youtubeAccount = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 
-    $youtubeOnlyPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $youtubeOnlyPost = Post::factory()->forAccount($youtubeAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-
-    PostPlatform::factory()->youtube()->create([
-        'post_id' => $youtubeOnlyPost->id,
-        'social_account_id' => $youtubeAccount->id,
-        'enabled' => true,
     ]);
 
     $file = UploadedFile::fake()->createWithContent(
@@ -333,9 +302,8 @@ it('downloads and hosts an external media url when creating a post', function ()
         ->postJson(route('api.posts.store'), [
             'content' => 'External media post',
             'media' => [['url' => 'https://93.184.216.34/listing.jpg']],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -363,9 +331,8 @@ it('persists alt text submitted on a bare external media url', function () {
                 'url' => 'https://93.184.216.34/car.jpg',
                 'meta' => ['alt_text' => 'A red car parked on a hill'],
             ]],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -385,9 +352,8 @@ it('keeps the measured duration when an external video url is submitted with its
             'content' => 'External video post',
             // A client-sent duration must not replace the one measured from the downloaded file.
             'media' => [['url' => 'https://93.184.216.34/clip.mp4', 'meta' => ['alt_text' => 'ignored on video', 'duration' => 9999]]],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -403,9 +369,8 @@ it('rejects creating a post when an external media url cannot be fetched', funct
         ->postJson(route('api.posts.store'), [
             'content' => 'Broken media post',
             'media' => [['url' => 'https://93.184.216.34/missing.jpg']],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media.0.url']);
@@ -431,9 +396,8 @@ it('rolls back already-hosted media when another url in the batch fails', functi
                 ['url' => 'https://93.184.216.34/good.jpg'],
                 ['url' => 'https://93.184.216.34/missing.jpg'],
             ],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media.1.url']);
@@ -459,9 +423,8 @@ it('rejects and rolls back when a media url connection fails (timeout/dns)', fun
                 ['url' => 'https://93.184.216.34/good.jpg'],
                 ['url' => 'https://93.184.216.34/timeout.jpg'],
             ],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media.1.url']);
@@ -478,9 +441,8 @@ it('rejects creating a post when an external media url is not a supported type',
         ->postJson(route('api.posts.store'), [
             'content' => 'Bad type post',
             'media' => [['url' => 'https://93.184.216.34/notes.txt']],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media.0.url']);
@@ -508,9 +470,8 @@ it('keeps an already-hosted item and a freshly-hosted url in order', function ()
                 ['id' => $asset->id],
                 ['url' => 'https://93.184.216.34/external.jpg'],
             ],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -531,9 +492,8 @@ it('passes already-hosted media through on create without downloading', function
         ->postJson(route('api.posts.store'), [
             'content' => 'Hosted media post',
             'media' => [['id' => $asset->id]],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -592,9 +552,8 @@ it('accepts and persists media alt text on create', function () {
         ->postJson(route('api.posts.store'), [
             'content' => 'Alt text post',
             'media' => [$media],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -649,9 +608,8 @@ it('rejects media alt text over 2000 characters', function () {
                 'id' => 'media-1',
                 'meta' => ['alt_text' => str_repeat('a', 2001)],
             ]],
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['media.0.meta']);

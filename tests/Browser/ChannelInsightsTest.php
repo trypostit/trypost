@@ -12,7 +12,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\AnalyticsSyncState;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -163,13 +162,8 @@ test('finishing the import refreshes the available metrics and the publication t
 });
 
 test('the channel header exports this channel and rows open the post details or the network post', function () {
-    $post = Post::factory()->published()->create(['workspace_id' => $this->instagram->workspace_id, 'user_id' => $this->user->id]);
-    $destination = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->instagram->id,
-        'platform' => Platform::Instagram,
-    ]);
-    $this->mostReactions->update(['post_platform_id' => $destination->id]);
+    $post = Post::factory()->forAccount($this->instagram)->published()->create(['user_id' => $this->user->id]);
+    $this->mostReactions->update(['post_id' => $post->id]);
     $this->mostViews->update(['permalink' => 'https://www.instagram.com/p/most-views/']);
 
     $page = visit(route('app.channels.insights', ['account' => $this->instagram, 'range' => '7d']));
@@ -192,18 +186,12 @@ test('the channel header exports this channel and rows open the post details or 
 });
 
 test('a publication with a TryPost post opens the post details on the insights page', function () {
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $this->instagram->workspace_id,
+    $post = Post::factory()->forAccount($this->instagram)->published()->create([
         'user_id' => $this->user->id,
         'content' => 'Published through TryPost',
         'published_at' => $this->mostReactions->provider_published_at,
     ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->instagram->id,
-        'platform' => Platform::Instagram,
-    ]);
-    $this->mostReactions->update(['post_platform_id' => $target->id]);
+    $this->mostReactions->update(['post_id' => $post->id]);
     $insightsUrl = route('app.channels.insights', $this->instagram);
 
     $page = visit($insightsUrl);

@@ -6,7 +6,6 @@ use App\Actions\Post\DeletePost;
 use App\Enums\Post\Status as PostStatus;
 use App\Events\PostDeleted;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -55,18 +54,14 @@ test('execute prunes a google business jpeg still waiting on review', function (
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->create([
+    $account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
     ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
+    $post = Post::factory()->forAccount($account)->googleBusiness()->pendingReview()->create([
+        'user_id' => $user->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($post);
     Storage::put($path, 'image');
 
     DeletePost::execute($post);

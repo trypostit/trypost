@@ -7,7 +7,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
@@ -40,7 +39,8 @@ test('single create with queue next queues the post on a slot', function () {
         'status' => 'scheduled',
         'queue' => 'next',
         'content' => 'Queued',
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => ContentType::LinkedInPost->value]],
+        'social_account_id' => $this->channel->id,
+        'content_type' => ContentType::LinkedInPost->value,
     ]);
 
     $response->assertCreated()->assertJsonPath('schedule_mode', ScheduleMode::Queue->value);
@@ -60,17 +60,11 @@ test('batch create with queue next queues each post', function () {
 });
 
 test('update with queue next queues a draft', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->channel)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
         'content' => 'Draft',
-    ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->channel->id,
-        'enabled' => true,
     ]);
 
     $response = $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
@@ -83,17 +77,11 @@ test('update with queue next queues a draft', function () {
 });
 
 test('update with queue next and a null scheduled_at keeps the slot of a queued post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->channel)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
         'content' => 'Draft',
-    ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->channel->id,
-        'enabled' => true,
     ]);
     $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), [
         'status' => 'scheduled',
@@ -120,7 +108,8 @@ test('queue combined with scheduled_at is rejected', function () {
         'queue' => 'next',
         'scheduled_at' => '2027-01-01T10:00:00Z',
         'content' => 'Queued',
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => ContentType::LinkedInPost->value]],
+        'social_account_id' => $this->channel->id,
+        'content_type' => ContentType::LinkedInPost->value,
     ])->assertUnprocessable()->assertJsonValidationErrorFor('queue');
 
     $this->withHeaders($this->headers)->postJson(route('api.posts.batch.store'), [
@@ -137,7 +126,8 @@ test('queue on a channel without posting times is rejected', function () {
         'status' => 'scheduled',
         'queue' => 'next',
         'content' => 'Queued',
-        'platforms' => [['social_account_id' => $this->bareChannel->id, 'content_type' => ContentType::LinkedInPost->value]],
+        'social_account_id' => $this->bareChannel->id,
+        'content_type' => ContentType::LinkedInPost->value,
     ])->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)->assertJsonValidationErrorFor('destinations.0.social_account_id');
 
     expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -168,8 +167,7 @@ test('the global scope orders every list by position, then created_at and id', f
 test('the global scope does not break aggregates, grouping, distinct or relation sub-queries', function () {
     [$a, $b] = reorderChannelsAccounts($this->workspace, 2);
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $x->id]);
+    Post::factory()->forAccount($x)->scheduled()->create();
 
     $accounts = fn () => SocialAccount::query()->where('workspace_id', $this->workspace->id);
 
@@ -189,7 +187,7 @@ test('the global scope does not break aggregates, grouping, distinct or relation
         ->and($accounts()->distinct()->pluck('platform')->map->value->sort()->values()->all())->toBe([Platform::LinkedIn->value, Platform::X->value])
         ->and(Workspace::query()->withCount('socialAccounts')->find($this->workspace->id)->social_accounts_count)->toBe(3)
         ->and(Workspace::query()->has('socialAccounts', '>=', 3)->whereKey($this->workspace->id)->exists())->toBeTrue()
-        ->and(PostPlatform::query()->whereHas('socialAccount', fn ($query) => $query->where('workspace_id', $this->workspace->id))->count())->toBe(1)
-        ->and(PostPlatform::query()->whereIn('social_account_id', $accounts()->select('id'))->count())->toBe(1)
+        ->and(Post::query()->whereHas('socialAccount', fn ($query) => $query->where('workspace_id', $this->workspace->id))->count())->toBe(1)
+        ->and(Post::query()->whereIn('social_account_id', $accounts()->select('id'))->count())->toBe(1)
         ->and($accounts()->whereKey([$a->id, $b->id])->pluck('id')->all())->toBe([$a->id, $b->id]);
 });

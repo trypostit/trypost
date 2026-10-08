@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -78,16 +77,9 @@ test('instagram facebook has its own queue', function () {
 });
 
 test('instagram facebook publisher uses graph.facebook.com', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->instagramFacebookAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Test post via Facebook Business',
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->instagramFacebookAccount->id,
-        'platform' => Platform::InstagramFacebook,
         'content_type' => ContentType::InstagramFeed,
     ]);
 
@@ -112,7 +104,7 @@ test('instagram facebook publisher uses graph.facebook.com', function () {
     ]);
 
     $publisher = new InstagramPublisher;
-    $result = $publisher->publish($postPlatform);
+    $result = $publisher->publish($post);
 
     expect($result)->toHaveKey('id');
 
@@ -135,16 +127,9 @@ test('instagram standalone publisher uses graph.instagram.com', function () {
         'status' => AccountStatus::Connected,
     ]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($standaloneAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Test post via standalone',
-    ]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $standaloneAccount->id,
-        'platform' => Platform::Instagram,
         'content_type' => ContentType::InstagramFeed,
     ]);
 
@@ -169,7 +154,7 @@ test('instagram standalone publisher uses graph.instagram.com', function () {
     ]);
 
     $publisher = new InstagramPublisher;
-    $result = $publisher->publish($postPlatform);
+    $result = $publisher->publish($post);
 
     expect($result)->toHaveKey('id');
 

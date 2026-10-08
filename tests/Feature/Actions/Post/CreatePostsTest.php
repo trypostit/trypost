@@ -15,7 +15,7 @@ use App\Models\WorkspaceLabel;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 
-test('a batch creates one independent post and target per selected account in input order', function () {
+test('a batch creates one independent post per selected account in input order', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $accounts = collect([
@@ -42,9 +42,8 @@ test('a batch creates one independent post and target per selected account in in
     foreach ($posts as $index => $post) {
         expect($post->content)->toBe("Legenda {$index}")
             ->and($post->status)->toBe(PostStatus::Draft)
-            ->and($post->postPlatforms()->count())->toBe(1)
-            ->and($post->postPlatforms()->enabled()->count())->toBe(1)
-            ->and($post->postPlatforms()->first()->social_account_id)->toBe($accounts[$index]->id);
+            ->and($post->social_account_id)->toBe($accounts[$index]->id)
+            ->and($post->content_type)->toBe($types[$index]);
     }
 
     $posts[0]->update(['content' => 'Só este Instagram']);

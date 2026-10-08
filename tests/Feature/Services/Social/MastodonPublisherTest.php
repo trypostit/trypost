@@ -10,7 +10,6 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MastodonPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -29,18 +28,12 @@ beforeEach(function () {
         'username' => 'testuser',
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Hello from Mastodon!',
-    ]);
-
-    $this->postPlatform = PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::Mastodon,
         'content_type' => ContentType::MastodonPost,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 
     $this->publisher = new MastodonPublisher;
 });
@@ -55,7 +48,7 @@ test('mastodon publisher can publish text-only post', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result)->toHaveKey('url');
@@ -85,7 +78,7 @@ test('mastodon publisher works with custom instance', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['url'])->toContain('techhub.social');
 
@@ -129,7 +122,7 @@ test('mastodon publisher uploads media', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request): bool => str_contains($request->url(), '/api/v1/statuses')
         && data_get($request->data(), 'media_ids') === ['media-123']);
@@ -190,7 +183,7 @@ test('mastodon publisher sends capped alt text as media description', function (
         return Http::response($minimalJpeg, 200, ['Content-Type' => 'image/jpeg']);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     $expectedDescription = mb_substr($longAlt, 0, Platform::Mastodon->altTextMaxLength());
 
@@ -261,7 +254,7 @@ test('mastodon publisher sends no description part when image has no alt text', 
         return Http::response($minimalJpeg, 200, ['Content-Type' => 'image/jpeg']);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/api/v1/media')) {
@@ -309,7 +302,7 @@ test('mastodon publisher does not send a description for a non-image even if it 
         return Http::response('fake-video-content', 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/api/v1/media')) {
@@ -328,7 +321,7 @@ test('mastodon publisher includes media ids in post', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/api/v1/statuses')
@@ -343,7 +336,7 @@ test('mastodon publisher throws exception on api error', function () {
         ], 422),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class);
 });
 
@@ -354,7 +347,7 @@ test('mastodon publisher throws token expired exception on auth error', function
         ], 401),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -365,7 +358,7 @@ test('mastodon publisher throws permission exception on forbidden', function () 
         ], 403),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(MastodonPublishException::class);
 });
 
@@ -404,7 +397,7 @@ test('mastodon publisher limits media to 4', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSentCount(9);
     Http::assertSent(fn ($request): bool => str_contains($request->url(), '/api/v1/statuses')
@@ -421,7 +414,7 @@ test('mastodon publisher handles empty content', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('109876543210');
 
@@ -438,7 +431,7 @@ test('mastodon publisher uses bearer token authentication', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return $request->hasHeader('Authorization')
@@ -499,7 +492,7 @@ test('mastodon publisher optimizes images before upload', function () {
         return Http::response($minimalJpeg, 200, ['Content-Type' => 'image/jpeg']);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     @unlink($optimizedFile);
 });
@@ -528,7 +521,7 @@ test('mastodon publisher retries a media upload server error before creating the
         'https://mastodon.social/api/v1/statuses' => Http::response(['id' => '1'], 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe(500));
 
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/api/v1/statuses'));
@@ -558,7 +551,7 @@ test('mastodon publisher fails with Mastodon\'s message when it refuses the medi
         'https://mastodon.social/api/v1/statuses' => Http::response(['id' => '1'], 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(MastodonPublishException::class, 'Validation failed: File content type is invalid');
 
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/api/v1/statuses'));
@@ -578,7 +571,7 @@ test('mastodon publisher fails instead of posting without the media it could not
         'https://mastodon.social/api/v1/statuses' => Http::response(['id' => '1'], 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(MastodonPublishException::class, __('posts.errors.media_unavailable', ['platform' => 'Mastodon']));
 
     Http::assertNotSent(fn ($request): bool => str_contains($request->url(), '/api/v1/'));
@@ -594,7 +587,7 @@ test('mastodon publisher defaults to mastodon.social if no instance in meta', fu
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), 'mastodon.social');
@@ -611,17 +604,17 @@ test('mastodon publisher keeps links intact', function () {
         'url' => 'https://mastodon.social/@testuser/109876543210',
     ], 200)]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/api/v1/statuses')
         && $request['status'] === 'New post: https://acme.com/blog');
 });
 
 test('mastodon content warning reaches the status payload', function () {
-    $this->postPlatform->update(['meta' => ['spoiler_text' => 'Spoilers for episode 3']]);
+    $this->post->update(['meta' => ['spoiler_text' => 'Spoilers for episode 3']]);
     Http::fake(['https://mastodon.social/api/v1/statuses' => Http::response(['id' => '1', 'url' => 'https://mastodon.social/@t/1'])]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(fn ($request): bool => $request->data() === [
         'status' => 'Hello from Mastodon!',
@@ -631,10 +624,10 @@ test('mastodon content warning reaches the status payload', function () {
 });
 
 test('mastodon trims unicode space padding from the content warning like the composer does', function () {
-    $this->postPlatform->update(['meta' => ['spoiler_text' => "\u{3000}\u{200B}Spoilers\u{00A0}"]]);
+    $this->post->update(['meta' => ['spoiler_text' => "\u{3000}\u{200B}Spoilers\u{00A0}"]]);
     Http::fake(['https://mastodon.social/api/v1/statuses' => Http::response(['id' => '1', 'url' => 'https://mastodon.social/@t/1'])]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'spoiler_text') === 'Spoilers');
 });
@@ -642,10 +635,10 @@ test('mastodon trims unicode space padding from the content warning like the com
 test('mastodon refuses a post whose content and content warning exceed the limit before any request', function () {
     $limit = Platform::Mastodon->maxContentLength();
     $this->post->update(['content' => str_repeat('b', $limit - 9)]);
-    $this->postPlatform->update(['meta' => ['spoiler_text' => str_repeat('a', 10)]]);
+    $this->post->update(['meta' => ['spoiler_text' => str_repeat('a', 10)]]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(fn (ContentLimitException $exception) => expect($exception->category)->toBe(ErrorCategory::ContentPolicy)
             ->and($exception->userMessage)->toBe(__('posts.errors.content_too_long', ['platform' => 'Mastodon', 'max' => $limit, 'provided' => $limit + 1])));
 
@@ -653,14 +646,14 @@ test('mastodon refuses a post whose content and content warning exceed the limit
 });
 
 test('a mastodon thread chains each reply to the previous one with the root content warning', function () {
-    $this->postPlatform->update(['meta' => ['thread_replies' => ['Two', 'Three'], 'spoiler_text' => 'CW']]);
+    $this->post->update(['meta' => ['thread_replies' => ['Two', 'Three'], 'spoiler_text' => 'CW']]);
     $instance = data_get($this->socialAccount->meta, 'instance');
     Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
         ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
         ->push(['id' => '2', 'url' => "{$instance}/@t/2"])
         ->push(['id' => '3', 'url' => "{$instance}/@t/3"])]);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result)->toBe(['id' => '1', 'url' => "{$instance}/@t/1", 'thread_reply_ids' => ['2', '3']]);
     Http::assertSent(fn ($request): bool => $request->data() === [
@@ -674,12 +667,12 @@ test('a mastodon thread chains each reply to the previous one with the root cont
         'visibility' => 'public',
         'in_reply_to_id' => '2',
         'spoiler_text' => 'CW',
-    ] && $request->header('Idempotency-Key') === ["{$this->postPlatform->id}:2:".ThreadProgress::hash('Three')]);
+    ] && $request->header('Idempotency-Key') === ["{$this->post->id}:2:".ThreadProgress::hash('Three')]);
 });
 
 test('a mastodon thread attaches each reply media to that reply only', function () {
     $image = ['id' => 'reply-image', 'path' => 'media/2026-01/photo.jpg', 'url' => 'https://example.com/media/2026-01/photo.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'photo.jpg'];
-    $this->postPlatform->update(['meta' => ['thread_replies' => [['text' => 'Two', 'media' => [$image]], 'Three']]]);
+    $this->post->update(['meta' => ['thread_replies' => [['text' => 'Two', 'media' => [$image]], 'Three']]]);
     $instance = data_get($this->socialAccount->meta, 'instance');
 
     $mockOptimizer = Mockery::mock(MediaOptimizer::class);
@@ -700,20 +693,20 @@ test('a mastodon thread attaches each reply media to that reply only', function 
             ->push(['id' => '3', 'url' => "{$instance}/@t/3"]),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result['thread_reply_ids'])->toBe(['2', '3']);
     Http::assertSent(fn ($request): bool => str_contains($request->url(), '/statuses') && data_get($request->data(), 'status') === $this->post->content && ! array_key_exists('media_ids', $request->data()));
     Http::assertSent(fn ($request): bool => $request->data() === ['status' => 'Two', 'visibility' => 'public', 'in_reply_to_id' => '1', 'media_ids' => ['media-1']]
-        && $request->header('Idempotency-Key') === ["{$this->postPlatform->id}:1:".ThreadProgress::hash('Two', ['reply-image'])]);
+        && $request->header('Idempotency-Key') === ["{$this->post->id}:1:".ThreadProgress::hash('Two', ['reply-image'])]);
     Http::assertSent(fn ($request): bool => $request->data() === ['status' => 'Three', 'visibility' => 'public', 'in_reply_to_id' => '2']);
 });
 
 test('a mastodon thread with a reply over the limit fails before posting anything', function () {
-    $this->postPlatform->update(['meta' => ['thread_replies' => [str_repeat('a', 495)], 'spoiler_text' => 'Ten chars!']]);
+    $this->post->update(['meta' => ['thread_replies' => [str_repeat('a', 495)], 'spoiler_text' => 'Ten chars!']]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(ContentLimitException::class, __('posts.form.thread.reply_too_long', ['limit' => 490, 'over' => 5]));
 
     Http::assertNothingSent();

@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\YouTubePublisher;
@@ -21,18 +20,17 @@ beforeEach(function () {
         'access_token' => 'test-token',
         'token_expires_at' => now()->addDays(30),
     ]);
-    $this->post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'content' => 'Test YouTube Short description']);
-    $this->postPlatform = PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
+        'content' => 'Test YouTube Short description',
         'content_type' => ContentType::YouTubeShort,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 });
 
 test('youtube publisher throws exception when no media', function () {
     $publisher = new YouTubePublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class, 'YouTube Shorts requires a video to publish.');
 });
 
@@ -44,7 +42,7 @@ test('youtube publisher throws exception for non video media', function () {
 
     $publisher = new YouTubePublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class, 'YouTube Shorts only supports video content.');
 });
 
@@ -61,7 +59,7 @@ test('youtube publisher throws exception when no refresh token for expired token
 
     $publisher = new YouTubePublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'No refresh token available');
 });
 
@@ -87,7 +85,7 @@ test('youtube publisher throws token expired exception on 401', function () {
         'refresh_token' => 'refresh-token',
     ]);
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -111,7 +109,7 @@ test('youtube publisher throws token expired exception on invalid grant', functi
 
     $publisher = new YouTubePublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -140,6 +138,6 @@ test('youtube publisher handles auth error reason', function () {
 
     $publisher = new YouTubePublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });

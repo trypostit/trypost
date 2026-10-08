@@ -1,7 +1,7 @@
 ---
 paths:
   - 'app/Jobs/PostHog/**'
-  - app/Models/PostPlatform.php
+  - app/Models/Post.php
   - 'database/migrations/**'
   - app/Models/SocialAccount.php
 ---
@@ -9,7 +9,7 @@ paths:
 # Migrations
 
 ## Keep publishing activity lookup scoped and minimal
-Account publishing activity must scope through indexed account workspace/post IDs before ordering PostPlatform rows. Its migration only adds conventional Laravel indexes and must not change PostPlatform.published_at precision. PostHog snapshot retries must keep progressive backoff so transient outages do not exhaust attempts immediately.
+Account publishing activity must scope through the account's workspaces (index posts(workspace_id, publish_status, published_at)) before ordering posts. Its migration only adds conventional Laravel indexes and must not change posts.published_at precision. PostHog snapshot retries must keep progressive backoff so transient outages do not exhaust attempts immediately.
 
 ## Enum-backed column defaults use the enum
 Columns backed by a PHP enum are plain `string` columns (never `$table->enum()`, which breaks PG/MySQL parity), cast to the enum on the model. Their migration default must reference the enum, not a literal: `->default(Theme::DEFAULT->value)` (give the enum a `DEFAULT` constant, like `App\Enums\User\Locale::DEFAULT`), and the model's `$attributes` uses the same constant. If an enum is later deleted, the migrations that import it must be edited in the same change (as done for ImageStyle in 2026_05_07_231552).

@@ -9,7 +9,6 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\TikTokPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -29,18 +28,12 @@ beforeEach(function () {
         'token_expires_at' => now()->addDays(1),
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->tiktok()->create([
         'user_id' => $this->user->id,
         'content' => 'Check out this TikTok video!',
-    ]);
-
-    $this->postPlatform = PostPlatform::factory()->tiktok()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::TikTok,
         'content_type' => ContentType::TikTokVideo,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 
     $this->publisher = new TikTokPublisher;
 
@@ -48,7 +41,7 @@ beforeEach(function () {
 });
 
 test('tiktok publisher throws exception when no media', function () {
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'TikTok requires media (video or photos) to publish.');
 });
 
@@ -77,7 +70,7 @@ test('tiktok publisher can publish video', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result)->toHaveKey('url');
@@ -90,7 +83,7 @@ test('tiktok publisher can publish video', function () {
 });
 
 test('tiktok publisher keeps the public post id returned as an integer or string', function (int|string $postId) {
-    $this->postPlatform->update(['error_context' => ['tiktok_publish_id' => 'p_pub_url~123']]);
+    $this->post->update(['error_context' => ['tiktok_publish_id' => 'p_pub_url~123']]);
 
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::response([
@@ -101,7 +94,7 @@ test('tiktok publisher keeps the public post id returned as an integer or string
         ]),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result['id'])->toBe('7694308097568836885')
         ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker/video/7694308097568836885');
@@ -122,7 +115,7 @@ test('tiktok publisher persists the public video url when status omits the post 
             'original_filename' => 'test-video.mp4',
         ]],
     ]);
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
 
     Http::fake([
         $this->api.'/post/publish/video/init/' => Http::response([
@@ -147,7 +140,7 @@ test('tiktok publisher persists the public video url when status omits the post 
         ]),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('7682891910226234644')
         ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker/video/7682891910226234644');
@@ -175,7 +168,7 @@ test('tiktok publisher does not report success before processing completes', fun
         $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(function (PlatformUnavailableException $exception): void {
             expect($exception->context)->toBe([
                 'tiktok_publish_id' => 'pub_processing',
@@ -185,7 +178,7 @@ test('tiktok publisher does not report success before processing completes', fun
                 ->and($exception->maxRetries)->toBe(120);
         });
 
-    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_processing');
+    expect($this->post->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_processing');
 
     Http::assertSentCount(2);
 });
@@ -211,16 +204,16 @@ test('tiktok publisher checkpoints a video publish_id when status fetch reports 
         ], 401),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 
-    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_video_401');
+    expect($this->post->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_video_401');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/content/init/'));
 });
 
 test('tiktok publisher checkpoints a photo publish_id before polling status', function () {
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'test-media-image',
@@ -237,10 +230,10 @@ test('tiktok publisher checkpoints a photo publish_id before polling status', fu
         $this->api.'/post/publish/status/fetch/' => Http::response(['data' => ['status' => 'PROCESSING_DOWNLOAD']]),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PlatformUnavailableException::class);
 
-    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_processing');
+    expect($this->post->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_processing');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/init/'));
 });
@@ -248,7 +241,7 @@ test('tiktok publisher checkpoints a photo publish_id before polling status', fu
 test('tiktok publisher checkpoints photo derivatives with the publish_id before polling', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -276,10 +269,10 @@ test('tiktok publisher checkpoints photo derivatives with the publish_id before 
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PlatformUnavailableException::class);
 
-    $context = $this->postPlatform->fresh()->error_context;
+    $context = $this->post->fresh()->error_context;
     $paths = $context['tiktok_derivative_paths'] ?? null;
 
     expect($context['tiktok_publish_id'] ?? null)->toBe('pub_photo_deriv')
@@ -294,7 +287,7 @@ test('tiktok publisher checkpoints photo derivatives with the publish_id before 
 test('tiktok publisher keeps photo derivatives when status fetch reports an expired token', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -334,10 +327,10 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 
-    $context = $this->postPlatform->fresh()->error_context;
+    $context = $this->post->fresh()->error_context;
     $paths = $context['tiktok_derivative_paths'] ?? null;
 
     expect($context['tiktok_publish_id'] ?? null)->toBe('pub_photo_401')
@@ -348,7 +341,7 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
         Storage::assertExists($path);
     }
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result['id'])->toBe('video_123');
 
@@ -363,7 +356,7 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
 test('tiktok publisher prunes photo derivatives when TikTok confirms the publish failed', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [[
             'id' => 'oversized',
@@ -396,15 +389,15 @@ test('tiktok publisher prunes photo derivatives when TikTok confirms the publish
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 
-    expect($this->postPlatform->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_failed')
+    expect($this->post->fresh()->error_context['tiktok_publish_id'] ?? null)->toBe('pub_photo_failed')
         ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
 });
 
 test('tiktok publisher resumes an existing publish without creating a duplicate', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'error_context' => ['tiktok_publish_id' => 'pub_existing'],
     ]);
 
@@ -417,7 +410,7 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
         ]),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result)->toBe([
         'id' => 'video_123',
@@ -429,7 +422,7 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
 });
 
 test('tiktok publisher retries a server-error status fetch without creating a duplicate', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'error_context' => ['tiktok_publish_id' => 'pub_existing'],
     ]);
 
@@ -437,7 +430,7 @@ test('tiktok publisher retries a server-error status fetch without creating a du
         $this->api.'/post/publish/status/fetch/' => Http::response(['error' => ['code' => 'internal_error']], 503),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(function (PlatformUnavailableException $exception): void {
             expect($exception->httpStatus)->toBe(503)
                 ->and($exception->context['tiktok_publish_id'] ?? null)->toBe('pub_existing');
@@ -447,7 +440,7 @@ test('tiktok publisher retries a server-error status fetch without creating a du
 });
 
 test('tiktok publisher retries a rate-limited status fetch without creating a duplicate', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'error_context' => ['tiktok_publish_id' => 'pub_existing'],
     ]);
 
@@ -455,7 +448,7 @@ test('tiktok publisher retries a rate-limited status fetch without creating a du
         $this->api.'/post/publish/status/fetch/' => Http::response(['error' => ['code' => 'rate_limit']], 429),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(function (PlatformUnavailableException $exception): void {
             expect($exception->httpStatus)->toBe(429)
                 ->and($exception->context['tiktok_publish_id'] ?? null)->toBe('pub_existing');
@@ -469,7 +462,7 @@ test('tiktok publisher keeps photo derivatives while pending and prunes them on 
     $derivativePath = 'social-tiktok-photos/123e4567-e89b-12d3-a456-426614174000.jpg';
     Storage::put($derivativePath, 'image');
 
-    $this->postPlatform->update([
+    $this->post->update([
         'error_context' => [
             'tiktok_publish_id' => 'pub_existing',
             'tiktok_derivative_paths' => [$derivativePath],
@@ -482,14 +475,14 @@ test('tiktok publisher keeps photo derivatives while pending and prunes them on 
             ->push(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['video_123']]]),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(function (PlatformUnavailableException $exception) use ($derivativePath): void {
             expect($exception->context['tiktok_derivative_paths'] ?? null)->toBe([$derivativePath]);
         });
 
     Storage::assertExists($derivativePath);
 
-    $result = $this->publisher->publish($this->postPlatform->fresh());
+    $result = $this->publisher->publish($this->post->fresh());
 
     expect($result['id'])->toBe('video_123');
     Storage::assertMissing($derivativePath);
@@ -522,7 +515,7 @@ test('tiktok publisher can publish photos', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result['id'])->toBe('pub_photo_123');
@@ -560,7 +553,7 @@ test('tiktok publisher throws exception on api error', function () {
         ], 400),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class);
 });
 
@@ -586,7 +579,7 @@ test('tiktok publisher throws token expired exception on auth error', function (
         ], 401),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -619,7 +612,7 @@ test('tiktok publisher refreshes token when expired', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), 'oauth/token');
@@ -647,7 +640,7 @@ test('tiktok publisher throws exception when no refresh token available', functi
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'No refresh token available for TikTok account');
 });
 
@@ -674,7 +667,7 @@ test('tiktok publisher throws TokenExpiredException when refresh_token is reject
         ], 400),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'Refresh token expired');
 });
 
@@ -691,7 +684,7 @@ test('tiktok publisher throws exception for unsupported media type', function ()
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'TikTok only supports video or image content.');
 });
 
@@ -717,7 +710,7 @@ test('tiktok publisher builds correct profile url when username present', functi
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['url'])->toBe('https://www.tiktok.com/@tiktoker');
 });
@@ -746,14 +739,14 @@ test('tiktok publisher returns null url when username missing', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['url'])->toBeNull();
 });
 
 test('tiktok publisher publishes with user-selected privacy level even when creator info query fails', function () {
     // User has explicitly selected SELF_ONLY in meta. creator_info failure must not block publishing.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
 
     $this->post->update([
         'media' => [
@@ -783,7 +776,7 @@ test('tiktok publisher publishes with user-selected privacy level even when crea
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result['id'])->toBe('pub_fallback_123');
@@ -827,12 +820,12 @@ test('tiktok publisher throws exception when publish fails', function () {
         ], 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 });
 
 test('tiktok publisher sends meta settings in video publish request', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'privacy_level' => PrivacyLevel::PublicToEveryone->value,
             'allow_comments' => true,
@@ -874,7 +867,7 @@ test('tiktok publisher sends meta settings in video publish request', function (
         ]),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/video/init/')) {
@@ -894,7 +887,7 @@ test('tiktok publisher sends meta settings in video publish request', function (
 });
 
 test('tiktok publisher sends auto_add_music for photo posts', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'privacy_level' => PrivacyLevel::SelfOnly->value,
             'allow_comments' => true,
@@ -927,7 +920,7 @@ test('tiktok publisher sends auto_add_music for photo posts', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/content/init/')) {
@@ -946,7 +939,7 @@ test('tiktok publisher sends auto_add_music for photo posts', function () {
 });
 
 test('tiktok publisher does not send auto_add_music for video posts', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'privacy_level' => PrivacyLevel::SelfOnly->value,
             'auto_add_music' => true,
@@ -977,7 +970,7 @@ test('tiktok publisher does not send auto_add_music for video posts', function (
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/video/init/')) {
@@ -992,7 +985,7 @@ test('tiktok publisher does not send auto_add_music for video posts', function (
 
 test('tiktok publisher uses default settings when only privacy_level is set', function () {
     // Only privacy_level is set (required); all other meta keys absent — exercise default toggles.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value]]);
 
     $this->post->update([
         'media' => [
@@ -1024,7 +1017,7 @@ test('tiktok publisher uses default settings when only privacy_level is set', fu
         ]),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/video/init/')) {
@@ -1057,7 +1050,7 @@ test('tiktok publisher sends video caption in title field, never description', f
         ],
         'content' => 'My video caption',
     ]);
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
 
     Http::fake([
         $this->api.'/post/publish/creator_info/query/' => Http::response([
@@ -1073,7 +1066,7 @@ test('tiktok publisher sends video caption in title field, never description', f
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/video/init/')) {
@@ -1099,7 +1092,7 @@ test('tiktok publisher throws when meta.privacy_level is missing and user did no
         ],
     ]);
     // Explicitly clear privacy_level from meta (simulate UI never set it).
-    $this->postPlatform->update(['meta' => []]);
+    $this->post->update(['meta' => []]);
 
     Http::fake([
         // creator_info returns a healthy response — fallback would have silently picked PUBLIC_TO_EVERYONE.
@@ -1116,7 +1109,7 @@ test('tiktok publisher throws when meta.privacy_level is missing and user did no
         ], 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 });
 
@@ -1130,11 +1123,11 @@ test('tiktok publisher throws when meta.privacy_level is not a known option', fu
             'original_filename' => 'test-video.mp4',
         ]],
     ]);
-    $this->postPlatform->update(['meta' => ['privacy_level' => 'EVERYONE']]);
+    $this->post->update(['meta' => ['privacy_level' => 'EVERYONE']]);
 
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/video/init/'));
@@ -1150,7 +1143,7 @@ test('tiktok publisher throws when self only is combined with branded content', 
             'original_filename' => 'test-video.mp4',
         ]],
     ]);
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'privacy_level' => PrivacyLevel::SelfOnly->value,
             'brand_content_toggle' => true,
@@ -1159,7 +1152,7 @@ test('tiktok publisher throws when self only is combined with branded content', 
 
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/video/init/'));
@@ -1169,7 +1162,7 @@ test('tiktok publisher resizes an oversized photo and pulls a hosted compliant c
     Storage::fake();
 
     // TikTok rejects images wider than 1080px; this one is 1254px wide.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1203,7 +1196,7 @@ test('tiktok publisher resizes an oversized photo and pulls a hosted compliant c
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     // TikTok must be handed the hosted derivative, never the oversized original.
     Http::assertSent(function ($request) {
@@ -1223,7 +1216,7 @@ test('tiktok publisher resizes an oversized photo and pulls a hosted compliant c
 test('tiktok publisher passes a compliant photo through without hosting a copy', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1246,7 +1239,7 @@ test('tiktok publisher passes a compliant photo through without hosting a copy',
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     // The original URL is published unchanged and nothing is downloaded or hosted.
     Http::assertSent(function ($request) {
@@ -1266,7 +1259,7 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
     Storage::fake();
 
     // No width/height metadata: fall back to the safe path and host a compliant copy.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1299,7 +1292,7 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/post/publish/content/init/')) {
@@ -1318,7 +1311,7 @@ test('tiktok publisher resizes a photo when its dimensions are unknown', functio
 test('tiktok publisher fails clearly when an oversized photo cannot be downloaded for resizing', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1342,7 +1335,7 @@ test('tiktok publisher fails clearly when an oversized photo cannot be downloade
         '*' => Http::response('not found', 500),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class, 'Failed to download image for TikTok resizing');
 
     // Nothing should be left hosted when resizing never completes.
@@ -1353,7 +1346,7 @@ test('tiktok publisher resizes only the oversized photos in a mixed carousel', f
     Storage::fake();
 
     // TikTok carousels can carry many images; here one is oversized, one is compliant.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1396,7 +1389,7 @@ test('tiktok publisher resizes only the oversized photos in a mixed carousel', f
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     // Order is preserved: oversized -> hosted derivative, compliant -> original URL untouched.
     Http::assertSent(function ($request) {
@@ -1422,7 +1415,7 @@ test('tiktok publisher resizes only the oversized photos in a mixed carousel', f
 test('tiktok publisher prunes the hosted derivative even when publishing fails', function () {
     Storage::fake();
 
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1455,7 +1448,7 @@ test('tiktok publisher prunes the hosted derivative even when publishing fails',
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TikTokPublishException::class);
 
     expect(Storage::allFiles('social-tiktok-photos'))->toBeEmpty();
@@ -1464,7 +1457,7 @@ test('tiktok publisher prunes the hosted derivative even when publishing fails',
 test('tiktok publisher still reports success when derivative cleanup throws on the storage disk', function () {
     // The production default disk (r2) is configured to throw on a failed delete.
     // Cleanup must never turn an already-published post into a reported failure.
-    $this->postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $this->post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
     $this->post->update([
         'media' => [
             [
@@ -1502,7 +1495,7 @@ test('tiktok publisher still reports success when derivative cleanup throws on t
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('pub_cleanup_throws_123');
 });
@@ -1528,7 +1521,7 @@ test('tiktok publisher keeps links intact', function () {
         ], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/video/init/')
         && data_get($request->data(), 'post_info.title') === 'New post: https://acme.com/blog');
@@ -1551,7 +1544,7 @@ test('tiktok video sends the chosen cover frame as video_cover_timestamp_ms', fu
         "{$this->api}/post/publish/status/fetch/" => Http::response(['data' => ['status' => 'PUBLISH_COMPLETE', 'publish_id' => 'pub_cover']]),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request): bool => $request->url() === "{$this->api}/post/publish/video/init/"
         && data_get($request->data(), 'post_info.video_cover_timestamp_ms') === $coverOffsetMs

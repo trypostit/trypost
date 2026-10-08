@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
@@ -22,18 +21,17 @@ beforeEach(function () {
         'platform_user_id' => '12345678',
         'access_token' => 'test-token',
     ]);
-    $this->post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'content' => 'Test caption']);
-    $this->postPlatform = PostPlatform::factory()->instagram()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
+        'content' => 'Test caption',
         'content_type' => ContentType::InstagramFeed,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 });
 
 test('instagram publisher throws exception when no media', function () {
     $publisher = new InstagramPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class, 'Instagram requires at least one image or video.');
 });
 
@@ -51,14 +49,14 @@ test('instagram publisher publishes single image', function () {
         ]]);
 
     $publisher = new InstagramPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('post-123');
     expect($result['url'])->toBe('https://instagram.com/p/abc123');
 });
 
 test('instagram publisher publishes reel', function () {
-    $this->postPlatform->update(['content_type' => ContentType::InstagramReel]);
+    $this->post->update(['content_type' => ContentType::InstagramReel]);
 
     Http::fake([
         '*/12345678/media' => Http::response(['id' => 'container-123'], 200),
@@ -73,14 +71,14 @@ test('instagram publisher publishes reel', function () {
         ]]);
 
     $publisher = new InstagramPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('reel-123');
 });
 
 test('instagram publisher publishes story', function () {
     Storage::fake();
-    $this->postPlatform->update(['content_type' => ContentType::InstagramStory]);
+    $this->post->update(['content_type' => ContentType::InstagramStory]);
 
     $mockOptimizer = Mockery::mock(MediaOptimizer::class);
     $mockOptimizer->shouldReceive('fitToCanvas')->once()->with(Mockery::type('string'), 1080, 1920)->andReturnUsing(function (string $tempFile) {
@@ -105,7 +103,7 @@ test('instagram publisher publishes story', function () {
         ]]);
 
     $publisher = new InstagramPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('story-123');
 
@@ -137,7 +135,7 @@ test('instagram publisher throws token expired exception on oauth error', functi
 
     $publisher = new InstagramPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -158,6 +156,6 @@ test('instagram publisher throws exception on api error', function () {
 
     $publisher = new InstagramPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class);
 });

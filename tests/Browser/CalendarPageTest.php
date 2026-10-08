@@ -11,7 +11,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -66,19 +65,11 @@ function waitForCalendarCondition(mixed $page, string $condition): void
 
 function calendarPagePost(SocialAccount $account, ?CarbonInterface $at, PostStatus $status = PostStatus::Scheduled): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
+    return Post::factory()->forAccount($account)->create([
         'user_id' => $account->workspace->user_id,
         'status' => $status,
         'scheduled_at' => $at,
     ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-    ]);
-
-    return $post;
 }
 
 function calendarChipSlot(mixed $page, Post $post): ?string
@@ -424,16 +415,9 @@ test('a published post popover shows its metrics, go to post and the sent menu',
     [$user] = calendarPageSetup();
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id, 'timezone' => 'UTC']);
 
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $instagram->workspace_id,
+    $post = Post::factory()->forAccount($instagram)->published()->create([
         'user_id' => $user->id,
         'content' => 'Already live',
-        'published_at' => now()->subHour(),
-    ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $instagram->id,
-        'platform' => Platform::Instagram,
         'platform_url' => 'https://www.instagram.com/p/abc/',
         'published_at' => now()->subHour(),
     ]);
@@ -441,10 +425,10 @@ test('a published post popover shows its metrics, go to post and the sent menu',
         'workspace_id' => $instagram->workspace_id,
         'social_account_id' => $instagram->id,
         'social_account_key' => $instagram->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'network' => Platform::Instagram->network(),
-        'remote_id' => $target->platform_post_id,
+        'remote_id' => $post->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,

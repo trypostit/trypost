@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 use App\Actions\Post\DuplicatePost;
 use App\Enums\Post\CreatedVia;
-use App\Enums\Post\PublishStatus as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostCreated;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -19,15 +19,12 @@ use Illuminate\Validation\ValidationException;
 test('execute clones the post as a draft created via web', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $original = Post::factory()->forAccount($account)->published()->create([
         'user_id' => $user->id,
         'content' => 'Original content',
         'created_via' => CreatedVia::Api,
-        'status' => PostStatus::Published,
     ]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
-    PostPlatform::factory()->create(['post_id' => $original->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
     $copy = DuplicatePost::execute($original, $user);
 
@@ -42,12 +39,10 @@ test('execute clones the post as a draft created via web', function () {
 test('execute relies on the observer to dispatch PostCreated for the duplicate', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $original = Post::factory()->forAccount($account)->create([
         'user_id' => $user->id,
     ]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
-    PostPlatform::factory()->create(['post_id' => $original->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
     Event::fake([PostCreated::class]);
 
@@ -59,77 +54,46 @@ test('execute relies on the observer to dispatch PostCreated for the duplicate',
     );
 });
 
-test('execute skips platform rows whose social account was removed', function () {
+test('execute copies the channel as a pending destination', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $liveAccount = SocialAccount::factory()->create([
+    $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => Platform::X,
         'display_name' => 'Live Account',
         'username' => 'live_user',
     ]);
 
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $original = Post::factory()->forAccount($account)->x()->published()->create([
         'user_id' => $user->id,
-        'status' => PostStatus::Published,
-    ]);
-
-    PostPlatform::factory()->x()->published()->create([
-        'post_id' => $original->id,
-        'social_account_id' => $liveAccount->id,
         'platform_name' => 'Live Account',
         'platform_username' => 'live_user',
         'platform_avatar' => 'avatars/live.jpg',
-        'enabled' => true,
     ]);
 
-    // History row left after disconnect: FK nullOnDelete + snapshot fields.
-    PostPlatform::factory()->tiktok()->published()->create([
-        'post_id' => $original->id,
-        'social_account_id' => null,
-        'platform_name' => 'Removed Account',
-        'platform_username' => 'gone_user',
-        'platform_avatar' => 'avatars/orphan.jpg',
-        'enabled' => true,
-    ]);
+    $copy = DuplicatePost::execute($original, $user)->fresh();
 
-    $copy = DuplicatePost::execute($original->load(['postPlatforms', 'labels']), $user);
-
-    $copiedPlatforms = $copy->postPlatforms()->get();
-
-    expect($copiedPlatforms)->toHaveCount(1)
-        ->and($copiedPlatforms->first()->social_account_id)->toBe($liveAccount->id)
-        ->and($copiedPlatforms->first()->platform)->toBe(Platform::X)
-        ->and($copiedPlatforms->first()->platform_name)->toBe('Live Account')
-        ->and($copiedPlatforms->first()->status)->toBe(PostPlatformStatus::Pending)
-        ->and($copiedPlatforms->first()->enabled)->toBeTrue();
+    expect($copy->social_account_id)->toBe($account->id)
+        ->and($copy->platform)->toBe(Platform::X)
+        ->and($copy->content_type)->toBe(ContentType::XPost)
+        ->and($copy->platform_name)->toBe('Live Account')
+        ->and($copy->publish_status)->toBe(PublishStatus::Pending)
+        ->and($copy->platform_post_id)->toBeNull();
 });
 
-test('execute refuses a duplicate when no connected account remains', function () {
+test('execute refuses a duplicate when the channel was removed', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
 
-    $original = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $original = Post::factory()->forAccount($account)->published()->create([
         'user_id' => $user->id,
-        'status' => PostStatus::Published,
-    ]);
-
-    $platform = PostPlatform::factory()->published()->create([
-        'post_id' => $original->id,
-        'social_account_id' => $account->id,
         'platform_name' => $account->display_name,
         'platform_username' => $account->username,
-        'enabled' => true,
     ]);
 
-    $account->delete();
-    $platform->refresh();
+    Post::query()->whereKey($original->id)->update(['social_account_id' => null]);
 
-    expect($platform->social_account_id)->toBeNull();
-
-    expect(fn () => DuplicatePost::execute($original->fresh(['postPlatforms', 'labels']), $user))
+    expect(fn () => DuplicatePost::execute($original->fresh(), $user))
         ->toThrow(ValidationException::class);
 });

@@ -13,7 +13,6 @@ test('blocks editing for terminal statuses', function (PostStatus $status) {
 })->with([
     PostStatus::Publishing,
     PostStatus::Published,
-    PostStatus::PartiallyPublished,
     PostStatus::Failed,
 ]);
 
@@ -33,7 +32,6 @@ test('blocks deletion for sent and failed statuses', function (PostStatus $statu
 })->with([
     PostStatus::Publishing,
     PostStatus::Published,
-    PostStatus::PartiallyPublished,
     PostStatus::Failed,
 ]);
 

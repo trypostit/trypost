@@ -7,7 +7,6 @@ use App\Enums\Post\ScheduleMode;
 use App\Enums\SocialAccount\Platform;
 use App\Events\TelegramChannelConnected;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -98,8 +97,7 @@ test('existing channels without a schedule get the new channel defaults from the
     [, $ownerless] = channelDefaultsWorkspace('UTC');
     $utc = SocialAccount::factory()->linkedin()->create(['workspace_id' => $ownerless->id]);
     $scheduledAt = now()->addDays(2)->setTime(13, 37)->startOfSecond();
-    $post = Post::factory()->scheduled()->create(['workspace_id' => $workspace->id, 'scheduled_at' => $scheduledAt, 'schedule_mode' => ScheduleMode::Custom]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $bare->id]);
+    $post = Post::factory()->forAccount($bare)->scheduled()->create(['scheduled_at' => $scheduledAt, 'schedule_mode' => ScheduleMode::Custom]);
     Event::fake();
 
     expect(ApplyChannelDefaults::pending())->toBe(2)

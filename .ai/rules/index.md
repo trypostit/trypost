@@ -15,7 +15,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/** | .ai/rules/js.md |
 | app/Actions/Media/**, app/Models/Media.php | .ai/rules/media.md |
 | app/Http/Middleware/App/HandleInertiaRequests.php | .ai/rules/middleware-app.md |
-| app/Jobs/PostHog/**, app/Models/PostPlatform.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
+| app/Jobs/PostHog/**, app/Models/Post.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
 | app/Jobs/PostHog/** | .ai/rules/post-hog.md |
 | app/Enums/PostPlatform/ContentType.php | .ai/rules/post-platform.md |
 | app/Actions/Post/FinalizePostPublication.php, app/Jobs/PublishPost.php, app/Actions/Post/UpdatePost.php, app/Actions/Post/** | .ai/rules/post.md |

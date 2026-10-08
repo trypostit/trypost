@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\TelegramPublishException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -23,18 +22,12 @@ beforeEach(function () {
         'workspace_id' => $this->workspace->id,
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Hello world',
-    ]);
-
-    $this->postPlatform = PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::Telegram,
         'content_type' => ContentType::TelegramPost,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 
     $this->publisher = new TelegramPublisher;
 });
@@ -49,7 +42,7 @@ test('telegram publisher sends a text-only message', function () {
         '*/botTESTTOKEN/sendMessage' => Http::response(telegramOk(['message_id' => 42]), 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('42');
     expect($result['url'])->toBe('https://t.me/mychannel/42');
@@ -78,7 +71,7 @@ test('telegram publisher sends a single image with caption', function () {
         '*/botTESTTOKEN/sendPhoto' => Http::response(telegramOk(['message_id' => 7]), 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/sendPhoto')
@@ -104,7 +97,7 @@ test('telegram publisher sends a single video', function () {
         '*/botTESTTOKEN/sendVideo' => Http::response(telegramOk(['message_id' => 8]), 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/sendVideo')
@@ -129,7 +122,7 @@ test('telegram publisher sends a non-image, non-video file as a document', funct
         '*/botTESTTOKEN/sendDocument' => Http::response(telegramOk(['message_id' => 9]), 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/sendDocument')
@@ -150,7 +143,7 @@ test('telegram publisher sends multiple media as an album', function () {
         '*/botTESTTOKEN/sendMediaGroup' => Http::response(telegramOk([['message_id' => 11], ['message_id' => 12]]), 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('11');
 
@@ -182,7 +175,7 @@ test('telegram publisher sends long text as its own message after media', functi
         '*/botTESTTOKEN/sendMessage' => Http::response(telegramOk(['message_id' => 6]), 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     // Photo carries no caption (too long); the text follows as a separate message.
     Http::assertSent(fn ($request) => str_contains($request->url(), '/sendPhoto') && $request['caption'] === '');
@@ -194,7 +187,7 @@ test('telegram publisher rejects content over the 4096 limit', function () {
 
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(Exception::class);
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(Exception::class);
 
     Http::assertNothingSent();
 });
@@ -204,7 +197,7 @@ test('telegram publisher throws on a non-ok response', function () {
         '*/botTESTTOKEN/sendMessage' => Http::response(['ok' => false, 'error_code' => 403, 'description' => 'Forbidden: bot is not a member of the channel chat'], 403),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(TelegramPublishException::class);
+    expect(fn () => $this->publisher->publish($this->post))->toThrow(TelegramPublishException::class);
 });
 
 test('telegram publisher builds a private-channel url when there is no username', function () {
@@ -214,7 +207,7 @@ test('telegram publisher builds a private-channel url when there is no username'
         '*/botTESTTOKEN/sendMessage' => Http::response(telegramOk(['message_id' => 99]), 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['url'])->toBe('https://t.me/c/9876543210/99');
 });
@@ -226,7 +219,7 @@ test('telegram publisher keeps links intact', function () {
 
     Http::fake(['*/botTESTTOKEN/sendMessage' => Http::response(telegramOk(['message_id' => 42]), 200)]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/sendMessage')
         && $request['text'] === 'New post: https://acme.com/blog');

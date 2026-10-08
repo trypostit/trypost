@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -42,21 +40,11 @@ function channelGridBrowserUser(): User
 /**
  * @param  list<array<string, mixed>>  $media
  */
-function channelGridBrowserPost(SocialAccount $account, string $publishedAt, ContentType $contentType, array $media): PostPlatform
+function channelGridBrowserPost(SocialAccount $account, string $publishedAt, ContentType $contentType, array $media): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
-        'status' => PostStatus::Published,
+    return Post::factory()->forAccount($account, $contentType)->published()->create([
         'published_at' => $publishedAt,
         'media' => $media,
-    ]);
-
-    return PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
-        'published_at' => $publishedAt,
     ]);
 }
 
@@ -95,14 +83,14 @@ test('an instagram channel offers the grid view and the grid lays posts out in t
     waitForChannelGridTestId($page, 'channel-grid');
 
     $page->assertPathIs(route('app.channels.grid', $this->instagram, false))
-        ->assertVisible("@grid-tile-{$reel->post_id}")
-        ->assertVisible("@grid-tile-{$carousel->post_id}")
-        ->assertVisible("@grid-tile-{$single->post_id}")
-        ->assertMissing("@grid-tile-{$story->post_id}")
-        ->assertVisible("@grid-tile-reel-{$reel->post_id}")
-        ->assertVisible("@grid-tile-carousel-{$carousel->post_id}")
-        ->assertMissing("@grid-tile-reel-{$single->post_id}")
-        ->assertMissing("@grid-tile-carousel-{$single->post_id}");
+        ->assertVisible("@grid-tile-{$reel->id}")
+        ->assertVisible("@grid-tile-{$carousel->id}")
+        ->assertVisible("@grid-tile-{$single->id}")
+        ->assertMissing("@grid-tile-{$story->id}")
+        ->assertVisible("@grid-tile-reel-{$reel->id}")
+        ->assertVisible("@grid-tile-carousel-{$carousel->id}")
+        ->assertMissing("@grid-tile-reel-{$single->id}")
+        ->assertMissing("@grid-tile-carousel-{$single->id}");
 
     $columns = $page->script(<<<'JS'
         getComputedStyle(document.querySelector('[data-testid="channel-grid"]')).gridTemplateColumns.split(' ').length
@@ -110,15 +98,15 @@ test('an instagram channel offers the grid view and the grid lays posts out in t
     expect($columns)->toBe(3);
 
     $tops = $page->script(<<<JS
-        ['{$reel->post_id}', '{$carousel->post_id}', '{$single->post_id}']
+        ['{$reel->id}', '{$carousel->id}', '{$single->id}']
             .map((id) => Math.round(document.querySelector(`[data-testid="grid-tile-\${id}"]`).getBoundingClientRect().top))
     JS);
     expect(array_unique($tops))->toHaveCount(1);
 
-    $page->hover("@grid-tile-{$reel->post_id}");
-    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->post_id}");
+    $page->hover("@grid-tile-{$reel->id}");
+    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->id}");
 
-    expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->post_id}\"] [role=\"tooltip\"]').textContent")))
+    expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->id}\"] [role=\"tooltip\"]').textContent")))
         ->toBe('This post was sent September 20, 2026 at 10:00 AM');
 
     $page->assertNoJavaScriptErrors();
@@ -197,9 +185,9 @@ test('clicking a carousel tile opens its media in the lightbox', function () {
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, "grid-tile-{$carousel->post_id}");
+    waitForChannelGridTestId($page, "grid-tile-{$carousel->id}");
 
-    $page->click("@grid-tile-{$carousel->post_id}");
+    $page->click("@grid-tile-{$carousel->id}");
     waitForChannelGridTestId($page, 'media-lightbox-counter');
 
     $page->assertVisible('@media-lightbox')
@@ -218,11 +206,11 @@ test('the grid tooltip shows the sent time in the user zone, not the browser zon
     $this->actingAs($this->user);
 
     $page = visit(route('app.channels.grid', $this->instagram));
-    waitForChannelGridTestId($page, "grid-tile-{$reel->post_id}");
-    $page->hover("@grid-tile-{$reel->post_id}");
-    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->post_id}");
+    waitForChannelGridTestId($page, "grid-tile-{$reel->id}");
+    $page->hover("@grid-tile-{$reel->id}");
+    waitForChannelGridTestId($page, "grid-tile-tooltip-{$reel->id}");
 
-    expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->post_id}\"] [role=\"tooltip\"]').textContent")))
+    expect(trim((string) $page->script("document.querySelector('[data-testid=\"grid-tile-tooltip-{$reel->id}\"] [role=\"tooltip\"]').textContent")))
         ->toBe('This post was sent September 20, 2026 at 7:00 PM');
     $page->assertNoJavaScriptErrors();
 });
