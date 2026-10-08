@@ -45,3 +45,23 @@ test('instagramStatus reads a non-empty status', function () {
         ->and(PublishCheckpoint::instagramStatus(['instagram_status' => '']))->toBeNull()
         ->and(PublishCheckpoint::instagramStatus(null))->toBeNull();
 });
+
+test('xMedia keeps only non-empty scalar ids as strings', function () {
+    expect(PublishCheckpoint::xMedia([
+        PublishCheckpoint::X_MEDIA => [
+            'image' => 'media_1',
+            'video' => 1234567890,
+            'empty' => '',
+            'missing' => null,
+            'nested' => ['id' => 'media_2'],
+        ],
+    ]))->toBe(['image' => 'media_1', 'video' => '1234567890']);
+});
+
+test('xMedia returns an empty list when the checkpoint is not an array', function (?array $context) {
+    expect(PublishCheckpoint::xMedia($context))->toBe([]);
+})->with([
+    'no context' => [null],
+    'no checkpoint' => [[]],
+    'scalar checkpoint' => [[PublishCheckpoint::X_MEDIA => 'media_1']],
+]);
