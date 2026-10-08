@@ -11,6 +11,7 @@ use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
+use App\Jobs\Analytics\AbstractPublicationSync;
 use App\Jobs\Analytics\BackfillAccountPublications;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -30,6 +31,7 @@ use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(fn () => Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]));
@@ -511,10 +513,15 @@ test('a rate limited failure waits for the provider retry time when it is later 
     ]);
     bindFailingPublicationPage($account, new AnalyticsCollectionException('rate_limited', 'slow down', CarbonImmutable::now()->addMinutes(20)));
 
+    Log::spy();
+
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
     Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->delay === 1200);
     expect($state->fresh()->last_error_category)->toBe('rate_limited');
+    Log::shouldHaveReceived('info')->withArgs(fn (string $message, array $context): bool => $message === 'analytics.collection'
+        && data_get($context, 'category') === 'rate_limited'
+        && data_get($context, 'retry_at') === CarbonImmutable::now('UTC')->addSeconds(1200)->toIso8601String())->once();
 });
 
 test('a job queued before the retry counter existed still retries a transient failure', function () {
@@ -568,6 +575,26 @@ test('middleware releases do not consume the transient retry cap', function () {
     expect($state->fresh()->status)->toBe(SyncStatus::Running);
 });
 
+function maxTransientAnalyticsRetries(): int
+{
+    return (new ReflectionClassConstant(AbstractPublicationSync::class, 'MAX_TRANSIENT_RETRIES'))->getValue();
+}
+
+test('the last transient retry below the cap is still dispatched', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id, transientRetries: maxTransientAnalyticsRetries() - 1), 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->transientRetries === maxTransientAnalyticsRetries());
+    expect($state->fresh()->status)->toBe(SyncStatus::Running);
+});
+
 test('a transient failure at the retry cap fails the sync so the scheduler restarts it', function () {
     Bus::fake();
     Exceptions::fake();
@@ -578,7 +605,7 @@ test('a transient failure at the retry cap fails the sync so the scheduler resta
     ]);
     bindFailingPublicationPage($account, new AnalyticsCollectionException('transient', 'temporary'));
 
-    $job = (new BackfillAccountPublications($account->id, $state->id, transientRetries: 5))->withFakeQueueInteractions();
+    $job = (new BackfillAccountPublications($account->id, $state->id, transientRetries: maxTransientAnalyticsRetries()))->withFakeQueueInteractions();
     app()->call([$job, 'handle']);
 
     $job->assertNotReleased();
