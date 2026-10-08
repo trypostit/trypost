@@ -290,7 +290,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
-        $previousContext = $this->postPlatform->error_context ?? [];
+        $previousContext = self::withSeparateRetryCounters($this->postPlatform->error_context ?? []);
         $hasOwnPolicy = $e->maxRetries !== null || $e->retryDelaySeconds !== null;
         $counterKey = $hasOwnPolicy ? 'processing_retry_count' : 'retry_count';
         $retryCount = (int) data_get($previousContext, $counterKey, 0) + 1;
@@ -343,6 +343,27 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             $this->postPlatform,
             (int) data_get($context, 'retry_count', 0) + (int) data_get($context, 'processing_retry_count', 0),
         )->delay($nextAttemptAt);
+    }
+
+    /**
+     * Before TryPost 2.0 a status poll counted on `retry_count` and stored
+     * `max_retries`, with no `processing_retry_count`. That count belongs to
+     * the poll budget, so the outage count of such a row starts over.
+     *
+     * @param  array<string, mixed>  $context
+     * @return array<string, mixed>
+     */
+    private static function withSeparateRetryCounters(array $context): array
+    {
+        if (! array_key_exists('max_retries', $context) || array_key_exists('processing_retry_count', $context)) {
+            return $context;
+        }
+
+        return [
+            ...$context,
+            'processing_retry_count' => (int) data_get($context, 'retry_count', 0),
+            'retry_count' => 0,
+        ];
     }
 
     /**

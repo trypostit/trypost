@@ -911,6 +911,62 @@ test('an outage after a processing reschedule is dispatched under a new unique a
     Bus::assertDispatched(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->uniqueAttempt === 2);
 });
 
+test('an outage on a status poll rescheduled before 2.0 restarts the outage retries', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    Mail::fake();
+    $this->freezeTime();
+
+    $this->postPlatform->update([
+        'error_context' => ['retry_count' => 40, 'max_retries' => 90, 'retry_delay_seconds' => 10],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Service unavailable', 503)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh(), 40))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['retry_count'] ?? null)->toBe(1)
+        ->and($context['processing_retry_count'] ?? null)->toBe(40)
+        ->and($context)->not->toHaveKey('max_retries')
+        ->and($context['next_attempt_at'] ?? null)->toBe(now()->addSeconds(600)->toIso8601String());
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->uniqueAttempt > 40);
+});
+
+test('a status poll rescheduled before 2.0 keeps counting its poll budget', function () {
+    Bus::fake([PublishToSocialPlatform::class]);
+    Event::fake();
+    $this->freezeTime();
+
+    $this->postPlatform->update([
+        'error_context' => ['retry_count' => 40, 'max_retries' => 90, 'retry_delay_seconds' => 10],
+    ]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->andThrow(
+        new PlatformUnavailableException('Still processing', retryDelaySeconds: 10, maxRetries: 90)
+    );
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->postPlatform->fresh(), 40))->handle();
+
+    $context = $this->postPlatform->fresh()->error_context;
+
+    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context['processing_retry_count'] ?? null)->toBe(41)
+        ->and((int) ($context['retry_count'] ?? 0))->toBe(0)
+        ->and($context['max_retries'] ?? null)->toBe(90);
+
+    Bus::assertDispatched(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->uniqueAttempt > 40);
+});
+
 test('post stays in Publishing while one platform is still Retrying', function () {
     Bus::fake([PublishToSocialPlatform::class]);
     Event::fake();
