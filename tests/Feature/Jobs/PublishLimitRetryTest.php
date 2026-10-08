@@ -424,3 +424,14 @@ test('a refused tiktok publish_id is dropped so the retry starts a new publish',
         ->and(PublishCheckpoint::tiktokPublishId($target->fresh()->error_context))->toBeNull()
         ->and(data_get($target->fresh()->error_context, PublishCheckpoint::TIKTOK_STATUS))->toBeNull();
 });
+
+test('the scheduler unique attempts never collide with platform-unavailable attempts', function () {
+    $largestProcessingBudget = max(
+        (new ReflectionClassConstant(InstagramPublisher::class, 'STATUS_MAX_RETRIES'))->getValue(),
+        (new ReflectionClassConstant(TikTokPublisher::class, 'STATUS_MAX_RETRIES'))->getValue(),
+        (new ReflectionClassConstant(XPublisher::class, 'MEDIA_PROCESSING_MAX_RETRIES'))->getValue(),
+    );
+
+    expect(LimitRetryPolicy::UNIQUE_ATTEMPT_OFFSET)
+        ->toBeGreaterThan($largestProcessingBudget + PublishToSocialPlatform::MAX_PLATFORM_UNAVAILABLE_RETRIES);
+});

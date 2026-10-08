@@ -27,7 +27,7 @@ final class LimitRetryPolicy
      * Keeps the scheduler's dispatches apart from the platform-unavailable
      * attempts in PublishToSocialPlatform's unique id.
      */
-    public const int UNIQUE_ATTEMPT_OFFSET = 100;
+    public const int UNIQUE_ATTEMPT_OFFSET = 1000;
 
     /**
      * @param  array<string, mixed>|null  $context
