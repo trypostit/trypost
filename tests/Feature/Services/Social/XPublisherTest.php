@@ -1652,6 +1652,53 @@ function fakeXVideoUploadStuckWith(array $statusProcessingInfo): void
     });
 }
 
+test('x publisher reads processing_info only under data in the status response', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_video_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => ['id' => 'media_video_1', 'processing_info' => ['state' => 'pending', 'check_after_secs' => 0]],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['processing_info' => ['state' => 'failed', 'error' => ['message' => 'Invalid media']]], 200);
+        }
+
+        if (str_contains($url, '/2/tweets')) {
+            return Http::response(['data' => ['id' => '555']], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    $result = $this->publisher->publish($this->postPlatform);
+
+    expect($result['id'])->toBe('555')
+        ->and(Http::recorded(fn (Request $request): bool => isXMediaUploadStatusRequest($request)))->toHaveCount(1);
+});
+
 test('x publisher reschedules media still processing under its own retry policy', function () {
     Sleep::fake();
 
