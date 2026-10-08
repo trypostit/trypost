@@ -487,7 +487,7 @@ class XPublisher
             }
 
             $lastProcessingInfo = $processingInfo;
-            $state = MediaProcessingState::tryFrom((string) data_get($processingInfo, 'state'));
+            $state = $this->processingState($processingInfo);
 
             if ($state === MediaProcessingState::Succeeded) {
                 return;
@@ -510,7 +510,7 @@ class XPublisher
             Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
         }
 
-        if (MediaProcessingState::tryFrom((string) data_get($lastProcessingInfo, 'state'))?->isProcessing() !== true) {
+        if ($this->processingState($lastProcessingInfo)?->isProcessing() !== true) {
             Log::error('X media processing timed out', [
                 'media_id' => $mediaId,
                 'processing_info' => $lastProcessingInfo,
@@ -540,6 +540,13 @@ class XPublisher
             retryDelaySeconds: self::MEDIA_PROCESSING_RETRY_DELAY_SECONDS,
             maxRetries: self::MEDIA_PROCESSING_MAX_RETRIES,
         );
+    }
+
+    private function processingState(mixed $processingInfo): ?MediaProcessingState
+    {
+        $state = data_get($processingInfo, 'state');
+
+        return is_string($state) ? MediaProcessingState::tryFrom($state) : null;
     }
 
     private function handleApiError(Response $response): never

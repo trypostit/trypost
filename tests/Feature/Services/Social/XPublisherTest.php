@@ -1612,3 +1612,60 @@ test('x publisher never uploads checkpointed media again when the status check f
     'unauthorized' => [401, TokenExpiredException::class],
     'server error' => [503, PlatformUnavailableException::class],
 ]);
+
+function fakeXVideoUploadStuckWith(array $statusProcessingInfo): void
+{
+    Http::fake(function ($request) use ($statusProcessingInfo) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_video_1']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response([
+                'data' => [
+                    'id' => 'media_video_1',
+                    'processing_info' => ['state' => 'pending', 'check_after_secs' => 0],
+                ],
+            ], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => $statusProcessingInfo]], 200);
+        }
+
+        if (str_contains($url, '/media/upload')) {
+            return Http::response(['data' => ['id' => 'media_image_1']], 200);
+        }
+
+        if (str_contains($url, 'photo.jpg')) {
+            return Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+}
+
+test('x publisher treats a processing state that is not a string as unknown', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    fakeXVideoUploadStuckWith(['state' => ['name' => 'in_progress'], 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'X media processing timed out. Please try again.');
+});
