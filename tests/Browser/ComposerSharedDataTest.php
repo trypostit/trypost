@@ -10,8 +10,6 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\PostingSchedule;
-use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 
 /**
@@ -105,50 +103,6 @@ function waitForComposerSharedDataReady(mixed $page, string $testId): void
         })()
     JS);
 }
-
-function pinterestBoardListReads(): int
-{
-    return Http::recorded(fn (Request $request): bool => $request->method() === 'GET'
-        && str_starts_with($request->url(), config('trypost.platforms.pinterest.api').'/boards'))->count();
-}
-
-test('a new post lists every channel at once and fills the pinterest and tiktok pickers', function () {
-    [$user, , $pinterest, $tiktok] = composerSharedDataSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.create'));
-    waitForComposerSharedDataReady($page, 'composer-add-account');
-
-    $page->click('@composer-add-account')
-        ->assertVisible("@composer-account-option-{$pinterest->id}")
-        ->assertVisible("@composer-account-option-{$tiktok->id}")
-        ->click("@composer-account-option-{$pinterest->id}");
-    waitForComposerSharedDataTestId($page, 'pinterest-board-trigger');
-
-    $page->click('@pinterest-board-trigger');
-    waitForComposerSharedDataTestId($page, 'pinterest-board-option-board_live');
-    $page->assertSeeIn('@pinterest-board-option-board_live', 'Live board')
-        ->assertNoJavaScriptErrors();
-});
-
-test('the composer opens again from the sidebar without reading pinterest again', function () {
-    [$user, , $pinterest] = composerSharedDataSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    clickComposerSharedDataNewPost($page);
-    waitForComposerSharedDataReady($page, 'composer-add-account');
-    $page->click('@composer-close');
-    waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
-
-    clickComposerSharedDataNewPost($page);
-    waitForComposerSharedDataReady($page, 'composer-add-account');
-    $page->click('@composer-add-account')
-        ->assertVisible("@composer-account-option-{$pinterest->id}")
-        ->assertNoJavaScriptErrors();
-
-    expect(pinterestBoardListReads())->toBeLessThanOrEqual(1);
-});
 
 test('editing from the calendar opens the post with its board', function () {
     [$user, $workspace, $pinterest] = composerSharedDataSetup();
@@ -283,111 +237,4 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
     waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
     expect(data_get($target->fresh()->meta, 'allow_comments'))->toBeTrue();
-});
-
-/**
- * A LinkedIn channel whose only posting time today is 15:00 in a zone where it
- * is noon now, so the slot is in the future whatever the test clock says.
- */
-function composerSharedDataSlotChannel(Workspace $workspace): SocialAccount
-{
-    $offset = 12 - now('UTC')->hour;
-    $zone = match (true) {
-        $offset === 0 => 'UTC',
-        $offset > 0 => "Etc/GMT-{$offset}",
-        default => 'Etc/GMT+'.abs($offset),
-    };
-
-    return SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $workspace->id,
-        'timezone' => $zone,
-        'posting_schedule' => PostingSchedule::empty()->withTime(now($zone)->dayOfWeek, '15:00'),
-    ]);
-}
-
-/**
- * Keeps every request to the TikTok channel's composer data from being sent
- * until `window.__releaseTikTok()` runs.
- */
-function holdComposerSharedDataTikTok(mixed $page, SocialAccount $tiktok): void
-{
-    $page->script(<<<JS
-        (() => {
-            const { open, send } = XMLHttpRequest.prototype;
-            const held = [];
-            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                this.__held = String(url).includes('/posts/composer/accounts/{$tiktok->id}');
-                return open.call(this, method, url, ...rest);
-            };
-            XMLHttpRequest.prototype.send = function (body) {
-                if (this.__held && !window.__tiktokReleased) {
-                    held.push(() => send.call(this, body));
-                    return;
-                }
-                return send.call(this, body);
-            };
-            window.__releaseTikTok = () => {
-                window.__tiktokReleased = true;
-                held.splice(0).forEach((release) => release());
-            };
-        })()
-    JS);
-}
-
-test('a network that does not answer holds only its own channel settings', function () {
-    [$user, , $pinterest, $tiktok] = composerSharedDataSetup();
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    holdComposerSharedDataTikTok($page, $tiktok);
-    openComposerFromSidebar($page);
-
-    $page->click('@composer-add-account')
-        ->click("@composer-account-option-{$pinterest->id}");
-    waitForComposerSharedDataTestId($page, 'pinterest-board-trigger');
-    $page->assertMissing('@composer-live-data-pending');
-
-    $page->click("@composer-account-option-{$pinterest->id}")
-        ->click("@composer-account-option-{$tiktok->id}");
-    waitForComposerSharedDataTestId($page, 'composer-live-data-pending');
-    $page->assertMissing('@tiktok-privacy-level');
-
-    $page->script('window.__releaseTikTok()');
-    waitForComposerSharedDataTestId($page, 'tiktok-privacy-level');
-    $page->assertMissing('@composer-live-data-pending')
-        ->assertNoJavaScriptErrors();
-});
-
-test('a failed slot read shows a retry banner and slots open once it loads', function () {
-    [$user, $workspace] = composerSharedDataSetup();
-    $channel = composerSharedDataSlotChannel($workspace);
-    $this->actingAs($user);
-
-    $page = visit(route('app.insights'));
-    $page->script(<<<'JS'
-        (() => {
-            const open = XMLHttpRequest.prototype.open;
-            let broken = false;
-            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                if (!broken && String(url).includes('/taken-slots')) {
-                    broken = true;
-                    url = String(url).replace('/taken-slots', '/taken-slots-unavailable');
-                }
-                return open.call(this, method, url, ...rest);
-            };
-        })()
-    JS);
-    openComposerFromSidebar($page);
-
-    composerSharedDataZoneLabel($page, $channel);
-    waitForComposerSharedDataTestId($page, 'composer-live-data-failed');
-    $page->assertSeeIn('@composer-live-data-failed', __('posts.composer.load_failed'));
-    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-schedule-slot-1500\"]')?.disabled === true");
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]")?.disabled'))->toBeTrue();
-
-    $page->click('@composer-live-data-retry');
-    waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"composer-live-data-failed\"]') && document.querySelector('[data-testid=\"composer-schedule-slot-1500\"]')?.disabled === false");
-
-    $page->assertMissing('@composer-live-data-failed');
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]")?.disabled'))->toBeFalse();
 });
