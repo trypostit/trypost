@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publishing',
         'retrying' => 'Retrying',
         'published' => 'Published',
-        'partially_published' => 'Partially Published',
         'failed' => 'Failed',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => 'Flags',
         ],
 
-        'status' => [
-            'pending' => 'Pending',
-            'scheduled' => 'Scheduled',
-            'published' => 'Published',
-            'publishing' => 'Publishing...',
-            'retrying' => 'Retrying...',
-            'failed' => 'Failed',
-            'pending_review' => 'In review by Google',
-            'rejected' => 'Rejected',
-        ],
 
         'delete_modal' => [
             'title' => 'Delete Post',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => 'This file is larger than the :size MB allowed for its type.',
         'queue_requires_schedule' => 'This channel has no posting times yet. Add posting times in the channel settings to use the queue.',
         'queue_with_scheduled_at' => 'Choose either a queue position or a date and time, not both.',
-        'queue_legacy_post' => 'This post was created for several channels at once and cannot be added to a queue. Set a date and time instead.',
         'queue_busy' => 'The queue is being updated. Please try again.',
         'no_social_account' => 'This post has no social account, so it cannot be published.',
+        'choose_channel' => 'Choose a channel before scheduling or publishing this post.',
         'queue_order_stale' => 'The queue changed since you opened it. Refresh and try again.',
         'account_disconnected' => 'Social account is disconnected',
-        'target_disabled' => 'This destination was switched off',
         'account_token_expired' => 'Social account session expired — please reconnect',
         'platform_unavailable' => 'The platform is temporarily unavailable. We\'ll retry shortly.',
         'platform_unavailable_exhausted' => 'The platform stayed unavailable after several retries. Please try again later.',

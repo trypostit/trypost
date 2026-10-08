@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publication en cours',
         'retrying' => 'Nouvelle tentative',
         'published' => 'Publiée',
-        'partially_published' => 'Partiellement publiée',
         'failed' => 'Échec',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => 'Drapeaux',
         ],
 
-        'status' => [
-            'pending' => 'En attente',
-            'scheduled' => 'Programmée',
-            'published' => 'Publiée',
-            'publishing' => 'Publication en cours...',
-            'retrying' => 'Nouvelle tentative...',
-            'failed' => 'Échec',
-            'pending_review' => 'En cours d\'examen par Google',
-            'rejected' => 'Refusé',
-        ],
 
         'delete_modal' => [
             'title' => 'Supprimer la publication',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => 'Ce fichier dépasse les :size Mo autorisés pour son type.',
         'queue_requires_schedule' => 'Ce canal n\'a pas encore d\'horaires de publication. Ajoutez-en dans les paramètres du canal pour utiliser la file d\'attente.',
         'queue_with_scheduled_at' => 'Choisissez une position dans la file d\'attente ou une date et une heure, pas les deux.',
-        'queue_legacy_post' => 'Ce post a été créé pour plusieurs canaux à la fois et ne peut pas être ajouté à une file d\'attente. Définissez plutôt une date et une heure.',
         'queue_busy' => 'La file d\'attente est en cours de mise à jour. Veuillez réessayer.',
         'no_social_account' => 'Cette publication n\'a pas de compte social, elle ne peut donc pas être publiée.',
+        'choose_channel' => 'Choisissez un canal avant de programmer ou de publier ce post.',
         'queue_order_stale' => 'La file d\'attente a changé depuis votre ouverture. Actualisez et réessayez.',
         'account_disconnected' => 'Le compte social est déconnecté',
-        'target_disabled' => 'Cette destination a été désactivée',
         'account_token_expired' => 'La session du compte social a expiré — veuillez reconnecter',
         'platform_unavailable' => 'La plateforme est temporairement indisponible. Nouvelle tentative sous peu.',
         'platform_unavailable_exhausted' => 'La plateforme est restée indisponible après plusieurs tentatives. Réessayez plus tard.',

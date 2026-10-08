@@ -131,7 +131,6 @@ return [
     'webhooks.event_descriptions.post_created' => 41,
     'webhooks.event_descriptions.post_deleted' => 36,
     'webhooks.event_descriptions.post_failed' => 50,
-    'webhooks.event_descriptions.post_partially_published' => 55,
     'webhooks.event_descriptions.post_published' => 48,
     'webhooks.event_descriptions.post_scheduled' => 51,
     'webhooks.event_descriptions.post_unscheduled' => 54,

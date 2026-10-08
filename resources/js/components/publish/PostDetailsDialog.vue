@@ -36,10 +36,7 @@ import {
     getPlatformLabel,
 } from '@/composables/usePlatformLogo';
 import { schedulePostCard } from '@/composables/usePostCardActions';
-import {
-    getPlatformStatusConfig,
-    getPostStatusConfig,
-} from '@/composables/usePostStatus';
+import { getPostStatusConfig } from '@/composables/usePostStatus';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
@@ -137,15 +134,23 @@ const currentKey = computed(() =>
 );
 
 const targets = computed(() =>
-    current.value.post_platforms.filter((target) => target.enabled),
+    current.value.platform
+        ? [
+              {
+                  id: current.value.id,
+                  platform: current.value.platform,
+                  social_account: current.value.social_account,
+                  platform_url: current.value.platform_url ?? null,
+                  meta: current.value.meta ?? {},
+              },
+          ]
+        : [],
 );
 
 const permalink = computed(() => targets.value[0]?.platform_url ?? null);
 
 const metricsDetail = computed(() => {
-    const detail = targets.value[0]
-        ? current.value.metrics?.[targets.value[0].id]
-        : null;
+    const detail = current.value.metrics ?? null;
 
     return detail &&
         detail.available &&
@@ -233,11 +238,9 @@ const isEditable = computed(
         current.value.status === PostStatus.PendingApproval,
 );
 
-const siblingAccount = (sibling: PostCard) =>
-    sibling.post_platforms[0]?.social_account ?? null;
+const siblingAccount = (sibling: PostCard) => sibling.social_account ?? null;
 
-const siblingPlatform = (sibling: PostCard): string =>
-    sibling.post_platforms[0]?.platform ?? '';
+const siblingPlatform = (sibling: PostCard): string => sibling.platform ?? '';
 
 const siblingMoment = (sibling: PostCard): string | null => {
     const at = sibling.published_at ?? sibling.scheduled_at;
@@ -431,16 +434,6 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                 >{{ target.social_account.handle_label }}</span
                             >
                         </span>
-                        <Badge
-                            v-if="targets.length > 1"
-                            :variant="
-                                getPlatformStatusConfig(target.status).variant
-                            "
-                            class="h-6 px-2"
-                            :data-testid="`post-details-target-status-${target.id}`"
-                        >
-                            {{ $t(`posts.edit.status.${target.status}`) }}
-                        </Badge>
                     </section>
 
                     <ThreadView

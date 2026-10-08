@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'عند جدولة منشور للنشر.',
         'post_unscheduled' => 'عند إعادة منشور مجدول إلى المسودات.',
         'post_published' => 'عند نشر منشور على قناة.',
-        'post_partially_published' => 'عند نجاح النشر في بعض القنوات وفشله في أخرى.',
         'post_failed' => 'عند فشل نشر منشور.',
         'post_deleted' => 'عند حذف منشور.',
     ],

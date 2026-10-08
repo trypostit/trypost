@@ -533,7 +533,6 @@ return [
         'publishing' => '公開中',
         'retrying' => '再試行中',
         'published' => '公開済み',
-        'partially_published' => '一部公開済み',
         'failed' => '失敗',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => '旗',
         ],
 
-        'status' => [
-            'pending' => '保留中',
-            'scheduled' => '予約済み',
-            'published' => '公開済み',
-            'publishing' => '公開中...',
-            'retrying' => '再試行中...',
-            'failed' => '失敗',
-            'pending_review' => 'Google が審査中',
-            'rejected' => '拒否されました',
-        ],
 
         'delete_modal' => [
             'title' => '投稿を削除',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => 'このファイルは、その形式で許可されている :size MB を超えています。',
         'queue_requires_schedule' => 'このチャンネルにはまだ投稿時間がありません。キューを使うには、チャンネル設定で投稿時間を追加してください。',
         'queue_with_scheduled_at' => 'キューの位置か日時のどちらか一方を選んでください。',
-        'queue_legacy_post' => 'この投稿は複数のチャンネル向けに一度に作成されたため、キューに追加できません。代わりに日時を設定してください。',
         'queue_busy' => 'キューを更新中です。もう一度お試しください。',
         'no_social_account' => 'この投稿にはソーシャルアカウントがないため、公開できません。',
+        'choose_channel' => 'この投稿を予約または公開する前にチャンネルを選択してください。',
         'queue_order_stale' => 'キューを開いてから変更されました。更新してもう一度お試しください。',
         'account_disconnected' => 'ソーシャルアカウントの接続が解除されています',
-        'target_disabled' => 'この投稿先はオフになりました',
         'account_token_expired' => 'ソーシャルアカウントのセッションの有効期限が切れました — 再接続してください',
         'platform_unavailable' => 'プラットフォームが一時的に利用できません。まもなく再試行します。',
         'platform_unavailable_exhausted' => '何度か再試行しましたがプラットフォームが利用できませんでした。後でもう一度お試しください。',

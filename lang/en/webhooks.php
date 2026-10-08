@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'When a post is scheduled to publish.',
         'post_unscheduled' => 'When a scheduled post goes back to drafts.',
         'post_published' => 'When a post goes live on a channel.',
-        'post_partially_published' => 'When some channels publish and others fail.',
         'post_failed' => 'When a post fails to publish.',
         'post_deleted' => 'When a post is deleted.',
     ],

@@ -7,7 +7,6 @@ import {
     IconExternalLink,
     IconGripVertical,
     IconListNumbers,
-    IconCheck,
     IconClockPause,
     IconLoader2,
     IconPencil,
@@ -66,7 +65,7 @@ import { videoFrameUrl } from '@/lib/videoFrame';
 import { Platform } from '@/types/platform';
 import {
     PostOrigin,
-    PostPlatformStatus,
+    PublishStatus,
     PostStatus,
     ScheduleMode,
 } from '@/types/post';
@@ -122,7 +121,7 @@ watch(
     },
 );
 
-const testKey = computed(() => props.post.card_key ?? props.post.id);
+const testKey = computed(() => props.post.id);
 
 const authUserId = computed(() => String(page.props.authUserId ?? ''));
 const openPostNotesId = computed(
@@ -132,11 +131,16 @@ const highlightNoteId = computed(
     () => (page.props.highlightNoteId as string | null | undefined) ?? null,
 );
 
-const targets = computed(() =>
-    props.post.post_platforms.filter((target) => target.enabled),
+const primaryTarget = computed(() =>
+    props.post.platform
+        ? {
+              platform: props.post.platform,
+              content_type: props.post.content_type ?? null,
+              platform_url: props.post.platform_url ?? null,
+          }
+        : null,
 );
-const primaryTarget = computed(() => targets.value[0] ?? null);
-const account = computed(() => primaryTarget.value?.social_account ?? null);
+const account = computed(() => props.post.social_account ?? null);
 const recurrenceTimezone = computed(
     () => account.value?.timezone ?? timezone.value,
 );
@@ -174,24 +178,11 @@ const time = computed(() => {
         : props.post.scheduled_at;
 });
 
-const limitRetryAt = computed(
-    () =>
-        targets.value.find(
-            (target) =>
-                target.status === PostPlatformStatus.Retrying &&
-                Boolean(target.retry_at),
-        )?.retry_at ?? null,
+const limitRetryAt = computed(() =>
+    props.post.publish_status === PublishStatus.Retrying
+        ? (props.post.retry_at ?? null)
+        : null,
 );
-
-const PUBLISHED_TARGET_STATUSES = ['published', 'pending_review'];
-const FAILED_TARGET_STATUSES = ['failed', 'rejected'];
-
-const targetProgress = (status: string): 'done' | 'failed' | 'running' =>
-    PUBLISHED_TARGET_STATUSES.includes(status)
-        ? 'done'
-        : FAILED_TARGET_STATUSES.includes(status)
-          ? 'failed'
-          : 'running';
 
 const isPending = computed(
     () => props.post.status === PostStatus.PendingApproval,
@@ -263,9 +254,7 @@ const canQueue = computed(
 const permalink = computed(() => primaryTarget.value?.platform_url ?? null);
 
 const metricsDetail = computed(() => {
-    const detail = primaryTarget.value
-        ? props.post.metrics?.[primaryTarget.value.id]
-        : null;
+    const detail = props.post.metrics ?? null;
 
     return detail && detail.available ? detail : null;
 });
@@ -284,16 +273,7 @@ const showStatus = computed(
         !isPending.value,
 );
 
-const hasFailure = computed(
-    () =>
-        props.post.status === PostStatus.Failed ||
-        (props.post.status === PostStatus.PartiallyPublished &&
-            targets.value.some(
-                (target) =>
-                    target.status === PostPlatformStatus.Failed ||
-                    target.status === PostPlatformStatus.Rejected,
-            )),
-);
+const hasFailure = computed(() => props.post.status === PostStatus.Failed);
 
 const APPROVAL_RELOAD = {
     only: ['posts', 'counts', 'queue', 'hasData'],
@@ -549,37 +529,13 @@ defineExpose({ openDetails });
                         aria-hidden="true"
                     />
                     {{
-                        targets.length === 1 && primaryTarget
+                        primaryTarget
                             ? $t('posts.publish.publishing_on', {
                                   network: getPlatformLabel(primaryTarget.platform),
                               })
                             : $t('posts.publish.publishing_badge')
                     }}
                 </span>
-                <ul
-                    v-if="targets.length > 1"
-                    class="flex flex-wrap items-center gap-1.5"
-                >
-                    <li
-                        v-for="target in targets"
-                        :key="target.id"
-                        class="inline-flex h-6 items-center gap-1 rounded-full bg-card px-1.5 text-xs"
-                        :title="getPlatformLabel(target.platform)"
-                        :data-testid="`post-publishing-target-${target.id}`"
-                        :data-progress="targetProgress(target.status)"
-                    >
-                        <PlatformBrandIcon :platform="target.platform" />
-                        <IconLoader2
-                            v-if="targetProgress(target.status) === 'running'"
-                            class="size-3.5 animate-spin text-muted-foreground"
-                        />
-                        <IconCheck
-                            v-else-if="targetProgress(target.status) === 'done'"
-                            class="size-3.5 text-success"
-                        />
-                        <IconX v-else class="size-3.5 text-destructive-text" />
-                    </li>
-                </ul>
             </div>
             <div
                 class="relative flex gap-4 p-4 md:gap-6"
@@ -623,11 +579,6 @@ defineExpose({ openDetails });
                                 {{ account.handle_label }}
                             </p>
                         </div>
-                        <span
-                            v-if="targets.length > 1"
-                            class="text-xs font-medium text-muted-foreground"
-                            >+{{ targets.length - 1 }}</span
-                        >
                         <Badge
                             v-if="contentTypeKey"
                             variant="secondary"

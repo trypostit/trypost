@@ -45,9 +45,6 @@ const emit = defineEmits<{
 
 const isSelected = (id: string): boolean => props.selectedIds.includes(id);
 
-// Order matches the `platforms` array the editor submits (both filter the same
-// post_platforms list by the same selection), so a settings panel's position
-// here is the `platforms.{index}.*` index its backend errors are keyed by.
 const selectedChannels = computed(() =>
     props.channels.filter((channel) => isSelected(channel.id)),
 );

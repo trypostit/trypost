@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Cuando se programa un post para publicarse.',
         'post_unscheduled' => 'Cuando un post programado vuelve a borradores.',
         'post_published' => 'Cuando un post se publica en un canal.',
-        'post_partially_published' => 'Cuando algunos canales publican y otros fallan.',
         'post_failed' => 'Cuando un post no se puede publicar.',
         'post_deleted' => 'Cuando se elimina un post.',
     ],

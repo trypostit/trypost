@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Quando un post viene programmato.',
         'post_unscheduled' => 'Quando un post programmato torna tra le bozze.',
         'post_published' => 'Quando un post va online su un canale.',
-        'post_partially_published' => 'Quando alcuni canali pubblicano e altri falliscono.',
         'post_failed' => 'Quando la pubblicazione di un post non riesce.',
         'post_deleted' => 'Quando un post viene eliminato.',
     ],

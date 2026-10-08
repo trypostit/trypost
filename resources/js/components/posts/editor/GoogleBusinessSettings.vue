@@ -27,7 +27,7 @@ import {
 } from '@/lib/googleBusiness';
 
 interface Props {
-    /** This panel's position in the submitted `destinations` (composer) or `platforms` array — see findError. */
+    /** This panel's position in the submitted `destinations` (composer); an edit has one and reports `meta.*` — see findError. */
     platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
@@ -197,7 +197,7 @@ const findError = (field: string) =>
     computed<string | undefined>(
         () =>
             errors.value[`destinations.${props.platformIndex}.meta.${field}`] ??
-            errors.value[`platforms.${props.platformIndex}.meta.${field}`],
+            errors.value[`meta.${field}`],
     );
 const eventTitleError = findError('event.title');
 const eventStartDateError = findError('event.start_date');

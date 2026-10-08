@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publicando',
         'retrying' => 'Tentando novamente',
         'published' => 'Publicado',
-        'partially_published' => 'Parcialmente Publicado',
         'failed' => 'Falhou',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => 'Bandeiras',
         ],
 
-        'status' => [
-            'pending' => 'Pendente',
-            'scheduled' => 'Agendado',
-            'published' => 'Publicado',
-            'publishing' => 'Publicando...',
-            'retrying' => 'Tentando novamente...',
-            'failed' => 'Falhou',
-            'pending_review' => 'Em revisão pelo Google',
-            'rejected' => 'Recusado',
-        ],
 
         'delete_modal' => [
             'title' => 'Excluir Post',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => 'Este arquivo é maior que os :size MB permitidos para o tipo dele.',
         'queue_requires_schedule' => 'Este canal ainda não tem horários de postagem. Adicione horários nas configurações do canal para usar a fila.',
         'queue_with_scheduled_at' => 'Escolha uma posição na fila ou uma data e hora, não os dois.',
-        'queue_legacy_post' => 'Este post foi criado para vários canais de uma vez e não pode entrar em uma fila. Defina uma data e hora.',
         'queue_busy' => 'A fila está sendo atualizada. Tente novamente.',
         'no_social_account' => 'Este post não tem uma conta social, então não pode ser publicado.',
+        'choose_channel' => 'Escolha um canal antes de agendar ou publicar este post.',
         'queue_order_stale' => 'A fila mudou desde que você abriu. Atualize e tente de novo.',
         'account_disconnected' => 'Conta social está desconectada',
-        'target_disabled' => 'Este destino foi desligado',
         'account_token_expired' => 'Sessão da conta social expirou — reconecte a conta',
         'platform_unavailable' => 'A plataforma está temporariamente indisponível. Vamos tentar de novo em breve.',
         'platform_unavailable_exhausted' => 'A plataforma continuou indisponível após várias tentativas. Tente de novo mais tarde.',

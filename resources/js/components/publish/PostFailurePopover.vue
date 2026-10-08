@@ -11,7 +11,7 @@ import {
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
-import { PostPlatformStatus } from '@/types/post';
+import { PublishStatus } from '@/types/post';
 import type { PostCard } from '@/types/publish';
 
 const props = defineProps<{
@@ -36,25 +36,25 @@ const CATEGORIES = [
 const status = computed(() => getPostStatusConfig(props.post.status));
 
 const failures = computed(() =>
-    props.post.post_platforms
+    [props.post]
         .filter(
-            (target) =>
-                target.enabled &&
-                (target.status === PostPlatformStatus.Failed ||
-                    target.status === PostPlatformStatus.Rejected),
+            (post) =>
+                post.platform !== null &&
+                (post.publish_status === PublishStatus.Failed ||
+                    post.publish_status === PublishStatus.Rejected),
         )
-        .map((target) => {
-            const category = target.error_context?.category ?? '';
-            const at = target.error_context?.failed_at ?? props.attemptedAt;
+        .map((post) => {
+            const category = post.failure?.category ?? '';
+            const at = post.failure?.failed_at ?? props.attemptedAt;
 
             return {
-                id: target.id,
-                platform: target.platform,
-                account: target.social_account?.display_label ?? null,
+                id: post.id,
+                platform: post.platform ?? '',
+                account: post.social_account?.display_label ?? null,
                 reasonKey: CATEGORIES.includes(category)
                     ? `posts.publish.failure.categories.${category}`
                     : 'posts.publish.failure.generic',
-                details: target.error_message?.trim() || null,
+                details: post.error_message?.trim() || null,
                 at: at ? date.formatDateTimeInTimezone(at, props.timezone) : null,
             };
         }),

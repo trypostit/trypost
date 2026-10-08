@@ -27,7 +27,7 @@ const thumbnail = (draft: UndatedDraft): string | null =>
 const plainText = (draft: UndatedDraft): string =>
     htmlToPlainText(draft.content ?? '').trim();
 
-const target = (draft: UndatedDraft) => draft.post_platforms[0] ?? null;
+const target = (draft: UndatedDraft) => (draft.platform ? draft : null);
 </script>
 
 <template>
@@ -96,8 +96,8 @@ const target = (draft: UndatedDraft) => draft.post_platforms[0] ?? null;
                         <div class="flex min-w-0 items-center gap-2">
                             <img
                                 v-if="target(draft)"
-                                :src="getPlatformLogo(target(draft)!.platform)"
-                                :alt="getPlatformLabel(target(draft)!.platform)"
+                                :src="getPlatformLogo(target(draft)!.platform ?? '')"
+                                :alt="getPlatformLabel(target(draft)!.platform ?? '')"
                                 class="size-4 shrink-0 rounded-sm"
                             />
                             <span

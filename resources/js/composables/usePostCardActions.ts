@@ -72,9 +72,7 @@ export const schedulePostCard = (
 };
 
 export const duplicatePostCard = (post: PostCard): void => {
-    router.post(duplicatePost.url(post.id), {
-        post_platform_id: post.post_platforms[0]?.id,
-    });
+    router.post(duplicatePost.url(post.id));
 };
 
 export const syncPostCardLabels = (

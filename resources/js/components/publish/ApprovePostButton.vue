@@ -34,9 +34,7 @@ const isQueued = computed(
 );
 
 const postTimezone = useComposerTimezone(() =>
-    props.post.post_platforms
-        .filter((platform) => platform.enabled)
-        .map((platform) => platform.social_account ?? {}),
+    props.post.social_account ? [props.post.social_account] : [],
 );
 
 const needsTime = computed(

@@ -533,7 +533,6 @@ return [
         'publishing' => '게시 중',
         'retrying' => '재시도 중',
         'published' => '게시됨',
-        'partially_published' => '부분 게시됨',
         'failed' => '실패',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => '깃발',
         ],
 
-        'status' => [
-            'pending' => '대기 중',
-            'scheduled' => '예약됨',
-            'published' => '게시됨',
-            'publishing' => '게시 중...',
-            'retrying' => '재시도 중...',
-            'failed' => '실패',
-            'pending_review' => 'Google 검토 중',
-            'rejected' => '거부됨',
-        ],
 
         'delete_modal' => [
             'title' => '게시물 삭제',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => '이 파일은 해당 형식에 허용된 :size MB를 초과합니다.',
         'queue_requires_schedule' => '이 채널에는 아직 게시 시간이 없습니다. 대기열을 사용하려면 채널 설정에서 게시 시간을 추가하세요.',
         'queue_with_scheduled_at' => '대기열 위치나 날짜와 시간 중 하나만 선택하세요.',
-        'queue_legacy_post' => '이 게시물은 여러 채널용으로 한 번에 만들어져 대기열에 추가할 수 없습니다. 대신 날짜와 시간을 설정하세요.',
         'queue_busy' => '대기열을 업데이트하는 중입니다. 다시 시도해 주세요.',
         'no_social_account' => '이 게시물에는 소셜 계정이 없어 게시할 수 없습니다.',
+        'choose_channel' => '이 게시물을 예약하거나 게시하기 전에 채널을 선택하세요.',
         'queue_order_stale' => '대기열을 연 이후 변경되었습니다. 새로 고침한 후 다시 시도해 주세요.',
         'account_disconnected' => '소셜 계정 연결이 해제되었습니다',
-        'target_disabled' => '이 게시 대상이 꺼졌습니다',
         'account_token_expired' => '소셜 계정 세션이 만료되었습니다 — 재연결하세요',
         'platform_unavailable' => '플랫폼을 일시적으로 사용할 수 없습니다. 곧 다시 시도합니다.',
         'platform_unavailable_exhausted' => '여러 번 재시도했지만 플랫폼을 사용할 수 없었습니다. 나중에 다시 시도하세요.',

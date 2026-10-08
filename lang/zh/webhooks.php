@@ -96,7 +96,6 @@ return [
         'post_scheduled' => '帖子被排期发布时。',
         'post_unscheduled' => '已排期的帖子退回草稿时。',
         'post_published' => '帖子在频道上发布时。',
-        'post_partially_published' => '部分频道发布成功、其他失败时。',
         'post_failed' => '帖子发布失败时。',
         'post_deleted' => '帖子被删除时。',
     ],

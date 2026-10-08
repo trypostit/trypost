@@ -96,7 +96,6 @@ return [
         'post_scheduled' => '投稿の公開が予約されたとき。',
         'post_unscheduled' => '予約済みの投稿が下書きに戻ったとき。',
         'post_published' => '投稿がチャンネルで公開されたとき。',
-        'post_partially_published' => '一部のチャンネルで公開され、他が失敗したとき。',
         'post_failed' => '投稿の公開に失敗したとき。',
         'post_deleted' => '投稿が削除されたとき。',
     ],

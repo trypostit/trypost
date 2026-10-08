@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Wanneer een post wordt ingepland.',
         'post_unscheduled' => 'Wanneer een geplande post terug naar concepten gaat.',
         'post_published' => 'Wanneer een post live gaat op een kanaal.',
-        'post_partially_published' => 'Wanneer sommige kanalen publiceren en andere falen.',
         'post_failed' => 'Wanneer het publiceren van een post mislukt.',
         'post_deleted' => 'Wanneer een post wordt verwijderd.',
     ],

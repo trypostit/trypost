@@ -535,7 +535,6 @@ return [
         'publishing' => 'Wird veröffentlicht',
         'retrying' => 'Erneuter Versuch',
         'published' => 'Veröffentlicht',
-        'partially_published' => 'Teilweise veröffentlicht',
         'failed' => 'Fehlgeschlagen',
     ],
 
@@ -641,16 +640,6 @@ return [
             'flags' => 'Flaggen',
         ],
 
-        'status' => [
-            'pending' => 'Ausstehend',
-            'scheduled' => 'Geplant',
-            'published' => 'Veröffentlicht',
-            'publishing' => 'Wird veröffentlicht...',
-            'retrying' => 'Erneuter Versuch...',
-            'failed' => 'Fehlgeschlagen',
-            'pending_review' => 'Google-Prüfung läuft',
-            'rejected' => 'Abgelehnt',
-        ],
 
         'delete_modal' => [
             'title' => 'Beitrag löschen',
@@ -821,12 +810,11 @@ return [
         'media_file_too_large' => 'Diese Datei ist größer als die für ihren Typ erlaubten :size MB.',
         'queue_requires_schedule' => 'Dieser Kanal hat noch keine Veröffentlichungszeiten. Füge in den Kanaleinstellungen Zeiten hinzu, um die Warteschlange zu nutzen.',
         'queue_with_scheduled_at' => 'Wähle entweder eine Position in der Warteschlange oder Datum und Uhrzeit, nicht beides.',
-        'queue_legacy_post' => 'Dieser Beitrag wurde für mehrere Kanäle gleichzeitig erstellt und kann keiner Warteschlange hinzugefügt werden. Lege stattdessen Datum und Uhrzeit fest.',
         'queue_busy' => 'Die Warteschlange wird gerade aktualisiert. Bitte versuche es erneut.',
         'no_social_account' => 'Dieser Beitrag hat kein Social-Media-Konto und kann daher nicht veröffentlicht werden.',
+        'choose_channel' => 'Wähle einen Kanal, bevor du diesen Beitrag planst oder veröffentlichst.',
         'queue_order_stale' => 'Die Warteschlange hat sich geändert, seit du sie geöffnet hast. Aktualisiere die Seite und versuche es erneut.',
         'account_disconnected' => 'Social-Media-Konto ist getrennt',
-        'target_disabled' => 'Dieses Ziel wurde deaktiviert',
         'account_token_expired' => 'Sitzung des Social-Media-Kontos abgelaufen – bitte erneut verbinden',
         'platform_unavailable' => 'Die Plattform ist vorübergehend nicht verfügbar. Wir versuchen es in Kürze erneut.',
         'platform_unavailable_exhausted' => 'Die Plattform blieb nach mehreren Versuchen nicht verfügbar. Bitte später erneut versuchen.',

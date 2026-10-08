@@ -156,7 +156,7 @@ const labelFor = (
 const titleError = computed(
     () =>
         errors.value[`destinations.${props.platformIndex}.meta.title`] ??
-        errors.value[`platforms.${props.platformIndex}.meta.title`],
+        errors.value['meta.title'],
 );
 
 const description = computed({
@@ -170,7 +170,7 @@ const descriptionIssueKey = computed(() =>
 const descriptionServerError = computed(
     () =>
         errors.value[`destinations.${props.platformIndex}.meta.description`] ??
-        errors.value[`platforms.${props.platformIndex}.meta.description`],
+        errors.value['meta.description'],
 );
 const hasDescriptionError = computed(
     () => !!descriptionIssueKey.value || !!descriptionServerError.value,

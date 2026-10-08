@@ -533,7 +533,6 @@ return [
         'publishing' => 'In pubblicazione',
         'retrying' => 'Nuovo tentativo',
         'published' => 'Pubblicato',
-        'partially_published' => 'Pubblicato parzialmente',
         'failed' => 'Non riuscito',
     ],
 
@@ -639,16 +638,6 @@ return [
             'flags' => 'Bandiere',
         ],
 
-        'status' => [
-            'pending' => 'In attesa',
-            'scheduled' => 'Programmato',
-            'published' => 'Pubblicato',
-            'publishing' => 'Pubblicazione in corso...',
-            'retrying' => 'Nuovo tentativo...',
-            'failed' => 'Non riuscito',
-            'pending_review' => 'In revisione da Google',
-            'rejected' => 'Rifiutato',
-        ],
 
         'delete_modal' => [
             'title' => 'Elimina post',
@@ -819,12 +808,11 @@ return [
         'media_file_too_large' => 'Questo file supera i :size MB consentiti per il suo tipo.',
         'queue_requires_schedule' => 'Questo canale non ha ancora orari di pubblicazione. Aggiungili nelle impostazioni del canale per usare la coda.',
         'queue_with_scheduled_at' => 'Scegli una posizione nella coda oppure una data e un\'ora, non entrambe.',
-        'queue_legacy_post' => 'Questo post è stato creato per più canali insieme e non può essere aggiunto a una coda. Imposta invece una data e un\'ora.',
         'queue_busy' => 'La coda è in fase di aggiornamento. Riprova.',
         'no_social_account' => 'Questo post non ha un account social, quindi non può essere pubblicato.',
+        'choose_channel' => 'Scegli un canale prima di programmare o pubblicare questo post.',
         'queue_order_stale' => 'La coda è cambiata da quando l\'hai aperta. Aggiorna e riprova.',
         'account_disconnected' => 'L\'account social è scollegato',
-        'target_disabled' => 'Questa destinazione è stata disattivata',
         'account_token_expired' => 'Sessione dell\'account social scaduta — ricollegalo',
         'platform_unavailable' => 'La piattaforma è temporaneamente non disponibile. Riproveremo a breve.',
         'platform_unavailable_exhausted' => 'La piattaforma è rimasta non disponibile dopo diversi tentativi. Riprova più tardi.',
