@@ -82,7 +82,7 @@ test('platform returns bluesky', function () {
 
 test('an invalid request and a rate limit from Bluesky are not network rejections', function (string $error, int $status) {
     $fakeResponse = Http::fake(['*' => Http::response(['error' => $error, 'message' => 'Rejected'], $status)])
-        ->post('https://bsky.social/xrpc/com.atproto.repo.createRecord');
+        ->post(config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.repo.createRecord');
 
     expect(BlueskyPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([

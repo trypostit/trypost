@@ -140,7 +140,7 @@ test('platform returns threads', function () {
 test('only an account rate limit from Threads is marked as a network rejection', function (int $status, ?int $code, bool $marked) {
     $fakeResponse = Http::fake(['*' => Http::response([
         'error' => array_filter(['code' => $code, 'message' => 'Rejected']),
-    ], $status)])->post('https://graph.threads.net/v1.0/me/threads');
+    ], $status)])->post(config('trypost.platforms.threads.graph_api').'/me/threads');
 
     expect(ThreadsPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([

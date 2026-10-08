@@ -95,7 +95,7 @@ test('platform returns pinterest', function () {
 
 test('only a Pinterest rejection caused by the user is marked as a network rejection', function (int $status, array $body, bool $marked) {
     $fakeResponse = Http::fake(['*' => Http::response($body, $status)])
-        ->post('https://api.pinterest.com/v5/pins');
+        ->post(config('trypost.platforms.pinterest.api').'/pins');
 
     expect(PinterestPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([

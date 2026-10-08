@@ -94,7 +94,7 @@ test('isConfirmedDeadToken is false for PERMISSION_DENIED status', function () {
 
 test('no Google Business error is marked as a network rejection', function (string $reason, int $status) {
     $fakeResponse = Http::fake(['*' => Http::response(['error' => ['status' => $reason, 'message' => 'Rejected']], $status)])
-        ->post('https://mybusiness.googleapis.com/v4/accounts/1/locations/2/localPosts');
+        ->post(config('trypost.platforms.google_business.local_posts_api').'/accounts/1/locations/2/localPosts');
 
     expect(GoogleBusinessPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([

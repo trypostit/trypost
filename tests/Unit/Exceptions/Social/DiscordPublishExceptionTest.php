@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Http;
 
 test('only a Discord rejection the server owner can fix is marked as a network rejection', function (int $status, int $code, bool $marked) {
     $fakeResponse = Http::fake(['*' => Http::response(['code' => $code, 'message' => 'Rejected'], $status)])
-        ->post('https://discord.com/api/v10/channels/1/messages');
+        ->post(config('trypost.platforms.discord.api').'/channels/1/messages');
 
     expect(DiscordPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([
