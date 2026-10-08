@@ -293,7 +293,7 @@ class ImportExternalPosts
             return true;
         }
 
-        $truncated = (string) Str::of($text)->replaceMatches('/(?:\.\.\.|…)$/u', '')->trim();
+        $truncated = (string) Str::of($text)->chopEnd(['...', '…'])->trim();
 
         return $truncated !== $text
             && Str::length($truncated) >= self::MIN_TRUNCATED_MATCH_LENGTH

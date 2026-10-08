@@ -373,7 +373,7 @@ test('an instagram post trypost published under its container id is linked inste
         ->and($tryPost->fresh()->platform_url)->toBe('https://www.instagram.com/p/media-1/');
 });
 
-test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function (ContentType $contentType, string $publishId) {
+test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function (ContentType $contentType, string $publishId, string $ellipsis) {
     $account = SocialAccount::factory()->tiktok()->create();
     $tryPost = sentByTryPost($account, $publishId, '<p>A long description that the network cuts short</p>', now()->subHour()->toImmutable(), $contentType);
     $media = $contentType === ContentType::TikTokPhoto
@@ -394,7 +394,7 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
     $discovered = externalPublication($account, [
         'remote_id' => '7300000000000000001',
         'permalink' => 'https://www.tiktok.com/@trypost/video/7300000000000000001',
-        'excerpt' => 'A long description that the network…',
+        'excerpt' => 'A long description that the network'.$ellipsis,
         'content_type' => PublicationContentType::Video,
         'provider_published_at' => now()->subHour()->addMinutes(5),
     ]);
@@ -416,7 +416,7 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
 })->with([
     'video' => [ContentType::TikTokVideo, 'v_pub_url~123'],
     'photo carousel' => [ContentType::TikTokPhoto, 'p_pub_url~123'],
-]);
+])->with(['three dots' => '...', 'unicode ellipsis' => '…']);
 
 test('a trypost target whose id the network already confirmed is never relinked by text', function () {
     $account = SocialAccount::factory()->instagram()->create();
