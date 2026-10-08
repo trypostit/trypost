@@ -105,6 +105,8 @@ test('refreshes x token before verifying when expired', function () {
 test('refreshes bluesky token before verifying when expired', function () {
     Http::fake([
         config('trypost.platforms.bluesky.default_service').'/xrpc/com.atproto.server.refreshSession' => Http::response([
+            'did' => 'did:plc:123',
+            'handle' => 'test.bsky.social',
             'accessJwt' => 'new_access_token',
             'refreshJwt' => 'new_refresh_token',
         ], 200),
@@ -112,6 +114,7 @@ test('refreshes bluesky token before verifying when expired', function () {
     ]);
 
     $account = SocialAccount::factory()->bluesky()->create([
+        'platform_user_id' => 'did:plc:123',
         'token_expires_at' => now()->subHour(),
         'refresh_token' => 'old_refresh_token',
     ]);
@@ -124,6 +127,73 @@ test('refreshes bluesky token before verifying when expired', function () {
 
     Http::assertSent(fn ($request) => str_contains($request->url(), 'refreshSession'));
 });
+
+test('bluesky refresh and reauthentication accept typed sessions without requiring a confirmed email', function (bool $reauthenticate) {
+    $account = SocialAccount::factory()->bluesky()->create([
+        'platform_user_id' => 'did:plc:account',
+        'access_token' => 'old-access',
+        'refresh_token' => 'old-refresh',
+        'meta' => ['identifier' => 'account.bsky.social', 'password' => encrypt('app-password')],
+    ]);
+    $body = [
+        'did' => 'did:plc:account',
+        'handle' => 'account.bsky.social',
+        'accessJwt' => 'new-access',
+        'refreshJwt' => 'new-refresh',
+        'emailConfirmed' => false,
+    ];
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.refreshSession" => $reauthenticate
+            ? Http::response(['error' => 'ExpiredToken'], 401)
+            : Http::response($body),
+        "{$service}/xrpc/com.atproto.server.createSession" => Http::response($body),
+    ]);
+
+    expect((new ConnectionVerifier)->refreshToken($account))->toBeTrue()
+        ->and($account->fresh()->access_token)->toBe('new-access')
+        ->and($account->fresh()->refresh_token)->toBe('new-refresh')
+        ->and($account->fresh()->status)->toBe(Status::Connected);
+
+    Http::assertSentCount($reauthenticate ? 2 : 1);
+})->with(['refresh' => false, 'reauthentication' => true]);
+
+test('bluesky preserves stored tokens when a renewed session is malformed or belongs to another account', function (array $overrides, bool $reauthenticate) {
+    $account = SocialAccount::factory()->bluesky()->create([
+        'platform_user_id' => 'did:plc:account',
+        'access_token' => 'old-access',
+        'refresh_token' => 'old-refresh',
+        'meta' => ['identifier' => 'account.bsky.social', 'password' => encrypt('app-password')],
+    ]);
+    $body = [
+        'did' => 'did:plc:account',
+        'handle' => 'account.bsky.social',
+        'accessJwt' => 'new-access',
+        'refreshJwt' => 'new-refresh',
+        ...$overrides,
+    ];
+    $service = config('trypost.platforms.bluesky.default_service');
+
+    Http::fake([
+        "{$service}/xrpc/com.atproto.server.refreshSession" => $reauthenticate
+            ? Http::response(['error' => 'ExpiredToken'], 401)
+            : Http::response($body),
+        "{$service}/xrpc/com.atproto.server.createSession" => Http::response($body),
+    ]);
+
+    expect(fn () => (new ConnectionVerifier)->refreshToken($account))->toThrow(PlatformUnavailableException::class)
+        ->and($account->fresh()->access_token)->toBe('old-access')
+        ->and($account->fresh()->refresh_token)->toBe('old-refresh')
+        ->and($account->fresh()->status)->toBe(Status::Connected);
+
+    Http::assertSentCount($reauthenticate ? 2 : 1);
+})->with([
+    'missing token' => [['refreshJwt' => null]],
+    'malformed token' => [['accessJwt' => []]],
+    'other identity' => [['did' => 'did:plc:other']],
+    'missing identity' => [['did' => null]],
+])->with(['refresh' => false, 'reauthentication' => true]);
 
 test('refreshes youtube token before verifying when expired', function () {
     Http::fake([

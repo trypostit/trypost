@@ -34,7 +34,7 @@ test('user can connect bluesky account with valid credentials', function () {
             'accessJwt' => 'test-access-token',
             'refreshJwt' => 'test-refresh-token',
         ], 200),
-        'https://bsky.social/xrpc/com.atproto.server.getSession' => Http::response(['did' => 'did:plc:testuser123', 'emailConfirmed' => true]),
+        'https://bsky.social/xrpc/com.atproto.server.getSession' => Http::response(['did' => 'did:plc:testuser123', 'handle' => 'testuser.bsky.social', 'emailConfirmed' => true]),
         'https://bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response([
             'did' => 'did:plc:testuser123',
             'handle' => 'testuser.bsky.social',
@@ -144,6 +144,7 @@ test('bluesky rechecks email at finish and keeps an existing account unchanged o
         'https://bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response(['displayName' => 'Test User']),
         'https://bsky.social/xrpc/com.atproto.server.getSession' => Http::response([
             'did' => 'did:plc:testuser123',
+            'handle' => 'testuser.bsky.social',
             'emailConfirmed' => false,
         ]),
     ]);
@@ -169,6 +170,36 @@ test('bluesky rechecks email at finish and keeps an existing account unchanged o
         && $request->hasHeader('Authorization', 'Bearer fresh-access'));
 })->with(['new connection' => false, 'reconnect' => true]);
 
+test('bluesky refuses malformed login sessions before offering an identity', function (string $field, mixed $value) {
+    $body = [
+        'did' => 'did:plc:testuser123',
+        'handle' => 'testuser.bsky.social',
+        'accessJwt' => 'access-token',
+        'refreshJwt' => 'refresh-token',
+        'emailConfirmed' => true,
+        $field => $value,
+    ];
+
+    Http::fake(['https://bsky.social/xrpc/com.atproto.server.createSession' => Http::response($body)]);
+
+    $this->actingAs($this->user)->post(route('app.social.bluesky.store'), [
+        'identifier' => 'testuser.bsky.social',
+        'password' => 'xxxx-xxxx-xxxx-xxxx',
+    ])->assertRedirect(route('app.social.connect.show', Platform::Bluesky));
+
+    expect(PendingConnection::current()->failure())->toBe('error_connecting')
+        ->and(PendingConnection::current()->isReady())->toBeFalse()
+        ->and(session('social_connect.identities'))->toBeNull()
+        ->and($this->workspace->socialAccounts()->count())->toBe(0);
+
+    Http::assertSentCount(1);
+})->with([
+    'missing did' => ['did', null],
+    'missing handle' => ['handle', null],
+    'missing access token' => ['accessJwt', null],
+    'malformed refresh token' => ['refreshJwt', []],
+]);
+
 test('bluesky refuses an older pending connection when session verification cannot confirm the account', function (array $body, int $status) {
     startSocialConnect($this->workspace, Platform::Bluesky)->offer([
         PendingConnection::identity(Platform::Bluesky, 'did:plc:testuser123', 'Test User', 'testuser.bsky.social', null, 'profile', [
@@ -186,9 +217,9 @@ test('bluesky refuses an older pending connection when session verification cann
         ->and(session('social_connect.identities'))->toBeNull()
         ->and($this->workspace->socialAccounts()->count())->toBe(0);
 })->with([
-    'unconfirmed email' => [['did' => 'did:plc:testuser123', 'emailConfirmed' => false], 200],
-    'missing confirmation' => [['did' => 'did:plc:testuser123'], 200],
-    'different identity' => [['did' => 'did:plc:other', 'emailConfirmed' => true], 200],
+    'unconfirmed email' => [['did' => 'did:plc:testuser123', 'handle' => 'testuser.bsky.social', 'emailConfirmed' => false], 200],
+    'missing confirmation' => [['did' => 'did:plc:testuser123', 'handle' => 'testuser.bsky.social'], 200],
+    'different identity' => [['did' => 'did:plc:other', 'handle' => 'other.bsky.social', 'emailConfirmed' => true], 200],
     'expired token' => [['error' => 'ExpiredToken'], 401],
     'provider unavailable' => [[], 503],
 ]);
@@ -234,7 +265,7 @@ test('user can connect multiple bluesky accounts', function () {
             'accessJwt' => 'test-access-token',
             'refreshJwt' => 'test-refresh-token',
         ], 200),
-        'https://bsky.social/xrpc/com.atproto.server.getSession' => Http::response(['did' => 'did:plc:newuser456', 'emailConfirmed' => true]),
+        'https://bsky.social/xrpc/com.atproto.server.getSession' => Http::response(['did' => 'did:plc:newuser456', 'handle' => 'newuser.bsky.social', 'emailConfirmed' => true]),
         'https://bsky.social/xrpc/app.bsky.actor.getProfile*' => Http::response([
             'did' => 'did:plc:newuser456',
             'handle' => 'newuser.bsky.social',
@@ -284,7 +315,7 @@ test('bluesky store reconnects the original card', function () {
             'accessJwt' => 'fresh-access-token',
             'refreshJwt' => 'fresh-refresh-token',
         ], 200),
-        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:testuser123', 'emailConfirmed' => true]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:testuser123', 'handle' => 'testuser.bsky.social', 'emailConfirmed' => true]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
             'did' => 'did:plc:testuser123',
             'handle' => 'testuser.bsky.social',
@@ -327,7 +358,7 @@ test('bluesky reconnect that authenticates another handle says so instead of con
             'accessJwt' => 'other-access-token',
             'refreshJwt' => 'other-refresh-token',
         ], 200),
-        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:someoneelse999', 'emailConfirmed' => true]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:someoneelse999', 'handle' => 'someone-else.bsky.social', 'emailConfirmed' => true]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
             'did' => 'did:plc:someoneelse999',
             'handle' => 'someone-else.bsky.social',

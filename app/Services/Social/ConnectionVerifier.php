@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Actions\SocialAccount\SyncXSubscription;
+use App\Dto\BlueskySession;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -24,6 +25,7 @@ use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
 use App\Support\GoogleBusinessResourceName;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -341,14 +343,7 @@ class ConnectionVerifier
             $response = $client->send(fn () => $this->refreshHttp()->withToken($account->refresh_token)
                 ->post("{$service}/xrpc/".BlueskyLexicon::REFRESH_SESSION));
 
-            $data = $response->json();
-            $account->update([
-                'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
-                'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
-                'token_expires_at' => now()->addHours(2),
-            ]);
-
-            $account->refresh();
+            $this->updateBlueskySession($account, $response);
 
             return;
         } catch (TokenExpiredException) {
@@ -362,14 +357,7 @@ class ConnectionVerifier
                     'password' => decrypt($account->meta['password']),
                 ]));
 
-                $data = $reauth->json();
-                $account->update([
-                    'access_token' => $this->tokenFrom($data, $account->platform, 'accessJwt'),
-                    'refresh_token' => $this->tokenFrom($data, $account->platform, 'refreshJwt'),
-                    'token_expires_at' => now()->addHours(2),
-                ]);
-
-                $account->refresh();
+                $this->updateBlueskySession($account, $reauth);
 
                 return;
             } catch (TokenExpiredException) {
@@ -378,6 +366,23 @@ class ConnectionVerifier
         }
 
         throw new TokenExpiredException('Bluesky session expired');
+    }
+
+    private function updateBlueskySession(SocialAccount $account, Response $response): void
+    {
+        $session = BlueskySession::fromResponse($response);
+
+        if ($session === null || ! $session->hasTokens() || $session->did !== $account->platform_user_id) {
+            throw new PlatformUnavailableException('Bluesky returned an invalid session response.');
+        }
+
+        $account->update([
+            'access_token' => $session->accessToken,
+            'refresh_token' => $session->refreshToken,
+            'token_expires_at' => now()->addHours(2),
+        ]);
+
+        $account->refresh();
     }
 
     private function refreshYouTubeToken(SocialAccount $account): void

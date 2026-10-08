@@ -563,6 +563,7 @@ test('every platform that claims a refresh flow actually performs one', function
         $account = SocialAccount::factory()->create([
             'workspace_id' => Workspace::factory()->create()->id,
             'platform' => $platform,
+            'platform_user_id' => 'did:plc:refresh-test',
             'status' => Status::Connected,
             'refresh_token' => 'rt-seed',
             'meta' => ['service' => 'https://bsky.social', 'identifier' => 'a.bsky.social'],
@@ -571,6 +572,7 @@ test('every platform that claims a refresh flow actually performs one', function
         Http::fake(['*' => Http::response([
             'access_token' => 'at', 'refresh_token' => 'rt', 'expires_in' => 3600,
             'accessJwt' => 'j', 'refreshJwt' => 'r', 'id' => '1', 'data' => ['id' => '1'],
+            'did' => $account->platform_user_id, 'handle' => 'a.bsky.social',
         ], 200)]);
 
         try {

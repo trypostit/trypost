@@ -351,10 +351,16 @@ function fakeBlueskyIdentity(string $did): void
 
     Http::fake([
         "{$service}/xrpc/com.atproto.server.createSession" => Http::response([
+            'emailConfirmed' => true,
             'did' => $did,
             'handle' => 'goal.bsky.social',
             'accessJwt' => 'access-token',
             'refreshJwt' => 'refresh-token',
+        ]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response([
+            'did' => $did,
+            'handle' => 'goal.bsky.social',
+            'emailConfirmed' => true,
         ]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response([
             'did' => $did,

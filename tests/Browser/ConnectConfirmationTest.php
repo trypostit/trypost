@@ -390,7 +390,7 @@ test('a bluesky connection started without a return page finishes on its channel
             'emailConfirmed' => true,
             'did' => 'did:plc:confirm', 'handle' => 'confirm.bsky.social', 'accessJwt' => 'access', 'refreshJwt' => 'refresh',
         ]),
-        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:confirm', 'emailConfirmed' => true]),
+        "{$service}/xrpc/com.atproto.server.getSession" => Http::response(['did' => 'did:plc:confirm', 'handle' => 'confirm.bsky.social', 'emailConfirmed' => true]),
         "{$service}/xrpc/app.bsky.actor.getProfile*" => Http::response(['displayName' => 'Confirm Bluesky']),
     ]);
 
