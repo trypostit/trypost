@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use Illuminate\Http\Client\Response;
 
@@ -74,7 +75,7 @@ class XPublishException extends SocialPublishException
             'client-forbidden' => ['App not enrolled or lacks required access.', ErrorCategory::Permission],
             'not-authorized-for-resource' => ['Not authorized for this resource.', ErrorCategory::Permission],
             'resource-not-found' => ['Resource not found.', ErrorCategory::ContentPolicy],
-            default => [self::providerMessage($response, 'detail', 'title') ?? __('posts.errors.unrecognized_error', ['platform' => 'X']), ErrorCategory::Unknown],
+            default => [self::providerMessage($response, 'detail', 'title') ?? __('posts.errors.unrecognized_error', ['platform' => Platform::X->label()]), ErrorCategory::Unknown],
         };
 
         return (new static(

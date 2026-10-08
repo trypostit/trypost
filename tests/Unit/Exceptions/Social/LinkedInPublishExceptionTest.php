@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -120,7 +121,7 @@ test('an unmapped error without a message shows the generic message', function (
         ->post(config('trypost.platforms.linkedin.api').'/rest/posts');
 
     expect(LinkedInPublishException::fromApiResponse($fakeResponse)->userMessage)
-        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']));
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::LinkedIn->label()]));
 })->with([
     'no message' => [['status' => 400]],
     'an empty message' => [['message' => '  ', 'status' => 400]],

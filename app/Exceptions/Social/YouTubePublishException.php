@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use Google\Service\Exception as GoogleServiceException;
 use Illuminate\Http\Client\Response;
@@ -134,7 +135,7 @@ class YouTubePublishException extends SocialPublishException
             'forbidden' => ["You don't have permission to upload to this channel.", ErrorCategory::Permission],
             'forbiddenLicenseSetting' => ['Invalid video license setting.', ErrorCategory::Permission],
             'forbiddenPrivacySetting' => ['Invalid video privacy setting.', ErrorCategory::Permission],
-            default => [$providerMessage ?? __('posts.errors.unrecognized_error', ['platform' => 'YouTube']), ErrorCategory::Unknown],
+            default => [$providerMessage ?? __('posts.errors.unrecognized_error', ['platform' => Platform::YouTube->label()]), ErrorCategory::Unknown],
         };
     }
 }

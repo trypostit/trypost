@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use App\Services\Social\Meta\GraphError;
 use Illuminate\Http\Client\Response;
@@ -71,7 +72,7 @@ class FacebookPublishException extends SocialPublishException
             [$message, $category] = match ($uploadErrorType) {
                 'ProcessingFailedError' => [__('posts.errors.facebook.processing_failed'), ErrorCategory::MediaFormat],
                 'PartialRequestError', 'OffsetInvalidError' => [__('posts.errors.facebook.upload_incomplete'), ErrorCategory::ServerError],
-                default => [__('posts.errors.unrecognized_error', ['platform' => 'Facebook']), ErrorCategory::Unknown],
+                default => [__('posts.errors.unrecognized_error', ['platform' => Platform::Facebook->label()]), ErrorCategory::Unknown],
             };
 
             return (new static(

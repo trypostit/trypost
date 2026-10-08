@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
@@ -88,7 +89,7 @@ test('a failure without a documented reason never reaches the user message', fun
     $exception = YouTubePublishException::fromGoogleException($e);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']))
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::YouTube->label()]))
         ->and($exception->userMessage)->not->toContain('<')
         ->and($exception->rawResponse)->toContain('<!DOCTYPE html>');
 });
@@ -173,7 +174,7 @@ test('an unknown reason without a Google message shows the generic message', fun
     $e = new Exception('{"error":{}}', 400, null, [['reason' => 'someUnknownReason']]);
 
     expect(YouTubePublishException::fromGoogleException($e)->userMessage)
-        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::YouTube->label()]));
 });
 
 test('fromApiResponse shows the generic message without a Google message or on a 5xx', function (int $status, array $body) {
@@ -181,7 +182,7 @@ test('fromApiResponse shows the generic message without a Google message or on a
         ->post(config('trypost.platforms.youtube.data_api').'/videos');
 
     expect(YouTubePublishException::fromApiResponse($fakeResponse)->userMessage)
-        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'YouTube']));
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::YouTube->label()]));
 })->with([
     'no message' => [400, ['error' => ['code' => 400, 'errors' => [['reason' => 'weirdUnknownReason']]]]],
     'a 5xx' => [503, ['error' => ['code' => 503, 'message' => 'Backend unavailable', 'errors' => [['reason' => 'weirdUnknownReason']]]]],

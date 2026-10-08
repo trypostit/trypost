@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -192,7 +193,7 @@ test('an unmapped error shows the generic message when X sent no explanation', f
     $exception = XPublishException::fromApiResponse($fakeResponse);
 
     expect($exception->category)->toBe(ErrorCategory::Unknown)
-        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => 'X']));
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::X->label()]));
 })->with([
     'no message' => [400, ['type' => 'about:blank']],
     'an unlisted 5xx' => [501, ['type' => 'about:blank', 'title' => 'Not Implemented', 'detail' => 'Upstream failed.']],

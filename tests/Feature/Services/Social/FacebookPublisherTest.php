@@ -477,7 +477,7 @@ test('facebook publisher fails a rupload error meta flags not retriable by its d
 
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(fn (FacebookPublishException $exception) => expect($exception->userMessage)
-            ->toBe(__($message, ['platform' => 'Facebook']))
+            ->toBe(__($message, ['platform' => Platform::Facebook->label()]))
             ->and($exception->category)->toBe($category)
             ->and($exception->platformErrorCode)->toBe($type));
 

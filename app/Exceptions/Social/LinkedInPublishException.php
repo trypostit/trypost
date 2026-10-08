@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use Illuminate\Http\Client\Response;
 
@@ -56,7 +57,7 @@ class LinkedInPublishException extends SocialPublishException
         [$message, $category] = match ($statusCode) {
             403 => ['Not authorized to post to this account.', ErrorCategory::Permission],
             422 => ['Invalid post data. Please check your content.', ErrorCategory::ContentPolicy],
-            default => [self::providerMessage($response, 'message') ?? __('posts.errors.unrecognized_error', ['platform' => 'LinkedIn']), ErrorCategory::Unknown],
+            default => [self::providerMessage($response, 'message') ?? __('posts.errors.unrecognized_error', ['platform' => Platform::LinkedIn->label()]), ErrorCategory::Unknown],
         };
 
         return (new static(
