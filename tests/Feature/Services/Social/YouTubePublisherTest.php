@@ -19,6 +19,7 @@ use App\Support\YouTubeMetadata;
 use Google\Client;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 function fakeYouTubeUpload(array $responses = []): YouTubePublisher
 {
@@ -507,6 +508,7 @@ test('a long youtube content becomes the description while the title stays short
 });
 
 test('a Google server error before the final chunk retries the upload', function (string $url, array $video) {
+    Log::spy();
     $this->post->update(['media' => [$video]]);
     $publisher = fakeYouTubeUpload([
         'https://example.com/video.mp4' => fn () => Http::response(str_repeat('x', $video['size'])),
@@ -517,6 +519,8 @@ test('a Google server error before the final chunk retries the upload', function
 
     expect(fn () => $publisher->publish($this->postPlatform->fresh()))
         ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe(503));
+
+    Log::shouldNotHaveReceived('error', ['YouTube upload failed', Mockery::any()]);
 })->with([
     'starting the upload session' => [
         'https://youtube.googleapis.com/upload/youtube/v3/videos*',
