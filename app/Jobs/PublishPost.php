@@ -23,9 +23,13 @@ class PublishPost implements ShouldQueue
     {
         $this->post->markAsPublishing();
 
-        foreach ($this->post->postPlatforms()->enabled()->get() as $postPlatform) {
-            PublishToSocialPlatform::dispatch($postPlatform);
+        if (! $this->post->hasChannel()) {
+            app(FinalizePostPublication::class)->handle($this->post);
+
+            return;
         }
+
+        PublishToSocialPlatform::dispatch($this->post);
     }
 
     public function failed(?Throwable $exception): void

@@ -11,7 +11,6 @@ enum Status: string
     case Scheduled = 'scheduled';
     case Publishing = 'publishing';
     case Published = 'published';
-    case PartiallyPublished = 'partially_published';
     case Failed = 'failed';
 
     public function label(): string
@@ -22,7 +21,6 @@ enum Status: string
             self::Scheduled => __('posts.status.scheduled'),
             self::Publishing => __('posts.status.publishing'),
             self::Published => __('posts.status.published'),
-            self::PartiallyPublished => __('posts.status.partially_published'),
             self::Failed => __('posts.status.failed'),
         };
     }
@@ -35,16 +33,15 @@ enum Status: string
             self::Scheduled => 'blue',
             self::Publishing => 'yellow',
             self::Published => 'green',
-            self::PartiallyPublished => 'orange',
             self::Failed => 'red',
         };
     }
 
-    /** Published, partially published, or failed — Finalize must not notify again. */
+    /** Published or failed — Finalize must not notify again. */
     public function isSettled(): bool
     {
         return match ($this) {
-            self::Published, self::PartiallyPublished, self::Failed => true,
+            self::Published, self::Failed => true,
             default => false,
         };
     }

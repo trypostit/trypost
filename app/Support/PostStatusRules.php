@@ -30,7 +30,6 @@ class PostStatusRules
      */
     private const EDIT_BLOCKED_STATUSES = [
         PostStatus::Published,
-        PostStatus::PartiallyPublished,
         PostStatus::Failed,
         PostStatus::Publishing,
     ];
@@ -43,7 +42,6 @@ class PostStatusRules
     private const DELETE_BLOCKED_STATUSES = [
         PostStatus::Publishing,
         PostStatus::Published,
-        PostStatus::PartiallyPublished,
         PostStatus::Failed,
     ];
 
@@ -123,8 +121,8 @@ class PostStatusRules
      */
     public static function assertStoredPostPublishable(Post $post): void
     {
-        if (! $post->postPlatforms()->enabled()->exists()) {
-            throw ValidationException::withMessages(['platforms' => __('validation.required', ['attribute' => 'platforms'])]);
+        if (! $post->hasChannel()) {
+            throw ValidationException::withMessages(['social_account_id' => __('posts.errors.choose_channel')]);
         }
 
         PostPlatformMetaRules::assertStoredPostPublishable($post);

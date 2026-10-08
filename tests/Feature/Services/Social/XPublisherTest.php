@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ContentLimitException;

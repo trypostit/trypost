@@ -120,25 +120,12 @@ class PostCompositionValidator
         foreach (PostMediaRules::hostedRules() as $key => $rules) {
             $mediaRules[str_replace('media', 'destinations.*.media', $key)] = $rules;
         }
-        $metaRules = [];
-        foreach (PostPlatformMetaRules::rules() as $key => $rules) {
-            $metaRules[str_replace('platforms.', 'destinations.', $key)] = array_map(
-                fn (mixed $rule): mixed => is_string($rule)
-                    ? str_replace('platforms.', 'destinations.', $rule)
-                    : $rule,
-                $rules,
-            );
-        }
-        $metaMessages = [];
-        foreach (PostPlatformMetaRules::messages() as $key => $message) {
-            $metaMessages[str_replace('platforms.', 'destinations.', $key)] = $message;
-        }
-        $metaAttributes = [];
-        foreach (PostPlatformMetaRules::attributes() as $key => $attribute) {
-            $metaAttributes[str_replace('platforms.', 'destinations.', $key)] = $attribute;
-        }
-
-        $validator = Validator::make($composition, [...$mediaRules, ...$metaRules], $metaMessages, $metaAttributes);
+        $validator = Validator::make(
+            $composition,
+            [...$mediaRules, ...PostPlatformMetaRules::rules('destinations.*.meta')],
+            PostPlatformMetaRules::messages('destinations.*.meta'),
+            PostPlatformMetaRules::attributes('destinations.*.meta'),
+        );
         $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace): void {
             $seen = [];
 

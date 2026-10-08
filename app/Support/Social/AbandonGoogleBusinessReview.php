@@ -5,33 +5,33 @@ declare(strict_types=1);
 namespace App\Support\Social;
 
 use App\Actions\Post\FinalizePostPublication;
-use App\Enums\PostPlatform\Status;
-use App\Events\PostPlatformStatusUpdated;
-use App\Models\PostPlatform;
+use App\Enums\Post\PublishStatus;
+use App\Events\PostStatusUpdated;
+use App\Models\Post;
 
 /**
  * Stops waiting on a Google Business review we can no longer settle remotely
- * (disconnected account, switched-off target, recover sweep). Rejects the
- * row, prunes the JPEG, and lets FinalizePostPublication close the parent.
+ * (disconnected account, recover sweep). Rejects the publication, prunes the
+ * JPEG, and lets FinalizePostPublication close the post.
  */
 class AbandonGoogleBusinessReview
 {
     /**
      * @param  array<string, mixed>  $errorContext
      */
-    public static function execute(PostPlatform $postPlatform, string $errorMessage, array $errorContext = []): void
+    public static function execute(Post $post, string $errorMessage, array $errorContext = []): void
     {
-        if ($postPlatform->status === Status::PendingReview) {
-            $postPlatform->markAsRejected(
-                (string) $postPlatform->platform_post_id,
-                $postPlatform->platform_url,
+        if ($post->publish_status === PublishStatus::PendingReview) {
+            $post->markPublicationRejected(
+                (string) $post->platform_post_id,
+                $post->platform_url,
                 $errorMessage,
                 $errorContext,
             );
         }
 
-        app(GoogleBusinessDerivativeCleaner::class)->cleanup($postPlatform->id);
-        app(FinalizePostPublication::class)->handle($postPlatform->post);
-        PostPlatformStatusUpdated::dispatch($postPlatform->fresh());
+        app(GoogleBusinessDerivativeCleaner::class)->cleanup($post);
+        app(FinalizePostPublication::class)->handle($post);
+        PostStatusUpdated::dispatch($post->fresh());
     }
 }

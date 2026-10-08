@@ -7,15 +7,15 @@ namespace App\Jobs;
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\Media\Type as MediaType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
-use App\Events\PostPlatformStatusUpdated;
+use App\Events\PostStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\TokenExpiredException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Rules\ContentTypeCompatibleWithMedia;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\ConnectionVerifier;
@@ -65,15 +65,15 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     private const int DEFAULT_RETRY_DELAY_SECONDS = 600;
 
     public function __construct(
-        public PostPlatform $postPlatform,
+        public Post $post,
         public int $uniqueAttempt = 0,
     ) {
-        $this->onQueue($postPlatform->platform->queue());
+        $this->onQueue($post->platform->queue());
     }
 
     public function uniqueId(): string
     {
-        return "{$this->postPlatform->id}:{$this->uniqueAttempt}";
+        return "{$this->post->id}:{$this->uniqueAttempt}";
     }
 
     /**
@@ -82,7 +82,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     public function middleware(): array
     {
         return [
-            (new WithoutOverlapping("social-publish:{$this->postPlatform->id}"))
+            (new WithoutOverlapping("social-publish:{$this->post->id}"))
                 ->releaseAfter(60)
                 ->expireAfter($this->timeout + 60),
         ];
@@ -90,19 +90,19 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     public function handle(): void
     {
-        $this->postPlatform->refresh();
+        $this->post->refresh();
 
-        if ($this->postPlatform->status->isClosed() || $this->postPlatform->isWaitingForLimitRetry()) {
+        if ($this->post->publish_status->isClosed() || $this->post->isPublicationWaitingForLimitRetry()) {
             return;
         }
 
-        if ($this->postPlatform->socialAccount->status === Status::Disconnected) {
+        if ($this->post->socialAccount->status === Status::Disconnected) {
             $this->failAndFinalize(__('posts.errors.account_disconnected'));
 
             return;
         }
 
-        if ($this->postPlatform->socialAccount->status === Status::TokenExpired) {
+        if ($this->post->socialAccount->status === Status::TokenExpired) {
             $this->failAndFinalize(__('posts.errors.account_token_expired'), [
                 'category' => ErrorCategory::TokenExpired->value,
                 'failed_at' => now()->toIso8601String(),
@@ -119,7 +119,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->postPlatform->markAsPublishing();
+        $this->post->markPublicationPublishing();
         $this->broadcastStatus();
 
         $maxAttempts = 2; // Original attempt + 1 retry after token refresh
@@ -127,7 +127,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
             try {
                 $publisher = $this->getPublisher();
-                $result = $publisher->publish($this->postPlatform);
+                $result = $publisher->publish($this->post);
 
                 $this->recordPublishResult($result);
                 break;
@@ -198,11 +198,11 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $threadReplyIds = data_get($result, 'thread_reply_ids');
 
         if (is_array($threadReplyIds) && $threadReplyIds !== []) {
-            $this->postPlatform->thread_reply_ids = array_values($threadReplyIds);
+            $this->post->thread_reply_ids = array_values($threadReplyIds);
         }
 
         match ($state) {
-            LocalPostState::Rejected => $this->postPlatform->markAsRejected(
+            LocalPostState::Rejected => $this->post->markPublicationRejected(
                 $platformPostId,
                 $platformUrl,
                 __('posts.errors.rejected_in_review'),
@@ -210,23 +210,23 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ),
             LocalPostState::Processing,
             LocalPostState::Scheduled,
-            LocalPostState::Unspecified => $this->postPlatform->markAsPendingReview($platformPostId, $platformUrl),
+            LocalPostState::Unspecified => $this->post->markPublicationPendingReview($platformPostId, $platformUrl),
             LocalPostState::Live,
             LocalPostState::Recurring,
-            null => $this->postPlatform->markAsPublished($platformPostId, $platformUrl),
+            null => $this->post->markPublicationPublished($platformPostId, $platformUrl),
         };
     }
 
     private function refreshAccountToken(): void
     {
-        app(ConnectionVerifier::class)->verify($this->postPlatform->socialAccount);
+        app(ConnectionVerifier::class)->verify($this->post->socialAccount);
     }
 
     private function failForMissingScopes(): bool
     {
         $missingScopes = array_values(array_diff(
-            $this->postPlatform->platform->requiredPublishScopes(),
-            $this->postPlatform->socialAccount->scopes ?? [],
+            $this->post->platform->requiredPublishScopes(),
+            $this->post->socialAccount->scopes ?? [],
         ));
 
         if ($missingScopes === []) {
@@ -256,9 +256,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      */
     private function failForInvalidMedia(): bool
     {
-        $context = $this->postPlatform->error_context;
+        $context = $this->post->error_context;
 
-        if ($this->postPlatform->scheduled_before_media_checks) {
+        if ($this->post->scheduled_before_media_checks) {
             return false;
         }
 
@@ -266,15 +266,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return false;
         }
 
-        $post = $this->postPlatform->post;
         $errors = ContentTypeCompatibleWithMedia::errorsFor(
             [[
                 'key' => 'media',
-                'content_type' => $this->postPlatform->content_type?->value,
+                'content_type' => $this->post->content_type?->value,
             ]],
-            (array) ($post->media ?? []),
-            $post->workspace,
-        ) ?: ThreadReplies::mediaErrors($this->postPlatform->platform, $this->postPlatform->meta, $post->workspace);
+            (array) ($this->post->media ?? []),
+            $this->post->workspace,
+        ) ?: ThreadReplies::mediaErrors($this->post->platform, $this->post->meta, $this->post->workspace);
 
         if ($errors === []) {
             return false;
@@ -290,7 +289,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function rescheduleForRetry(PlatformUnavailableException $e): void
     {
-        $previousContext = self::withSeparateRetryCounters($this->postPlatform->error_context ?? []);
+        $previousContext = self::withSeparateRetryCounters($this->post->error_context ?? []);
         $hasOwnPolicy = $e->maxRetries !== null || $e->retryDelaySeconds !== null;
         $counterKey = $hasOwnPolicy ? 'processing_retry_count' : 'retry_count';
         $retryCount = (int) data_get($previousContext, $counterKey, 0) + 1;
@@ -323,14 +322,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         $nextAttemptAt = now()->addSeconds($retryDelaySeconds);
 
         Log::warning('Publish rescheduled: platform unavailable', [
-            'post_platform_id' => $this->postPlatform->id,
-            'platform' => $this->postPlatform->platform->value,
+            'post_id' => $this->post->id,
+            'platform' => $this->post->platform->value,
             'next_attempt_at' => $nextAttemptAt->toIso8601String(),
             ...$context,
         ]);
 
-        $this->postPlatform->update([
-            'status' => PostPlatformStatus::Retrying,
+        $this->post->writePublication([
+            'publish_status' => PublishStatus::Retrying,
             'error_message' => __('posts.errors.platform_unavailable'),
             'error_context' => [
                 ...$context,
@@ -340,7 +339,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ]);
 
         self::dispatch(
-            $this->postPlatform,
+            $this->post,
             (int) data_get($context, 'retry_count', 0) + (int) data_get($context, 'processing_retry_count', 0),
         )->delay($nextAttemptAt);
     }
@@ -376,7 +375,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      */
     private function waitForLimitRetry(SocialPublishException $e): bool
     {
-        $previousContext = $this->postPlatform->error_context ?? [];
+        $previousContext = $this->post->error_context ?? [];
         $retries = LimitRetryPolicy::retriesSoFar($previousContext);
         $retryAt = LimitRetryPolicy::nextAttemptAt($retries, $e->retryAt);
 
@@ -384,9 +383,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             return false;
         }
 
-        match ($this->postPlatform->platform) {
-            SocialPlatform::TikTok => app(TikTokPhotoDerivativeCleaner::class)->cleanup($previousContext, $this->postPlatform->id),
-            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id),
+        match ($this->post->platform) {
+            SocialPlatform::TikTok => app(TikTokPhotoDerivativeCleaner::class)->cleanup($previousContext, $this->post->id),
+            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->post),
             default => null,
         };
 
@@ -405,14 +404,14 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         ];
 
         Log::warning('Publish waiting for a network limit', [
-            'post_platform_id' => $this->postPlatform->id,
-            'platform' => $this->postPlatform->platform->value,
+            'post_id' => $this->post->id,
+            'platform' => $this->post->platform->value,
             'platform_error_code' => $e->platformErrorCode,
             'limit_retries' => $retries + 1,
             'retry_at' => $retryAt->toIso8601String(),
         ]);
 
-        $this->postPlatform->markAsWaitingForLimitRetry($retryAt, $e->userMessage, $context);
+        $this->post->markPublicationWaitingForLimitRetry($retryAt, $e->userMessage, $context);
 
         return true;
     }
@@ -429,13 +428,13 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
     {
         Log::error('Social publish failed', [
             ...(method_exists($e, 'context') ? $e->context() : []),
-            'post_platform_id' => $this->postPlatform->id,
-            'platform' => $this->postPlatform->platform->value,
-            'content_type' => $this->postPlatform->content_type?->value,
+            'post_id' => $this->post->id,
+            'platform' => $this->post->platform->value,
+            'content_type' => $this->post->content_type?->value,
             'exception' => $e::class,
             'message' => $e->getMessage(),
             ...$context,
-            'media' => $this->mediaSnapshot($this->postPlatform),
+            'media' => $this->mediaSnapshot(),
         ]);
 
         if ($e instanceof TokenExpiredException || ($e instanceof SocialPublishException && $e->isNetworkRejection())) {
@@ -452,9 +451,9 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      *
      * @return list<array{url: ?string, mime_type: ?string, size: ?int, type: ?string}>
      */
-    private function mediaSnapshot(PostPlatform $postPlatform): array
+    private function mediaSnapshot(): array
     {
-        $media = $postPlatform->post?->media;
+        $media = $this->post->media;
 
         if (! is_array($media)) {
             return [];
@@ -486,7 +485,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             'platform_error_code' => $e->platformErrorCode,
             'failed_at' => now()->toIso8601String(),
         ]);
-        $this->postPlatform->socialAccount->markAsTokenExpired($e->getMessage());
+        $this->post->socialAccount->markAsTokenExpired($e->getMessage());
     }
 
     /**
@@ -494,21 +493,21 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      */
     private function markPlatformAsFailed(string $message, ?array $context = null): void
     {
-        $previousContext = $this->postPlatform->error_context ?? [];
+        $previousContext = $this->post->error_context ?? [];
 
-        match ($this->postPlatform->platform) {
+        match ($this->post->platform) {
             SocialPlatform::TikTok => app(TikTokPhotoDerivativeCleaner::class)->cleanupUnlessPublishInFlight(
                 $previousContext,
-                $this->postPlatform->id,
+                $this->post->id,
             ),
-            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id),
+            SocialPlatform::GoogleBusiness => app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->post),
             default => null,
         };
 
         $failureContext = [...$previousContext, ...($context ?? [])];
 
-        $this->postPlatform->markAsFailed(
-            ThreadProgress::failureMessage($this->postPlatform, $message, $failureContext),
+        $this->post->markPublicationFailed(
+            ThreadProgress::failureMessage($this->post, $message, $failureContext),
             $failureContext === [] ? null : $failureContext,
         );
     }
@@ -522,8 +521,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
         return [
             ...$extra,
             'failed_at' => now()->toIso8601String(),
-            'content_length' => mb_strlen($this->postPlatform->post->content ?? ''),
-            'media_count' => count($this->postPlatform->post->media ?? []),
+            'content_length' => mb_strlen($this->post->content ?? ''),
+            'media_count' => count($this->post->media ?? []),
         ];
     }
 
@@ -539,7 +538,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function broadcastStatus(): void
     {
-        PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
+        PostStatusUpdated::dispatch($this->post->fresh());
     }
 
     /**
@@ -555,7 +554,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function getPublisher(): LinkedInPublisher|LinkedInPagePublisher|XPublisher|TikTokPublisher|YouTubePublisher|FacebookPublisher|InstagramPublisher|ThreadsPublisher|PinterestPublisher|BlueskyPublisher|MastodonPublisher|TelegramPublisher|DiscordPublisher|GoogleBusinessPublisher
     {
-        return match ($this->postPlatform->platform) {
+        return match ($this->post->platform) {
             SocialPlatform::LinkedIn => app(LinkedInPublisher::class),
             SocialPlatform::LinkedInPage => app(LinkedInPagePublisher::class),
             SocialPlatform::X => app(XPublisher::class),
@@ -575,20 +574,20 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
 
     private function updatePostStatus(): void
     {
-        app(FinalizePostPublication::class)->handle($this->postPlatform->post);
+        app(FinalizePostPublication::class)->handle($this->post);
     }
 
     public function failed(?Throwable $exception): void
     {
         Log::error('PublishToSocialPlatform job failed permanently', [
-            'post_platform_id' => $this->postPlatform->id,
-            'platform' => $this->postPlatform->platform->value,
+            'post_id' => $this->post->id,
+            'platform' => $this->post->platform->value,
             'error' => $exception?->getMessage(),
         ]);
 
-        $this->postPlatform->refresh();
+        $this->post->refresh();
 
-        if ($this->postPlatform->status->isClosed() || $this->postPlatform->isWaitingForLimitRetry()) {
+        if ($this->post->publish_status->isClosed() || $this->post->isPublicationWaitingForLimitRetry()) {
             return;
         }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status;
+use App\Enums\Post\PublishStatus as Status;
 
 test('a finished target counts toward settling the parent post', function (Status $status, bool $finished) {
     expect($status->isFinished())->toBe($finished);

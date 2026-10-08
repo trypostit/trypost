@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Jobs\VerifyUpcomingPostConnections;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use Illuminate\Console\Command;
 
 class CheckUpcomingPostConnections extends Command
@@ -18,23 +17,20 @@ class CheckUpcomingPostConnections extends Command
 
     public function handle(): void
     {
-        $workspaceIds = PostPlatform::query()
-            ->where('post_platforms.status', PostPlatformStatus::Pending)
-            ->enabled()
+        $workspaceIds = Post::query()
+            ->scheduled()
+            ->whereBetween('scheduled_at', [now(), now()->addHour()])
+            ->where('publish_status', PublishStatus::Pending)
             ->whereHas('socialAccount')
             ->where(function ($query) {
-                $query->whereNull('post_platforms.connection_warning_sent_at')
-                    ->orWhere('post_platforms.connection_warning_sent_at', '<', now()->subDay());
+                $query->whereNull('connection_warning_sent_at')
+                    ->orWhere('connection_warning_sent_at', '<', now()->subDay());
             })
-            ->join('posts', 'posts.id', '=', 'post_platforms.post_id')
-            ->where('posts.status', PostStatus::Scheduled)
-            ->whereBetween('posts.scheduled_at', [now(), now()->addHour()])
             ->distinct()
-            ->pluck('posts.workspace_id');
+            ->pluck('workspace_id');
 
         foreach ($workspaceIds as $workspaceId) {
             VerifyUpcomingPostConnections::dispatch($workspaceId);
         }
-
     }
 }

@@ -6,13 +6,13 @@ namespace App\Jobs;
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\GoogleBusiness\LocalPostState;
-use App\Enums\PostPlatform\Status;
-use App\Events\PostPlatformStatusUpdated;
+use App\Enums\Post\PublishStatus as Status;
+use App\Events\PostStatusUpdated;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Exceptions\TokenExpiredException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\GoogleBusinessPublisher;
@@ -47,25 +47,25 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
      */
     public const REVIEW_CEILING_HOURS = 24;
 
-    public function __construct(public PostPlatform $postPlatform)
+    public function __construct(public Post $post)
     {
-        $this->onQueue($postPlatform->platform->queue());
+        $this->onQueue($post->platform->queue());
     }
 
     public function uniqueId(): string
     {
-        return $this->postPlatform->id;
+        return $this->post->id;
     }
 
     public function handle(): void
     {
-        $this->postPlatform->refresh();
+        $this->post->refresh();
 
-        if ($this->postPlatform->status !== Status::PendingReview || blank($this->postPlatform->platform_post_id)) {
+        if ($this->post->publish_status !== Status::PendingReview || blank($this->post->platform_post_id)) {
             return;
         }
 
-        $account = $this->postPlatform->socialAccount;
+        $account = $this->post->socialAccount;
 
         if (! $account instanceof SocialAccount) {
             $this->giveUp(__('posts.errors.account_disconnected'), [
@@ -94,26 +94,26 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
         }
 
         $state = LocalPostState::fromApi(data_get($remote, 'state'));
-        $platformUrl = (string) (data_get($remote, 'searchUrl') ?: $this->postPlatform->platform_url);
+        $platformUrl = (string) (data_get($remote, 'searchUrl') ?: $this->post->platform_url);
 
         if ($state->isLive()) {
-            $this->postPlatform->markAsPublished((string) $this->postPlatform->platform_post_id, $platformUrl);
+            $this->post->markPublicationPublished((string) $this->post->platform_post_id, $platformUrl);
         } elseif ($state->isRejected()) {
-            $this->postPlatform->markAsRejected(
-                (string) $this->postPlatform->platform_post_id,
+            $this->post->markPublicationRejected(
+                (string) $this->post->platform_post_id,
                 $platformUrl,
                 __('posts.errors.rejected_in_review'),
                 ['provider_state' => $state->value],
             );
         } elseif ($this->reviewExpired()) {
-            $this->postPlatform->markAsRejected(
-                (string) $this->postPlatform->platform_post_id,
+            $this->post->markPublicationRejected(
+                (string) $this->post->platform_post_id,
                 $platformUrl,
                 __('posts.errors.review_unconfirmed'),
                 ['category' => 'review_unconfirmed', 'provider_state' => $state->value],
             );
         } else {
-            $this->postPlatform->update([
+            $this->post->writePublication([
                 'platform_url' => $platformUrl,
                 'last_reconciled_at' => now(),
             ]);
@@ -121,15 +121,15 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->postPlatform->update(['last_reconciled_at' => now()]);
+        $this->post->writePublication(['last_reconciled_at' => now()]);
         $this->settle();
     }
 
     public function failed(?Throwable $exception): void
     {
-        $this->postPlatform->refresh();
+        $this->post->refresh();
 
-        if ($this->postPlatform->status !== Status::PendingReview) {
+        if ($this->post->publish_status !== Status::PendingReview) {
             return;
         }
 
@@ -151,7 +151,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
         return app(GoogleBusinessPublisher::class)->fetchLocalPost(
             $account,
-            (string) $this->postPlatform->platform_post_id,
+            (string) $this->post->platform_post_id,
         );
     }
 
@@ -223,7 +223,7 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $this->postPlatform->update(['last_reconciled_at' => now()]);
+        $this->post->writePublication(['last_reconciled_at' => now()]);
     }
 
     /**
@@ -231,19 +231,19 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
      */
     private function giveUp(string $errorMessage, array $errorContext = []): void
     {
-        $this->postPlatform->markAsRejected(
-            (string) $this->postPlatform->platform_post_id,
-            $this->postPlatform->platform_url,
+        $this->post->markPublicationRejected(
+            (string) $this->post->platform_post_id,
+            $this->post->platform_url,
             $errorMessage,
             $errorContext,
         );
-        $this->postPlatform->update(['last_reconciled_at' => now()]);
+        $this->post->writePublication(['last_reconciled_at' => now()]);
         $this->settle();
     }
 
     private function reviewExpired(): bool
     {
-        $submittedAt = $this->postPlatform->submitted_at;
+        $submittedAt = $this->post->submitted_at;
 
         return $submittedAt instanceof CarbonInterface
             && $submittedAt->copy()->addHours(self::REVIEW_CEILING_HOURS)->isPast();
@@ -251,8 +251,8 @@ class ReconcileGoogleBusinessPost implements ShouldBeUnique, ShouldQueue
 
     private function settle(): void
     {
-        app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->postPlatform->id);
-        app(FinalizePostPublication::class)->handle($this->postPlatform->post);
-        PostPlatformStatusUpdated::dispatch($this->postPlatform->fresh());
+        app(GoogleBusinessDerivativeCleaner::class)->cleanup($this->post);
+        app(FinalizePostPublication::class)->handle($this->post);
+        PostStatusUpdated::dispatch($this->post->fresh());
     }
 }

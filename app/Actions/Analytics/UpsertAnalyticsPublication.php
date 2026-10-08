@@ -13,10 +13,8 @@ use App\Enums\Analytics\PublicationOrigin;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use DateTimeInterface;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -55,23 +53,23 @@ class UpsertAnalyticsPublication
 
     public function tryPost(
         TryPostPublicationIdentity $identity,
-        PostPlatform $postPlatform,
+        Post $post,
         PublicationContentType $contentType,
         ?string $excerpt,
         ?SocialAccount $liveAccount = null,
     ): AnalyticsPublication {
         return $this->persist(
             identity: $identity,
-            providerPostId: (string) $postPlatform->platform_post_id,
-            providerPublishedAt: ($postPlatform->published_at ?? $postPlatform->updated_at)->toImmutable(),
+            providerPostId: (string) $post->platform_post_id,
+            providerPublishedAt: ($post->published_at ?? $post->publication_updated_at ?? $post->updated_at)->toImmutable(),
             origin: PublicationOrigin::TryPost,
             contentType: $contentType,
-            providerContentType: $postPlatform->content_type->value,
-            permalink: $postPlatform->platform_url,
+            providerContentType: $post->content_type->value,
+            permalink: $post->platform_url,
             excerpt: $excerpt,
             previewMetadata: null,
             providerMetadata: null,
-            postPlatformId: $postPlatform->id,
+            postId: $post->id,
             liveAccount: $liveAccount,
         );
     }
@@ -81,7 +79,7 @@ class UpsertAnalyticsPublication
         DB::transaction(function () use ($publication, $remoteId): void {
             $current = AnalyticsPublication::query()->lockForUpdate()->findOrFail($publication->id);
 
-            if ($current->remote_id === $remoteId || ! $current->post_platform_id) {
+            if ($current->remote_id === $remoteId || ! $current->post_id) {
                 return;
             }
 
@@ -94,8 +92,8 @@ class UpsertAnalyticsPublication
                 ->first();
 
             if ($discovered) {
-                if ($discovered->post_platform_id && $discovered->post_platform_id !== $current->post_platform_id) {
-                    $this->deleteImportedPost($discovered->post_platform_id);
+                if ($discovered->post_id && $discovered->post_id !== $current->post_id) {
+                    $this->deleteImportedPost($discovered->post_id);
                 }
 
                 $discovered->dailySnapshots()->lockForUpdate()->reorder()->lazyById(100)->each(function (AnalyticsPublicationDailySnapshot $snapshot) use ($current): void {
@@ -137,20 +135,21 @@ class UpsertAnalyticsPublication
             $current->remote_id = $remoteId;
             $current->save();
 
-            PostPlatform::query()->whereKey($current->post_platform_id)->update([
+            Post::query()->whereKey($current->post_id)->toBase()->update([
                 'platform_post_id' => $remoteId,
                 'platform_url' => $current->permalink,
+                'publication_updated_at' => now(),
             ]);
 
             $publication->setRawAttributes($current->getAttributes(), true);
         });
     }
 
-    private function deleteImportedPost(string $postPlatformId): void
+    private function deleteImportedPost(string $postId): void
     {
         $post = Post::query()
             ->imported()
-            ->whereHas('postPlatforms', fn (Builder $query): Builder => $query->whereKey($postPlatformId))
+            ->whereKey($postId)
             ->lockForUpdate()
             ->first();
 
@@ -177,7 +176,7 @@ class UpsertAnalyticsPublication
         ?string $excerpt,
         ?array $previewMetadata,
         ?array $providerMetadata,
-        ?string $postPlatformId = null,
+        ?string $postId = null,
         ?DateTimeInterface $providerSyncedAt = null,
         ?SocialAccount $liveAccount = null,
     ): AnalyticsPublication {
@@ -195,7 +194,7 @@ class UpsertAnalyticsPublication
                 $excerpt,
                 $previewMetadata,
                 $providerMetadata,
-                $postPlatformId,
+                $postId,
                 $providerSyncedAt,
                 $liveAccount,
                 true,
@@ -212,7 +211,7 @@ class UpsertAnalyticsPublication
                 $excerpt,
                 $previewMetadata,
                 $providerMetadata,
-                $postPlatformId,
+                $postId,
                 $providerSyncedAt,
                 $liveAccount,
                 false,
@@ -235,12 +234,12 @@ class UpsertAnalyticsPublication
         ?string $excerpt,
         ?array $previewMetadata,
         ?array $providerMetadata,
-        ?string $postPlatformId,
+        ?string $postId,
         ?DateTimeInterface $providerSyncedAt,
         ?SocialAccount $liveAccount,
         bool $mayCreate,
     ): AnalyticsPublication {
-        return DB::transaction(function () use ($contentType, $excerpt, $identity, $liveAccount, $mayCreate, $origin, $permalink, $postPlatformId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
+        return DB::transaction(function () use ($contentType, $excerpt, $identity, $liveAccount, $mayCreate, $origin, $permalink, $postId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
             $identityFields = [
                 'workspace_id' => $identity->workspaceId,
                 'social_account_key' => $identity->socialAccountKey,
@@ -252,9 +251,9 @@ class UpsertAnalyticsPublication
                 ->lockForUpdate()
                 ->first();
 
-            if (! $publication && $postPlatformId) {
+            if (! $publication && $postId) {
                 $publication = AnalyticsPublication::query()
-                    ->where('post_platform_id', $postPlatformId)
+                    ->where('post_id', $postId)
                     ->lockForUpdate()
                     ->first();
             }
@@ -275,7 +274,7 @@ class UpsertAnalyticsPublication
             $values = [
                 'social_account_id' => $liveAccount?->id
                     ?? SocialAccount::query()->whereKey($identity->socialAccountId)->value('id'),
-                'post_platform_id' => $postPlatformId ?? $publication->post_platform_id,
+                'post_id' => $postId ?? $publication->post_id,
                 'platform_user_id' => $identity->platformUserId,
                 'platform' => $identity->platform,
                 'provider_published_at' => $providerPublishedAt,

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status;
+use App\Enums\Post\PublishStatus as Status;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;

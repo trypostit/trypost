@@ -9,7 +9,6 @@ use App\Enums\Media\Type;
 use App\Enums\Webhook\EventType as WebhookEvent;
 use App\Jobs\DispatchWebhook;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -106,7 +105,7 @@ class WebhookService
      */
     public function postPayload(Post $post): array
     {
-        $post->load(['user', 'workspace', 'labels', 'postPlatforms.socialAccount']);
+        $post->load(['user', 'workspace', 'labels', 'socialAccount']);
 
         return [
             'id' => $post->id,
@@ -130,10 +129,18 @@ class WebhookService
                 ->values()
                 ->all(),
             'media' => $this->mediaPayload($post),
-            'platforms' => $post->postPlatforms
-                ->map(fn (PostPlatform $platform): array => $this->platformPayload($platform))
-                ->values()
-                ->all(),
+            'publish_status' => $post->publish_status->value,
+            'social_account_id' => $post->social_account_id,
+            'platform' => $post->platform?->value,
+            'content_type' => $post->content_type?->value,
+            'platform_post_id' => $post->platform_post_id,
+            'platform_url' => $post->platform_url,
+            'error_message' => $post->error_message,
+            'display_name' => $post->display_name,
+            'display_username' => $post->display_username,
+            'display_avatar' => $post->display_avatar,
+            'meta' => $post->meta ?? [],
+            'social_account' => $this->socialAccountPayload($post->socialAccount),
         ];
     }
 
@@ -186,31 +193,6 @@ class WebhookService
             })
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function platformPayload(PostPlatform $platform): array
-    {
-        return [
-            'id' => $platform->id,
-            'social_account_id' => $platform->social_account_id,
-            'platform' => $platform->platform?->value,
-            'content_type' => $platform->content_type?->value,
-            'enabled' => $platform->enabled,
-            'status' => $platform->status?->value,
-            'platform_post_id' => $platform->platform_post_id,
-            'platform_url' => $platform->platform_url,
-            'published_at' => $platform->published_at?->toIso8601String(),
-            'error_message' => $platform->error_message,
-            'error_context' => $platform->error_context,
-            'display_name' => $platform->display_name,
-            'display_username' => $platform->display_username,
-            'display_avatar' => $platform->display_avatar,
-            'meta' => $platform->meta ?? [],
-            'social_account' => $this->socialAccountPayload($platform->socialAccount),
-        ];
     }
 
     /**

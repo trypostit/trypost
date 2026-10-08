@@ -52,7 +52,7 @@ class CreatePostsTool extends Tool
 
         return Response::structured([
             'posts' => $posts->map(function (Post $post): array {
-                $post->load(['postPlatforms.socialAccount', 'labels']);
+                $post->load(['socialAccount', 'labels']);
 
                 return (new PostResource($post))->resolve();
             })->all(),

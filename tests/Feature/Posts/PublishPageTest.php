@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Actions\Post\BuildPublishPageProps;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;

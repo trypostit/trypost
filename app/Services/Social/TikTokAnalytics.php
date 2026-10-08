@@ -6,7 +6,7 @@ namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
@@ -65,17 +65,17 @@ class TikTokAnalytics
      *
      * @return array<int, array{label: string, value: int}>|array{unsupported: true, reason: string}
      */
-    public function fetchPostMetrics(PostPlatform $postPlatform): array
+    public function fetchPostMetrics(Post $post): array
     {
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
-        if (! $account || ! $postPlatform->platform_post_id) {
+        if (! $account || ! $post->platform_post_id) {
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
         }
 
         $this->prepareAccessToken($account);
 
-        $videoId = $this->videoIdFor($postPlatform);
+        $videoId = $this->videoIdFor($post);
 
         if ($videoId === null) {
             return ['unsupported' => true, 'reason' => 'missing_post_id'];
@@ -117,9 +117,9 @@ class TikTokAnalytics
      * the show-page link stops pointing at the profile. SELF_ONLY posts never
      * appear on the list, so they are not looked up.
      */
-    public function findVideoIdByCaption(PostPlatform $postPlatform): ?string
+    public function findVideoIdByCaption(Post $post): ?string
     {
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
         if (! $account) {
             return null;
@@ -127,30 +127,30 @@ class TikTokAnalytics
 
         $this->prepareAccessToken($account);
 
-        return $this->matchVideoFromRecentList($postPlatform);
+        return $this->matchVideoFromRecentList($post);
     }
 
-    private function videoIdFor(PostPlatform $postPlatform): ?string
+    private function videoIdFor(Post $post): ?string
     {
-        $stored = (string) $postPlatform->platform_post_id;
+        $stored = (string) $post->platform_post_id;
 
         if (ctype_digit($stored)) {
             return $stored;
         }
 
-        $videoId = $this->publicVideoIdFromStatus($stored) ?? $this->matchVideoFromRecentList($postPlatform);
+        $videoId = $this->publicVideoIdFromStatus($stored) ?? $this->matchVideoFromRecentList($post);
 
         if ($videoId === null) {
             return null;
         }
 
-        $username = $postPlatform->socialAccount?->username;
+        $username = $post->socialAccount?->username;
 
-        $postPlatform->update([
+        $post->writePublication([
             'platform_post_id' => $videoId,
             'platform_url' => filled($username)
                 ? "https://www.tiktok.com/@{$username}/video/{$videoId}"
-                : $postPlatform->platform_url,
+                : $post->platform_url,
         ]);
 
         return $videoId;
@@ -180,21 +180,19 @@ class TikTokAnalytics
      * an older repost with the same caption must never be claimed. Allow one
      * day because our `published_at` can lag TikTok's `create_time` during review.
      */
-    private function matchVideoFromRecentList(PostPlatform $postPlatform): ?string
+    private function matchVideoFromRecentList(Post $post): ?string
     {
-        if (PrivacyLevel::tryFrom((string) data_get($postPlatform->meta, 'privacy_level')) === PrivacyLevel::SelfOnly) {
+        if (PrivacyLevel::tryFrom((string) data_get($post->meta, 'privacy_level')) === PrivacyLevel::SelfOnly) {
             return null;
         }
 
-        $postPlatform->loadMissing('post');
-
-        $caption = $this->normalizeCaption((string) $postPlatform->post?->content);
+        $caption = $this->normalizeCaption((string) $post->content);
 
         if ($caption === '') {
             return null;
         }
 
-        $notBefore = ($postPlatform->published_at ?? now())->copy()->utc()->subDay()->getTimestamp();
+        $notBefore = ($post->published_at ?? now())->copy()->utc()->subDay()->getTimestamp();
         $cursor = null;
 
         for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {

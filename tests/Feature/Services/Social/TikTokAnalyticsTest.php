@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\ReadPublicationAnalytics;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\AnalyticsPublication;

@@ -8,13 +8,12 @@ use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\ContentSanitizer;
 use App\Support\PostHistoryRetention;
@@ -107,8 +106,8 @@ class ImportExternalPosts
             ->orderByDesc('provider_published_at')
             ->orderByDesc('id')
             ->limit($limit)
-            ->get(['id', 'post_platform_id', 'post_dismissed_at'])
-            ->filter(fn (AnalyticsPublication $publication): bool => $publication->post_platform_id === null && $publication->post_dismissed_at === null)
+            ->get(['id', 'post_id', 'post_dismissed_at'])
+            ->filter(fn (AnalyticsPublication $publication): bool => $publication->post_id === null && $publication->post_dismissed_at === null)
             ->pluck('id')
             ->values()
             ->all();
@@ -119,15 +118,15 @@ class ImportExternalPosts
         return DB::transaction(function () use ($account, $publicationId): ?string {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if ($publication === null || $publication->post_platform_id !== null || $publication->post_dismissed_at !== null) {
+            if ($publication === null || $publication->post_id !== null || $publication->post_dismissed_at !== null) {
                 return null;
             }
 
             $existing = self::tryPostTarget($account, $publication);
 
             if ($existing !== null) {
-                if (! AnalyticsPublication::query()->where('post_platform_id', $existing->id)->exists()) {
-                    $publication->update(['post_platform_id' => $existing->id]);
+                if (! AnalyticsPublication::query()->where('post_id', $existing->id)->exists()) {
+                    $publication->update(['post_id' => $existing->id]);
                 }
 
                 return null;
@@ -141,14 +140,14 @@ class ImportExternalPosts
                 return null;
             }
 
-            $postPlatform = Post::withoutEvents(fn (): PostPlatform => self::createPost($account, $publication));
-            $publication->update(['post_platform_id' => $postPlatform->id]);
+            $post = Post::withoutEvents(fn (): Post => self::createPost($account, $publication));
+            $publication->update(['post_id' => $post->id]);
 
-            return $postPlatform->post_id;
+            return $post->id;
         });
     }
 
-    private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?PostPlatform
+    private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?Post
     {
         $remoteIds = collect([
             $publication->remote_id,
@@ -156,10 +155,10 @@ class ImportExternalPosts
             $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'photo_id') : null,
         ])->filter(fn (mixed $id): bool => is_string($id) && filled($id))->values()->all();
 
-        return PostPlatform::query()
+        return Post::query()
             ->where('social_account_id', $account->id)
             ->whereIn('platform_post_id', $remoteIds)
-            ->whereHas('post', fn (Builder $post): Builder => $post->where('workspace_id', $account->workspace_id))
+            ->where('workspace_id', $account->workspace_id)
             ->first();
     }
 
@@ -171,7 +170,7 @@ class ImportExternalPosts
     {
         $remoteId = $publication->remote_id;
 
-        return filled($remoteId) && PostPlatform::query()
+        return filled($remoteId) && Post::query()
             ->where('social_account_id', $account->id)
             ->where(fn (Builder $query): Builder => $query
                 ->whereJsonContains('thread_reply_ids', $remoteId)
@@ -197,14 +196,14 @@ class ImportExternalPosts
 
         if ($targets->count() > 1
             || blank(Str::squish((string) $publication->excerpt))
-            || $targets->contains(fn (PostPlatform $target): bool => $target->status !== PostPlatformStatus::Published)) {
+            || $targets->contains(fn (Post $target): bool => $target->publish_status !== PublishStatus::Published)) {
             if (! Cache::add("import-external-posts:ambiguous:{$publication->id}", true, now()->addDay())) {
                 return true;
             }
 
             Log::warning('External publication identity is ambiguous; not imported.', [
                 'analytics_publication_id' => $publication->id,
-                'post_platform_ids' => $targets->modelKeys(),
+                'post_ids' => $targets->modelKeys(),
             ]);
 
             return true;
@@ -218,17 +217,18 @@ class ImportExternalPosts
             return true;
         }
 
-        $publication->update(['post_platform_id' => $target->id]);
-        PostPlatform::query()->whereKey($target->id)->update([
+        $publication->update(['post_id' => $target->id]);
+        Post::query()->whereKey($target->id)->toBase()->update([
             'platform_post_id' => $publication->remote_id,
             'platform_url' => $publication->permalink ?? $target->platform_url,
+            'publication_updated_at' => now(),
         ]);
 
         return true;
     }
 
     /**
-     * @return Collection<int, PostPlatform>
+     * @return Collection<int, Post>
      */
     private static function matchingTryPostTargets(SocialAccount $account, AnalyticsPublication $publication): Collection
     {
@@ -241,22 +241,22 @@ class ImportExternalPosts
 
         $publishedAt = $publication->provider_published_at->toImmutable();
 
-        return PostPlatform::query()
+        return Post::query()
             ->where('social_account_id', $account->id)
-            ->enabled()
             ->where(fn (Builder $query): Builder => self::matchingPublicationState($query, $account->platform, $publishedAt, $window))
             ->whereIn('content_type', self::compatibleContentTypes(ContentType::fromPublication($account->platform, $publication->content_type)))
-            ->whereHas('post', fn (Builder $post): Builder => $post->createdInTryPost()->where('workspace_id', $account->workspace_id))
+            ->createdInTryPost()
+            ->where('workspace_id', $account->workspace_id)
             ->where(fn (Builder $query): Builder => $query
                 ->whereDoesntHave('analyticsPublication')
                 ->orWhereHas('analyticsPublication', fn (Builder $linked): Builder => $linked
                     ->where('origin', PublicationOrigin::TryPost)
                     ->whereNull('provider_synced_at')
-                    ->whereColumn('analytics_publications.remote_id', 'post_platforms.platform_post_id')))
-            ->with(['post:id,content', 'analyticsPublication'])
+                    ->whereColumn('analytics_publications.remote_id', 'posts.platform_post_id')))
+            ->with('analyticsPublication')
             ->get()
-            ->filter(fn (PostPlatform $target): bool => self::sameText(
-                $target->content_type->isCaptionless() ? '' : (string) $target->post?->content,
+            ->filter(fn (Post $target): bool => self::sameText(
+                $target->content_type->isCaptionless() ? '' : (string) $target->content,
                 $text,
                 $account->platform,
             ))
@@ -267,18 +267,18 @@ class ImportExternalPosts
     {
         $interval = [$publishedAt->subMinutes($window), $publishedAt->addMinutes($window)];
 
-        $query->where(fn (Builder $sent): Builder => $sent->published()->whereBetween('published_at', $interval));
+        $query->where(fn (Builder $sent): Builder => $sent->publicationPublished()->whereBetween('published_at', $interval));
 
         if (! in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
             return $query;
         }
 
         return $query->orWhere(fn (Builder $pending): Builder => $pending
-            ->whereBetween('updated_at', $interval)
+            ->whereBetween('publication_updated_at', $interval)
             ->where(fn (Builder $state): Builder => $state
-                ->where('status', PostPlatformStatus::Publishing)
+                ->where('publish_status', PublishStatus::Publishing)
                 ->orWhere(fn (Builder $retry): Builder => $retry
-                    ->where('status', PostPlatformStatus::Retrying)
+                    ->where('publish_status', PublishStatus::Retrying)
                     ->whereNotNull('error_context->'.PublishCheckpoint::INSTAGRAM_WORKFLOW.'->container_id'))));
     }
 
@@ -322,11 +322,9 @@ class ImportExternalPosts
             && Str::startsWith($sent, $truncated);
     }
 
-    private static function createPost(SocialAccount $account, AnalyticsPublication $publication): PostPlatform
+    private static function createPost(SocialAccount $account, AnalyticsPublication $publication): Post
     {
-        $publishedAt = $publication->provider_published_at;
-
-        $post = Post::query()->create([
+        return Post::query()->forceCreate([
             'workspace_id' => $account->workspace_id,
             'post_group_id' => (string) Str::uuid7(),
             'user_id' => null,
@@ -334,19 +332,14 @@ class ImportExternalPosts
             'media' => [],
             'status' => PostStatus::Published,
             'origin' => Origin::Network,
-            'published_at' => $publishedAt,
-        ]);
-
-        return $post->postPlatforms()->create([
+            'published_at' => $publication->provider_published_at,
             'social_account_id' => $account->id,
             'platform' => $account->platform,
             ...$account->channelSnapshot(),
             'content_type' => ContentType::fromPublication($account->platform, $publication->content_type),
-            'status' => PostPlatformStatus::Published,
-            'enabled' => true,
+            'publish_status' => PublishStatus::Published,
             'platform_post_id' => $publication->remote_id,
             'platform_url' => $publication->permalink,
-            'published_at' => $publishedAt,
             'meta' => [],
         ]);
     }

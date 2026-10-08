@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Jobs\VerifyUpcomingPostConnections;
 use App\Models\Post;
 use App\Models\PostPlatform;

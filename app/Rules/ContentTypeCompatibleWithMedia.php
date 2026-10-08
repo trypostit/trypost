@@ -83,35 +83,24 @@ class ContentTypeCompatibleWithMedia implements DataAwareRule, ValidationRule
     }
 
     /**
-     * The per-platform entries to validate for a post update: each platform's
-     * effective content_type (resubmitted in this request, else its stored
-     * value), keyed by the error path the caller surfaces. When
-     * $requestPlatforms is null, the post's currently-enabled platforms are used,
-     * and with $media (media sent without a content type) a network whose type
-     * follows its media (ContentType::derivesFromMedia()) takes the type it decides.
+     * The content type an update would publish: the submitted one, else the
+     * one the new media derives (Pinterest, TikTok), else the stored one.
      *
-     * @param  array<int, mixed>|null  $requestPlatforms
      * @param  array<int, mixed>|null  $media
      * @return array<int, array{key: string, content_type: string|null}>
      */
-    public static function entriesForUpdate(Post $post, ?array $requestPlatforms, ?array $media = null): array
+    public static function entriesForUpdate(Post $post, ?string $contentType, ?array $media = null): array
     {
-        if (is_array($requestPlatforms)) {
-            $stored = $post->postPlatforms()->get()->keyBy('id');
-
-            return collect($requestPlatforms)->map(fn ($platform, $index): array => [
-                'key' => "platforms.{$index}.content_type",
-                'content_type' => data_get($platform, 'content_type') ?? $stored->get(data_get($platform, 'id'))?->content_type?->value,
-            ])->all();
+        if (! $post->hasDestination()) {
+            return [];
         }
 
-        return $post->postPlatforms()->enabled()->get()->values()
-            ->map(fn ($postPlatform, $index): array => [
-                'key' => "platforms.{$index}.content_type",
-                'content_type' => $media !== null && ContentType::derivesFromMedia($postPlatform->platform)
-                    ? ContentType::forMedia($postPlatform->platform, $media)->value
-                    : $postPlatform->content_type?->value,
-            ])->all();
+        return [[
+            'key' => 'content_type',
+            'content_type' => $contentType ?? ($media !== null && ContentType::derivesFromMedia($post->platform)
+                ? ContentType::forMedia($post->platform, $media)->value
+                : $post->content_type?->value),
+        ]];
     }
 
     /**

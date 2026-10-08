@@ -6,7 +6,7 @@ namespace App\Services\Social\Telegram;
 
 use App\Dto\MediaItem;
 use App\Exceptions\Social\TelegramPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
@@ -26,18 +26,18 @@ class TelegramPublisher
 
     private const ALBUM_CHUNK = 10;
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $chatId = (string) data_get($account->meta, 'chat_id');
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+        $content = $post->content
+            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
             : '';
 
-        $media = $postPlatform->post->mediaItems->take(self::ALBUM_CHUNK);
+        $media = $post->mediaItems->take(self::ALBUM_CHUNK);
 
         $messageId = $media->isEmpty()
             ? $this->sendText($chatId, $content)

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
 use App\Models\PostPlatform;

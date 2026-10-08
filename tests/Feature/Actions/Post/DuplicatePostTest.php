@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Post\DuplicatePost;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostCreated;
 use App\Models\Post;

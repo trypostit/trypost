@@ -12,16 +12,20 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Support\Str;
 
 /**
- * Cross-validates platforms[].content_type against platforms[].social_account_id
- * — ensures the chosen content_type is supported by the account's platform.
- *
- * Use on `platforms.*.content_type` rules in form requests / tools that accept
- * a `platforms[]` array with `social_account_id` siblings.
+ * Ensures the chosen content_type is supported by the platform of the account
+ * it is sent with: a top-level `social_account_id` (pass its attribute name)
+ * or the sibling of each `destinations.*.content_type`.
  */
 class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
 {
     /** @var array<string, mixed> */
     private array $data = [];
+
+    /**
+     * `$accountAttribute` names the field holding the account id; without it
+     * the rule reads the sibling `social_account_id` of the content type.
+     */
+    public function __construct(private ?string $accountAttribute = null) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -35,10 +39,7 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        // attribute is e.g. "platforms.0.content_type" — peel off the leaf
-        // and look up the sibling social_account_id under the same parent.
-        $parentKey = Str::beforeLast($attribute, '.');
-        $accountId = data_get($this->data, $parentKey.'.social_account_id');
+        $accountId = data_get($this->data, $this->accountAttribute ?? Str::beforeLast($attribute, '.').'.social_account_id');
 
         if (! $accountId || ! Str::isUuid((string) $accountId)) {
             return;

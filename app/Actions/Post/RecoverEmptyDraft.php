@@ -34,7 +34,7 @@ class RecoverEmptyDraft
             beforeCreate: function (MediaCopyBatch $batch) use ($workspace, $legacy, &$locked): void {
                 $locked = $workspace->posts()->lockForUpdate()->findOrFail($legacy->id);
 
-                if ($locked->status !== Status::Draft || $locked->postPlatforms()->enabled()->exists()) {
+                if ($locked->status !== Status::Draft || $locked->hasDestination()) {
                     throw ValidationException::withMessages([
                         'recover_post_id' => __('validation.in', ['attribute' => 'recovery post']),
                     ]);

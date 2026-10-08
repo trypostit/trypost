@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status as PlatformStatus;
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
 use App\Models\PostPlatform;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use App\Models\Post;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Throwable;
@@ -12,20 +13,25 @@ class GoogleBusinessDerivativeCleaner
 {
     public const string DIRECTORY = 'google-business-derivatives';
 
-    public static function pathFor(string $postPlatformId): string
+    /**
+     * The JPEG is named after the post. A post published before posts and
+     * their destinations were merged keeps its destination's id until its
+     * file is gone.
+     */
+    public static function pathFor(Post $post): string
     {
-        return self::DIRECTORY."/{$postPlatformId}.jpg";
+        return self::DIRECTORY.'/'.($post->legacy_target_id ?? $post->id).'.jpg';
     }
 
-    public function cleanup(string $postPlatformId): void
+    public function cleanup(Post $post): void
     {
-        $path = self::pathFor($postPlatformId);
+        $path = self::pathFor($post);
 
         try {
             Storage::delete($path);
         } catch (Throwable $e) {
             Log::warning('Failed to prune Google Business Profile image derivative', [
-                'post_platform_id' => $postPlatformId,
+                'post_id' => $post->id,
                 'path' => $path,
                 'error' => $e->getMessage(),
             ]);

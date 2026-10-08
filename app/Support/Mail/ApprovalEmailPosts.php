@@ -6,7 +6,6 @@ namespace App\Support\Mail;
 
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
@@ -24,7 +23,7 @@ class ApprovalEmailPosts
     public static function load(array $postIds): Collection
     {
         return Post::query()
-            ->with(['workspace', 'postPlatforms' => fn ($platforms) => $platforms->enabled()->with('socialAccount')])
+            ->with(['workspace', 'socialAccount'])
             ->whereIn('id', $postIds)
             ->orderBy('created_at')
             ->orderBy('id')
@@ -38,12 +37,12 @@ class ApprovalEmailPosts
 
     /**
      * @param  Collection<int, Post>  $posts
-     * @return list<PostPlatform>
+     * @return list<Post>
      */
     public static function channels(Collection $posts): array
     {
-        return $posts->flatMap(fn (Post $post) => $post->postPlatforms)
-            ->unique(fn (PostPlatform $postPlatform): string => $postPlatform->social_account_id ?? $postPlatform->id)
+        return $posts->filter(fn (Post $post): bool => $post->hasDestination())
+            ->unique(fn (Post $post): string => $post->social_account_id ?? $post->id)
             ->values()
             ->all();
     }
@@ -53,7 +52,7 @@ class ApprovalEmailPosts
      * publishing now. One shared moment collapses into a single line.
      *
      * @param  Collection<int, Post>  $posts
-     * @return array{at: ?string, perChannel: list<array{channels: list<PostPlatform>, at: ?string}>}
+     * @return array{at: ?string, perChannel: list<array{channels: list<Post>, at: ?string}>}
      */
     public static function goesOut(Collection $posts, User $recipient): array
     {

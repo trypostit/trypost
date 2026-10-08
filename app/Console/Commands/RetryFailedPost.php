@@ -4,28 +4,25 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RetryFailedPost extends Command
 {
     protected $signature = 'posts:retry
-        {post : ID of the post whose failed platforms should be retried}';
+        {post : ID of the failed post to retry}';
 
-    protected $description = 'Retry failed platforms, resuming in-flight remote publishes when a checkpoint exists';
+    protected $description = 'Retry a failed post, resuming an in-flight remote publish when a checkpoint exists';
 
     public function __construct(
         private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
@@ -35,7 +32,7 @@ class RetryFailedPost extends Command
 
     public function handle(): int
     {
-        $post = Post::query()->find((string) $this->argument('post'));
+        $post = Post::query()->with('socialAccount')->find((string) $this->argument('post'));
 
         if (! $post) {
             $this->error('Post not found.');
@@ -44,125 +41,82 @@ class RetryFailedPost extends Command
         }
 
         if (! $this->isRetryable($post)) {
-            $this->error('Only failed or partially published posts can be retried.');
-
-            return self::FAILURE;
-        }
-
-        $failedPlatforms = $this->failedPlatforms($post);
-
-        if ($failedPlatforms->isEmpty()) {
-            $this->warn('No failed enabled platforms matched this post.');
+            $this->error('Only failed posts with a channel can be retried.');
 
             return self::FAILURE;
         }
 
         $this->table(
-            ['Post platform ID', 'Platform', 'Account', 'Last error', 'Mode'],
-            $failedPlatforms->map(fn (PostPlatform $postPlatform): array => [
-                $postPlatform->id,
-                $postPlatform->platform->value,
-                $postPlatform->display_username ?? '—',
-                $postPlatform->error_message ?? '—',
-                $this->resumableContext($postPlatform->error_context) === null ? 'New' : 'Resume',
-            ])->all(),
+            ['Post ID', 'Platform', 'Account', 'Last error', 'Mode'],
+            [[
+                $post->id,
+                $post->platform->value,
+                $post->display_username ?? '—',
+                $post->error_message ?? '—',
+                $this->resumableContext($post->error_context) === null ? 'New' : 'Resume',
+            ]],
         );
 
-        if (! $this->confirm('Queue publish attempts for these failed platforms?')) {
-
+        if (! $this->confirm('Queue a publish attempt for this post?')) {
             return self::SUCCESS;
         }
 
-        $retryEntries = $this->prepareRetryEntries($post);
+        $originalContext = $this->prepareRetry($post);
 
-        if ($retryEntries === []) {
+        if ($originalContext === false) {
             $this->warn('The post changed while the command was running; nothing was retried.');
 
             return self::FAILURE;
         }
 
-        foreach ($retryEntries as $entry) {
-            if ($entry['platform'] === SocialPlatform::TikTok && PublishCheckpoint::tiktokPublishId($entry['error_context']) === null) {
-                $this->tiktokPhotoDerivativeCleaner->cleanup($entry['original_error_context'], $entry['id']);
-            }
+        $post->refresh();
 
-            $postPlatform = PostPlatform::query()->findOrFail($entry['id']);
-            PublishToSocialPlatform::dispatch($postPlatform);
+        if ($post->platform === SocialPlatform::TikTok && PublishCheckpoint::tiktokPublishId($post->error_context) === null) {
+            $this->tiktokPhotoDerivativeCleaner->cleanup($originalContext, $post->id);
         }
 
-        Log::info('Failed post platforms queued for manual retry', [
-            'post_id' => $post->id,
-            'post_platform_ids' => array_column($retryEntries, 'id'),
-        ]);
+        PublishToSocialPlatform::dispatch($post);
+
+        Log::info('Failed post queued for manual retry', ['post_id' => $post->id]);
 
         return self::SUCCESS;
     }
 
     private function isRetryable(Post $post): bool
     {
-        return in_array($post->status, [PostStatus::Failed, PostStatus::PartiallyPublished], true);
+        return $post->status === PostStatus::Failed
+            && $post->publish_status === PublishStatus::Failed
+            && $post->hasChannel();
     }
 
     /**
-     * @return Collection<int, PostPlatform>
+     * Returns the error context the failure left, or false when the post is
+     * no longer retryable.
+     *
+     * @return array<string, mixed>|null|false
      */
-    private function failedPlatforms(Post $post, bool $lockForUpdate = false): Collection
+    private function prepareRetry(Post $post): array|null|false
     {
-        return PostPlatform::query()
-            ->with('socialAccount')
-            ->where('post_id', $post->id)
-            ->enabled()
-            ->where('status', PlatformStatus::Failed)
-            ->when($lockForUpdate, fn (Builder $query) => $query->lockForUpdate())
-            ->get();
-    }
+        return DB::transaction(function () use ($post): array|null|false {
+            $locked = Post::query()->lockForUpdate()->find($post->id);
 
-    /**
-     * @return list<array{
-     *     id: string,
-     *     platform: SocialPlatform,
-     *     error_context: array<string, mixed>|null,
-     *     original_error_context: array<string, mixed>|null
-     * }>
-     */
-    private function prepareRetryEntries(Post $post): array
-    {
-        return DB::transaction(function () use ($post): array {
-            $lockedPost = Post::query()->lockForUpdate()->find($post->id);
-
-            if (! $lockedPost || ! $this->isRetryable($lockedPost)) {
-                return [];
+            if (! $locked || ! $this->isRetryable($locked)) {
+                return false;
             }
 
-            $platforms = $this->failedPlatforms($lockedPost, lockForUpdate: true);
+            $originalContext = $locked->error_context;
 
-            if ($platforms->isEmpty()) {
-                return [];
-            }
+            $locked->writePublication([
+                'publish_status' => PublishStatus::Pending,
+                'platform_post_id' => null,
+                'platform_url' => null,
+                'error_message' => null,
+                'error_context' => $this->resumableContext($originalContext),
+                'published_at' => null,
+            ]);
+            $locked->update(['status' => PostStatus::Publishing]);
 
-            $entries = [];
-
-            foreach ($platforms as $postPlatform) {
-                $nextContext = $this->resumableContext($postPlatform->error_context);
-                $entries[] = [
-                    'id' => $postPlatform->id,
-                    'platform' => $postPlatform->platform,
-                    'error_context' => $nextContext,
-                    'original_error_context' => $postPlatform->error_context,
-                ];
-
-                $postPlatform->update([
-                    'status' => PlatformStatus::Pending,
-                    'platform_post_id' => null,
-                    'platform_url' => null,
-                    'error_message' => null,
-                    'error_context' => $nextContext,
-                    'published_at' => null,
-                ]);
-            }
-            $lockedPost->update(['status' => PostStatus::Publishing]);
-
-            return $entries;
+            return $originalContext;
         });
     }
 

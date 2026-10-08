@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\SocialAccount;
 
 use App\Enums\PostPlatform\ContentType;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -16,17 +16,15 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class ListInstagramGridPosts
 {
     /**
-     * @return LengthAwarePaginator<int, PostPlatform>
+     * @return LengthAwarePaginator<int, Post>
      */
     public static function execute(SocialAccount $account): LengthAwarePaginator
     {
-        return PostPlatform::query()
-            ->select(['id', 'post_id', 'content_type', 'published_at'])
+        return Post::query()
+            ->select(['id', 'media', 'content_type', 'published_at'])
             ->where('social_account_id', $account->id)
-            ->enabled()
-            ->published()
+            ->publicationPublished()
             ->whereIn('content_type', [ContentType::InstagramFeed, ContentType::InstagramReel])
-            ->with('post:id,media')
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->paginate((int) config('app.pagination.default'));

@@ -33,10 +33,6 @@ class MoveChannelPostToQueueSlot
                 throw ValidationException::withMessages(['slot_at' => __('posts.errors.queue_order_stale')]);
             }
 
-            if ($post->postPlatforms()->enabled()->count() !== 1) {
-                throw ValidationException::withMessages(['queue' => __('posts.errors.queue_legacy_post')]);
-            }
-
             UpdatePost::execute($channel->workspace, $post, [
                 'status' => PostStatus::Scheduled->value,
                 'queue_slot' => $slotAt->utc()->toIso8601String(),

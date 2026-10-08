@@ -13,7 +13,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\GoogleBusinessPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -29,14 +29,14 @@ class GoogleBusinessPublisher
 {
     use HasSocialHttpClient;
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
         $state = null;
 
         try {
-            $this->validateContentLength($postPlatform);
+            $this->validateContentLength($post);
 
-            $account = $postPlatform->socialAccount;
+            $account = $post->socialAccount;
 
             if ($account->needsProactiveTokenRefresh()) {
                 app(ConnectionVerifier::class)->refreshToken($account);
@@ -51,7 +51,7 @@ class GoogleBusinessPublisher
             $created = $this->post(
                 $account->access_token,
                 $this->url('local_posts_api', "/{$locationId}/localPosts"),
-                $this->payload($postPlatform),
+                $this->payload($post),
                 'Google Business Profile post creation failed',
             );
             $state = LocalPostState::fromApi(data_get($created, 'state'));
@@ -63,7 +63,7 @@ class GoogleBusinessPublisher
             ];
         } finally {
             if (! $state?->isPendingReview()) {
-                app(GoogleBusinessDerivativeCleaner::class)->cleanup($postPlatform->id);
+                app(GoogleBusinessDerivativeCleaner::class)->cleanup($post);
             }
         }
     }
@@ -118,22 +118,22 @@ class GoogleBusinessPublisher
     /**
      * @return array<string, mixed>
      */
-    private function payload(PostPlatform $postPlatform): array
+    private function payload(Post $post): array
     {
-        $topicType = TopicType::fromMeta(data_get($postPlatform->meta, 'topic_type'));
-        $locale = $postPlatform->post->user?->locale ?? Locale::DEFAULT;
+        $topicType = TopicType::fromMeta(data_get($post->meta, 'topic_type'));
+        $locale = $post->user?->locale ?? Locale::DEFAULT;
 
         return [
             'languageCode' => $locale->bcp47(),
-            'summary' => $postPlatform->post->content
-                ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, Platform::GoogleBusiness)
+            'summary' => $post->content
+                ? app(ContentSanitizer::class)->sanitize($post->content, Platform::GoogleBusiness)
                 : '',
             'topicType' => $topicType->value,
             ...array_filter([
-                'callToAction' => $this->callToAction($postPlatform, $topicType),
-                'media' => $this->photo($postPlatform),
-                'event' => $topicType->requiresEvent() ? $this->event($postPlatform, $topicType) : null,
-                'offer' => $topicType === TopicType::Offer ? $this->offer($postPlatform) : null,
+                'callToAction' => $this->callToAction($post, $topicType),
+                'media' => $this->photo($post),
+                'event' => $topicType->requiresEvent() ? $this->event($post, $topicType) : null,
+                'offer' => $topicType === TopicType::Offer ? $this->offer($post) : null,
             ]),
         ];
     }
@@ -141,9 +141,9 @@ class GoogleBusinessPublisher
     /**
      * @return array{actionType: string, url?: mixed}|null
      */
-    private function callToAction(PostPlatform $postPlatform, TopicType $topicType): ?array
+    private function callToAction(Post $post, TopicType $topicType): ?array
     {
-        $action = CtaAction::fromMeta(data_get($postPlatform->meta, 'call_to_action.action_type'));
+        $action = CtaAction::fromMeta(data_get($post->meta, 'call_to_action.action_type'));
 
         if (! $topicType->allowsCallToAction() || $action === CtaAction::None) {
             return null;
@@ -152,7 +152,7 @@ class GoogleBusinessPublisher
         return [
             'actionType' => $action->value,
             ...($action->requiresUrl() ? [
-                'url' => data_get($postPlatform->meta, 'call_to_action.url'),
+                'url' => data_get($post->meta, 'call_to_action.url'),
             ] : []),
         ];
     }
@@ -160,19 +160,19 @@ class GoogleBusinessPublisher
     /**
      * @return list<array{mediaFormat: string, sourceUrl: string}>|null
      */
-    private function photo(PostPlatform $postPlatform): ?array
+    private function photo(Post $post): ?array
     {
-        $media = $postPlatform->post->mediaItems->first(
+        $media = $post->mediaItems->first(
             fn (MediaItem $item): bool => $item->isImage() && ! MediaType::isGif($item->mime_type),
         );
 
         return $media ? [[
             'mediaFormat' => 'PHOTO',
-            'sourceUrl' => $this->imageSourceUrl($media, $postPlatform->id),
+            'sourceUrl' => $this->imageSourceUrl($media, $post),
         ]] : null;
     }
 
-    private function imageSourceUrl(MediaItem $media, string $postPlatformId): string
+    private function imageSourceUrl(MediaItem $media, Post $post): string
     {
         if (blank($media->path) || ! Storage::exists($media->path)) {
             return $media->url;
@@ -188,7 +188,7 @@ class GoogleBusinessPublisher
         try {
             file_put_contents($input, Storage::get($media->path));
             $optimized = app(MediaOptimizer::class)->optimizeImage($input, Platform::GoogleBusiness);
-            $path = GoogleBusinessDerivativeCleaner::pathFor($postPlatformId);
+            $path = GoogleBusinessDerivativeCleaner::pathFor($post);
             Storage::put($path, file_get_contents($optimized));
 
             return Storage::url($path);
@@ -211,22 +211,22 @@ class GoogleBusinessPublisher
     /**
      * @return array{title: string, schedule: array<string, mixed>}
      */
-    private function event(PostPlatform $postPlatform, TopicType $topicType): array
+    private function event(Post $post, TopicType $topicType): array
     {
         $datesRequired = __('posts.errors.google_business.event_dates_required');
 
         return [
             'title' => $this->required(
-                data_get($postPlatform->meta, 'event.title'),
+                data_get($post->meta, 'event.title'),
                 $topicType === TopicType::Offer
                     ? __('posts.form.google_business.offer_title_required')
                     : __('posts.form.google_business.event_title_required'),
             ),
             'schedule' => array_filter([
-                'startDate' => $this->dateParts($this->required(data_get($postPlatform->meta, 'event.start_date'), $datesRequired)),
-                'endDate' => $this->dateParts($this->required(data_get($postPlatform->meta, 'event.end_date'), $datesRequired)),
-                'startTime' => $this->timeParts(data_get($postPlatform->meta, 'event.start_time')),
-                'endTime' => $this->timeParts(data_get($postPlatform->meta, 'event.end_time')),
+                'startDate' => $this->dateParts($this->required(data_get($post->meta, 'event.start_date'), $datesRequired)),
+                'endDate' => $this->dateParts($this->required(data_get($post->meta, 'event.end_date'), $datesRequired)),
+                'startTime' => $this->timeParts(data_get($post->meta, 'event.start_time')),
+                'endTime' => $this->timeParts(data_get($post->meta, 'event.end_time')),
             ]),
         ];
     }
@@ -234,12 +234,12 @@ class GoogleBusinessPublisher
     /**
      * @return array<string, string>
      */
-    private function offer(PostPlatform $postPlatform): array
+    private function offer(Post $post): array
     {
         return array_filter([
-            'couponCode' => data_get($postPlatform->meta, 'offer.coupon_code'),
-            'redeemOnlineUrl' => data_get($postPlatform->meta, 'offer.redeem_online_url'),
-            'termsConditions' => data_get($postPlatform->meta, 'offer.terms_conditions'),
+            'couponCode' => data_get($post->meta, 'offer.coupon_code'),
+            'redeemOnlineUrl' => data_get($post->meta, 'offer.redeem_online_url'),
+            'termsConditions' => data_get($post->meta, 'offer.terms_conditions'),
         ], filled(...));
     }
 

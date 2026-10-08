@@ -7,7 +7,6 @@ namespace App\Actions\Post;
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostingSchedule;
 use App\Support\Timezone;
@@ -39,7 +38,7 @@ class ScheduleNextOccurrence
         }
 
         $current = $post->currentOccurrence();
-        $targets = $post->postPlatforms()->enabled()->whereHas('socialAccount')->with('socialAccount')->get();
+        $targets = $post->loadMissing('socialAccount')->socialAccount !== null ? collect([$post]) : collect();
         $author = $post->user;
         $user = $author !== null && ($author->ownsAccountOf($post->workspace) || $author->belongsToWorkspace($post->workspace))
             ? $author
@@ -57,7 +56,7 @@ class ScheduleNextOccurrence
         $ceiling = CarbonImmutable::parse(PostingSchedule::MAX_INSTANT, 'UTC');
 
         $plans = $targets
-            ->map(function (PostPlatform $target) use ($post, $current, $frequency, $interval, $remaining): array {
+            ->map(function (Post $target) use ($post, $current, $frequency, $interval, $remaining): array {
                 [$origin, $index] = self::position($post->recurrence_origin_at, $current, $frequency, $interval, Timezone::normalize($target->socialAccount->timezone));
 
                 $steps = 1;
@@ -84,7 +83,7 @@ class ScheduleNextOccurrence
                 $groupId = (string) Str::uuid7();
                 $occurrences = $plans->map(function (array $plan) use ($post, $user, $batch, $groupId, $frequency, $interval): Post {
                     $occurrence = CreateChannelPost::execute($post->workspace, $user, [
-                        ...DuplicatePost::destination($post, $plan['target']),
+                        ...DuplicatePost::destination($post),
                         'post_group_id' => $groupId,
                         'status' => PostStatus::Scheduled->value,
                         'scheduled_at' => $plan['next']->utc()->toIso8601String(),

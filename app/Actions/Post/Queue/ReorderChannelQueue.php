@@ -35,12 +35,14 @@ class ReorderChannelQueue
 
             $slots = $queued->pluck('scheduled_at')->sort()->values();
 
-            DB::transaction(function () use ($postIds, $queued, $slots): void {
-                foreach (array_values($postIds) as $index => $postId) {
+            $slotsById = collect(array_values($postIds))->mapWithKeys(fn (string $postId, int $index): array => [$postId => $slots[$index]]);
+
+            DB::transaction(function () use ($queued, $slotsById): void {
+                foreach ($slotsById->sortKeys(SORT_STRING) as $postId => $slot) {
                     $post = $queued->get($postId);
 
-                    if (! $post->scheduled_at->equalTo($slots[$index])) {
-                        ReflowChannelQueue::updateIfScheduled($post, ['scheduled_at' => $slots[$index]]);
+                    if (! $post->scheduled_at->equalTo($slot)) {
+                        ReflowChannelQueue::updateIfScheduled($post, ['scheduled_at' => $slot]);
                     }
                 }
             });

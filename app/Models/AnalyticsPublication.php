@@ -25,7 +25,7 @@ class AnalyticsPublication extends Model
         'workspace_id',
         'social_account_id',
         'social_account_key',
-        'post_platform_id',
+        'post_id',
         'post_dismissed_at',
         'network',
         'platform_user_id',
@@ -77,9 +77,9 @@ class AnalyticsPublication extends Model
         return $this->belongsTo(SocialAccount::class);
     }
 
-    public function postPlatform(): BelongsTo
+    public function post(): BelongsTo
     {
-        return $this->belongsTo(PostPlatform::class);
+        return $this->belongsTo(Post::class);
     }
 
     public function dailySnapshots(): HasMany

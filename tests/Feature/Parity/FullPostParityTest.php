@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;

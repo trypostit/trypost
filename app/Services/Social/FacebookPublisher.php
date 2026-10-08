@@ -11,7 +11,7 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\Social\SocialPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
@@ -45,21 +45,21 @@ class FacebookPublisher
     /**
      * @return array{id: mixed, url: string}
      */
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $pageId = $account->platform_user_id;
         $accessToken = $account->access_token;
-        $content = $this->sanitizedContent($postPlatform);
-        $media = $postPlatform->post->mediaItems;
-        $contentType = $postPlatform->content_type;
+        $content = $this->sanitizedContent($post);
+        $media = $post->mediaItems;
+        $contentType = $post->content_type;
 
         return match ($contentType) {
             ContentType::FacebookReel => $this->publishReel($pageId, $accessToken, $content, $this->requireVideo($media->first(), 'Reels')),
             ContentType::FacebookStory => $this->publishStory($pageId, $accessToken, $this->requireMedia($media->first(), 'Stories')),
-            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $postPlatform->attachesLinkPreview()),
+            ContentType::FacebookPost => $this->publishPost($pageId, $accessToken, $content, $media, $post->attachesLinkPreview()),
             default => throw new FacebookPublishException(
                 userMessage: "Unsupported Facebook content type: {$contentType?->value}",
                 category: ErrorCategory::MediaFormat,
@@ -554,12 +554,12 @@ class FacebookPublisher
         return $media;
     }
 
-    private function sanitizedContent(PostPlatform $postPlatform): ?string
+    private function sanitizedContent(Post $post): ?string
     {
-        $content = $postPlatform->post->content;
+        $content = $post->content;
 
         return filled($content)
-            ? app(ContentSanitizer::class)->sanitize($content, $postPlatform->platform)
+            ? app(ContentSanitizer::class)->sanitize($content, $post->platform)
             : null;
     }
 

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\SocialAccount;
 
 use App\Enums\SocialAccount\Platform;
-use App\Models\PostPlatform;
+use App\Models\Post;
 
 class StoreTelegramReactions
 {
@@ -24,13 +24,13 @@ class StoreTelegramReactions
             return;
         }
 
-        $postPlatform = PostPlatform::query()
+        $post = Post::query()
             ->where('platform', Platform::Telegram->value)
             ->where('platform_post_id', $messageId)
             ->whereHas('socialAccount', fn ($query) => $query->where('meta->chat_id', $chatId))
             ->first();
 
-        if ($postPlatform === null) {
+        if ($post === null) {
             return;
         }
 
@@ -41,6 +41,6 @@ class StoreTelegramReactions
             'count' => (int) data_get($reaction, 'total_count'),
         ], is_array($rawReactions) ? $rawReactions : []));
 
-        $postPlatform->update(['meta' => [...$postPlatform->meta ?? [], 'reactions' => $reactions]]);
+        $post->writePublication(['meta' => [...$post->meta ?? [], 'reactions' => $reactions]]);
     }
 }

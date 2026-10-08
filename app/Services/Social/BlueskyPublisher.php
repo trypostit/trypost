@@ -9,7 +9,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\ErrorCategory;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\Media\MediaOptimizer;
@@ -52,13 +52,13 @@ class BlueskyPublisher
 
     private const JOB_STATE_FAILED = 'JOB_STATE_FAILED';
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
 
         // Refresh token if needed
@@ -66,12 +66,12 @@ class BlueskyPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $lookForLiveReply = ThreadProgress::rootHash($postPlatform->error_context) !== null;
+        $lookForLiveReply = ThreadProgress::rootHash($post->error_context) !== null;
 
         return $this->publishThread(
-            $postPlatform,
-            ThreadProgress::hash((string) $content, $postPlatform->post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all()),
-            fn (): array => $this->publishRoot($postPlatform, $account, $service, $content),
+            $post,
+            ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all()),
+            fn (): array => $this->publishRoot($post, $account, $service, $content),
             function (string $text, Collection $media, array $parent, array $root) use ($account, $service, &$lookForLiveReply): array {
                 $live = $lookForLiveReply ? $this->liveReply($account, $text, $parent) : null;
                 $lookForLiveReply = false;
@@ -123,16 +123,16 @@ class BlueskyPublisher
     /**
      * @return array{id: string, url: string, uri: string, cid: string}
      */
-    private function publishRoot(PostPlatform $postPlatform, SocialAccount $account, string $service, ?string $content): array
+    private function publishRoot(Post $post, SocialAccount $account, string $service, ?string $content): array
     {
-        $medias = $postPlatform->post->mediaItems;
+        $medias = $post->mediaItems;
         $embed = $this->mediaEmbed($account, $service, $medias);
 
         // No image or video embed, so a bare link can carry a preview card.
         // Bluesky does not hydrate cards server-side: the client must attach an
         // app.bsky.embed.external built from the page's OpenGraph metadata.
-        if ($embed === null && $medias->isEmpty() && $content !== null && $postPlatform->attachesLinkPreview()) {
-            $embed = $this->buildExternalEmbed($postPlatform->socialAccount, $service, $content);
+        if ($embed === null && $medias->isEmpty() && $content !== null && $post->attachesLinkPreview()) {
+            $embed = $this->buildExternalEmbed($post->socialAccount, $service, $content);
         }
 
         // Parse facets (links, mentions, hashtags) from text

@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Notification\Type;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;

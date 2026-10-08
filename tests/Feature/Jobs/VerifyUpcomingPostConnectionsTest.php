@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;

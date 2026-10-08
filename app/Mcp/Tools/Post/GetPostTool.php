@@ -33,7 +33,7 @@ class GetPostTool extends Tool
         }
 
         $post = Post::where('workspace_id', $workspace->id)
-            ->with(['postPlatforms.socialAccount', 'labels'])
+            ->with(['socialAccount', 'labels'])
             ->find(data_get($validated, 'post_id'));
 
         if (! $post) {

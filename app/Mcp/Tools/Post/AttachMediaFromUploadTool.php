@@ -19,7 +19,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Attach a file uploaded with request-media-upload-tool to a post. The upload_token is the value request-media-upload-tool returned; the file is resolved by that token within the current workspace, then appended after the post media (to reorder or remove media, call update-post-tool with the media ids in the new order). The file type must be one the post channel accepts (allowed_media_types in list-content-types-tool). Posts that are publishing, published, partially_published or failed cannot change; a scheduled post edited by a member who needs approval goes back to pending_approval. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here. Media is added to the post itself; to give a thread reply its own media, pass the upload_token in meta.thread_replies with update-post-tool.')]
+#[Description('Attach a file uploaded with request-media-upload-tool to a post. The upload_token is the value request-media-upload-tool returned; the file is resolved by that token within the current workspace, then appended after the post media (to reorder or remove media, call update-post-tool with the media ids in the new order). The file type must be one the post channel accepts (allowed_media_types in list-content-types-tool). Posts that are publishing, published or failed cannot change; a scheduled post edited by a member who needs approval goes back to pending_approval. Size, video duration, GIF and MOV caps per content_type (see list-content-types-tool) are checked when the post is scheduled or published, not here. Media is added to the post itself; to give a thread reply its own media, pass the upload_token in meta.thread_replies with update-post-tool.')]
 class AttachMediaFromUploadTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -59,7 +59,7 @@ class AttachMediaFromUploadTool extends Tool
             return Response::error(__('posts.errors.queue_busy'));
         }
 
-        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+        $post->refresh()->load(['socialAccount', 'labels']);
 
         return Response::structured([
             'post' => (new PostResource($post))->resolve(),

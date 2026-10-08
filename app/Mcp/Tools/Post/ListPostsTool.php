@@ -58,7 +58,7 @@ class ListPostsTool extends Tool
                 RequestIds::uuidList(collect((array) data_get($validated, 'labels'))),
                 filter_var(data_get($validated, 'untagged'), FILTER_VALIDATE_BOOLEAN),
             )
-            ->with(['postPlatforms.socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels']);
+            ->with(['socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels']);
 
         $query = match (data_get($validated, 'status')) {
             Status::Draft->value => $query->draft(),

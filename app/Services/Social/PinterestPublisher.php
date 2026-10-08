@@ -11,7 +11,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\PinterestPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -33,26 +33,26 @@ class PinterestPublisher
         $this->baseUrl = config('trypost.platforms.pinterest.api');
     }
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+        $content = $post->content
+            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
             : null;
 
-        return match ($postPlatform->content_type) {
-            ContentType::PinterestPin => $this->publishImagePin($postPlatform, $content),
-            ContentType::PinterestVideoPin => $this->publishVideoPin($postPlatform, $content),
-            ContentType::PinterestCarousel => $this->publishCarousel($postPlatform, $content),
+        return match ($post->content_type) {
+            ContentType::PinterestPin => $this->publishImagePin($post, $content),
+            ContentType::PinterestVideoPin => $this->publishVideoPin($post, $content),
+            ContentType::PinterestCarousel => $this->publishCarousel($post, $content),
             default => throw new PinterestPublishException(
-                userMessage: "Unsupported content type: {$postPlatform->content_type->value}",
+                userMessage: "Unsupported content type: {$post->content_type->value}",
                 category: ErrorCategory::ContentPolicy,
             ),
         };
@@ -64,27 +64,27 @@ class PinterestPublisher
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function applyPinTextFields(array $payload, PostPlatform $postPlatform, ?string $content): array
+    private function applyPinTextFields(array $payload, Post $post, ?string $content): array
     {
         if (filled($content)) {
             $payload['description'] = mb_substr($content, 0, 800);
         }
 
-        if (filled(data_get($postPlatform->meta, 'title'))) {
-            $payload['title'] = mb_substr((string) data_get($postPlatform->meta, 'title'), 0, 100);
+        if (filled(data_get($post->meta, 'title'))) {
+            $payload['title'] = mb_substr((string) data_get($post->meta, 'title'), 0, 100);
         }
 
-        if (filled(data_get($postPlatform->meta, 'link'))) {
-            $payload['link'] = data_get($postPlatform->meta, 'link');
+        if (filled(data_get($post->meta, 'link'))) {
+            $payload['link'] = data_get($post->meta, 'link');
         }
 
         return $payload;
     }
 
-    private function resolveBoardId(PostPlatform $postPlatform): string
+    private function resolveBoardId(Post $post): string
     {
-        $boardId = data_get($postPlatform->meta, 'board_id')
-            ?? data_get($postPlatform->socialAccount->meta, 'default_board_id');
+        $boardId = data_get($post->meta, 'board_id')
+            ?? data_get($post->socialAccount->meta, 'default_board_id');
 
         if (! filled($boardId)) {
             throw new PinterestPublishException(
@@ -121,10 +121,10 @@ class PinterestPublisher
         ];
     }
 
-    private function publishImagePin(PostPlatform $postPlatform, ?string $content): array
+    private function publishImagePin(Post $post, ?string $content): array
     {
-        $account = $postPlatform->socialAccount;
-        $media = $postPlatform->post->mediaItems->first();
+        $account = $post->socialAccount;
+        $media = $post->mediaItems->first();
 
         if (! $media) {
             throw new PinterestPublishException(
@@ -133,7 +133,7 @@ class PinterestPublisher
             );
         }
 
-        $boardId = $this->resolveBoardId($postPlatform);
+        $boardId = $this->resolveBoardId($post);
 
         // Download and optimize image
         $tempFile = tempnam(sys_get_temp_dir(), 'pin_image_');
@@ -168,9 +168,9 @@ class PinterestPublisher
                 'content_type' => 'image/jpeg',
                 'data' => $imageBase64,
             ],
-        ], $postPlatform, $content);
+        ], $post, $content);
 
-        $alt = $postPlatform->post->mediaItems->first(fn ($m) => $m->isImage())?->altTextFor(Platform::Pinterest);
+        $alt = $post->mediaItems->first(fn ($m) => $m->isImage())?->altTextFor(Platform::Pinterest);
 
         if ($alt !== null) {
             $payload['alt_text'] = $alt;
@@ -179,10 +179,10 @@ class PinterestPublisher
         return $this->createPin($account, $payload, 'Pinterest pin creation failed');
     }
 
-    private function publishVideoPin(PostPlatform $postPlatform, ?string $content): array
+    private function publishVideoPin(Post $post, ?string $content): array
     {
-        $account = $postPlatform->socialAccount;
-        $media = $postPlatform->post->mediaItems->first();
+        $account = $post->socialAccount;
+        $media = $post->mediaItems->first();
 
         if (! $media) {
             throw new PinterestPublishException(
@@ -191,7 +191,7 @@ class PinterestPublisher
             );
         }
 
-        $boardId = $this->resolveBoardId($postPlatform);
+        $boardId = $this->resolveBoardId($post);
 
         // Step 1: Register media upload
         $registerResponse = $this->socialHttp()->withToken($account->access_token)
@@ -287,17 +287,17 @@ class PinterestPublisher
                 'source_type' => 'video_id',
                 'media_id' => $mediaId,
             ],
-        ], $postPlatform, $content);
+        ], $post, $content);
 
         $payload['media_source']['cover_image_key_frame_time'] = (int) round(($media->coverOffsetMs() ?? 0) / 1000);
 
         return $this->createPin($account, $payload, 'Pinterest video pin creation failed');
     }
 
-    private function publishCarousel(PostPlatform $postPlatform, ?string $content): array
+    private function publishCarousel(Post $post, ?string $content): array
     {
-        $account = $postPlatform->socialAccount;
-        $medias = $postPlatform->post->mediaItems;
+        $account = $post->socialAccount;
+        $medias = $post->mediaItems;
 
         if ($medias->count() < 2 || $medias->count() > 5) {
             throw new PinterestPublishException(
@@ -311,12 +311,12 @@ class PinterestPublisher
         ])->toArray();
 
         $payload = $this->applyPinTextFields([
-            'board_id' => $this->resolveBoardId($postPlatform),
+            'board_id' => $this->resolveBoardId($post),
             'media_source' => [
                 'source_type' => 'multiple_image_urls',
                 'items' => $items,
             ],
-        ], $postPlatform, $content);
+        ], $post, $content);
 
         return $this->createPin($account, $payload, 'Pinterest carousel creation failed');
     }

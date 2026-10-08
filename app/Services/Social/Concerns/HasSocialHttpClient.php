@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social\Concerns;
 
 use App\Exceptions\Social\ContentLimitException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Services\Social\TokenRedactor;
 use App\Support\ThreadReplies;
@@ -24,33 +24,33 @@ trait HasSocialHttpClient
      * hashtag cap is a save-time rule only, so a post stored before it still
      * publishes.
      */
-    protected function validateContentLength(PostPlatform $postPlatform): void
+    protected function validateContentLength(Post $post): void
     {
-        if ($postPlatform->content_type?->isCaptionless()) {
+        if ($post->content_type?->isCaptionless()) {
             return;
         }
 
-        $raw = $postPlatform->post->content ?? '';
-        $content = app(ContentSanitizer::class)->displayText($raw, $postPlatform->platform);
+        $raw = $post->content ?? '';
+        $content = app(ContentSanitizer::class)->displayText($raw, $post->platform);
 
-        $threadViolation = ThreadReplies::violation($postPlatform->socialAccount ?? $postPlatform->platform, $postPlatform->meta);
+        $threadViolation = ThreadReplies::violation($post->socialAccount ?? $post->platform, $post->meta);
 
         if ($threadViolation !== null) {
-            throw new ContentLimitException($postPlatform->platform, $threadViolation[1]);
+            throw new ContentLimitException($post->platform, $threadViolation[1]);
         }
 
-        $reserved = $postPlatform->platform->reservedLength($postPlatform->meta);
-        $overflow = $postPlatform->socialAccount?->contentOverflow($content, $reserved) ?? $postPlatform->platform->contentOverflow($content, $reserved);
+        $reserved = $post->platform->reservedLength($post->meta);
+        $overflow = $post->socialAccount?->contentOverflow($content, $reserved) ?? $post->platform->contentOverflow($content, $reserved);
 
         if ($overflow === 0) {
             return;
         }
 
-        $maxLength = $postPlatform->socialAccount?->maxContentLength() ?? $postPlatform->platform->maxContentLength();
+        $maxLength = $post->socialAccount?->maxContentLength() ?? $post->platform->maxContentLength();
 
         $contentLength = mb_strlen($content) + $reserved;
 
-        throw ContentLimitException::exceeds($postPlatform->platform, $maxLength, $contentLength);
+        throw ContentLimitException::exceeds($post->platform, $maxLength, $contentLength);
     }
 
     private bool $interactiveHttp = false;

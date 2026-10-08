@@ -10,12 +10,11 @@ use App\Enums\Analytics\MetricKey;
 use App\Enums\Analytics\MetricPrecision;
 use App\Enums\Analytics\MetricTimeBasis;
 use App\Enums\Analytics\MetricUnit;
-use App\Enums\PostPlatform\Status;
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Workspace;
 use App\Support\Analytics\EngagementRate;
 use Illuminate\Support\Collection;
@@ -35,45 +34,42 @@ class ReadPublicationAnalytics
         return $this->latestForPublication($publication);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    public function forPost(Post $post): Collection
+    /** @return array<string, mixed> */
+    public function forPost(Post $post): array
     {
-        $destinations = $post->postPlatforms
-            ->where('enabled', true)
-            ->values();
-        $details = $this->latestForPost($post, $destinations);
-
-        return $destinations->map(fn (PostPlatform $destination): array => [
-            'post_platform_id' => $destination->id,
-            'platform' => $destination->platform->value,
-            'status' => $destination->status->value,
-            'platform_post_id' => $destination->platform_post_id,
-            'platform_url' => $destination->platform_url,
-            'metrics' => $this->visibleDetail(data_get($details, $destination->id, $this->unavailable('not_collected'))),
-        ]);
+        return [
+            'post_id' => $post->id,
+            'platform' => $post->platform?->value,
+            'publish_status' => $post->publish_status->value,
+            'platform_post_id' => $post->platform_post_id,
+            'platform_url' => $post->platform_url,
+            'metrics' => $this->metricsFor($post),
+        ];
     }
 
     /** @return array<string, mixed> */
-    public function forPlatform(PostPlatform $postPlatform): array
+    public function metricsFor(Post $post): array
     {
-        return $this->visibleDetail($this->latestForPostPlatform($postPlatform));
+        return $this->visibleDetail($this->latestFor($post));
     }
 
     /**
-     * @param  Collection<int, PostPlatform>  $destinations
+     * The latest metrics of each post, keyed by post id.
+     *
+     * @param  Collection<int, Post>  $posts
      * @return array<string, array<string, mixed>>
      */
-    public function latestForPost(Post $post, Collection $destinations): array
+    public function latestForPosts(string $workspaceId, Collection $posts): array
     {
-        $eligible = $destinations->filter(fn (PostPlatform $destination): bool => $this->isCollectable($destination));
+        $eligible = $posts->filter(fn (Post $post): bool => $this->isCollectable($post));
 
         $publications = $eligible->isEmpty() ? collect() : AnalyticsPublication::query()
             ->available()
-            ->where('workspace_id', $post->workspace_id)
-            ->whereIn('post_platform_id', $eligible->pluck('id'))
+            ->where('workspace_id', $workspaceId)
+            ->whereIn('post_id', $eligible->pluck('id'))
             ->whereIn('platform', Platform::analyticsValues())
             ->get()
-            ->keyBy('post_platform_id');
+            ->keyBy('post_id');
 
         $snapshots = collect();
 
@@ -94,42 +90,42 @@ class ReadPublicationAnalytics
                 ->keyBy('publication_id');
         }
 
-        return $destinations->mapWithKeys(function (PostPlatform $destination) use ($publications, $snapshots): array {
-            if ($destination->status !== Status::Published || ! $destination->platform_post_id) {
-                return [$destination->id => $this->unavailable('not_published')];
+        return $posts->mapWithKeys(function (Post $post) use ($publications, $snapshots): array {
+            if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
+                return [$post->id => $this->unavailable('not_published')];
             }
 
-            if (! in_array($destination->platform->value, Platform::analyticsValues(), true)) {
-                return [$destination->id => $this->unavailable('platform_not_supported')];
+            if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
+                return [$post->id => $this->unavailable('platform_not_supported')];
             }
 
-            $publication = $publications->get($destination->id)?->setRelation(
+            $publication = $publications->get($post->id)?->setRelation(
                 'socialAccount',
-                $destination->relationLoaded('socialAccount') ? $destination->socialAccount : null,
+                $post->relationLoaded('socialAccount') ? $post->socialAccount : null,
             );
 
-            return [$destination->id => $publication
+            return [$post->id => $publication
                 ? $this->detail($publication, $snapshots->get($publication->id))
                 : $this->unavailable('not_collected')];
         })->all();
     }
 
     /** @return array<string, mixed> */
-    public function latestForPostPlatform(PostPlatform $postPlatform): array
+    public function latestFor(Post $post): array
     {
-        if ($postPlatform->status !== Status::Published || ! $postPlatform->platform_post_id) {
+        if ($post->publish_status !== PublishStatus::Published || ! $post->platform_post_id) {
             return $this->unavailable('not_published');
         }
 
-        if (! in_array($postPlatform->platform->value, Platform::analyticsValues(), true)) {
+        if (! in_array($post->platform?->value, Platform::analyticsValues(), true)) {
             return $this->unavailable('platform_not_supported');
         }
 
         $publication = AnalyticsPublication::query()
             ->with('socialAccount')
             ->available()
-            ->where('workspace_id', $postPlatform->post->workspace_id)
-            ->where('post_platform_id', $postPlatform->id)
+            ->where('workspace_id', $post->workspace_id)
+            ->where('post_id', $post->id)
             ->whereIn('platform', Platform::analyticsValues())
             ->first();
 
@@ -148,11 +144,11 @@ class ReadPublicationAnalytics
         return $this->detail($publication, $snapshot);
     }
 
-    private function isCollectable(PostPlatform $destination): bool
+    private function isCollectable(Post $post): bool
     {
-        return $destination->status === Status::Published
-            && filled($destination->platform_post_id)
-            && in_array($destination->platform->value, Platform::analyticsValues(), true);
+        return $post->publish_status === PublishStatus::Published
+            && filled($post->platform_post_id)
+            && in_array($post->platform?->value, Platform::analyticsValues(), true);
     }
 
     /**
@@ -178,7 +174,7 @@ class ReadPublicationAnalytics
             'reason' => null,
             'publication' => [
                 'id' => $publication->id,
-                'post_platform_id' => $publication->post_platform_id,
+                'post_id' => $publication->post_id,
                 'social_account_key' => $publication->social_account_key,
                 'platform' => $publication->platform->value,
                 'origin' => $publication->origin->value,

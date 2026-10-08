@@ -27,7 +27,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('Update one post for its existing social account. Caption, media, content_type, meta (platform settings, merged with the stored ones), status, schedule, queue and labels may change; content_type and meta are top-level fields because a post has exactly one social account, which is fixed. When the acting member needs approval in this workspace, a scheduled, queued or publish-now update is stored with status pending_approval instead. meta is merged with the stored settings: send null for a key to clear it; thread_replies replaces the whole list. To place the post in one specific free slot use move-post-to-slot-tool. Posts that are publishing, published, partially_published or failed cannot be changed or deleted. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
+#[Description('Update one post for its existing social account. Caption, media, content_type, meta (platform settings, merged with the stored ones), status, schedule, queue and labels may change; content_type and meta are top-level fields because a post has exactly one social account, which is fixed. When the acting member needs approval in this workspace, a scheduled, queued or publish-now update is stored with status pending_approval instead. meta is merged with the stored settings: send null for a key to clear it; thread_replies replaces the whole list. To place the post in one specific free slot use move-post-to-slot-tool. Posts that are publishing, published or failed cannot be changed or deleted. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
 class UpdatePostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -50,7 +50,7 @@ class UpdatePostTool extends Tool
             return $denied;
         }
 
-        $input = PostRequestRules::updateInput($post, $request->all());
+        $input = $request->all();
 
         $validated = Validator::make($input, PostRequestRules::update($workspace, $post, $input), PostRequestRules::messages(), PostRequestRules::attributes())
             ->after(fn (ValidatorContract $validator) => PostRequestRules::afterUpdate($validator, $post, $input))
@@ -70,7 +70,7 @@ class UpdatePostTool extends Tool
 
         /** @var Post $updated */
         $updated = data_get($result, 'post');
-        $updated->load(['postPlatforms.socialAccount', 'labels']);
+        $updated->load(['socialAccount', 'labels']);
 
         return Response::structured((new PostResource($updated))->resolve());
     }

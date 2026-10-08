@@ -10,7 +10,7 @@ use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\User\WeekStart;
 use App\Models\AnalyticsAccountDailySnapshot;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
@@ -139,7 +139,7 @@ class BuildChannelMetricSeries
     private function publications(SocialAccount $channel, string $accountKey, CarbonImmutable $start, CarbonImmutable $end, ?PublicationFilter $filter): iterable
     {
         return $this->latestSnapshots->execute($channel->workspace_id, [$accountKey], $start, $end)
-            ->leftJoin((new PostPlatform)->getTable().' as destination', 'destination.id', '=', 'publication.post_platform_id')
+            ->leftJoin((new Post)->getTable().' as destination', 'destination.id', '=', 'publication.post_id')
             ->when($filter !== null, fn (Builder $filtered): Builder => $filter->apply($filtered))
             ->select([
                 'publication.id', 'publication.provider_published_at',

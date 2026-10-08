@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Read all latest saved analytics for a TryPost post across its published platforms, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. Returns "unsupported" for excluded or unpublished platforms.')]
+#[Description('Read the latest saved analytics of a published TryPost post, including reactions, comments, saves, reach, views, and watch time where supported. Values may lag the provider until the next analytics job. metrics is "unsupported" for an unpublished post or a network without analytics.')]
 class GetPostMetricsTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -31,7 +31,7 @@ class GetPostMetricsTool extends Tool
 
         $post = $workspace
             ? Post::where('workspace_id', $workspace->id)
-                ->with(['postPlatforms.socialAccount'])
+                ->with(['socialAccount'])
                 ->find(data_get($validated, 'post_id'))
             : null;
 
@@ -43,10 +43,7 @@ class GetPostMetricsTool extends Tool
             return $denied;
         }
 
-        return Response::structured([
-            'post_id' => $post->id,
-            'platforms' => app(ReadPublicationAnalytics::class)->forPost($post)->all(),
-        ]);
+        return Response::structured(app(ReadPublicationAnalytics::class)->forPost($post));
     }
 
     public function schema(JsonSchema $schema): array

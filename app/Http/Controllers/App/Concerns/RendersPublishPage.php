@@ -29,7 +29,7 @@ trait RendersPublishPage
 
         if (is_string($editPostId) && Str::isUuid($editPostId)) {
             $composerPost = $workspace->posts()
-                ->with(['postPlatforms' => fn ($query) => $query->enabled()->with('socialAccount'), 'labels'])
+                ->with(['socialAccount', 'labels'])
                 ->findOrFail($editPostId);
             $this->authorize('update', $composerPost);
             $composerPost->unsetRelation('user')->unsetRelation('approvalRequestedBy');
@@ -111,12 +111,10 @@ trait RendersPublishPage
 
     private function canOpenComposer(Post $post): bool
     {
-        $targets = $post->postPlatforms()->enabled()->get();
-
-        if ($targets->isEmpty()) {
+        if (! $post->hasDestination()) {
             return $post->status === PostStatus::Draft;
         }
 
-        return $targets->count() === 1 && $targets->first()->social_account_id !== null;
+        return $post->hasChannel();
     }
 }

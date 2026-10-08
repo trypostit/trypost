@@ -53,7 +53,7 @@ class ApprovePostTool extends Tool
 
         /** @var Post $approved */
         $approved = data_get($result, 'post');
-        $approved->load(['postPlatforms.socialAccount', 'labels']);
+        $approved->load(['socialAccount', 'labels']);
 
         return Response::structured((new PostResource($approved))->resolve());
     }

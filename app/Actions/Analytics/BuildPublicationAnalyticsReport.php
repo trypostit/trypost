@@ -9,7 +9,7 @@ use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\User\WeekStart;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\Analytics\MetricComparison;
 use App\Support\Analytics\PeriodBuckets;
@@ -140,11 +140,11 @@ class BuildPublicationAnalyticsReport
     public function query(Workspace $workspace, CarbonImmutable $start, CarbonImmutable $end, ?array $accountKeys = null, ?PublicationFilter $filter = null): Builder
     {
         return $this->latestSnapshots->execute($workspace->id, $accountKeys, $start, $end)
-            ->leftJoin((new PostPlatform)->getTable().' as destination', 'destination.id', '=', 'publication.post_platform_id')
+            ->leftJoin((new Post)->getTable().' as destination', 'destination.id', '=', 'publication.post_id')
             ->when($filter !== null, fn (Builder $filtered): Builder => $filter->apply($filtered))
             ->select([
                 'publication.id', 'publication.social_account_key', 'publication.social_account_id',
-                'publication.post_platform_id', 'destination.post_id', 'publication.platform', 'publication.network',
+                'publication.post_id', 'publication.platform', 'publication.network',
                 'publication.account_display_name', 'publication.account_username',
                 'publication.account_avatar_url', 'publication.remote_id',
                 'publication.provider_published_at', 'publication.origin', 'publication.content_type',
@@ -296,7 +296,6 @@ class BuildPublicationAnalyticsReport
         return array_map(function (object $row): array {
             return [
                 'id' => $row->id,
-                'post_platform_id' => $row->post_platform_id,
                 'post_id' => $row->post_id,
                 'social_account_key' => $row->social_account_key,
                 'platform' => $row->platform,

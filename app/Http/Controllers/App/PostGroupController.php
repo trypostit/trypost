@@ -25,7 +25,7 @@ class PostGroupController extends Controller
                 fn ($query) => $query->whereKey($post->id),
             )
             ->with([
-                'postPlatforms' => fn ($platforms) => $platforms->enabled()->with('socialAccount'),
+                'socialAccount',
                 'user.avatarMedia',
                 'labels',
             ])
@@ -34,7 +34,7 @@ class PostGroupController extends Controller
             ->sortBy(fn (Post $sibling): array => [
                 $sibling->scheduled_at === null ? 1 : 0,
                 $sibling->scheduled_at?->getTimestamp() ?? 0,
-                $sibling->postPlatforms->first()?->socialAccount?->position ?? PHP_INT_MAX,
+                $sibling->socialAccount?->position ?? PHP_INT_MAX,
             ])
             ->values();
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishStatus as Status;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;

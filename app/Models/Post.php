@@ -9,10 +9,12 @@ use App\Dto\MediaItem;
 use App\Enums\Media\Type;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Observers\PostObserver;
 use App\Support\Media\MediaCopyBatch;
@@ -27,8 +29,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 #[ObservedBy([PostObserver::class])]
 class Post extends Model
@@ -61,6 +65,34 @@ class Post extends Model
         'approved_by',
         'approved_at',
         'approval_queue_position',
+        'platform',
+        'content_type',
+        'platform_name',
+        'platform_username',
+        'platform_avatar',
+        'meta',
+        'platform_url',
+        'error_message',
+        'error_context',
+        'thread_reply_ids',
+        'submitted_at',
+        'last_reconciled_at',
+        'connection_warning_sent_at',
+        'retry_at',
+        'publication_updated_at',
+    ];
+
+    /**
+     * @var list<string>
+     */
+    protected $hidden = [
+        'error_context',
+        'legacy_target_id',
+        'scheduled_before_media_checks',
+        'last_reconciled_at',
+        'connection_warning_sent_at',
+        'publication_updated_at',
+        'platform_avatar',
     ];
 
     /**
@@ -68,6 +100,7 @@ class Post extends Model
      */
     protected $attributes = [
         'origin' => Origin::DEFAULT->value,
+        'publish_status' => PublishStatus::DEFAULT->value,
     ];
 
     protected function casts(): array
@@ -88,6 +121,18 @@ class Post extends Model
             'approval_requested_at' => 'datetime',
             'approved_at' => 'datetime',
             'approval_queue_position' => QueuePosition::class,
+            'publish_status' => PublishStatus::class,
+            'platform' => Platform::class,
+            'content_type' => ContentType::class,
+            'meta' => 'array',
+            'error_context' => 'array',
+            'thread_reply_ids' => 'array',
+            'submitted_at' => 'datetime',
+            'last_reconciled_at' => 'datetime',
+            'connection_warning_sent_at' => 'datetime',
+            'retry_at' => 'datetime',
+            'publication_updated_at' => 'datetime',
+            'scheduled_before_media_checks' => 'boolean',
         ];
     }
 
@@ -137,9 +182,14 @@ class Post extends Model
         return $this->hasMany(Media::class, 'post_id')->orderBy('order');
     }
 
-    public function postPlatforms(): HasMany
+    public function socialAccount(): BelongsTo
     {
-        return $this->hasMany(PostPlatform::class)->orderBy('id');
+        return $this->belongsTo(SocialAccount::class);
+    }
+
+    public function analyticsPublication(): HasOne
+    {
+        return $this->hasOne(AnalyticsPublication::class);
     }
 
     public function notes(): HasMany
@@ -166,13 +216,13 @@ class Post extends Model
     }
 
     /**
-     * Scheduled posts with an enabled destination on the given channel, upcoming after `$after`.
+     * Scheduled posts on the given channel, upcoming after `$after`.
      */
     public function scopeScheduledOn(Builder $query, string $channelId, CarbonInterface $after): Builder
     {
         return $query->scheduled()
             ->where('scheduled_at', '>', $after)
-            ->whereHas('postPlatforms', fn (Builder $platforms) => $platforms->enabled()->where('social_account_id', $channelId));
+            ->where('posts.social_account_id', $channelId);
     }
 
     /**
@@ -188,7 +238,7 @@ class Post extends Model
     {
         return $query->holdingSlot()
             ->where('scheduled_at', '>', $after)
-            ->whereHas('postPlatforms', fn (Builder $platforms) => $platforms->enabled()->where('social_account_id', $channelId));
+            ->where('posts.social_account_id', $channelId);
     }
 
     public function scopePendingQueueRequestsOn(Builder $query, string $channelId, CarbonInterface $after): Builder
@@ -196,7 +246,7 @@ class Post extends Model
         return $query->pendingApproval()
             ->where('schedule_mode', ScheduleMode::Queue)
             ->where('scheduled_at', '>', $after)
-            ->whereHas('postPlatforms', fn (Builder $platforms) => $platforms->enabled()->where('social_account_id', $channelId));
+            ->where('posts.social_account_id', $channelId);
     }
 
     public function scopeQueuedOn(Builder $query, string $channelId, CarbonInterface $after): Builder
@@ -261,7 +311,7 @@ class Post extends Model
 
     public function scopePublished(Builder $query): Builder
     {
-        return $query->whereIn('status', [PostStatus::Published, PostStatus::PartiallyPublished]);
+        return $query->where('status', PostStatus::Published);
     }
 
     public function scopeFailed(Builder $query): Builder
@@ -280,16 +330,36 @@ class Post extends Model
     }
 
     /**
-     * Posts with an enabled destination on any of the channels; no filter when $channelIds is null.
+     * Posts on any of the channels; no filter when $channelIds is null.
      *
      * @param  list<string>|null  $channelIds
      */
     public function scopeOnChannels(Builder $query, ?array $channelIds): Builder
     {
-        return $query->when($channelIds !== null, fn (Builder $filtered): Builder => $filtered->whereHas(
-            'postPlatforms',
-            fn (Builder $platforms): Builder => $platforms->enabled()->whereIn('social_account_id', $channelIds),
-        ));
+        return $query->when($channelIds !== null, fn (Builder $filtered): Builder => $filtered->whereIn('posts.social_account_id', $channelIds));
+    }
+
+    /**
+     * Posts the network confirmed as published.
+     */
+    public function scopePublicationPublished(Builder $query): Builder
+    {
+        return $query->where('posts.publish_status', PublishStatus::Published);
+    }
+
+    /**
+     * Posts a network refused for a limit whose next attempt is due.
+     */
+    public function scopeDueForLimitRetry(Builder $query): Builder
+    {
+        return $query->where('posts.publish_status', PublishStatus::Retrying)
+            ->whereNotNull('posts.retry_at')
+            ->where('posts.retry_at', '<=', now());
+    }
+
+    public function scopeIncludedInAnalytics(Builder $query): Builder
+    {
+        return $query->whereIn('posts.platform', Platform::analyticsValues());
     }
 
     /**
@@ -313,21 +383,192 @@ class Post extends Model
     {
         $this->update([
             'status' => PostStatus::Published,
-            'published_at' => now(),
-        ]);
-    }
-
-    public function markAsPartiallyPublished(): void
-    {
-        $this->update([
-            'status' => PostStatus::PartiallyPublished,
-            'published_at' => now(),
+            'published_at' => $this->published_at ?? now(),
         ]);
     }
 
     public function markAsFailed(): void
     {
         $this->update(['status' => PostStatus::Failed]);
+    }
+
+    /**
+     * The post has a destination: a channel, or the snapshot of one that was deleted.
+     */
+    public function hasDestination(): bool
+    {
+        return $this->platform !== null;
+    }
+
+    /**
+     * The post's channel still exists.
+     */
+    public function hasChannel(): bool
+    {
+        return $this->social_account_id !== null;
+    }
+
+    /**
+     * Display name, falling back to the snapshot when the account was deleted.
+     */
+    public function getDisplayNameAttribute(): ?string
+    {
+        return $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform?->label();
+    }
+
+    /**
+     * Username, falling back to the snapshot when the account was deleted.
+     */
+    public function getDisplayUsernameAttribute(): ?string
+    {
+        return $this->socialAccount?->username ?? $this->platform_username;
+    }
+
+    /**
+     * Avatar URL, falling back to the snapshot when the account was deleted.
+     */
+    public function getDisplayAvatarAttribute(): ?string
+    {
+        if ($this->socialAccount?->avatar_url) {
+            return $this->socialAccount->avatar_url;
+        }
+
+        return $this->platform_avatar ? Storage::url($this->platform_avatar) : null;
+    }
+
+    /**
+     * "Facebook Page (@handle)" for emails. Username first, then display name
+     * (live account or the snapshot). When neither is set, just the platform
+     * name, never "(@)". Empty for a draft without a channel.
+     */
+    public function notificationLabel(): string
+    {
+        if ($this->platform === null) {
+            return '';
+        }
+
+        $identifier = $this->display_username
+            ?: $this->socialAccount?->display_name
+            ?: $this->platform_name;
+
+        if (! filled($identifier) || $identifier === $this->platform->label()) {
+            return $this->platform->label();
+        }
+
+        return "{$this->platform->label()} (@{$identifier})";
+    }
+
+    /**
+     * Whether the publisher attaches the link preview card for the first URL.
+     * False only when the user dropped the card in the composer.
+     */
+    public function attachesLinkPreview(): bool
+    {
+        return data_get($this->meta, 'link_preview') !== false;
+    }
+
+    public function markPublicationPublishing(): void
+    {
+        $this->writePublication(['publish_status' => PublishStatus::Publishing, 'retry_at' => null]);
+    }
+
+    /**
+     * The network refused the publish for a limit: the post waits, not
+     * failed, until the scheduler picks it up at `retry_at`.
+     *
+     * @param  array<string, mixed>  $errorContext
+     */
+    public function markPublicationWaitingForLimitRetry(CarbonInterface $retryAt, string $errorMessage, array $errorContext): void
+    {
+        $this->writePublication([
+            'publish_status' => PublishStatus::Retrying,
+            'retry_at' => $retryAt,
+            'error_message' => $errorMessage,
+            'error_context' => $errorContext,
+        ]);
+    }
+
+    public function isPublicationWaitingForLimitRetry(): bool
+    {
+        return $this->publish_status === PublishStatus::Retrying && $this->retry_at?->isFuture() === true;
+    }
+
+    public function markPublicationPublished(string $platformPostId, ?string $platformUrl = null): void
+    {
+        $now = now();
+
+        $this->writePublication([
+            'publish_status' => PublishStatus::Published,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
+            'published_at' => $now,
+            'retry_at' => null,
+            'error_message' => null,
+            'error_context' => null,
+        ]);
+
+        $this->socialAccount?->update(['last_used_at' => $now]);
+    }
+
+    /**
+     * The provider accepted the post but has not finished reviewing it. It is
+     * neither published nor failed until the review settles.
+     */
+    public function markPublicationPendingReview(string $platformPostId, ?string $platformUrl = null): void
+    {
+        $this->writePublication([
+            'publish_status' => PublishStatus::PendingReview,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
+            'submitted_at' => $this->submitted_at ?? now(),
+            'retry_at' => null,
+            'error_message' => null,
+            'error_context' => null,
+        ]);
+    }
+
+    /**
+     * The provider accepted the post and then refused it in review. Unlike a
+     * failure, the remote row exists, so its id and URL are kept for support.
+     *
+     * @param  array<string, mixed>|null  $errorContext
+     */
+    public function markPublicationRejected(string $platformPostId, ?string $platformUrl, string $errorMessage, ?array $errorContext = null): void
+    {
+        $this->writePublication([
+            'publish_status' => PublishStatus::Rejected,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => $platformUrl,
+            'retry_at' => null,
+            'error_message' => $errorMessage,
+            'error_context' => $errorContext,
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $errorContext
+     */
+    public function markPublicationFailed(string $errorMessage, ?array $errorContext = null): void
+    {
+        $this->writePublication([
+            'publish_status' => PublishStatus::Failed,
+            'retry_at' => null,
+            'error_message' => $errorMessage,
+            'error_context' => $errorContext,
+            'platform_post_id' => null,
+            'platform_url' => null,
+        ]);
+    }
+
+    /**
+     * Writes the publication fields with their own clock, so a publish attempt
+     * never moves `updated_at` and a label or note never moves the clock.
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function writePublication(array $attributes): void
+    {
+        static::withoutTimestamps(fn () => $this->forceFill([...$attributes, 'publication_updated_at' => now()])->save());
     }
 
     /**
@@ -374,21 +615,13 @@ class Post extends Model
     }
 
     /**
-     * MediaTypes accepted by this post — the intersection of what every
-     * enabled platform allows. With no platform enabled, accept anything.
+     * MediaTypes accepted by this post's channel. Without a channel, accept anything.
      *
      * @return array<Type>
      */
     public function allowedMediaTypes(): array
     {
-        $platforms = $this->postPlatforms()
-            ->enabled()
-            ->with('socialAccount')
-            ->get()
-            ->pluck('socialAccount.platform')
-            ->filter();
-
-        return self::allowedMediaTypesFor($platforms);
+        return self::allowedMediaTypesFor(collect([$this->socialAccount?->platform])->filter());
     }
 
     /**

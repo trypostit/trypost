@@ -10,7 +10,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MastodonPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
@@ -29,29 +29,29 @@ class MastodonPublisher
     use HasSocialHttpClient;
     use PublishesThreads;
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
-        $rootHash = ThreadProgress::hash((string) $content, $postPlatform->post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 
         return $this->publishThread(
-            $postPlatform,
+            $post,
             $rootHash,
-            fn (): array => $this->publishRoot($postPlatform, $account, $instance, $content, "{$postPlatform->id}:{$rootHash}"),
+            fn (): array => $this->publishRoot($post, $account, $instance, $content, "{$post->id}:{$rootHash}"),
             fn (string $text, Collection $media, array $parent): array => $this->createStatus(
                 $account,
                 $instance,
                 [
-                    ...$this->replyPayload($postPlatform, $text, (string) $parent['id']),
+                    ...$this->replyPayload($post, $text, (string) $parent['id']),
                     ...$this->mediaPayload($account, $instance, $media),
                 ],
-                "{$postPlatform->id}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all()),
+                "{$post->id}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all()),
             ),
         );
     }
@@ -59,15 +59,15 @@ class MastodonPublisher
     /**
      * @return array{id: string, url: ?string}
      */
-    private function publishRoot(PostPlatform $postPlatform, SocialAccount $account, string $instance, ?string $content, string $idempotencyKey): array
+    private function publishRoot(Post $post, SocialAccount $account, string $instance, ?string $content, string $idempotencyKey): array
     {
         $payload = [
             'status' => $content ?? '',
             'visibility' => 'public',
-            ...$this->mediaPayload($account, $instance, $postPlatform->post->mediaItems),
+            ...$this->mediaPayload($account, $instance, $post->mediaItems),
         ];
 
-        return $this->createStatus($account, $instance, [...$payload, ...$this->contentWarning($postPlatform)], $idempotencyKey);
+        return $this->createStatus($account, $instance, [...$payload, ...$this->contentWarning($post)], $idempotencyKey);
     }
 
     /**
@@ -93,22 +93,22 @@ class MastodonPublisher
      *
      * @return array<string, mixed>
      */
-    private function replyPayload(PostPlatform $postPlatform, string $text, string $inReplyToId): array
+    private function replyPayload(Post $post, string $text, string $inReplyToId): array
     {
         return [
             'status' => $text,
             'visibility' => 'public',
             'in_reply_to_id' => $inReplyToId,
-            ...$this->contentWarning($postPlatform),
+            ...$this->contentWarning($post),
         ];
     }
 
     /**
      * @return array{spoiler_text?: string}
      */
-    private function contentWarning(PostPlatform $postPlatform): array
+    private function contentWarning(Post $post): array
     {
-        $spoilerText = Str::trim((string) data_get($postPlatform->meta, 'spoiler_text'));
+        $spoilerText = Str::trim((string) data_get($post->meta, 'spoiler_text'));
 
         return $spoilerText === '' ? [] : ['spoiler_text' => $spoilerText];
     }

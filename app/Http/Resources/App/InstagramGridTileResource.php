@@ -7,13 +7,13 @@ namespace App\Http\Resources\App;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Collection;
 
 /**
- * @mixin PostPlatform
+ * @mixin Post
  */
 class InstagramGridTileResource extends JsonResource
 {
@@ -24,12 +24,12 @@ class InstagramGridTileResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $visuals = $this->post->mediaItems
+        $visuals = $this->mediaItems
             ->filter(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo())
             ->values();
 
         return [
-            'id' => $this->post_id,
+            'id' => $this->id,
             'published_at' => $this->published_at,
             'kind' => $this->kind($visuals),
             'items' => $visuals->map(fn (MediaItem $item): array => [

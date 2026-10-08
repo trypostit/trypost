@@ -7,7 +7,7 @@ namespace App\Jobs\Analytics;
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
 use App\Actions\Analytics\SyncTryPostPublication as SyncTryPostPublicationAction;
 use App\Dto\Analytics\TryPostPublicationIdentity;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 
@@ -17,23 +17,22 @@ class SyncTryPostPublication implements ShouldQueue
 
     public function __construct(
         public TryPostPublicationIdentity $identity,
-        public string $postPlatformId,
+        public string $postId,
     ) {
         $this->onQueue('analytics');
     }
 
     public function handle(SyncTryPostPublicationAction $sync, QueuePublicationMetricsForPage $metrics): void
     {
-        $postPlatform = PostPlatform::query()
-            ->published()
-            ->with('post')
-            ->find($this->postPlatformId);
+        $post = Post::query()
+            ->publicationPublished()
+            ->find($this->postId);
 
-        if (! $postPlatform || ! filled($postPlatform->platform_post_id)) {
+        if (! $post || ! filled($post->platform_post_id)) {
             return;
         }
 
-        $publication = $sync->fromIdentity($this->identity, $postPlatform);
+        $publication = $sync->fromIdentity($this->identity, $post);
         $metrics->queue($publication);
     }
 }

@@ -47,7 +47,7 @@ class AttachMediaFromUrlTool extends Tool
             return Response::error(__('posts.errors.queue_busy'));
         }
 
-        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+        $post->refresh()->load(['socialAccount', 'labels']);
 
         return Response::structured([
             'post' => (new PostResource($post))->resolve(),

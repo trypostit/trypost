@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Enums\PostPlatform\Status;
+use App\Enums\Post\PublishStatus;
 use App\Models\Post;
 use App\Support\Mail\PostPreview;
 use Illuminate\Bus\Queueable;
@@ -31,11 +31,8 @@ class PostPublishFailed extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $postPlatform = $this->post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->where('status', Status::Failed)
-            ->first();
+        $this->post->loadMissing('socialAccount');
+        $failed = in_array($this->post->publish_status, [PublishStatus::Failed, PublishStatus::Rejected], true) && $this->post->hasDestination();
 
         return new Content(
             view: 'mail.post-publish-failed',
@@ -43,10 +40,10 @@ class PostPublishFailed extends Mailable implements ShouldQueue
                 'title' => __('mail.post_publish_failed.title'),
                 'previewText' => __('mail.post_publish_failed.preview'),
                 'workspaceName' => $this->post->workspace->name,
-                'publication' => $postPlatform ? [
-                    'accountName' => $postPlatform->display_name,
-                    'platform' => $postPlatform->platform,
-                    'error' => $postPlatform->error_message,
+                'publication' => $failed ? [
+                    'accountName' => $this->post->display_name,
+                    'platform' => $this->post->platform,
+                    'error' => $this->post->error_message,
                 ] : null,
                 'postPreview' => PostPreview::from($this->post),
                 'url' => route('app.posts.index', ['tab' => 'sent', 'post' => $this->post->id]),

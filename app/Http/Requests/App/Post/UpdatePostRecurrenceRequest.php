@@ -7,7 +7,6 @@ namespace App\Http\Requests\App\Post;
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\PostingSchedule;
 use App\Support\Timezone;
 use Carbon\CarbonImmutable;
@@ -69,11 +68,10 @@ class UpdatePostRecurrenceRequest extends FormRequest
                 $frequency = RecurrenceFrequency::from($this->string('frequency')->toString());
                 $steps = $this->integer('interval') * $this->integer('times');
                 $ceiling = CarbonImmutable::parse(PostingSchedule::MAX_INSTANT, 'UTC');
-                $tooFar = $post->postPlatforms()->enabled()->with('socialAccount')->get()
-                    ->contains(fn (PostPlatform $target): bool => $frequency->advance(
-                        $post->scheduled_at->toImmutable()->setTimezone(Timezone::normalize($target->socialAccount?->timezone)),
-                        $steps,
-                    )->greaterThan($ceiling));
+                $tooFar = $post->hasDestination() && $frequency->advance(
+                    $post->scheduled_at->toImmutable()->setTimezone(Timezone::normalize($post->socialAccount?->timezone)),
+                    $steps,
+                )->greaterThan($ceiling);
 
                 if ($tooFar) {
                     $validator->errors()->add('times', __('posts.recurrence.errors.too_far'));

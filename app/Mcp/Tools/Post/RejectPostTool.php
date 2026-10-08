@@ -46,7 +46,7 @@ class RejectPostTool extends Tool
             return Response::error(__('posts.errors.queue_busy'));
         }
 
-        $rejected->load(['postPlatforms.socialAccount', 'labels']);
+        $rejected->load(['socialAccount', 'labels']);
 
         return Response::structured((new PostResource($rejected))->resolve());
     }

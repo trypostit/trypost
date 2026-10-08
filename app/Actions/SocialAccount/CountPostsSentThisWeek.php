@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\SocialAccount;
 
 use App\Enums\User\WeekStart;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Timezone;
 
@@ -19,10 +19,9 @@ class CountPostsSentThisWeek
     {
         $now = now(Timezone::normalize($channel->timezone));
 
-        return PostPlatform::query()
+        return Post::query()
             ->where('social_account_id', $channel->id)
-            ->enabled()
-            ->published()
+            ->publicationPublished()
             ->whereNotNull('published_at')
             ->whereBetween('published_at', [
                 $now->startOfWeek($weekStart->firstDay())->utc(),

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Actions\Post\UpdatePost;
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\PublishPostTool;

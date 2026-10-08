@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;

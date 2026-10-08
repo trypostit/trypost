@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace App\Enums\PostPlatform;
+namespace App\Enums\Post;
 
-enum Status: string
+enum PublishStatus: string
 {
     case Pending = 'pending';
     case Publishing = 'publishing';
@@ -14,7 +14,9 @@ enum Status: string
     case Failed = 'failed';
     case Rejected = 'rejected';
 
-    /** Published, failed, or rejected — counts toward settling the parent post. */
+    public const self DEFAULT = self::Pending;
+
+    /** Published, failed, or rejected — the post can be settled. */
     public function isFinished(): bool
     {
         return match ($this) {

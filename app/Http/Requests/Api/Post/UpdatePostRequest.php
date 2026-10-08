@@ -15,11 +15,6 @@ class UpdatePostRequest extends FormRequest
         return true;
     }
 
-    protected function prepareForValidation(): void
-    {
-        $this->replace(PostRequestRules::updateInput($this->route('post'), $this->all()));
-    }
-
     public function rules(): array
     {
         return PostRequestRules::update($this->user()->currentWorkspace, $this->route('post'), $this->all());

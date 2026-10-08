@@ -16,9 +16,9 @@ class TikTokPhotoDerivativeCleaner
     /**
      * @param  array<string, mixed>|null  $context
      */
-    public function cleanup(?array $context, ?string $postPlatformId = null): void
+    public function cleanup(?array $context, ?string $postId = null): void
     {
-        $this->cleanupPaths(PublishCheckpoint::tiktokDerivativePaths($context), $postPlatformId);
+        $this->cleanupPaths(PublishCheckpoint::tiktokDerivativePaths($context), $postId);
     }
 
     /**
@@ -26,19 +26,19 @@ class TikTokPhotoDerivativeCleaner
      *
      * @param  array<string, mixed>|null  $context
      */
-    public function cleanupUnlessPublishInFlight(?array $context, ?string $postPlatformId = null): void
+    public function cleanupUnlessPublishInFlight(?array $context, ?string $postId = null): void
     {
         if (PublishCheckpoint::tiktokPublishId($context) !== null) {
             return;
         }
 
-        $this->cleanup($context, $postPlatformId);
+        $this->cleanup($context, $postId);
     }
 
     /**
      * @param  array<array-key, mixed>  $paths
      */
-    public function cleanupPaths(array $paths, ?string $postPlatformId = null): void
+    public function cleanupPaths(array $paths, ?string $postId = null): void
     {
         $derivativePaths = array_values(array_filter(
             $paths,
@@ -53,7 +53,7 @@ class TikTokPhotoDerivativeCleaner
             Storage::delete($derivativePaths);
         } catch (Throwable $e) {
             Log::warning('Failed to prune TikTok photo derivatives', [
-                'post_platform_id' => $postPlatformId,
+                'post_id' => $postId,
                 'error' => $e->getMessage(),
             ]);
         }

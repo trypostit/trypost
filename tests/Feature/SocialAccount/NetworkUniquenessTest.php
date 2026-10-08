@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;

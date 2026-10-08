@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Delete a post from TryPost permanently; this cannot be undone. A post is never removed from the network where it was published. Posts that are publishing, published, partially_published or failed cannot be changed or deleted. A member who needs approval may delete only posts they wrote, or requests they made that are still pending approval.')]
+#[Description('Delete a post from TryPost permanently; this cannot be undone. A post is never removed from the network where it was published. Posts that are publishing, published or failed cannot be changed or deleted. A member who needs approval may delete only posts they wrote, or requests they made that are still pending approval.')]
 class DeletePostTool extends Tool
 {
     use AuthorizesMcpTool;

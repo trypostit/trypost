@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\SendNotification;
 use App\Models\Post;

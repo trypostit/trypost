@@ -8,11 +8,9 @@ use App\Dto\MediaItem;
 use App\Models\Idea;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\ThreadReplies;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -51,9 +49,9 @@ class SyncOwnedMedia
      * owner (duplicate, recovery) that may pass through without a row, like
      * the owner's own stored items do (spec 7.2: missing files are left as is).
      *
-     * A post's thread replies (`meta.thread_replies` of its targets) own media
-     * too: their items are synced the same way and written back to the reply,
-     * and their rows are kept, so write the target's meta before calling this.
+     * A post's thread replies (`meta.thread_replies`) own media too: their
+     * items are synced the same way and written back to the reply, and their
+     * rows are kept, so save the post's meta before calling this.
      *
      * @param  list<array<string, mixed>>  $items
      * @param  list<array<string, mixed>>  $legacyItems
@@ -66,8 +64,8 @@ class SyncOwnedMedia
 
         $workspace = $owner->workspace;
         $items = self::withoutRepeats(array_values($items));
-        $threads = $owner instanceof Post ? self::threadsOf($owner) : collect();
-        $replyItems = $threads->flatMap(fn (array $replies): array => array_merge([], ...array_column($replies, 'media')))->all();
+        $replies = $locked instanceof Post ? ThreadReplies::of($locked->meta) : [];
+        $replyItems = array_merge([], ...array_column($replies, 'media'));
         $ids = self::column([...$items, ...$replyItems], 'id');
         $uploadTokens = self::column([...$items, ...$replyItems], 'upload_token');
         self::lockRows($workspace->id, $ownerColumn, $owner->getKey(), $ids, $uploadTokens);
@@ -119,32 +117,18 @@ class SyncOwnedMedia
         $kept = self::column($final, 'id');
         $replyErrorKey = Str::beforeLast($errorKey, 'media').'meta.thread_replies';
 
-        foreach ($threads as $postPlatformId => $replies) {
-            foreach ($replies as $index => $reply) {
-                $replies[$index]['media'] = $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}.{$index}.media");
-                $kept = [...$kept, ...self::column($replies[$index]['media'], 'id')];
-            }
-
-            $postPlatform = $owner->postPlatforms()->whereKey($postPlatformId)->firstOrFail();
-            $postPlatform->forceFill(['meta' => [...($postPlatform->meta ?? []), 'thread_replies' => $replies]])->save();
+        foreach ($replies as $index => $reply) {
+            $replies[$index]['media'] = $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}.{$index}.media");
+            $kept = [...$kept, ...self::column($replies[$index]['media'], 'id')];
         }
 
         DeleteOwnedMedia::forRows($owner->ownedMedia()->whereNotIn('id', $kept)->pluck('id')->all());
-        $owner->forceFill(['media' => $final])->save();
+        $owner->forceFill([
+            'media' => $final,
+            ...($replies !== [] ? ['meta' => [...($locked->meta ?? []), 'thread_replies' => $replies]] : []),
+        ])->save();
 
         return $final;
-    }
-
-    /**
-     * The thread replies of each of the post's targets that has any.
-     *
-     * @return Collection<string, list<array{text: string, media: list<array<string, mixed>>}>>
-     */
-    private static function threadsOf(Post $post): Collection
-    {
-        return $post->postPlatforms()->get()
-            ->mapWithKeys(fn (PostPlatform $postPlatform): array => [$postPlatform->id => ThreadReplies::of($postPlatform->meta)])
-            ->filter(fn (array $replies): bool => $replies !== []);
     }
 
     /**

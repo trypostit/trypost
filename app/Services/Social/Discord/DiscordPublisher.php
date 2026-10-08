@@ -9,7 +9,7 @@ use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\DiscordPublishException;
 use App\Exceptions\Social\ErrorCategory;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\ContentSanitizer;
@@ -31,13 +31,13 @@ class DiscordPublisher
 
     private const MAX_EMBED_COLOR = 0xFFFFFF;
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $guildId = (string) $account->platform_user_id;
-        $channelId = (string) data_get($postPlatform->meta, 'channel_id');
+        $channelId = (string) data_get($post->meta, 'channel_id');
 
         if ($channelId === '') {
             throw new DiscordPublishException(
@@ -52,11 +52,11 @@ class DiscordPublisher
         // bot is in (including another workspace's).
         $this->guardChannelBelongsToGuild($guildId, $channelId);
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
+        $content = $post->content
+            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
             : '';
 
-        $content = $this->appendMentions($content, $postPlatform);
+        $content = $this->appendMentions($content, $post);
 
         if (mb_strlen($content) > self::MAX_MESSAGE_LENGTH) {
             throw new DiscordPublishException(
@@ -65,13 +65,13 @@ class DiscordPublisher
             );
         }
 
-        $embeds = $this->buildEmbeds($postPlatform);
-        $media = $postPlatform->post->mediaItems->take($postPlatform->platform->maxImages());
+        $embeds = $this->buildEmbeds($post);
+        $media = $post->mediaItems->take($post->platform->maxImages());
 
         $payload = array_filter([
             'content' => $content !== '' ? $content : null,
             'embeds' => $embeds !== [] ? $embeds : null,
-            'allowed_mentions' => $this->allowedMentions($postPlatform),
+            'allowed_mentions' => $this->allowedMentions($post),
         ], fn ($value) => $value !== null);
 
         $messageId = $media->isEmpty()
@@ -187,9 +187,9 @@ class DiscordPublisher
      * meta — not the shared content — so they only ping on Discord and don't leak
      * literal `<@id>` markup to other platforms.
      */
-    private function appendMentions(string $content, PostPlatform $postPlatform): string
+    private function appendMentions(string $content, Post $post): string
     {
-        $tokens = $this->mentionTokens($postPlatform)->implode(' ');
+        $tokens = $this->mentionTokens($post)->implode(' ');
 
         if ($tokens === '') {
             return $content;
@@ -205,13 +205,13 @@ class DiscordPublisher
      *
      * @return array<string, mixed>
      */
-    private function allowedMentions(PostPlatform $postPlatform): array
+    private function allowedMentions(Post $post): array
     {
         $parse = [];
         $users = [];
         $roles = [];
 
-        foreach ($this->mentionTokens($postPlatform) as $token) {
+        foreach ($this->mentionTokens($post) as $token) {
             if ($token === '@everyone' || $token === '@here') {
                 $parse[] = 'everyone';
             } elseif (preg_match('/^<@&(\d+)>$/', $token, $matches)) {
@@ -237,9 +237,9 @@ class DiscordPublisher
     /**
      * @return Collection<int, string>
      */
-    private function mentionTokens(PostPlatform $postPlatform): Collection
+    private function mentionTokens(Post $post): Collection
     {
-        return collect((array) data_get($postPlatform->meta, 'mentions', []))
+        return collect((array) data_get($post->meta, 'mentions', []))
             ->map(fn ($mention) => trim((string) data_get($mention, 'token')))
             ->filter()
             ->values();
@@ -248,9 +248,9 @@ class DiscordPublisher
     /**
      * @return list<array<string, mixed>>
      */
-    private function buildEmbeds(PostPlatform $postPlatform): array
+    private function buildEmbeds(Post $post): array
     {
-        return collect((array) data_get($postPlatform->meta, 'embeds', []))
+        return collect((array) data_get($post->meta, 'embeds', []))
             ->map(fn ($embed) => array_filter([
                 'title' => data_get($embed, 'title'),
                 'description' => data_get($embed, 'description'),
