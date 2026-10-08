@@ -1109,6 +1109,67 @@ test('linkedin publisher retries a LinkedIn 5xx while uploading media before the
     'document' => ['/rest/documents', 'application/pdf', 'deck.pdf'],
 ]);
 
+test('linkedin publisher retries a LinkedIn 5xx after the media upload starts and before the post exists', function (string $failingStep, string $mimeType, string $file) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'media-1', 'path' => "media/2026-01/{$file}",
+            'url' => "https://example.com/media/2026-01/{$file}",
+            'mime_type' => $mimeType, 'original_filename' => $file,
+        ]],
+    ]);
+
+    $uploadUrls = [
+        'image upload' => 'https://www.linkedin.com/dms/upload/image/1',
+        'video chunk' => 'https://www.linkedin.com/dms/upload/video/1',
+        'document upload' => 'https://www.linkedin.com/dms/upload/document/1',
+    ];
+
+    Http::fake(function ($request) use ($failingStep, $uploadUrls) {
+        $url = $request->url();
+        $failingUrl = $failingStep === 'video finalize' ? 'finalizeUpload' : $uploadUrls[$failingStep];
+
+        if (str_contains($url, $failingUrl)) {
+            return Http::response(['message' => 'RestException{_response=RestResponse[status=503]}', 'status' => 503], 503);
+        }
+
+        if (str_contains($url, '/rest/images')) {
+            return Http::response(['value' => ['uploadUrl' => $uploadUrls['image upload'], 'image' => 'urn:li:image:1']], 200);
+        }
+
+        if (str_contains($url, '/rest/videos') && str_contains($url, 'initializeUpload')) {
+            return Http::response(['value' => [
+                'video' => 'urn:li:video:1',
+                'uploadToken' => 'upload-token',
+                'uploadInstructions' => [['uploadUrl' => $uploadUrls['video chunk'], 'firstByte' => 0, 'lastByte' => 9]],
+            ]], 200);
+        }
+
+        if (str_contains($url, '/rest/documents') && str_contains($url, 'initializeUpload')) {
+            return Http::response(['value' => ['uploadUrl' => $uploadUrls['document upload'], 'document' => 'urn:li:document:1']], 200);
+        }
+
+        if (in_array($url, $uploadUrls, true)) {
+            return Http::response(null, 201, ['etag' => '"etag-1"']);
+        }
+
+        if (str_contains($url, '/rest/posts')) {
+            return Http::response(null, 201, ['x-restli-id' => 'urn:li:share:1']);
+        }
+
+        return Http::response('fake-bytes', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe(503));
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/rest/posts'));
+})->with([
+    'image upload' => ['image upload', 'image/jpeg', 'photo.jpg'],
+    'video chunk' => ['video chunk', 'video/mp4', 'clip.mp4'],
+    'video finalize' => ['video finalize', 'video/mp4', 'clip.mp4'],
+    'document upload' => ['document upload', 'application/pdf', 'deck.pdf'],
+]);
+
 test('linkedin publisher throws when document init response is missing the urn', function () {
     $this->postPlatform->update(['content_type' => ContentType::LinkedInPost]);
     $this->post->update([
