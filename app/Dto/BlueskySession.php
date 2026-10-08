@@ -57,16 +57,4 @@ final readonly class BlueskySession
     {
         return $this->accessToken !== null && $this->refreshToken !== null;
     }
-
-    /**
-     * @return array{did: string, handle: string, emailConfirmed: ?bool}
-     */
-    public function __debugInfo(): array
-    {
-        return [
-            'did' => $this->did,
-            'handle' => $this->handle,
-            'emailConfirmed' => $this->emailConfirmed,
-        ];
-    }
 }

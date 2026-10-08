@@ -24,11 +24,6 @@ test('bluesky session maps the authentication response without coercing values',
         ->and($session->emailConfirmed)->toBe($emailConfirmed)
         ->and($session->hasTokens())->toBeTrue();
 
-    expect($session->__debugInfo())->toBe([
-        'did' => 'did:plc:account',
-        'handle' => 'account.bsky.social',
-        'emailConfirmed' => $emailConfirmed,
-    ]);
 })->with([true, false, null]);
 
 test('bluesky session accepts a session lookup without tokens or email confirmation', function () {
