@@ -334,7 +334,7 @@ class XPublisher
         // APPEND - Read from temp file in 1MB chunks. Matches the
         // twitter-api-v2 SDK default and X's own quickstart examples;
         // larger chunks (we previously used 5MB) trigger 413 at the X
-        // edge with an empty body, surfacing as "An unknown X error".
+        // edge with an empty body.
         $chunkSize = 1024 * 1024;
         $handle = fopen($tempFile, 'r');
         $index = 0;
