@@ -81,6 +81,8 @@ test('a Google 5xx that reaches the mapper fails as an unconfirmed upload', func
     '502 html page' => [502, []],
     '503 backendError' => [503, [['reason' => 'backendError', 'message' => 'Backend Error']]],
     '500 internalError' => [500, [['reason' => 'internalError', 'message' => 'Internal error']]],
+    '400 backendError' => [400, [['reason' => 'backendError', 'message' => 'Backend Error']]],
+    'internalError without a status' => [0, [['reason' => 'internalError', 'message' => 'Internal error']]],
 ]);
 
 test('a failure without a documented reason never reaches the user message', function () {

@@ -532,6 +532,20 @@ test('a Google server error before the final chunk retries the upload', function
     ],
 ]);
 
+test('a Google backendError below 500 retries the upload without an http status', function () {
+    $publisher = fakeYouTubeUpload([
+        'https://youtube.googleapis.com/upload/youtube/v3/videos*' => Http::response([
+            'error' => ['code' => 400, 'message' => 'Backend Error', 'errors' => [['reason' => 'backendError', 'message' => 'Backend Error']]],
+        ], 400),
+    ]);
+    $this->post->update(['media' => [[
+        'id' => 'v', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'v.mp4',
+    ]]]);
+
+    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBeNull());
+});
+
 test('a Google server error on the final chunk fails without retrying because the video may exist', function () {
     $this->post->update(['media' => [[
         'id' => 'v', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'v.mp4',
