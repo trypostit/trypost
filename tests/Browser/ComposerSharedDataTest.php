@@ -382,12 +382,12 @@ test('a failed slot read shows a retry banner and slots open once it loads', fun
     composerSharedDataZoneLabel($page, $channel);
     waitForComposerSharedDataTestId($page, 'composer-live-data-failed');
     $page->assertSeeIn('@composer-live-data-failed', __('posts.composer.load_failed'));
-    waitForComposerSharedDataTestId($page, 'composer-schedule-slot-1500');
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeTrue();
+    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid=\"composer-schedule-slot-1500\"]')?.disabled === true");
+    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]")?.disabled'))->toBeTrue();
 
     $page->click('@composer-live-data-retry');
     waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"composer-live-data-failed\"]') && document.querySelector('[data-testid=\"composer-schedule-slot-1500\"]')?.disabled === false");
 
     $page->assertMissing('@composer-live-data-failed');
-    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]").disabled'))->toBeFalse();
+    expect($page->script('document.querySelector("[data-testid=composer-schedule-slot-1500]")?.disabled'))->toBeFalse();
 });

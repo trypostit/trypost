@@ -49,6 +49,20 @@ function waitForComposerReady(mixed $page, string $testId = 'composer-add-accoun
     JS);
 }
 
+function clickComposerDialogNewPost(mixed $page): void
+{
+    $item = "document.querySelector('[data-testid=\"sidebar-new-post\"]')?.getBoundingClientRect().height > 0";
+    $settled = "{$item} && document.querySelector('[data-testid=\"sidebar-new-menu\"]').getAnimations().every((animation) => animation.playState !== 'running')";
+
+    for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
+        $page->click('@sidebar-new');
+        waitForComposerCondition($page, $item);
+    }
+
+    waitForComposerCondition($page, $settled);
+    $page->click('@sidebar-new-post');
+}
+
 test('schedule view switch opens the weekly calendar and goes back to the list', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
@@ -173,9 +187,9 @@ test('new post buttons open the global dialog without changing the page URL', fu
     $this->actingAs($user);
 
     $calendar = visit(route('app.calendar'));
-    $calendar->click('@sidebar-new')
-        ->click('@sidebar-new-post')
-        ->assertVisible('@post-composer-dialog')
+    clickComposerDialogNewPost($calendar);
+    waitForComposerReady($calendar);
+    $calendar->assertVisible('@post-composer-dialog')
         ->assertScript('location.pathname + location.search', parse_url(route('app.calendar'), PHP_URL_PATH));
 
     $posts = visit(route('app.posts.index'));
@@ -216,7 +230,7 @@ test('the global composer opens without accessibility or attribute warnings', fu
         })();
     JS);
 
-    $page->click('@sidebar-new')->click('@sidebar-new-post');
+    clickComposerDialogNewPost($page);
     waitForComposerReady($page);
 
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
@@ -577,7 +591,7 @@ test('a label created from the empty label picker of the global composer is list
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    $page->click('@sidebar-new')->click('@sidebar-new-post');
+    clickComposerDialogNewPost($page);
     waitForComposerReady($page);
     $page->fill('@composer-base-content', 'Draft text')
         ->click('@composer-add-account')
