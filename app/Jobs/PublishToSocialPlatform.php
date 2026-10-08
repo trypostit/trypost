@@ -370,7 +370,8 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
      * A limit refusal (rate limit, posting quota, daily cap) is not a failure
      * yet: the target waits in Retrying until `retry_at`, when
      * ProcessScheduledPosts dispatches it again. A refused TikTok publish_id
-     * is dead, so it is dropped; thread checkpoints stay so the retry resumes.
+     * is dead and X media ids expire before a long wait ends, so both are
+     * dropped; thread checkpoints stay so the retry resumes.
      * Returns false once the retries are spent.
      */
     private function waitForLimitRetry(SocialPublishException $e): bool
@@ -394,6 +395,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
                 PublishCheckpoint::TIKTOK_PUBLISH_ID,
                 PublishCheckpoint::TIKTOK_STATUS,
                 PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS,
+                PublishCheckpoint::X_MEDIA,
             ]),
             'category' => ErrorCategory::RateLimit->value,
             'platform_error_code' => $e->platformErrorCode,

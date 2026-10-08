@@ -425,6 +425,27 @@ test('a refused tiktok publish_id is dropped so the retry starts a new publish',
         ->and(data_get($target->fresh()->error_context, PublishCheckpoint::TIKTOK_STATUS))->toBeNull();
 });
 
+test('a limit wait drops the x media checkpoint so the retry uploads the media again', function () {
+    Queue::fake();
+    $threadProgress = [['id' => '1', 'hash' => 'root-hash']];
+    $target = limitRetryTarget($this, Platform::X, [
+        'error_context' => [
+            PublishCheckpoint::X_MEDIA => ['media-1' => '1880000000000000000'],
+            ThreadProgress::KEY => $threadProgress,
+        ],
+    ]);
+    limitRetryPublisherThrows(XPublisher::class, XPublishException::fromApiResponse(limitRetryResponse(429, ['type' => 'https://api.twitter.com/2/problems/usage-capped', 'title' => 'Usage capped'])));
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    $context = $target->fresh()->error_context;
+    expect($target->fresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($context)->not->toHaveKey(PublishCheckpoint::X_MEDIA)
+        ->and(PublishCheckpoint::xMedia($context))->toBe([])
+        ->and(data_get($context, ThreadProgress::KEY))->toEqual($threadProgress)
+        ->and(data_get($context, LimitRetryPolicy::ATTEMPTS_KEY))->toBe(1);
+});
+
 test('the scheduler unique attempts never collide with platform-unavailable attempts', function () {
     $largestProcessingBudget = max(
         (new ReflectionClassConstant(InstagramPublisher::class, 'STATUS_MAX_RETRIES'))->getValue(),
