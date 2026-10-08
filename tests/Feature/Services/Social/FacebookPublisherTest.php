@@ -485,6 +485,7 @@ test('facebook publisher fails a rupload error meta flags not retriable by its d
 })->with([
     'processing failed' => ['ProcessingFailedError', 'posts.errors.facebook.processing_failed', ErrorCategory::MediaFormat],
     'partial request' => ['PartialRequestError', 'posts.errors.facebook.upload_incomplete', ErrorCategory::ServerError],
+    'invalid upload offset' => ['OffsetInvalidError', 'posts.errors.facebook.upload_incomplete', ErrorCategory::ServerError],
     'undocumented type' => ['InvalidFileError', 'posts.errors.unrecognized_error', ErrorCategory::Unknown],
 ]);
 
