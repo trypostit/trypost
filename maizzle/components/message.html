@@ -17,7 +17,7 @@
           </td>
         </tr>
         <tr>
-          <td align="@{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() === 'rtl' ? 'right' : 'left' }}"
+          <td align="@{{ $direction === 'rtl' ? 'right' : 'left' }}"
             class="rounded-xl border border-solid border-border bg-surface p-8 sm:p-6 text-base leading-6 text-foreground">
             <yield />
           </td>

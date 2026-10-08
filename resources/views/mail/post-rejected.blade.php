@@ -1,5 +1,9 @@
+@use('App\Enums\User\Locale')
+@php
+$direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
+@endphp
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr' }}" xmlns:v="urn:schemas-microsoft-com:vml">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" dir="{{ $direction }}" xmlns:v="urn:schemas-microsoft-com:vml">
 <head>
   <meta charset="utf-8">
   <meta name="x-apple-disable-message-reformatting">
@@ -58,7 +62,7 @@
               </td>
             </tr>
             <tr>
-              <td align="{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() === 'rtl' ? 'right' : 'left' }}" class="sm-p-6" style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 32px; font-size: 16px; line-height: 24px; color: #292928">
+              <td align="{{ $direction === 'rtl' ? 'right' : 'left' }}" class="sm-p-6" style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 32px; font-size: 16px; line-height: 24px; color: #292928">
                 <h1 style="margin: 0 0 24px; font-family: Outfit, Inter, Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 600; line-height: 32px; color: #292928"> {{ __('mail.post_rejected.heading') }}</h1>
                 <p style="margin: 0; line-height: 24px">
                   {{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}

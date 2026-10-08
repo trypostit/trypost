@@ -1,5 +1,10 @@
+@use('App\Enums\User\Locale')
+@php
+  $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
+@endphp
+
 <!DOCTYPE html>
-<html lang="@{{ str_replace('_', '-', app()->getLocale()) }}" dir="@{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr' }}" xmlns:v="urn:schemas-microsoft-com:vml">
+<html lang="@{{ str_replace('_', '-', app()->getLocale()) }}" dir="@{{ $direction }}" xmlns:v="urn:schemas-microsoft-com:vml">
 
 <head>
   <meta charset="utf-8">
