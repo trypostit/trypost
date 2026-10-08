@@ -257,6 +257,7 @@ class ImportExternalPosts
     /**
      * Instagram reports a feed video TryPost published as a reel, so feed and
      * reel stand in for each other; a story only ever matches a story.
+     * TikTok's video/list also returns photo posts without a media type.
      *
      * @return list<ContentType>
      */
@@ -264,6 +265,7 @@ class ImportExternalPosts
     {
         return match ($type) {
             ContentType::InstagramFeed, ContentType::InstagramReel => [ContentType::InstagramFeed, ContentType::InstagramReel],
+            ContentType::TikTokVideo => [ContentType::TikTokVideo, ContentType::TikTokPhoto],
             default => [$type],
         };
     }

@@ -484,6 +484,7 @@ class TikTokPublisher
     {
         $statusData = $this->waitForPublishStatus($publishId);
         $postId = data_get($statusData, 'publicaly_available_post_id.0');
+        $postId = is_int($postId) ? (string) $postId : $postId;
         $postId = is_string($postId) && $postId !== '' ? $postId : null;
 
         if ($postId === null) {

@@ -89,6 +89,25 @@ test('tiktok publisher can publish video', function () {
     });
 });
 
+test('tiktok publisher keeps the public post id returned as an integer or string', function (int|string $postId) {
+    $this->postPlatform->update(['error_context' => ['tiktok_publish_id' => 'p_pub_url~123']]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => [
+                'status' => 'PUBLISH_COMPLETE',
+                'publicaly_available_post_id' => [$postId],
+            ],
+        ]),
+    ]);
+
+    $result = $this->publisher->publish($this->postPlatform->fresh());
+
+    expect($result['id'])->toBe('7694308097568836885')
+        ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker/video/7694308097568836885');
+    Http::assertSentCount(1);
+})->with([7694308097568836885, '7694308097568836885']);
+
 test('tiktok publisher persists the public video url when status omits the post id', function () {
     $this->post->update([
         'content' => 'Construam produtos globais e faturem em dólar.',

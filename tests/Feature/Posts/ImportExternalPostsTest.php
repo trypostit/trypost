@@ -333,11 +333,15 @@ test('an instagram post trypost published under its container id is linked inste
         ->and($tryPost->fresh()->platform_url)->toBe('https://www.instagram.com/p/media-1/');
 });
 
-test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function () {
+test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function (ContentType $contentType, string $publishId) {
     $account = SocialAccount::factory()->tiktok()->create();
-    $tryPost = sentByTryPost($account, 'v_pub_url~123', '<p>A long description that the network cuts short</p>', now()->subHour()->toImmutable());
+    $tryPost = sentByTryPost($account, $publishId, '<p>A long description that the network cuts short</p>', now()->subHour()->toImmutable(), $contentType);
+    $media = $contentType === ContentType::TikTokPhoto
+        ? array_map(fn (int $index): array => ['id' => "photo-{$index}", 'url' => "https://cdn.example/photo-{$index}.jpg", 'mime_type' => 'image/jpeg'], range(1, 4))
+        : [['id' => 'video-1', 'url' => 'https://cdn.example/video.mp4', 'mime_type' => 'video/mp4']];
+    $tryPost->post->update(['media' => $media]);
     $provisional = externalPublication($account, [
-        'remote_id' => 'v_pub_url~123',
+        'remote_id' => $publishId,
         'post_platform_id' => $tryPost->id,
         'origin' => PublicationOrigin::TryPost,
         'provider_synced_at' => null,
@@ -356,9 +360,14 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
         ->and(AnalyticsPublication::query()->find($discovered->id))->toBeNull()
         ->and($provisional->fresh()->remote_id)->toBe('7300000000000000001')
         ->and($provisional->fresh()->post_platform_id)->toBe($tryPost->id)
+        ->and($tryPost->fresh()->content_type)->toBe($contentType)
+        ->and($tryPost->post->fresh()->media)->toEqual($media)
         ->and($tryPost->fresh()->platform_post_id)->toBe('7300000000000000001')
         ->and($tryPost->fresh()->platform_url)->toBe('https://www.tiktok.com/@trypost/video/7300000000000000001');
-});
+})->with([
+    'video' => [ContentType::TikTokVideo, 'v_pub_url~123'],
+    'photo carousel' => [ContentType::TikTokPhoto, 'p_pub_url~123'],
+]);
 
 test('a trypost target whose id the network already confirmed is never relinked by text', function () {
     $account = SocialAccount::factory()->instagram()->create();
@@ -384,6 +393,26 @@ test('two trypost posts matching the same publication link neither and import no
         ->and($publication->fresh()->post_platform_id)->toBeNull()
         ->and($first->fresh()->platform_post_id)->toBe('container-1')
         ->and($second->fresh()->platform_post_id)->toBe('container-2');
+    Log::shouldHaveReceived('warning')->once();
+});
+
+test('a tiktok discovery matching both a photo and video waits instead of claiming either', function () {
+    Log::spy();
+    $account = SocialAccount::factory()->tiktok()->create();
+    $photo = sentByTryPost($account, 'p_pub_url~123', 'Same caption', now()->subHour()->toImmutable(), ContentType::TikTokPhoto);
+    $video = sentByTryPost($account, 'v_pub_url~123', 'Same caption', now()->subHour()->toImmutable(), ContentType::TikTokVideo);
+    $publication = externalPublication($account, [
+        'remote_id' => '7694308097568836885',
+        'excerpt' => 'Same caption',
+        'content_type' => PublicationContentType::Video,
+        'provider_published_at' => now()->subHour(),
+    ]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and($photo->fresh()->platform_post_id)->toBe('p_pub_url~123')
+        ->and($video->fresh()->platform_post_id)->toBe('v_pub_url~123');
     Log::shouldHaveReceived('warning')->once();
 });
 
