@@ -17,6 +17,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
@@ -441,11 +442,7 @@ class XPublisher
 
     private function isKnownMedia(string $mediaId): bool
     {
-        $response = $this->getHttpClient()
-            ->get("{$this->baseUrl}/media/upload", [
-                'media_id' => $mediaId,
-                'command' => 'STATUS',
-            ]);
+        $response = $this->mediaStatus($mediaId);
 
         if (in_array($response->status(), [400, 404], true)) {
             return false;
@@ -465,6 +462,27 @@ class XPublisher
         return true;
     }
 
+    private function mediaStatus(string $mediaId): Response
+    {
+        try {
+            return $this->getHttpClient()
+                ->get("{$this->baseUrl}/media/upload", [
+                    'media_id' => $mediaId,
+                    'command' => 'STATUS',
+                ]);
+        } catch (ConnectionException $e) {
+            throw new PlatformUnavailableException(
+                message: "X media status check failed to connect: {$e->getMessage()}",
+                context: [
+                    PublishCheckpoint::X_MEDIA => [
+                        ...$this->uploadedMedia,
+                        ...($this->currentMediaItemId !== null ? [$this->currentMediaItemId => $mediaId] : []),
+                    ],
+                ],
+            );
+        }
+    }
+
     private function waitForProcessing(string $mediaId, int $maxAttempts = 20): void
     {
         $lastProcessingInfo = null;
@@ -472,11 +490,7 @@ class XPublisher
         for ($i = 0; $i < $maxAttempts; $i++) {
             // Official status endpoint: GET /2/media/upload?media_id=...&command=STATUS
             // (not GET /2/media/{id} — that path is not the upload-status contract).
-            $response = $this->getHttpClient()
-                ->get("{$this->baseUrl}/media/upload", [
-                    'media_id' => $mediaId,
-                    'command' => 'STATUS',
-                ]);
+            $response = $this->mediaStatus($mediaId);
 
             if ($response->failed()) {
                 Log::error('X media status check error', ['body' => $this->redactResponseBody($response->body())]);

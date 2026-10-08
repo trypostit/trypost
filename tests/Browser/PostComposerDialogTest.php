@@ -55,12 +55,22 @@ function clickComposerDialogNewPost(mixed $page): void
     $settled = "{$item} && document.querySelector('[data-testid=\"sidebar-new-menu\"]').getAnimations().every((animation) => animation.playState !== 'running')";
 
     for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
-        $page->click('@sidebar-new');
+        clickComposerDialogControl($page, '[data-testid="sidebar-new"]');
         waitForComposerCondition($page, $item);
     }
 
     waitForComposerCondition($page, $settled);
-    $page->click('@sidebar-new-post');
+    clickComposerDialogControl($page, '[data-testid="sidebar-new-post"]');
+}
+
+/**
+ * Pest retries clicks with a one-second timeout. A successful click can time
+ * out after opening a modal or removing its target, then be repeated. Let
+ * Playwright wait with the full timeout and issue the action only once.
+ */
+function clickComposerDialogControl(mixed $page, string $selector): void
+{
+    $page->page()->locator($selector)->click();
 }
 
 test('schedule view switch opens the weekly calendar and goes back to the list', function () {
@@ -503,8 +513,8 @@ test('composer searches and selects multiple labels and exposes emoji and signat
     waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-label-search\"]')");
     $page->click('@composer-base-emoji');
     waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face\"]')?.getBoundingClientRect().height > 0");
-    $page->click('button[aria-label="grinning face"]')
-        ->assertValue('@composer-base-content', '😀')
+    clickComposerDialogControl($page, 'button[aria-label="grinning face"]');
+    $page->assertValue('@composer-base-content', '😀')
         ->click('@composer-base-signature')
         ->click('text=Campaign signature')
         ->assertValue('@composer-base-content', "😀\n\n#campaign")
@@ -514,8 +524,8 @@ test('composer searches and selects multiple labels and exposes emoji and signat
     waitForComposerCondition($page, "!document.querySelector('[data-testid=\"composer-account-option-{$account->id}\"]')");
     $page->click("@composer-{$account->id}-emoji");
     waitForComposerCondition($page, "document.querySelector('button[aria-label=\"grinning face with big eyes\"]')?.getBoundingClientRect().height > 0");
-    $page->click('button[aria-label="grinning face with big eyes"]')
-        ->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
+    clickComposerDialogControl($page, 'button[aria-label="grinning face with big eyes"]');
+    $page->assertValue("@composer-caption-{$account->id}", "😀\n\n#campaign😃")
         ->click('@composer-save-draft');
 
     $page->script(<<<'JS'

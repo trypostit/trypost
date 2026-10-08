@@ -3,12 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -20,6 +22,7 @@ use App\Support\Social\PublishCheckpoint;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Sleep;
 
 /**
@@ -1358,6 +1361,68 @@ test('x publisher resumes checkpointed media without uploading it again', functi
     Http::assertSent(fn ($request) => str_contains($request->url(), '/2/tweets')
         && data_get($request->data(), 'media.media_ids') === ['media_ready']);
 });
+
+test('x status connection failures reschedule and resume the uploaded media', function (bool $checkpointed, int $failedCheck) {
+    Sleep::fake();
+    Queue::fake();
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+    $this->postPlatform->forceFill([
+        'scheduled_before_media_checks' => true,
+        'error_context' => $checkpointed ? [PublishCheckpoint::X_MEDIA => ['test-media-video' => 'media_ready']] : null,
+    ])->save();
+
+    $checks = 0;
+    Http::fake(function ($request) use (&$checks, $failedCheck) {
+        if (isXMediaUploadStatusRequest($request)) {
+            if (++$checks === $failedCheck) {
+                throw new ConnectionException('Timed out checking media');
+            }
+
+            return Http::response(['data' => ['processing_info' => ['state' => 'succeeded']]]);
+        }
+
+        if (str_contains($request->url(), '/initialize')) {
+            return Http::response(['data' => ['id' => 'media_ready']]);
+        }
+
+        if (str_contains($request->url(), '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_ready', 'processing_info' => ['state' => 'pending']]]);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_ready']]);
+        }
+
+        return Http::response('fake-video-content');
+    });
+
+    (new PublishToSocialPlatform($this->postPlatform))->handle();
+
+    expect($this->postPlatform->refresh()->status)->toBe(PlatformStatus::Retrying)
+        ->and($this->postPlatform->error_context[PublishCheckpoint::X_MEDIA])->toBe(['test-media-video' => 'media_ready'])
+        ->and($this->postPlatform->error_context['retry_count'])->toBe(1);
+    Queue::assertPushed(PublishToSocialPlatform::class, fn ($job) => $job->postPlatform->is($this->postPlatform)
+        && $job->delay->isFuture());
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+
+    (new PublishToSocialPlatform($this->postPlatform, 1))->handle();
+
+    expect($this->postPlatform->refresh()->status)->toBe(PlatformStatus::Published);
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/initialize')))->toHaveCount($checkpointed ? 0 : 1);
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/2/tweets')))->toHaveCount(1);
+})->with([
+    'checkpoint existence check' => [true, 1],
+    'checkpoint processing check' => [true, 2],
+    'first poll after upload' => [false, 1],
+]);
 
 test('x publisher uploads again when a checkpointed media id is no longer known to X', function (int $status) {
     Sleep::fake();
