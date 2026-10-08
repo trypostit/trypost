@@ -428,8 +428,7 @@ class ConnectionVerifier
         self::throwIfDeadTikTokRefresh($data);
 
         $error = data_get($data, 'error');
-        $description = data_get($data, 'error_description');
-        $description = is_string($description) && $description !== '' ? $description : null;
+        $description = self::tikTokErrorDescription($data);
 
         if (filled($error)) {
             $code = is_string($error) ? $error : 'unrecognized error';
@@ -460,12 +459,17 @@ class ConnectionVerifier
             return;
         }
 
-        $description = data_get($body, 'error_description');
-
         throw new TokenExpiredException(
-            is_string($description) && $description !== '' ? $description : $error,
+            self::tikTokErrorDescription($body) ?? $error,
             platformErrorCode: $error,
         );
+    }
+
+    private static function tikTokErrorDescription(mixed $body): ?string
+    {
+        $description = data_get($body, 'error_description');
+
+        return is_string($description) && $description !== '' ? $description : null;
     }
 
     private function refreshPinterestToken(SocialAccount $account): void
