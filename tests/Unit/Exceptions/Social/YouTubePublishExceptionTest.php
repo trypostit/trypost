@@ -156,6 +156,8 @@ test('only a reason YouTube documents as caused by the user is marked as a netwo
 })->with([
     'invalid title' => ['invalidTitle', 400, true],
     'channel upload limit' => ['uploadLimitExceeded', 400, true],
+    'invalid description' => ['invalidDescription', 400, true],
+    'channel upload rate limit' => ['uploadRateLimitExceeded', 403, true],
     'our project quota' => ['quotaExceeded', 403, false],
     'category we send' => ['invalidCategoryId', 400, false],
     'privacy value we send' => ['forbiddenPrivacySetting', 403, false],

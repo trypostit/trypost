@@ -166,6 +166,7 @@ test('only an error code TikTok documents as caused by the creator is marked as 
     expect(TikTokPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([
     'missing video.publish grant' => ['scope_not_authorized', 401, true],
+    'grant revoked by the creator' => ['scope_permission_missed', 401, true],
     'per user token rate limit' => ['rate_limit_exceeded', 429, true],
     'file outside the specs' => ['invalid_file_upload', 400, true],
     'creator daily post cap' => ['spam_risk_too_many_posts', 403, true],
@@ -182,6 +183,9 @@ test('only a fail reason caused by the creator is marked as a network rejection'
     expect(TikTokPublishException::fromFailReason($failReason)->isNetworkRejection())->toBe($marked);
 })->with([
     'unsupported media format' => ['file_format_check_failed', true],
+    'video duration outside the limits' => ['duration_check_failed', true],
+    'unsupported frame rate' => ['frame_rate_check_failed', true],
+    'picture size outside the limits' => ['picture_size_check_failed', true],
     'spammy description' => ['spam_risk_text', true],
     'access removed by the creator' => ['auth_removed', true],
     'a developer cancel' => ['publish_cancelled', false],

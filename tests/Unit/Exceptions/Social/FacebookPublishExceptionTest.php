@@ -181,6 +181,15 @@ test('only a Graph code caused by the Page is marked as a network rejection', fu
     expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([
     'unsupported video format' => [1363024, true],
+    'video above the maximum size' => [1363023, true],
+    'video below the minimum size' => [1363022, true],
+    'file is not a valid video' => [1363032, true],
+    'video too short' => [1363025, true],
+    'video too long' => [1363026, true],
+    'reel encoding issue' => [1363047, true],
+    'reel encoding requirements not met' => [1609010, true],
+    'video too short for the format' => [2061006, true],
+    'incompatible thumbnail' => [1346003, true],
     'caption too long' => [1390008, true],
     'duplicate post' => [506, true],
     'user request limit' => [17, true],
@@ -201,6 +210,7 @@ test('only a rupload processing failure is marked as a network rejection', funct
 })->with([
     'processing failed' => ['ProcessingFailedError', true],
     'our partial request' => ['PartialRequestError', false],
+    'invalid upload offset' => ['OffsetInvalidError', false],
 ]);
 
 test('a rupload failure without a usable type has no platform error code', function (mixed $type) {
