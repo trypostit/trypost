@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\FacebookPublishException;
 use App\Exceptions\TokenExpiredException;
@@ -200,4 +201,19 @@ test('only a rupload processing failure is marked as a network rejection', funct
 })->with([
     'processing failed' => ['ProcessingFailedError', true],
     'our partial request' => ['PartialRequestError', false],
+]);
+
+test('a rupload failure without a usable type has no platform error code', function (mixed $type) {
+    $fakeResponse = Http::fake(['*' => Http::response(['debug_info' => ['type' => $type, 'message' => 'Failed']], 400)])
+        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v25.0/1');
+
+    $exception = FacebookPublishException::fromApiResponse($fakeResponse);
+
+    expect($exception->platformErrorCode)->toBeNull()
+        ->and($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->userMessage)->toBe(__('posts.errors.unrecognized_error', ['platform' => Platform::Facebook->label()]));
+})->with([
+    'empty type' => [''],
+    'array type' => [['ProcessingFailedError']],
+    'integer type' => [42],
 ]);
