@@ -77,11 +77,9 @@ class YouTubePublishException extends SocialPublishException
             );
         }
 
-        $providerMessage = data_get($errors, '0.message');
-
         [$message, $category] = self::mapReasonToMessageAndCategory(
             $reason,
-            is_string($providerMessage) && trim($providerMessage) !== '' ? $providerMessage : null,
+            self::filledMessage(data_get($errors, '0.message')),
         );
 
         return (new static(

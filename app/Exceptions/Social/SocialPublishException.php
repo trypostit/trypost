@@ -98,14 +98,22 @@ abstract class SocialPublishException extends RuntimeException
         }
 
         foreach ($paths as $path) {
-            $message = data_get($response->json(), $path);
+            $message = self::filledMessage(data_get($response->json(), $path));
 
-            if (is_string($message) && trim($message) !== '') {
+            if ($message !== null) {
                 return $message;
             }
         }
 
         return null;
+    }
+
+    /**
+     * A provider message worth showing: a string with text in it.
+     */
+    protected static function filledMessage(mixed $message): ?string
+    {
+        return is_string($message) && trim($message) !== '' ? $message : null;
     }
 
     abstract public static function fromApiResponse(mixed $response): static;
