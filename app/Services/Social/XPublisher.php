@@ -532,10 +532,10 @@ class XPublisher
         throw new PlatformUnavailableException(
             message: "X is still processing media {$mediaId}",
             context: [
-                PublishCheckpoint::X_MEDIA => array_filter([
+                PublishCheckpoint::X_MEDIA => [
                     ...$this->uploadedMedia,
                     ...($this->currentMediaItemId !== null ? [$this->currentMediaItemId => $mediaId] : []),
-                ]),
+                ],
             ],
             retryDelaySeconds: self::MEDIA_PROCESSING_RETRY_DELAY_SECONDS,
             maxRetries: self::MEDIA_PROCESSING_MAX_RETRIES,
