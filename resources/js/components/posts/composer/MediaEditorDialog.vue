@@ -349,7 +349,7 @@ watch(tagging, (isTagging) => {
             <div
                 class="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 lg:flex-row lg:overflow-hidden"
             >
-                <div class="flex min-h-0 flex-1 flex-col gap-3">
+                <div class="flex min-w-0 shrink-0 flex-col gap-3 lg:min-h-0 lg:flex-1">
                     <div
                         class="relative flex min-h-[45vh] flex-1 items-center justify-center overflow-hidden rounded-xl bg-muted select-none dark:bg-accent lg:min-h-0"
                     >

@@ -122,9 +122,60 @@ function saveMediaEditorDraft(mixed $page): void
     waitForMediaEditor($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 }
 
-test('rotating an image uploads the rotated pixels', function () {
+test('the media editor keeps its preview and controls separate at every viewport', function (int $width, int $height) {
+    [$post, $postPlatform] = seedMediaEditorPost(imageCount: 2);
+    $page = visit(route('app.posts.edit', $post))->resize($width, $height);
+    openMediaEditor($page, $postPlatform);
+
+    $page->assertScript(<<<'JS'
+        (() => {
+            const editor = document.querySelector('[data-testid="media-editor"]');
+            const stage = editor.querySelector('[data-testid="media-editor-stage"]').getBoundingClientRect();
+            const thumbnails = editor.querySelector('[data-testid="media-editor-thumbnails"]');
+            const preview = thumbnails.parentElement.getBoundingClientRect();
+            const strip = thumbnails.getBoundingClientRect();
+            const controls = editor.querySelector('aside').getBoundingClientRect();
+            const footer = editor.querySelector('[data-slot="dialog-footer"]').getBoundingClientRect();
+
+            return stage.width > 0 && stage.height > 0
+                && preview.top <= stage.top && preview.bottom >= strip.bottom
+                && strip.top >= stage.bottom
+                && (window.innerWidth < 1024 ? controls.top >= preview.bottom : controls.left >= preview.right)
+                && editor.scrollWidth <= editor.clientWidth
+                && footer.top >= 0 && footer.bottom <= window.innerHeight;
+        })()
+    JS, true);
+
+    $page->click('@crop-aspect-4-5')
+        ->assertAttribute('@crop-aspect-4-5', 'aria-pressed', 'true')
+        ->click('@media-editor-rotate-right')
+        ->click('@media-editor-appearance-section')
+        ->click('@media-filter-sepia')
+        ->assertVisible('@media-filter-intensity')
+        ->click('@media-editor-thumb-1')
+        ->assertAttribute('@media-editor-thumb-1', 'aria-current', 'true')
+        ->click('@media-editor-alt-tab')
+        ->fill('@media-editor-alt-text', 'Second image on a small screen')
+        ->assertSee('Apply changes to 2 items')
+        ->assertScript(<<<'JS'
+            (() => {
+                const button = document.querySelector('[data-testid="media-editor-apply"]');
+                const box = button.getBoundingClientRect();
+                return !button.disabled && box.top >= 0 && box.bottom <= window.innerHeight;
+            })()
+        JS, true)
+        ->click('@media-editor-cancel')
+        ->assertMissing('@media-editor')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'small phone' => [375, 667],
+    'tablet' => [768, 1024],
+    'desktop' => [1280, 800],
+]);
+
+test('rotating an image uploads the rotated pixels', function (int $width, int $height) {
     [$post, $postPlatform] = seedMediaEditorPost();
-    $page = visit(route('app.posts.edit', $post));
+    $page = visit(route('app.posts.edit', $post))->resize($width, $height);
     openMediaEditor($page, $postPlatform);
 
     $page->click('@media-editor-rotate-right')
@@ -146,7 +197,10 @@ test('rotating an image uploads the rotated pixels', function () {
         ->and(abs($topLeftAfter['red'] - $bottomLeftBefore['red']))->toBeLessThan(8)
         ->and(abs($topLeftAfter['green'] - $bottomLeftBefore['green']))->toBeLessThan(8)
         ->and(abs($topLeftAfter['blue'] - $bottomLeftBefore['blue']))->toBeLessThan(8);
-});
+})->with([
+    'desktop' => [1280, 800],
+    'mobile' => [375, 667],
+]);
 
 test('one apply saves edits made to several images', function () {
     [$post, $postPlatform] = seedMediaEditorPost(imageCount: 2);
