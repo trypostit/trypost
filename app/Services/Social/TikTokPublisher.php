@@ -483,11 +483,9 @@ class TikTokPublisher
     private function completePublish(PostPlatform $postPlatform, string $publishId): array
     {
         $statusData = $this->waitForPublishStatus($publishId);
-        $postId = data_get($statusData, 'publicaly_available_post_id.0');
-        $postId = is_int($postId) ? (string) $postId : $postId;
-        $postId = is_string($postId) && $postId !== '' ? $postId : null;
+        $postId = (string) data_get($statusData, 'publicaly_available_post_id.0');
 
-        if ($postId === null) {
+        if (blank($postId)) {
             $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($postPlatform);
         }
 

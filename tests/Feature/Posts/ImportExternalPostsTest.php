@@ -337,7 +337,11 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
     $account = SocialAccount::factory()->tiktok()->create();
     $tryPost = sentByTryPost($account, $publishId, '<p>A long description that the network cuts short</p>', now()->subHour()->toImmutable(), $contentType);
     $media = $contentType === ContentType::TikTokPhoto
-        ? array_map(fn (int $index): array => ['id' => "photo-{$index}", 'url' => "https://cdn.example/photo-{$index}.jpg", 'mime_type' => 'image/jpeg'], range(1, 4))
+        ? collect(range(1, 4))->map(fn (int $index): array => [
+            'id' => "photo-{$index}",
+            'url' => "https://cdn.example/photo-{$index}.jpg",
+            'mime_type' => 'image/jpeg',
+        ])->all()
         : [['id' => 'video-1', 'url' => 'https://cdn.example/video.mp4', 'mime_type' => 'video/mp4']];
     $tryPost->post->update(['media' => $media]);
     $provisional = externalPublication($account, [
@@ -355,15 +359,20 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
         'provider_published_at' => now()->subHour()->addMinutes(5),
     ]);
 
-    expect(ImportExternalPosts::execute($account))->toBe([])
-        ->and(Post::query()->imported()->count())->toBe(0)
-        ->and(AnalyticsPublication::query()->find($discovered->id))->toBeNull()
-        ->and($provisional->fresh()->remote_id)->toBe('7300000000000000001')
-        ->and($provisional->fresh()->post_platform_id)->toBe($tryPost->id)
-        ->and($tryPost->fresh()->content_type)->toBe($contentType)
-        ->and($tryPost->post->fresh()->media)->toEqual($media)
-        ->and($tryPost->fresh()->platform_post_id)->toBe('7300000000000000001')
-        ->and($tryPost->fresh()->platform_url)->toBe('https://www.tiktok.com/@trypost/video/7300000000000000001');
+    expect(ImportExternalPosts::execute($account))->toBe([]);
+
+    $tryPost->refresh();
+    $provisional->refresh();
+
+    $this->assertModelMissing($discovered);
+
+    expect(Post::query()->imported()->count())->toBe(0)
+        ->and($provisional->remote_id)->toBe('7300000000000000001')
+        ->and($provisional->post_platform_id)->toBe($tryPost->id)
+        ->and($tryPost->content_type)->toBe($contentType)
+        ->and($tryPost->post->media)->toEqual($media)
+        ->and($tryPost->platform_post_id)->toBe('7300000000000000001')
+        ->and($tryPost->platform_url)->toBe('https://www.tiktok.com/@trypost/video/7300000000000000001');
 })->with([
     'video' => [ContentType::TikTokVideo, 'v_pub_url~123'],
     'photo carousel' => [ContentType::TikTokPhoto, 'p_pub_url~123'],
