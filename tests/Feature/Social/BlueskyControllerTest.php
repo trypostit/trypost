@@ -201,6 +201,24 @@ test('the bluesky email confirmation message exists in every locale', function (
     }
 });
 
+test('bluesky discards pending credentials when session verification cannot connect', function () {
+    startSocialConnect($this->workspace, Platform::Bluesky)->offer([
+        PendingConnection::identity(Platform::Bluesky, 'did:plc:testuser123', 'Test User', 'testuser.bsky.social', null, 'profile', [
+            'access_token' => 'pending-access',
+            'refresh_token' => 'pending-refresh',
+        ]),
+    ]);
+
+    Http::fake(['https://bsky.social/xrpc/com.atproto.server.getSession' => Http::failedConnection()]);
+
+    $this->actingAs($this->user);
+    finishSocialConnect(Platform::Bluesky)->assertRedirect(route('app.social.connect.show', Platform::Bluesky));
+
+    expect(PendingConnection::current()->failure())->toBe('error_connecting')
+        ->and(session('social_connect.identities'))->toBeNull()
+        ->and($this->workspace->socialAccounts()->count())->toBe(0);
+});
+
 test('user can connect multiple bluesky accounts', function () {
 
     SocialAccount::factory()->bluesky()->create([

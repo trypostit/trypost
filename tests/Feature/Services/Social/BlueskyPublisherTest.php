@@ -860,6 +860,32 @@ test('bluesky publisher stops after one upload when the account email is unconfi
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/app.bsky.video.getJobStatus') || str_contains($request->url(), 'createRecord'));
 });
 
+test('bluesky publisher preserves video upload retries for other service failures', function (array|string $body, int $status) {
+    attachBlueskyVideo($this->post);
+
+    Http::fake([
+        'https://example.com/media/*' => Http::response(str_repeat('v', 2048)),
+        'https://plc.directory/*' => Http::response(['service' => []]),
+        'https://bsky.social/xrpc/com.atproto.server.getServiceAuth*' => Http::response(['token' => 'service-auth-token']),
+        'https://video.bsky.app/xrpc/app.bsky.video.uploadVideo*' => Http::sequence()
+            ->push($body, $status)
+            ->push(['blob' => ['$type' => 'blob', 'ref' => ['$link' => 'bafretry'], 'mimeType' => 'video/mp4', 'size' => 2048]]),
+        'https://bsky.social/xrpc/com.atproto.repo.createRecord' => Http::response([
+            'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/3retry',
+            'cid' => 'bafpost',
+        ]),
+    ]);
+
+    expect($this->publisher->publish($this->postPlatform)['id'])->toBe('3retry');
+    expect(Http::recorded(fn ($request) => str_contains($request->url(), '/app.bsky.video.uploadVideo')))->toHaveCount(2);
+})->with([
+    'service token expired' => [['error' => 'ExpiredToken'], 401],
+    'service token invalid' => [['error' => 'InvalidToken'], 401],
+    'unexpected error shape' => [['error' => ['message' => 'Unavailable']], 503],
+    'non-json response' => ['Service unavailable', 503],
+    'email error with a server failure' => [['jobStatus' => ['error' => 'unconfirmed_email']], 503],
+]);
+
 test('bluesky publisher stops publication when video processing fails', function () {
     $this->post->update([
         'media' => [[

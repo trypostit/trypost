@@ -16,14 +16,14 @@ class BlueskyPublishException extends SocialPublishException
         $body = $response->json();
         $rawResponse = $response->body();
 
-        $error = data_get($body, 'jobStatus.error') ?? data_get($body, 'error', '');
+        $error = data_get($body, 'error', '');
         $errorMessage = data_get($body, 'message', 'An unknown Bluesky error occurred.');
 
-        if ($error === 'unconfirmed_email' && $response->clientError()) {
+        if (self::isEmailUnconfirmed($response)) {
             return (new static(
                 userMessage: 'Confirm your email in Bluesky settings, then try publishing again.',
                 category: ErrorCategory::Permission,
-                platformErrorCode: $error,
+                platformErrorCode: 'unconfirmed_email',
                 rawResponse: $rawResponse,
             ))->asNetworkRejection();
         }
@@ -82,6 +82,13 @@ class BlueskyPublishException extends SocialPublishException
     public function platform(): string
     {
         return 'bluesky';
+    }
+
+    public static function isEmailUnconfirmed(Response $response): bool
+    {
+        $error = $response->json('jobStatus.error') ?? $response->json('error');
+
+        return $response->clientError() && $error === 'unconfirmed_email';
     }
 
     /**
