@@ -1550,7 +1550,8 @@ test('an x reply over the account limit is rejected before anything is posted', 
     $this->postPlatform->update(['meta' => ['thread_replies' => [str_repeat('a', 281)]]]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(Exception::class);
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.reply_too_long', ['limit' => 280, 'over' => 1]));
     Http::assertNothingSent();
 });
 
@@ -1651,6 +1652,72 @@ function fakeXVideoUploadStuckWith(array $statusProcessingInfo): void
     });
 }
 
+test('x publisher reschedules media still processing under its own retry policy', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-video',
+            'path' => 'media/2026-01/clip.mp4',
+            'url' => 'https://example.com/media/2026-01/clip.mp4',
+            'mime_type' => 'video/mp4',
+            'original_filename' => 'clip.mp4',
+        ]],
+    ]);
+
+    fakeXVideoUploadStuckWith(['state' => 'in_progress', 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->retryDelaySeconds)->toBe(60)
+                ->and($exception->maxRetries)->toBe(30);
+        });
+});
+
+test('x publisher keeps the media uploaded before the one still processing in the checkpoint', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-image',
+                'path' => 'media/2026-01/photo.jpg',
+                'url' => 'https://example.com/media/2026-01/photo.jpg',
+                'mime_type' => 'image/jpeg',
+                'original_filename' => 'photo.jpg',
+            ],
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    fakeXVideoUploadStuckWith(['state' => 'in_progress', 'check_after_secs' => 0]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (PlatformUnavailableException $exception): void {
+            expect($exception->context)->toBe([
+                PublishCheckpoint::X_MEDIA => [
+                    'test-media-image' => 'media_image_1',
+                    'test-media-video' => 'media_video_1',
+                ],
+            ]);
+        });
+});
+
 test('x publisher treats a processing state that is not a string as unknown', function () {
     Sleep::fake();
 
@@ -1669,3 +1736,45 @@ test('x publisher treats a processing state that is not a string as unknown', fu
     expect(fn () => $this->publisher->publish($this->postPlatform))
         ->toThrow(XPublishException::class, 'X media processing timed out. Please try again.');
 });
+
+test('x publisher fails on a v1-shaped upload response without data.id', function (string $mimeType, string $url, string $uploadPath) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media',
+            'path' => 'media/2026-01/file',
+            'url' => $url,
+            'mime_type' => $mimeType,
+            'original_filename' => basename($url),
+        ]],
+    ]);
+
+    $mockOptimizer = Mockery::mock(MediaOptimizer::class);
+    $mockOptimizer->shouldReceive('optimizeImage')->andReturnUsing(function (string $tempFile) {
+        $optimized = tempnam(sys_get_temp_dir(), 'x_opt_');
+        copy($tempFile, $optimized);
+
+        return $optimized;
+    });
+    app()->instance(MediaOptimizer::class, $mockOptimizer);
+
+    Http::fake(function ($request) use ($uploadPath) {
+        if (str_contains($request->url(), $uploadPath)) {
+            return Http::response(['media_id' => 710511363345354753, 'media_id_string' => '710511363345354753'], 200);
+        }
+
+        if (str_contains($request->url(), '/2/tweets')) {
+            return Http::response(['data' => ['id' => 'tweet_without_media']], 200);
+        }
+
+        return Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(XPublishException::class, 'X did not accept the media upload. Please try again.');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/append'));
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
+})->with([
+    'simple upload' => ['image/jpeg', 'https://example.com/media/2026-01/photo.jpg', '/2/media/upload'],
+    'chunked initialize' => ['video/mp4', 'https://example.com/media/2026-01/clip.mp4', '/2/media/upload/initialize'],
+]);
