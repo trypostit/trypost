@@ -31,9 +31,10 @@ class InstagramPublisher
 
     private PostPlatform $postPlatform;
 
-    private const int STATUS_RETRY_DELAY_SECONDS = 10;
+    private const int STATUS_RETRY_DELAY_SECONDS = 60;
 
-    private const int STATUS_MAX_RETRIES = 90;
+    /** Two hours of delayed retries for processing and transient Graph failures. */
+    private const int STATUS_MAX_RETRIES = 120;
 
     private const string WORKFLOW_CAROUSEL_CHILDREN = 'carousel_children';
 

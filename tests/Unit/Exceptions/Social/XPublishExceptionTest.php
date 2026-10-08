@@ -176,15 +176,23 @@ test('a payload too large and a bare 429 from X are not network rejections', fun
     expect(XPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([413, 429]);
 
-test('an unmapped type without a detail shows the title X sent', function () {
+test('an unmapped type without a valid detail shows the title X sent', function (mixed $detail) {
     $fakeResponse = Http::fake(['*' => Http::response([
         'type' => 'about:blank',
         'title' => 'Forbidden',
-        'detail' => '',
+        'detail' => $detail,
     ], 403)])->post(config('trypost.platforms.x.api').'/tweets');
 
     expect(XPublishException::fromApiResponse($fakeResponse)->userMessage)->toBe('Forbidden');
-});
+})->with([
+    'empty string' => [''],
+    'whitespace' => [" \t\n"],
+    'null' => [null],
+    'number' => [42],
+    'zero' => [0],
+    'boolean' => [false],
+    'array' => [['message' => 'Invalid shape']],
+]);
 
 test('an unmapped error shows the generic message when X sent no explanation', function (int $status, array $body) {
     $fakeResponse = Http::fake(['*' => Http::response($body, $status)])

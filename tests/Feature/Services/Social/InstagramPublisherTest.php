@@ -2,12 +2,15 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\TokenExpiredException;
+use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -18,6 +21,7 @@ use App\Services\Social\InstagramPublisher;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\ImageManager;
@@ -495,8 +499,8 @@ test('instagram publisher resumes a processing carousel child without recreating
                 'processing_child_container_ids' => ['child-2'],
             ],
             'instagram_status' => 'IN_PROGRESS',
-        ])->and($exception->retryDelaySeconds)->toBe(10)
-            ->and($exception->maxRetries)->toBe(90);
+        ])->and($exception->retryDelaySeconds)->toBe(60)
+            ->and($exception->maxRetries)->toBe(120);
 
         $this->postPlatform->update(['error_context' => $exception->context]);
     }
@@ -790,8 +794,8 @@ test('instagram publisher resumes media processing without creating another cont
                 'container_id' => 'container-123',
             ],
             'instagram_status' => 'IN_PROGRESS',
-        ])->and($exception->retryDelaySeconds)->toBe(10)
-            ->and($exception->maxRetries)->toBe(90);
+        ])->and($exception->retryDelaySeconds)->toBe(60)
+            ->and($exception->maxRetries)->toBe(120);
 
         $this->postPlatform->update(['error_context' => $exception->context]);
     }
@@ -838,6 +842,92 @@ test('instagram publisher does not publish a container that never finishes proce
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/media_publish'));
 });
+
+test('instagram retries long interruptions without abandoning or duplicating the container', function (int $minutes, string $interruption, bool $recovers) {
+    Queue::fake();
+    $this->freezeTime();
+    $startedAt = now();
+    $availableAt = $startedAt->copy()->addMinutes($minutes);
+    $workflow = ['stage' => 'final_container', 'container_id' => 'container-123'];
+    $this->post->update(['status' => PostStatus::Publishing]);
+    $this->postPlatform->update(['error_context' => ['instagram_workflow' => $workflow]]);
+
+    Http::fake(function (Request $request) use ($availableAt, $interruption, $recovers) {
+        $unavailable = ! $recovers || now()->lt($availableAt);
+
+        if (str_contains($request->url(), '/container-123')) {
+            if ($unavailable && $interruption === 'connection') {
+                throw new ConnectionException('Instagram is unreachable');
+            }
+
+            if ($unavailable && $interruption === 'status') {
+                return Http::response(['error' => ['code' => 2, 'is_transient' => true]], 503);
+            }
+
+            return Http::response(['status_code' => $unavailable && $interruption === 'processing' ? 'IN_PROGRESS' : 'FINISHED']);
+        }
+
+        if (str_ends_with($request->url(), '/media_publish')) {
+            if ($unavailable && $interruption === 'publish') {
+                return Http::response(['error' => ['code' => 2, 'is_transient' => true]], 503);
+            }
+
+            return Http::response(['id' => 'media-123456789']);
+        }
+
+        if (str_contains($request->url(), '/media-123456789')) {
+            return Http::response(['permalink' => 'https://www.instagram.com/p/ABC123/']);
+        }
+
+        throw new RuntimeException('Unexpected Instagram request: '.$request->url());
+    });
+
+    $job = new PublishToSocialPlatform($this->postPlatform);
+
+    for ($minute = 0; $minute < $minutes; $minute++) {
+        $job->handle();
+
+        expect($this->postPlatform->refresh()->status)->toBe(PlatformStatus::Retrying)
+            ->and($this->postPlatform->error_context['instagram_workflow'])->toBe($workflow)
+            ->and($this->postPlatform->error_context['processing_retry_count'])->toBe($minute + 1);
+
+        $job = Queue::pushed(PublishToSocialPlatform::class)->last();
+
+        expect($job->uniqueAttempt)->toBe($minute + 1)
+            ->and($job->delay->equalTo(now()->addMinute()))->toBeTrue();
+
+        $this->travelTo($job->delay);
+
+        if ($minute >= 59) {
+            $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+            expect($this->postPlatform->refresh()->status)->toBe(PlatformStatus::Retrying)
+                ->and($this->post->refresh()->status)->toBe(PostStatus::Publishing);
+        }
+    }
+
+    expect(now()->equalTo($availableAt))->toBeTrue();
+    $job->handle();
+
+    expect($this->postPlatform->refresh()->status)->toBe($recovers ? PlatformStatus::Published : PlatformStatus::Failed)
+        ->and($this->post->refresh()->status)->toBe($recovers ? PostStatus::Published : PostStatus::Failed);
+    Queue::assertPushed(PublishToSocialPlatform::class, $minutes);
+    Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/media'));
+    expect(Http::recorded(fn (Request $request, $response) => str_ends_with($request->url(), '/media_publish')
+        && $response->successful()))->toHaveCount($recovers ? 1 : 0);
+
+    if (! $recovers) {
+        expect($this->postPlatform->error_message)->toBe(__('posts.errors.platform_unavailable_exhausted'))
+            ->and($this->postPlatform->error_context['instagram_workflow'])->toBe($workflow);
+    }
+})->with([
+    'processing for 30 minutes' => [30, 'processing', true],
+    'status unavailable for over an hour' => [61, 'status', true],
+    'connection unavailable for over an hour' => [61, 'connection', true],
+    'publish unavailable for over an hour' => [61, 'publish', true],
+    'ready on the last retry' => [120, 'processing', true],
+    'still processing after two hours' => [120, 'processing', false],
+]);
 
 test('instagram publisher retries a transient Graph rate-limit on container status', function (int $code) {
     $this->post->update([

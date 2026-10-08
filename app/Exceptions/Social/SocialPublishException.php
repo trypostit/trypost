@@ -113,7 +113,7 @@ abstract class SocialPublishException extends RuntimeException
      */
     protected static function filledMessage(mixed $message): ?string
     {
-        return is_string($message) && trim($message) !== '' ? $message : null;
+        return is_string($message) && filled($message) ? $message : null;
     }
 
     abstract public static function fromApiResponse(mixed $response): static;
