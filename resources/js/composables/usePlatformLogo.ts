@@ -63,7 +63,6 @@ const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
     'instagram-facebook': ['instagram_reel', 'instagram_story'],
     facebook: ['facebook_reel', 'facebook_story'],
     threads: ['threads_ghost_post'],
-    pinterest: ['pinterest_video_pin', 'pinterest_carousel'],
 };
 
 export interface ContentTypeOption {

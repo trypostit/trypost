@@ -167,7 +167,7 @@ test('an imported sent card looks like a sent post and offers only the allowed a
     $page->assertNoJavaScriptErrors();
 });
 
-test('content type badges preserve the formats shown on other platforms', function (Platform $platform, array $formats) {
+test('content type badges follow the display rules for each platform', function (Platform $platform, array $formats) {
     [$user, $workspace] = importedCardSetup();
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
@@ -221,8 +221,8 @@ test('content type badges preserve the formats shown on other platforms', functi
     ]],
     'Pinterest' => [Platform::Pinterest, [
         [ContentType::PinterestPin, false],
-        [ContentType::PinterestVideoPin, true],
-        [ContentType::PinterestCarousel, true],
+        [ContentType::PinterestVideoPin, false],
+        [ContentType::PinterestCarousel, false],
     ]],
     'YouTube' => [Platform::YouTube, [[ContentType::YouTubeShort, false]]],
     'LinkedIn' => [Platform::LinkedIn, [[ContentType::LinkedInPost, false]]],
