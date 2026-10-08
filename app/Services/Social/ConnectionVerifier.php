@@ -34,6 +34,8 @@ class ConnectionVerifier
      * user must reconnect; every other error is ours or temporary.
      *
      * @see https://developers.tiktok.com/doc/oauth-error-handling
+     *
+     * @var list<string>
      */
     private const array TIKTOK_DEAD_REFRESH_ERRORS = ['invalid_grant', 'access_denied'];
 
@@ -146,7 +148,7 @@ class ConnectionVerifier
         return blank($token) ? $current : (string) $token;
     }
 
-    private function tokenFrom(?array $data, Platform $platform, string $key = 'access_token'): string
+    private function tokenFrom(mixed $data, Platform $platform, string $key = 'access_token'): string
     {
         $token = data_get($data, $key);
 
@@ -415,17 +417,19 @@ class ConnectionVerifier
                     'client_key' => config('services.tiktok.client_id'),
                     'client_secret' => config('services.tiktok.client_secret'),
                 ]),
-            fn (?array $body): bool => self::isDeadTikTokRefresh($body),
+            function (mixed $body): bool {
+                self::throwIfDeadTikTokRefresh($body);
+
+                return false;
+            },
         );
 
         $data = $response->json();
+        self::throwIfDeadTikTokRefresh($data);
+
         $error = data_get($data, 'error');
         $description = data_get($data, 'error_description');
         $description = is_string($description) && $description !== '' ? $description : null;
-
-        if (self::isDeadTikTokRefresh($data)) {
-            throw new TokenExpiredException($description ?? $error, platformErrorCode: $error);
-        }
 
         if (filled($error)) {
             $code = is_string($error) ? $error : 'unrecognized error';
@@ -443,11 +447,25 @@ class ConnectionVerifier
     }
 
     /**
-     * @param  array<string, mixed>|null  $body
+     * A dead refresh token expires the account with TikTok's error code,
+     * whether TikTok answered it with a 200 or a 4xx.
+     *
+     * @throws TokenExpiredException
      */
-    private static function isDeadTikTokRefresh(?array $body): bool
+    private static function throwIfDeadTikTokRefresh(mixed $body): void
     {
-        return in_array(data_get($body, 'error'), self::TIKTOK_DEAD_REFRESH_ERRORS, true);
+        $error = is_array($body) ? data_get($body, 'error') : null;
+
+        if (! in_array($error, self::TIKTOK_DEAD_REFRESH_ERRORS, true)) {
+            return;
+        }
+
+        $description = data_get($body, 'error_description');
+
+        throw new TokenExpiredException(
+            is_string($description) && $description !== '' ? $description : $error,
+            platformErrorCode: $error,
+        );
     }
 
     private function refreshPinterestToken(SocialAccount $account): void
