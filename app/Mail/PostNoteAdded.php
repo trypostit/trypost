@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\PostNote;
-use App\Models\PostPlatform;
 use App\Models\User;
 use App\Support\Mail\PostExcerpt;
 use Illuminate\Bus\Queueable;
@@ -49,9 +48,6 @@ class PostNoteAdded extends Mailable implements ShouldQueue
                     ->with('socialAccount')
                     ->enabled()
                     ->get()
-                    ->map(fn (PostPlatform $postPlatform): string => $postPlatform->notificationLabel())
-                    ->unique()
-                    ->values()
                     ->all(),
                 'url' => route('app.posts.edit', ['post' => $post, 'comment' => $this->note->id]),
             ],

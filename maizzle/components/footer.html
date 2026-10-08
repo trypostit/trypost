@@ -1,8 +1,10 @@
 <tr>
-  <td align="center" class="text-center text-zinc-600 text-xs p-6">
+  <td align="center" class="text-center text-muted-foreground text-xs leading-5 px-6 py-6">
     <p class="m-0 mb-2">
-      @{{ __('mail.layout.tagline') }}
+      {!! str_replace(':brand', '<a href="https://trypost.it" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">TryPost</a>', e(__('mail.layout.tagline'))) !!}
     </p>
+
+    <yield />
 
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" class="mx-auto mt-3">
       <tr>
@@ -27,7 +29,7 @@
           </a>
         </td>
         <td class="px-1">
-          <a href="https://www.instagram.com/trypost.en" target="_blank">
+          <a href="https://www.instagram.com/trypost.it" target="_blank">
             <img src="@{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram">
           </a>
         </td>

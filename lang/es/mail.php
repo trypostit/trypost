@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Herramienta de código abierto para programar redes sociales',
+        'tagline' => 'Enviado por el equipo de :brand',
         'manage_notifications' => 'Gestionar notificaciones',
         'signoff' => 'Un saludo,',
         'team' => 'El equipo de TryPost',
@@ -16,7 +16,7 @@ return [
         'title' => 'Tu cuenta de :platform necesita reconectarse',
         'preview' => 'Reconecta tu cuenta de :platform en :workspace para seguir programando publicaciones.',
         'heading' => 'Cuenta desconectada',
-        'intro' => 'Tu cuenta de <strong>:platform</strong> <strong>:account</strong> se ha desconectado del espacio de trabajo <strong>:workspace</strong>.',
+        'intro' => 'La siguiente cuenta se desconectó del espacio de trabajo :workspace.',
         'reasons_title' => 'Esto puede haber ocurrido porque:',
         'reason_expired' => 'Tu token de acceso caducó',
         'reason_revoked' => 'Revocaste el acceso a TryPost',
@@ -99,13 +99,17 @@ return [
         'button' => 'Ver en borradores',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Publicación sin texto',
+        'error' => 'Qué ocurrió',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'Tu publicación falló en :workspace',
         'title' => 'Tu publicación falló',
-        'preview' => 'Una o más plataformas no pudieron publicar.',
+        'preview' => 'Tu publicación falló',
         'heading' => 'Tu publicación falló',
-        'body' => 'Tu publicación programada en el espacio de trabajo :workspace falló en una o más plataformas.',
-        'platforms_title' => 'Plataformas con error:',
+        'body' => 'No pudimos publicar tu post en :workspace.',
         'button' => 'Ver publicación',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Tu publicación se publicó correctamente.',
         'heading' => 'Tu publicación salió',
         'body' => 'Tu publicación en el espacio de trabajo :workspace se publicó correctamente.',
-        'platforms_title' => 'Publicada en:',
-        'view_post' => 'Ver publicación',
-        'button' => 'Ver publicación',
+        'button' => 'Ver en la red social',
+        'open_in_app' => 'Abrir en TryPost',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook pausado tras fallos repetidos',
         'preview' => 'Pausamos un webhook tras 5 fallos consecutivos de entrega.',
         'heading' => 'Webhook pausado tras fallos repetidos',
-        'body' => 'Pausamos el webhook en :endpoint tras 5 fallos consecutivos de entrega. Revisa el endpoint y actívalo de nuevo en la página de detalles del webhook.',
+        'body' => 'Pausamos un webhook tras 5 fallos consecutivos de entrega.',
+        'next_steps' => 'Revisa el endpoint y actívalo de nuevo en la página de detalles del webhook.',
         'button' => 'Ver webhook',
     ],
 

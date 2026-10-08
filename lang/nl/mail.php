@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Open-source tool om social media in te plannen',
+        'tagline' => 'Verzonden door het :brand-team',
         'manage_notifications' => 'Meldingen beheren',
         'signoff' => 'Met vriendelijke groet,',
         'team' => 'Het TryPost-team',
@@ -16,7 +16,7 @@ return [
         'title' => 'Je :platform-account moet opnieuw worden verbonden',
         'preview' => 'Verbind je :platform-account in :workspace opnieuw om posts te blijven inplannen.',
         'heading' => 'Account losgekoppeld',
-        'intro' => 'Je <strong>:platform</strong>-account <strong>:account</strong> is losgekoppeld van de werkruimte <strong>:workspace</strong>.',
+        'intro' => 'Het onderstaande account is losgekoppeld van de werkruimte :workspace.',
         'reasons_title' => 'Dit kan zijn gebeurd omdat:',
         'reason_expired' => 'Je toegangstoken is verlopen',
         'reason_revoked' => 'Je hebt de toegang van TryPost ingetrokken',
@@ -99,13 +99,17 @@ return [
         'button' => 'Bekijken in concepten',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Bericht zonder tekst',
+        'error' => 'Wat er misging',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'Je post in :workspace kon niet worden gepubliceerd',
         'title' => 'Je post kon niet worden gepubliceerd',
-        'preview' => 'Een of meer platforms konden niet publiceren.',
+        'preview' => 'Je post kon niet worden gepubliceerd',
         'heading' => 'Je post kon niet worden gepubliceerd',
-        'body' => 'Je ingeplande post in de werkruimte :workspace kon op een of meer platforms niet worden gepubliceerd.',
-        'platforms_title' => 'Mislukte platforms:',
+        'body' => 'Je bericht in :workspace kon niet worden gepubliceerd.',
         'button' => 'Post bekijken',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Je post is succesvol gepubliceerd.',
         'heading' => 'Je post is gepubliceerd',
         'body' => 'Je post in de werkruimte :workspace is succesvol gepubliceerd.',
-        'platforms_title' => 'Gepubliceerd op:',
-        'view_post' => 'Post bekijken',
-        'button' => 'Post bekijken',
+        'button' => 'Bekijk op social media',
+        'open_in_app' => 'Open in TryPost',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook gepauzeerd na herhaalde fouten',
         'preview' => 'We hebben een webhook gepauzeerd na 5 opeenvolgende afleverfouten.',
         'heading' => 'Webhook gepauzeerd na herhaalde fouten',
-        'body' => 'We hebben de webhook op :endpoint gepauzeerd na 5 opeenvolgende afleverfouten. Controleer het endpoint en schakel het weer in op de webhookdetailpagina.',
+        'body' => 'We hebben een webhook gepauzeerd na 5 opeenvolgende afleverfouten.',
+        'next_steps' => 'Controleer het endpoint en schakel het weer in op de webhookdetailpagina.',
         'button' => 'Webhook bekijken',
     ],
 

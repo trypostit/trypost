@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'オープンソースの SNS 投稿スケジュールツール',
+        'tagline' => ':brandチームより送信',
         'manage_notifications' => '通知設定',
         'signoff' => 'よろしくお願いいたします。',
         'team' => 'TryPost チーム',
@@ -16,7 +16,7 @@ return [
         'title' => ':platform アカウントの再接続が必要です',
         'preview' => ':workspace の :platform アカウントを再接続すると、投稿の予約を続けられます。',
         'heading' => 'アカウントが切断されました',
-        'intro' => 'ワークスペース <strong>:workspace</strong> から <strong>:platform</strong> アカウント <strong>:account</strong> が切断されました。',
+        'intro' => '以下のアカウントがワークスペース :workspace から切断されました。',
         'reasons_title' => '考えられる原因:',
         'reason_expired' => 'アクセストークンの有効期限が切れた',
         'reason_revoked' => 'TryPost のアクセス権を取り消した',
@@ -99,13 +99,17 @@ return [
         'button' => '下書きで見る',
     ],
 
+    'post_preview' => [
+        'no_text' => 'テキストのない投稿',
+        'error' => 'エラーの詳細',
+    ],
+
     'post_publish_failed' => [
         'subject' => ':workspace で投稿の公開に失敗しました',
         'title' => '投稿の公開に失敗しました',
-        'preview' => '1 つ以上のプラットフォームで公開に失敗しました。',
+        'preview' => '投稿の公開に失敗しました',
         'heading' => '投稿の公開に失敗しました',
-        'body' => 'ワークスペース :workspace の予約投稿が、1 つ以上のプラットフォームで公開に失敗しました。',
-        'platforms_title' => '失敗したプラットフォーム:',
+        'body' => ':workspace の投稿を公開できませんでした。',
         'button' => '投稿を見る',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => '投稿が正常に公開されました。',
         'heading' => '投稿が公開されました',
         'body' => 'ワークスペース :workspace の投稿が正常に公開されました。',
-        'platforms_title' => '公開先:',
-        'view_post' => '投稿を見る',
-        'button' => '投稿を見る',
+        'button' => 'SNSで投稿を見る',
+        'open_in_app' => 'TryPostで開く',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => '連続した失敗のためWebhookを一時停止しました',
         'preview' => '配信が5回連続で失敗したため、Webhookを一時停止しました。',
         'heading' => '連続した失敗のためWebhookを一時停止しました',
-        'body' => ':endpoint のWebhookを、配信が5回連続で失敗したため一時停止しました。Endpointを確認し、Webhookの詳細ページから再度有効にしてください。',
+        'body' => '配信が5回連続で失敗したため、Webhookを一時停止しました。',
+        'next_steps' => 'Endpointを確認し、Webhookの詳細ページから再度有効にしてください。',
         'button' => 'Webhookを見る',
     ],
 

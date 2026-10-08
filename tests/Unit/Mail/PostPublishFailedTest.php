@@ -24,7 +24,8 @@ test('failed email falls back to the page display name when facebook has no user
 
     $mail = new PostPublishFailed($post);
 
-    $mail->assertSeeInHtml('Facebook Page (@InboxPlacement.io)');
+    $mail->assertSeeInHtml('Facebook Page');
+    $mail->assertSeeInHtml('InboxPlacement.io');
     $mail->assertDontSeeInHtml('Facebook Page (@)');
 });
 

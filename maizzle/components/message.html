@@ -1,0 +1,37 @@
+<script props>
+  module.exports = {
+    authenticated: props.authenticated === true || props.authenticated === 'true',
+  }
+</script>
+
+<table role="presentation" class="w-full bg-canvas font-sans">
+  <tr>
+    <td align="center" class="px-4">
+      <!--[if mso]>
+      <table role="presentation" width="552" align="center"><tr><td>
+      <![endif]-->
+      <table role="presentation" align="center" class="w-full max-w-[552px]">
+        <tr>
+          <td class="py-8">
+            <x-header />
+          </td>
+        </tr>
+        <tr>
+          <td align="@{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() === 'rtl' ? 'right' : 'left' }}"
+            class="rounded-xl border border-solid border-border bg-surface p-8 sm:p-6 text-base leading-6 text-foreground">
+            <yield />
+          </td>
+        </tr>
+        <if condition="authenticated">
+          <x-footer-authenticated />
+        </if>
+        <else>
+          <x-footer />
+        </else>
+      </table>
+      <!--[if mso]>
+      </td></tr></table>
+      <![endif]-->
+    </td>
+  </tr>
+</table>

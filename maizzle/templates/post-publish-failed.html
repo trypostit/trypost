@@ -1,50 +1,26 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
-      <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.post_publish_failed.heading') }}
+    </x-heading>
 
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.post_publish_failed.heading') }}
-                </h1>
+    <p class="m-0 leading-6">
+      @{{ __('mail.post_publish_failed.body', ['workspace' => $workspaceName]) }}
+    </p>
 
-                <p class="m-0 leading-6">
-                  @{{ __('mail.post_publish_failed.body', ['workspace' => $workspaceName]) }}
-                </p>
+    @if($publication)
+      <x-post-preview />
+      @if($publication['error'])
+        <x-alert title-key="mail.post_preview.error">
+          @{{ $publication['error'] }}
+        </x-alert>
+      @endif
+    @endif
 
-                <div class="mt-4 p-4 bg-zinc-50 rounded">
-                  <p class="m-0 text-sm font-semibold text-zinc-900">
-                    @{{ __('mail.post_publish_failed.platforms_title') }}
-                  </p>
-                  <ul class="m-0 mt-2 pl-5 leading-6 text-sm">
-                    @foreach($failedPlatforms as $platform)
-                      <li>
-                        <strong>@{{ $platform['name'] }}</strong>
-                        @if($platform['error'])
-                          — @{{ $platform['error'] }}
-                        @endif
-                      </li>
-                    @endforeach
-                  </ul>
-                </div>
+    <x-spacer height="24px" />
 
-                <x-spacer height="24px" />
-
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.post_publish_failed.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
-        </td>
-      </tr>
-    </table>
-  </div>
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.post_publish_failed.button') }}
+    </x-button>
+  </x-message>
 </x-main>

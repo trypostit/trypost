@@ -1,64 +1,41 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
-      <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.workspace_connections_disconnected.heading') }}
+    </x-heading>
 
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.workspace_connections_disconnected.heading') }}
-                </h1>
+    <p class="m-0 leading-6">
+      {!! __('mail.workspace_connections_disconnected.intro', ['workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
+    </p>
 
-                <p class="m-0 leading-6">
-                  {!! __('mail.workspace_connections_disconnected.intro', ['workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
-                </p>
+    @foreach($disconnectedAccounts as $account)
+      <table role="presentation" class="w-full mt-4">
+        <tr>
+          <td class="rounded-xl border border-solid border-border p-5 sm:p-4">
+            <x-channel-identity platform="$account->platform" account-name="$account->accountDisplayName()" />
+          </td>
+        </tr>
+      </table>
+    @endforeach
 
-                <table class="w-full mt-4" style="border-collapse: collapse">
-                  @foreach($disconnectedAccounts as $account)
-                  <tr>
-                    <td class="py-3" style="border-bottom: 1px solid #e4e4e7">
-                      <div style="display: flex; align-items: center">
-                        <div style="width: 8px; height: 8px; border-radius: 50%; background-color: @{{ $account->platform->color() }}; margin-right: 12px"></div>
-                        <div>
-                          <strong class="text-zinc-900">@{{ $account->platform->label() }}</strong>
-                          <span class="text-zinc-500"> - @{{ $account->accountDisplayName() }}</span>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  @endforeach
-                </table>
+    <p class="m-0 mt-6 leading-6">
+      @{{ __('mail.workspace_connections_disconnected.reasons_title') }}
+    </p>
 
-                <p class="m-0 mt-6 leading-6">
-                  @{{ __('mail.workspace_connections_disconnected.reasons_title') }}
-                </p>
+    <x-list>
+      <li>@{{ __('mail.workspace_connections_disconnected.reason_expired') }}</li>
+      <li>@{{ __('mail.workspace_connections_disconnected.reason_revoked') }}</li>
+      <li>@{{ __('mail.workspace_connections_disconnected.reason_changed') }}</li>
+    </x-list>
 
-                <ul class="m-0 mt-2 pl-5 leading-6">
-                  <li>@{{ __('mail.workspace_connections_disconnected.reason_expired') }}</li>
-                  <li>@{{ __('mail.workspace_connections_disconnected.reason_revoked') }}</li>
-                  <li>@{{ __('mail.workspace_connections_disconnected.reason_changed') }}</li>
-                </ul>
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.workspace_connections_disconnected.reconnect_cta') }}
+    </p>
 
-                <p class="m-0 mt-4 leading-6">
-                  @{{ __('mail.workspace_connections_disconnected.reconnect_cta') }}
-                </p>
+    <x-spacer height="24px" />
 
-                <x-spacer height="24px" />
-
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.workspace_connections_disconnected.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
-        </td>
-      </tr>
-    </table>
-  </div>
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.workspace_connections_disconnected.button') }}
+    </x-button>
+  </x-message>
 </x-main>

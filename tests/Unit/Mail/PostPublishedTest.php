@@ -25,7 +25,8 @@ test('published email falls back to the page display name when facebook has no u
 
     $mail = new PostPublished($post);
 
-    $mail->assertSeeInHtml('Facebook Page (@InboxPlacement.io)');
+    $mail->assertSeeInHtml('Facebook Page');
+    $mail->assertSeeInHtml('InboxPlacement.io');
     $mail->assertDontSeeInHtml('Facebook Page (@)');
     $mail->assertSeeInHtml('https://www.facebook.com/permalink.php?story_fbid=pfbid0&id=61592851040951');
 });
@@ -46,7 +47,8 @@ test('published email uses the username when the display name is empty', functio
 
     $mail = new PostPublished($post);
 
-    $mail->assertSeeInHtml('Bluesky (@inboxplacementio.bsky.social)');
+    $mail->assertSeeInHtml('Bluesky');
+    $mail->assertSeeInHtml('inboxplacementio.bsky.social');
     $mail->assertDontSeeInHtml('Bluesky (@)');
 });
 

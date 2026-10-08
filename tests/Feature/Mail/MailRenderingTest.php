@@ -27,6 +27,39 @@ use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Notifications\Notification as BaseNotification;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\DomCrawler\Crawler;
+
+test('the shared email layout keeps the action and the appropriate footer', function (string $template, bool $hasPreferences, Locale $locale) {
+    app()->setLocale($locale->value);
+
+    $html = view("mail.{$template}", [
+        'title' => 'TryPost',
+        'previewText' => 'Your TryPost update',
+        'url' => 'https://example.test/email-action',
+        'user' => User::factory()->make(['name' => 'Paulo']),
+        'workspaceName' => 'Launch Team',
+        'platformName' => 'YouTube',
+        'accountName' => 'Paulo',
+        'account' => SocialAccount::factory()->make(['platform' => Platform::YouTube, 'display_name' => 'Paulo']),
+        'isAdmin' => false,
+        'requiresApproval' => true,
+    ])->render();
+
+    $document = new Crawler($html);
+
+    expect($document->filter('h1')->count())->toBe(1)
+        ->and($document->filter('a[href="https://example.test/email-action"]')->count())->toBe(1)
+        ->and($document->filter('a[href="https://www.instagram.com/trypost.it"]')->count())->toBe(1)
+        ->and($document->filter('a[href="'.route('app.notifications.preferences').'"]')->count())->toBe($hasPreferences ? 1 : 0)
+        ->and($document->filter('html')->attr('dir'))->toBe($locale->direction())
+        ->and($document->filter('h1')->ancestors()->first()->attr('align'))->toBe($locale->direction() === 'rtl' ? 'right' : 'left')
+        ->and($html)->not->toContain('<x-', 'trypost.en');
+})->with([
+    'notification' => ['account-disconnected', true],
+    'invitation' => ['workspace-invite', false],
+    'verification' => ['email-verification', false],
+    'password reset' => ['password-reset', false],
+])->with([Locale::English, Locale::PortugueseBrazil, Locale::Arabic]);
 
 test('the workspace invite renders in the requested locale and names the workspace', function () {
     $account = Account::factory()->create(['name' => 'Acme Co']);
@@ -102,6 +135,7 @@ test('the post note email renders the note, the post and its channels', function
     $mailable->assertSeeInHtml('Can we swap the image?');
     $mailable->assertSeeInHtml('Launch day is here');
     $mailable->assertSeeInHtml('LinkedIn');
+    $mailable->assertSeeInHtml(asset('images/accounts/linkedin.png'));
     $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
@@ -145,6 +179,8 @@ test('the disconnected-connections digest renders every account and reason', fun
 
     foreach ($accounts as $account) {
         $mailable->assertSeeInHtml($account->platform->label());
+        $mailable->assertSeeInHtml($account->accountDisplayName());
+        $mailable->assertSeeInHtml(asset('images/accounts/'.$account->platform->network().'.png'));
     }
 });
 
@@ -201,6 +237,7 @@ test('the approval request email renders who asked, the channels, the excerpt an
     $mailable->assertSeeInHtml(__('mail.post_approval_requested.button', [], $locale->value));
     $mailable->assertSeeInHtml('Big launch tomorrow');
     $mailable->assertSeeInHtml('LinkedIn');
+    $mailable->assertSeeInHtml(asset('images/accounts/linkedin.png'));
     $mailable->assertSeeInHtml(route('app.posts.index', ['tab' => 'approvals']), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
@@ -228,6 +265,9 @@ test('the approved and rejected emails render the approver, the channels and the
     $approved->assertSeeInHtml(route('app.posts.index', ['tab' => 'queue']), false);
 
     $rejected = (new PostRejected([$post->id], $approver))->locale($locale->value);
+
+    $rejected->assertSeeInHtml(asset('images/accounts/linkedin.png'));
+    $approved->assertSeeInHtml(asset('images/accounts/linkedin.png'));
 
     $rejected->assertHasSubject(__('mail.post_rejected.subject', ['name' => 'Ada Approver'], $locale->value));
     $rejected->assertSeeInHtml(e(__('mail.post_rejected.body', ['name' => 'Ada Approver', 'workspace' => 'Acme Workspace'], $locale->value)), false);
@@ -331,17 +371,17 @@ test('the approved email lists the time of each channel when they go out at diff
     $mailable = (new PostApproved([$linkedIn->id, $x->id, $mastodon->id], $approver, $author))->locale($locale->value);
 
     $mailable->assertSeeInOrderInHtml([
-        $linkedIn->postPlatforms()->sole()->notificationLabel(),
+        $linkedIn->postPlatforms()->sole()->display_name,
         approvalEmailTimeLabel($morning, $author, $locale),
-        $x->postPlatforms()->sole()->notificationLabel(),
+        $x->postPlatforms()->sole()->display_name,
         approvalEmailTimeLabel($evening, $author, $locale),
-        $mastodon->postPlatforms()->sole()->notificationLabel(),
+        $mastodon->postPlatforms()->sole()->display_name,
         __('mail.post_approved.publishing_now', [], $locale->value),
     ]);
-    $mailable->assertSeeInHtml(__('mail.post_approved.channel_time', [
-        'channel' => '<strong>'.e($x->postPlatforms()->sole()->notificationLabel()).'</strong>',
-        'time' => approvalEmailTimeLabel($evening, $author, $locale),
-    ], $locale->value), false);
+    $document = new Crawler($mailable->render());
+    foreach ([Platform::LinkedIn, Platform::X, Platform::Mastodon] as $platform) {
+        expect($document->filter('img[src="'.asset('images/accounts/'.$platform->network().'.png').'"]')->count())->toBe(1);
+    }
 })->with([Locale::English, Locale::PortugueseBrazil, Locale::French]);
 
 test('the approved email shows one time when every channel goes out together', function () {
@@ -402,3 +442,17 @@ test('the email layout carries the recipient locale and direction', function (Lo
     'arabic' => [Locale::Arabic, 'rtl'],
     'portuguese' => [Locale::PortugueseBrazil, 'ltr'],
 ]);
+
+test('approval emails keep distinct channels with the same name and escape their names', function () {
+    $author = User::factory()->create(['timezone' => 'UTC']);
+    $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id]);
+    $first = approvalEmailPost($workspace, $author, Platform::Instagram, 'Studio <Team>');
+    $second = approvalEmailPost($workspace, $author, Platform::Instagram, 'Studio <Team>');
+
+    $html = (new PostRejected([$first->id, $second->id], $author))->render();
+    $document = new Crawler($html);
+
+    expect($document->filter('img[src="'.asset('images/accounts/instagram.png').'"]')->count())->toBe(2)
+        ->and($html)->toContain('Studio &lt;Team&gt;')
+        ->not->toContain('Studio <Team>');
+});

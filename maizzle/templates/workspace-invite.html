@@ -1,50 +1,33 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
-      <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
+  <x-message>
+    <x-heading>
+      @{{ __('mail.workspace_invite.heading') }}
+    </x-heading>
 
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.workspace_invite.heading') }}
-                </h1>
+    <p class="m-0 leading-6">
+      {!! __('mail.workspace_invite.intro', ['workspace' => e($workspaceName)]) !!}
+    </p>
 
-                <p class="m-0 leading-6">
-                  {!! __('mail.workspace_invite.intro', ['workspace' => e($workspaceName)]) !!}
-                </p>
+    <p class="m-0 mt-4 leading-6">
+      @if($isAdmin)
+        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.admin')).'</strong>']) !!}
+      @elseif($requiresApproval)
+        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.needs_approval')).'</strong>']) !!}
+      @else
+        {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.member')).'</strong>']) !!}
+      @endif
+    </p>
 
-                <p class="m-0 mt-4 leading-6">
-                  @if($isAdmin)
-                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.admin')).'</strong>']) !!}
-                  @elseif($requiresApproval)
-                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.needs_approval')).'</strong>']) !!}
-                  @else
-                    {!! __('mail.workspace_invite.role', ['role' => '<strong>'.e(__('mail.workspace_invite.roles.member')).'</strong>']) !!}
-                  @endif
-                </p>
+    <x-spacer height="24px" />
 
-                <x-spacer height="24px" />
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.workspace_invite.button') }}
+    </x-button>
 
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.workspace_invite.button') }}
-                  </x-button>
-                </div>
+    <x-spacer height="24px" />
 
-                <x-spacer height="24px" />
-
-                <p class="m-0 leading-6 text-zinc-500 text-sm">
-                  @{{ __('mail.workspace_invite.expiry') }}
-                </p>
-              </td>
-            </tr>
-          </table>
-          <x-footer />
-        </td>
-      </tr>
-    </table>
-  </div>
+    <p class="m-0 leading-6 text-muted-foreground text-sm">
+      @{{ __('mail.workspace_invite.expiry') }}
+    </p>
+  </x-message>
 </x-main>

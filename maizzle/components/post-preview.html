@@ -1,0 +1,18 @@
+<table role="presentation" class="w-full mt-6">
+  <tr>
+    <td class="rounded-xl border border-solid border-border p-5 sm:p-4">
+      <x-channel-identity platform="$publication['platform']" account-name="$publication['accountName']" />
+
+      @if($postPreview['text'] !== '')
+        <p class="m-0 mt-5 leading-6 text-foreground" style="white-space: pre-line;">@{{ $postPreview['text'] }}</p>
+      @endif
+
+      @if($postPreview['image'])
+        <img src="@{{ $postPreview['image']['url'] }}" alt="@{{ $postPreview['image']['alt'] }}"
+          width="@{{ $postPreview['image']['width'] }}" class="mt-5 h-auto max-w-full rounded-lg">
+      @elseif($postPreview['text'] === '')
+        <p class="m-0 mt-5 text-sm text-muted-foreground">@{{ $postPreview['attachment'] ?: __('mail.post_preview.no_text') }}</p>
+      @endif
+    </td>
+  </tr>
+</table>

@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Sosyal medya paylaşımlarını planlamak için açık kaynaklı araç',
+        'tagline' => ':brand ekibi tarafından gönderildi',
         'manage_notifications' => 'Bildirimleri yönet',
         'signoff' => 'Saygılarımızla,',
         'team' => 'TryPost Ekibi',
@@ -16,7 +16,7 @@ return [
         'title' => ':platform hesabının yeniden bağlanması gerekiyor',
         'preview' => 'Gönderi planlamaya devam etmek için :workspace çalışma alanındaki :platform hesabını yeniden bağla.',
         'heading' => 'Hesap bağlantısı kesildi',
-        'intro' => '<strong>:platform</strong> hesabın <strong>:account</strong>, <strong>:workspace</strong> çalışma alanından koptu.',
+        'intro' => 'Aşağıdaki hesabın :workspace çalışma alanıyla bağlantısı kesildi.',
         'reasons_title' => 'Bunun nedeni şunlar olabilir:',
         'reason_expired' => 'Erişim jetonunun süresi doldu',
         'reason_revoked' => 'TryPost erişimini iptal ettin',
@@ -99,13 +99,17 @@ return [
         'button' => 'Taslaklarda görüntüle',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Metinsiz gönderi',
+        'error' => 'Ne oldu',
+    ],
+
     'post_publish_failed' => [
         'subject' => ':workspace çalışma alanında gönderin paylaşılamadı',
         'title' => 'Gönderin paylaşılamadı',
-        'preview' => 'Bir veya daha fazla platformda paylaşım başarısız oldu.',
+        'preview' => 'Gönderin paylaşılamadı',
         'heading' => 'Gönderin paylaşılamadı',
-        'body' => ':workspace çalışma alanında planladığın gönderi, bir veya daha fazla platformda paylaşılamadı.',
-        'platforms_title' => 'Başarısız platformlar:',
+        'body' => ':workspace içindeki gönderiniz yayınlanamadı.',
         'button' => 'Gönderiyi gör',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Gönderin başarıyla paylaşıldı.',
         'heading' => 'Gönderin paylaşıldı',
         'body' => ':workspace çalışma alanındaki gönderin başarıyla paylaşıldı.',
-        'platforms_title' => 'Şurada paylaşıldı:',
-        'view_post' => 'Gönderiyi gör',
-        'button' => 'Gönderiyi gör',
+        'button' => 'Sosyal ağda görüntüle',
+        'open_in_app' => 'TryPost’ta aç',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook tekrarlanan hatalardan sonra duraklatıldı',
         'preview' => 'Üst üste 5 teslim hatasından sonra bir webhooku duraklattık.',
         'heading' => 'Webhook tekrarlanan hatalardan sonra duraklatıldı',
-        'body' => ':endpoint adresindeki webhooku üst üste 5 teslim hatasından sonra duraklattık. Endpointi gözden geçirin ve webhook ayrıntı sayfasından yeniden etkinleştirin.',
+        'body' => 'Üst üste 5 teslim hatasından sonra bir webhooku duraklattık.',
+        'next_steps' => 'Endpointi gözden geçirin ve webhook ayrıntı sayfasından yeniden etkinleştirin.',
         'button' => 'Webhooku gör',
     ],
 

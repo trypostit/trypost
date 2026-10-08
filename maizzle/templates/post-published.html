@@ -1,50 +1,39 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
-      <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.post_published.heading') }}
+    </x-heading>
 
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.post_published.heading') }}
-                </h1>
+    <p class="m-0 leading-6">
+      @{{ __('mail.post_published.body', ['workspace' => $workspaceName]) }}
+    </p>
 
-                <p class="m-0 leading-6">
-                  @{{ __('mail.post_published.body', ['workspace' => $workspaceName]) }}
-                </p>
+    @if($publication)
+      <x-post-preview />
+    @endif
 
-                <div class="mt-4 p-4 bg-green-50 rounded">
-                  <p class="m-0 text-sm font-semibold text-green-900">
-                    @{{ __('mail.post_published.platforms_title') }}
-                  </p>
-                  <ul class="m-0 mt-2 pl-5 leading-6 text-sm">
-                    @foreach($publishedPlatforms as $platform)
-                      <li>
-                        <strong>@{{ $platform['name'] }}</strong>
-                        @if($platform['url'])
-                          — <a href="@{{ $platform['url'] }}" target="_blank" class="text-green-700 underline">@{{ __('mail.post_published.view_post') }}</a>
-                        @endif
-                      </li>
-                    @endforeach
-                  </ul>
-                </div>
+    <x-spacer height="24px" />
 
-                <x-spacer height="24px" />
-
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.post_published.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
-        </td>
-      </tr>
-    </table>
-  </div>
+    @if($publishedUrl)
+      <table role="presentation" align="center" class="mx-auto">
+        <tr>
+          <td class="align-middle">
+            <x-button href="@{{ $publishedUrl }}" variant="primary" size="sm">
+              @{{ __('mail.post_published.button') }}
+            </x-button>
+          </td>
+          <td class="w-3 sm:w-2" aria-hidden="true">&nbsp;</td>
+          <td class="align-middle">
+            <x-button href="@{{ $url }}" variant="secondary" size="sm">
+              @{{ __('mail.post_published.open_in_app') }}
+            </x-button>
+          </td>
+        </tr>
+      </table>
+    @else
+      <x-button href="@{{ $url }}">
+        @{{ __('mail.post_published.open_in_app') }}
+      </x-button>
+    @endif
+  </x-message>
 </x-main>

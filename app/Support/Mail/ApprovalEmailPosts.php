@@ -38,13 +38,12 @@ class ApprovalEmailPosts
 
     /**
      * @param  Collection<int, Post>  $posts
-     * @return list<string>
+     * @return list<PostPlatform>
      */
     public static function channels(Collection $posts): array
     {
         return $posts->flatMap(fn (Post $post) => $post->postPlatforms)
-            ->map(fn (PostPlatform $postPlatform): string => $postPlatform->notificationLabel())
-            ->unique()
+            ->unique(fn (PostPlatform $postPlatform): string => $postPlatform->social_account_id ?? $postPlatform->id)
             ->values()
             ->all();
     }
@@ -54,12 +53,12 @@ class ApprovalEmailPosts
      * publishing now. One shared moment collapses into a single line.
      *
      * @param  Collection<int, Post>  $posts
-     * @return array{at: ?string, perChannel: list<array{channel: string, at: ?string}>}
+     * @return array{at: ?string, perChannel: list<array{channels: list<PostPlatform>, at: ?string}>}
      */
     public static function goesOut(Collection $posts, User $recipient): array
     {
         $perChannel = $posts->map(fn (Post $post): array => [
-            'channel' => implode(', ', self::channels(collect([$post]))),
+            'channels' => self::channels(collect([$post])),
             'at' => $post->status === PostStatus::Scheduled ? self::time($post->scheduled_at, $recipient) : null,
         ]);
 

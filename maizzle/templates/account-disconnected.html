@@ -1,48 +1,39 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.account_disconnected.heading') }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      {!! __('mail.account_disconnected.intro', ['workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
+    </p>
+
+    <table role="presentation" class="w-full mt-6">
       <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
-
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.account_disconnected.heading') }}
-                </h1>
-
-                <p class="m-0 leading-6">
-                  {!! __('mail.account_disconnected.intro', ['platform' => '<strong>'.e($platformName).'</strong>', 'account' => '<strong>'.e($accountName).'</strong>', 'workspace' => '<strong>'.e($workspaceName).'</strong>']) !!}
-                </p>
-
-                <p class="m-0 mt-4 leading-6">
-                  @{{ __('mail.account_disconnected.reasons_title') }}
-                </p>
-
-                <ul class="m-0 mt-2 pl-5 leading-6">
-                  <li>@{{ __('mail.account_disconnected.reason_expired') }}</li>
-                  <li>@{{ __('mail.account_disconnected.reason_revoked') }}</li>
-                  <li>@{{ __('mail.account_disconnected.reason_error') }}</li>
-                </ul>
-
-                <p class="m-0 mt-4 leading-6">
-                  @{{ __('mail.account_disconnected.reconnect_cta') }}
-                </p>
-
-                <x-spacer height="24px" />
-
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.account_disconnected.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
+        <td class="rounded-xl border border-solid border-border p-5 sm:p-4">
+          <x-channel-identity platform="$account->platform" account-name="$account->accountDisplayName()" />
         </td>
       </tr>
     </table>
-  </div>
+
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.account_disconnected.reasons_title') }}
+    </p>
+
+    <x-list>
+      <li>@{{ __('mail.account_disconnected.reason_expired') }}</li>
+      <li>@{{ __('mail.account_disconnected.reason_revoked') }}</li>
+      <li>@{{ __('mail.account_disconnected.reason_error') }}</li>
+    </x-list>
+
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.account_disconnected.reconnect_cta') }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.account_disconnected.button') }}
+    </x-button>
+  </x-message>
 </x-main>

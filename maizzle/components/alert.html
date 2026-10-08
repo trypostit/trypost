@@ -1,0 +1,14 @@
+<script props>
+  module.exports = {
+    title: `@{{ __('${props['title-key']}') }}`,
+  }
+</script>
+
+<table role="presentation" class="w-full mt-4">
+  <tr>
+    <td class="rounded-xl border border-solid border-border bg-muted p-5 sm:p-4">
+      <p class="m-0 text-sm leading-5 font-semibold text-destructive-text">{!! title !!}</p>
+      <p class="m-0 mt-1.5 text-sm leading-[22px] text-foreground"><yield /></p>
+    </td>
+  </tr>
+</table>

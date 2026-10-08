@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Strumento open source per pianificare i social',
+        'tagline' => 'Inviato dal team :brand',
         'manage_notifications' => 'Gestisci le notifiche',
         'signoff' => 'Cordiali saluti,',
         'team' => 'Il team di TryPost',
@@ -16,7 +16,7 @@ return [
         'title' => 'Il tuo account :platform deve essere ricollegato',
         'preview' => 'Ricollega il tuo account :platform in :workspace per continuare a pianificare i post.',
         'heading' => 'Account disconnesso',
-        'intro' => 'Il tuo account <strong>:platform</strong> <strong>:account</strong> è stato disconnesso dallo spazio di lavoro <strong>:workspace</strong>.',
+        'intro' => 'Il seguente account è stato disconnesso dallo spazio di lavoro :workspace.',
         'reasons_title' => 'Può essere successo perché:',
         'reason_expired' => 'Il tuo token di accesso è scaduto',
         'reason_revoked' => 'Hai revocato l’accesso a TryPost',
@@ -99,13 +99,17 @@ return [
         'button' => 'Vedi nelle bozze',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Post senza testo',
+        'error' => 'Cosa è successo',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'La pubblicazione del tuo post in :workspace non è riuscita',
         'title' => 'La pubblicazione del tuo post non è riuscita',
-        'preview' => 'Una o più piattaforme non sono riuscite a pubblicare.',
+        'preview' => 'La pubblicazione del tuo post non è riuscita',
         'heading' => 'La pubblicazione del tuo post non è riuscita',
-        'body' => 'Il tuo post pianificato nello spazio di lavoro :workspace non è stato pubblicato su una o più piattaforme.',
-        'platforms_title' => 'Piattaforme non riuscite:',
+        'body' => 'Non è stato possibile pubblicare il tuo post in :workspace.',
         'button' => 'Vedi post',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Il tuo post è stato pubblicato correttamente.',
         'heading' => 'Il tuo post è stato pubblicato',
         'body' => 'Il tuo post nello spazio di lavoro :workspace è stato pubblicato correttamente.',
-        'platforms_title' => 'Pubblicato su:',
-        'view_post' => 'Vedi post',
-        'button' => 'Vedi post',
+        'button' => 'Vedi sul social',
+        'open_in_app' => 'Apri in TryPost',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook messo in pausa dopo errori ripetuti',
         'preview' => 'Abbiamo messo in pausa un webhook dopo 5 errori di consegna consecutivi.',
         'heading' => 'Webhook messo in pausa dopo errori ripetuti',
-        'body' => 'Abbiamo messo in pausa il webhook su :endpoint dopo 5 errori di consegna consecutivi. Controlla l\'endpoint e riattivalo dalla pagina dei dettagli del webhook.',
+        'body' => 'Abbiamo messo in pausa un webhook dopo 5 errori di consegna consecutivi.',
+        'next_steps' => 'Controlla l\'endpoint e riattivalo dalla pagina dei dettagli del webhook.',
         'button' => 'Vedi webhook',
     ],
 

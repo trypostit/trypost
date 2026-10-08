@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Open-Source-Tool zur Planung von Social-Media-Beiträgen',
+        'tagline' => 'Gesendet vom :brand-Team',
         'manage_notifications' => 'Benachrichtigungen verwalten',
         'signoff' => 'Viele Grüße,',
         'team' => 'Das TryPost-Team',
@@ -16,7 +16,7 @@ return [
         'title' => 'Dein :platform-Konto muss neu verbunden werden',
         'preview' => 'Verbinde dein :platform-Konto in :workspace neu, um weiter Beiträge zu planen.',
         'heading' => 'Konto getrennt',
-        'intro' => 'Dein <strong>:platform</strong>-Konto <strong>:account</strong> wurde vom Workspace <strong>:workspace</strong> getrennt.',
+        'intro' => 'Das folgende Konto wurde vom Workspace :workspace getrennt.',
         'reasons_title' => 'Mögliche Gründe:',
         'reason_expired' => 'Dein Zugriffstoken ist abgelaufen',
         'reason_revoked' => 'Du hast den Zugriff von TryPost widerrufen',
@@ -99,13 +99,17 @@ return [
         'button' => 'In den Entwürfen ansehen',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Beitrag ohne Text',
+        'error' => 'Was passiert ist',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'Dein Beitrag in :workspace konnte nicht veröffentlicht werden',
         'title' => 'Dein Beitrag konnte nicht veröffentlicht werden',
-        'preview' => 'Eine oder mehrere Plattformen konnten nicht veröffentlichen.',
+        'preview' => 'Dein Beitrag konnte nicht veröffentlicht werden',
         'heading' => 'Dein Beitrag konnte nicht veröffentlicht werden',
-        'body' => 'Dein geplanter Beitrag im Workspace :workspace konnte auf einer oder mehreren Plattformen nicht veröffentlicht werden.',
-        'platforms_title' => 'Fehlgeschlagene Plattformen:',
+        'body' => 'Dein Beitrag in :workspace konnte nicht veröffentlicht werden.',
         'button' => 'Beitrag ansehen',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Dein Beitrag wurde erfolgreich veröffentlicht.',
         'heading' => 'Dein Beitrag wurde veröffentlicht',
         'body' => 'Dein Beitrag im Workspace :workspace wurde erfolgreich veröffentlicht.',
-        'platforms_title' => 'Veröffentlicht auf:',
-        'view_post' => 'Beitrag ansehen',
-        'button' => 'Beitrag ansehen',
+        'button' => 'Im Netzwerk ansehen',
+        'open_in_app' => 'In TryPost öffnen',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook nach wiederholten Fehlern pausiert',
         'preview' => 'Wir haben einen Webhook nach 5 aufeinanderfolgenden Zustellfehlern pausiert.',
         'heading' => 'Webhook nach wiederholten Fehlern pausiert',
-        'body' => 'Wir haben den Webhook unter :endpoint nach 5 aufeinanderfolgenden Zustellfehlern pausiert. Prüfe den Endpoint und aktiviere ihn wieder auf der Webhook-Detailseite.',
+        'body' => 'Wir haben einen Webhook nach 5 aufeinanderfolgenden Zustellfehlern pausiert.',
+        'next_steps' => 'Prüfe den Endpoint und aktiviere ihn wieder auf der Webhook-Detailseite.',
         'button' => 'Webhook anzeigen',
     ],
 

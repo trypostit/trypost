@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Outil open source de planification pour les réseaux sociaux',
+        'tagline' => 'Envoyé par l’équipe :brand',
         'manage_notifications' => 'Gérer les notifications',
         'signoff' => 'Cordialement,',
         'team' => 'L\'équipe TryPost',
@@ -16,7 +16,7 @@ return [
         'title' => 'Votre compte :platform doit être reconnecté',
         'preview' => 'Reconnectez votre compte :platform dans :workspace pour continuer à planifier vos publications.',
         'heading' => 'Compte déconnecté',
-        'intro' => 'Votre compte <strong>:platform</strong> <strong>:account</strong> a été déconnecté de l’espace de travail <strong>:workspace</strong>.',
+        'intro' => 'Le compte ci-dessous a été déconnecté de l’espace de travail :workspace.',
         'reasons_title' => 'Cela peut être dû à :',
         'reason_expired' => 'Votre jeton d’accès a expiré',
         'reason_revoked' => 'Vous avez révoqué l’accès de TryPost',
@@ -99,13 +99,17 @@ return [
         'button' => 'Voir dans les brouillons',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Publication sans texte',
+        'error' => 'Ce qui s’est passé',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'Votre publication a échoué dans :workspace',
         'title' => 'Votre publication a échoué',
-        'preview' => 'Une ou plusieurs plateformes n’ont pas pu publier.',
+        'preview' => 'Votre publication a échoué',
         'heading' => 'Votre publication a échoué',
-        'body' => 'Votre publication planifiée dans l’espace de travail :workspace a échoué sur une ou plusieurs plateformes.',
-        'platforms_title' => 'Plateformes en échec :',
+        'body' => 'Nous n’avons pas pu publier votre post dans :workspace.',
         'button' => 'Voir la publication',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Votre publication a bien été publiée.',
         'heading' => 'Votre publication est en ligne',
         'body' => 'Votre publication dans l’espace de travail :workspace a bien été publiée.',
-        'platforms_title' => 'Publiée sur :',
-        'view_post' => 'Voir la publication',
-        'button' => 'Voir la publication',
+        'button' => 'Voir sur le réseau',
+        'open_in_app' => 'Ouvrir dans TryPost',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook mis en pause après des échecs répétés',
         'preview' => 'Nous avons mis un webhook en pause après 5 échecs de livraison consécutifs.',
         'heading' => 'Webhook mis en pause après des échecs répétés',
-        'body' => 'Nous avons mis le webhook de :endpoint en pause après 5 échecs de livraison consécutifs. Vérifiez l\'endpoint et réactivez-le depuis la page de détails du webhook.',
+        'body' => 'Nous avons mis un webhook en pause après 5 échecs de livraison consécutifs.',
+        'next_steps' => 'Vérifiez l\'endpoint et réactivez-le depuis la page de détails du webhook.',
         'button' => 'Voir le webhook',
     ],
 

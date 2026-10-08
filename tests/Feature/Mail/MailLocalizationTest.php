@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Mail;
+use Symfony\Component\DomCrawler\Crawler;
 
 function localizedOwner(Locale $locale): User
 {
@@ -90,7 +91,8 @@ test('the subject and body of a rendered mailable are actually translated', func
 
     $mailable->assertSeeInHtml(__('mail.account_disconnected.heading', [], 'pt-BR'));
     $mailable->assertSeeInHtml(__('mail.account_disconnected.reason_expired', [], 'pt-BR'));
-    $mailable->assertSeeInHtml(__('mail.layout.tagline', [], 'pt-BR'));
+    $footer = (new Crawler($mailable->render()))->filter('p > a[href="https://trypost.it"]')->ancestors()->first();
+    expect($footer->text())->toBe(__('mail.layout.tagline', ['brand' => 'TryPost'], 'pt-BR'));
     $mailable->assertDontSeeInHtml(__('mail.account_disconnected.heading', [], 'en'));
 });
 

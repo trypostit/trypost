@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => '开源的社交媒体排期发布工具',
+        'tagline' => '由 :brand 团队发送',
         'manage_notifications' => '管理通知',
         'signoff' => '祝好，',
         'team' => 'TryPost 团队',
@@ -16,7 +16,7 @@ return [
         'title' => ':platform 账号需要重新连接',
         'preview' => '请重新连接 :workspace 中的 :platform 账号，以继续排期发布。',
         'heading' => '账号已断开',
-        'intro' => '你的 <strong>:platform</strong> 账号 <strong>:account</strong> 已从工作区 <strong>:workspace</strong> 断开。',
+        'intro' => '以下账号已与工作区 :workspace 断开连接。',
         'reasons_title' => '可能的原因：',
         'reason_expired' => '访问令牌已过期',
         'reason_revoked' => '你撤销了 TryPost 的访问权限',
@@ -99,13 +99,17 @@ return [
         'button' => '在草稿中查看',
     ],
 
+    'post_preview' => [
+        'no_text' => '无文字的帖子',
+        'error' => '错误详情',
+    ],
+
     'post_publish_failed' => [
         'subject' => ':workspace 中的内容发布失败',
         'title' => '内容发布失败',
-        'preview' => '有一个或多个平台发布失败。',
+        'preview' => '内容发布失败',
         'heading' => '内容发布失败',
-        'body' => '工作区 :workspace 中已排期的内容在一个或多个平台上发布失败。',
-        'platforms_title' => '发布失败的平台：',
+        'body' => '无法发布 :workspace 中的帖子。',
         'button' => '查看内容',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => '你的内容已成功发布。',
         'heading' => '内容已发布',
         'body' => '工作区 :workspace 中的内容已成功发布。',
-        'platforms_title' => '已发布到：',
-        'view_post' => '查看内容',
-        'button' => '查看内容',
+        'button' => '在社交平台查看',
+        'open_in_app' => '在 TryPost 中打开',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook 因连续失败已暂停',
         'preview' => '连续 5 次投递失败后，我们暂停了一个 webhook。',
         'heading' => 'Webhook 因连续失败已暂停',
-        'body' => '连续 5 次投递失败后，我们暂停了 :endpoint 上的 webhook。请检查该 endpoint，并在 webhook 详情页重新启用。',
+        'body' => '连续 5 次投递失败后，我们暂停了一个 webhook。',
+        'next_steps' => '请检查该 endpoint，并在 webhook 详情页重新启用。',
         'button' => '查看 webhook',
     ],
 

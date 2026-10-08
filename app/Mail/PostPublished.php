@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Enums\PostPlatform\Status;
 use App\Models\Post;
+use App\Support\Mail\PostPreview;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -30,17 +30,11 @@ class PostPublished extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $publishedPlatforms = $this->post->postPlatforms()
+        $postPlatform = $this->post->postPlatforms()
             ->with('socialAccount')
             ->enabled()
-            ->get()
-            ->filter(fn ($pp) => $pp->status === Status::Published)
-            ->map(fn ($pp) => [
-                'name' => $pp->notificationLabel(),
-                'url' => $pp->platform_url,
-            ])
-            ->values()
-            ->all();
+            ->published()
+            ->first();
 
         return new Content(
             view: 'mail.post-published',
@@ -48,7 +42,12 @@ class PostPublished extends Mailable implements ShouldQueue
                 'title' => __('mail.post_published.title'),
                 'previewText' => __('mail.post_published.preview'),
                 'workspaceName' => $this->post->workspace->name,
-                'publishedPlatforms' => $publishedPlatforms,
+                'publication' => $postPlatform ? [
+                    'accountName' => $postPlatform->display_name,
+                    'platform' => $postPlatform->platform,
+                ] : null,
+                'postPreview' => PostPreview::from($this->post),
+                'publishedUrl' => $postPlatform?->platform_url,
                 'url' => route('app.posts.edit', $this->post),
             ],
         );

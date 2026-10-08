@@ -55,6 +55,8 @@ return [
     'create.tabs.ideas' => 8,
     'create.tabs.templates' => 10,
     'labels.description' => 47,
+    'mail.post_published.button' => 22,
+    'mail.post_published.open_in_app' => 19,
     'mcp.authorize.approve' => 13,
     'mcp.authorize.cancel' => 9,
     'mcp.authorize.select_workspace' => 28,

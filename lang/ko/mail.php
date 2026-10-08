@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => '오픈소스 소셜 미디어 예약 발행 도구',
+        'tagline' => ':brand 팀에서 보냄',
         'manage_notifications' => '알림 관리',
         'signoff' => '감사합니다.',
         'team' => 'TryPost 팀',
@@ -16,7 +16,7 @@ return [
         'title' => ':platform 계정을 다시 연결해야 합니다',
         'preview' => '게시물 예약을 계속하려면 :workspace의 :platform 계정을 다시 연결하세요.',
         'heading' => '계정 연결 해제됨',
-        'intro' => '워크스페이스 <strong>:workspace</strong>에서 <strong>:platform</strong> 계정 <strong>:account</strong>의 연결이 해제되었습니다.',
+        'intro' => '아래 계정이 :workspace 워크스페이스에서 연결 해제되었습니다.',
         'reasons_title' => '다음과 같은 이유일 수 있습니다:',
         'reason_expired' => '액세스 토큰이 만료되었습니다',
         'reason_revoked' => 'TryPost의 접근 권한을 취소했습니다',
@@ -99,13 +99,17 @@ return [
         'button' => '초안에서 보기',
     ],
 
+    'post_preview' => [
+        'no_text' => '텍스트 없는 게시물',
+        'error' => '오류 내용',
+    ],
+
     'post_publish_failed' => [
         'subject' => ':workspace에서 게시물 발행에 실패했습니다',
         'title' => '게시물 발행에 실패했습니다',
-        'preview' => '하나 이상의 플랫폼에서 발행하지 못했습니다.',
+        'preview' => '게시물 발행에 실패했습니다',
         'heading' => '게시물 발행에 실패했습니다',
-        'body' => '워크스페이스 :workspace의 예약 게시물이 하나 이상의 플랫폼에서 발행되지 않았습니다.',
-        'platforms_title' => '실패한 플랫폼:',
+        'body' => ':workspace의 게시물을 게시하지 못했습니다.',
         'button' => '게시물 보기',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => '게시물이 정상적으로 발행되었습니다.',
         'heading' => '게시물이 발행되었습니다',
         'body' => '워크스페이스 :workspace의 게시물이 정상적으로 발행되었습니다.',
-        'platforms_title' => '발행된 플랫폼:',
-        'view_post' => '게시물 보기',
-        'button' => '게시물 보기',
+        'button' => '소셜 미디어에서 보기',
+        'open_in_app' => 'TryPost에서 열기',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => '반복된 실패로 웹훅이 일시정지되었습니다',
         'preview' => '연속 5회 전달에 실패한 뒤 웹훅을 일시정지했습니다.',
         'heading' => '반복된 실패로 웹훅이 일시정지되었습니다',
-        'body' => ':endpoint의 웹훅을 연속 5회 전달 실패 후 일시정지했습니다. Endpoint를 확인한 뒤 웹훅 상세 페이지에서 다시 사용하세요.',
+        'body' => '연속 5회 전달에 실패한 뒤 웹훅을 일시정지했습니다.',
+        'next_steps' => 'Endpoint를 확인한 뒤 웹훅 상세 페이지에서 다시 사용하세요.',
         'button' => '웹훅 보기',
     ],
 

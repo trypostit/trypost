@@ -1,34 +1,30 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
-      <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.webhook_paused.heading') }}
+    </x-heading>
 
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.webhook_paused.heading') }}
-                </h1>
+    <p class="m-0 leading-6">
+      @{{ __('mail.webhook_paused.body') }}
+    </p>
 
-                <p class="m-0 leading-6">
-                  @{{ __('mail.webhook_paused.body', ['endpoint' => $endpoint]) }}
-                </p>
+    <div class="email-context">
+      <p class="m-0 text-sm text-muted-foreground">
+        @{{ __('webhooks.create.endpoint') }}
+      </p>
+      <p dir="ltr" class="m-0 mt-2 text-sm font-semibold text-foreground break-all">
+        @{{ $endpoint }}
+      </p>
+    </div>
 
-                <x-spacer height="24px" />
+    <p class="m-0 mt-6 leading-6">
+      @{{ __('mail.webhook_paused.next_steps') }}
+    </p>
 
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.webhook_paused.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
-        </td>
-      </tr>
-    </table>
-  </div>
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.webhook_paused.button') }}
+    </x-button>
+  </x-message>
 </x-main>

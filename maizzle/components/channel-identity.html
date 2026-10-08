@@ -1,0 +1,26 @@
+<script props>
+  module.exports = {
+    platformExpression: props.platform,
+    accountNameExpression: props['account-name'],
+  }
+</script>
+
+@php
+  $emailChannelPlatform = {!! platformExpression !!};
+  $emailChannelName = {!! accountNameExpression !!};
+@endphp
+
+<table role="presentation" class="w-full">
+  <tr>
+    <td class="w-11 align-middle">
+      <img src="@{{ asset('images/accounts/'.$emailChannelPlatform->network().'.png') }}"
+        width="32" height="32" alt="" class="block rounded-lg">
+    </td>
+    <td class="align-middle">
+      <p class="m-0 text-base leading-5 font-semibold text-foreground">@{{ $emailChannelName }}</p>
+      @if($emailChannelName !== $emailChannelPlatform->label())
+        <p class="m-0 mt-0.5 text-[13px] leading-[18px] text-muted-foreground">@{{ $emailChannelPlatform->label() }}</p>
+      @endif
+    </td>
+  </tr>
+</table>

@@ -5,7 +5,7 @@ declare(strict_types=1);
 return [
 
     'layout' => [
-        'tagline' => 'Open-source social media scheduling tool',
+        'tagline' => 'Sent by the :brand team',
         'manage_notifications' => 'Manage notifications',
         'signoff' => 'Best regards,',
         'team' => 'The TryPost Team',
@@ -16,7 +16,7 @@ return [
         'title' => 'Your :platform account needs to be reconnected',
         'preview' => 'Please reconnect your :platform account in :workspace to continue scheduling posts.',
         'heading' => 'Account Disconnected',
-        'intro' => 'Your <strong>:platform</strong> account <strong>:account</strong> has been disconnected from the <strong>:workspace</strong> workspace.',
+        'intro' => 'The following account was disconnected from the :workspace workspace.',
         'reasons_title' => 'This may have happened because:',
         'reason_expired' => 'Your access token expired',
         'reason_revoked' => 'You revoked access to TryPost',
@@ -99,13 +99,17 @@ return [
         'button' => 'View in drafts',
     ],
 
+    'post_preview' => [
+        'no_text' => 'Post without text',
+        'error' => 'What went wrong',
+    ],
+
     'post_publish_failed' => [
         'subject' => 'Your post failed to publish in :workspace',
         'title' => 'Your post failed to publish',
-        'preview' => 'One or more platforms failed to publish your post.',
+        'preview' => 'Your post failed to publish',
         'heading' => 'Your post failed to publish',
-        'body' => 'Your scheduled post in the :workspace workspace failed to publish on one or more platforms.',
-        'platforms_title' => 'Failed platforms:',
+        'body' => 'We could not publish your post in :workspace.',
         'button' => 'View Post',
     ],
 
@@ -115,9 +119,8 @@ return [
         'preview' => 'Your post has been published successfully.',
         'heading' => 'Your post was published',
         'body' => 'Your post in the :workspace workspace has been published successfully.',
-        'platforms_title' => 'Published on:',
-        'view_post' => 'View post',
-        'button' => 'View Post',
+        'button' => 'View on social network',
+        'open_in_app' => 'Open in TryPost',
     ],
 
     'webhook_paused' => [
@@ -125,7 +128,8 @@ return [
         'title' => 'Webhook paused after repeated failures',
         'preview' => 'We paused a webhook after 5 consecutive delivery failures.',
         'heading' => 'Webhook paused after repeated failures',
-        'body' => 'We paused the webhook at :endpoint after 5 consecutive delivery failures. Review the endpoint and re-enable it from the webhook details page.',
+        'body' => 'We paused a webhook after 5 consecutive delivery failures.',
+        'next_steps' => 'Review the endpoint and re-enable it from the webhook details page.',
         'button' => 'View webhook',
     ],
 

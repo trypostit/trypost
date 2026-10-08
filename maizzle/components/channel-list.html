@@ -1,0 +1,15 @@
+<script props>
+  module.exports = {
+    channelsExpression: props.channels || '$channels',
+  }
+</script>
+
+@foreach({!! channelsExpression !!} as $emailChannel)
+  <table role="presentation" class="w-full mt-3">
+    <tr>
+      <td class="rounded-xl border border-solid border-border bg-surface p-4">
+        <x-channel-identity platform="$emailChannel->platform" account-name="$emailChannel->display_name" />
+      </td>
+    </tr>
+  </table>
+@endforeach

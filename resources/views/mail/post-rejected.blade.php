@@ -24,31 +24,16 @@
   @endif
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" media="screen">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Outfit:wght@600&display=swap" rel="stylesheet" media="screen">
   <style>
-    .hover-i-text-decoration-underline:hover {
-      text-decoration: underline !important
-    }
     @media (max-width: 600px) {
-      .sm-my-8 {
-        margin-top: 32px !important;
-        margin-bottom: 32px !important
-      }
-      .sm-px-4 {
-        padding-left: 16px !important;
-        padding-right: 16px !important
-      }
-      .sm-px-6 {
-        padding-left: 24px !important;
-        padding-right: 24px !important
-      }
-      .sm-leading-8 {
-        line-height: 32px !important
+      .sm-p-6 {
+        padding: 24px !important
       }
     }
   </style>
 </head>
-<body style="margin: 0; width: 100%; padding: 0; -webkit-font-smoothing: antialiased; word-break: break-word">
+<body style="margin: 0; width: 100%; background-color: #f7f6f3; padding: 0; -webkit-font-smoothing: antialiased; word-break: break-word">
   @if(isset($previewText))
   <div style="display: none">
     {{ $previewText }}
@@ -56,93 +41,114 @@
   </div>
   @endif
   <div role="article" aria-roledescription="email" aria-label="{{ $title }}" lang="{{ str_replace('_', '-', app()->getLocale()) }}">
-    <div class="sm-px-4" style="background-color: #fafafa; font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif">
-      <table align="center" cellpadding="0" cellspacing="0" role="none">
-        <tr>
-          <td style="width: 552px; max-width: 100%">
-            <div class="sm-my-8" style="margin-top: 48px; margin-bottom: 48px; text-align: center">
-              <a href="https://trypost.it" target="_blank">
-                <img src="{{ asset('/images/emails/logo-header.png') }}" width="150" height="auto" alt="TryPost" style="max-width: 100%; vertical-align: middle; width: 150px; height: auto">
-              </a>
-            </div>
-            <table style="width: 100%" cellpadding="0" cellspacing="0" role="none">
-              <tr>
-                <td class="sm-px-6" style="border-radius: 4px; background-color: #fffffe; padding: 48px; font-size: 16px; color: #3f3f46; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05)">
-                  <h1 class="sm-leading-8" style="margin: 0 0 24px; font-size: 24px; font-weight: 600; color: #000001">
-                    {{ __('mail.post_rejected.heading') }}
-                  </h1>
-                  <p style="margin: 0; line-height: 24px">
-                    {{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
-                  </p>
-                  <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #18181b">
-                    {{ __('mail.post_rejected.channels') }}
-                  </p>
-                  <ul style="margin: 8px 0 0; padding-left: 20px; font-size: 14px; line-height: 24px">
-                    @foreach($channels as $channel)
-                    <li><strong>{{ $channel }}</strong></li>
-                    @endforeach
-                  </ul>
-                  <div role="separator" style="line-height: 24px">&zwj;</div>
-                  <div style="display: flex; align-items: center; justify-content: center">
-                    <div>
-                      <a href="{{ $url }}" style="display: inline-block; text-decoration: none; padding: 16px 24px; font-size: 16px; line-height: 1; border-radius: 8px; background-color: #7c3aed; color: #ffffff">
-                        <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
-                        <span style="mso-text-raise: 16px">{{ __('mail.post_rejected.button') }}</span>
-                        <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
+    <table role="presentation" style="width: 100%; background-color: #f7f6f3; font-family: Inter, Arial, Helvetica, sans-serif" cellpadding="0" cellspacing="0">
+      <tr>
+        <td align="center" style="padding-left: 16px; padding-right: 16px">
+          <!--[if mso]>
+      <table role="presentation" width="552" align="center"><tr><td>
+      <![endif]-->
+          <table role="presentation" align="center" style="width: 100%; max-width: 552px" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-top: 32px; padding-bottom: 32px">
+                <div style="text-align: center">
+                  <a href="https://trypost.it" target="_blank">
+                    <img src="{{ asset('/images/emails/logo-header.png') }}" width="150" height="auto" alt="TryPost" style="max-width: 100%; vertical-align: middle; width: 150px; height: auto">
+                  </a>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td align="{{ \App\Enums\User\Locale::tryFrom(app()->getLocale())?->direction() === 'rtl' ? 'right' : 'left' }}" class="sm-p-6" style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 32px; font-size: 16px; line-height: 24px; color: #292928">
+                <h1 style="margin: 0 0 24px; font-family: Outfit, Inter, Arial, Helvetica, sans-serif; font-size: 24px; font-weight: 600; line-height: 32px; color: #292928"> {{ __('mail.post_rejected.heading') }}</h1>
+                <p style="margin: 0; line-height: 24px">
+                  {{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
+                </p>
+                <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
+                  {{ __('mail.post_rejected.channels') }}
+                </p>@foreach($channels as $emailChannel)
+                <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
+                  <tr>
+                    <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
+                      $emailChannelPlatform = $emailChannel->platform;
+                      $emailChannelName = $emailChannel->display_name;
+                      @endphp
+                      <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
+                        <tr>
+                          <td style="width: 44px; vertical-align: middle">
+                            <img src="{{ asset('images/accounts/'.$emailChannelPlatform->network().'.png') }}" width="32" height="32" alt style="max-width: 100%; vertical-align: middle; display: block; border-radius: 8px">
+                          </td>
+                          <td style="vertical-align: middle">
+                            <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 20px; color: #292928">{{ $emailChannelName }}</p>
+                            @if($emailChannelName !== $emailChannelPlatform->label())
+                            <p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: #5a5a59">{{ $emailChannelPlatform->label() }}</p>
+                            @endif
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+                @endforeach <div role="separator" style="line-height: 24px">&zwj;</div>
+                <div style="text-align: center">
+                  <a href="{{ $url }}" style="display: inline-block; text-decoration: none; font-weight: 600; border-radius: 8px; border: 1px solid #ddd6fe; background-color: #ddd6fe; padding: 12px 24px; text-align: center; font-size: 16px; line-height: 24px; color: #292928">
+                    <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->
+                    <span style="mso-text-raise: 16px">{{ __('mail.post_rejected.button') }}</span>
+                    <!--[if mso]><i hidden style="mso-font-width: 150%">&emsp;&#8203;</i><![endif]-->
+                  </a>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td align="center" style="padding: 24px; text-align: center; font-size: 12px; line-height: 20px; color: #5a5a59">
+                <p style="margin: 0 0 8px">
+                  {!! str_replace(':brand', '<a href="https://trypost.it" target="_blank" style="color: inherit; font-weight: 600; text-decoration: none;">TryPost</a>', e(__('mail.layout.tagline'))) !!}
+                </p>
+                <p style="margin: 8px 0 0">
+                  <a href="{{ route('app.notifications.preferences') }}" target="_blank" style="color: #5a5a59; text-decoration: underline">
+                    {{ __('mail.layout.manage_notifications') }}
+                  </a>
+                </p>
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 12px">
+                  <tr>
+                    <td style="padding-left: 4px; padding-right: 4px">
+                      <a href="https://github.com/trypostit/trypost" target="_blank">
+                        <img src="{{ asset('/images/emails/social/github.png') }}" width="20" height="20" alt="GitHub" style="max-width: 100%; vertical-align: middle">
                       </a>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </table>
-          </td>
-        </tr>
-        <tr>
-          <td align="center" style="padding: 24px; text-align: center; font-size: 12px; color: #52525b">
-            <p style="margin: 0 0 8px">
-              {{ __('mail.layout.tagline') }}
-            </p>
-            <p style="margin: 8px 0 0">
-              <a href="{{ route('app.notifications.preferences') }}" target="_blank" class="hover-i-text-decoration-underline" style="color: #52525b; text-decoration: none">
-                {{ __('mail.layout.manage_notifications') }}
-              </a>
-            </p>
-            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-left: auto; margin-right: auto; margin-top: 16px">
-              <tr>
-                <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://github.com/trypostit/trypost" target="_blank">
-                    <img src="{{ asset('/images/emails/social/github.png') }}" width="20" height="20" alt="GitHub" style="max-width: 100%; vertical-align: middle">
-                  </a>
-                </td>
-                <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://x.com/trypostit" target="_blank">
-                    <img src="{{ asset('/images/emails/social/x.png') }}" width="20" height="20" alt="X" style="max-width: 100%; vertical-align: middle">
-                  </a>
-                </td>
-                <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.youtube.com/@trypostit" target="_blank">
-                    <img src="{{ asset('/images/emails/social/youtube.png') }}" width="20" height="20" alt="YouTube" style="max-width: 100%; vertical-align: middle">
-                  </a>
-                </td>
-                <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://trypost.it/discord" target="_blank">
-                    <img src="{{ asset('/images/emails/social/discord.png') }}" width="20" height="20" alt="Discord" style="max-width: 100%; vertical-align: middle">
-                  </a>
-                </td>
-                <td style="padding-left: 4px; padding-right: 4px">
-                  <a href="https://www.instagram.com/trypost.en" target="_blank">
-                    <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
-                  </a>
-                </td>
-              </tr>
-            </table>
-            <p style="margin: 12px 0 0">
-              &copy; {{ date('Y') }} TryPost.it
-            </p>
-          </td>
-        </tr>
-      </table>
-    </div>
+                    </td>
+                    <td style="padding-left: 4px; padding-right: 4px">
+                      <a href="https://x.com/trypostit" target="_blank">
+                        <img src="{{ asset('/images/emails/social/x.png') }}" width="20" height="20" alt="X" style="max-width: 100%; vertical-align: middle">
+                      </a>
+                    </td>
+                    <td style="padding-left: 4px; padding-right: 4px">
+                      <a href="https://www.youtube.com/@trypostit" target="_blank">
+                        <img src="{{ asset('/images/emails/social/youtube.png') }}" width="20" height="20" alt="YouTube" style="max-width: 100%; vertical-align: middle">
+                      </a>
+                    </td>
+                    <td style="padding-left: 4px; padding-right: 4px">
+                      <a href="https://trypost.it/discord" target="_blank">
+                        <img src="{{ asset('/images/emails/social/discord.png') }}" width="20" height="20" alt="Discord" style="max-width: 100%; vertical-align: middle">
+                      </a>
+                    </td>
+                    <td style="padding-left: 4px; padding-right: 4px">
+                      <a href="https://www.instagram.com/trypost.it" target="_blank">
+                        <img src="{{ asset('/images/emails/social/instagram.png') }}" width="20" height="20" alt="Instagram" style="max-width: 100%; vertical-align: middle">
+                      </a>
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 12px 0 0">
+                  &copy; {{ date('Y') }} TryPost.it
+                </p>
+              </td>
+            </tr>
+          </table>
+          <!--[if mso]>
+      </td></tr></table>
+      <![endif]-->
+        </td>
+      </tr>
+    </table>
   </div>
 </body>
 </html>

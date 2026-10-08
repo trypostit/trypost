@@ -1,57 +1,34 @@
 <x-main>
-  <div class="bg-zinc-50 sm:px-4 font-sans">
-    <table align="center">
+  <x-message authenticated="true">
+    <x-heading>
+      @{{ __('mail.post_at_risk.heading') }}
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ __('mail.post_at_risk.intro', ['workspace' => $workspaceName]) }}
+    </p>
+
+    @foreach($atRiskGroups as $group)
+    <table role="presentation" class="w-full mt-4">
       <tr>
-        <td class="w-[552px] max-w-full">
-          <x-header />
-
-          <table class="w-full">
-            <tr>
-              <td class="p-12 sm:px-6 text-base text-zinc-700 bg-white rounded shadow-sm">
-                <h1 class="m-0 mb-6 text-2xl sm:leading-8 text-black font-semibold">
-                  @{{ __('mail.post_at_risk.heading') }}
-                </h1>
-
-                <p class="m-0 leading-6">
-                  @{{ __('mail.post_at_risk.intro', ['workspace' => $workspaceName]) }}
-                </p>
-
-                <table class="w-full mt-4" style="border-collapse: collapse">
-                  @foreach($atRiskGroups as $group)
-                  <tr>
-                    <td class="py-3" style="border-bottom: 1px solid #e4e4e7">
-                      <div style="display: flex; align-items: center">
-                        <div style="width: 8px; height: 8px; border-radius: 50%; background-color: @{{ $group['account']->platform->color() }}; margin-right: 12px"></div>
-                        <div>
-                          <strong class="text-zinc-900">@{{ $group['account']->platform->label() }}</strong>
-                          <span class="text-zinc-500"> - @{{ $group['account']->accountDisplayName() }}</span>
-                          <div class="text-zinc-500" style="font-size: 14px; margin-top: 4px">
-                            @{{ trans_choice('mail.post_at_risk.posts_label', $group['postCount'], ['count' => $group['postCount'], 'times' => $group['times'], 'timezone' => $timezone]) }}
-                          </div>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                  @endforeach
-                </table>
-
-                <p class="m-0 mt-4 leading-6">
-                  @{{ __('mail.post_at_risk.reconnect_cta') }}
-                </p>
-
-                <x-spacer height="24px" />
-
-                <div class="flex items-center justify-center">
-                  <x-button href="@{{ $url }}">
-                    @{{ __('mail.post_at_risk.button') }}
-                  </x-button>
-                </div>
-              </td>
-            </tr>
-          </table>
-          <x-footer-authenticated />
+        <td class="rounded-xl border border-solid border-border p-5 sm:p-4">
+          <x-channel-identity platform="$group['account']->platform" account-name="$group['account']->accountDisplayName()" />
+          <p class="m-0 mt-3 text-sm text-muted-foreground">
+            @{{ trans_choice('mail.post_at_risk.posts_label', $group['postCount'], ['count' => $group['postCount'], 'times' => $group['times'], 'timezone' => $timezone]) }}
+          </p>
         </td>
       </tr>
     </table>
-  </div>
+    @endforeach
+
+    <p class="m-0 mt-4 leading-6">
+      @{{ __('mail.post_at_risk.reconnect_cta') }}
+    </p>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ __('mail.post_at_risk.button') }}
+    </x-button>
+  </x-message>
 </x-main>
