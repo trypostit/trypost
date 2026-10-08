@@ -157,6 +157,11 @@ test('facebook only keeps photo identity for a single photo attachment', functio
     'missing photo id' => [['media_type' => 'photo'], null],
     'shared photo' => [['media_type' => 'photo', 'target' => ['id' => 'photo-1']], null, 'shared_story'],
     'link target' => [['media_type' => 'link', 'type' => 'share', 'target' => ['id' => 'photo-1']], null],
+    'album with one visible photo' => [[
+        'media_type' => 'photo',
+        'target' => ['id' => 'album-1'],
+        'subattachments' => ['data' => [['target' => ['id' => 'photo-1']]]],
+    ], null],
     'album target' => [[
         'media_type' => 'photo',
         'target' => ['id' => 'album-1'],
