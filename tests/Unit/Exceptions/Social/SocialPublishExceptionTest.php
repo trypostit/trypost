@@ -139,3 +139,22 @@ test('error category tryFromContext reads a stored category', function (?array $
     'missing' => [[], null],
     'null context' => [null, null],
 ]);
+
+test('a code the mapper lists as caused by the user is marked only when its category needs the user', function (ErrorCategory $category, bool $marked) {
+    $exception = (new TestPlatformException(userMessage: 'Rejected.', category: $category))->asNetworkRejectionIf(true);
+
+    expect($exception->isNetworkRejection())->toBe($marked);
+})->with([
+    'media format' => [ErrorCategory::MediaFormat, true],
+    'rate limit' => [ErrorCategory::RateLimit, true],
+    'permission' => [ErrorCategory::Permission, true],
+    'content policy' => [ErrorCategory::ContentPolicy, true],
+    'unknown' => [ErrorCategory::Unknown, false],
+    'server error' => [ErrorCategory::ServerError, false],
+]);
+
+test('a code the mapper does not list as caused by the user is never marked', function () {
+    $exception = (new TestPlatformException(userMessage: 'Rejected.', category: ErrorCategory::Permission))->asNetworkRejectionIf(false);
+
+    expect($exception->isNetworkRejection())->toBeFalse();
+});

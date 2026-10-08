@@ -68,13 +68,15 @@ test('processing status failed maps to MediaFormat category', function () {
     $exception = PinterestPublishException::fromProcessingStatus('failed');
 
     expect($exception->category)->toBe(ErrorCategory::MediaFormat)
-        ->and($exception->userMessage)->toBe('Media processing failed. Please try a different file.');
+        ->and($exception->userMessage)->toBe('Media processing failed. Please try a different file.')
+        ->and($exception->isNetworkRejection())->toBeTrue();
 });
 
 test('processing status unknown maps to Unknown category', function () {
     $exception = PinterestPublishException::fromProcessingStatus('pending', 'raw response');
 
-    expect($exception->category)->toBe(ErrorCategory::Unknown);
+    expect($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->isNetworkRejection())->toBeFalse();
 });
 
 test('HTTP 500 maps to ServerError category', function () {
