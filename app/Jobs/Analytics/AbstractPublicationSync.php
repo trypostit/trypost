@@ -180,7 +180,8 @@ abstract class AbstractPublicationSync implements ShouldQueue
     {
         $backoff = $this->backoff();
         $delay = $backoff[min($this->transientRetries, count($backoff) - 1)];
-        $providerDelay = $providerRetryAt ? (int) ceil(CarbonImmutable::now('UTC')->diffInSeconds($providerRetryAt, false)) : 0;
+        $now = CarbonImmutable::now('UTC');
+        $providerDelay = $providerRetryAt ? (int) ceil($now->diffInSeconds($providerRetryAt->min($now->endOfDay()), false)) : 0;
 
         return max($delay, $providerDelay);
     }

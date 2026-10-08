@@ -524,6 +524,36 @@ test('a rate limited failure waits for the provider retry time when it is later 
         && data_get($context, 'retry_at') === CarbonImmutable::now('UTC')->addSeconds(1200)->toIso8601String())->once();
 });
 
+test('a provider retry time beyond the end of the day is capped at the end of the day', function () {
+    Bus::fake();
+    $this->travelTo(CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC'));
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('rate_limited', 'slow down', CarbonImmutable::now('UTC')->addDays(30)));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->delay === 43200);
+});
+
+test('a provider retry time later than the backoff but within the day is honoured', function () {
+    Bus::fake();
+    $this->travelTo(CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC'));
+    $account = SocialAccount::factory()->instagram()->create();
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'resume-here', 'revision' => 0],
+    ]);
+    bindFailingPublicationPage($account, new AnalyticsCollectionException('rate_limited', 'slow down', CarbonImmutable::now('UTC')->addHours(6)));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    Bus::assertDispatched(BackfillAccountPublications::class, fn (BackfillAccountPublications $retry): bool => $retry->delay === 21600);
+});
+
 test('a job queued before the retry counter existed still retries a transient failure', function () {
     Bus::fake();
     $account = SocialAccount::factory()->instagram()->create();
