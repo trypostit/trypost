@@ -12,6 +12,7 @@ use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\PostPlatform;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
@@ -351,22 +352,28 @@ class ThreadsPublisher
             $this->handleApiError($publishResponse);
         }
 
-        $mediaId = $publishResponse->json()['id'] ?? null;
+        $mediaId = (string) $publishResponse->json('id');
 
-        if (! $mediaId) {
+        if (blank($mediaId)) {
             throw new ThreadsPublishException(
                 userMessage: 'Threads did not accept the post. Please publish again.',
                 category: ErrorCategory::ServerError,
             );
         }
 
-        // Get permalink
-        $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
-            'fields' => 'permalink',
-            'access_token' => $accessToken,
-        ]);
+        try {
+            $permalinkResponse = $this->socialHttp()->get("{$this->baseUrl}/{$mediaId}", [
+                'fields' => 'permalink',
+                'access_token' => $accessToken,
+            ]);
+        } catch (ConnectionException) {
+            return [
+                'id' => $mediaId,
+                'url' => null,
+            ];
+        }
 
-        $permalink = $permalinkResponse->json()['permalink'] ?? null;
+        $permalink = $permalinkResponse->json('permalink');
 
         return [
             'id' => $mediaId,

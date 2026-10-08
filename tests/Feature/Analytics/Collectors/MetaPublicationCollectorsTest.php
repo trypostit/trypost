@@ -139,6 +139,31 @@ test('facebook reads page-owned published posts and keeps a video when preview h
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/feed'));
 });
 
+test('facebook only keeps photo identity for a single photo attachment', function (array $attachment, ?array $metadata, string $statusType = 'added_photos') {
+    Http::fake(['*/published_posts*' => Http::response(['data' => [[
+        'id' => 'page_post-1',
+        'status_type' => $statusType,
+        'created_time' => '2026-09-20T12:00:00+0000',
+        'attachments' => ['data' => [$attachment]],
+    ]]])]);
+    $account = SocialAccount::factory()->facebook()->create();
+
+    $page = app(FacebookPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-01-01', 'UTC'));
+
+    expect($page->publications[0]->providerMetadata)->toBe($metadata);
+    Http::assertSentCount(1);
+})->with([
+    'photo' => [['media_type' => 'photo', 'target' => ['id' => 'photo-1']], ['photo_id' => 'photo-1']],
+    'missing photo id' => [['media_type' => 'photo'], null],
+    'shared photo' => [['media_type' => 'photo', 'target' => ['id' => 'photo-1']], null, 'shared_story'],
+    'link target' => [['media_type' => 'link', 'type' => 'share', 'target' => ['id' => 'photo-1']], null],
+    'album target' => [[
+        'media_type' => 'photo',
+        'target' => ['id' => 'album-1'],
+        'subattachments' => ['data' => [['target' => ['id' => 'photo-1']], ['target' => ['id' => 'photo-2']]]],
+    ], null],
+]);
+
 test('threads reads one owned post page and returns its cursor', function () {
     Http::fake(['*' => Http::response([
         'data' => [[

@@ -16,6 +16,7 @@ use App\Services\Social\ThreadsPublisher;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Sleep;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     Sleep::fake();
@@ -74,6 +75,29 @@ test('threads publisher can publish text-only post', function () {
             && str_contains($request->url(), '123456789');
     });
 });
+
+test('threads publisher keeps the published id when the permalink lookup fails', function (string $failure) {
+    $base = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$base}/123456789/threads" => Http::response(['id' => 'container-123']),
+        "{$base}/container-123*" => Http::response(['status' => 'FINISHED']),
+        "{$base}/123456789/threads_publish" => Http::response(['id' => 'post-123']),
+        "{$base}/post-123*" => match ($failure) {
+            'connection' => Http::failedConnection(),
+            'http' => Http::response(['error' => ['message' => 'Unavailable']], 500),
+            'missing link' => Http::response([]),
+        },
+    ]);
+
+    expect($this->publisher->publish($this->postPlatform))->toBe([
+        'id' => 'post-123',
+        'url' => null,
+    ]);
+
+    expect(Http::recorded(fn ($request): bool => $request->method() === 'POST'
+        && Str::endsWith($request->url(), '/threads_publish')))->toHaveCount(1);
+})->with(['connection', 'http', 'missing link']);
 
 test('threads publisher can publish image post', function () {
     $this->post->update([

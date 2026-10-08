@@ -148,10 +148,11 @@ class ImportExternalPosts
 
     private static function tryPostTarget(SocialAccount $account, AnalyticsPublication $publication): ?PostPlatform
     {
-        $remoteIds = array_values(array_filter([
+        $remoteIds = collect([
             $publication->remote_id,
             $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'video_id') : null,
-        ], fn (mixed $id): bool => is_string($id) && $id !== ''));
+            $account->platform === Platform::Facebook ? data_get($publication->provider_metadata, 'photo_id') : null,
+        ])->filter(fn (mixed $id): bool => is_string($id) && filled($id))->values()->all();
 
         return PostPlatform::query()
             ->where('social_account_id', $account->id)
@@ -181,7 +182,8 @@ class ImportExternalPosts
      * back (an Instagram container id, a TikTok publish_id). The one sent post
      * from this channel with the same text near the same time is that
      * publication: it takes over the remote id instead of a duplicate import.
-     * More than one such post is ambiguous, so the publication waits.
+     * More than one such post, or an Instagram post without a caption, is
+     * ambiguous, so the publication waits without claiming a remote id.
      */
     private static function claimedBySentPost(SocialAccount $account, AnalyticsPublication $publication): bool
     {
@@ -191,12 +193,12 @@ class ImportExternalPosts
             return false;
         }
 
-        if ($targets->count() > 1) {
+        if ($targets->count() > 1 || blank(Str::squish((string) $publication->excerpt))) {
             if (! Cache::add("import-external-posts:ambiguous:{$publication->id}", true, now()->addDay())) {
                 return true;
             }
 
-            Log::warning('External publication matches more than one TryPost post; not imported.', [
+            Log::warning('External publication identity is ambiguous; not imported.', [
                 'analytics_publication_id' => $publication->id,
                 'post_platform_ids' => $targets->modelKeys(),
             ]);
@@ -229,7 +231,7 @@ class ImportExternalPosts
         $window = (int) config('trypost.external_posts.match_window_minutes');
         $text = Str::squish((string) $publication->excerpt);
 
-        if ($window < 1 || $text === '' || ! in_array($account->platform, self::PROVISIONAL_ID_PLATFORMS, true)) {
+        if ($window < 1 || ! in_array($account->platform, self::PROVISIONAL_ID_PLATFORMS, true)) {
             return new Collection;
         }
 
@@ -250,7 +252,11 @@ class ImportExternalPosts
                     ->whereColumn('analytics_publications.remote_id', 'post_platforms.platform_post_id')))
             ->with(['post:id,content', 'analyticsPublication'])
             ->get()
-            ->filter(fn (PostPlatform $target): bool => self::sameText((string) $target->post?->content, $text, $account->platform))
+            ->filter(fn (PostPlatform $target): bool => self::sameText(
+                $target->content_type->isCaptionless() ? '' : (string) $target->post?->content,
+                $text,
+                $account->platform,
+            ))
             ->values();
     }
 
@@ -273,24 +279,25 @@ class ImportExternalPosts
     /**
      * Equal text, or a network excerpt that visibly ends in an ellipsis and
      * still carries enough of the caption to tell posts apart.
+     * Empty Instagram captions are candidates for deferral only.
      */
     private static function sameText(string $content, string $text, Platform $platform): bool
     {
         $sent = Str::squish(app(ContentSanitizer::class)->displayText($content, $platform));
 
-        if ($sent === '') {
-            return false;
+        if (blank($sent)) {
+            return blank($text) && in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true);
         }
 
         if ($sent === $text) {
             return true;
         }
 
-        $truncated = trim((string) preg_replace('/(?:\.\.\.|…)$/u', '', $text));
+        $truncated = (string) Str::of($text)->replaceMatches('/(?:\.\.\.|…)$/u', '')->trim();
 
         return $truncated !== $text
-            && mb_strlen($truncated) >= self::MIN_TRUNCATED_MATCH_LENGTH
-            && str_starts_with($sent, $truncated);
+            && Str::length($truncated) >= self::MIN_TRUNCATED_MATCH_LENGTH
+            && Str::startsWith($sent, $truncated);
     }
 
     private static function createPost(SocialAccount $account, AnalyticsPublication $publication): PostPlatform

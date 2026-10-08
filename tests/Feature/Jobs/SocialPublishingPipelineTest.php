@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\UpsertAnalyticsPublication;
+use App\Actions\Post\ImportExternalPosts;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\PostPlatform\Status as PlatformStatus;
@@ -15,6 +17,9 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
+use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
+use App\Services\Analytics\Collectors\Publications\InstagramPublicationCollector;
+use App\Services\Analytics\Collectors\Publications\ThreadsPublicationCollector;
 use App\Services\Social\BlueskyPublisher;
 use App\Services\Social\Discord\DiscordPublisher;
 use App\Services\Social\FacebookPublisher;
@@ -36,6 +41,7 @@ use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->freezeTime();
@@ -82,6 +88,132 @@ function scheduledPipelineTarget(Platform $platform): PostPlatform
         'meta' => $platform === Platform::TikTok ? ['privacy_level' => PrivacyLevel::SelfOnly->value] : [],
     ]);
 }
+
+test('a published facebook photo is not imported again when publishing returned only the photo id', function () {
+    $target = scheduledPipelineTarget(Platform::Facebook);
+    $account = $target->socialAccount;
+    $account->update(['scopes' => [...$account->scopes, 'pages_read_engagement']]);
+    $media = Media::factory()->ownedByPost($target->post)->stored()->create(['size' => 100000]);
+    $target->post->update(['media' => [$media->toArray()]]);
+    $base = config('trypost.platforms.facebook.graph_api');
+
+    Http::fake([
+        "{$base}/{$account->platform_user_id}/photos" => Http::response(['id' => 'photo-123']),
+        "{$base}/{$account->platform_user_id}/published_posts*" => Http::response(['data' => [[
+            'id' => 'page_post-123',
+            'status_type' => 'added_photos',
+            'message' => $target->post->content,
+            'created_time' => now()->toIso8601String(),
+            'attachments' => ['data' => [[
+                'type' => 'photo',
+                'media_type' => 'photo',
+                'target' => ['id' => 'photo-123'],
+            ]]],
+        ]]]),
+    ]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+        ->and($target->platform_post_id)->toBe('photo-123');
+
+    $page = app(FacebookPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
+    app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($target->post->refresh()->status)->toBe(PostStatus::Published);
+    Http::assertSentCount(2);
+    Exceptions::assertNothingReported();
+});
+
+test('a published threads post keeps its identity through a failed permalink lookup and later import', function () {
+    $target = scheduledPipelineTarget(Platform::Threads);
+    $account = $target->socialAccount;
+    $account->update(['scopes' => [...$account->scopes, 'threads_basic']]);
+    $base = config('trypost.platforms.threads.graph_api');
+
+    Http::fake([
+        "{$base}/{$account->platform_user_id}/threads" => Http::response(['id' => 'container-123']),
+        "{$base}/container-123*" => Http::response(['status' => 'FINISHED']),
+        "{$base}/{$account->platform_user_id}/threads_publish" => Http::response(['id' => 'post-123']),
+        "{$base}/post-123*" => Http::failedConnection('Permalink connection lost'),
+        "{$base}/{$account->platform_user_id}/threads?*" => Http::response(['data' => [[
+            'id' => 'post-123',
+            'media_type' => 'TEXT_POST',
+            'text' => $target->post->content,
+            'timestamp' => now()->toIso8601String(),
+        ]]]),
+    ]);
+
+    (new PublishToSocialPlatform($target))->handle();
+
+    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+        ->and($target->platform_post_id)->toBe('post-123')
+        ->and($target->platform_url)->toBeNull();
+
+    $page = app(ThreadsPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
+    app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($target->post->refresh()->status)->toBe(PostStatus::Published);
+    expect(Http::recorded(fn (Request $request): bool => $request->method() === 'POST'
+        && Str::endsWith($request->url(), '/threads_publish')))->toHaveCount(1);
+    Exceptions::assertNothingReported();
+});
+
+test('instagram does not duplicate a captionless publication after losing its media id', function (Platform $platform, ContentType $contentType) {
+    $target = scheduledPipelineTarget($platform);
+    $target->post->update(['content' => '']);
+    $target->update([
+        'content_type' => $contentType,
+        'error_context' => ['instagram_workflow' => [
+            'stage' => 'final_container',
+            'container_id' => 'container-123',
+        ]],
+    ]);
+    $account = $target->socialAccount;
+    $account->update(['scopes' => [...$account->scopes, 'instagram_basic', 'instagram_business_basic']]);
+    $base = $platform->instagramGraphBaseUrl();
+    $story = $contentType === ContentType::InstagramStory;
+    $discovered = [[
+        'id' => 'media-123',
+        'media_type' => 'IMAGE',
+        'timestamp' => now()->toIso8601String(),
+    ]];
+
+    Http::fake([
+        "{$base}/container-123*" => Http::sequence()
+            ->push(['status_code' => 'FINISHED'])
+            ->push(['status_code' => 'PUBLISHED']),
+        "{$base}/{$account->platform_user_id}/media_publish" => Http::failedConnection('Publish response lost'),
+        "{$base}/{$account->platform_user_id}/media?*" => Http::response(['data' => $story ? [] : $discovered]),
+        "{$base}/{$account->platform_user_id}/stories?*" => Http::response(['data' => $story ? $discovered : []]),
+    ]);
+
+    (new PublishToSocialPlatform($target))->handle();
+    expect($target->refresh()->status)->toBe(PlatformStatus::Retrying);
+
+    $this->travel(61)->seconds();
+    (new PublishToSocialPlatform($target))->handle();
+    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+        ->and($target->platform_post_id)->toBe('container-123');
+
+    $page = app(InstagramPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
+    expect($page->publications)->toHaveCount(1);
+    $publication = app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and(Post::query()->imported()->count())->toBe(0)
+        ->and($publication->refresh()->post_platform_id)->toBeNull()
+        ->and($target->refresh()->platform_post_id)->toBe('container-123');
+})->with([
+    'Instagram feed' => [Platform::Instagram, ContentType::InstagramFeed],
+    'Instagram story' => [Platform::Instagram, ContentType::InstagramStory],
+    'Instagram Facebook feed' => [Platform::InstagramFacebook, ContentType::InstagramFeed],
+    'Instagram Facebook story' => [Platform::InstagramFacebook, ContentType::InstagramStory],
+]);
 
 test('each network queue consumes scheduled posts and delayed retries through the worker', function (Platform $platform, string $publisherClass) {
     $retrying = scheduledPipelineTarget($platform);
