@@ -167,6 +167,68 @@ test('an imported sent card looks like a sent post and offers only the allowed a
     $page->assertNoJavaScriptErrors();
 });
 
+test('content type badges preserve the formats shown on other platforms', function (Platform $platform, array $formats) {
+    [$user, $workspace] = importedCardSetup();
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $workspace->id,
+        'platform' => $platform,
+    ]);
+    $expectations = [];
+
+    foreach ($formats as [$contentType, $showsBadge]) {
+        $post = Post::factory()->published()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $user->id,
+        ]);
+        PostPlatform::factory()->published()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $account->id,
+            'platform' => $platform,
+            'content_type' => $contentType,
+        ]);
+        $expectations[] = [$post, $contentType, $showsBadge];
+    }
+
+    $this->actingAs($user);
+    $page = visit(route('app.posts.index', ['tab' => 'sent']));
+
+    foreach ($expectations as [$post, $contentType, $showsBadge]) {
+        waitForImportedCardTestId($page, "post-card-{$post->id}");
+        $page->assertPresent("@post-card-{$post->id}");
+
+        if ($showsBadge) {
+            $page->assertSeeIn("@post-content-type-{$post->id}", __("posts.content_types.{$contentType->value}.label"));
+        } else {
+            $page->assertMissing("@post-content-type-{$post->id}");
+        }
+    }
+
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'Instagram via Facebook' => [Platform::InstagramFacebook, [
+        [ContentType::InstagramFeed, false],
+        [ContentType::InstagramReel, true],
+        [ContentType::InstagramStory, true],
+    ]],
+    'Facebook' => [Platform::Facebook, [
+        [ContentType::FacebookPost, false],
+        [ContentType::FacebookReel, true],
+        [ContentType::FacebookStory, true],
+    ]],
+    'Threads' => [Platform::Threads, [
+        [ContentType::ThreadsPost, false],
+        [ContentType::ThreadsGhostPost, true],
+    ]],
+    'Pinterest' => [Platform::Pinterest, [
+        [ContentType::PinterestPin, false],
+        [ContentType::PinterestVideoPin, true],
+        [ContentType::PinterestCarousel, true],
+    ]],
+    'YouTube' => [Platform::YouTube, [[ContentType::YouTubeShort, false]]],
+    'LinkedIn' => [Platform::LinkedIn, [[ContentType::LinkedInPost, false]]],
+    'X' => [Platform::X, [[ContentType::XPost, false]]],
+]);
+
 test('on a phone an imported sent card hides the published via line and right-aligns its actions', function () {
     [$user, $workspace, $account] = importedCardSetup();
     $post = importedCardPost($workspace, $account);

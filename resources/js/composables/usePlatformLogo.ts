@@ -58,6 +58,14 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     google_business: ['google_business_post'],
 };
 
+const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {
+    instagram: ['instagram_reel', 'instagram_story'],
+    'instagram-facebook': ['instagram_reel', 'instagram_story'],
+    facebook: ['facebook_reel', 'facebook_story'],
+    threads: ['threads_ghost_post'],
+    pinterest: ['pinterest_video_pin', 'pinterest_carousel'],
+};
+
 export interface ContentTypeOption {
     value: string;
     labelKey: string;
@@ -101,11 +109,11 @@ export const getPickableContentTypeOptions = (
 export const hasMultipleContentTypes = (platform: string): boolean =>
     getContentTypeOptions(platform).length > 1;
 
-/**
- * Translation key for the badge that names a published format, or null for a
- * platform's default format or TikTok: these cards do not need a format badge.
- */
-export const getContentTypeBadgeKey = (platform: string, contentType: string | null): string | null =>
-    platform !== 'tiktok' && contentType && hasMultipleContentTypes(platform) && contentType !== PLATFORM_CONTENT_TYPES[platform]?.[0]
+/** Translation key for a format explicitly shown as a badge on post cards. */
+export const getContentTypeBadgeKey = (
+    platform: string,
+    contentType: string | null,
+): string | null =>
+    contentType && PLATFORM_CONTENT_TYPE_BADGES[platform]?.includes(contentType)
         ? translationKeyFor(contentType)
         : null;
