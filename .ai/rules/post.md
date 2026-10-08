@@ -31,3 +31,6 @@ Every post write that can schedule, queue or publish passes the acting user to C
 
 ## Defer ambiguous captionless Instagram imports
 When a captionless Instagram discovery has an unresolved TryPost candidate in the same channel, compatible content type and configured publication-time window, defer importing it without claiming either ID. Do not infer identity from empty captions or timestamps. The owner accepted that a genuine native post in that window may also wait. Exact-ID matches and provider-confirmed originals keep their normal behavior (2026-10-08).
+
+## Instagram discovery can precede publish completion
+Discovery can see a live Instagram post while PublishToSocialPlatform is still Publishing or Retrying after losing media_publish's response. Defer matching discoveries without assigning their IDs during that window too; Retrying requires an Instagram container checkpoint. Keep channel, content type, caption and time-window guards. Published-only matching leaves a duplicate-import race.

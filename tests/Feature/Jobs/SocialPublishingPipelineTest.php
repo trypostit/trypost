@@ -195,14 +195,17 @@ test('instagram does not duplicate a captionless publication after losing its me
     (new PublishToSocialPlatform($target))->handle();
     expect($target->refresh()->status)->toBe(PlatformStatus::Retrying);
 
+    $page = app(InstagramPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
+    expect($page->publications)->toHaveCount(1);
+    $publication = app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and($publication->refresh()->post_platform_id)->toBeNull();
+
     $this->travel(61)->seconds();
     (new PublishToSocialPlatform($target))->handle();
     expect($target->refresh()->status)->toBe(PlatformStatus::Published)
         ->and($target->platform_post_id)->toBe('container-123');
-
-    $page = app(InstagramPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
-    expect($page->publications)->toHaveCount(1);
-    $publication = app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)

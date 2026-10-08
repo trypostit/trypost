@@ -18,7 +18,9 @@ use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Social\ContentSanitizer;
 use App\Support\PostHistoryRetention;
+use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\ThreadProgress;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
@@ -182,18 +184,20 @@ class ImportExternalPosts
      * back (an Instagram container id, a TikTok publish_id). The one sent post
      * from this channel with the same text near the same time is that
      * publication: it takes over the remote id instead of a duplicate import.
-     * More than one such post, or an Instagram post without a caption, is
-     * ambiguous, so the publication waits without claiming a remote id.
+     * Multiple candidates, captionless Instagram posts and Instagram publishes
+     * still in progress wait without claiming a remote id.
      */
     private static function claimedBySentPost(SocialAccount $account, AnalyticsPublication $publication): bool
     {
-        $targets = self::sentPostsMatching($account, $publication);
+        $targets = self::matchingTryPostTargets($account, $publication);
 
         if ($targets->isEmpty()) {
             return false;
         }
 
-        if ($targets->count() > 1 || blank(Str::squish((string) $publication->excerpt))) {
+        if ($targets->count() > 1
+            || blank(Str::squish((string) $publication->excerpt))
+            || $targets->contains(fn (PostPlatform $target): bool => $target->status !== PostPlatformStatus::Published)) {
             if (! Cache::add("import-external-posts:ambiguous:{$publication->id}", true, now()->addDay())) {
                 return true;
             }
@@ -226,7 +230,7 @@ class ImportExternalPosts
     /**
      * @return Collection<int, PostPlatform>
      */
-    private static function sentPostsMatching(SocialAccount $account, AnalyticsPublication $publication): Collection
+    private static function matchingTryPostTargets(SocialAccount $account, AnalyticsPublication $publication): Collection
     {
         $window = (int) config('trypost.external_posts.match_window_minutes');
         $text = Str::squish((string) $publication->excerpt);
@@ -240,9 +244,8 @@ class ImportExternalPosts
         return PostPlatform::query()
             ->where('social_account_id', $account->id)
             ->enabled()
-            ->published()
+            ->where(fn (Builder $query): Builder => self::matchingPublicationState($query, $account->platform, $publishedAt, $window))
             ->whereIn('content_type', self::compatibleContentTypes(ContentType::fromPublication($account->platform, $publication->content_type)))
-            ->whereBetween('published_at', [$publishedAt->subMinutes($window), $publishedAt->addMinutes($window)])
             ->whereHas('post', fn (Builder $post): Builder => $post->createdInTryPost()->where('workspace_id', $account->workspace_id))
             ->where(fn (Builder $query): Builder => $query
                 ->whereDoesntHave('analyticsPublication')
@@ -258,6 +261,25 @@ class ImportExternalPosts
                 $account->platform,
             ))
             ->values();
+    }
+
+    private static function matchingPublicationState(Builder $query, Platform $platform, CarbonImmutable $publishedAt, int $window): Builder
+    {
+        $interval = [$publishedAt->subMinutes($window), $publishedAt->addMinutes($window)];
+
+        $query->where(fn (Builder $sent): Builder => $sent->published()->whereBetween('published_at', $interval));
+
+        if (! in_array($platform, [Platform::Instagram, Platform::InstagramFacebook], true)) {
+            return $query;
+        }
+
+        return $query->orWhere(fn (Builder $pending): Builder => $pending
+            ->whereBetween('updated_at', $interval)
+            ->where(fn (Builder $state): Builder => $state
+                ->where('status', PostPlatformStatus::Publishing)
+                ->orWhere(fn (Builder $retry): Builder => $retry
+                    ->where('status', PostPlatformStatus::Retrying)
+                    ->whereNotNull('error_context->'.PublishCheckpoint::INSTAGRAM_WORKFLOW.'->container_id'))));
     }
 
     /**

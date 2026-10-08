@@ -559,6 +559,54 @@ test('a captionless instagram discovery still links by its exact public id', fun
         ->and($publication->fresh()->post_platform_id)->toBe($original->id);
 });
 
+test('instagram discoveries wait for an in-flight publication without claiming its id', function (PostPlatformStatus $status, string $caption) {
+    $account = SocialAccount::factory()->instagram()->create();
+    $target = sentByTryPost($account, 'container-1', $caption, now()->toImmutable());
+    $target->update([
+        'status' => $status,
+        'platform_post_id' => null,
+        'published_at' => null,
+        'error_context' => $status === PostPlatformStatus::Retrying
+            ? ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container-1']]
+            : null,
+    ]);
+    $publication = externalPublication($account, ['remote_id' => 'media-1', 'excerpt' => $caption, 'provider_published_at' => now()]);
+
+    expect(ImportExternalPosts::execute($account))->toBe([])
+        ->and($publication->refresh()->post_platform_id)->toBeNull()
+        ->and($target->refresh()->platform_post_id)->toBeNull()
+        ->and($target->status)->toBe($status);
+
+    $target->update(['status' => PostPlatformStatus::Failed]);
+
+    expect(ImportExternalPosts::execute($account))->toHaveCount(1)
+        ->and($publication->refresh()->post_platform_id)->not->toBe($target->id);
+})->with([PostPlatformStatus::Publishing, PostPlatformStatus::Retrying])->with(['', 'Our caption']);
+
+test('an unrelated pending instagram target does not hold a native import', function (string $difference) {
+    $account = SocialAccount::factory()->instagram()->create();
+    $targetAccount = $difference === 'channel'
+        ? SocialAccount::factory()->instagram()->create(['workspace_id' => $account->workspace_id])
+        : $account;
+    $target = sentByTryPost($targetAccount, 'container-1', '', now()->toImmutable());
+    $target->update([
+        'status' => $difference === 'draft' ? PostPlatformStatus::Pending : PostPlatformStatus::Retrying,
+        'enabled' => $difference !== 'disabled',
+        'content_type' => $difference === 'type' ? ContentType::InstagramStory : ContentType::InstagramFeed,
+        'platform_post_id' => null,
+        'published_at' => null,
+        'error_context' => $difference === 'no container' ? null : ['instagram_workflow' => ['container_id' => 'container-1']],
+    ]);
+    externalPublication($account, [
+        'remote_id' => 'media-1',
+        'excerpt' => null,
+        'provider_published_at' => $difference === 'time' ? now()->subHours(4) : now(),
+    ]);
+
+    expect(ImportExternalPosts::execute($account))->toHaveCount(1)
+        ->and($target->fresh()->platform_post_id)->toBeNull();
+})->with(['channel', 'time', 'type', 'disabled', 'draft', 'no container']);
+
 test('a trypost story is not taken over by a native feed post with the same caption', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $story = sentByTryPost($account, 'story-container', 'Same caption', now()->subHour()->toImmutable(), ContentType::InstagramStory);
