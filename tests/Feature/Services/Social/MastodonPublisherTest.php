@@ -680,7 +680,8 @@ test('a mastodon thread with a reply over the limit fails before posting anythin
     $this->postPlatform->update(['meta' => ['thread_replies' => [str_repeat('a', 495)], 'spoiler_text' => 'Ten chars!']]);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))->toThrow(Exception::class);
+    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+        ->toThrow(ContentLimitException::class, __('posts.form.thread.reply_too_long', ['limit' => 490, 'over' => 5]));
 
     Http::assertNothingSent();
 });

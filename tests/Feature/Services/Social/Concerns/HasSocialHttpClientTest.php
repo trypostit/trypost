@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -109,5 +110,9 @@ test('validateContentLength throws when content exceeds limit', function () {
     ]);
 
     expect(fn () => $this->client->callValidateContentLength($postPlatform))
-        ->toThrow(Exception::class, '3000');
+        ->toThrow(ContentLimitException::class, __('posts.errors.content_too_long', [
+            'platform' => Platform::LinkedIn->label(),
+            'max' => 3000,
+            'provided' => 4000,
+        ]));
 });
