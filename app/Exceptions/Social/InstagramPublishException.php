@@ -78,7 +78,7 @@ class InstagramPublishException extends SocialPublishException
      *
      * @return array{string, ErrorCategory}|null
      */
-    public static function forSubcode(?int $subcode): ?array
+    private static function forSubcode(?int $subcode): ?array
     {
         return match ($subcode) {
             2207026 => ['Unsupported video format. Please upload MP4 or MOV.', ErrorCategory::MediaFormat],
