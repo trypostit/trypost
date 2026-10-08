@@ -7,6 +7,8 @@ namespace App\Services\Social;
 use App\Dto\MediaItem;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\SocialAccount\Platform;
+use App\Exceptions\PlatformUnavailableException;
+use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MastodonPublishException;
 use App\Models\PostPlatform;
 use App\Models\SocialAccount;
@@ -14,6 +16,7 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\ThreadProgress;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\File;
@@ -69,7 +72,7 @@ class MastodonPublisher
 
     /**
      * Uploads up to four media and returns the status's `media_ids`, empty
-     * when nothing uploaded.
+     * when the post has none.
      *
      * @param  Collection<int, MediaItem>  $media
      * @return array{media_ids?: list<string>}
@@ -79,10 +82,7 @@ class MastodonPublisher
         $mediaIds = [];
 
         foreach ($media->take(4) as $item) {
-            $mediaId = $this->uploadMedia($account, $instance, $item->url, $item->original_filename, $item->isImage() ? $item->altTextFor(Platform::Mastodon) : null);
-            if ($mediaId) {
-                $mediaIds[] = $mediaId;
-            }
+            $mediaIds[] = $this->uploadMedia($account, $instance, $item->url, $item->original_filename, $item->isImage() ? $item->altTextFor(Platform::Mastodon) : null);
         }
 
         return $mediaIds === [] ? [] : ['media_ids' => $mediaIds];
@@ -142,21 +142,26 @@ class MastodonPublisher
         ];
     }
 
-    private function uploadMedia(SocialAccount $account, string $instance, string $url, ?string $filename, ?string $altText): ?string
+    /**
+     * Uploads one media item and returns its id. A failure stops the post
+     * instead of publishing it without the media: a 5xx or a dropped
+     * connection is retried (the status does not exist yet), anything else
+     * Mastodon refused fails with its mapped error.
+     */
+    private function uploadMedia(SocialAccount $account, string $instance, string $url, ?string $filename, ?string $altText): string
     {
         $tempFile = tempnam(sys_get_temp_dir(), 'masto_media_');
 
         try {
             $downloadResponse = Http::withOptions(['sink' => $tempFile])->timeout(600)->get($url);
 
-            if ($downloadResponse->failed()) {
-                throw new \Exception('Failed to download media: HTTP '.$downloadResponse->status());
-            }
+            if ($downloadResponse->failed() || filesize($tempFile) === 0) {
+                Log::error('Mastodon failed to download media', ['url' => $url, 'status' => $downloadResponse->status()]);
 
-            if (filesize($tempFile) === 0) {
-                Log::error('Mastodon failed to download media', ['url' => $url]);
-
-                return null;
+                throw new MastodonPublishException(
+                    userMessage: __('posts.errors.media_unavailable', ['platform' => Platform::Mastodon->label()]),
+                    category: ErrorCategory::ServerError,
+                );
             }
 
             // Optimize images (skip GIFs)
@@ -182,10 +187,14 @@ class MastodonPublisher
                 $request = $request->attach('description', $altText);
             }
 
-            $response = $request->post("{$instance}/api/v1/media");
-
-            if (is_resource($stream)) {
-                fclose($stream);
+            try {
+                $response = $request->post("{$instance}/api/v1/media");
+            } catch (ConnectionException $e) {
+                throw new PlatformUnavailableException("Mastodon media upload failed to connect: {$e->getMessage()}");
+            } finally {
+                if (is_resource($stream)) {
+                    fclose($stream);
+                }
             }
 
             if ($response->failed()) {
@@ -194,19 +203,24 @@ class MastodonPublisher
                     'body' => $this->redactResponseBody($response->body()),
                 ]);
 
-                return null;
+                if ($response->serverError()) {
+                    throw new PlatformUnavailableException('Mastodon media upload returned a server error', $response->status());
+                }
+
+                $this->handleApiError($response);
             }
 
-            $data = $response->json();
+            $mediaId = data_get($response->json(), 'id');
 
-            return data_get($data, 'id');
-        } catch (\Exception $e) {
-            Log::error('Mastodon media upload error', [
-                'error' => $e->getMessage(),
-                'url' => $url,
-            ]);
+            if (! is_scalar($mediaId) || (string) $mediaId === '') {
+                throw new MastodonPublishException(
+                    userMessage: __('posts.errors.unrecognized_error', ['platform' => Platform::Mastodon->label()]),
+                    category: ErrorCategory::Unknown,
+                    rawResponse: $this->redactResponseBody($response->body()),
+                );
+            }
 
-            return null;
+            return (string) $mediaId;
         } finally {
             @unlink($tempFile);
         }

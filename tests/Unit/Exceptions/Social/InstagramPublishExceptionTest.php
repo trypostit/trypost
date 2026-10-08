@@ -197,7 +197,7 @@ test('only an Instagram error caused by the account is marked as a network rejec
     'carousel item count' => [100, 2207028, true],
     'activity restricted to protect the community' => [4, 2207051, true],
     'too many tags' => [100, 2207040, true],
-    'account without trial reels' => [100, 2207081, true],
+    'undocumented trial reels subcode' => [100, 2207081, false],
     'caption too long' => [36004, 2207010, true],
     'daily publishing limit' => [9, 2207042, true],
     'account restricted' => [25, 2207050, true],

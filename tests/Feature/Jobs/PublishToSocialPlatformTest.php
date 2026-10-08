@@ -2402,7 +2402,7 @@ test('a mastodon thread that fails midway is visible and its retry never posts a
 
     $failed = $target->fresh();
     expect($failed->status)->toBe(PlatformStatus::Failed)
-        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', ['published' => 2, 'total' => 3, 'error' => 'Media validation failed.']))
+        ->and($failed->error_message)->toBe(__('posts.errors.thread_incomplete', ['published' => 2, 'total' => 3, 'error' => 'Validation failed']))
         ->and(collect(data_get($failed->error_context, 'thread_progress'))->pluck('id')->all())->toBe(['1', '2']);
 
     Bus::fake([PublishToSocialPlatform::class]);

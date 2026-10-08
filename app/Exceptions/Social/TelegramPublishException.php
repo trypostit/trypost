@@ -17,12 +17,12 @@ class TelegramPublishException extends SocialPublishException
 
         // 403: the bot was removed or isn't an admin of the channel anymore.
         if ($status === 403) {
-            return (new static(
+            return new static(
                 userMessage: 'The bot is not an admin of this channel. Re-add it as an administrator and try again.',
                 category: ErrorCategory::Permission,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         // 401: the configured bot token is invalid (operator-level misconfiguration).

@@ -838,6 +838,7 @@ return [
         ],
         'content_too_long' => 'Dieser Beitrag hat :provided Zeichen, :platform erlaubt aber nur :max.',
         'unrecognized_error' => ':platform hat einen Fehler gemeldet, den wir nicht zuordnen konnten. Versuche es erneut.',
+        'media_unavailable' => 'Wir konnten die Medien für :platform nicht abrufen. Versuche es erneut.',
         'facebook' => [
             'processing_failed' => 'Facebook konnte dieses Video nicht verarbeiten. Prüfe, ob es die Anforderungen für Reels erfüllt, und versuche es erneut.',
             'upload_incomplete' => 'Facebook hat nicht das ganze Video erhalten. Versuche es erneut.',

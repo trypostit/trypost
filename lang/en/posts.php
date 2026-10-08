@@ -836,6 +836,7 @@ return [
         ],
         'content_too_long' => 'This post has :provided characters, but :platform allows :max.',
         'unrecognized_error' => ':platform returned an error we could not identify. Please try again.',
+        'media_unavailable' => 'We could not fetch the media to send to :platform. Please try again.',
         'facebook' => [
             'processing_failed' => 'Facebook could not process this video. Make sure it meets the Reels requirements and try again.',
             'upload_incomplete' => 'Facebook did not receive the whole video. Please try again.',

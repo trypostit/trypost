@@ -192,7 +192,7 @@ test('a tiktok refresh answered with a dead refresh token error expires the acco
         });
 
     expect($account->fresh()->access_token)->toBe('old_token');
-})->with([200, 400])->with(['invalid_grant', 'access_denied']);
+})->with([200, 400])->with(['invalid_grant']);
 
 test('a tiktok refresh answered with a json scalar stays transient', function (int $status) {
     Http::fake([
@@ -211,7 +211,7 @@ test('a tiktok refresh answered with a json scalar stays transient', function (i
     expect($account->fresh()->access_token)->toBe('old_token');
 })->with([200, 400]);
 
-test('a tiktok refresh answered with a temporary or app configuration error stays transient, whatever the status', function (int $status, string $error) {
+test('a tiktok refresh answered with any error but invalid_grant stays transient, whatever the status', function (int $status, string $error) {
     Http::fake([
         config('trypost.platforms.tiktok.api').'/oauth/token/' => Http::response([
             'error' => $error,
@@ -230,7 +230,7 @@ test('a tiktok refresh answered with a temporary or app configuration error stay
         ->toThrow(PlatformUnavailableException::class);
 
     expect($account->fresh()->access_token)->toBe('old_token');
-})->with([200, 400])->with(['server_error', 'temporarily_unavailable', 'invalid_client', 'invalid_request']);
+})->with([200, 400])->with(['server_error', 'temporarily_unavailable', 'invalid_client', 'invalid_request', 'access_denied']);
 
 test('a tiktok refresh error body with non-string fields never breaks the classification', function (int $status, array $body, string $exception) {
     Http::fake([

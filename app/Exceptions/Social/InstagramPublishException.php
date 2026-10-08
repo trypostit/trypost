@@ -23,7 +23,7 @@ class InstagramPublishException extends SocialPublishException
      */
     private const array USER_REJECTION_SUBCODES = [
         2207026, 2207004, 2207009, 2207057, 2207010, 2207028, 2207051,
-        2207040, 2207042, 2207050, 2207081,
+        2207040, 2207042, 2207050,
     ];
 
     /**
@@ -33,6 +33,19 @@ class InstagramPublishException extends SocialPublishException
     public static function isMediaNotReady(Response $response): bool
     {
         return (int) $response->json('error.error_subcode') === self::MEDIA_NOT_READY_SUBCODE;
+    }
+
+    /**
+     * A documented subcode whose fix is the user's, not a wait. Instagram
+     * sends some of them under Graph codes that are otherwise transient (1
+     * and 4), so this is checked before retrying.
+     */
+    public static function isDocumentedRejection(Response $response): bool
+    {
+        $subcode = $response->json('error.error_subcode');
+        $mapped = self::forSubcode(is_numeric($subcode) ? (int) $subcode : null);
+
+        return $mapped !== null && $mapped[1] !== ErrorCategory::ServerError;
     }
 
     public static function fromApiResponse(mixed $response): static
@@ -105,7 +118,6 @@ class InstagramPublishException extends SocialPublishException
             2207040 => ['Too many tags (max 20).', ErrorCategory::ContentPolicy],
             2207042 => ['Daily publishing limit reached. Please try again tomorrow.', ErrorCategory::RateLimit],
             2207050 => ['Instagram account is restricted or inactive. Please check the Instagram app.', ErrorCategory::Permission],
-            2207081 => ["This account doesn't support Trial Reels.", ErrorCategory::Permission],
             default => null,
         };
     }

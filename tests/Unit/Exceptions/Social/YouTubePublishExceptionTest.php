@@ -83,7 +83,14 @@ test('a Google 5xx that reaches the mapper fails as an unconfirmed upload', func
     '500 internalError' => [500, [['reason' => 'internalError', 'message' => 'Internal error']]],
     '400 backendError' => [400, [['reason' => 'backendError', 'message' => 'Backend Error']]],
     'internalError without a status' => [0, [['reason' => 'internalError', 'message' => 'Internal error']]],
+    '504 gateway timeout' => [504, []],
 ]);
+
+test('a 5xx the resumable upload guide does not list as retryable is not a server error', function () {
+    $e = new Exception('Not implemented', 501, null, [['reason' => 'notImplemented', 'message' => 'Not implemented']]);
+
+    expect(YouTubePublishException::isServerError($e))->toBeFalse();
+});
 
 test('a failure without a documented reason never reaches the user message', function () {
     $e = new Exception('<!DOCTYPE html><html lang=en><p><b>400.</b> That’s an error.</html>', 400);

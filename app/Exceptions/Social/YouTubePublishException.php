@@ -15,6 +15,16 @@ class YouTubePublishException extends SocialPublishException
     private const array SERVER_ERROR_REASONS = ['backendError', 'internalError'];
 
     /**
+     * The statuses the resumable upload guide says to retry. A 501 or any
+     * other 5xx is permanent, so retrying it only uploads the video again.
+     *
+     * @see https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol
+     *
+     * @var list<int>
+     */
+    private const array RETRYABLE_SERVER_STATUSES = [500, 502, 503, 504];
+
+    /**
      * Reasons YouTube documents as caused by the user's title, description
      * or channel limits. Metadata we build or never send (category, tags,
      * publishAt, recording details, game rating, filename, media body), the
@@ -93,7 +103,7 @@ class YouTubePublishException extends SocialPublishException
 
     public static function isServerError(GoogleServiceException $e): bool
     {
-        return $e->getCode() >= 500 || in_array(data_get($e->getErrors(), '0.reason'), self::SERVER_ERROR_REASONS, true);
+        return in_array($e->getCode(), self::RETRYABLE_SERVER_STATUSES, true) || in_array(data_get($e->getErrors(), '0.reason'), self::SERVER_ERROR_REASONS, true);
     }
 
     public function platform(): string

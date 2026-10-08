@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Exceptions\Social;
 
+use App\Enums\SocialAccount\Platform;
 use App\Exceptions\TokenExpiredException;
 use Illuminate\Http\Client\Response;
 
@@ -44,21 +45,21 @@ class MastodonPublishException extends SocialPublishException
         }
 
         if ($status === 422) {
-            return (new static(
-                userMessage: 'Media validation failed.',
-                category: ErrorCategory::MediaFormat,
+            return new static(
+                userMessage: self::providerMessage($response, 'error') ?? __('posts.errors.unrecognized_error', ['platform' => Platform::Mastodon->label()]),
+                category: ErrorCategory::Unknown,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if ($status === 413) {
-            return (new static(
+            return new static(
                 userMessage: 'File is too large for this Mastodon instance.',
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if ($status === 429) {

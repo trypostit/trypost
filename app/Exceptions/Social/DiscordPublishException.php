@@ -43,7 +43,7 @@ class DiscordPublishException extends SocialPublishException
                 category: ErrorCategory::MediaFormat,
                 platformErrorCode: (string) $code,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            ))->asNetworkRejectionIf($code === 40005);
         }
 
         // 401: the configured bot token is invalid (operator-level misconfiguration).

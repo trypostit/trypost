@@ -1230,6 +1230,49 @@ test('x publisher reschedules media still processing with its media id as a chec
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
 });
 
+test('x publisher never waits longer than thirty seconds between media status checks', function () {
+    Sleep::fake();
+
+    $this->post->update([
+        'media' => [
+            [
+                'id' => 'test-media-video',
+                'path' => 'media/2026-01/clip.mp4',
+                'url' => 'https://example.com/media/2026-01/clip.mp4',
+                'mime_type' => 'video/mp4',
+                'original_filename' => 'clip.mp4',
+            ],
+        ],
+    ]);
+
+    Http::fake(function ($request) {
+        $url = $request->url();
+
+        if (str_contains($url, '/2/media/upload/initialize')) {
+            return Http::response(['data' => ['id' => 'media_slow']], 200);
+        }
+
+        if (str_contains($url, '/append')) {
+            return Http::response(null, 204);
+        }
+
+        if (str_contains($url, '/finalize')) {
+            return Http::response(['data' => ['id' => 'media_slow', 'processing_info' => ['state' => 'pending', 'check_after_secs' => 0]]], 200);
+        }
+
+        if (isXMediaUploadStatusRequest($request)) {
+            return Http::response(['data' => ['processing_info' => ['state' => 'in_progress', 'check_after_secs' => 600]]], 200);
+        }
+
+        return Http::response('fake-video-content', 200);
+    });
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(PlatformUnavailableException::class);
+
+    Sleep::assertSlept(fn ($duration): bool => $duration->totalSeconds === 30.0, 20);
+    Sleep::assertSleptTimes(20);
+});
+
 test('x publisher fails once instead of rescheduling when no status check ever succeeds', function () {
     Sleep::fake();
 

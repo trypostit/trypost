@@ -26,17 +26,20 @@ class FacebookPublishException extends SocialPublishException
     private const string FACEBOOK_URL_SUBCODE = '1609008';
 
     /**
-     * Graph codes caused by the Page's own file, caption, permission, limit
-     * or duplicate post. Upload-session failures, "no video file" (our
-     * request), Reel-without-video (our composer check), editing a video
-     * (ours), 1609008 (also the facebook.com link subcode), the undocumented
-     * 1349125 and the app-level limits 4, 32, 341 and 613 stay reported.
+     * Graph codes the Video API error reference documents as the Page's own
+     * file (size, length, format) plus the duplicate post and the account's
+     * own limits. 6000 ("retry and report bug", and what finishing an empty
+     * session of ours returns), 1363042 (fixed with a valid token), the
+     * upload-session failures, "no video file" (our request), editing a video
+     * (ours), every code missing from Meta's references and the app-level
+     * limits 4, 32, 341 and 613 stay reported.
+     *
+     * @see https://developers.facebook.com/documentation/video-api/reference/error-codes
      *
      * @var list<int>
      */
     private const array USER_REJECTION_CODES = [
-        6000, 1363042, 1363023, 1363022, 1363031, 1363032, 1363024, 1363025,
-        1363026, 1363047, 1609010, 2061006, 1390008, 1346003, 506,
+        1363023, 1363022, 1363031, 1363032, 1363024, 1363025, 1363026, 506,
         ...GraphError::ACCOUNT_RATE_LIMIT_CODES,
     ];
 
@@ -75,12 +78,12 @@ class FacebookPublishException extends SocialPublishException
                 default => [__('posts.errors.unrecognized_error', ['platform' => Platform::Facebook->label()]), ErrorCategory::Unknown],
             };
 
-            return (new static(
+            return new static(
                 userMessage: $message,
                 category: $category,
                 platformErrorCode: is_string($uploadErrorType) && $uploadErrorType !== '' ? $uploadErrorType : null,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejectionIf($uploadErrorType === 'ProcessingFailedError');
+            );
         }
 
         $errorCode = data_get($body, 'error.code');
@@ -115,13 +118,8 @@ class FacebookPublishException extends SocialPublishException
             1363041 => ['Upload session expired. Please try again.', ErrorCategory::ServerError],
             1363021 => ['Problem during video upload. Please try again.', ErrorCategory::ServerError],
             1363005 => ['No permission to edit this video.', ErrorCategory::Permission],
-            1363047 => ['Reel encoding issue. Please try a different video.', ErrorCategory::MediaFormat],
             1609008 => ['Video format not supported for Reels.', ErrorCategory::MediaFormat],
-            1609010 => ['Reel encoding requirements not met.', ErrorCategory::MediaFormat],
             1366046 => ['Reels require a video.', ErrorCategory::ContentPolicy],
-            2061006 => ['Video is too short for this format.', ErrorCategory::MediaFormat],
-            1390008 => ['Caption is too long.', ErrorCategory::ContentPolicy],
-            1346003 => ['Thumbnail is incompatible.', ErrorCategory::ContentPolicy],
             1349125 => ['Rate limit exceeded. Try again later.', ErrorCategory::RateLimit],
             4, 32, 341, 613, 80001 => ['Too many API calls. Please try again later.', ErrorCategory::RateLimit],
             17 => ['User call limit reached.', ErrorCategory::RateLimit],

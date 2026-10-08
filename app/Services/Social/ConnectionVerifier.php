@@ -31,13 +31,14 @@ class ConnectionVerifier
 {
     /**
      * TikTok OAuth errors that mean the refresh token itself is dead and the
-     * user must reconnect; every other error is ours or temporary.
+     * user must reconnect: only invalid_grant ("invalid, expired, revoked")
+     * is documented that way. Every other error is ours or temporary.
      *
      * @see https://developers.tiktok.com/doc/oauth-error-handling
      *
      * @var list<string>
      */
-    private const array TIKTOK_DEAD_REFRESH_ERRORS = ['invalid_grant', 'access_denied'];
+    private const array TIKTOK_DEAD_REFRESH_ERRORS = ['invalid_grant'];
 
     /**
      * Read and connect timeouts for a token refresh. Stated explicitly, even

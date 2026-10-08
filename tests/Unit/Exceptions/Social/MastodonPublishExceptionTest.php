@@ -54,14 +54,21 @@ test('HTTP 429 maps to RateLimit category', function () {
         ->and($exception->userMessage)->toBe('Rate limit exceeded. Please try again later.');
 });
 
-test('HTTP 422 without text blank maps to MediaFormat category', function () {
-    $response = Http::response(['error' => 'Validation failed'], 422);
+test('HTTP 422 without text blank shows Mastodon\'s own validation message as Unknown', function () {
+    $response = Http::response(['error' => 'Validation failed: Visibility is not included in the list'], 422);
     $fakeResponse = Http::fake(['*' => $response])->post('https://mastodon.social/api/v1/statuses');
 
     $exception = MastodonPublishException::fromApiResponse($fakeResponse);
 
-    expect($exception->category)->toBe(ErrorCategory::MediaFormat)
-        ->and($exception->userMessage)->toBe('Media validation failed.');
+    expect($exception->category)->toBe(ErrorCategory::Unknown)
+        ->and($exception->userMessage)->toBe('Validation failed: Visibility is not included in the list');
+});
+
+test('HTTP 422 without a message falls back to the generic translated one', function () {
+    $fakeResponse = Http::fake(['*' => Http::response([], 422)])->post('https://mastodon.social/api/v1/statuses');
+
+    expect(MastodonPublishException::fromApiResponse($fakeResponse)->userMessage)
+        ->toBe(__('posts.errors.unrecognized_error', ['platform' => 'Mastodon']));
 });
 
 test('unknown status maps to Unknown category with error message', function () {
@@ -83,14 +90,14 @@ test('platform returns mastodon', function () {
     expect($exception->platform())->toBe('mastodon');
 });
 
-test('only a Mastodon rejection of the user content is marked as a network rejection', function (int $status, bool $marked) {
+test('no Mastodon failure is marked as a network rejection', function (int $status) {
     $fakeResponse = Http::fake(['*' => Http::response(['error' => 'Validation failed: File content type is invalid'], $status)])
         ->post(config('trypost.platforms.mastodon.default_instance').'/api/v2/media');
 
-    expect(MastodonPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+    expect(MastodonPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([
-    'media validation' => [422, true],
-    'file too large for the instance' => [413, true],
-    'undocumented forbidden' => [403, false],
-    'an account or IP rate limit' => [429, false],
+    'generic validation failure, which also covers our payload' => [422],
+    'undocumented file too large' => [413],
+    'undocumented forbidden' => [403],
+    'an account or IP rate limit' => [429],
 ]);

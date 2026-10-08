@@ -836,6 +836,7 @@ return [
         ],
         'content_too_long' => 'В этом посте :provided символов, а :platform допускает :max.',
         'unrecognized_error' => ':platform вернул ошибку, которую нам не удалось определить. Попробуйте снова.',
+        'media_unavailable' => 'Не удалось получить медиафайл для отправки в :platform. Попробуйте снова.',
         'facebook' => [
             'processing_failed' => 'Facebook не смог обработать это видео. Убедитесь, что оно соответствует требованиям Reels, и попробуйте снова.',
             'upload_incomplete' => 'Facebook получил видео не полностью. Попробуйте снова.',

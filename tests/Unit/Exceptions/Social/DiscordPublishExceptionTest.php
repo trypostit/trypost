@@ -13,6 +13,7 @@ test('only a Discord rejection the server owner can fix is marked as a network r
 })->with([
     'bot missing permissions in the channel' => [403, 50013, true],
     'attachment too large' => [413, 40005, true],
+    'an undocumented 413 without the attachment code' => [413, 0, false],
     'a channel id we sent that does not exist' => [404, 10003, false],
     'our bot rate limit' => [429, 0, false],
 ]);

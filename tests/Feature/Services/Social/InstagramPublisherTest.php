@@ -914,6 +914,53 @@ test('instagram publisher retries a transient Graph failure on media_publish', f
         });
 });
 
+test('instagram publisher fails at once on a documented rejection sent under a transient Graph code', function (string $edge, int $code, int $subcode, ErrorCategory $category) {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    $rejection = Http::response(['error' => ['message' => 'Rejected', 'code' => $code, 'error_subcode' => $subcode]], 400);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => $edge === 'media' ? $rejection : Http::response(['id' => 'container-123']),
+        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED']),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => $rejection,
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))
+        ->toThrow(function (InstagramPublishException $exception) use ($subcode, $category): void {
+            expect($exception->platformErrorCode)->toBe((string) $subcode)
+                ->and($exception->category)->toBe($category);
+        });
+})->with([
+    'activity restricted on media_publish' => ['media_publish', 4, 2207051, ErrorCategory::ContentPolicy],
+    'thumbnail offset on the container' => ['media', 1, 2207057, ErrorCategory::MediaFormat],
+]);
+
+test('instagram publisher still retries a documented server subcode sent under a transient Graph code', function () {
+    $this->post->update([
+        'media' => [[
+            'id' => 'test-media-id',
+            'path' => 'media/2026-01/test-image.jpg',
+            'url' => 'https://example.com/media/2026-01/test-image.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'test.jpg',
+        ]],
+    ]);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['error' => ['message' => 'Server error', 'code' => 2, 'error_subcode' => 2207001]], 500),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->postPlatform))->toThrow(PlatformUnavailableException::class);
+});
+
 test('instagram publisher waits for a container media_publish reports as not ready yet', function () {
     $this->post->update([
         'media' => [[

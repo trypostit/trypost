@@ -39,6 +39,13 @@ class XPublisher
 
     private const int MEDIA_PROCESSING_MAX_RETRIES = 30;
 
+    /**
+     * The longest wait between two status checks, whatever check_after_secs
+     * asks for, so 20 checks stay inside the publish job's timeout. Media
+     * still processing after them is rescheduled.
+     */
+    private const int MEDIA_STATUS_MAX_WAIT_SECONDS = 30;
+
     /** @var array<string, string> */
     private array $uploadedMedia = [];
 
@@ -507,7 +514,7 @@ class XPublisher
                 );
             }
 
-            Sleep::for(max(0, (int) data_get($processingInfo, 'check_after_secs', 3)))->seconds();
+            Sleep::for(min(self::MEDIA_STATUS_MAX_WAIT_SECONDS, max(0, (int) data_get($processingInfo, 'check_after_secs', 3))))->seconds();
         }
 
         if ($this->processingState($lastProcessingInfo)?->isProcessing() !== true) {

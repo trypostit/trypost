@@ -836,6 +836,7 @@ return [
         ],
         'content_too_long' => '이 게시물은 :provided자이지만 :platform에서는 최대 :max자까지 허용됩니다.',
         'unrecognized_error' => ':platform에서 확인할 수 없는 오류가 발생했습니다. 다시 시도하세요.',
+        'media_unavailable' => ':platform에 보낼 미디어를 가져오지 못했습니다. 다시 시도하세요.',
         'facebook' => [
             'processing_failed' => 'Facebook에서 이 동영상을 처리하지 못했습니다. 릴스 요구 사항을 충족하는지 확인한 후 다시 시도하세요.',
             'upload_incomplete' => 'Facebook에서 동영상 전체를 받지 못했습니다. 다시 시도하세요.',

@@ -59,12 +59,12 @@ class PinterestPublishException extends SocialPublishException
         // you to save Pins.") is a content-policy rejection reused from their
         // legacy "nopin" crawler-block message, not an HTTP/technical error.
         if ($status === 400 && (int) data_get($body, 'code') === 1) {
-            return (new static(
+            return new static(
                 userMessage: "Pinterest rejected this pin. This usually means the content violates Pinterest's content policies (e.g. adult or sexual content).",
                 category: ErrorCategory::ContentPolicy,
                 platformErrorCode: (string) $status,
                 rawResponse: $rawResponse,
-            ))->asNetworkRejection();
+            );
         }
 
         if ($status === 400 && str_contains(strtolower($rawResponse), 'board')) {

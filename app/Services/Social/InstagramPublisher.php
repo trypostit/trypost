@@ -384,7 +384,8 @@ class InstagramPublisher
                 'body' => $this->redactResponseBody($publishResponse->body()),
             ]);
 
-            if (GraphError::isTransientFailure($publishResponse) || InstagramPublishException::isMediaNotReady($publishResponse)) {
+            if (! InstagramPublishException::isDocumentedRejection($publishResponse)
+                && (GraphError::isTransientFailure($publishResponse) || InstagramPublishException::isMediaNotReady($publishResponse))) {
                 throw $this->pendingContainerException($containerId, $workflow, $publishResponse->status());
             }
 
@@ -577,7 +578,7 @@ class InstagramPublisher
                 'body' => $this->redactResponseBody($response->body()),
             ]);
 
-            if (GraphError::isTransientFailure($response)) {
+            if (! InstagramPublishException::isDocumentedRejection($response) && GraphError::isTransientFailure($response)) {
                 throw new PlatformUnavailableException(
                     message: "Instagram {$label} creation failed transiently",
                     httpStatus: $response->status(),

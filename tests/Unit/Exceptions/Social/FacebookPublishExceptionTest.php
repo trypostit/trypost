@@ -186,11 +186,6 @@ test('only a Graph code caused by the Page is marked as a network rejection', fu
     'file is not a valid video' => [1363032, true],
     'video too short' => [1363025, true],
     'video too long' => [1363026, true],
-    'reel encoding issue' => [1363047, true],
-    'reel encoding requirements not met' => [1609010, true],
-    'video too short for the format' => [2061006, true],
-    'incompatible thumbnail' => [1346003, true],
-    'caption too long' => [1390008, true],
     'duplicate post' => [506, true],
     'user request limit' => [17, true],
     'Page BUC limit' => [80001, true],
@@ -199,18 +194,22 @@ test('only a Graph code caused by the Page is marked as a network rejection', fu
     'application limit' => [341, false],
     'custom limit' => [613, false],
     'no video file in our request' => [1363020, false],
+    'upload problem to retry and report' => [6000, false],
+    'no permission to upload, fixed with a valid token' => [1363042, false],
+    'undocumented reel encoding code' => [1363047, false],
+    'undocumented caption code' => [1390008, false],
     'undocumented rate limit' => [1349125, false],
 ]);
 
-test('only a rupload processing failure is marked as a network rejection', function (string $type, bool $marked) {
+test('no rupload failure is marked as a network rejection', function (string $type) {
     $fakeResponse = Http::fake(['*' => Http::response(['debug_info' => ['type' => $type, 'message' => 'Failed']], 400)])
         ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v25.0/1');
 
-    expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
+    expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([
-    'processing failed' => ['ProcessingFailedError', true],
-    'our partial request' => ['PartialRequestError', false],
-    'invalid upload offset' => ['OffsetInvalidError', false],
+    'processing failed' => ['ProcessingFailedError'],
+    'our partial request' => ['PartialRequestError'],
+    'invalid upload offset' => ['OffsetInvalidError'],
 ]);
 
 test('a rupload failure without a usable type has no platform error code', function (mixed $type) {
