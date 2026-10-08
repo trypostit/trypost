@@ -85,7 +85,7 @@ test('platform returns mastodon', function () {
 
 test('only a Mastodon rejection of the user content is marked as a network rejection', function (int $status, bool $marked) {
     $fakeResponse = Http::fake(['*' => Http::response(['error' => 'Validation failed: File content type is invalid'], $status)])
-        ->post('https://mastodon.social/api/v2/media');
+        ->post(config('trypost.platforms.mastodon.default_instance').'/api/v2/media');
 
     expect(MastodonPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBe($marked);
 })->with([
