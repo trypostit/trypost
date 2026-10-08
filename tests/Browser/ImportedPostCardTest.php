@@ -294,13 +294,29 @@ test('a draft shows no metrics band in its details', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the content type badge has an icon for stories and reels and is hidden for a regular post', function () {
+test('the content type badge has an icon for stories and reels and is hidden for regular posts and TikTok', function () {
     [$user, $workspace, $account] = importedCardSetup();
     $expectations = [
         [importedCardPost($workspace, $account, ContentType::InstagramStory), 'posts.content_types.instagram_story.label'],
         [importedCardPost($workspace, $account, ContentType::InstagramReel), 'posts.content_types.instagram_reel.label'],
         [importedCardPost($workspace, $account, ContentType::InstagramFeed), null],
     ];
+    $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
+
+    foreach ([ContentType::TikTokPhoto, ContentType::TikTokVideo] as $contentType) {
+        $post = Post::factory()->published()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $user->id,
+        ]);
+        PostPlatform::factory()->published()->create([
+            'post_id' => $post->id,
+            'social_account_id' => $tiktok->id,
+            'platform' => Platform::TikTok,
+            'content_type' => $contentType,
+        ]);
+        $expectations[] = [$post, null];
+    }
+
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));

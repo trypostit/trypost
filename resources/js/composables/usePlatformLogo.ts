@@ -103,9 +103,9 @@ export const hasMultipleContentTypes = (platform: string): boolean =>
 
 /**
  * Translation key for the badge that names a published format, or null for a
- * platform's default format: tagging a regular post would just add noise.
+ * platform's default format or TikTok: these cards do not need a format badge.
  */
 export const getContentTypeBadgeKey = (platform: string, contentType: string | null): string | null =>
-    contentType && hasMultipleContentTypes(platform) && contentType !== PLATFORM_CONTENT_TYPES[platform]?.[0]
+    platform !== 'tiktok' && contentType && hasMultipleContentTypes(platform) && contentType !== PLATFORM_CONTENT_TYPES[platform]?.[0]
         ? translationKeyFor(contentType)
         : null;
