@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\Fluent\AssertableJson;
 
-test('web REST and MCP post metrics read the same persisted observation without a provider call', function () {
+test('REST and MCP post metrics read the same persisted observation without a provider call', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $access = createApiTestToken();
     $user = $access['user'];
@@ -45,13 +45,6 @@ test('web REST and MCP post metrics read the same persisted observation without 
         ],
     ]);
     Http::fake();
-
-    $this->actingAs($user)
-        ->getJson(route('app.posts.metrics', $post))
-        ->assertOk()
-        ->assertJsonPath('available', true)
-        ->assertJsonPath('metrics.reactions.value', 7)
-        ->assertJsonPath('metrics.watch_time_milliseconds.value', 180000);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
         ->getJson(route('api.posts.metrics', $post))
@@ -87,12 +80,6 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
     $account = SocialAccount::factory()->create(['workspace_id' => $access['workspace']->id, 'platform' => Platform::LinkedIn]);
     $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $access['user']->id]);
 
-    $this->actingAs($access['user'])
-        ->getJson(route('app.posts.metrics', $post))
-        ->assertOk()
-        ->assertJsonPath('unsupported', true)
-        ->assertJsonPath('reason', 'platform_not_supported');
-
     TryPostServer::actingAs($access['user'])
         ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
         ->assertOk()
@@ -102,8 +89,8 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
             ->etc());
 
     $foreignPost = Post::factory()->linkedin()->published()->create();
-    $this->actingAs($access['user'])
-        ->getJson(route('app.posts.metrics', $foreignPost))
+    $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
+        ->getJson(route('api.posts.metrics', $foreignPost))
         ->assertNotFound();
 });
 

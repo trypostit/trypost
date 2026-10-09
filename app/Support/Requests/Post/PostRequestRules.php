@@ -174,7 +174,8 @@ class PostRequestRules
     }
 
     /**
-     * The workspace account chosen in `social_account_id`, keyed by id.
+     * The workspace account chosen in `social_account_id`, keyed by id. A
+     * malformed id never reaches the query, which PostgreSQL would reject.
      *
      * @param  array<string, mixed>  $input
      * @return Collection<string, SocialAccount>
@@ -183,15 +184,9 @@ class PostRequestRules
     {
         $accountId = data_get($input, 'social_account_id');
 
-        if (! is_string($accountId) || ! Str::isUuid($accountId)) {
-            return collect();
-        }
-
-        return SocialAccount::query()
-            ->where('workspace_id', $workspace->id)
-            ->whereKey($accountId)
-            ->get()
-            ->keyBy('id');
+        return Str::isUuid($accountId)
+            ? $workspace->socialAccounts()->whereKey($accountId)->get()->keyBy('id')
+            : collect();
     }
 
     /**

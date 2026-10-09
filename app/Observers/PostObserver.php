@@ -16,7 +16,6 @@ use App\Models\Post;
 use App\Services\Analytics\Collectors\Followers\FollowerCollectorFactory;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
-use Throwable;
 
 class PostObserver
 {
@@ -34,72 +33,63 @@ class PostObserver
 
     public function saved(Post $post): void
     {
-        if (! $post->wasChanged('status')) {
-            return;
+        if ($post->wasChanged('status')) {
+            $previousStatus = $post->getOriginal('status');
+
+            DB::afterCommit(fn () => PostStatusChanged::dispatch($post, $previousStatus));
         }
-
-        $previousStatus = $this->previousStatus($post);
-
-        DB::afterCommit(fn () => PostStatusChanged::dispatch($post, $previousStatus));
     }
 
     public function updated(Post $post): void
     {
-        if (! $post->wasChanged('publish_status')
-            || $post->publish_status !== PublishStatus::Published
-            || ! filled($post->platform_post_id)) {
+        if (! $this->wasJustPublished($post)) {
             return;
         }
 
-        $this->dispatchAnalyticsSync($post);
+        $this->syncPublicationAnalytics($post);
+        $this->syncPublishingActivity($post);
+    }
 
+    private function wasJustPublished(Post $post): bool
+    {
+        return $post->wasChanged('publish_status')
+            && $post->publish_status === PublishStatus::Published
+            && filled($post->platform_post_id);
+    }
+
+    /**
+     * Never fails the publication: an error here is only reported.
+     */
+    private function syncPublicationAnalytics(Post $post): void
+    {
+        rescue(function () use ($post): void {
+            $account = $post->loadMissing('socialAccount')->socialAccount;
+
+            if (blank($account) || ! app(FollowerCollectorFactory::class)->supports($post->platform)) {
+                return;
+            }
+
+            SyncTryPostPublication::dispatch(
+                TryPostPublicationIdentity::fromAccount($account, app(ResolveAnalyticsAccountKey::class)->for($account)),
+                $post->id,
+            )->afterCommit();
+        });
+    }
+
+    private function syncPublishingActivity(Post $post): void
+    {
         if (! PostHogService::isEnabled()) {
             return;
         }
 
         $accountId = $post->loadMissing('workspace')->workspace?->account_id;
 
-        if (! $accountId) {
+        if (blank($accountId)) {
             return;
         }
 
         SyncAccountPublishingActivity::dispatch((string) $accountId)
             ->delay(now()->addSeconds(SyncAccountPublishingActivity::DEBOUNCE_SECONDS))
             ->afterCommit();
-    }
-
-    private function dispatchAnalyticsSync(Post $post): void
-    {
-        try {
-            $account = $post->loadMissing('socialAccount')->socialAccount;
-
-            if (! $account || ! app(FollowerCollectorFactory::class)->supports($post->platform)) {
-                return;
-            }
-
-            $identity = TryPostPublicationIdentity::fromAccount(
-                $account,
-                app(ResolveAnalyticsAccountKey::class)->for($account),
-            );
-
-            SyncTryPostPublication::dispatch($identity, $post->id)->afterCommit();
-        } catch (Throwable $exception) {
-            report($exception);
-        }
-    }
-
-    private function previousStatus(Post $post): ?PostStatus
-    {
-        $previous = $post->getRawOriginal('status');
-
-        if ($previous instanceof PostStatus) {
-            return $previous;
-        }
-
-        if (is_string($previous)) {
-            return PostStatus::tryFrom($previous);
-        }
-
-        return null;
     }
 }
