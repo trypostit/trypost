@@ -94,7 +94,7 @@ return new class extends Migration
     private function deletePublishedPostsWithoutDestination(): void
     {
         $postIds = DB::table('posts')
-            ->where('status', 'published')
+            ->whereIn('status', ['published', 'partially_published'])
             ->whereNotIn('id', DB::table('post_platforms')->select('post_id'))
             ->orderBy('id')
             ->pluck('id')

@@ -89,7 +89,7 @@ class ListPostsTool extends Tool
     {
         return [
             'status' => $schema->string()
-                ->enum(['draft', 'scheduled', 'published', 'failed', 'pending_approval'])
+                ->enum([Status::Draft->value, Status::Scheduled->value, Status::Published->value, Status::Failed->value, Status::PendingApproval->value])
                 ->description('Filter by status.'),
             'search' => $schema->string()->description('Case-insensitive substring match against the post content.'),
             'channels' => $schema->array()->items($schema->string())->description('Only posts on one of these social account IDs (list-social-accounts-tool).'),

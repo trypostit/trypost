@@ -1811,17 +1811,17 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
 const submit = (status: PostComposition['status']): void => {
     if (
         !canSubmit.value ||
-        (status !== 'draft' && hasBlockingIssues.value)
+        (status !== PostStatus.Draft && hasBlockingIssues.value)
     )
         return;
     submittedMedia.value = snapshotMedia();
     const queue =
-        status === 'scheduled' &&
+        status === PostStatus.Scheduled &&
         (scheduleMode.value === 'next' || scheduleMode.value === 'top')
             ? scheduleMode.value
             : null;
     const payload = composition.materialize(status, queue);
-    if (status === 'scheduled' && !queue) {
+    if (status === PostStatus.Scheduled && !queue) {
         if (!scheduledInstant) return;
         payload.scheduled_at = scheduledInstant;
         if (isInitialQueueSlot()) payload.queue_slot = scheduledInstant;
@@ -1838,8 +1838,16 @@ const submit = (status: PostComposition['status']): void => {
     emit('submit', payload, createAnother.value && !props.postId);
 };
 
+const submitDraft = (): void => {
+    submit(PostStatus.Draft);
+};
+
 const submitSelectedSchedule = (): void => {
-    submit(scheduleMode.value === 'now' ? 'publishing' : 'scheduled');
+    submit(
+        scheduleMode.value === 'now'
+            ? PostStatus.Publishing
+            : PostStatus.Scheduled,
+    );
 };
 
 const isScheduleModeDisabled = (mode: ComposerScheduleMode): boolean =>
@@ -3328,7 +3336,7 @@ const close = (): void => emit('update:open', false);
                         class="max-sm:h-8 max-sm:px-3"
                         data-testid="composer-save-draft"
                         :disabled="!canSubmit"
-                        @click="submit('draft')"
+                        @click="submitDraft"
                         >{{ $t(draftActionLabel) }}</Button
                     >
                     <p

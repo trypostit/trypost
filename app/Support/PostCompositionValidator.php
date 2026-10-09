@@ -8,6 +8,7 @@ use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Actions\Media\SyncOwnedMedia;
 use App\Dto\MediaItem;
 use App\Enums\Post\QueuePosition;
+use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -51,7 +52,7 @@ class PostCompositionValidator
     public static function validate(Workspace $workspace, array $composition, array $existingMedia = []): array
     {
         Validator::make($composition, [
-            'status' => ['required', Rule::in(['draft', 'scheduled', 'publishing'])],
+            'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
             'content' => ['sometimes', 'nullable', 'string', new PostContentFitsMaxLength],
             'media' => ['sometimes', 'array'],
             'destinations' => ['required', 'array', 'min:1'],

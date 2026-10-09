@@ -374,3 +374,14 @@ test('backfill parity refuses a post that still has two destinations', function 
 
     $this->backfill->up();
 })->throws(RuntimeException::class, 'Backfill parity failed');
+
+test('prepare deletes a partially published post whose only destination lost its account', function () {
+    $workspace = Workspace::factory()->create();
+    $post = Post::factory()->create(['workspace_id' => $workspace->id]);
+    DB::table('posts')->where('id', $post->id)->update(['status' => 'partially_published', 'published_at' => now()]);
+    ($this->target)($post, ['social_account_id' => null, 'status' => 'published']);
+
+    $this->prepare->up();
+
+    expect(DB::table('posts')->where('id', $post->id)->exists())->toBeFalse();
+});

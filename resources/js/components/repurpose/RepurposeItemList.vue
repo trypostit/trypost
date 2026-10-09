@@ -109,7 +109,7 @@ const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
                             :src="getPlatformLogo(post.platform)"
                             :alt="getPlatformLabel(post.platform)"
                             class="size-4 rounded-sm"
-                            :class="{ 'opacity-40': post.publish_status === PublishStatus.Failed }"
+                            :class="{ 'opacity-40': postState(post) === PublishStatus.Failed }"
                         />
 
                         {{ post.platform ? getPlatformLabel(post.platform) : '' }}

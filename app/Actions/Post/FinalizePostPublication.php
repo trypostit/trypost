@@ -34,7 +34,7 @@ class FinalizePostPublication
                 return null;
             }
 
-            if (! $post->hasChannel() && ! $post->publish_status->isFinished()) {
+            if (! $post->hasChannel() && in_array($post->publish_status, [PublishStatus::Pending, PublishStatus::Publishing, PublishStatus::Retrying], true)) {
                 if ($post->status !== PostStatus::Publishing) {
                     return null;
                 }

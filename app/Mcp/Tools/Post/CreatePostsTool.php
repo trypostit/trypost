@@ -8,6 +8,7 @@ use App\Actions\Post\CreatePosts;
 use App\Actions\Post\HostInlineMedia;
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\QueuePosition;
+use App\Enums\Post\Status;
 use App\Exceptions\Post\QueueBusyException;
 use App\Http\Resources\Api\PostResource;
 use App\Mcp\Concerns\AuthorizesMcpTool;
@@ -62,7 +63,7 @@ class CreatePostsTool extends Tool
     public function schema(JsonSchema $schema): array
     {
         return [
-            'status' => $schema->string()->enum(['draft', 'scheduled', 'publishing'])->required()->description('draft keeps the posts editable, scheduled schedules them at scheduled_at or in the queue, publishing publishes them now.'),
+            'status' => $schema->string()->enum([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])->required()->description('draft keeps the posts editable, scheduled schedules them at scheduled_at or in the queue, publishing publishes them now.'),
             'content' => $schema->string()->description('Shared text; each destination may override it. The post text, in plain text; use \n for line breaks. When link defusing is on, an X post publishes its links non-clickable (example(.)com); preview-post-tool shows the exact text each network gets. The text must fit the account limit (max_content_length in list-social-accounts-tool; on X, 25000 for an account with long_posts, else 280), Instagram takes at most 5 hashtags, and stories publish no text.'),
             'media' => $this->mediaSchema($schema, 'Media shared by every destination by default.'),
             'scheduled_at' => $schema->string()->description('ISO 8601 datetime in the future and before 2038-01-19, e.g. 2026-05-10T15:30:00Z; without an offset it is read as UTC. Times in responses are UTC (Y-m-d H:i:s). Required when status is scheduled without queue.'),

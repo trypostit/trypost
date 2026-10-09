@@ -167,3 +167,16 @@ test('an already settled post is left alone', function (PostStatus $status) {
     PostStatus::Published,
     PostStatus::Failed,
 ]);
+
+test('a google review whose channel is gone is left to the review ceiling', function () {
+    $account = SocialAccount::factory()->googleBusiness()->create();
+    $post = Post::factory()->forAccount($account)->pendingReview()->create(['platform_post_id' => 'accounts/1/locations/1/localPosts/9']);
+    $post->forceFill(['social_account_id' => null])->save();
+
+    app(FinalizePostPublication::class)->handle($post->fresh());
+
+    expect($post->fresh())
+        ->status->toBe(PostStatus::Publishing)
+        ->publish_status->toBe(PublishStatus::PendingReview)
+        ->platform_post_id->toBe('accounts/1/locations/1/localPosts/9');
+});

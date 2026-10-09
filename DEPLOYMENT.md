@@ -74,12 +74,20 @@ deixa de existir, pode sobrar para o código novo.
    php artisan queue:work redis --queue=social-linkedin,social-linkedin-page,social-x,social-tiktok,social-youtube,social-facebook,social-instagram,social-instagram-facebook,social-threads,social-pinterest,social-bluesky,social-mastodon,social-telegram,social-discord,social-google_business,default,posthog,broadcasts,analytics,webhooks,media-imports,media-adoption,rss-feeds --force --stop-when-empty
    ```
    Confira a lista de filas em `config/horizon.php`. Espere também os jobs com
-   atraso (até 10 minutos, os retries de rede indisponível) e rode o comando de
-   novo até o Redis não ter nada em `queues:*:delayed` nem `queues:*:reserved`.
+   atraso das filas `social-*`, `default`, `broadcasts`, `posthog` e `webhooks`
+   (até 10 minutos, os retries de rede indisponível) e rode o comando de novo até
+   o Redis não ter nada em `queues:<essas filas>:delayed` nem em
+   `queues:*:reserved`. Os atrasados da fila `analytics` (métricas de stories, até
+   24 h) só carregam ids de publicação e podem ficar.
+   Os jobs que já falharam (`failed_jobs`) com o código antigo não podem ser
+   reexecutados depois do deploy (a classe `PostPlatform` deixa de existir):
+   reexecute-os antes ou descarte-os.
    Confirme que não sobrou comando agendado rodando:
    `ps -ef | grep "[a]rtisan" | grep -v horizon`.
    E que nenhum post ficou publicando sem job (deve dar 0; o que sobrar o
-   `RecoverStuckPosts` falharia depois de 1 h):
+   `RecoverStuckPosts` falharia depois de 1 h). As consultas abaixo são de
+   PostgreSQL (Cloud); no MySQL troque `now() - interval '1 hour'` por
+   `now() - interval 1 hour`:
    ```sql
    select count(*) from post_platforms
    where status in ('publishing', 'retrying') and retry_at is null
