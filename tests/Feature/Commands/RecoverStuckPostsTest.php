@@ -71,6 +71,22 @@ test('it broadcasts the timed out target so open publish pages move the post to 
     );
 });
 
+test('it fails a post without a channel left publishing for over 1 hour, notifying once', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Publishing,
+        'publish_status' => PlatformStatus::Pending,
+        'updated_at' => now()->subHours(2),
+    ]);
+
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+    $this->artisan('social:recover-stuck-posts')->assertSuccessful();
+
+    expect($post->fresh()->status)->toBe(PostStatus::Failed);
+    Queue::assertPushed(SendNotification::class, 1);
+});
+
 test('it does not touch posts publishing for less than 1 hour', function () {
     $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,

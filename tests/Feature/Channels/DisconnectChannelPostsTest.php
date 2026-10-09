@@ -6,6 +6,7 @@ use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Enums\Analytics\PublicationContentType;
+use App\Enums\Post\PublishStatus;
 use App\Events\PostDeleted;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -83,6 +84,21 @@ test('disconnecting deletes every post of the channel, whatever its status or or
     $posts->each(fn (array $row) => Storage::assertMissing($row[1]->path));
     Event::assertNotDispatched(PostDeleted::class);
     Queue::assertNotPushed(SendNotification::class);
+});
+
+test('disconnecting deletes a post waiting for a network limit, so no retry runs for it', function () {
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $waiting = Post::factory()->forAccount($account)->publishing()->create([
+        'publish_status' => PublishStatus::Retrying,
+        'retry_at' => now()->subMinute(),
+    ]);
+
+    expect(Post::query()->dueForLimitRetry()->whereKey($waiting->id)->exists())->toBeTrue();
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
+
+    expect(Post::query()->find($waiting->id))->toBeNull()
+        ->and(Post::query()->dueForLimitRetry()->exists())->toBeFalse();
 });
 
 test('disconnecting leaves other channels and other workspaces alone', function () {

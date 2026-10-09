@@ -15,6 +15,7 @@ use App\Events\PostCreated;
 use App\Events\PostStatusChanged;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -354,6 +355,27 @@ test('an instagram post trypost published under its container id is linked inste
         ->and($publication->fresh()->post_id)->toBe($tryPost->id)
         ->and($tryPost->fresh()->platform_post_id)->toBe('media-1')
         ->and($tryPost->fresh()->platform_url)->toBe('https://www.instagram.com/p/media-1/');
+});
+
+test('linking a sent post to its publication moves only the publication clock and queues no sync', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = sentByTryPost($account, 'container-2', '<p>Quiet link</p>', now()->subHours(3)->toImmutable());
+    $tryPost->forceFill(['updated_at' => now()->subDays(2)->startOfSecond(), 'publication_updated_at' => now()->subDays(2)->startOfSecond()])->saveQuietly();
+    $updatedAt = $tryPost->fresh()->updated_at;
+    externalPublication($account, [
+        'remote_id' => 'media-2',
+        'excerpt' => 'Quiet link',
+        'provider_published_at' => now()->subHours(3)->addMinutes(2),
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tryPost->fresh())
+        ->platform_post_id->toBe('media-2')
+        ->updated_at->toIso8601String()->toBe($updatedAt->toIso8601String())
+        ->and($tryPost->fresh()->publication_updated_at->isAfter(now()->subMinute()))->toBeTrue();
+    Queue::assertNotPushed(SyncTryPostPublication::class);
 });
 
 test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function (ContentType $contentType, string $publishId, string $ellipsis) {

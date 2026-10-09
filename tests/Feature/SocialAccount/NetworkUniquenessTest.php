@@ -478,3 +478,29 @@ test('a variant move leaves a failed post on the platform it failed against', fu
 
     expect($failed->fresh()->platform)->toBe(Platform::Instagram);
 });
+
+test('reconnecting across a network variant moves only the posts still waiting to publish', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'li-move',
+    ]);
+    $retryAt = now()->addHour()->startOfSecond();
+    $pending = Post::factory()->forAccount($account, ContentType::LinkedInPost)->scheduled()->create();
+    $retrying = Post::factory()->forAccount($account, ContentType::LinkedInPost)->publishing()->create(['publish_status' => PublishStatus::Retrying, 'retry_at' => $retryAt]);
+    $published = Post::factory()->forAccount($account, ContentType::LinkedInPost)->published()->create();
+    $failed = Post::factory()->forAccount($account, ContentType::LinkedInPost)->failed()->create();
+
+    SocialAccount::connectIdentity($this->workspace, Platform::LinkedInPage, 'li-move', ['status' => Status::Connected], $account);
+
+    expect($pending->fresh())
+        ->platform->toBe(Platform::LinkedInPage)
+        ->content_type->toBe(ContentType::LinkedInPagePost)
+        ->and($retrying->fresh())
+        ->platform->toBe(Platform::LinkedInPage)
+        ->retry_at->toIso8601String()->toBe($retryAt->toIso8601String())
+        ->and($published->fresh())
+        ->platform->toBe(Platform::LinkedIn)
+        ->content_type->toBe(ContentType::LinkedInPost)
+        ->and($failed->fresh()->platform)->toBe(Platform::LinkedIn);
+});
