@@ -7,7 +7,7 @@ import {
     IconChevronLeft,
     IconChevronRight,
 } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,15 @@ const pickDay = (value: DateValue | undefined): void => {
     close();
     emit('pickDay', value.toString());
 };
+
+const titleElement = useTemplateRef<HTMLHeadingElement>('titleElement');
+
+const missingTitleWidth = (): number =>
+    titleElement.value
+        ? titleElement.value.scrollWidth - titleElement.value.clientWidth
+        : 0;
+
+defineExpose({ missingTitleWidth });
 </script>
 
 <template>
@@ -170,6 +179,7 @@ const pickDay = (value: DateValue | undefined): void => {
                 <IconChevronRight class="size-4" />
             </Button>
             <h2
+                ref="titleElement"
                 class="ms-1 truncate font-heading text-base leading-5 font-medium text-foreground capitalize"
                 data-testid="calendar-title"
             >

@@ -24,9 +24,9 @@ const props = withDefaults(
         timezones: TimezoneOption[];
         showSlots?: boolean | null;
         manageSlotsHref?: string | null;
-        compact?: boolean;
+        compact?: boolean | null;
     }>(),
-    { showSlots: null, manageSlotsHref: null, compact: undefined },
+    { showSlots: null, manageSlotsHref: null, compact: null },
 );
 
 const timezone = defineModel<string>('timezone', { required: true });
@@ -37,7 +37,7 @@ const emit = defineEmits<{
 }>();
 
 const belowMd = useBelowBreakpoint('md');
-const compact = computed(() => props.compact ?? belowMd.value);
+const isCompact = computed(() => props.compact ?? belowMd.value);
 
 const hasSlotOptions = (): boolean =>
     props.showSlots !== null || props.manageSlotsHref !== null;
@@ -56,7 +56,7 @@ const rowClass =
 
 <template>
     <ResponsivePopover
-        v-if="compact"
+        v-if="isCompact"
         :title="$t('posts.table.actions')"
         :test-id="`${testId}-menu-content`"
         content-class="w-72 p-2"

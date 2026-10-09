@@ -6,12 +6,16 @@ import {
     IconLayoutSidebarRightExpand,
     IconPlus,
 } from '@tabler/icons-vue';
+import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
 import {
-    useResizeObserver,
-    useSwipe,
-    type UseSwipeDirection,
-} from '@vueuse/core';
-import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+    computed,
+    onMounted,
+    onUnmounted,
+    provide,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
 import AppHeaderActions from '@/components/AppHeaderActions.vue';
@@ -28,6 +32,7 @@ import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
+import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
@@ -269,43 +274,17 @@ const todayKey = computed(() =>
 
 const isDesktop = useAtLeastBreakpoint('md');
 
-const toolbar = ref<HTMLElement | null>(null);
-const filtersCollapsed = ref(false);
-const widthForAllFilters = ref<number | null>(null);
+const toolbar = useTemplateRef<HTMLElement>('toolbar');
+const periodPicker =
+    useTemplateRef<InstanceType<typeof CalendarPeriodPicker>>('periodPicker');
+const { collapsed: filtersCollapsed, expand: showAllFilters } =
+    useCollapseWhenTruncated(
+        toolbar,
+        () => periodPicker.value?.missingTitleWidth() ?? 0,
+    );
 const compactFilters = computed(
     () => !isDesktop.value || filtersCollapsed.value,
 );
-
-const fitFilters = (): void => {
-    const element = toolbar.value;
-
-    if (!element || !isDesktop.value) {
-        return;
-    }
-
-    if (filtersCollapsed.value) {
-        if (
-            widthForAllFilters.value !== null &&
-            element.clientWidth >= widthForAllFilters.value
-        ) {
-            filtersCollapsed.value = false;
-        }
-
-        return;
-    }
-
-    const title = element.querySelector<HTMLElement>(
-        '[data-testid="calendar-title"]',
-    );
-    const missing = title ? title.scrollWidth - title.clientWidth : 0;
-
-    if (missing > 0) {
-        widthForAllFilters.value = element.clientWidth + missing;
-        filtersCollapsed.value = true;
-    }
-};
-
-useResizeObserver(toolbar, fitFilters);
 
 const weekdayNames = computed(() => {
     const start = localized().startOf('week');
@@ -367,16 +346,7 @@ const headerTitle = computed(() =>
         : weekHeaderTitle.value,
 );
 
-watch(headerTitle, () => {
-    filtersCollapsed.value = false;
-    nextTick(fitFilters);
-});
-
-watch(filtersCollapsed, (collapsed) => {
-    if (!collapsed) {
-        nextTick(fitFilters);
-    }
-});
+watch(headerTitle, showAllFilters);
 
 const currentDateQuery = (
     view: CalendarView = props.view,
@@ -621,6 +591,7 @@ const goToDay = (key: string): void => {
                 data-testid="calendar-toolbar"
             >
                 <CalendarPeriodPicker
+                    ref="periodPicker"
                     :view="view"
                     :views="VIEWS"
                     :title="isDesktop ? headerTitle : mobileTitle"
