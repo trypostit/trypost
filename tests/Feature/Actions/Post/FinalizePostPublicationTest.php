@@ -21,9 +21,20 @@ beforeEach(function () {
     app()->setLocale(Locale::DEFAULT->value);
 });
 
+/**
+ * A workspace whose owner is a member, as CreateWorkspace leaves it.
+ */
+function finalizeWorkspaceOf(User $owner): Workspace
+{
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
+
+    return $workspace;
+}
+
 test('a published post queues the published email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $workspace->id,
         'username' => 'inbox',
@@ -46,10 +57,9 @@ test('a published post queues the published email for the owner', function () {
     });
 });
 
-test('every member of the workspace gets the email once, the owner included', function () {
+test('every member of the workspace gets the email, the owner included', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $workspace->members()->attach($owner->id, membershipPivot('admin'));
+    $workspace = finalizeWorkspaceOf($owner);
     $member = workspaceMember($workspace, 'member');
     $requester = workspaceMember($workspace, 'approval');
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
@@ -67,7 +77,7 @@ test('every member of the workspace gets the email once, the owner included', fu
 
 test('a failed post queues the failed email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $account = SocialAccount::factory()->facebook()->create([
         'workspace_id' => $workspace->id,
         'username' => 'inbox',
@@ -92,7 +102,7 @@ test('a failed post queues the failed email for the owner', function () {
 
 test('a publishing post without a destination is failed', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $owner->id,
@@ -107,7 +117,7 @@ test('a publishing post without a destination is failed', function () {
 
 test('a draft without a destination is left alone', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $owner->id,
@@ -122,7 +132,7 @@ test('a draft without a destination is left alone', function () {
 
 test('a google business post still in review is not settled', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->state(['workspace_id' => $workspace->id])->googleBusiness()->pendingReview()->create([
         'user_id' => $owner->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
@@ -136,7 +146,7 @@ test('a google business post still in review is not settled', function () {
 
 test('a google business post rejected in review is failed', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->state(['workspace_id' => $workspace->id])->googleBusiness()->publishing()->create([
         'user_id' => $owner->id,
         'publish_status' => PublishStatus::Rejected,
@@ -152,7 +162,7 @@ test('a google business post rejected in review is failed', function () {
 
 test('a second settle does not notify again', function () {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
         'user_id' => $owner->id,
         'publish_status' => PublishStatus::Published,
@@ -169,7 +179,7 @@ test('a second settle does not notify again', function () {
 
 test('an already settled post is left alone', function (PostStatus $status) {
     $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace = finalizeWorkspaceOf($owner);
     $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->create([
         'user_id' => $owner->id,
         'status' => $status,

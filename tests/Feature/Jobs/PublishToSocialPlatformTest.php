@@ -59,6 +59,7 @@ beforeEach(function () {
     Mail::fake();
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->socialAccount = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $this->workspace->id,
     ]);
@@ -1623,8 +1624,6 @@ test('publish to social platform dispatches success notification when all platfo
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
 
-    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
-
     (new PublishToSocialPlatform($this->post))->handle();
 
     $this->post->refresh();
@@ -1640,8 +1639,6 @@ test('publish to social platform dispatches failure notification when platform f
     $publisher->shouldReceive('publish')->andThrow(new Exception('API error'));
 
     $this->app->instance(LinkedInPublisher::class, $publisher);
-
-    $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
 
     (new PublishToSocialPlatform($this->post))->handle();
 

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Queue;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->socialAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 });
 

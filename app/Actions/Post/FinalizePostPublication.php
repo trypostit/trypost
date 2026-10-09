@@ -26,7 +26,7 @@ class FinalizePostPublication
         /** @var array{post: Post, successful: bool}|null $outcome */
         $outcome = DB::transaction(function () use ($post): ?array {
             $post = Post::query()
-                ->with(['workspace.owner', 'socialAccount'])
+                ->with(['workspace', 'socialAccount'])
                 ->whereKey($post->id)
                 ->lockForUpdate()
                 ->first();
@@ -71,17 +71,12 @@ class FinalizePostPublication
     }
 
     /**
-     * Emails every member of the workspace, and its owner when they are not a
-     * member; each one's notification preferences decide whether it is sent.
+     * Emails every member of the workspace (the owner is always one); each
+     * one's notification preferences decide whether it is sent.
      */
     private function notify(Post $post, bool $successful): void
     {
-        $workspace = $post->workspace;
-
-        $workspace->members()->get()
-            ->push($workspace->owner)
-            ->filter()
-            ->unique('id')
+        $post->workspace->members()->get()
             ->each(fn (User $member) => SendNotification::dispatch(
                 user: $member,
                 type: $successful ? Type::PostPublished : Type::PostFailed,

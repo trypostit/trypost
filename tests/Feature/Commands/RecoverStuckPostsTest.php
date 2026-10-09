@@ -24,6 +24,7 @@ beforeEach(function () {
     Queue::fake([SendNotification::class]);
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->socialAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::LinkedIn,

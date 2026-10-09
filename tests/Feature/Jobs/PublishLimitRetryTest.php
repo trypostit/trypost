@@ -59,6 +59,7 @@ beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-06 12:00:00', 'UTC'));
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
 });
 
 /**
