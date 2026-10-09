@@ -152,7 +152,7 @@ const pickDay = (value: DateValue | undefined): void => {
             <Button
                 variant="ghost"
                 size="icon"
-                class="-ms-3 shrink-0"
+                class="shrink-0"
                 :aria-label="$t('calendar.previous')"
                 data-testid="calendar-previous"
                 @click="emit('navigate', -1)"

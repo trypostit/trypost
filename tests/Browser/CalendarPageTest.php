@@ -657,3 +657,15 @@ test('on a phone the period picker opens from the bottom, switches the view in p
     waitForCalendarTestId($page, 'calendar-previous');
     $page->assertVisible('@calendar-next')->assertVisible('@calendar-view-trigger');
 });
+
+test('the previous period arrow starts on the same line as the calendar', function () {
+    [$user] = calendarPageSetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'week']))->resize(1440, 900);
+    waitForCalendarTestId($page, 'calendar-time-grid');
+
+    expect($page->script("Math.round(document.querySelector('[data-testid=\"calendar-previous\"]').getBoundingClientRect().left)"))
+        ->toBe($page->script("Math.round(document.querySelector('[data-testid=\"calendar-grid\"]').getBoundingClientRect().left)"));
+    $page->assertNoJavaScriptErrors();
+});
