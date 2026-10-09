@@ -563,7 +563,7 @@ const goToDay = (key: string): void => {
 
         <div class="flex min-h-0 flex-1 flex-col">
             <div
-                class="mx-4 mt-2 flex h-12 shrink-0 items-center justify-between gap-2 md:mx-8 md:gap-4"
+                class="mx-4 mt-2 flex h-12 shrink-0 items-center justify-between gap-2 md:mx-8"
                 data-testid="calendar-toolbar"
             >
                 <CalendarPeriodPicker
