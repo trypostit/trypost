@@ -313,6 +313,8 @@ test('show posting times renders empty slots in the week and month views', funct
 
     $page->hover("@calendar-posting-slot-{$slotKey}");
     $page->assertSeeIn("@calendar-posting-slot-{$slotKey}", __('posts.publish.add_post_in_slot'));
+    expect($page->script("document.querySelector('[data-testid=\"calendar-add-{$day->format('Y-m-d')}-15\"]').getBoundingClientRect().height"))
+        ->toBe($page->script("document.querySelector('[data-testid=\"calendar-posting-slot-{$slotKey}\"]').getBoundingClientRect().height"));
 
     expect($page->script("document.querySelector('[data-testid=\"calendar-posting-slot-{$slotKey}\"]').closest('[data-testid^=\"calendar-slot-\"]').dataset.testid"))
         ->toBe("calendar-slot-{$day->format('Y-m-d')}-15");
