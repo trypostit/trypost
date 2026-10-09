@@ -395,6 +395,13 @@ return [
                 'travel_and_events' => 'Reizen en evenementen',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Eerste reactie',
+            'placeholder' => 'Link en extra\'s voor de eerste reactie…',
+            'hint' => 'Direct na publicatie door je kanaal geplaatst.',
+            'hint_instagram' => 'Direct na het bericht geplaatst — dé plek voor links die Instagram-bijschriften niet klikbaar maken. Verbind het account één keer opnieuw om de reactietoestemming te geven.',
+            'max' => 'De eerste reactie mag niet langer zijn dan 2200 tekens.',
+        ],
         'ai_generated' => [
             'label' => 'AI-gegenereerd',
             'hint' => 'Laat kijkers weten dat je content met AI is gemaakt of bewerkt.',

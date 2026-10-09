@@ -175,6 +175,21 @@ const descriptionServerError = computed(
 const hasDescriptionError = computed(
     () => !!descriptionIssueKey.value || !!descriptionServerError.value,
 );
+
+const FIRST_COMMENT_MAX = 2200;
+const firstCommentId = computed(
+    () => `youtube-first-comment-${props.platformIndex}`,
+);
+const firstComment = computed({
+    get: () => toNullableText(props.meta.first_comment) ?? '',
+    set: (value: string) => update({ first_comment: toNullableText(value) }),
+});
+const firstCommentError = computed(
+    () =>
+        errors.value[
+            `destinations.${props.platformIndex}.meta.first_comment`
+        ] ?? errors.value[`platforms.${props.platformIndex}.meta.first_comment`],
+);
 </script>
 
 <template>
@@ -347,6 +362,33 @@ const hasDescriptionError = computed(
                         : descriptionServerError
                 "
             />
+        </SettingsRow>
+        <SettingsRow
+            :label="$t('posts.form.first_comment.label')"
+            :label-for="firstCommentId"
+            align-top
+        >
+            <Textarea
+                :id="firstCommentId"
+                v-model="firstComment"
+                :data-testid="firstCommentId"
+                :disabled="disabled"
+                :maxlength="FIRST_COMMENT_MAX"
+                :aria-invalid="firstCommentError ? true : undefined"
+                :placeholder="$t('posts.form.first_comment.placeholder')"
+                class="field-sizing-fixed min-h-20 w-full resize-y"
+            />
+            <CharacterCounter
+                class="block"
+                :exceeded="firstComment.length > FIRST_COMMENT_MAX"
+                data-testid="youtube-first-comment-count"
+            >
+                {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+            </CharacterCounter>
+            <p class="text-xs text-foreground/60">
+                {{ $t('posts.form.first_comment.hint') }}
+            </p>
+            <InputError :message="firstCommentError" />
         </SettingsRow>
     </SettingsSection>
 </template>

@@ -395,6 +395,13 @@ return [
                 'travel_and_events' => '旅游和活动',
             ],
         ],
+        'first_comment' => [
+            'label' => '首条评论',
+            'placeholder' => '首条评论中的链接和补充内容…',
+            'hint' => '视频发布后立即以频道名义发表。',
+            'hint_instagram' => '发布后立即评论——这是放置 Instagram 描述中无法点击的链接的经典位置。需重新连接一次账号以授予评论权限。',
+            'max' => '首条评论不能超过 2200 个字符。',
+        ],
         'ai_generated' => [
             'label' => 'AI 生成',
             'hint' => '告诉观众内容是由 AI 生成或编辑的。',

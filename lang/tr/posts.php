@@ -397,6 +397,13 @@ return [
                 'travel_and_events' => 'Seyahat ve Etkinlikler',
             ],
         ],
+        'first_comment' => [
+            'label' => 'İlk yorum',
+            'placeholder' => 'İlk yorum için bağlantı ve ekler…',
+            'hint' => 'Video yayınlandıktan hemen sonra kanalınız tarafından gönderilir.',
+            'hint_instagram' => 'Gönderiden hemen sonra paylaşılır — Instagram açıklamalarında tıklanamayan bağlantılar için klasik yer. Yorum iznini vermek için hesabı bir kez yeniden bağlayın.',
+            'max' => 'İlk yorum 2200 karakteri aşamaz.',
+        ],
         'ai_generated' => [
             'label' => 'AI ile üretildi',
             'hint' => 'İzleyicilere içeriğin AI ile üretildiğini veya düzenlendiğini bildirin.',
