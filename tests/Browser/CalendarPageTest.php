@@ -491,7 +491,7 @@ test('an overflowing month day expands and collapses back, scrolling inside its 
     $layout = $page->script(<<<JS
         (() => {
             const cell = document.querySelector('[data-testid="calendar-day-{$dayKey}"]').getBoundingClientRect();
-            const items = document.querySelector('[data-testid="calendar-day-items-{$dayKey}"]');
+            const items = document.querySelector('[data-testid="calendar-items-{$dayKey}"]');
             const more = document.querySelector('[data-testid="calendar-more-{$dayKey}"]').getBoundingClientRect();
 
             return {

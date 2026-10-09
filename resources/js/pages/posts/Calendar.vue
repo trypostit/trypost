@@ -759,7 +759,7 @@ const goToDay = (key: string): void => {
                                             'absolute inset-0 overflow-y-auto overscroll-contain':
                                                 expandedDays.includes(dayKey(day)),
                                         }"
-                                        :data-testid="`calendar-day-items-${dayKey(day)}`"
+                                        :data-testid="`calendar-items-${dayKey(day)}`"
                                     >
                                         <template
                                             v-for="item in visibleMonthItems(day)"

@@ -415,8 +415,9 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
         ->assertVisible('@calendar-toggle-slots');
 
     $page->keys('@calendar-menu-content', 'Escape');
-    $page->resize(1300, 900);
+    $page->resize(900, 900);
     waitForPublishPageScript($page, 'Boolean(document.querySelector(\'[data-testid="posts-label-filter"]\')?.getClientRects().length)');
+    waitForPublishPageScript($page, '!document.querySelector(\'[data-testid="calendar-status-filter"]\')');
 
     expect($page->script('Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))'))->toBeFalse()
         ->and($page->script('Boolean(document.querySelector(\'[data-testid="calendar-menu"]\')?.getClientRects().length)'))->toBeTrue()
