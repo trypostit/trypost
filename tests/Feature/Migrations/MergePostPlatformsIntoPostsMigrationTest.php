@@ -4,13 +4,16 @@ declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Jobs\Media\DeleteMediaFiles;
 use App\Models\AnalyticsPublication;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
@@ -304,4 +307,22 @@ test('prepare changes nothing when its guard stops', function () {
 
     expect($orphan->fresh()->status)->toBe(PostStatus::Failed)
         ->and(DB::table('post_platforms')->where('id', $disabled)->exists())->toBeTrue();
+});
+
+test('prepare deletes published posts left without a destination, with their media', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->create();
+    $orphan = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
+    $media = Media::factory()->create(['workspace_id' => $account->workspace_id, 'post_id' => $orphan->id, 'mediable_type' => null, 'mediable_id' => null, 'collection' => Media::COLLECTION_MEDIA]);
+    $disabledOnly = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
+    ($this->target)($disabledOnly, ['social_account_id' => $account->id, 'enabled' => false]);
+    $kept = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
+    ($this->target)($kept, ['social_account_id' => $account->id, 'status' => 'published']);
+
+    $this->prepare->up();
+
+    expect(Post::query()->whereKey([$orphan->id, $disabledOnly->id])->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($media->id)->exists())->toBeFalse()
+        ->and($kept->fresh())->not->toBeNull();
+    Queue::assertPushed(DeleteMediaFiles::class, fn (DeleteMediaFiles $job): bool => in_array($media->path, $job->paths, true));
 });

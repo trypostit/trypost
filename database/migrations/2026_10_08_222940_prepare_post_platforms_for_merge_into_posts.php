@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Media\DeleteOwnedMedia;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
@@ -17,8 +18,9 @@ return new class extends Migration
      * - A disabled destination that never published is dropped: the column
      *   goes away and a backfill must never promote it to the post's channel.
      * - A post left without any destination becomes a draft (its content is
-     *   kept and can be recovered from the composer), unless it was already
-     *   published.
+     *   kept and can be recovered from the composer). A published one is a
+     *   history whose channel no longer exists: it is deleted with its media,
+     *   quietly, as disconnecting a channel deletes its posts.
      * - A partially published post with one destination left takes that
      *   destination's outcome, as the split settles it.
      */
@@ -32,6 +34,7 @@ return new class extends Migration
 
             $this->settlePartiallyPublishedPosts();
             $this->turnPostsWithoutDestinationIntoDrafts();
+            $this->deletePublishedPostsWithoutDestination();
             $this->assertEveryPostHasOneDestination();
         });
     }
@@ -84,13 +87,27 @@ return new class extends Migration
             ]);
     }
 
+    private function deletePublishedPostsWithoutDestination(): void
+    {
+        $postIds = DB::table('posts')
+            ->where('status', 'published')
+            ->whereNotIn('id', DB::table('post_platforms')->select('post_id'))
+            ->orderBy('id')
+            ->pluck('id')
+            ->all();
+
+        foreach (array_chunk($postIds, DeleteOwnedMedia::CHUNK) as $chunk) {
+            DeleteOwnedMedia::forPosts($chunk);
+            DB::table('posts')->whereIn('id', $chunk)->delete();
+        }
+    }
+
     private function assertEveryPostHasOneDestination(): void
     {
         $blockers = array_filter([
             'posts with more than one destination' => DB::table('posts')->whereIn('id', $this->postsWithTargets(moreThan: 1))->count(),
             'disabled destinations that published' => DB::table('post_platforms')->where('enabled', false)->count(),
             'partially published posts with a destination still in flight' => DB::table('posts')->where('status', 'partially_published')->count(),
-            'published posts without a destination' => DB::table('posts')->where('status', 'published')->whereNotIn('id', DB::table('post_platforms')->select('post_id'))->count(),
             'destinations whose account belongs to another workspace' => DB::table('post_platforms')
                 ->join('posts', 'posts.id', '=', 'post_platforms.post_id')
                 ->join('social_accounts', 'social_accounts.id', '=', 'post_platforms.social_account_id')

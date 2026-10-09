@@ -30,11 +30,17 @@ deixa de existir, pode sobrar para o código novo.
    php artisan migrate --force
    ```
    As quatro migrations novas (`2026_10_08_2229*`) devem terminar sem erro. A
-   primeira resolve sozinha os restos do split do 2.0 (destinos desligados que
-   nunca publicaram, posts sem canal, `partially_published` com um destino só) e
-   **para** se ainda houver: post com mais de um destino, destino desligado que
-   publicou, `partially_published` com destino em andamento, post publicado sem
-   destino ou destino de outro workspace. A mensagem diz quantos de cada.
+   primeira resolve sozinha os restos do split do 2.0: apaga os destinos
+   desligados que nunca publicaram, transforma em rascunho os posts não
+   publicados sem canal, apaga (com a mídia, sem webhook) os posts publicados sem
+   canal e resolve os `partially_published` com um destino só. Ela **para**, sem
+   mudar nada, se ainda houver: post com mais de um destino, destino desligado
+   que publicou, `partially_published` com destino em andamento ou destino de
+   outro workspace. A mensagem diz quantos de cada.
+
+   Na cópia de produção de 09/10/2026 eram 45.520 destinos desligados, 478
+   rascunhos e 1 post com falha sem canal, e 139 posts publicados sem canal (em 4
+   workspaces, com 236 arquivos), apagados por decisão do Paulo.
    Anote quanto tempo o `migrate` levou (estimativa: 20–60 s para ~20 mil posts).
 2. **Se o ensaio parou na primeira migration**, resolva os casos na produção antes
    do deploy (com o código que está no ar):
