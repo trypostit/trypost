@@ -24,6 +24,7 @@ use App\Services\Social\Discord\DiscordClient;
 use App\Services\Social\Meta\GraphError;
 use App\Services\Social\Telegram\TelegramApi;
 use App\Support\GoogleBusinessResourceName;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Cache;
@@ -237,7 +238,18 @@ class ConnectionVerifier
         $lock = Cache::lock("token_refresh:{$account->id}", self::REFRESH_LOCK_SECONDS);
 
         if (! $lock->get()) {
-            // Another process is already refreshing this token.
+            // Another process is already refreshing this token. Wait for it
+            // to finish before re-reading the row: re-reading immediately
+            // usually finds the not-yet-persisted old token (both jobs fire
+            // on the same cron tick) and needlessly fails the caller with a
+            // transient error even though a fresh token lands moments later.
+            try {
+                $lock->block(15);
+                $lock->release();
+            } catch (LockTimeoutException) {
+                // Fall through — the row is re-read either way.
+            }
+
             $account->refresh();
 
             if ($account->is_token_expired) {
