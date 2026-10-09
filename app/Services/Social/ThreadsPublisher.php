@@ -9,7 +9,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Http\Client\ConnectionException;
@@ -41,13 +41,13 @@ class ThreadsPublisher
         $this->baseUrl = config('trypost.platforms.threads.graph_api');
     }
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
@@ -56,18 +56,18 @@ class ThreadsPublisher
         $userId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $post->mediaItems;
 
-        if ($postPlatform->content_type === ContentType::ThreadsGhostPost && $media->isNotEmpty()) {
+        if ($post->content_type === ContentType::ThreadsGhostPost && $media->isNotEmpty()) {
             throw new ThreadsPublishException(
                 userMessage: __('posts.form.warnings.text_only'),
                 category: ErrorCategory::MediaFormat,
             );
         }
 
-        $this->containerOptions = $postPlatform->content_type === ContentType::ThreadsGhostPost
+        $this->containerOptions = $post->content_type === ContentType::ThreadsGhostPost
             ? ['is_ghost_post' => 'true']
-            : $this->postOptions($postPlatform);
+            : $this->postOptions($post);
 
         // Text only post
         if ($media->isEmpty()) {
@@ -430,9 +430,9 @@ class ThreadsPublisher
     /**
      * @return array<string, string>
      */
-    private function postOptions(PostPlatform $postPlatform): array
+    private function postOptions(Post $post): array
     {
-        $topicTag = PostPlatformMetaRules::threadsTopicTag((string) data_get($postPlatform->meta, 'topic_tag'));
+        $topicTag = PostPlatformMetaRules::threadsTopicTag((string) data_get($post->meta, 'topic_tag'));
 
         return $topicTag === '' ? [] : ['topic_tag' => $topicTag];
     }

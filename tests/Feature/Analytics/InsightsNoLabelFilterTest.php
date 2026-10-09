@@ -8,7 +8,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -26,18 +25,17 @@ test('the workspace insights page ignores label parameters and offers no label f
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
 
     foreach ([$label, null] as $attached) {
-        $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
+        $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $user->id]);
 
         if ($attached !== null) {
             $post->labels()->attach($attached);
         }
 
-        $destination = PostPlatform::factory()->instagram()->published()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $workspace->id,
             'social_account_id' => $account->id,
             'social_account_key' => $account->id,
-            'post_platform_id' => $destination->id,
+            'post_id' => $post->id,
             'platform' => Platform::Instagram,
             'provider_published_at' => CarbonImmutable::parse('2026-09-15 12:00:00', 'UTC'),
         ]);

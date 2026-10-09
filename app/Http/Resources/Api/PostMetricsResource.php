@@ -18,9 +18,6 @@ class PostMetricsResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        return [
-            'post_id' => $this->id,
-            'platforms' => app(ReadPublicationAnalytics::class)->forPost($this->resource)->all(),
-        ];
+        return app(ReadPublicationAnalytics::class)->forPost($this->resource);
     }
 }

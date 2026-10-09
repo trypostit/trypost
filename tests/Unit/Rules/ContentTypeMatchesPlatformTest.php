@@ -8,19 +8,21 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeMatchesPlatform;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 function runMatchesPlatformRule(string $contentType, ?string $accountId, array $extraData = []): array
 {
     $errors = [];
-    $rule = (new ContentTypeMatchesPlatform)->setData(array_merge([
-        'platforms' => [
+    $workspaceId = $accountId !== null && Str::isUuid($accountId) ? SocialAccount::query()->find($accountId)?->workspace_id : null;
+    $rule = (new ContentTypeMatchesPlatform($workspaceId))->setData(array_merge([
+        'destinations' => [
             ['social_account_id' => $accountId, 'content_type' => $contentType],
         ],
     ], $extraData));
 
-    $rule->validate('platforms.0.content_type', $contentType, function (string $message) use (&$errors): void {
+    $rule->validate('destinations.0.content_type', $contentType, function (string $message) use (&$errors): void {
         $errors[] = $message;
     });
 
@@ -85,4 +87,31 @@ test('skips validation when content_type is not a known enum value', function ()
     // Unknown content_types are caught by Rule::in elsewhere; this rule
     // intentionally no-ops so it doesn't double-report.
     expect(runMatchesPlatformRule('completely_made_up', $linkedin->id))->toBe([]);
+});
+
+test('reads the top-level account next to a top-level content type', function () {
+    $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
+    $errors = [];
+
+    (new ContentTypeMatchesPlatform($linkedin->workspace_id))
+        ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
+        ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
+            $errors[] = $message;
+        });
+
+    expect($errors)->toHaveCount(1)
+        ->and($errors[0])->toContain('not compatible');
+});
+
+test('says nothing about an account from another workspace', function () {
+    $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
+    $errors = [];
+
+    (new ContentTypeMatchesPlatform(Workspace::factory()->create()->id))
+        ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
+        ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
+            $errors[] = $message;
+        });
+
+    expect($errors)->toBe([]);
 });

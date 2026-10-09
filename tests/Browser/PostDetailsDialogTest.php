@@ -11,7 +11,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -56,9 +55,9 @@ function postDetailsDialogSetup(): array
  */
 function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $metrics = [], PublicationContentType $contentType = PublicationContentType::Image): Post
 {
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $account->workspace_id,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create([
         'content' => 'Details dialog post',
+        'platform_url' => 'https://www.instagram.com/p/abc/',
         'published_at' => now()->subHour(),
         'media' => $images === 0 ? [] : collect(range(1, $images))->map(fn (int $index): array => [
             'id' => (string) Str::uuid(),
@@ -70,25 +69,17 @@ function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $m
             'size' => 1024,
         ])->all(),
     ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
-        'platform_url' => 'https://www.instagram.com/p/abc/',
-        'published_at' => now()->subHour(),
-    ]);
 
     if ($metrics !== []) {
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $account->workspace_id,
             'social_account_id' => $account->id,
             'social_account_key' => $account->id,
-            'post_platform_id' => $target->id,
+            'post_id' => $post->id,
             'platform' => $account->platform,
             'network' => $account->platform->network(),
             'content_type' => $contentType,
-            'remote_id' => $target->platform_post_id,
+            'remote_id' => $post->platform_post_id,
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([
             'publication_id' => $publication->id,
@@ -106,7 +97,7 @@ function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $m
     return $post;
 }
 
-test('clicking a sent card opens nothing and the menu opens the post details', function () {
+test('clicking a sent card opens the post details, and so does the menu', function () {
     [$user, $account] = postDetailsDialogSetup();
     $post = postDetailsDialogPost($account);
     $this->actingAs($user);
@@ -116,22 +107,20 @@ test('clicking a sent card opens nothing and the menu opens the post details', f
     $before = $page->script('location.href');
 
     $page->click("@post-open-{$post->id}");
-    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
 
-    expect($page->script('location.href'))->toBe($before)
-        ->and($page->script("document.querySelector('[data-testid=\"post-open-{$post->id}\"]').tagName"))->toBe('DIV');
-    $page->assertNotPresent("@post-details-{$post->id}");
+    expect($page->script('location.href'))->toBe($before);
+    $page->assertPresent("@post-details-status-{$post->id}")
+        ->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post');
 
+    $page->keys("@post-details-{$post->id}", 'Escape');
+    waitForPostDetailsDialogCondition($page, "!document.querySelector('[data-testid=\"post-details-{$post->id}\"]')");
     $page->click("@post-card-menu-{$post->id}");
     waitForPostDetailsDialogTestId($page, "post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
     waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
 
-    expect($page->script('location.href'))->toBe($before);
-    $page->assertPresent("@post-details-status-{$post->id}")
-        ->assertNotPresent('[data-testid^="post-details-target-status-"]');
-    $page->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post')
-        ->assertNoJavaScriptErrors();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('the post details deep link opens the dialog on the sent tab', function () {
@@ -146,6 +135,19 @@ test('the post details deep link opens the dialog on the sent tab', function () 
         ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.published'))
         ->assertNoJavaScriptErrors();
     expect($page->script('new URLSearchParams(location.search).get("post")'))->toBe($post->id);
+});
+
+test('the post details of a google business post in review say google is reviewing it', function () {
+    [$user, $account] = postDetailsDialogSetup();
+    $channel = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $account->workspace_id, 'timezone' => 'UTC']);
+    $post = Post::factory()->forAccount($channel)->pendingReview()->create(['content' => 'Waiting for Google', 'scheduled_at' => now()->subMinute()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['post' => $post->id]));
+    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+
+    $page->assertSeeIn("@post-details-status-{$post->id}", __('posts.publish.in_google_review'))
+        ->assertNoJavaScriptErrors();
 });
 
 test('the details media sits below the text in a single scrollable row', function (int $images, bool $overflows) {
@@ -332,16 +334,8 @@ test('a publishing post shows a spinning status in its details', function () {
 test('the details of a sent thread show every post of the thread with its own media', function () {
     [$user, $instagram] = postDetailsDialogSetup();
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $instagram->workspace_id, 'timezone' => 'UTC', 'meta' => ['x_verified_type' => 'blue']]);
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $account->workspace_id,
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->published()->create([
         'content' => 'First post of the thread',
-        'published_at' => now()->subHour(),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
         'published_at' => now()->subHour(),
         'meta' => ['thread_replies' => [
             ['text' => 'Second post of the thread', 'media' => [[

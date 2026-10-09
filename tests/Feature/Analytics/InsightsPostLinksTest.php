@@ -9,7 +9,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -42,11 +41,7 @@ test('the post details deep link receives the latest saved post metrics', functi
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $user->update(['current_workspace_id' => $workspace->id]);
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Pinterest]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    $destination = PostPlatform::factory()->pinterest()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $user->id]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
@@ -54,7 +49,7 @@ test('the post details deep link receives the latest saved post metrics', functi
         'platform' => Platform::Pinterest,
         'network' => Platform::Pinterest->network(),
         'origin' => PublicationOrigin::TryPost,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
@@ -70,7 +65,7 @@ test('the post details deep link receives the latest saved post metrics', functi
             ->component('publish/Index')
             ->where('openPostDetailsId', $post->id)
             ->loadDeferredProps(fn (Assert $reload) => $reload
-                ->where("posts.data.0.metrics.{$destination->id}.metrics.saves.value", 6)
+                ->where('posts.data.0.metrics.metrics.saves.value', 6)
                 ->etc())
             ->etc());
 

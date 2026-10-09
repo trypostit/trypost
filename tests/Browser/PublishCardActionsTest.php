@@ -7,7 +7,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -223,7 +222,6 @@ test('duplicate creates a copy and opens it in the composer', function () {
 test('post details opens a read-only preview of the post', function () {
     [$user, $workspace, $channel] = cardActionsSetup();
     $queued = cardActionsPost($user, $workspace, $channel);
-    $target = $queued->postPlatforms()->first();
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
@@ -234,7 +232,7 @@ test('post details opens a read-only preview of the post', function () {
     $page->assertSeeIn("@post-details-{$queued->id}", __('posts.show.title'))
         ->assertSeeIn("@post-details-status-{$queued->id}", __('posts.status.scheduled'))
         ->assertSeeIn("@post-details-text-{$queued->id}", 'Card actions post')
-        ->assertSeeIn("@post-details-target-{$target->id}", $channel->display_label)
+        ->assertSeeIn("@post-details-target-{$queued->id}", $channel->display_label)
         ->assertNoJavaScriptErrors();
     expect($page->script("document.querySelector('[data-testid=\"post-details-time-{$queued->id}\"]').textContent.trim()"))
         ->not->toBe(__('posts.publish.unscheduled'));
@@ -243,16 +241,9 @@ test('post details opens a read-only preview of the post', function () {
 test('draft and sent menus only offer the actions valid for their status', function () {
     [$user, $workspace, $channel] = cardActionsSetup();
     $draft = cardActionsPost($user, $workspace, $channel, ['status' => 'draft', 'queue' => null]);
-    $published = Post::factory()->published()->create([
-        'workspace_id' => $workspace->id,
+    $published = Post::factory()->forAccount($channel)->published()->create([
         'user_id' => $user->id,
         'published_at' => now()->subHour(),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $published->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
 

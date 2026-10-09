@@ -8,7 +8,6 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -42,16 +41,13 @@ beforeEach(function () {
 
 function moveToSlotQueuedPost(SocialAccount $channel, User $user): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $post = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'content' => 'Queued post',
         'scheduled_at' => null,
     ]);
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id, 'platform' => $channel->platform]);
 
     Cache::lock("queue:{$channel->id}")->forceRelease();
     ReflowChannelQueue::handle($channel, $post, QueuePosition::Next);
@@ -64,8 +60,7 @@ function moveToSlotQueuedPost(SocialAccount $channel, User $user): Post
  */
 function moveToSlotCustomPost(SocialAccount $channel, User $user, array $attributes = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'content' => 'Custom post',
         'status' => PostStatus::Scheduled,
@@ -73,10 +68,6 @@ function moveToSlotCustomPost(SocialAccount $channel, User $user, array $attribu
         'scheduled_at' => CarbonImmutable::parse('2026-10-20 15:30:00', 'UTC'),
         ...$attributes,
     ]);
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id, 'platform' => $channel->platform]);
-
-    return $post;
 }
 
 test('a custom post dropped on a free slot becomes a queue post at that slot', function () {
@@ -143,18 +134,6 @@ test('a post that does not belong to the channel or is not scheduled is rejected
 
     expect($post->fresh()->only(['status', 'scheduled_at', 'schedule_mode']))->toEqual($before);
 })->with(['other channel', 'draft', 'other workspace', 'pending approval', 'published', 'failed', 'due within a minute']);
-
-test('a post created for several channels at once cannot be moved to a slot', function () {
-    $legacy = moveToSlotCustomPost($this->channel, $this->user);
-    PostPlatform::factory()->create(['post_id' => $legacy->id, 'social_account_id' => SocialAccount::factory()->create(['workspace_id' => $this->workspace->id])->id]);
-
-    $this->actingAs($this->user)
-        ->put(route('app.channels.queue.slot', $this->channel), ['post_id' => $legacy->id, 'slot_at' => '2026-10-06T12:00:00+00:00'])
-        ->assertSessionHasErrors('queue');
-
-    expect($legacy->fresh()->schedule_mode)->toBe(ScheduleMode::Custom)
-        ->and($legacy->fresh()->scheduled_at->toIso8601String())->toBe('2026-10-20T15:30:00+00:00');
-});
 
 test('a member who needs approval cannot move a post to a slot', function () {
     $requester = User::factory()->create([

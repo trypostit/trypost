@@ -14,11 +14,8 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PlatformStatus;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Media\MediaCopyBatch;
@@ -26,12 +23,9 @@ use App\Support\PostApproval;
 use App\Support\PostCompositionValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
-use App\Support\Social\AbandonGoogleBusinessReview;
-use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class UpdatePost
@@ -64,60 +58,45 @@ class UpdatePost
             throw ValidationException::withMessages(['social_account_id' => __('validation.in', ['attribute' => 'social account'])]);
         }
 
-        if ($post->postPlatforms()->enabled()->count() === 1) {
-            $selectedTarget = $post->postPlatforms()->enabled()->sole();
-            if (array_key_exists('platforms', $data)) {
-                if (count($data['platforms']) !== 1 || data_get($data, 'platforms.0.id') !== $selectedTarget->id
-                    || array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
-                    throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
-                }
-
-                $data = [
-                    ...Arr::except($data, ['platforms']),
-                    ...Arr::only($data['platforms'][0], ['content_type', 'meta']),
-                ];
-            }
-
-            return self::updateChannelPost($workspace, $post, $data, $actor);
+        if (array_key_exists('platforms', $data)) {
+            throw ValidationException::withMessages(['platforms' => __('validation.prohibited', ['attribute' => 'platforms'])]);
         }
 
-        if (filled(data_get($data, 'queue'))) {
-            throw ValidationException::withMessages(['queue' => __('posts.errors.queue_legacy_post')]);
+        return $post->hasChannel()
+            ? self::updateChannelPost($workspace, $post, $data, $actor)
+            : self::updateDraftWithoutChannel($post, $data);
+    }
+
+    /**
+     * A draft written before posts had one channel each can still be edited,
+     * but it stays a draft: it goes out only after the composer turns it into
+     * a post for a channel (RecoverEmptyDraft).
+     *
+     * @param  array<string, mixed>  $data
+     * @return array{post: Post, action: PostAction|null}
+     */
+    private static function updateDraftWithoutChannel(Post $post, array $data): array
+    {
+        $status = (string) data_get($data, 'status', $post->status->value);
+
+        if ($status !== PostStatus::Draft->value || filled(data_get($data, 'queue')) || filled(data_get($data, 'queue_slot'))) {
+            throw ValidationException::withMessages(['status' => __('posts.errors.choose_channel')]);
         }
 
         if (array_key_exists('content_type', $data) || array_key_exists('meta', $data)) {
-            return self::updateChannelPost($workspace, $post, $data, $actor);
+            throw ValidationException::withMessages(['content_type' => __('posts.errors.choose_channel')]);
         }
 
-        return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($workspace, $post, $data, $actor): array {
+        return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $data): array {
             if (self::finalizedMeanwhile($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
 
-            $occurrence = $post->currentOccurrence();
-            $previousStatus = $post->status;
-            $scheduledAt = $post->scheduled_at;
-            if (data_get($data, 'scheduled_at')) {
-                $scheduledAt = Carbon::parse(data_get($data, 'scheduled_at'))->utc();
-            }
-
-            $status = (string) data_get($data, 'status', $post->status->value);
-            $storedStatus = PostApproval::isRequired($workspace, $actor, $status)
-                ? PostStatus::PendingApproval
-                : PostStatus::from($status);
-            $publishRequest = ($storedStatus === PostStatus::PendingApproval || $previousStatus === PostStatus::PendingApproval)
-                && $status === PostStatus::Publishing->value;
-
             $post->update([
                 'content' => data_get($data, 'content', $post->content),
-                'status' => $storedStatus,
-                'scheduled_at' => $publishRequest ? null : $scheduledAt,
-                'schedule_mode' => match (true) {
-                    $storedStatus === PostStatus::Scheduled => ScheduleMode::Custom,
-                    $storedStatus === PostStatus::PendingApproval && ! $publishRequest && $scheduledAt !== null => ScheduleMode::Custom,
-                    default => null,
-                },
-                ...PostApproval::transition($previousStatus, $storedStatus, $actor),
+                'scheduled_at' => array_key_exists('scheduled_at', $data) && filled(data_get($data, 'scheduled_at'))
+                    ? Carbon::parse(data_get($data, 'scheduled_at'))->utc()
+                    : $post->scheduled_at,
             ]);
 
             if (Arr::has($data, 'media')) {
@@ -128,65 +107,7 @@ class UpdatePost
                 $post->labels()->sync(data_get($data, 'label_ids', []));
             }
 
-            if (Arr::has($data, 'platforms')) {
-                $post->postPlatforms()->update(['enabled' => false]);
-
-                foreach (data_get($data, 'platforms', []) as $platformData) {
-                    $updateData = ['enabled' => true];
-
-                    if (data_get($platformData, 'content_type') !== null) {
-                        $updateData['content_type'] = data_get($platformData, 'content_type');
-                    }
-
-                    if (data_get($platformData, 'meta') !== null) {
-                        $postPlatform = $post->postPlatforms()->where('id', data_get($platformData, 'id'))->first();
-
-                        if ($postPlatform) {
-                            $updateData['meta'] = PostPlatformMetaRules::forStorage($postPlatform->meta ?? [], PostPlatformMetaRules::normalize(array_filter(
-                                array_merge($postPlatform->meta ?? [], data_get($platformData, 'meta') ?? []),
-                                fn (mixed $value): bool => $value !== null,
-                            )));
-                        }
-                    }
-
-                    $post->postPlatforms()
-                        ->where('id', data_get($platformData, 'id'))
-                        ->update($updateData);
-                }
-            }
-
-            if (in_array($post->status, [PostStatus::Scheduled, PostStatus::Publishing], true)) {
-                PostPlatformMetaRules::assertStoredPostPublishable(
-                    $post,
-                    collect(data_get($data, 'platforms', []))->pluck('id')->all(),
-                );
-            }
-
-            if (Arr::has($data, 'platforms')) {
-                $post->postPlatforms()
-                    ->disabled()
-                    ->where('platform', Platform::GoogleBusiness)
-                    ->where('status', PlatformStatus::PendingReview)
-                    ->get()
-                    ->each(fn (PostPlatform $platform) => AbandonGoogleBusinessReview::execute(
-                        $platform,
-                        __('posts.errors.target_disabled'),
-                        ['category' => 'target_disabled'],
-                    ));
-
-                $disabledGoogleBusinessIds = $post->postPlatforms()
-                    ->disabled()
-                    ->where('platform', Platform::GoogleBusiness)
-                    ->pluck('id');
-
-                DB::afterCommit(function () use ($disabledGoogleBusinessIds): void {
-                    $disabledGoogleBusinessIds->each(
-                        fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id),
-                    );
-                });
-            }
-
-            return self::finish($post, $previousStatus, $storedStatus, $occurrence, $actor);
+            return ['post' => $post, 'action' => null];
         });
     }
 
@@ -196,17 +117,8 @@ class UpdatePost
      */
     private static function updateChannelPost(Workspace $workspace, Post $post, array $data, ?User $actor): array
     {
-        if (array_key_exists('platforms', $data)) {
-            throw ValidationException::withMessages(['platforms' => __('validation.in', ['attribute' => 'platforms'])]);
-        }
-
-        if ($post->postPlatforms()->enabled()->count() !== 1) {
-            throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
-        }
-
-        $target = $post->postPlatforms()->enabled()->sole();
         $position = filled(data_get($data, 'queue')) ? QueuePosition::from(data_get($data, 'queue')) : null;
-        $channel = $target->socialAccount;
+        $channel = $post->socialAccount;
 
         if ($position !== null && ! $channel?->hasPostingSchedule()) {
             throw ValidationException::withMessages(['queue' => __('posts.errors.queue_requires_schedule')]);
@@ -239,7 +151,7 @@ class UpdatePost
         $queueSlot = $position === null && ! $keepsPending ? data_get($data, 'queue_slot') : null;
 
         $meta = PostPlatformMetaRules::normalize(array_filter(
-            array_merge($target->meta ?? [], data_get($data, 'meta') ?? []),
+            array_merge($post->meta ?? [], data_get($data, 'meta') ?? []),
             fn (mixed $value): bool => $value !== null,
         ));
         $scheduledAt = match (true) {
@@ -262,7 +174,7 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $resolved = PostCompositionValidator::validate($workspace, [
+        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, [
             'status' => $status,
             'queue' => $keepsPending ? null : $position?->value,
             'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
@@ -270,14 +182,14 @@ class UpdatePost
             'scheduled_at' => $keepsPending ? null : $scheduledAt,
             'label_ids' => data_get($data, 'label_ids') ?? $post->labels()->pluck('workspace_labels.id')->all(),
             'destinations' => [[
-                'social_account_id' => $target->social_account_id,
+                'social_account_id' => $post->social_account_id,
                 'content_type' => data_get($data, 'content_type')
-                    ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($target->platform) ? null : $target->content_type->value),
+                    ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
                 'meta' => $meta,
             ]],
-        ], $post->media ?? []);
+        ], $post->media ?? []));
 
-        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $target, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
+        $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
             if (self::finalizedMeanwhile($post)) {
                 return ['post' => $post, 'action' => PostAction::Finalized];
             }
@@ -292,10 +204,8 @@ class UpdatePost
                 'scheduled_at' => $scheduledAt && ! $slotLost ? Carbon::parse($scheduledAt)->utc() : null,
                 'schedule_mode' => $mode,
                 ...PostApproval::transition($previousStatus, $storedStatus, $actor, $pending ? $position : null),
-            ]);
-            $target->update([
                 'content_type' => $destination['content_type'],
-                'meta' => PostPlatformMetaRules::forStorage($target->meta ?? [], $destination['meta']),
+                'meta' => PostPlatformMetaRules::forStorage($post->meta ?? [], $destination['meta']),
             ]);
             SyncOwnedMedia::execute($post, $destination['media'], $batch);
 
@@ -312,7 +222,7 @@ class UpdatePost
 
         return ($position === null && ! $approvesHolder) || $pending
             ? $write()
-            : ReflowChannelQueue::withLock([$target->social_account_id], $write);
+            : ReflowChannelQueue::withLock([$post->social_account_id], $write);
     }
 
     /**

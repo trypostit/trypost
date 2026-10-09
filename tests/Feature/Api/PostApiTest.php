@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
@@ -68,12 +67,8 @@ it('cannot show post from another workspace', function () {
 it('creates a post', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                [
-                    'social_account_id' => $this->socialAccount->id,
-                    'content_type' => 'linkedin_post',
-                ],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated()
         ->assertJsonPath('status', PostStatus::Draft->value)
@@ -83,10 +78,11 @@ it('creates a post', function () {
     expect($post)->not->toBeNull();
     expect($post->created_via)->toBe(CreatedVia::Api);
     expect($post->scheduled_at)->toBeNull();
-    expect($post->postPlatforms()->count())->toBe(1);
+    expect($post->social_account_id)->toBe($this->socialAccount->id)
+        ->and($post->content_type)->toBe(ContentType::LinkedInPost);
 });
 
-it('rejects multiple destinations on the single post endpoint', function () {
+it('rejects the removed platforms list on the single post endpoint', function () {
     $secondAccount = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $this->workspace->id,
     ]);
@@ -99,7 +95,7 @@ it('rejects multiple destinations on the single post endpoint', function () {
             ],
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors('platforms');
+        ->assertJsonValidationErrors(['platforms' => __('validation.prohibited', ['attribute' => 'platforms'])]);
 
     expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
 });
@@ -124,9 +120,9 @@ it('creates an ordered batch of independent posts', function () {
     $firstPost = Post::findOrFail($response->json('posts.0.id'));
     $secondPost = Post::findOrFail($response->json('posts.1.id'));
     expect($firstPost->content)->toBe('Segundo primeiro')
-        ->and($firstPost->postPlatforms()->sole()->social_account_id)->toBe($secondAccount->id)
+        ->and($firstPost->social_account_id)->toBe($secondAccount->id)
         ->and($secondPost->content)->toBe('Base')
-        ->and($secondPost->postPlatforms()->sole()->social_account_id)->toBe($this->socialAccount->id);
+        ->and($secondPost->social_account_id)->toBe($this->socialAccount->id);
 });
 
 it('rejects the whole batch when a destination belongs to another workspace', function () {
@@ -166,12 +162,8 @@ it('ignores a client-supplied created_via and always records api', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'created_via' => 'web',
-            'platforms' => [
-                [
-                    'social_account_id' => $this->socialAccount->id,
-                    'content_type' => 'linkedin_post',
-                ],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ])
         ->assertCreated();
 
@@ -193,9 +185,8 @@ it('creates a post with content, media, and labels', function () {
     $payload = [
         'content' => 'Hello from the API',
         'media' => [['url' => 'https://93.184.216.34/photo.png']],
-        'platforms' => [
-            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-        ],
+        'social_account_id' => $this->socialAccount->id,
+        'content_type' => 'linkedin_post',
         'label_ids' => [$label->id],
     ];
 
@@ -238,41 +229,23 @@ it('cannot delete post from another workspace', function () {
 });
 
 it('updates a post', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                [
-                    'id' => $postPlatform->id,
-                    'content_type' => ContentType::LinkedInPost->value,
-                ],
-            ],
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertOk();
 });
 
 it('keeps the account fixed when updating through the API', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $target = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
     $otherAccount = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $this->workspace->id,
@@ -286,56 +259,30 @@ it('keeps the account fixed when updating through the API', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors('social_account_id');
 
-    expect($target->fresh()->social_account_id)->toBe($this->socialAccount->id);
-});
-
-it('keeps an old multi-target post readable by id', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Published,
-    ]);
-    $otherAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $this->socialAccount->id, 'enabled' => true]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $otherAccount->id, 'enabled' => true]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->getJson(route('api.posts.show', $post))
-        ->assertOk()
-        ->assertJsonCount(2, 'platforms');
+    expect($post->fresh()->social_account_id)->toBe($this->socialAccount->id);
 });
 
 it('rejects creating a post with instagram_carousel — carousel is not a stored content_type', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'instagram_carousel'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'instagram_carousel',
         ])
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['content_type']);
 });
 
 it('rejects updating a post with instagram_carousel — carousel is not a stored content_type', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                ['id' => $postPlatform->id, 'content_type' => 'instagram_carousel'],
-            ],
+            'content_type' => 'instagram_carousel',
         ])
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['content_type']);
 });
 
 it('cannot update post from another workspace', function () {
@@ -344,56 +291,32 @@ it('cannot update post from another workspace', function () {
         'workspace_id' => $otherWorkspace->id,
         'platform' => Platform::LinkedIn,
     ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $otherWorkspace->id,
+    $post = Post::factory()->forAccount($otherSocialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $otherSocialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                [
-                    'id' => $postPlatform->id,
-                    'content_type' => ContentType::LinkedInPost->value,
-                ],
-            ],
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertNotFound();
 });
 
 it('cannot update post in any terminal state', function (PostStatus $status) {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => $status,
-    ]);
-
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                [
-                    'id' => $postPlatform->id,
-                    'content_type' => ContentType::LinkedInPost->value,
-                ],
-            ],
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertUnprocessable();
 })->with([
     PostStatus::Published,
-    PostStatus::PartiallyPublished,
     PostStatus::Failed,
     PostStatus::Publishing,
 ]);
@@ -406,30 +329,27 @@ it('validates post update fields', function () {
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
-            'platforms' => [
-                ['content' => 'missing id'],
-            ],
+            'platforms' => [['content' => 'old shape']],
         ])
-        ->assertUnprocessable();
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['platforms']);
 });
 
-it('validates post creation requires platforms', function () {
+it('validates post creation requires a social account', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms']);
+        ->assertJsonValidationErrors(['social_account_id']);
 });
 
 it('validates post creation platform fields', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['content' => 'missing social_account_id'],
-            ],
+            'content' => 'missing social_account_id',
         ])
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms.0.social_account_id'])
-        ->assertJsonMissingValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['social_account_id'])
+        ->assertJsonMissingValidationErrors(['content_type']);
 });
 
 it('validates post update invalid status', function () {
@@ -493,11 +413,10 @@ it('rejects a deleted label on post update', function () {
 it('rejects creating a post with content_type not in the enum', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'made_up_type'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'made_up_type',
         ])
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['content_type']);
 });
 
 it('rejects scheduling an over-limit threads post via the api store', function () {
@@ -511,9 +430,8 @@ it('rejects scheduling an over-limit threads post via the api store', function (
             'content' => str_repeat('a', 537),
             'status' => 'scheduled',
             'scheduled_at' => now()->addDay()->toIso8601String(),
-            'platforms' => [
-                ['social_account_id' => $threadsAccount->id, 'content_type' => ContentType::ThreadsPost->value],
-            ],
+            'social_account_id' => $threadsAccount->id,
+            'content_type' => ContentType::ThreadsPost->value,
         ]);
 
     $response->assertUnprocessable()->assertJsonValidationErrors(['content']);
@@ -532,25 +450,19 @@ it('accepts creating an over-limit draft (no scheduled_at) via the api store', f
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
             'content' => str_repeat('a', 1000),
-            'platforms' => [
-                ['social_account_id' => $threadsAccount->id, 'content_type' => ContentType::ThreadsPost->value],
-            ],
+            'social_account_id' => $threadsAccount->id,
+            'content_type' => ContentType::ThreadsPost->value,
         ])
         ->assertCreated();
 });
 
 it('rejects scheduling an over-limit threads post via the api update', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
     $threadsAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Threads,
     ]);
-    $threadsPlatform = PostPlatform::factory()->threads()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $threadsAccount->id,
+    $post = Post::factory()->forAccount($threadsAccount)->create([
+        'user_id' => $this->user->id,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
@@ -558,35 +470,26 @@ it('rejects scheduling an over-limit threads post via the api update', function 
             'status' => PostStatus::Scheduled->value,
             'content' => str_repeat('a', 600),
             'scheduled_at' => now()->addDay()->toIso8601String(),
-            'platforms' => [
-                ['id' => $threadsPlatform->id, 'content_type' => ContentType::ThreadsPost->value],
-            ],
+            'content_type' => ContentType::ThreadsPost->value,
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['content']);
 });
 
 it('saving an over-limit threads post as draft via api skips the content-length check', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
     $threadsAccount = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Threads,
     ]);
-    $threadsPlatform = PostPlatform::factory()->threads()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $threadsAccount->id,
+    $post = Post::factory()->forAccount($threadsAccount)->create([
+        'user_id' => $this->user->id,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => PostStatus::Draft->value,
             'content' => str_repeat('a', 1000),
-            'platforms' => [
-                ['id' => $threadsPlatform->id, 'content_type' => ContentType::ThreadsPost->value],
-            ],
+            'content_type' => ContentType::ThreadsPost->value,
         ])
         ->assertSuccessful();
 });
@@ -595,11 +498,10 @@ it('rejects creating a post when content_type does not match the social account 
     // x_post on a LinkedIn account — ContentTypeMatchesPlatform should reject.
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'x_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'x_post',
         ])
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['content_type']);
 });
 
 it('rejects creating a post with a label from another workspace', function () {
@@ -608,61 +510,25 @@ it('rejects creating a post with a label from another workspace', function () {
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
             'label_ids' => [$foreignLabel->id],
         ])
         ->assertJsonValidationErrors(['label_ids.0']);
 });
 
-it('rejects updating a post with a platforms[].id that belongs to another post', function () {
-    $myPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+it('rejects updating a post when content_type does not match the post channel', function () {
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-
-    $otherPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-    $foreignPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $otherPost->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
-        ->putJson(route('api.posts.update', $myPost), [
-            'status' => 'draft',
-            'platforms' => [
-                ['id' => $foreignPlatform->id, 'content_type' => ContentType::LinkedInPost->value],
-            ],
-        ])
-        ->assertJsonValidationErrors(['platforms.0.id']);
-});
-
-it('rejects updating a post when content_type does not match the post_platform', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                ['id' => $postPlatform->id, 'content_type' => 'x_post'],
-            ],
+            'content_type' => 'x_post',
         ])
-        ->assertJsonValidationErrors(['platforms.0.content_type']);
+        ->assertJsonValidationErrors(['content_type']);
 });
 
 it('rejects scheduled status without a future scheduled_at', function (?string $existingScheduledAt) {
@@ -692,9 +558,9 @@ it('rejects scheduled status without a future scheduled_at', function (?string $
 
 it('accepts scheduled status reusing an existing future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
+        'content' => 'Ready',
         'status' => PostStatus::Draft,
         'scheduled_at' => $scheduledAt,
     ]);
@@ -711,9 +577,9 @@ it('accepts scheduled status reusing an existing future scheduled_at', function 
 
 it('schedules an unscheduled draft with an explicit future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
+        'content' => 'Ready',
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
     ]);
@@ -751,18 +617,11 @@ it('publishes an unscheduled draft without requiring scheduled_at', function () 
     Bus::fake();
     $this->freezeTime();
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
         'content' => 'Ready to publish',
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
@@ -779,9 +638,8 @@ it('publishes an unscheduled draft without requiring scheduled_at', function () 
 it('rejects creating a post with a past scheduled_at', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
             'scheduled_at' => now()->subDay()->toIso8601String(),
         ])
         ->assertJsonValidationErrors(['scheduled_at']);
@@ -818,88 +676,72 @@ it('show post returns correct structure', function () {
 it('creates a post with platform meta (link_preview) and returns it', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => false]],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => false],
         ])
         ->assertCreated()
-        ->assertJsonPath('platforms.0.meta.link_preview', false);
+        ->assertJsonPath('meta.link_preview', false);
 
-    $platform = Post::where('workspace_id', $this->workspace->id)->first()
-        ->postPlatforms()->where('social_account_id', $this->socialAccount->id)->first();
-    expect($platform->meta['link_preview'])->toBeFalse();
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->meta['link_preview'])->toBeFalse();
 });
 
 it('rejects creating a post with an invalid link_preview', function () {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => 'nope']],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => 'nope'],
         ])
-        ->assertJsonValidationErrors(['platforms.0.meta.link_preview']);
+        ->assertJsonValidationErrors(['meta.link_preview']);
 });
 
 it('rejects updating a post with an invalid link_preview', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                ['id' => $postPlatform->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => 'nope']],
-            ],
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => 'nope'],
         ])
-        ->assertJsonValidationErrors(['platforms.0.meta.link_preview']);
+        ->assertJsonValidationErrors(['meta.link_preview']);
 });
 
 it('accepts a valid platform meta on update and persists it', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $postPlatform = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->putJson(route('api.posts.update', $post), [
             'status' => 'draft',
-            'platforms' => [
-                ['id' => $postPlatform->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => false]],
-            ],
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => false],
         ])
         ->assertOk()
-        ->assertJsonPath('platforms.0.meta.link_preview', false);
+        ->assertJsonPath('meta.link_preview', false);
 
-    expect($postPlatform->fresh()->meta['link_preview'])->toBeFalse();
+    expect($post->fresh()->meta['link_preview'])->toBeFalse();
 });
 
 it('no longer stores an aspect_ratio meta on create', function (string $ratio) {
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
         ->postJson(route('api.posts.store'), [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['aspect_ratio' => $ratio]],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['aspect_ratio' => $ratio],
         ])
         ->assertCreated()
-        ->assertJsonMissingPath('platforms.0.meta.aspect_ratio');
+        ->assertJsonMissingPath('meta.aspect_ratio');
 
-    $platform = Post::where('workspace_id', $this->workspace->id)->first()
-        ->postPlatforms()->where('social_account_id', $this->socialAccount->id)->first();
-    expect(data_get($platform->meta, 'aspect_ratio'))->toBeNull();
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect(data_get($post->meta, 'aspect_ratio'))->toBeNull();
 })->with(['4:5', 'original', '3:2']);
 
 it('shows the origin of imported and trypost posts', function () {
@@ -948,16 +790,10 @@ it('orders the post list the same way on every page with null and tied scheduled
 });
 
 it('edits a draft whose kept time has passed', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => now()->subDay(),
-    ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])

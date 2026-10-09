@@ -115,49 +115,6 @@ class MediaOptimizer
     }
 
     /**
-     * Center-crop an image to the given aspect ratio (width / height), the
-     * crop the Facebook and Instagram publishers made before TryPost 2.0. Only
-     * the one-off `posts:bake-aspect-ratio-crops` release step calls it.
-     * Returns path to a temp file (caller must clean up).
-     */
-    public function cropToAspectRatio(string $filePath, float $ratio): string
-    {
-        $this->assertWithinMemoryBudget($filePath);
-
-        $image = $this->manager->decodePath($filePath);
-
-        $width = $image->width();
-        $height = $image->height();
-        $current = $width / $height;
-
-        if (abs($current - $ratio) < 0.001) {
-            $tempFile = tempnam(sys_get_temp_dir(), 'media_crop_');
-            copy($filePath, $tempFile);
-
-            return $tempFile;
-        }
-
-        if ($current > $ratio) {
-            $newWidth = (int) round($height * $ratio);
-            $newHeight = $height;
-        } else {
-            $newWidth = $width;
-            $newHeight = (int) round($width / $ratio);
-        }
-
-        $offsetX = (int) round(($width - $newWidth) / 2);
-        $offsetY = (int) round(($height - $newHeight) / 2);
-
-        $image->crop($newWidth, $newHeight, $offsetX, $offsetY);
-
-        $tempFile = tempnam(sys_get_temp_dir(), 'media_crop_');
-        $encoded = $image->encodeUsingMediaType('image/jpeg', quality: 100);
-        file_put_contents($tempFile, (string) $encoded);
-
-        return $tempFile;
-    }
-
-    /**
      * Fit an image inside a width×height canvas without cropping: the image is
      * scaled to fit and centered, and the empty space is filled with a blurred,
      * slightly darkened copy of the image. When the image already matches the

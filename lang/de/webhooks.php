@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Wenn ein Beitrag zur Veröffentlichung geplant wird.',
         'post_unscheduled' => 'Wenn ein geplanter Beitrag zurück zu Entwürfen geht.',
         'post_published' => 'Wenn ein Beitrag auf einem Kanal live geht.',
-        'post_partially_published' => 'Wenn einige Kanäle veröffentlichen, andere scheitern.',
         'post_failed' => 'Wenn ein Beitrag nicht veröffentlicht werden kann.',
         'post_deleted' => 'Wenn ein Beitrag gelöscht wird.',
     ],

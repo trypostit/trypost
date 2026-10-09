@@ -176,7 +176,7 @@ return [
     | Post history retention
     |--------------------------------------------------------------------------
     |
-    | Published and partially published posts older than this many days are
+    | Published posts older than this many days are
     | deleted with their media by posts:prune-history. Must be 1 or more.
     |
     */

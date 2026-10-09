@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\Queue\ReflowChannelQueue;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\User\TimeFormat;
 use App\Exceptions\Social\ErrorCategory;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -81,19 +80,11 @@ function publishQueueSetup(): array
 
 function publishQueuePost(User $user, SocialAccount $channel, QueuePosition $position = QueuePosition::Next): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $post = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => null,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
 
     ReflowChannelQueue::handle($channel, $post, $position);
@@ -171,18 +162,11 @@ test('a member whose posts need approval can still open the composer from an emp
 test('scheduled posts replace the slots with a list of only those posts', function () {
     [$user, , $channel] = publishQueueSetup();
     $queued = publishQueuePost($user, $channel);
-    $custom = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $custom = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->utc()->addDays(120)->setTime(15, 30),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $custom->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
 
@@ -305,17 +289,10 @@ test('a far display time zone regroups slots under its own calendar day', functi
 
 test('changing the time zone keeps a tab that came from a notes link', function () {
     [$user, , $channel] = publishQueueSetup();
-    $draft = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $draft = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $draft->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
 
@@ -353,18 +330,11 @@ test('more times extends the queue range', function () {
 
 test('a failed post is listed in sent with its failed badge and actions', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
-    $failed = Post::factory()->failed()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-        'scheduled_at' => now()->subDays(21),
-    ]);
-    PostPlatform::factory()->failed()->create([
-        'post_id' => $failed->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
+    $failed = Post::factory()->forAccount($channel)->failed()->create([
         'error_message' => 'Video duration exceeds the 90 second limit.',
         'error_context' => ['category' => ErrorCategory::MediaFormat->value],
+        'user_id' => $user->id,
+        'scheduled_at' => now()->subDays(21),
     ]);
     $this->actingAs($user);
 
@@ -399,20 +369,12 @@ test('a failed post is listed in sent with its failed badge and actions', functi
 
 function publishQueueCustomPost(User $user, SocialAccount $channel, CarbonInterface $at): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $post = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'content' => 'A post with its own time',
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => $at,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
 
     return $post;
@@ -625,23 +587,16 @@ test('a publishing post waiting for a network limit shows when it retries', func
     [$user, $workspace, $channel] = publishQueueSetup();
     $user->update(['time_format' => TimeFormat::TwentyFourHour]);
     $retryAt = now()->addHours(2)->startOfMinute();
-    $waiting = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $waiting = Post::factory()->forAccount($channel)->create([
+        'publish_status' => PublishStatus::Retrying,
+        'retry_at' => $retryAt,
+        'error_message' => 'LinkedIn rate limit reached. Please try again later.',
+        'error_context' => ['category' => ErrorCategory::RateLimit->value, 'limit_retries' => 1],
         'user_id' => $user->id,
         'status' => PostStatus::Publishing,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->subMinute(),
         'content' => 'Waiting for the limit',
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $waiting->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
-        'status' => PostPlatformStatus::Retrying,
-        'retry_at' => $retryAt,
-        'error_message' => 'LinkedIn rate limit reached. Please try again later.',
-        'error_context' => ['category' => ErrorCategory::RateLimit->value, 'limit_retries' => 1],
     ]);
     $this->actingAs($user);
 
@@ -654,22 +609,35 @@ test('a publishing post waiting for a network limit shows when it retries', func
         ->assertNoJavaScriptErrors();
 });
 
+test('a google business post waiting for review says google is reviewing it', function () {
+    [$user, $workspace] = publishQueueSetup();
+    $channel = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $workspace->id]);
+    $inReview = Post::factory()->forAccount($channel)->pendingReview()->create([
+        'user_id' => $user->id,
+        'schedule_mode' => ScheduleMode::Custom,
+        'scheduled_at' => now()->subMinute(),
+        'content' => 'Waiting for Google',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitForPublishQueueTestId($page, "post-google-review-{$inReview->id}");
+
+    $page->assertSeeIn("@post-google-review-{$inReview->id}", __('posts.publish.in_google_review'))
+        ->assertNotPresent("@post-publishing-progress-{$inReview->id}")
+        ->assertDontSeeIn("@post-publishing-{$inReview->id}", __('posts.publish.publishing_on', ['network' => $channel->platform->label()]))
+        ->assertNoJavaScriptErrors();
+});
+
 test('a publishing post sits in its own queue group and moves to sent once it settles', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
     $scheduled = publishQueuePost($user, $channel);
-    $publishing = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $publishing = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Publishing,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->subMinute(),
         'content' => 'Going out right now',
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $publishing->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
 

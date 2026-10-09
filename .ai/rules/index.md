@@ -15,11 +15,11 @@ Before planning or editing, find the row whose globs match the file's path and r
 | resources/js/** | .ai/rules/js.md |
 | app/Actions/Media/**, app/Models/Media.php | .ai/rules/media.md |
 | app/Http/Middleware/App/HandleInertiaRequests.php | .ai/rules/middleware-app.md |
-| app/Jobs/PostHog/**, app/Models/PostPlatform.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
+| app/Jobs/PostHog/**, app/Models/Post.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
 | app/Jobs/PostHog/** | .ai/rules/post-hog.md |
 | app/Enums/PostPlatform/ContentType.php | .ai/rules/post-platform.md |
 | app/Actions/Post/FinalizePostPublication.php, app/Jobs/PublishPost.php, app/Actions/Post/UpdatePost.php, app/Actions/Post/** | .ai/rules/post.md |
 | app/Enums/SocialAccount/Platform.php | .ai/rules/social-account.md |
-| app/Services/Social/GoogleBusinessPublisher.php, app/Support/Social/GoogleBusinessDerivativeCleaner.php, app/Actions/Post/DeletePost.php, app/Actions/Post/UpdatePost.php, app/Support/Social/AbandonGoogleBusinessReview.php, app/Actions/Workspace/PurgeWorkspace.php, app/Http/Controllers/Auth/SocialController.php, app/Support/Social/ThreadProgress.php, app/Support/ThreadReplies.php, app/Services/Social/Concerns/PublishesThreads.php, app/Services/Social/FacebookPublisher.php, app/Services/Social/InstagramPublisher.php | .ai/rules/social.md |
+| app/Services/Social/GoogleBusinessPublisher.php, app/Support/Social/GoogleBusinessDerivativeCleaner.php, app/Actions/Post/DeletePost.php, app/Actions/Post/UpdatePost.php, app/Actions/Workspace/PurgeWorkspace.php, app/Http/Controllers/Auth/SocialController.php, app/Support/Social/ThreadProgress.php, app/Support/ThreadReplies.php, app/Services/Social/Concerns/PublishesThreads.php, app/Services/Social/FacebookPublisher.php, app/Services/Social/InstagramPublisher.php | .ai/rules/social.md |
 | app/Support/PostPlatformMetaRules.php | .ai/rules/support.md |
 | app/Mcp/Tools/** | .ai/rules/tools.md |

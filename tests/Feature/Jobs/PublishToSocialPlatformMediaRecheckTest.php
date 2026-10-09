@@ -3,14 +3,13 @@
 declare(strict_types=1);
 
 use App\Dto\MediaItem;
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -28,20 +27,13 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    $this->post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->account, ContentType::InstagramFeed)->scheduled()->create([
         'user_id' => $this->user->id,
     ]);
     $this->media = Media::factory()->stored()->ownedByPost($this->post)->create([
         'meta' => ['width' => 1080, 'height' => 1350],
     ]);
     $this->post->update(['media' => [MediaItem::fromMedia($this->media)->toArray()]]);
-    $this->postPlatform = PostPlatform::factory()->instagram()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->account->id,
-        'content_type' => ContentType::InstagramFeed,
-        'enabled' => true,
-    ]);
 });
 
 test('a scheduled instagram feed image that became too wide fails without calling instagram', function () {
@@ -51,16 +43,16 @@ test('a scheduled instagram feed image that became too wide fails without callin
     $publisher->shouldNotReceive('publish');
     $this->app->instance(InstagramPublisher::class, $publisher);
 
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
 
-    $platform = $this->postPlatform->fresh();
+    $platform = $this->post->fresh();
     $message = trans('posts.form.warnings.aspect_ratio_too_wide', [
         'destination' => ContentType::InstagramFeed->destinationLabel(),
         'current' => '2.00',
         'max' => '1.91',
     ]);
 
-    expect($platform->status)->toBe(PlatformStatus::Failed)
+    expect($platform->publish_status)->toBe(PlatformStatus::Failed)
         ->and($platform->error_message)->toBe($message)
         ->and(data_get($platform->error_context, 'reason'))->toBe('media_invalid')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
@@ -75,15 +67,15 @@ test('a still valid instagram feed image reaches the publisher', function () {
     $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'ig-1', 'url' => 'https://instagram.com/p/ig-1']);
     $this->app->instance(InstagramPublisher::class, $publisher);
 
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
 
-    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Published)
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($this->account->platform)->toBe(Platform::Instagram);
 });
 
 test('a resume of a publish the provider already accepted is not rechecked', function () {
     $this->media->update(['meta' => ['width' => 2000, 'height' => 1000]]);
-    $this->postPlatform->update(['error_context' => [
+    $this->post->update(['error_context' => [
         'category' => 'platform_unavailable',
         'instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container-1'],
     ]]);
@@ -92,20 +84,20 @@ test('a resume of a publish the provider already accepted is not rechecked', fun
     $publisher->shouldReceive('publish')->once()->andReturn(['id' => 'ig-1', 'url' => 'https://instagram.com/p/ig-1']);
     $this->app->instance(InstagramPublisher::class, $publisher);
 
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
 
-    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Published);
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
 });
 
 test('a too-wide image fails the recheck even with a legacy aspect ratio', function (string $legacyRatio) {
     $this->media->update(['meta' => ['width' => 2000, 'height' => 1000]]);
-    $this->postPlatform->update(['meta' => ['aspect_ratio' => $legacyRatio]]);
+    $this->post->update(['meta' => ['aspect_ratio' => $legacyRatio]]);
 
     $publisher = Mockery::mock(InstagramPublisher::class);
     $publisher->shouldNotReceive('publish');
     $this->app->instance(InstagramPublisher::class, $publisher);
 
-    (new PublishToSocialPlatform($this->postPlatform))->handle();
+    (new PublishToSocialPlatform($this->post->fresh()))->handle();
 
-    expect($this->postPlatform->fresh()->status)->toBe(PlatformStatus::Failed);
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Failed);
 })->with(['1:1', '4:5', 'original']);

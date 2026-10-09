@@ -1,5 +1,5 @@
 import type { ChannelAccount } from '@/types/channel';
-import type { PostPlatformStatusValue } from '@/types/post';
+import type { PublishStatusValue } from '@/types/post';
 import type { PauseReasonValue, RepurposeItemStatusValue, RepurposeStatusValue } from '@/types/repurpose-status';
 
 export type RepurposeSourceFormat = 'reel' | 'video' | 'story';
@@ -41,14 +41,10 @@ export interface Repurpose {
     updated_at: string;
 }
 
-export interface RepurposeItemPlatform {
-    platform: string;
-    status: PostPlatformStatusValue | null;
-}
-
 export interface RepurposeItemPost {
     id: string;
-    platforms: RepurposeItemPlatform[];
+    platform: string | null;
+    publish_status: PublishStatusValue;
 }
 
 export interface RepurposeItem {

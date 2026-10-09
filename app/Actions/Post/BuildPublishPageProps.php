@@ -47,7 +47,6 @@ class BuildPublishPageProps
 
     public const SENT_STATUSES = [
         PostStatus::Published,
-        PostStatus::PartiallyPublished,
         PostStatus::Failed,
     ];
 
@@ -93,7 +92,7 @@ class BuildPublishPageProps
 
         $tab = $resolveTab($request->query('tab'), $focusedPostId);
 
-        $cards = fn (): Builder => self::cardQuery(clone $basePosts, $scopedChannelIds, $labelIds, $untagged);
+        $cards = fn (): Builder => self::cardQuery(clone $basePosts, $labelIds, $untagged);
 
         $hasDataResult = null;
         $hasData = function () use (&$hasDataResult, $tab, $workspace, $channel, $requester): bool {
@@ -183,10 +182,7 @@ class BuildPublishPageProps
      */
     private static function hasData(string $tab, Workspace $workspace, ?SocialAccount $channel, ?User $requester): bool
     {
-        $posts = $workspace->posts()->when($channel !== null, fn (Builder $query) => $query->whereHas(
-            'postPlatforms',
-            fn (Builder $platforms) => $platforms->enabled()->where('social_account_id', $channel->id),
-        ));
+        $posts = $workspace->posts()->when(filled($channel), fn (Builder $query) => $query->where('posts.social_account_id', $channel->id));
 
         return match ($tab) {
             self::TAB_QUEUE => $posts->where(fn (Builder $query) => $query
@@ -288,16 +284,13 @@ class BuildPublishPageProps
     }
 
     /**
-     * @param  list<string>|null  $channelIds
      * @param  list<string>  $labelIds
      */
-    public static function cardQuery(HasMany $basePosts, ?array $channelIds, array $labelIds, bool $untagged): Builder
+    public static function cardQuery(HasMany $basePosts, array $labelIds, bool $untagged): Builder
     {
         return $basePosts->getQuery()
             ->with([
-                'postPlatforms' => fn ($platforms) => $platforms->enabled()
-                    ->when($channelIds !== null, fn ($platforms) => $platforms->whereIn('social_account_id', $channelIds))
-                    ->with('socialAccount'),
+                'socialAccount',
                 'user.avatarMedia',
                 'labels',
             ])
@@ -411,13 +404,9 @@ class BuildPublishPageProps
             $post->unsetRelation('approvalRequestedBy');
             $post->setAttribute('can_delete', $deletable[$authorship] && ! PostStatusRules::blocksDeletion($post));
 
-            foreach ($post->postPlatforms as $platform) {
-                $account = $platform->socialAccount;
+            $account = $post->socialAccount;
 
-                if ($account === null) {
-                    continue;
-                }
-
+            if (filled($account)) {
                 $hasSchedule[$account->id] ??= $account->hasPostingSchedule();
                 $account->setAttribute('has_posting_schedule', $hasSchedule[$account->id]);
             }
@@ -436,15 +425,10 @@ class BuildPublishPageProps
             return;
         }
 
-        $metrics = app(ReadPublicationAnalytics::class)->latestForPost(
-            $first,
-            $posts->flatMap(fn (Post $post) => $post->postPlatforms)->values(),
-        );
+        $metrics = app(ReadPublicationAnalytics::class)->latestForPosts($first->workspace_id, $posts->values());
 
         foreach ($posts as $post) {
-            $post->setAttribute('metrics', $post->postPlatforms
-                ->mapWithKeys(fn ($platform): array => [$platform->id => data_get($metrics, $platform->id)])
-                ->all());
+            $post->setAttribute('metrics', data_get($metrics, $post->id));
         }
     }
 }

@@ -96,7 +96,6 @@ return [
         'post_scheduled' => '게시물 게시가 예약될 때.',
         'post_unscheduled' => '예약된 게시물이 초안으로 돌아갈 때.',
         'post_published' => '게시물이 채널에 게시될 때.',
-        'post_partially_published' => '일부 채널은 게시되고 나머지는 실패할 때.',
         'post_failed' => '게시물 게시에 실패할 때.',
         'post_deleted' => '게시물이 삭제될 때.',
     ],

@@ -14,7 +14,7 @@ import type { Component } from 'vue';
 import { getPlatformLabel, getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { edit } from '@/routes/app/posts';
-import { PostPlatformStatus, type PostPlatformStatusValue } from '@/types/post';
+import { PublishStatus, type PublishStatusValue } from '@/types/post';
 import type { RepurposeItem, RepurposeItemPost } from '@/types/repurpose';
 import { RepurposeItemStatus, type RepurposeItemStatusValue } from '@/types/repurpose-status';
 
@@ -33,21 +33,12 @@ const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }
 
 const detail = (item: RepurposeItem): string | null => item.error ?? null;
 
-const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
-    const states = post.platforms
-        .map((entry) => entry.status)
-        .filter((status): status is PostPlatformStatusValue => status !== null);
-
-    if (states.length === 0) {
-        return null;
-    }
-
-    if (states.includes(PostPlatformStatus.Failed)) {
-        return PostPlatformStatus.Failed;
-    }
-
-    return states.every((status) => status === states[0]) ? states[0] : null;
-};
+const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
+    post.platform
+        ? post.publish_status === PublishStatus.Rejected
+            ? PublishStatus.Failed
+            : post.publish_status
+        : null;
 </script>
 
 <template>
@@ -114,26 +105,29 @@ const postState = (post: RepurposeItemPost): PostPlatformStatusValue | null => {
                         class="group/post inline-flex h-6 items-center gap-1.5 rounded-md bg-secondary pr-1.5 pl-2 text-xs font-medium text-foreground transition-control hover:bg-border-strong"
                     >
                         <img
-                            v-for="entry in post.platforms"
-                            :key="entry.platform"
-                            :src="getPlatformLogo(entry.platform)"
-                            :alt="getPlatformLabel(entry.platform)"
+                            v-if="post.platform"
+                            :src="getPlatformLogo(post.platform)"
+                            :alt="getPlatformLabel(post.platform)"
                             class="size-4 rounded-sm"
-                            :class="{ 'opacity-40': entry.status === PostPlatformStatus.Failed }"
+                            :class="{ 'opacity-40': postState(post) === PublishStatus.Failed }"
                         />
 
-                        {{ post.platforms.map((entry) => getPlatformLabel(entry.platform)).join(', ') }}
+                        {{ post.platform ? getPlatformLabel(post.platform) : '' }}
 
                         <span
                             v-if="postState(post)"
                             :class="[
                                 'rounded px-1 py-px text-[10px] font-semibold uppercase tracking-wide',
-                                postState(post) === PostPlatformStatus.Failed
+                                postState(post) === PublishStatus.Failed
                                     ? 'bg-critical-subtle text-destructive-text'
                                     : 'bg-foreground/10 text-foreground/60',
                             ]"
                         >
-                            {{ $t(`posts.status.${postState(post)}`) }}
+                            {{
+                                postState(post) === PublishStatus.PendingReview
+                                    ? $t('posts.publish.in_google_review')
+                                    : $t(`posts.status.${postState(post)}`)
+                            }}
                         </span>
 
                         <IconChevronRight class="size-3.5 text-muted-foreground transition-colors group-hover/post:text-foreground" />

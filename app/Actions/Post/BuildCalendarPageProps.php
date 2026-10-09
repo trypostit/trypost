@@ -65,11 +65,8 @@ class BuildCalendarPageProps
             return $workspaceAccounts ??= $channel ? collect() : $workspace->socialAccounts()->get();
         };
 
-        $scopedPosts = fn (): Builder => BuildPublishPageProps::cardQuery($workspace->posts(), $scopedChannelIds, $labelIds, $untagged)
-            ->when($scopedChannelIds !== null, fn (Builder $query) => $query->whereHas(
-                'postPlatforms',
-                fn (Builder $platforms) => $platforms->enabled()->whereIn('social_account_id', $scopedChannelIds),
-            ))
+        $scopedPosts = fn (): Builder => BuildPublishPageProps::cardQuery($workspace->posts(), $labelIds, $untagged)
+            ->onChannels($scopedChannelIds)
             ->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($request->user(), $workspace));
 
         $range = [$rangeStart->utc(), $rangeEnd->utc()];

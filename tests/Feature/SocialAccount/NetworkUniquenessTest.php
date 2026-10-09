@@ -2,15 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Database\QueryException;
@@ -322,7 +321,7 @@ test('connectIdentity releases the lock so the next connect proceeds', function 
         ->and($this->workspace->socialAccounts()->count())->toBe(1);
 });
 
-test('reconnecting through the other variant moves pending targets onto the new platform', function () {
+test('reconnecting through the other variant moves pending posts onto the new platform', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
@@ -330,14 +329,10 @@ test('reconnecting through the other variant moves pending targets onto the new 
         'scopes' => ['instagram_business_content_publish'],
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $pending = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $pending = Post::factory()->forAccount($account)->create([
         'platform' => Platform::Instagram->value,
         'content_type' => ContentType::InstagramReel,
-        'status' => PostPlatformStatus::Pending,
+        'publish_status' => PublishStatus::Pending,
     ]);
 
     SocialAccount::connectIdentity(
@@ -357,20 +352,16 @@ test('reconnecting through the other variant moves pending targets onto the new 
         ))->toBe([]);
 });
 
-test('a variant move leaves a published target on the platform it really published to', function () {
+test('a variant move leaves a published post on the platform it really published to', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
         'platform_user_id' => 'shared-ig-id',
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $published = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $published = Post::factory()->forAccount($account)->create([
         'platform' => Platform::Instagram->value,
-        'status' => PostPlatformStatus::Published,
+        'publish_status' => PublishStatus::Published,
     ]);
 
     SocialAccount::connectIdentity(
@@ -391,14 +382,10 @@ test('a variant move resets a content type the new platform cannot publish', fun
         'platform_user_id' => 'li-same',
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $pending = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $pending = Post::factory()->forAccount($account)->create([
         'platform' => Platform::LinkedIn->value,
         'content_type' => ContentType::LinkedInPost,
-        'status' => PostPlatformStatus::Pending,
+        'publish_status' => PublishStatus::Pending,
     ]);
 
     SocialAccount::connectIdentity(
@@ -413,21 +400,17 @@ test('a variant move resets a content type the new platform cannot publish', fun
         ->and($pending->fresh()->content_type)->toBe(ContentType::LinkedInPagePost);
 });
 
-test('reconnecting the same variant leaves pending targets untouched', function () {
+test('reconnecting the same variant leaves pending posts untouched', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
         'platform_user_id' => 'ig-same',
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $pending = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $pending = Post::factory()->forAccount($account)->create([
         'platform' => Platform::Instagram->value,
         'content_type' => ContentType::InstagramStory,
-        'status' => PostPlatformStatus::Pending,
+        'publish_status' => PublishStatus::Pending,
     ]);
 
     $before = $pending->updated_at;
@@ -445,7 +428,7 @@ test('reconnecting the same variant leaves pending targets untouched', function 
         ->and($pending->fresh()->updated_at->equalTo($before))->toBeTrue();
 });
 
-test('a variant move carries a retrying target, which still has a publish ahead of it', function () {
+test('a variant move carries a retrying post, which still has a publish ahead of it', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
@@ -453,13 +436,9 @@ test('a variant move carries a retrying target, which still has a publish ahead 
         'scopes' => ['instagram_business_content_publish'],
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $retrying = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $retrying = Post::factory()->forAccount($account)->create([
         'platform' => Platform::Instagram->value,
-        'status' => PostPlatformStatus::Retrying,
+        'publish_status' => PublishStatus::Retrying,
     ]);
 
     SocialAccount::connectIdentity(
@@ -477,20 +456,16 @@ test('a variant move carries a retrying target, which still has a publish ahead 
         ))->toBe([]);
 });
 
-test('a variant move leaves a failed target on the platform it failed against', function () {
+test('a variant move leaves a failed post on the platform it failed against', function () {
     $account = SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
         'platform' => Platform::Instagram,
         'platform_user_id' => 'shared-ig-id',
     ]);
 
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $failed = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $failed = Post::factory()->forAccount($account)->create([
         'platform' => Platform::Instagram->value,
-        'status' => PostPlatformStatus::Failed,
+        'publish_status' => PublishStatus::Failed,
     ]);
 
     SocialAccount::connectIdentity(
@@ -502,4 +477,30 @@ test('a variant move leaves a failed target on the platform it failed against', 
     );
 
     expect($failed->fresh()->platform)->toBe(Platform::Instagram);
+});
+
+test('reconnecting across a network variant moves only the posts still waiting to publish', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::LinkedIn,
+        'platform_user_id' => 'li-move',
+    ]);
+    $retryAt = now()->addHour()->startOfSecond();
+    $pending = Post::factory()->forAccount($account, ContentType::LinkedInPost)->scheduled()->create();
+    $retrying = Post::factory()->forAccount($account, ContentType::LinkedInPost)->publishing()->create(['publish_status' => PublishStatus::Retrying, 'retry_at' => $retryAt]);
+    $published = Post::factory()->forAccount($account, ContentType::LinkedInPost)->published()->create();
+    $failed = Post::factory()->forAccount($account, ContentType::LinkedInPost)->failed()->create();
+
+    SocialAccount::connectIdentity($this->workspace, Platform::LinkedInPage, 'li-move', ['status' => Status::Connected], $account);
+
+    expect($pending->fresh())
+        ->platform->toBe(Platform::LinkedInPage)
+        ->content_type->toBe(ContentType::LinkedInPagePost)
+        ->and($retrying->fresh())
+        ->platform->toBe(Platform::LinkedInPage)
+        ->retry_at->toIso8601String()->toBe($retryAt->toIso8601String())
+        ->and($published->fresh())
+        ->platform->toBe(Platform::LinkedIn)
+        ->content_type->toBe(ContentType::LinkedInPost)
+        ->and($failed->fresh()->platform)->toBe(Platform::LinkedIn);
 });

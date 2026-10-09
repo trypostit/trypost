@@ -45,7 +45,7 @@ class ClearPostRecurrenceTool extends Tool
 
         UpdatePostRecurrence::execute($post, null);
 
-        $post = Post::query()->with(['postPlatforms.socialAccount', 'labels'])->findOrFail($post->id);
+        $post = Post::query()->with(['socialAccount', 'labels'])->findOrFail($post->id);
 
         return Response::structured((new PostResource($post))->resolve());
     }

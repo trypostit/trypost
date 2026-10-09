@@ -8,7 +8,7 @@ use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Support\Analytics\ChannelMetrics;
 use App\Support\Analytics\EngagementRate;
@@ -50,10 +50,10 @@ class ListChannelPublicationPerformance
 
         $paginator = $this->latestSnapshots
             ->execute($channel->workspace_id, [$accountKey ?? $this->accountKey->for($channel)], $range->startsAt(), $range->endsAt())
-            ->leftJoin((new PostPlatform)->getTable().' as destination', 'destination.id', '=', 'publication.post_platform_id')
+            ->leftJoin((new Post)->getTable().' as destination', 'destination.id', '=', 'publication.post_id')
             ->when($filter !== null, fn (Builder $filtered): Builder => $filter->apply($filtered))
             ->select([
-                'publication.id', 'destination.post_id', 'publication.excerpt', 'publication.preview_metadata', 'publication.permalink',
+                'publication.id', 'publication.post_id', 'publication.excerpt', 'publication.preview_metadata', 'publication.permalink',
                 'publication.provider_published_at', 'publication.content_type',
                 'metric.reactions_count', 'metric.comments_count', 'metric.views_count', 'metric.shares_count',
                 'metric.saves_count', 'metric.reach_count', 'metric.engagement_count', 'metric.exposure_count',

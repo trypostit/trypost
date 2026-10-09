@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -238,13 +237,7 @@ test('an expanded channel shows its scheduled count on the Publish item', functi
     $empty = SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
 
     foreach (range(1, 3) as $ignored) {
-        $post = Post::factory()->scheduled()->create(['workspace_id' => $user->current_workspace_id, 'user_id' => $user->id]);
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $channel->id,
-            'platform' => $channel->platform,
-            'enabled' => true,
-        ]);
+        Post::factory()->forAccount($channel)->scheduled()->create(['user_id' => $user->id]);
     }
 
     $this->actingAs($user);

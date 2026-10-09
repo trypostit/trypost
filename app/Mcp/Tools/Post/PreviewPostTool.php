@@ -16,7 +16,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly]
-#[Description('Preview how a post will be sent to each enabled platform without publishing: the exact text each network gets (X links defused when that is on), next to the original content, with length stats. Use it to check a text before scheduling.')]
+#[Description('Preview how a post will be sent to its channel without publishing: the exact text the network gets (X links defused when that is on), next to the original content, with length stats. Use it to check a text before scheduling.')]
 class PreviewPostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -31,7 +31,7 @@ class PreviewPostTool extends Tool
 
         $post = $workspace
             ? Post::where('workspace_id', $workspace->id)
-                ->with(['postPlatforms.socialAccount'])
+                ->with(['socialAccount'])
                 ->find(data_get($validated, 'post_id'))
             : null;
 

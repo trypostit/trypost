@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Actions\Post\FinalizePostPublication;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PlatformStatus;
-use App\Enums\SocialAccount\Platform;
-use App\Events\PostPlatformStatusUpdated;
+use App\Events\PostStatusUpdated;
 use App\Exceptions\Social\ErrorCategory;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
-use App\Support\Social\AbandonGoogleBusinessReview;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
 use Illuminate\Console\Command;
@@ -37,110 +34,67 @@ class RecoverStuckPosts extends Command
             ->where('status', PostStatus::Publishing)
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post): void {
-                $stalePlatforms = $post->postPlatforms()
-                    ->enabled()
-                    ->whereIn('status', [PlatformStatus::Publishing, PlatformStatus::Pending, PlatformStatus::Retrying])
-                    ->whereNull('retry_at')
-                    ->where('updated_at', '<=', now()->subHour())
-                    ->get();
+                $stale = $post->publish_status->isInFlight()
+                    && blank($post->retry_at)
+                    && (blank($post->publication_updated_at) || $post->publication_updated_at->lessThanOrEqualTo(now()->subHour()));
 
-                $stalePlatforms->each(function (PostPlatform $postPlatform): void {
-                    $this->tiktokPhotoDerivativeCleaner->cleanupUnlessPublishInFlight(
-                        $postPlatform->error_context,
-                        $postPlatform->id,
-                    );
-                    $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
+                if ($stale) {
+                    $this->tiktokPhotoDerivativeCleaner->cleanupUnlessPublishInFlight($post->error_context, $post->id);
+                    $this->googleBusinessDerivativeCleaner->cleanup($post);
 
-                    $postPlatform->update([
-                        'status' => PlatformStatus::Failed,
+                    $post->writePublication([
+                        'publish_status' => PublishStatus::Failed,
                         'error_message' => __('posts.errors.publishing_timed_out'),
                         'error_context' => [
-                            ...($postPlatform->error_context ?? []),
+                            ...($post->error_context ?? []),
                             'category' => ErrorCategory::Timeout->value,
                             'failed_at' => now()->toIso8601String(),
                         ],
                     ]);
-                });
+                }
 
-                $this->pruneDisabledGoogleBusinessDerivatives($post);
-                $this->failExpiredReviews($post);
+                $this->failExpiredReview($post);
 
-                // Delayed platform-unavailable retries keep the platform Retrying with a
-                // fresh updated_at — do not finalize the post while that work is still live.
-                $stillActive = $post->postPlatforms()
-                    ->enabled()
-                    ->whereIn('status', [
-                        PlatformStatus::Publishing,
-                        PlatformStatus::Pending,
-                        PlatformStatus::Retrying,
-                        PlatformStatus::PendingReview,
-                    ])
-                    ->exists();
-
-                if ($stillActive) {
+                // A delayed platform-unavailable retry keeps the post Retrying
+                // with a fresh clock: do not finalize while that work is live.
+                if (! $post->publish_status->isFinished()) {
                     return;
                 }
 
                 app(FinalizePostPublication::class)->handle($post);
 
-                $stalePlatforms->each(fn (PostPlatform $postPlatform) => PostPlatformStatusUpdated::dispatch($postPlatform->fresh()));
-            });
-    }
-
-    /**
-     * A switched-off GBP target is skipped by reconcile and the 24h ceiling.
-     * Abandon the review so the parent can settle, and prune the JPEG.
-     */
-    private function pruneDisabledGoogleBusinessDerivatives(Post $post): void
-    {
-        $post->postPlatforms()
-            ->disabled()
-            ->where('platform', Platform::GoogleBusiness)
-            ->get()
-            ->each(function (PostPlatform $postPlatform): void {
-                if ($postPlatform->status === PlatformStatus::PendingReview) {
-                    AbandonGoogleBusinessReview::execute(
-                        $postPlatform,
-                        __('posts.errors.target_disabled'),
-                        ['category' => 'target_disabled'],
-                    );
-
-                    return;
+                if ($stale) {
+                    PostStatusUpdated::dispatch($post->fresh());
                 }
-
-                $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
             });
     }
 
     /**
      * PendingReview is supposed to last up to Google's review ceiling, timed
      * from submitted_at only. A scheduled draft can be days old before it
-     * enters review — created_at must not trip the ceiling. Rows without
-     * submitted_at stay in review until reconcile or a later recover after
-     * markAsPendingReview writes the clock.
+     * enters review, so created_at must not trip the ceiling. A post without
+     * submitted_at stays in review until reconcile or a later recover after
+     * markPublicationPendingReview writes the clock.
      */
-    private function failExpiredReviews(Post $post): void
+    private function failExpiredReview(Post $post): void
     {
         $cutoff = now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS);
 
-        $post->postPlatforms()
-            ->enabled()
-            ->where('status', PlatformStatus::PendingReview)
-            ->where('submitted_at', '<=', $cutoff)
-            ->get()
-            ->each(function (PostPlatform $postPlatform): void {
-                $postPlatform->markAsRejected(
-                    (string) $postPlatform->platform_post_id,
-                    $postPlatform->platform_url,
-                    __('posts.errors.review_unconfirmed'),
-                    [
-                        ...($postPlatform->error_context ?? []),
-                        'category' => 'review_unconfirmed',
-                        'failed_at' => now()->toIso8601String(),
-                    ],
-                );
-                $this->googleBusinessDerivativeCleaner->cleanup($postPlatform->id);
-                PostPlatformStatusUpdated::dispatch($postPlatform->fresh());
-            });
+        if ($post->publish_status !== PublishStatus::PendingReview || blank($post->submitted_at) || $post->submitted_at->greaterThan($cutoff)) {
+            return;
+        }
+
+        $post->markPublicationRejected(
+            (string) $post->platform_post_id,
+            $post->platform_url,
+            __('posts.errors.review_unconfirmed'),
+            [
+                ...($post->error_context ?? []),
+                'category' => 'review_unconfirmed',
+                'failed_at' => now()->toIso8601String(),
+            ],
+        );
+        $this->googleBusinessDerivativeCleaner->cleanup($post);
+        PostStatusUpdated::dispatch($post->fresh());
     }
 }

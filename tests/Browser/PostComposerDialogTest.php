@@ -9,7 +9,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -146,10 +145,8 @@ test('posts channel filter keeps accounts distinct and persists across tabs', fu
     subscribeAccount($user->account);
     $firstInstagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'username' => 'first_channel']);
     $secondInstagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'username' => 'second_channel']);
-    $firstPost = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    $secondPost = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    PostPlatform::factory()->instagram()->create(['post_id' => $firstPost->id, 'social_account_id' => $firstInstagram->id]);
-    PostPlatform::factory()->instagram()->create(['post_id' => $secondPost->id, 'social_account_id' => $secondInstagram->id]);
+    $firstPost = Post::factory()->forAccount($firstInstagram)->draft()->create(['user_id' => $user->id]);
+    $secondPost = Post::factory()->forAccount($secondInstagram)->draft()->create(['user_id' => $user->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']));
@@ -631,8 +628,7 @@ test('a label created while editing a post on the publish page is listed and sel
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post));
@@ -862,7 +858,7 @@ test('recovering an empty-target draft retains its caption media and labels', fu
         ->and($owned->path)->toBe($asset->path)
         ->and(Media::query()->count())->toBe(1)
         ->and($recovered->labels()->sole()->id)->toBe($label->id)
-        ->and($recovered->postPlatforms()->sole()->social_account_id)->toBe($account->id);
+        ->and($recovered->social_account_id)->toBe($account->id);
 
     Storage::delete([$asset->path, $owned->path]);
 });
@@ -874,19 +870,15 @@ test('post notes open after creation while the edit dialog still has its AI assi
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
         'content' => 'A draft to discuss',
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
-    $postWithoutNotes = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $postWithoutNotes = Post::factory()->forAccount($account)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
     ]);
-    PostPlatform::factory()->create(['post_id' => $postWithoutNotes->id, 'social_account_id' => $account->id]);
     $note = PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $user->id,
@@ -1138,9 +1130,7 @@ test('cropping in one network card creates a separate asset and leaves the other
     JS);
     $page->click('@composer-save-draft');
 
-    $posts = Post::where('workspace_id', $workspace->id)->with('postPlatforms')->get()->keyBy(
-        fn (Post $post) => $post->postPlatforms->sole()->social_account_id,
-    );
+    $posts = Post::where('workspace_id', $workspace->id)->get()->keyBy('social_account_id');
     $uncropped = $posts[$accounts[1]->id]->ownedMedia()->sole();
     $cropped = $posts[$accounts[0]->id]->ownedMedia()->sole();
     expect($posts)->toHaveCount(2)
@@ -1159,15 +1149,13 @@ test('animated GIFs and videos do not offer the static image crop action', funct
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $user->id,
         'media' => [
             ['id' => fake()->uuid(), 'url' => '/storage/animation.gif', 'path' => 'animation.gif', 'type' => 'image', 'mime_type' => 'image/gif'],
             ['id' => fake()->uuid(), 'url' => '/storage/video.mp4', 'path' => 'video.mp4', 'type' => 'video', 'mime_type' => 'video/mp4'],
         ],
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::X, 'enabled' => true]);
     $this->actingAs($user);
 
     visit(route('app.posts.edit', $post))
@@ -1220,18 +1208,10 @@ test('failed crop upload keeps the original asset selected', function () {
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X]);
     $asset = Media::factory()->temporaryUpload($workspace)->create(['mime_type' => 'image/png', 'original_filename' => 'original.png']);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create([
         'user_id' => $user->id,
         'content' => 'Keep the original',
         'media' => [['id' => $asset->id, 'path' => $asset->path, 'url' => $asset->url, 'type' => 'image', 'mime_type' => 'image/png', 'original_filename' => 'original.png']],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
     $page = visit(route('app.posts.edit', $post));
@@ -1279,32 +1259,6 @@ test('failed crop upload keeps the original asset selected', function () {
         ->and(Media::query()->whereKey($asset->id)->exists())->toBeTrue();
 });
 
-test('settled legacy multi-target history appears as one read-only card per target', function () {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'status' => PostStatus::Published]);
-    $accounts = SocialAccount::factory()->count(2)->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn]);
-    foreach ($accounts as $account) {
-        PostPlatform::factory()->published()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::LinkedIn, 'enabled' => true]);
-    }
-    $this->actingAs($user);
-
-    $page = visit(route('app.posts.index', ['tab' => 'sent']));
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 300; attempt++) {
-                if (document.querySelectorAll('[data-testid^="post-card-"]:not([data-testid^="post-card-menu-"])').length === 2) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-    expect($page->script('document.querySelectorAll("[data-testid^=post-card-]:not([data-testid^=post-card-menu-])").length'))->toBe(2)
-        ->and(Post::where('workspace_id', $workspace->id)->count())->toBe(1);
-});
-
 test('customizing several channels uses plural actions and flags the collapsed channel that needs fixing', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
@@ -1339,19 +1293,11 @@ test('a persisted image in the composer offers no AI image adjustment', function
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
     $asset = Media::factory()->temporaryUpload($workspace)->create(['mime_type' => 'image/png', 'original_filename' => 'original.png']);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
         'content' => 'A draft with an image',
         'media' => [MediaItem::fromMedia($asset)->toArray()],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'enabled' => true,
     ]);
     $this->actingAs($user);
 

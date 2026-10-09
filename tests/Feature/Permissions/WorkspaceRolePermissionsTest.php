@@ -95,7 +95,7 @@ test('only admins and above can open the connections screen', function (string $
     'requester' => ['requester', false],
 ]);
 
-test('opening the dialog does not create platform rows for a member who needs approval', function () {
+test('opening the dialog does not assign a channel for a member who needs approval', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]);
@@ -104,10 +104,10 @@ test('opening the dialog does not create platform rows for a member who needs ap
         ->get(route('app.posts.edit', $this->post))
         ->assertRedirect(route('app.posts.index', ['edit' => $this->post->id]));
 
-    expect($this->post->postPlatforms()->count())->toBe(0);
+    expect($this->post->fresh()->social_account_id)->toBeNull();
 });
 
-test('opening the dialog does not create platform rows for a member', function () {
+test('opening the dialog does not assign a channel for a member', function () {
     SocialAccount::factory()->create([
         'workspace_id' => $this->workspace->id,
     ]);
@@ -116,7 +116,7 @@ test('opening the dialog does not create platform rows for a member', function (
         ->get(route('app.posts.edit', $this->post))
         ->assertRedirect(route('app.posts.index', ['edit' => $this->post->id]));
 
-    expect($this->post->postPlatforms()->count())->toBe(0);
+    expect($this->post->fresh()->social_account_id)->toBeNull();
 });
 
 test('a member without connected accounts is redirected away from the admin-only accounts screen when creating a post', function () {

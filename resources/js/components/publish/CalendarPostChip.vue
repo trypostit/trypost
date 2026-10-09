@@ -31,7 +31,6 @@ const props = withDefaults(
     { layout: 'month' },
 );
 
-const MAX_ICONS = 4;
 
 const open = ref(false);
 const detailsOpen = ref(false);
@@ -65,13 +64,11 @@ const onDetails = (value: boolean): void => {
 
 const SENT_STATUSES: readonly string[] = [
     PostStatus.Published,
-    PostStatus.PartiallyPublished,
     PostStatus.Failed,
 ];
 
 const STATUS_CLASSES: Record<string, string> = {
     draft: 'border-dashed',
-    partially_published: 'border-warning/40 bg-warning/5',
     failed: 'border-destructive/40 bg-destructive/5',
 };
 
@@ -89,27 +86,11 @@ const tab = computed((): PublishTab => {
         : 'queue';
 });
 
-const visibleTargets = computed(() =>
-    props.post.post_platforms.slice(
-        0,
-        props.post.post_platforms.length > MAX_ICONS
-            ? MAX_ICONS - 1
-            : MAX_ICONS,
-    ),
-);
-
-const hiddenTargets = computed(
-    () => props.post.post_platforms.length - visibleTargets.value.length,
-);
-
 const channels = computed(() =>
-    props.post.post_platforms
-        .map(
-            (target) =>
-                target.social_account?.display_label ??
-                getPlatformLabel(target.platform),
-        )
-        .join(', '),
+    props.post.platform
+        ? (props.post.social_account?.display_label ??
+          getPlatformLabel(props.post.platform))
+        : '',
 );
 
 const time = computed(() =>
@@ -166,16 +147,10 @@ const scheduleMode = computed(() =>
                 <span class="flex min-w-0 flex-1 flex-col gap-1">
                     <span class="flex min-w-0 items-center gap-1">
                         <PlatformBrandIcon
-                            v-for="target in visibleTargets"
-                            :key="target.id"
-                            :platform="target.platform"
+                            v-if="post.platform"
+                            :platform="post.platform"
                             class="size-4 shrink-0"
                         />
-                        <span
-                            v-if="hiddenTargets > 0"
-                            class="text-xs text-muted-foreground"
-                            >+{{ hiddenTargets }}</span
-                        >
                         <span
                             class="truncate text-xs font-medium text-muted-foreground"
                             >{{ time }}</span

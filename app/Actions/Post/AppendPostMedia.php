@@ -7,7 +7,6 @@ namespace App\Actions\Post;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\User;
 use App\Support\Media\MediaCopyBatch;
 use App\Support\PostApproval;
@@ -37,11 +36,9 @@ class AppendPostMedia
                 throw ValidationException::withMessages(['post' => PostStatusRules::editBlockedMessage()]);
             }
 
-            $post->postPlatforms()->enabled()->get()
-                ->filter(fn (PostPlatform $target): bool => ContentType::derivesFromMedia($target->platform))
-                ->each(fn (PostPlatform $target): bool => $target->update([
-                    'content_type' => ContentType::forMedia($target->platform, $post->media ?? []),
-                ]));
+            if ($post->hasDestination() && ContentType::derivesFromMedia($post->platform)) {
+                $post->update(['content_type' => ContentType::forMedia($post->platform, $post->media ?? [])]);
+            }
 
             if ($post->status === PostStatus::Scheduled && PostApproval::isRequired($post->workspace, $actor, $post->status->value)) {
                 UpdatePost::execute($post->workspace, $post, ['status' => $post->status->value], $actor);

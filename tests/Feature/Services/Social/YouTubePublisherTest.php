@@ -9,7 +9,6 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -41,8 +40,8 @@ function fakeYouTubeUpload(array $responses = []): YouTubePublisher
 test('youtube description rejects stored invalid data before network work', function (mixed $description, string $key) {
     Http::fake();
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
-    $this->postPlatform->update(['meta' => ['description' => $description]]);
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    $this->post->update(['meta' => ['description' => $description]]);
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(YouTubePublishException::class, __($key));
     Http::assertNothingSent();
 })->with([
@@ -64,7 +63,7 @@ test('youtube description reaches the resumable upload request', function (?stri
             'original_filename' => 'video.mp4',
         ]],
     ]);
-    $this->postPlatform->update(['meta' => ['description' => $description]]);
+    $this->post->update(['meta' => ['description' => $description]]);
     $tempFile = null;
     $publisher = fakeYouTubeUpload([
         'https://example.com/video.mp4' => function (Request $request, array $options) use (&$tempFile) {
@@ -74,7 +73,7 @@ test('youtube description reaches the resumable upload request', function (?stri
         },
     ]);
 
-    $result = $publisher->publish($this->postPlatform->fresh());
+    $result = $publisher->publish($this->post->fresh());
 
     expect($result)->toBe([
         'id' => 'short-id',
@@ -111,31 +110,33 @@ test('youtube description reaches the resumable upload request', function (?stri
 ]);
 
 test('youtube description builds independent upload metadata', function () {
+    $media = [[
+        'id' => 'video-1',
+        'type' => 'video',
+        'path' => 'medias/video.mp4',
+        'url' => 'https://example.com/video.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'video.mp4',
+    ]];
     $this->post->update([
         'content' => 'Short title',
-        'media' => [[
-            'id' => 'video-1',
-            'type' => 'video',
-            'path' => 'medias/video.mp4',
-            'url' => 'https://example.com/video.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'video.mp4',
-        ]],
+        'media' => $media,
+        'meta' => ['description' => 'First channel description'],
     ]);
-    $this->postPlatform->update(['meta' => ['description' => 'First channel description']]);
     $secondAccount = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->addDays(7),
     ]);
-    $secondPlatform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $secondAccount->id,
+    $secondPost = Post::factory()->forAccount($secondAccount, ContentType::YouTubeShort)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Short title',
+        'media' => $media,
         'meta' => ['description' => 'Second channel description'],
     ]);
     $publisher = fakeYouTubeUpload();
 
-    $publisher->publish($this->postPlatform->fresh());
-    $publisher->publish($secondPlatform);
+    $publisher->publish($this->post->fresh());
+    $publisher->publish($secondPost);
 
     foreach (['First channel description', 'Second channel description'] as $description) {
         Http::assertSent(function (Request $request) use ($description): bool {
@@ -166,24 +167,18 @@ beforeEach(function () {
         ],
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Check out this YouTube Short!',
-    ]);
-
-    $this->postPlatform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::YouTube,
         'content_type' => ContentType::YouTubeShort,
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 
     $this->publisher = new YouTubePublisher;
 });
 
 test('youtube publisher throws exception when no media', function () {
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'YouTube Shorts requires a video to publish.');
 });
 
@@ -206,7 +201,7 @@ test('youtube publisher cleans up unusable downloads without starting an upload'
         },
     ]);
 
-    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $publisher->publish($this->post->fresh()))
         ->toThrow(YouTubePublishException::class, $message);
 
     $this->assertFileDoesNotExist($tempFile);
@@ -231,7 +226,7 @@ test('youtube publisher throws exception for non-video content', function () {
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'YouTube Shorts only supports video content.');
 });
 
@@ -260,7 +255,7 @@ test('youtube publisher refreshes token when expired', function () {
     ]);
 
     try {
-        $this->publisher->publish($this->postPlatform);
+        $this->publisher->publish($this->post);
     } catch (Exception $e) {
         // Expected to fail on upload, but token should be refreshed
     }
@@ -291,7 +286,7 @@ test('youtube publisher throws exception when no refresh token available', funct
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'No refresh token available for YouTube account');
 });
 
@@ -324,7 +319,7 @@ test('youtube publisher reports Google upload errors', function (string $url, in
         ], $status),
     ]);
 
-    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $publisher->publish($this->post->fresh()))
         ->toThrow($exception, $message);
     expect(app(Client::class)->shouldDefer())->toBeFalse();
     $this->assertFileDoesNotExist($tempFile);
@@ -343,7 +338,7 @@ test('youtube publisher reports Google upload errors', function (string $url, in
 ]);
 
 test('youtube publisher throws exception with null content', function () {
-    $this->postPlatform->update(['meta' => ['description' => 'A valid description is not a title']]);
+    $this->post->update(['meta' => ['description' => 'A valid description is not a title']]);
     $this->post->update([
         'content' => null,
         'media' => [
@@ -357,7 +352,7 @@ test('youtube publisher throws exception with null content', function () {
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, __('posts.form.youtube.title_required'));
 });
 
@@ -400,8 +395,8 @@ function youtubeVideoPost(mixed $test, array $meta): void
             'id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4',
             'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4',
         ]],
+        'meta' => $meta,
     ]);
-    $test->postPlatform->update(['meta' => $meta]);
 }
 
 test('youtube metadata reaches videos.insert', function () {
@@ -417,7 +412,7 @@ test('youtube metadata reaches videos.insert', function () {
     ]);
     $publisher = fakeYouTubeUpload();
 
-    $publisher->publish($this->postPlatform->fresh());
+    $publisher->publish($this->post->fresh());
 
     Http::assertSent(function (Request $request): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -441,7 +436,7 @@ test('a youtube post without metadata publishes with today defaults', function (
     youtubeVideoPost($this, []);
     $publisher = fakeYouTubeUpload();
 
-    $publisher->publish($this->postPlatform->fresh());
+    $publisher->publish($this->post->fresh());
 
     Http::assertSent(function (Request $request): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -465,7 +460,7 @@ test('a stored invalid youtube title fails before any upload', function () {
     youtubeVideoPost($this, ['title' => 'a <b> title']);
     Http::fake();
 
-    expect(fn () => $this->publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
         ->toThrow(YouTubePublishException::class, __('posts.form.youtube.title_invalid'));
     Http::assertNothingSent();
 });
@@ -475,7 +470,7 @@ test('an explicit youtube title publishes a post without content', function () {
     $this->post->update(['content' => null]);
     $publisher = fakeYouTubeUpload();
 
-    $publisher->publish($this->postPlatform->fresh());
+    $publisher->publish($this->post->fresh());
 
     Http::assertSent(function (Request $request): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -493,7 +488,7 @@ test('a long youtube content becomes the description while the title stays short
     $this->post->update(['content' => str_repeat('word ', 400)]);
     $publisher = fakeYouTubeUpload();
 
-    $publisher->publish($this->postPlatform->fresh());
+    $publisher->publish($this->post->fresh());
 
     Http::assertSent(function (Request $request): bool {
         if (! str_contains($request->url(), '/upload/youtube/v3/videos')) {
@@ -517,7 +512,7 @@ test('a Google server error before the final chunk retries the upload', function
         ], 503),
     ]);
 
-    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $publisher->publish($this->post->fresh()))
         ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBe(503));
 
     Log::shouldNotHaveReceived('error', ['YouTube upload failed', Mockery::any()]);
@@ -542,7 +537,7 @@ test('a Google backendError below 500 retries the upload without an http status'
         'id' => 'v', 'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'v.mp4',
     ]]]);
 
-    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $publisher->publish($this->post->fresh()))
         ->toThrow(fn (PlatformUnavailableException $exception) => expect($exception->httpStatus)->toBeNull());
 });
 
@@ -556,7 +551,7 @@ test('a Google server error on the final chunk fails without retrying because th
         ], 503),
     ]);
 
-    expect(fn () => $publisher->publish($this->postPlatform->fresh()))
+    expect(fn () => $publisher->publish($this->post->fresh()))
         ->toThrow(function (YouTubePublishException $exception) {
             expect($exception->category)->toBe(ErrorCategory::ServerError)
                 ->and($exception->userMessage)->toBe(__('posts.errors.youtube.upload_unconfirmed'))

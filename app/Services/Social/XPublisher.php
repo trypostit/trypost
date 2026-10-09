@@ -11,7 +11,7 @@ use App\Enums\X\MediaProcessingState;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\XPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Concerns\PublishesThreads;
@@ -57,27 +57,27 @@ class XPublisher
         $this->baseUrl = config('trypost.platforms.x.api');
     }
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
         $this->accessToken = $account->access_token;
-        $this->uploadedMedia = PublishCheckpoint::xMedia($postPlatform->error_context);
+        $this->uploadedMedia = PublishCheckpoint::xMedia($post->error_context);
 
-        $rootHash = ThreadProgress::hash((string) $content, $postPlatform->post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
+        $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
 
         return $this->publishThread(
-            $postPlatform,
+            $post,
             $rootHash,
-            fn (): array => $this->publishRoot($postPlatform, $content),
+            fn (): array => $this->publishRoot($post, $content),
             fn (string $text, Collection $media, array $parent): array => $this->createTweet([
                 ...($text !== '' ? ['text' => $text] : []),
                 ...$this->mediaPayload($media),
@@ -89,7 +89,7 @@ class XPublisher
     /**
      * @return array{id: string, url: ?string}
      */
-    private function publishRoot(PostPlatform $postPlatform, ?string $content): array
+    private function publishRoot(Post $post, ?string $content): array
     {
         $data = [];
 
@@ -97,9 +97,9 @@ class XPublisher
             $data['text'] = $content;
         }
 
-        $data = [...$data, ...$this->mediaPayload($postPlatform->post->mediaItems)];
+        $data = [...$data, ...$this->mediaPayload($post->mediaItems)];
 
-        if (data_get($postPlatform->meta, 'is_ai_generated') === true) {
+        if (data_get($post->meta, 'is_ai_generated') === true) {
             $data['made_with_ai'] = true;
         }
 
@@ -110,7 +110,7 @@ class XPublisher
             );
         }
 
-        return $this->createTweet($data, $postPlatform->socialAccount->username);
+        return $this->createTweet($data, $post->socialAccount->username);
     }
 
     /**

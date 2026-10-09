@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -209,13 +208,11 @@ test('a duplicate time within one day is rejected even when other days share it'
 
 test('a busy queue fails the schedule update, saves nothing and keeps the queued times', function () {
     $time = now()->addDays(3)->startOfMinute();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->channel)->create([
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => $time,
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->channel->id]);
     $before = $this->channel->only(['timezone', 'posting_goal']);
     $lock = Cache::lock("queue:{$this->channel->id}", 10);
     $lock->get();
@@ -264,13 +261,11 @@ test('a time zone change saves the zone and moves queued posts together', functi
     $this->travelTo(now()->startOfWeek()->addWeek()->setTime(6, 0));
     $schedule = PostingSchedule::empty()->withTime(3, '09:00');
     $this->channel->update(['timezone' => 'UTC', 'posting_schedule' => $schedule]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->channel)->create([
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => now()->next('Wednesday')->setTime(9, 0),
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->channel->id]);
 
     $this->actingAs($this->user)
         ->putJson(route('app.channels.posting-schedule.update', $this->channel), [
@@ -311,13 +306,11 @@ test('a time zone change keeps the instant of a post with a custom time', functi
     $schedule = PostingSchedule::empty()->withTime(3, '09:00');
     $this->channel->update(['timezone' => 'UTC', 'posting_schedule' => $schedule]);
     $instant = now()->next('Thursday')->setTime(14, 30);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->channel)->create([
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => $instant,
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->channel->id]);
 
     $this->actingAs($this->user)
         ->putJson(route('app.channels.posting-schedule.update', $this->channel), [

@@ -10,7 +10,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -46,20 +45,14 @@ function waitForInsightsFilterScript(mixed $page, string $condition): void
 
 function insightsFilterPublication(SocialAccount $account, User $user, CarbonImmutable $publishedAt, int $reactions, ?ContentType $contentType, ?WorkspaceLabel $label = null, PublicationContentType $publicationType = PublicationContentType::Image): AnalyticsPublication
 {
-    $destination = null;
+    $post = null;
 
     if ($contentType !== null) {
-        $post = Post::factory()->published()->create(['workspace_id' => $account->workspace_id, 'user_id' => $user->id]);
+        $post = Post::factory()->forAccount($account, $contentType)->published()->create(['user_id' => $user->id]);
 
         if ($label !== null) {
             $post->labels()->attach($label);
         }
-
-        $destination = PostPlatform::factory()->instagram()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'content_type' => $contentType,
-        ]);
     }
 
     $publication = AnalyticsPublication::factory()->create([
@@ -69,7 +62,7 @@ function insightsFilterPublication(SocialAccount $account, User $user, CarbonImm
         'platform' => $account->platform,
         'network' => $account->platform->network(),
         'platform_user_id' => $account->platform_user_id,
-        'post_platform_id' => $destination?->id,
+        'post_id' => $post?->id,
         'content_type' => $publicationType,
         'provider_published_at' => $publishedAt,
     ]);

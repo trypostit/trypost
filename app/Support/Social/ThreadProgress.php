@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Support\ThreadReplies;
 
 /**
  * Segments of a thread already live on the network, kept in
- * PostPlatform.error_context so any retry resumes instead of re-posting.
+ * posts.error_context so any retry resumes instead of re-posting.
  */
 final class ThreadProgress
 {
@@ -42,10 +42,10 @@ final class ThreadProgress
      *
      * @param  array<string, mixed>|null  $context
      */
-    public static function failureMessage(PostPlatform $postPlatform, string $message, ?array $context): string
+    public static function failureMessage(Post $post, string $message, ?array $context): string
     {
         $published = count((array) data_get($context, self::KEY, []));
-        $total = 1 + (ThreadReplies::supports($postPlatform->platform) ? count(ThreadReplies::of($postPlatform->meta)) : 0);
+        $total = 1 + (ThreadReplies::supports($post->platform) ? count(ThreadReplies::of($post->meta)) : 0);
 
         return $published > 0 && $published < $total
             ? __('posts.errors.thread_incomplete', ['published' => $published, 'total' => $total, 'error' => $message])
@@ -78,10 +78,10 @@ final class ThreadProgress
     /**
      * @param  list<array<string, mixed>>  $posted
      */
-    public static function remember(PostPlatform $postPlatform, array $posted): void
+    public static function remember(Post $post, array $posted): void
     {
-        $postPlatform->forceFill([
-            'error_context' => [...($postPlatform->error_context ?? []), self::KEY => $posted],
-        ])->save();
+        $post->writePublication([
+            'error_context' => [...($post->error_context ?? []), self::KEY => $posted],
+        ]);
     }
 }

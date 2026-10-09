@@ -3,10 +3,10 @@
 declare(strict_types=1);
 
 use App\Actions\Post\CreatePosts;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -117,25 +117,14 @@ function publishListPost(User $user, Workspace $workspace, SocialAccount $channe
         ])->first();
     }
 
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    return Post::factory()->forAccount($channel, ContentType::LinkedInPost)->create([
         'user_id' => $user->id,
         ...match ($tab) {
-            'sent' => ['status' => PostStatus::Published, 'published_at' => now()->subHour()],
+            'sent' => ['status' => PostStatus::Published, 'publish_status' => PublishStatus::Published, 'published_at' => now()->subHour()],
             'approvals' => ['status' => PostStatus::PendingApproval, 'approval_requested_by' => $user->id, 'approval_requested_at' => now(), 'scheduled_at' => now()->addDay()],
             default => ['status' => PostStatus::Draft],
         },
     ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-        'content_type' => ContentType::LinkedInPost,
-        'enabled' => true,
-    ]);
-
-    return $post;
 }
 
 test('each tab shows the skeleton, never the empty state, until its cards arrive', function () {

@@ -17,10 +17,12 @@ use App\Mcp\Concerns\DescribesPostMedia;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\PostCompositionValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use App\Support\Requests\Post\PostRequestRules;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
+use Illuminate\Support\Arr;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
@@ -54,7 +56,7 @@ class CreatePostTool extends Tool
         $validated = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($platforms), $validated);
 
         try {
-            $post = CreatePosts::execute($workspace, $request->user(), [
+            $post = PostCompositionValidator::forSinglePost(fn (): Post => CreatePosts::execute($workspace, $request->user(), [
                 'status' => $validated['status'] ?? Status::Draft->value,
                 'content' => $validated['content'] ?? '',
                 'media' => $validated['media'] ?? [],
@@ -63,13 +65,13 @@ class CreatePostTool extends Tool
                 'queue_slot' => $validated['queue_slot'] ?? null,
                 'label_ids' => $validated['label_ids'] ?? [],
                 'created_via' => CreatedVia::Mcp,
-                'destinations' => [$validated['platforms'][0]],
-            ])->sole();
+                'destinations' => [Arr::only($validated, ['social_account_id', 'content_type', 'meta'])],
+            ])->sole());
         } catch (QueueBusyException) {
             return Response::error(__('posts.errors.queue_busy'));
         }
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load(['socialAccount', 'labels']);
 
         return Response::structured((new PostResource($post))->resolve());
     }
@@ -88,14 +90,9 @@ class CreatePostTool extends Tool
             'label_ids' => $schema->array()
                 ->items($schema->string())
                 ->description('Workspace label IDs to attach to the post.'),
-            'platforms' => $schema->array()
-                ->items($schema->object(fn ($p) => [
-                    'social_account_id' => $p->string()->required()->description('UUID of the connected social account.'),
-                    'content_type' => $p->string()->description('Format for this platform (e.g. linkedin_post, x_post, instagram_feed). Optional. Omitted, it is chosen as the web composer does: on pinterest a video makes pinterest_video_pin, several images pinterest_carousel, else pinterest_pin; on tiktok images only make tiktok_photo, else tiktok_video; every other network takes its default_content_type (list-content-types-tool). A type sent explicitly is validated against the media and refused when they do not match.'),
-                    'meta' => $p->object()->description(PostPlatformMetaRules::documentation()),
-                ]))
-                ->required()
-                ->description('Exactly one social account. Use create-posts-tool for multiple accounts.'),
+            'social_account_id' => $schema->string()->required()->description('UUID of the connected social account (list-social-accounts-tool). Use create-posts-tool for several accounts.'),
+            'content_type' => $schema->string()->description('Format for this account (e.g. linkedin_post, x_post, instagram_feed). Optional. Omitted, it is chosen as the web composer does: on pinterest a video makes pinterest_video_pin, several images pinterest_carousel, else pinterest_pin; on tiktok images only make tiktok_photo, else tiktok_video; every other network takes its default_content_type (list-content-types-tool). A type sent explicitly is validated against the media and refused when they do not match.'),
+            'meta' => $schema->object()->description(PostPlatformMetaRules::documentation()),
         ];
     }
 }

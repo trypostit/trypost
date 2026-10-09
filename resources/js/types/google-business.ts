@@ -1,6 +1,6 @@
 /**
  * Google Business Profile Local Post topic types and call-to-action buttons.
- * Mirrors the v4 enums we persist on `platforms.*.meta` (STANDARD/EVENT/OFFER,
+ * Mirrors the v4 enums we persist on the post `meta` (STANDARD/EVENT/OFFER,
  * NONE/BOOK/…). Same shape as `tiktok-privacy.ts`.
  */
 

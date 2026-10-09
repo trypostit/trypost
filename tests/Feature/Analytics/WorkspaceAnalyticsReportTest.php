@@ -18,7 +18,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\AnalyticsSyncState;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Support\Analytics\PeriodBuckets;
@@ -145,13 +144,9 @@ test('workspace report keeps accounts separate and aggregates only latest normal
 test('top posts include the source post id for TryPost publications', function () {
     $workspace = Workspace::factory()->create();
     $account = analyticsReportAccount($workspace, Platform::Instagram);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create();
     $publication = analyticsReportPublication($account, '2026-09-05 10:00:00', 5, 1, 6, 100);
-    $publication->update(['post_platform_id' => $destination->id]);
+    $publication->update(['post_id' => $post->id]);
 
     $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
         $workspace,
@@ -324,16 +319,12 @@ test('publication detail uses the latest persisted metric snapshot without provi
     Http::fake();
     $workspace = Workspace::factory()->create();
     $account = analyticsReportAccount($workspace, Platform::Instagram);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create();
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'content_type' => PublicationContentType::Reel,
     ]);
@@ -354,7 +345,7 @@ test('publication detail uses the latest persisted metric snapshot without provi
         ],
     ]);
 
-    $detail = app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination);
+    $detail = app(ReadPublicationAnalytics::class)->latestFor($post);
 
     expect($detail['available'])->toBeTrue()
         ->and($detail['publication']['content_type'])->toBe('reel')
@@ -367,21 +358,17 @@ test('publication detail uses the latest persisted metric snapshot without provi
 test('publication detail remains scoped to the post workspace and excludes unsupported networks', function () {
     $workspace = Workspace::factory()->create();
     $foreign = analyticsReportAccount(Workspace::factory()->create(), Platform::Instagram);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $foreign->id,
-    ]);
+    $post = Post::factory()->forAccount($foreign)->published()->create(['workspace_id' => $workspace->id]);
     AnalyticsPublication::factory()->create([
         'workspace_id' => $foreign->workspace_id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
     ]);
 
-    expect(app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination)['available'])->toBeFalse();
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['available'])->toBeFalse();
 
-    $destination->update(['platform' => Platform::LinkedIn]);
-    expect(app(ReadPublicationAnalytics::class)->latestForPostPlatform($destination)['reason'])->toBe('platform_not_supported');
+    $post->update(['platform' => Platform::LinkedIn]);
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['reason'])->toBe('platform_not_supported');
 });
 
 test('external YouTube upload stays a video and not a short without authoritative metadata', function () {

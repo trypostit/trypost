@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -13,7 +14,6 @@ use App\Events\Webhook\LogUpdated;
 use App\Jobs\DispatchWebhook;
 use App\Mail\WebhookPausedMail;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -184,9 +184,14 @@ test('dispatch webhook job sends the published post payload as data', function (
         'example.com/webhook' => Http::response('OK', 200),
     ]);
 
-    $post = Post::factory()->published()->createQuietly([
-        'workspace_id' => $this->workspace->id,
+    $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
+        'display_name' => 'Paulo Castellano',
+        'username' => 'paulocastellano',
+        'avatar_url' => 'avatars/li.jpg',
+    ]);
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->published()->createQuietly([
         'user_id' => $this->user->id,
+        'meta' => ['document_title' => 'TryPost launch deck'],
         'content' => '<p>Launch day. TryPost is live.</p>',
         'created_via' => CreatedVia::Web,
         'media' => [
@@ -208,17 +213,6 @@ test('dispatch webhook job sends the published post payload as data', function (
     ]);
     $post->labels()->attach($label);
 
-    $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
-        'display_name' => 'Paulo Castellano',
-        'username' => 'paulocastellano',
-        'avatar_url' => 'avatars/li.jpg',
-    ]);
-    PostPlatform::factory()->published()->recycle($post, $account)->create([
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'meta' => ['document_title' => 'TryPost launch deck'],
-    ]);
-
     $payload = app(WebhookService::class)->postPayload($post->fresh());
 
     $job = new DispatchWebhook(
@@ -229,7 +223,7 @@ test('dispatch webhook job sends the published post payload as data', function (
 
     app()->call([$job, 'handle']);
 
-    Http::assertSent(function ($request) use ($job, $payload) {
+    Http::assertSent(function ($request) use ($job, $payload, $account) {
         $body = $request->data();
 
         return $body['id'] === $job->logId
@@ -242,9 +236,13 @@ test('dispatch webhook job sends the published post payload as data', function (
             && data_get($body, 'data.workspace.name') === $this->workspace->name
             && data_get($body, 'data.labels.0.name') === 'Launch'
             && data_get($body, 'data.media.0.type') === 'image'
-            && data_get($body, 'data.platforms.0.platform') === Platform::LinkedIn->value
-            && data_get($body, 'data.platforms.0.meta.document_title') === 'TryPost launch deck'
-            && ! array_key_exists('access_token', data_get($body, 'data.platforms.0.social_account', []));
+            && data_get($body, 'data.platform') === Platform::LinkedIn->value
+            && data_get($body, 'data.social_account_id') === $account->id
+            && data_get($body, 'data.publish_status') === PublishStatus::Published->value
+            && data_get($body, 'data.meta.document_title') === 'TryPost launch deck'
+            && ! array_key_exists('platforms', data_get($body, 'data', []))
+            && ! array_key_exists('error_context', data_get($body, 'data', []))
+            && ! array_key_exists('access_token', data_get($body, 'data.social_account', []));
     });
 });
 
@@ -283,7 +281,7 @@ test('unscheduling a post delivers the log id on the webhook envelope', function
         'events' => [WebhookEvent::PostUnscheduled->value],
     ]);
 
-    $post = Post::factory()->scheduled()->createQuietly([
+    $post = Post::factory()->linkedin()->scheduled()->createQuietly([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'content' => 'Was scheduled',

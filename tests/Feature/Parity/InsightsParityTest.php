@@ -17,7 +17,6 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -267,19 +266,17 @@ test('the publication detail is the same through the api and mcp and is isolated
         ->assertHasErrors(['Publication not found.']);
 });
 
-test('the post metrics are the same on the web platform route, the api and mcp', function () {
+test('the post metrics are the same on the web, the api and mcp', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
-    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $post = Post::factory()->forAccount($account)->published()->create([
+        'user_id' => $this->user->id,
         'platform_post_id' => '123',
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $this->workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
@@ -289,18 +286,25 @@ test('the post metrics are the same on the web platform route, the api and mcp',
         'metrics' => ['reactions' => ['value' => 7, 'unit' => 'count', 'availability' => 'available']],
     ]);
 
-    $web = $this->actingAs($this->user)
-        ->getJson(route('app.posts.platforms.metrics', [$post, $destination]))
+    $web = null;
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tab' => 'sent']))
         ->assertOk()
-        ->assertJsonPath('metrics.reactions.value', 7)
-        ->json();
+        ->assertInertia(function (Assert $page) use ($post, &$web): void {
+            $page->loadDeferredProps(function (Assert $reload) use ($post, &$web): void {
+                $reload->where('posts.data.0.id', $post->id)
+                    ->where('posts.data.0.metrics.metrics.reactions.value', 7);
+                $web = data_get($reload->toArray(), 'props.posts.data.0.metrics');
+            });
+        });
 
     auth()->forgetGuards();
     $api = $this->withHeaders(parityApi($this->token))
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('platforms.0.metrics.metrics.reactions.value', 7)
-        ->json('platforms.0.metrics');
+        ->assertJsonPath('post_id', $post->id)
+        ->assertJsonPath('metrics.metrics.reactions.value', 7)
+        ->json('metrics');
 
     expect($api)->toEqual($web);
 
@@ -308,7 +312,7 @@ test('the post metrics are the same on the web platform route, the api and mcp',
         ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
         ->assertStructuredContent(fn (AssertableJson $json) => $json
             ->where('post_id', $post->id)
-            ->where('platforms.0.metrics.metrics.reactions.value', 7)
+            ->where('metrics', $api)
             ->etc());
 
     $foreign = Post::factory()->published()->create();
@@ -350,15 +354,10 @@ function seedChannelInsightsParity(Workspace $workspace, User $user): array
     }
 
     foreach ([['2026-09-05', 40, 3, ContentType::InstagramFeed, true], ['2026-09-12', 90, 8, ContentType::InstagramReel, true], ['2026-09-18', 60, 11, null, false]] as [$day, $reach, $reactions, $type, $labelled]) {
-        $destination = null;
+        $post = null;
 
         if ($type !== null) {
-            $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-            $destination = PostPlatform::factory()->instagram()->published()->create([
-                'post_id' => $post->id,
-                'social_account_id' => $account->id,
-                'content_type' => $type,
-            ]);
+            $post = Post::factory()->forAccount($account, $type)->published()->create(['user_id' => $user->id]);
 
             if ($labelled) {
                 $post->labels()->attach($label->id);
@@ -372,8 +371,8 @@ function seedChannelInsightsParity(Workspace $workspace, User $user): array
             'network' => Platform::Instagram->network(),
             'platform_user_id' => $account->platform_user_id,
             'platform' => Platform::Instagram,
-            'post_platform_id' => $destination?->id,
-            'origin' => $destination === null ? PublicationOrigin::External : PublicationOrigin::TryPost,
+            'post_id' => $post?->id,
+            'origin' => $post === null ? PublicationOrigin::External : PublicationOrigin::TryPost,
             'provider_published_at' => "{$day} 10:00:00",
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([

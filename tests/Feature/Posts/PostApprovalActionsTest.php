@@ -12,7 +12,6 @@ use App\Enums\Webhook\EventType;
 use App\Jobs\DispatchWebhook;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -248,19 +247,11 @@ test('approving while another approval holds the post reports the queue as busy'
     expect($request->fresh()->status)->toBe(PostStatus::PendingApproval);
 });
 
-test('approving a legacy request that misses required meta keeps it pending', function () {
-    $request = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->requester->id,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $request->id,
-        'social_account_id' => $this->channel->id,
-    ]);
-    PostPlatform::factory()->discord()->create([
-        'post_id' => $request->id,
-        'social_account_id' => SocialAccount::factory()->discord()->create(['workspace_id' => $this->workspace->id])->id,
-    ]);
+test('approving a request that misses required meta keeps it pending', function () {
+    $request = Post::factory()
+        ->forAccount(SocialAccount::factory()->discord()->create(['workspace_id' => $this->workspace->id]), ContentType::DiscordMessage)
+        ->pendingApproval()
+        ->create(['user_id' => $this->requester->id]);
 
     $this->actingAs($this->owner)
         ->put(route('app.posts.approve', $request))
@@ -291,7 +282,7 @@ test('approving from the composer waits for the same approval lock', function ()
     Cache::partialMock()->shouldReceive('lock')->with("post-approval:{$request->id}", PostApproval::LOCK_SECONDS)->andReturn($lock);
 
     $this->actingAs($this->owner)
-        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Approved in the composer'])
+        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Approved in the composer'])
         ->assertSessionHasErrors(['queue' => __('posts.errors.queue_busy')]);
 
     expect($request->fresh()->status)->toBe(PostStatus::PendingApproval);
@@ -300,7 +291,7 @@ test('approving from the composer waits for the same approval lock', function ()
 function approvalActionsEditQueued(object $test, Post $post): void
 {
     $test->actingAs($test->requester)
-        ->put(route('app.posts.update', $post), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Edited by the member'])
+        ->put(route('app.posts.update', $post), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Edited by the member'])
         ->assertSessionHasNoErrors();
 }
 

@@ -183,7 +183,11 @@ defineExpose({
 
 <template>
     <Dialog :open="isOpen" @update:open="onOpenChange">
-        <DialogContent class="sm:max-w-md" data-testid="confirm-delete-modal">
+        <DialogContent
+            class="sm:max-w-md"
+            :fullscreen-on-mobile="false"
+            data-testid="confirm-delete-modal"
+        >
             <DialogHeader>
                 <DialogTitle>{{ title }}</DialogTitle>
                 <DialogDescription data-testid="confirm-delete-description">{{

@@ -8,8 +8,8 @@ use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\Post\PublishStatus as Status;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostDeleted;
 use App\Jobs\Analytics\SyncTryPostPublication as SyncTryPostPublicationJob;
@@ -17,7 +17,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Carbon\CarbonImmutable;
@@ -30,22 +29,22 @@ beforeEach(function () {
 });
 
 test('external discovery followed by TryPost sync converges on one TryPost publication', function () {
-    [$account, $postPlatform] = publicationFixture('remote-1');
+    [$account, $post] = publicationFixture('remote-1');
     $upsert = app(UpsertAnalyticsPublication::class);
 
     $upsert->external($account, discoveredPublication('remote-1'));
-    app(SyncTryPostPublication::class)->handle($postPlatform);
+    app(SyncTryPostPublication::class)->handle($post);
 
     $publication = AnalyticsPublication::sole();
     expect($publication->origin)->toBe(PublicationOrigin::TryPost)
-        ->and($publication->post_platform_id)->toBe($postPlatform->id)
+        ->and($publication->post_id)->toBe($post->id)
         ->and($publication->provider_published_at?->toISOString())->toBe('2026-09-20T12:00:00.000000Z');
 });
 
 test('TryPost sync followed by external discovery preserves TryPost ownership', function () {
-    [$account, $postPlatform] = publicationFixture('remote-1');
+    [$account, $post] = publicationFixture('remote-1');
 
-    app(SyncTryPostPublication::class)->handle($postPlatform);
+    app(SyncTryPostPublication::class)->handle($post);
     app(UpsertAnalyticsPublication::class)->external($account, discoveredPublication(
         providerPostId: 'remote-1',
         excerpt: 'Provider copy',
@@ -53,7 +52,7 @@ test('TryPost sync followed by external discovery preserves TryPost ownership', 
 
     $publication = AnalyticsPublication::sole();
     expect($publication->origin)->toBe(PublicationOrigin::TryPost)
-        ->and($publication->post_platform_id)->toBe($postPlatform->id)
+        ->and($publication->post_id)->toBe($post->id)
         ->and($publication->excerpt)->toBe('Provider copy');
 });
 
@@ -69,15 +68,10 @@ test('duplicate provider pages are idempotent', function () {
 
 test('TikTok public video id merges a provisional TryPost post with earlier discovery and snapshots', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
-    $postPlatform = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
         'platform_post_id' => 'v_pub_provisional',
     ]);
-    $provisional = app(SyncTryPostPublication::class)->handle($postPlatform);
+    $provisional = app(SyncTryPostPublication::class)->handle($post);
     $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
         publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
@@ -104,7 +98,7 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
         ->and($provisional->fresh()->origin)->toBe(PublicationOrigin::TryPost)
         ->and(AnalyticsPublicationDailySnapshot::query()->count())->toBe(1)
         ->and($provisional->dailySnapshots()->sole()->views_count)->toBe(12)
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789');
+        ->and($post->fresh()->platform_post_id)->toBe('123456789');
 
     app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
@@ -117,15 +111,10 @@ test('TikTok public video id merges a provisional TryPost post with earlier disc
 test('TikTok public video id replaces a post imported from that video with the TryPost post', function () {
     Event::fake([PostDeleted::class]);
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
-    $postPlatform = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
         'platform_post_id' => 'v_pub_provisional',
     ]);
-    $provisional = app(SyncTryPostPublication::class)->handle($postPlatform);
+    $provisional = app(SyncTryPostPublication::class)->handle($post);
     $discovered = app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
         providerPostId: '123456789',
         publishedAt: now()->subDay()->toImmutable(),
@@ -145,9 +134,9 @@ test('TikTok public video id replaces a post imported from that video with the T
     app(UpsertAnalyticsPublication::class)->reconcileRemoteId($provisional, '123456789');
 
     expect(AnalyticsPublication::query()->sole()->id)->toBe($provisional->id)
-        ->and($provisional->fresh()->post_platform_id)->toBe($postPlatform->id)
+        ->and($provisional->fresh()->post_id)->toBe($post->id)
         ->and($provisional->dailySnapshots()->sole()->views_count)->toBe(12)
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789')
+        ->and($post->fresh()->platform_post_id)->toBe('123456789')
         ->and(Post::query()->imported()->exists())->toBeFalse()
         ->and(Post::query()->sole()->id)->toBe($post->id)
         ->and(Media::query()->whereKey($media->id)->exists())->toBeFalse();
@@ -159,11 +148,7 @@ test('TikTok public video id replaces a post imported from that video with the T
 
 test('TikTok public id owned by another TryPost post is still refused', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
-    $targets = collect(['v_pub_provisional', '123456789'])->map(fn (string $remoteId): PostPlatform => PostPlatform::factory()->published()->create([
-        'post_id' => Post::factory()->create(['workspace_id' => $account->workspace_id])->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $targets = collect(['v_pub_provisional', '123456789'])->map(fn (string $remoteId): Post => Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
         'platform_post_id' => $remoteId,
     ]));
     $provisional = app(SyncTryPostPublication::class)->handle($targets->first());
@@ -218,17 +203,17 @@ test('the same provider post id remains separate by account and workspace', func
 });
 
 test('queued TryPost sync survives social account deletion after dispatch', function () {
-    [$account, $postPlatform] = publicationFixture();
-    $postPlatform->update(['status' => Status::Pending]);
+    [$account, $post] = publicationFixture();
+    $post->forceFill(['publish_status' => Status::Pending])->save();
     $queuedJob = null;
     Queue::fake();
 
-    $postPlatform->markAsPublished('remote-1', 'https://x.com/example/status/remote-1');
+    $post->markPublicationPublished('remote-1', 'https://x.com/example/status/remote-1');
 
-    Queue::assertPushed(SyncTryPostPublicationJob::class, function (SyncTryPostPublicationJob $job) use (&$queuedJob, $account, $postPlatform): bool {
+    Queue::assertPushed(SyncTryPostPublicationJob::class, function (SyncTryPostPublicationJob $job) use (&$queuedJob, $account, $post): bool {
         $queuedJob = $job;
 
-        return $job->postPlatformId === $postPlatform->id
+        return $job->postId === $post->id
             && $job->identity->socialAccountId === $account->id
             && $job->queue === 'analytics'
             && $job->afterCommit === true;
@@ -241,26 +226,21 @@ test('queued TryPost sync survives social account deletion after dispatch', func
     expect($publication->social_account_id)->toBeNull()
         ->and($publication->social_account_key)->toBe($account->id)
         ->and($publication->origin)->toBe(PublicationOrigin::TryPost)
-        ->and($publication->post_platform_id)->toBe($postPlatform->id);
+        ->and($publication->post_id)->toBe($post->id);
 });
 
-/** @return array{SocialAccount, PostPlatform} */
+/** @return array{SocialAccount, Post} */
 function publicationFixture(?string $providerPostId = null): array
 {
     $account = SocialAccount::factory()->x()->create();
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
+    $post = Post::factory()->forAccount($account)->published()->create([
         'content' => '<p>TryPost copy</p>',
-    ]);
-    $postPlatform = PostPlatform::factory()->x()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
         'platform_post_id' => $providerPostId ?? 'remote-1',
         'platform_url' => 'https://x.com/example/status/remote-1',
         'published_at' => CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
     ]);
 
-    return [$account, $postPlatform];
+    return [$account, $post];
 }
 
 function discoveredPublication(
@@ -280,8 +260,8 @@ function discoveredPublication(
 }
 
 test('a less-than sign typed in a TryPost post stays in its analytics excerpt', function () {
-    [, $postPlatform] = publicationFixture('remote-lt');
-    $postPlatform->post->update(['content' => 'I <3 TryPost and price < 10']);
+    [, $post] = publicationFixture('remote-lt');
+    $post->update(['content' => 'I <3 TryPost and price < 10']);
 
-    expect(app(SyncTryPostPublication::class)->handle($postPlatform->fresh())->excerpt)->toBe('I <3 TryPost and price < 10');
+    expect(app(SyncTryPostPublication::class)->handle($post->fresh())->excerpt)->toBe('I <3 TryPost and price < 10');
 });

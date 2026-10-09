@@ -12,7 +12,6 @@ enum EventType: string
     case PostScheduled = 'post.scheduled';
     case PostUnscheduled = 'post.unscheduled';
     case PostPublished = 'post.published';
-    case PostPartiallyPublished = 'post.partially_published';
     case PostFailed = 'post.failed';
     case PostDeleted = 'post.deleted';
 
@@ -21,7 +20,6 @@ enum EventType: string
         return match ($status) {
             PostStatus::Scheduled => self::PostScheduled,
             PostStatus::Published => self::PostPublished,
-            PostStatus::PartiallyPublished => self::PostPartiallyPublished,
             PostStatus::Failed => self::PostFailed,
             PostStatus::Draft => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,
             PostStatus::PendingApproval => $previous === PostStatus::Scheduled ? self::PostUnscheduled : null,

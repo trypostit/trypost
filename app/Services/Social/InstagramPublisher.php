@@ -12,7 +12,7 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\InstagramPublishException;
 use App\Exceptions\Social\SocialPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\Concerns\FitsImageToCanvas;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Services\Social\Meta\GraphError;
@@ -29,7 +29,7 @@ class InstagramPublisher
 
     private string $baseUrl;
 
-    private PostPlatform $postPlatform;
+    private Post $post;
 
     private const int STATUS_RETRY_DELAY_SECONDS = 60;
 
@@ -40,12 +40,12 @@ class InstagramPublisher
 
     private const string WORKFLOW_FINAL_CONTAINER = 'final_container';
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->postPlatform = $postPlatform;
-        $this->validateContentLength($postPlatform);
+        $this->post = $post;
+        $this->validateContentLength($post);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
         $this->baseUrl = $account->platform->instagramGraphBaseUrl();
 
         if ($account->needsProactiveTokenRefresh()) {
@@ -55,15 +55,15 @@ class InstagramPublisher
         $instagramId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $content = $postPlatform->post->content ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
-        $pendingWorkflow = PublishCheckpoint::instagramWorkflow($postPlatform->error_context);
+        $pendingWorkflow = PublishCheckpoint::instagramWorkflow($post->error_context);
 
         if ($pendingWorkflow !== null) {
             return $this->resumeWorkflow($instagramId, $accessToken, $content, $pendingWorkflow);
         }
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $post->mediaItems;
 
         if ($media->isEmpty()) {
             throw new InstagramPublishException(
@@ -73,7 +73,7 @@ class InstagramPublisher
         }
 
         $firstMedia = $media->first();
-        $contentType = $postPlatform->content_type;
+        $contentType = $post->content_type;
 
         return match ($contentType) {
             ContentType::InstagramReel => $this->publishReel($instagramId, $accessToken, $content, $firstMedia),
@@ -249,7 +249,7 @@ class InstagramPublisher
     private function sharedOptions(): array
     {
         return array_filter([
-            'is_ai_generated' => data_get($this->postPlatform->meta, 'is_ai_generated') === true ? 'true' : null,
+            'is_ai_generated' => data_get($this->post->meta, 'is_ai_generated') === true ? 'true' : null,
         ], fn (?string $value): bool => $value !== null);
     }
 
@@ -261,12 +261,12 @@ class InstagramPublisher
      */
     private function reelOptions(): array
     {
-        if ($this->postPlatform->content_type !== ContentType::InstagramReel) {
+        if ($this->post->content_type !== ContentType::InstagramReel) {
             return [];
         }
 
         return [
-            'share_to_feed' => data_get($this->postPlatform->meta, 'share_to_feed', true) ? 'true' : 'false',
+            'share_to_feed' => data_get($this->post->meta, 'share_to_feed', true) ? 'true' : 'false',
         ];
     }
 
@@ -458,9 +458,9 @@ class InstagramPublisher
      */
     private function rememberPublishedMedia(string $containerId, string $mediaId): void
     {
-        $this->postPlatform->update([
+        $this->post->writePublication([
             'error_context' => [
-                ...($this->postPlatform->error_context ?? []),
+                ...($this->post->error_context ?? []),
                 PublishCheckpoint::INSTAGRAM_WORKFLOW => [
                     'stage' => self::WORKFLOW_FINAL_CONTAINER,
                     'container_id' => $containerId,

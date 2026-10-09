@@ -7,7 +7,7 @@ import {
     IconChevronLeft,
     IconChevronRight,
 } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,15 @@ const pickDay = (value: DateValue | undefined): void => {
     close();
     emit('pickDay', value.toString());
 };
+
+const titleElement = useTemplateRef<HTMLHeadingElement>('titleElement');
+
+const missingTitleWidth = (): number =>
+    titleElement.value
+        ? titleElement.value.scrollWidth - titleElement.value.clientWidth
+        : 0;
+
+defineExpose({ missingTitleWidth });
 </script>
 
 <template>
@@ -147,12 +156,12 @@ const pickDay = (value: DateValue | undefined): void => {
         </div>
     </ResponsivePopover>
 
-    <div v-else class="flex h-12 min-w-0 items-center gap-4">
+    <div v-else class="flex h-12 min-w-0 items-center gap-2">
         <div class="flex min-w-0 items-center">
             <Button
                 variant="ghost"
                 size="icon"
-                class="-ms-3 shrink-0"
+                class="shrink-0"
                 :aria-label="$t('calendar.previous')"
                 data-testid="calendar-previous"
                 @click="emit('navigate', -1)"
@@ -170,6 +179,7 @@ const pickDay = (value: DateValue | undefined): void => {
                 <IconChevronRight class="size-4" />
             </Button>
             <h2
+                ref="titleElement"
                 class="ms-1 truncate font-heading text-base leading-5 font-medium text-foreground capitalize"
                 data-testid="calendar-title"
             >

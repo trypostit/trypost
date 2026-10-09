@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -23,14 +22,8 @@ test('channels are shared for the current workspace with their scheduled count',
     $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
     SocialAccount::factory()->x()->create();
 
-    $scheduled = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id]);
-    PostPlatform::factory()->create(['post_id' => $scheduled->id, 'social_account_id' => $channel->id]);
-
-    $disabled = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id]);
-    PostPlatform::factory()->disabled()->create(['post_id' => $disabled->id, 'social_account_id' => $channel->id]);
-
-    $draft = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id]);
-    PostPlatform::factory()->create(['post_id' => $draft->id, 'social_account_id' => $channel->id]);
+    Post::factory()->forAccount($channel)->scheduled()->create();
+    Post::factory()->forAccount($channel)->draft()->create();
 
     $this->actingAs($this->user)
         ->get(route('app.workspace.channels'))
@@ -48,8 +41,7 @@ test('posts from another workspace never count toward the scheduled total', func
     $channel = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
     $otherWorkspace = Workspace::factory()->create();
 
-    $foreign = Post::factory()->scheduled()->create(['workspace_id' => $otherWorkspace->id]);
-    PostPlatform::factory()->create(['post_id' => $foreign->id, 'social_account_id' => $channel->id]);
+    Post::factory()->forAccount($channel)->scheduled()->create(['workspace_id' => $otherWorkspace->id]);
 
     $this->actingAs($this->user)
         ->get(route('app.workspace.channels'))

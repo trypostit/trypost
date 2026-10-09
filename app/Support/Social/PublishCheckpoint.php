@@ -6,7 +6,7 @@ namespace App\Support\Social;
 
 /**
  * Shared keys and readers for in-flight publish checkpoints on
- * PostPlatform.error_context. Used by the publishers, the TikTok
+ * posts.error_context. Used by the publishers, the TikTok
  * derivative cleaner, and posts:retry.
  */
 final class PublishCheckpoint

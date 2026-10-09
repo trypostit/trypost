@@ -3,13 +3,11 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\ReadPublicationAnalytics;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
-use App\Enums\SocialAccount\Platform;
+use App\Enums\Post\PublishStatus;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -20,14 +18,13 @@ use Illuminate\Support\Facades\Http;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
     $this->account = SocialAccount::factory()->tiktok()->create([
         'workspace_id' => $this->workspace->id,
         'username' => 'tiktoker',
         'token_expires_at' => now()->addDays(1),
+    ]);
+    $this->post = Post::factory()->forAccount($this->account)->create([
+        'user_id' => $this->user->id,
     ]);
     $this->api = config('trypost.platforms.tiktok.api');
 });
@@ -51,16 +48,13 @@ function tiktokVideoQueryResponse(string $videoId, array $counts = []): array
     ];
 }
 
-function tiktokPostPlatform(?string $platformPostId = '7685359243088103444'): PostPlatform
+function tiktokPost(?string $platformPostId = '7685359243088103444'): Post
 {
-    return PostPlatform::factory()->tiktok()->create([
-        'post_id' => test()->post->id,
-        'social_account_id' => test()->account->id,
-        'platform' => Platform::TikTok,
+    return tap(test()->post->forceFill([
         'platform_post_id' => $platformPostId,
         'platform_url' => 'https://www.tiktok.com/@tiktoker',
         'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
-    ]);
+    ]))->save();
 }
 
 test('tiktok analytics reads post metrics from video query', function () {
@@ -75,7 +69,7 @@ test('tiktok analytics reads post metrics from video query', function () {
         ])),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPostPlatform($videoId));
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPost($videoId));
 
     expect($metrics)->toBe([
         ['label' => __('analytics.metrics.views'), 'value' => 1200],
@@ -92,7 +86,7 @@ test('tiktok analytics reads post metrics from video query', function () {
 test('tiktok analytics resolves a publish id then persists the public video id', function () {
     $publishId = 'v_pub_url~v2-1.7685359243088103444';
     $videoId = '7685359243088103444';
-    $postPlatform = tiktokPostPlatform($publishId);
+    $post = tiktokPost($publishId);
 
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::response([
@@ -110,7 +104,7 @@ test('tiktok analytics resolves a publish id then persists the public video id',
         ])),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics($postPlatform);
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics($post);
 
     expect($metrics)->toBe([
         ['label' => __('analytics.metrics.views'), 'value' => 90],
@@ -119,10 +113,10 @@ test('tiktok analytics resolves a publish id then persists the public video id',
         ['label' => __('analytics.metrics.shares'), 'value' => 0],
     ]);
 
-    $postPlatform->refresh();
+    $post->refresh();
 
-    expect($postPlatform->platform_post_id)->toBe($videoId)
-        ->and($postPlatform->platform_url)->toBe('https://www.tiktok.com/@tiktoker/video/7685359243088103444');
+    expect($post->platform_post_id)->toBe($videoId)
+        ->and($post->platform_url)->toBe('https://www.tiktok.com/@tiktoker/video/7685359243088103444');
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/post/publish/status/fetch/')
         && $request['publish_id'] === $publishId);
@@ -148,7 +142,7 @@ test('tiktok analytics reports missing_post_id when neither status nor the video
     ]);
 
     $metrics = (new TikTokAnalytics)->fetchPostMetrics(
-        tiktokPostPlatform('v_pub_url~v2-1.still-in-review')
+        tiktokPost('v_pub_url~v2-1.still-in-review')
     );
 
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
@@ -174,11 +168,11 @@ test('tiktok analytics never matches an untitled video from the list', function 
         ]),
     ]);
 
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.untitled');
+    $post = tiktokPost('v_pub_url~v2-1.untitled');
 
-    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+    expect((new TikTokAnalytics)->fetchPostMetrics($post))
         ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.untitled');
+        ->and($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.untitled');
 });
 
 test('tiktok analytics does not scan the video list for a self only post', function () {
@@ -191,10 +185,10 @@ test('tiktok analytics does not scan the video list for a self only post', funct
         ]),
     ]);
 
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.private');
-    $postPlatform->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
+    $post = tiktokPost('v_pub_url~v2-1.private');
+    $post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
 
-    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+    expect((new TikTokAnalytics)->fetchPostMetrics($post))
         ->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
 
     Http::assertSentCount(1);
@@ -207,7 +201,7 @@ test('tiktok analytics matches a publish id to the public video by caption', fun
     ]);
 
     $videoId = '7682891910226234644';
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.7682889326782842900');
+    $post = tiktokPost('v_pub_url~v2-1.7682889326782842900');
 
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::response([
@@ -236,7 +230,7 @@ test('tiktok analytics matches a publish id to the public video by caption', fun
         ])),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics($postPlatform);
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics($post);
 
     expect($metrics)->toBe([
         ['label' => __('analytics.metrics.views'), 'value' => 661],
@@ -245,10 +239,10 @@ test('tiktok analytics matches a publish id to the public video by caption', fun
         ['label' => __('analytics.metrics.shares'), 'value' => 1],
     ]);
 
-    $postPlatform->refresh();
+    $post->refresh();
 
-    expect($postPlatform->platform_post_id)->toBe($videoId)
-        ->and($postPlatform->platform_url)->toBe("https://www.tiktok.com/@tiktoker/video/{$videoId}");
+    expect($post->platform_post_id)->toBe($videoId)
+        ->and($post->platform_url)->toBe("https://www.tiktok.com/@tiktoker/video/{$videoId}");
 });
 
 test('tiktok analytics stops scanning at videos older than the publish instead of claiming a same-caption repost', function () {
@@ -273,12 +267,12 @@ test('tiktok analytics stops scanning at videos older than the publish instead o
         ]),
     ]);
 
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.repost');
-    $postPlatform->update(['published_at' => now()]);
+    $post = tiktokPost('v_pub_url~v2-1.repost');
+    $post->update(['published_at' => now()]);
 
-    expect((new TikTokAnalytics)->fetchPostMetrics($postPlatform))
+    expect((new TikTokAnalytics)->fetchPostMetrics($post))
         ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.repost');
+        ->and($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.repost');
 
     Http::assertSentCount(2);
 });
@@ -287,8 +281,8 @@ test('tiktok video matching keeps the one-day cutoff inclusive without changing 
     $this->post->update(['content' => 'Boundary caption']);
     $publishedAt = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
     $videoId = '7000000000000000003';
-    $postPlatform = tiktokPostPlatform('v_pub_url~v2-1.boundary');
-    $postPlatform->update(['published_at' => $publishedAt]);
+    $post = tiktokPost('v_pub_url~v2-1.boundary');
+    $post->update(['published_at' => $publishedAt]);
 
     Http::fake([
         $this->api.'/video/list/*' => Http::response([
@@ -304,8 +298,8 @@ test('tiktok video matching keeps the one-day cutoff inclusive without changing 
         ]),
     ]);
 
-    expect((new TikTokAnalytics)->findVideoIdByCaption($postPlatform))->toBe($expectedVideoId)
-        ->and($postPlatform->published_at->toDateTimeString())->toBe('2026-09-23 12:00:00');
+    expect((new TikTokAnalytics)->findVideoIdByCaption($post))->toBe($expectedVideoId)
+        ->and($post->published_at->toDateTimeString())->toBe('2026-09-23 12:00:00');
 })->with([
     'at cutoff' => [0, '7000000000000000003'],
     'before cutoff' => [1, null],
@@ -313,12 +307,12 @@ test('tiktok video matching keeps the one-day cutoff inclusive without changing 
 
 test('tiktok post metrics facade returns the saved video url and metrics without provider reads', function () {
     $videoId = '7685359243088103444';
-    $postPlatform = tiktokPostPlatform($videoId);
-    $postPlatform->update([
-        'status' => PostPlatformStatus::Published,
+    $post = tiktokPost($videoId);
+    $post->forceFill([
+        'publish_status' => PublishStatus::Published,
         'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
-    ]);
-    $publication = AnalyticsPublication::query()->where('post_platform_id', $postPlatform->id)->firstOrFail();
+    ])->save();
+    $publication = AnalyticsPublication::query()->where('post_id', $post->id)->firstOrFail();
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
         'views_count' => 5,
@@ -327,12 +321,12 @@ test('tiktok post metrics facade returns the saved video url and metrics without
 
     Http::fake();
 
-    $platforms = app(ReadPublicationAnalytics::class)->forPost($this->post->fresh());
+    $analytics = app(ReadPublicationAnalytics::class)->forPost($this->post->fresh());
 
-    expect($platforms->first())->toMatchArray([
+    expect($analytics)->toMatchArray([
         'platform_post_id' => $videoId,
         'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
-    ])->and($platforms->first()['metrics']['metrics']['views']['value'])->toBe(5);
+    ])->and($analytics['metrics']['metrics']['views']['value'])->toBe(5);
 
     Http::assertNothingSent();
 });
@@ -340,7 +334,7 @@ test('tiktok post metrics facade returns the saved video url and metrics without
 test('tiktok analytics reports a missing platform post id as unsupported', function () {
     Http::fake();
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPostPlatform(null));
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPost(null));
 
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
 
@@ -354,7 +348,7 @@ test('tiktok analytics reports a query rejection as unsupported', function () {
         ], 401),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPostPlatform());
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPost());
 
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'api_error']);
 });
@@ -367,7 +361,7 @@ test('tiktok analytics reports an empty video query as unsupported', function ()
         ]),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPostPlatform());
+    $metrics = (new TikTokAnalytics)->fetchPostMetrics(tiktokPost());
 
     expect($metrics)->toBe(['unsupported' => true, 'reason' => 'api_error']);
 });

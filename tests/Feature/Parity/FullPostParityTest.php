@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
@@ -456,7 +456,9 @@ function fullPostPayload(array $case, string $status, string $labelId): array
         'scheduled_at' => $status === 'scheduled' ? now()->addHour()->toIso8601String() : null,
         'label_ids' => [$labelId],
         'media' => $case['media'],
-        'platforms' => [['social_account_id' => $case['account']->id, 'content_type' => $case['content_type'], 'meta' => $case['meta']]],
+        'social_account_id' => $case['account']->id,
+        'content_type' => $case['content_type'],
+        'meta' => $case['meta'],
     ];
 }
 
@@ -1274,7 +1276,7 @@ test('a complete post published now through the api and through mcp reaches the 
 
     $post = fullPostCreate($surface, fullPostPayload(fullPostCase($name), 'publishing', $label->id));
 
-    expect($post->postPlatforms()->sole()->status)->toBe(PostPlatformStatus::Published)
+    expect($post->fresh()->publish_status)->toBe(PublishStatus::Published)
         ->and($post->labels()->pluck('workspace_labels.id')->all())->toBe([$label->id])
         ->and(fullPostPublished())->toEqual(fullPostExpected($name));
 })->with('complete posts')->with('surfaces');
@@ -1292,7 +1294,7 @@ test('a complete post scheduled through the api and through mcp reaches the netw
     $this->travel(61)->minutes();
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
-    expect($post->postPlatforms()->sole()->status)->toBe(PostPlatformStatus::Published)
+    expect($post->fresh()->publish_status)->toBe(PublishStatus::Published)
         ->and(fullPostPublished())->toEqual(fullPostExpected($name));
 })->with('complete posts')->with('surfaces');
 
@@ -1300,7 +1302,7 @@ test('a draft completed and published through api and mcp updates reaches the ne
     fullPostFake();
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $this->workspace->id]);
     $case = fullPostCase($name);
-    $post = fullPostCreate($surface, [...fullPostPayload($case, 'draft', $label->id), 'platforms' => [['social_account_id' => $case['account']->id, 'content_type' => $case['content_type']]]]);
+    $post = fullPostCreate($surface, Arr::except(fullPostPayload($case, 'draft', $label->id), ['meta']));
 
     if ($surface === 'api') {
         $this->withHeaders(parityApi($this->token))
@@ -1311,7 +1313,7 @@ test('a draft completed and published through api and mcp updates reaches the ne
         TryPostServer::actingAs($this->user)->tool(PublishPostTool::class, ['post_id' => $post->id])->assertOk();
     }
 
-    expect($post->postPlatforms()->sole()->status)->toBe(PostPlatformStatus::Published)
+    expect($post->fresh()->publish_status)->toBe(PublishStatus::Published)
         ->and(fullPostPublished())->toEqual(fullPostExpected($name));
 })->with('complete posts')->with('surfaces');
 
@@ -1331,9 +1333,9 @@ test('a complete post reads back every setting the same way through the api and 
     $replies = data_get($meta, 'thread_replies');
     unset($meta['thread_replies']);
 
-    expect(data_get($api, 'platforms.0.content_type'))->toBe($case['content_type'])
-        ->and(Arr::except(data_get($api, 'platforms.0.meta'), ['thread_replies']))->toEqual($meta)
-        ->and(collect(data_get($api, 'platforms.0.meta.thread_replies', []))->pluck('text')->all())->toBe(collect($replies ?? [])->pluck('text')->all())
+    expect(data_get($api, 'content_type'))->toBe($case['content_type'])
+        ->and(Arr::except(data_get($api, 'meta'), ['thread_replies']))->toEqual($meta)
+        ->and(collect(data_get($api, 'meta.thread_replies', []))->pluck('text')->all())->toBe(collect($replies ?? [])->pluck('text')->all())
         ->and(data_get($api, 'labels.0.id'))->toBe($label->id)
         ->and(data_get($api, 'content'))->toBe($case['content'])
         ->and(collect(data_get($api, 'media'))->map(fn (array $item): array => Arr::only((array) data_get($item, 'meta'), ['alt_text', 'user_tags', 'cover_offset_ms']))->all())
@@ -1378,8 +1380,8 @@ test('a batch with per-network caption, media and settings reaches each network 
 
 test('every per-platform setting the rules accept is documented for mcp clients', function () {
     $keys = collect(array_keys(PostPlatformMetaRules::rules()))
-        ->filter(fn (string $key): bool => str_starts_with($key, 'platforms.*.meta.'))
-        ->map(fn (string $key): string => explode('.', substr($key, strlen('platforms.*.meta.')))[0])
+        ->filter(fn (string $key): bool => str_starts_with($key, 'meta.'))
+        ->map(fn (string $key): string => explode('.', substr($key, strlen('meta.')))[0])
         ->unique()
         ->values();
 
@@ -1394,7 +1396,7 @@ test('every mcp tool that takes per-platform settings describes all of them', fu
     expect(data_get((new $tool)->toArray(), "inputSchema.properties.{$path}.description"))
         ->toContain(PostPlatformMetaRules::documentation());
 })->with([
-    'create-post-tool' => [CreatePostTool::class, 'platforms.items.properties.meta'],
+    'create-post-tool' => [CreatePostTool::class, 'meta'],
     'create-posts-tool' => [CreatePostsTool::class, 'destinations.items.properties.meta'],
     'update-post-tool' => [UpdatePostTool::class, 'meta'],
 ]);

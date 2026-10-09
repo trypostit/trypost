@@ -15,7 +15,6 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -46,16 +45,11 @@ beforeEach(function () {
  */
 function seriesPublication(object $test, SocialAccount $account, string $publishedAt, array $metrics = [], ?WorkspaceLabel $label = null): AnalyticsPublication
 {
-    $destination = null;
+    $post = null;
 
     if ($label !== null) {
-        $post = Post::factory()->published()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id]);
+        $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create(['user_id' => $test->user->id]);
         $post->labels()->attach($label);
-        $destination = PostPlatform::factory()->instagram()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'content_type' => ContentType::InstagramFeed,
-        ]);
     }
 
     $publication = AnalyticsPublication::factory()->create([
@@ -65,7 +59,7 @@ function seriesPublication(object $test, SocialAccount $account, string $publish
         'network' => $account->platform->network(),
         'platform_user_id' => $account->platform_user_id,
         'platform' => $account->platform,
-        'post_platform_id' => $destination?->id,
+        'post_id' => $post?->id,
         'provider_published_at' => CarbonImmutable::parse($publishedAt, 'UTC'),
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([

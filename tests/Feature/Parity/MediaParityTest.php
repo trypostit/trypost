@@ -12,7 +12,6 @@ use App\Mcp\Tools\Post\RequestMediaUploadTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
@@ -29,7 +28,6 @@ function mediaParityUpload(object $test, string $kind = 'image'): Media
 
 function mediaParityPost(object $test, string $platform = 'linkedin'): Post
 {
-    $post = Post::factory()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id]);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $test->workspace->id,
         'platform' => match ($platform) {
@@ -38,9 +36,8 @@ function mediaParityPost(object $test, string $platform = 'linkedin'): Post
             default => Platform::LinkedIn,
         },
     ]);
-    PostPlatform::factory()->{$platform}()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'enabled' => true]);
 
-    return $post;
+    return Post::factory()->forAccount($account)->{$platform}()->create(['user_id' => $test->user->id]);
 }
 
 function mediaParityShape(Post $post): array

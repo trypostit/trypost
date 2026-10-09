@@ -10,7 +10,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -51,20 +50,14 @@ function filteredInsightsPublication(
     ?WorkspaceLabel $label = null,
     PublicationContentType $publicationType = PublicationContentType::Image,
 ): AnalyticsPublication {
-    $destination = null;
+    $post = null;
 
     if ($contentType !== null) {
-        $post = Post::factory()->published()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id]);
+        $post = Post::factory()->forAccount($test->instagram, $contentType)->published()->create(['user_id' => $test->user->id]);
 
         if ($label !== null) {
             $post->labels()->attach($label);
         }
-
-        $destination = PostPlatform::factory()->instagram()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $test->instagram->id,
-            'content_type' => $contentType,
-        ]);
     }
 
     $publication = AnalyticsPublication::factory()->create([
@@ -74,7 +67,7 @@ function filteredInsightsPublication(
         'network' => $test->instagram->platform->network(),
         'platform_user_id' => $test->instagram->platform_user_id,
         'platform' => Platform::Instagram,
-        'post_platform_id' => $destination?->id,
+        'post_id' => $post?->id,
         'content_type' => $publicationType,
         'provider_published_at' => CarbonImmutable::parse($publishedAt, 'UTC'),
     ]);

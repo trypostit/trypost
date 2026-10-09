@@ -27,7 +27,6 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon' | 'iconClass
     publishing: { variant: 'warning', icon: IconLoader2, iconClass: 'animate-spin' },
     retrying: { variant: 'warning', icon: IconLoader2, iconClass: 'animate-spin' },
     published: { variant: 'success', icon: IconCircleCheck },
-    partially_published: { variant: 'warning', icon: IconAlertCircle },
     failed: { variant: 'destructive-subtle', icon: IconAlertCircle },
     rejected: { variant: 'destructive-subtle', icon: IconBan },
     pending_review: { variant: 'warning', icon: IconHourglass },
@@ -36,19 +35,4 @@ const CONFIGS: Record<string, Pick<StatusConfig, 'variant' | 'icon' | 'iconClass
 export const getPostStatusConfig = (status: string): StatusConfig => {
     const config = CONFIGS[status] ?? CONFIGS.draft;
     return { ...config, label: trans(`posts.status.${status}`) };
-};
-
-export const getPlatformStatusConfig = (status: string): StatusConfig => {
-    const map: Record<string, string> = {
-        pending: 'draft',
-        publishing: 'publishing',
-        retrying: 'retrying',
-        published: 'published',
-        failed: 'failed',
-        rejected: 'rejected',
-        pending_review: 'pending_review',
-    };
-    const key = map[status] ?? 'draft';
-    const config = CONFIGS[key];
-    return { ...config, label: trans(`posts.edit.status.${status}`) };
 };

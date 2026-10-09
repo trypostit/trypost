@@ -6,7 +6,6 @@ use App\Actions\Post\CreatePosts;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\TimeFormat;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -301,12 +300,10 @@ test('posting slots already taken by a scheduled post are disabled', function ()
     $channel = composerTimezoneChannel($workspace, $zone, PostingSchedule::empty()
         ->withTime(now($zone)->dayOfWeek, '15:00')
         ->withTime(now($zone)->dayOfWeek, '16:00'));
-    $taken = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    Post::factory()->forAccount($channel)->scheduled()->create([
         'user_id' => $user->id,
         'scheduled_at' => CarbonImmutable::parse(now($zone)->format('Y-m-d').' 15:00', $zone)->utc(),
     ]);
-    PostPlatform::factory()->create(['post_id' => $taken->id, 'social_account_id' => $channel->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.create'));

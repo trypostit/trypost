@@ -12,7 +12,7 @@ class PlatformController extends Controller
 {
     /**
      * Index of platforms with their valid content_types and publishing
-     * constraints — used by clients to build correct `platforms[].content_type`
+     * constraints — used by clients to build correct `content_type`
      * payloads for `POST /api/posts` and `PUT /api/posts/{id}`.
      */
     public function contentTypes(): JsonResponse

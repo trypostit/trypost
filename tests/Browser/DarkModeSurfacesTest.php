@@ -9,7 +9,6 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\Idea;
 use App\Models\IdeaStage;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -41,8 +40,7 @@ test('in dark mode a dialog is a raised surface, lighter than the page behind it
     $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::X]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'Surface check']);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::X, 'content_type' => ContentType::XPost, 'meta' => []]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create(['user_id' => $user->id, 'content' => 'Surface check']);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 900);

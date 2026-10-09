@@ -9,7 +9,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -320,14 +319,12 @@ test('changing the time zone asks first and cancel and escape keep the old zone'
 
 test('confirming the time zone saves it and reflows the queue into the new zone slots', function () {
     [$user, $channel] = channelSettingsPageSetup();
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    $post = Post::factory()->forAccount($channel)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => null,
     ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id, 'platform' => $channel->platform, 'enabled' => true]);
     ReflowChannelQueue::handle($channel, $post, QueuePosition::Next);
     $this->actingAs($user);
 

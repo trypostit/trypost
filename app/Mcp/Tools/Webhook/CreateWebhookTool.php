@@ -58,7 +58,7 @@ class CreateWebhookTool extends Tool
             'events' => $schema->array()
                 ->items($schema->string()->enum(array_column(EventType::cases(), 'value')))
                 ->required()
-                ->description('At least one event to subscribe to: post.created, post.scheduled, post.unscheduled, post.published, post.partially_published, post.failed, post.deleted.'),
+                ->description('At least one event to subscribe to: post.created, post.scheduled, post.unscheduled, post.published, post.failed, post.deleted.'),
         ];
     }
 }

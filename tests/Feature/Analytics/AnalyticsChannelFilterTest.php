@@ -11,7 +11,6 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -43,22 +42,17 @@ beforeEach(function () {
     };
 
     $this->publish = function (SocialAccount $account, int $reactions, ?WorkspaceLabel $label = null, ?string $key = null, string $publishedAt = '2026-09-15 12:00:00'): AnalyticsPublication {
-        $post = Post::factory()->published()->create(['workspace_id' => $account->workspace_id, 'user_id' => $this->user->id]);
+        $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $this->user->id]);
 
         if ($label !== null) {
             $post->labels()->attach($label);
         }
 
-        $destination = PostPlatform::factory()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'platform' => $account->platform,
-        ]);
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $account->workspace_id,
             'social_account_id' => $account->id,
             'social_account_key' => $key ?? $account->id,
-            'post_platform_id' => $destination->id,
+            'post_id' => $post->id,
             'platform' => $account->platform,
             'network' => $account->platform->network(),
             'platform_user_id' => $account->platform_user_id,

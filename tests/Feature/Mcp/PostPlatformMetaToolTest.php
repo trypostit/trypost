@@ -17,7 +17,6 @@ use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -30,32 +29,27 @@ test('youtube description persists reads retains and clears in MCP', function (s
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
-        'platforms' => [[
-            'social_account_id' => $account->id,
-            'content_type' => ContentType::YouTubeShort->value,
-            'meta' => ['description' => $description],
-        ]],
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort->value,
+        'meta' => ['description' => $description],
     ])->assertOk();
-    $platform = PostPlatform::where('social_account_id', $account->id)->sole();
-    TryPostServer::actingAs($this->user)->tool(GetPostTool::class, ['post_id' => $platform->post_id])
-        ->assertOk()->assertStructuredContent(function (AssertableJson $json) use ($platform, $description) {
-            $json->etc();
-            expect(collect($json->toArray()['platforms'])->firstWhere('id', $platform->id)['meta']['description'])->toBe($description);
-        });
+    $post = Post::where('social_account_id', $account->id)->sole();
+    TryPostServer::actingAs($this->user)->tool(GetPostTool::class, ['post_id' => $post->id])
+        ->assertOk()->assertStructuredContent(fn (AssertableJson $json) => $json->where('meta.description', $description)->etc());
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id,
+        'post_id' => $post->id,
         'meta' => ['description' => str_repeat('é', 2501)],
     ])->assertHasErrors([__('posts.form.youtube.description_max')]);
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id,
+        'post_id' => $post->id,
         'meta' => [],
     ])->assertOk();
-    expect(data_get($platform->fresh()->meta, 'description'))->toBe($description);
+    expect(data_get($post->fresh()->meta, 'description'))->toBe($description);
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id,
+        'post_id' => $post->id,
         'meta' => ['description' => null],
     ])->assertOk();
-    expect(data_get($platform->fresh()->meta, 'description'))->toBeNull();
+    expect(data_get($post->fresh()->meta, 'description'))->toBeNull();
 })->with([
     'multiline description' => ["Full text\nhttps://example.com"],
     'programming text' => ["if (a < b && c > d) {}\n<p>Text about HTML</p>"],
@@ -65,11 +59,9 @@ test('youtube description rejects invalid MCP create input', function (string $d
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
-        'platforms' => [[
-            'social_account_id' => $account->id,
-            'content_type' => ContentType::YouTubeShort->value,
-            'meta' => ['description' => $description],
-        ]],
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort->value,
+        'meta' => ['description' => $description],
     ])->assertHasErrors();
 })->with([
     'multibyte overflow' => [str_repeat('é', 2501)],
@@ -79,8 +71,7 @@ test('youtube description rejects invalid MCP create input', function (string $d
 
 test('youtube description checks effective MCP metadata on schedule and publish', function (string $patch, bool $allowed) {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $this->user->id,
         'content' => 'Short title',
         'status' => PostStatus::Draft,
@@ -92,11 +83,6 @@ test('youtube description checks effective MCP metadata on schedule and publish'
             'mime_type' => 'video/mp4',
             'original_filename' => 'video.mp4',
         ]],
-    ]);
-    $platform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
     Queue::fake();
@@ -144,19 +130,17 @@ test('create post persists Discord channel + embeds meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Hello Discord',
-            'platforms' => [[
-                'social_account_id' => $this->discordAccount->id,
-                'content_type' => ContentType::DiscordMessage->value,
-                'meta' => [
-                    'channel_id' => '444555666',
-                    'embeds' => [['title' => 'Release']],
-                ],
-            ]],
+            'social_account_id' => $this->discordAccount->id,
+            'content_type' => ContentType::DiscordMessage->value,
+            'meta' => [
+                'channel_id' => '444555666',
+                'embeds' => [['title' => 'Release']],
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $this->discordAccount->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $this->discordAccount->id)->sole()->meta;
 
     expect($meta['channel_id'])->toBe('444555666')
         ->and(data_get($meta, 'embeds.0.title'))->toBe('Release');
@@ -168,28 +152,20 @@ test('create post persists LinkedIn document_title meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Check our latest deck',
-            'platforms' => [[
-                'social_account_id' => $linkedin->id,
-                'content_type' => ContentType::LinkedInPost->value,
-                'meta' => ['document_title' => 'Q2 Report'],
-            ]],
+            'social_account_id' => $linkedin->id,
+            'content_type' => ContentType::LinkedInPost->value,
+            'meta' => ['document_title' => 'Q2 Report'],
         ]);
 
     $response->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
+    expect(Post::where('social_account_id', $linkedin->id)->sole()->meta['document_title'])->toBe('Q2 Report');
 });
 
 test('update post merges per-platform meta', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $platform = PostPlatform::factory()->discord()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->discordAccount->id,
-        'enabled' => true,
         'meta' => ['channel_name' => 'general'],
     ]);
 
@@ -201,52 +177,15 @@ test('update post merges per-platform meta', function () {
 
     $response->assertOk();
 
-    $meta = $platform->fresh()->meta;
+    $meta = $post->fresh()->meta;
     expect($meta['channel_id'])->toBe('444555666')
         ->and($meta['channel_name'])->toBe('general'); // merged, not overwritten
 });
 
-test('publish guard ignores disabled platforms missing meta', function () {
-    Queue::fake();
-
-    $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'content' => 'Ready to publish',
-    ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $linkedin->id,
-        'enabled' => true,
-    ]);
-    // Disabled Discord with no channel must not block the publish.
-    PostPlatform::factory()->discord()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->discordAccount->id,
-        'enabled' => false,
-        'meta' => [],
-    ]);
-
-    $response = TryPostServer::actingAs($this->user)
-        ->tool(PublishPostTool::class, ['post_id' => $post->id]);
-
-    $response->assertOk();
-    Queue::assertPushed(PublishPost::class);
-});
-
 test('publish post rejects a Discord platform without a channel', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->discord()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->discordAccount->id,
-        'enabled' => true,
         'meta' => [],
     ]);
 
@@ -262,15 +201,9 @@ test('publish guard enforces required meta for TikTok and Pinterest', function (
         'platform' => $factoryState === 'tiktok' ? Platform::TikTok : Platform::Pinterest,
     ]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->{$factoryState}()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
         'meta' => [],
     ]);
 
@@ -289,11 +222,9 @@ test('create post rejects an unknown TikTok privacy level', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Unknown privacy',
-            'platforms' => [[
-                'social_account_id' => $tiktok->id,
-                'content_type' => ContentType::TikTokVideo->value,
-                'meta' => ['privacy_level' => 'EVERYONE'],
-            ]],
+            'social_account_id' => $tiktok->id,
+            'content_type' => ContentType::TikTokVideo->value,
+            'meta' => ['privacy_level' => 'EVERYONE'],
         ]);
 
     $response->assertHasErrors();
@@ -302,15 +233,9 @@ test('create post rejects an unknown TikTok privacy level', function () {
 test('publish post rejects stored TikTok self only branded content', function () {
     $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($tiktok)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->tiktok()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktok->id,
-        'enabled' => true,
         'meta' => [
             'privacy_level' => PrivacyLevel::SelfOnly->value,
             'brand_content_toggle' => true,
@@ -326,15 +251,9 @@ test('publish post rejects stored TikTok self only branded content', function ()
 test('publish post rejects a stored unknown TikTok privacy level', function () {
     $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($tiktok)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->tiktok()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktok->id,
-        'enabled' => true,
         'meta' => ['privacy_level' => 'EVERYONE'],
     ]);
 
@@ -347,14 +266,9 @@ test('publish post rejects a stored unknown TikTok privacy level', function () {
 test('attach media from upload accepts a PDF for a LinkedIn post', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $uploadToken = (string) Str::uuid();
@@ -390,18 +304,13 @@ test('publish post succeeds for a LinkedIn document that has a PDF', function ()
 
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'media' => [[
             'id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf',
             'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf',
         ]],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -414,18 +323,13 @@ test('publish post succeeds for a LinkedIn document that has a PDF', function ()
 test('publish post rejects a LinkedIn post that mixes a PDF with an image', function () {
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'media' => [
             ['id' => 'doc-1', 'path' => 'medias/deck.pdf', 'url' => 'https://example.com/deck.pdf', 'type' => 'document', 'mime_type' => 'application/pdf', 'original_filename' => 'deck.pdf'],
             ['id' => 'img-1', 'path' => 'medias/slide.jpg', 'url' => 'https://example.com/slide.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg', 'original_filename' => 'slide.jpg'],
         ],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -439,17 +343,12 @@ test('publish post accepts a Bluesky post whose stored video is a MOV', function
 
     $bluesky = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Bluesky]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($bluesky, ContentType::BlueskyPost)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'media' => [
             ['id' => 'vid-1', 'path' => 'medias/clip.mov', 'url' => 'https://example.com/clip.mov', 'type' => 'video', 'mime_type' => 'video/quicktime', 'original_filename' => 'clip.mov'],
         ],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $bluesky->id,
-        'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -465,17 +364,12 @@ test('publish post accepts a Bluesky post whose stored video is a MOV', function
 test('publish post rejects an Instagram Reel whose stored video exceeds 300 MB', function () {
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($instagram, ContentType::InstagramReel)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'media' => [
             ['id' => 'vid-1', 'path' => 'medias/reel.mp4', 'url' => 'https://example.com/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'original_filename' => 'reel.mp4', 'size' => 900 * 1024 * 1024],
         ],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $instagram->id,
-        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramReel, 'enabled' => true,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -488,16 +382,10 @@ test('publish post rejects an Instagram Reel whose stored video exceeds 300 MB',
 test('publish post succeeds for a Discord platform with a channel', function () {
     Queue::fake();
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->discordAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'content' => 'Ready for Discord',
-    ]);
-    PostPlatform::factory()->discord()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->discordAccount->id,
-        'enabled' => true,
         'meta' => ['channel_id' => '444555666'],
     ]);
 
@@ -514,20 +402,18 @@ test('create post persists Pinterest title and link meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Shared caption',
-            'platforms' => [[
-                'social_account_id' => $pinterest->id,
-                'content_type' => ContentType::PinterestPin->value,
-                'meta' => [
-                    'board_id' => 'board-1',
-                    'title' => 'Pin Title',
-                    'link' => 'https://example.com/product',
-                ],
-            ]],
+            'social_account_id' => $pinterest->id,
+            'content_type' => ContentType::PinterestPin->value,
+            'meta' => [
+                'board_id' => 'board-1',
+                'title' => 'Pin Title',
+                'link' => 'https://example.com/product',
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $pinterest->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $pinterest->id)->sole()->meta;
 
     expect(data_get($meta, 'title'))->toBe('Pin Title')
         ->and(data_get($meta, 'link'))->toBe('https://example.com/product')
@@ -536,16 +422,10 @@ test('create post persists Pinterest title and link meta', function () {
 
 test('update post merges Pinterest title and link meta', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($pinterest)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'content' => 'Shared caption',
-    ]);
-    $platform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pinterest->id,
-        'enabled' => true,
         'meta' => ['board_id' => 'board-1'],
     ]);
 
@@ -561,7 +441,7 @@ test('update post merges Pinterest title and link meta', function () {
 
     $response->assertOk();
 
-    $meta = $platform->fresh()->meta;
+    $meta = $post->fresh()->meta;
 
     expect(data_get($meta, 'title'))->toBe('Updated Title')
         ->and(data_get($meta, 'link'))->toBe('https://example.com/updated')
@@ -574,14 +454,12 @@ test('create post rejects invalid Pinterest destination link', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Shared caption',
-            'platforms' => [[
-                'social_account_id' => $pinterest->id,
-                'content_type' => ContentType::PinterestPin->value,
-                'meta' => [
-                    'board_id' => 'board-1',
-                    'link' => 'ftp://files.example.com/pin',
-                ],
-            ]],
+            'social_account_id' => $pinterest->id,
+            'content_type' => ContentType::PinterestPin->value,
+            'meta' => [
+                'board_id' => 'board-1',
+                'link' => 'ftp://files.example.com/pin',
+            ],
         ]);
 
     $response->assertHasErrors();
@@ -590,18 +468,11 @@ test('create post rejects invalid Pinterest destination link', function () {
 test('updating an independent Pinterest draft cannot schedule without its stored board', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
     $image = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($pinterest, ContentType::PinterestPin)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
         'content' => 'A pin',
         'media' => [MediaItem::fromMedia($image)->toArray()],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $pinterest->id,
-        'platform' => Platform::Pinterest,
-        'content_type' => ContentType::PinterestPin,
         'meta' => [],
     ]);
 
@@ -622,19 +493,17 @@ test('create post persists Google Business topic_type and offer meta', function 
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Big sale this week',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'topic_type' => 'OFFER',
-                    'offer' => ['coupon_code' => 'SAVE10'],
-                ],
-            ]],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'topic_type' => 'OFFER',
+                'offer' => ['coupon_code' => 'SAVE10'],
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $googleBusiness->id)->sole()->meta;
 
     expect(data_get($meta, 'topic_type'))->toBe('OFFER')
         ->and(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10');
@@ -646,18 +515,16 @@ test('create post persists Google Business call_to_action meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Book a table tonight',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com'],
-                ],
-            ]],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'call_to_action' => ['action_type' => 'BOOK', 'url' => 'https://example.com'],
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $googleBusiness->id)->sole()->meta;
 
     expect(data_get($meta, 'call_to_action.action_type'))->toBe('BOOK')
         ->and(data_get($meta, 'call_to_action.url'))->toBe('https://example.com');
@@ -669,25 +536,23 @@ test('create post persists Google Business event time meta', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Grand opening',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'topic_type' => 'EVENT',
-                    'event' => [
-                        'title' => 'Grand Opening',
-                        'start_date' => '2026-09-01',
-                        'end_date' => '2026-09-02',
-                        'start_time' => '09:00',
-                        'end_time' => '17:00',
-                    ],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'topic_type' => 'EVENT',
+                'event' => [
+                    'title' => 'Grand Opening',
+                    'start_date' => '2026-09-01',
+                    'end_date' => '2026-09-02',
+                    'start_time' => '09:00',
+                    'end_time' => '17:00',
                 ],
-            ]],
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $googleBusiness->id)->sole()->meta;
 
     expect(data_get($meta, 'event.title'))->toBe('Grand Opening')
         ->and(data_get($meta, 'event.start_date'))->toBe('2026-09-01')
@@ -702,22 +567,20 @@ test('create post persists Google Business offer redeem url and terms meta', fun
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Big sale this week',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'offer' => [
-                        'coupon_code' => 'SAVE10',
-                        'redeem_online_url' => 'https://example.com/redeem',
-                        'terms_conditions' => 'Some terms',
-                    ],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'offer' => [
+                    'coupon_code' => 'SAVE10',
+                    'redeem_online_url' => 'https://example.com/redeem',
+                    'terms_conditions' => 'Some terms',
                 ],
-            ]],
+            ],
         ]);
 
     $response->assertOk();
 
-    $meta = PostPlatform::where('social_account_id', $googleBusiness->id)->sole()->meta;
+    $meta = Post::where('social_account_id', $googleBusiness->id)->sole()->meta;
 
     expect(data_get($meta, 'offer.coupon_code'))->toBe('SAVE10')
         ->and(data_get($meta, 'offer.redeem_online_url'))->toBe('https://example.com/redeem')
@@ -730,18 +593,16 @@ test('create post rejects a Google Business event title over the api cap', funct
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Grand opening',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'topic_type' => 'EVENT',
-                    'event' => [
-                        'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
-                        'start_date' => '2026-09-01',
-                        'end_date' => '2026-09-02',
-                    ],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'topic_type' => 'EVENT',
+                'event' => [
+                    'title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1),
+                    'start_date' => '2026-09-01',
+                    'end_date' => '2026-09-02',
                 ],
-            ]],
+            ],
         ]);
 
     $response->assertHasErrors([__('posts.form.google_business.title_max')]);
@@ -750,15 +611,9 @@ test('create post rejects a Google Business event title over the api cap', funct
 test('update post rejects a Google Business event title over the api cap', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $platform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [],
     ]);
 
@@ -781,15 +636,9 @@ test('update post rejects a Google Business event title over the api cap', funct
 test('update post rejects a Google Business event whose end date is before the start', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $platform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [],
     ]);
 
@@ -808,15 +657,9 @@ test('update post rejects a Google Business event whose end date is before the s
 test('publish post rejects a Google Business event title over the api cap', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [
             'topic_type' => 'EVENT',
             'event' => [
@@ -836,15 +679,9 @@ test('publish post rejects a Google Business event title over the api cap', func
 test('publish post rejects a Google Business offer post without a title', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [
             'topic_type' => 'OFFER',
             'event' => ['start_date' => '2026-09-01', 'end_date' => '2026-09-02'],
@@ -860,15 +697,9 @@ test('publish post rejects a Google Business offer post without a title', functi
 test('publish post rejects a Google Business event post without event fields', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => ['topic_type' => 'EVENT'],
     ]);
 
@@ -881,15 +712,9 @@ test('publish post rejects a Google Business event post without event fields', f
 test('publish post rejects a Google Business offer post without dates', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [
             'topic_type' => 'OFFER',
             'event' => ['title' => 'Summer Sale'],
@@ -905,15 +730,9 @@ test('publish post rejects a Google Business offer post without dates', function
 test('publish post rejects a Google Business event with a same-day end time before start', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [
             'topic_type' => 'EVENT',
             'event' => [
@@ -938,14 +757,12 @@ test('create post rejects a Google Business GET_OFFER call to action', function 
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Sale',
-            'platforms' => [[
-                'social_account_id' => $googleBusiness->id,
-                'content_type' => ContentType::GoogleBusinessPost->value,
-                'meta' => [
-                    'topic_type' => 'STANDARD',
-                    'call_to_action' => ['action_type' => 'GET_OFFER'],
-                ],
-            ]],
+            'social_account_id' => $googleBusiness->id,
+            'content_type' => ContentType::GoogleBusinessPost->value,
+            'meta' => [
+                'topic_type' => 'STANDARD',
+                'call_to_action' => ['action_type' => 'GET_OFFER'],
+            ],
         ]);
 
     $response->assertHasErrors();
@@ -954,15 +771,9 @@ test('create post rejects a Google Business GET_OFFER call to action', function 
 test('publish post rejects a Google Business post with a url-needing cta and no url', function () {
     $googleBusiness = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($googleBusiness)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $googleBusiness->id,
-        'enabled' => true,
         'meta' => [
             'topic_type' => 'STANDARD',
             'call_to_action' => ['action_type' => 'BOOK'],
@@ -980,14 +791,12 @@ test('create post persists youtube metadata in MCP', function () {
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
-        'platforms' => [[
-            'social_account_id' => $account->id,
-            'content_type' => ContentType::YouTubeShort->value,
-            'meta' => ['title' => 'Title', 'privacy_status' => 'unlisted', 'made_for_kids' => true, 'is_ai_generated' => true],
-        ]],
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort->value,
+        'meta' => ['title' => 'Title', 'privacy_status' => 'unlisted', 'made_for_kids' => true, 'is_ai_generated' => true],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $account->id)->sole()->meta)
+    expect(Post::where('social_account_id', $account->id)->sole()->meta)
         ->toEqual(['title' => 'Title', 'privacy_status' => 'unlisted', 'made_for_kids' => true, 'is_ai_generated' => true]);
 });
 
@@ -996,7 +805,9 @@ test('create post rejects an unknown youtube privacy status in MCP', function ()
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['privacy_status' => 'friends']]],
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort->value,
+        'meta' => ['privacy_status' => 'friends'],
     ])->assertHasErrors();
 });
 
@@ -1005,10 +816,12 @@ test('create post persists instagram options in MCP', function () {
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Reel',
-        'platforms' => [['social_account_id' => $instagram->id, 'content_type' => ContentType::InstagramReel->value, 'meta' => ['share_to_feed' => false]]],
+        'social_account_id' => $instagram->id,
+        'content_type' => ContentType::InstagramReel->value,
+        'meta' => ['share_to_feed' => false],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $instagram->id)->sole()->meta)->toEqual(['share_to_feed' => false]);
+    expect(Post::where('social_account_id', $instagram->id)->sole()->meta)->toEqual(['share_to_feed' => false]);
 });
 
 test('create post rejects a youtube title with angle brackets on a draft in MCP', function () {
@@ -1016,10 +829,12 @@ test('create post rejects a youtube title with angle brackets on a draft in MCP'
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Short title',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['title' => '<b>']]],
+        'social_account_id' => $account->id,
+        'content_type' => ContentType::YouTubeShort->value,
+        'meta' => ['title' => '<b>'],
     ])->assertHasErrors();
 
-    expect(PostPlatform::where('social_account_id', $account->id)->exists())->toBeFalse();
+    expect(Post::where('social_account_id', $account->id)->exists())->toBeFalse();
 });
 
 test('create post persists a dropped link preview', function () {
@@ -1028,15 +843,13 @@ test('create post persists a dropped link preview', function () {
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Read https://example.com/article',
-            'platforms' => [[
-                'social_account_id' => $bluesky->id,
-                'content_type' => ContentType::BlueskyPost->value,
-                'meta' => ['link_preview' => false],
-            ]],
+            'social_account_id' => $bluesky->id,
+            'content_type' => ContentType::BlueskyPost->value,
+            'meta' => ['link_preview' => false],
         ])
         ->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $bluesky->id)->sole()->meta)->toEqual(['link_preview' => false]);
+    expect(Post::where('social_account_id', $bluesky->id)->sole()->meta)->toEqual(['link_preview' => false]);
 });
 
 test('create post persists a threads topic tag and rejects one with an ampersand in MCP', function () {
@@ -1044,31 +857,30 @@ test('create post persists a threads topic tag and rejects one with an ampersand
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Hi',
-        'platforms' => [['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['topic_tag' => 'laravel']]],
+        'social_account_id' => $threads->id,
+        'content_type' => ContentType::ThreadsPost->value,
+        'meta' => ['topic_tag' => 'laravel'],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $threads->id)->sole()->meta)->toEqual(['topic_tag' => 'laravel']);
+    expect(Post::where('social_account_id', $threads->id)->sole()->meta)->toEqual(['topic_tag' => 'laravel']);
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Hi',
-        'platforms' => [['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['topic_tag' => 'rock&roll']]],
+        'social_account_id' => $threads->id,
+        'content_type' => ContentType::ThreadsPost->value,
+        'meta' => ['topic_tag' => 'rock&roll'],
     ])->assertHasErrors();
 
-    expect(PostPlatform::where('social_account_id', $threads->id)->count())->toBe(1);
+    expect(Post::where('social_account_id', $threads->id)->count())->toBe(1);
 });
 
 test('scheduling an instagram post with more than five hashtags is rejected in MCP', function () {
     $instagram = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Instagram]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($instagram, ContentType::InstagramFeed)->create([
         'user_id' => $this->user->id,
         'content' => 'Launch #a #b #c #d #e #f',
         'status' => PostStatus::Draft,
         'media' => [['id' => 'image-1', 'type' => 'image', 'path' => 'medias/image.jpg', 'url' => 'https://example.com/image.jpg', 'mime_type' => 'image/jpeg', 'original_filename' => 'image.jpg']],
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $instagram->id,
-        'platform' => Platform::Instagram, 'content_type' => ContentType::InstagramFeed, 'enabled' => true,
     ]);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
@@ -1086,17 +898,19 @@ test('a stored mastodon content warning counts toward the limit when scheduling 
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => str_repeat('b', $limit - 9),
-        'platforms' => [['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => ['spoiler_text' => str_repeat('a', 10)]]],
+        'social_account_id' => $mastodon->id,
+        'content_type' => ContentType::MastodonPost->value,
+        'meta' => ['spoiler_text' => str_repeat('a', 10)],
     ])->assertOk();
-    $platform = PostPlatform::where('social_account_id', $mastodon->id)->sole();
+    $post = Post::where('social_account_id', $mastodon->id)->sole();
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id,
+        'post_id' => $post->id,
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => '2037-12-31T15:30:00Z',
     ])->assertHasErrors();
 
-    expect($platform->post->fresh()->status)->toBe(PostStatus::Draft);
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('create post rejects a numeric link preview in MCP', function (mixed $value) {
@@ -1105,23 +919,22 @@ test('create post rejects a numeric link preview in MCP', function (mixed $value
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
             'content' => 'Read https://example.com/article',
-            'platforms' => [[
-                'social_account_id' => $bluesky->id,
-                'content_type' => ContentType::BlueskyPost->value,
-                'meta' => ['link_preview' => $value],
-            ]],
+            'social_account_id' => $bluesky->id,
+            'content_type' => ContentType::BlueskyPost->value,
+            'meta' => ['link_preview' => $value],
         ])
         ->assertHasErrors();
 
-    expect(PostPlatform::where('social_account_id', $bluesky->id)->exists())->toBeFalse();
+    expect(Post::where('social_account_id', $bluesky->id)->exists())->toBeFalse();
 })->with([0, '0']);
 
 test('publish post accepts a stored threads ghost post whose text carries a link in MCP', function () {
     $threads = SocialAccount::factory()->threads()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Read https://example.com/article', 'status' => PostStatus::Draft,
+    $post = Post::factory()->forAccount($threads, ContentType::ThreadsGhostPost)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Read https://example.com/article',
+        'status' => PostStatus::Draft,
     ]);
-    PostPlatform::factory()->threads()->create(['post_id' => $post->id, 'social_account_id' => $threads->id, 'enabled' => true, 'content_type' => ContentType::ThreadsGhostPost]);
     Queue::fake();
 
     TryPostServer::actingAs($this->user)->tool(PublishPostTool::class, ['post_id' => $post->id])
@@ -1135,14 +948,18 @@ test('create post judges a threads topic tag without its leading hash in MCP', f
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Hi',
-        'platforms' => [['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['topic_tag' => "#{$tag}"]]],
+        'social_account_id' => $threads->id,
+        'content_type' => ContentType::ThreadsPost->value,
+        'meta' => ['topic_tag' => "#{$tag}"],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $threads->id)->sole()->meta)->toEqual(['topic_tag' => $tag]);
+    expect(Post::where('social_account_id', $threads->id)->sole()->meta)->toEqual(['topic_tag' => $tag]);
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Hi',
-        'platforms' => [['social_account_id' => $threads->id, 'content_type' => ContentType::ThreadsPost->value, 'meta' => ['topic_tag' => "#{$tag}a"]]],
+        'social_account_id' => $threads->id,
+        'content_type' => ContentType::ThreadsPost->value,
+        'meta' => ['topic_tag' => "#{$tag}a"],
     ])->assertHasErrors([__('posts.form.threads.topic_invalid')]);
 });
 
@@ -1151,10 +968,12 @@ test('create post persists thread replies in MCP', function () {
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Root',
-        'platforms' => [['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => ['thread_replies' => ['Two']]]],
+        'social_account_id' => $mastodon->id,
+        'content_type' => ContentType::MastodonPost->value,
+        'meta' => ['thread_replies' => ['Two']],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $mastodon->id)->sole()->meta)->toEqual(['thread_replies' => [['text' => 'Two', 'media' => []]]]);
+    expect(Post::where('social_account_id', $mastodon->id)->sole()->meta)->toEqual(['thread_replies' => [['text' => 'Two', 'media' => []]]]);
 });
 
 test('create post stores thread reply media in MCP', function () {
@@ -1163,12 +982,14 @@ test('create post stores thread reply media in MCP', function () {
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Root',
-        'platforms' => [['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => ['thread_replies' => [
+        'social_account_id' => $mastodon->id,
+        'content_type' => ContentType::MastodonPost->value,
+        'meta' => ['thread_replies' => [
             ['text' => '', 'media' => [['upload_token' => $upload->upload_token]]],
-        ]]]],
+        ]],
     ])->assertOk();
 
-    expect(PostPlatform::where('social_account_id', $mastodon->id)->sole()->meta['thread_replies'][0]['media'][0]['id'])->toBe($upload->id);
+    expect(Post::where('social_account_id', $mastodon->id)->sole()->meta['thread_replies'][0]['media'][0]['id'])->toBe($upload->id);
 });
 
 test('a stored mastodon thread reply that does not fit blocks scheduling through MCP', function () {
@@ -1176,23 +997,24 @@ test('a stored mastodon thread reply that does not fit blocks scheduling through
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Root',
-        'platforms' => [['social_account_id' => $mastodon->id, 'content_type' => ContentType::MastodonPost->value, 'meta' => ['spoiler_text' => 'Ten chars!', 'thread_replies' => [str_repeat('a', 495)]]]],
+        'social_account_id' => $mastodon->id,
+        'content_type' => ContentType::MastodonPost->value,
+        'meta' => ['spoiler_text' => 'Ten chars!', 'thread_replies' => [str_repeat('a', 495)]],
     ])->assertOk();
-    $platform = PostPlatform::where('social_account_id', $mastodon->id)->sole();
+    $post = Post::where('social_account_id', $mastodon->id)->sole();
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
-        'post_id' => $platform->post_id,
+        'post_id' => $post->id,
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => '2037-12-31T15:30:00Z',
     ])->assertHasErrors();
 
-    expect($platform->post->fresh()->status)->toBe(PostStatus::Draft);
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
 });
 
 test('publishing a youtube post with neither a title nor text is rejected in MCP', function () {
     $account = SocialAccount::factory()->youtube()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $this->user->id,
         'content' => '',
         'status' => PostStatus::Draft,
@@ -1204,11 +1026,6 @@ test('publishing a youtube post with neither a title nor text is rejected in MCP
             'mime_type' => 'video/mp4',
             'original_filename' => 'video.mp4',
         ]],
-    ]);
-    PostPlatform::factory()->youtube()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
         'meta' => [],
     ]);
     Queue::fake();

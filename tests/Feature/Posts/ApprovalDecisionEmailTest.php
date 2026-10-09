@@ -7,10 +7,8 @@ use App\Actions\Post\Approval\RejectPost;
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Notification\Type;
-use App\Enums\Post\ApprovalDecision;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Jobs\Post\SendApprovalDecisionEmail;
 use App\Jobs\SendNotification;
 use App\Mail\PostApproved;
 use App\Mail\PostRejected;
@@ -20,13 +18,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
-use Illuminate\Contracts\Cache\LockTimeoutException;
-use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
-use Illuminate\Support\Sleep;
 use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
@@ -61,25 +55,17 @@ function approvalDecisionRequest(object $test): Collection
     ]);
 }
 
-test('approving every card of a request sends one grouped email', function () {
+test('approving every card of a request sends one email per post', function () {
     $posts = approvalDecisionRequest($this);
 
     $posts->each(fn (Post $post) => ApprovePost::execute($post, $this->owner));
 
-    Queue::assertPushed(SendApprovalDecisionEmail::class, 1);
+    $emails = Queue::pushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostApproved);
 
-    $job = Queue::pushed(SendApprovalDecisionEmail::class)->sole();
-
-    expect($job->decision)->toBe(ApprovalDecision::Approved)
-        ->and($job->requester->is($this->requester))->toBeTrue()
-        ->and($job->delay)->not->toBeNull();
-
-    $job->handle();
-
-    Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->type === Type::Collaboration
-        && $notification->mailable instanceof PostApproved
-        && $notification->user->is($this->requester)
-        && collect($notification->mailable->postIds)->sort()->values()->all() === $posts->pluck('id')->sort()->values()->all());
+    expect($emails)->toHaveCount(2)
+        ->and($emails->every(fn (SendNotification $notification): bool => $notification->type === Type::Collaboration && $notification->user->is($this->requester)))->toBeTrue()
+        ->and($emails->map(fn (SendNotification $notification): string => $notification->mailable->postId)->sort()->values()->all())
+        ->toBe($posts->pluck('id')->sort()->values()->all());
 });
 
 test('rejecting sends the rejected email to the author', function () {
@@ -87,35 +73,9 @@ test('rejecting sends the rejected email to the author', function () {
 
     RejectPost::execute($post, $this->owner);
 
-    $job = Queue::pushed(SendApprovalDecisionEmail::class)->sole();
-
-    expect($job->decision)->toBe(ApprovalDecision::Rejected);
-
-    $job->handle();
-
     Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostRejected
         && $notification->user->is($this->requester)
-        && $notification->mailable->postIds === [$post->id]);
-});
-
-test('a decision job with nothing collected sends nothing', function () {
-    (new SendApprovalDecisionEmail('post-approval-decision:missing:approved:none', $this->requester, $this->owner, ApprovalDecision::Approved))->handle();
-
-    Queue::assertNotPushed(SendNotification::class);
-});
-
-test('a decision job for an author who is gone sends nothing', function () {
-    $post = approvalDecisionRequest($this)->first();
-    Cache::put('post-approval-decision:gone:approved:owner', [$post->id], now()->addDay());
-    $job = new SendApprovalDecisionEmail('post-approval-decision:gone:approved:owner', $this->requester, $this->owner, ApprovalDecision::Approved);
-
-    $this->requester->delete();
-
-    $queue = new SyncQueue;
-    $queue->setContainer(app());
-    $queue->push($job);
-
-    Queue::assertNotPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostApproved);
+        && $notification->mailable->postId === $post->id);
 });
 
 test('deciding your own post sends no decision email', function () {
@@ -124,45 +84,18 @@ test('deciding your own post sends no decision email', function () {
 
     RejectPost::execute($post, $this->owner);
 
-    Queue::assertNotPushed(SendApprovalDecisionEmail::class);
+    Queue::assertNotPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostRejected);
 });
 
-test('a decision job waits for the collector lock and sends later', function () {
-    Sleep::fake(syncWithCarbon: true);
+test('a decision email whose post was deleted is not sent', function () {
+    Mail::fake();
     $post = approvalDecisionRequest($this)->first();
-    $key = 'post-approval-decision:locked:approved:owner';
-    Cache::put($key, [$post->id], now()->addDay());
-    Cache::lock("{$key}:lock", 10)->acquire();
+    $notification = new SendNotification($this->requester, Type::Collaboration, new PostApproved($post->id, $this->owner, $this->requester));
 
-    $job = (new SendApprovalDecisionEmail($key, $this->requester, $this->owner, ApprovalDecision::Approved))->withFakeQueueInteractions();
-    $job->handle();
-
-    $job->assertReleased();
-    expect(Cache::get($key))->toBe([$post->id]);
-    Queue::assertNotPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostApproved);
-});
-
-test('a decision job whose posts are all gone sends nothing', function () {
-    $post = approvalDecisionRequest($this)->first();
-    Cache::put('post-approval-decision:deleted:approved:owner', [$post->id], now()->addDay());
     $post->delete();
+    $notification->handle();
 
-    (new SendApprovalDecisionEmail('post-approval-decision:deleted:approved:owner', $this->requester, $this->owner, ApprovalDecision::Approved))->handle();
-
-    Queue::assertNotPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostApproved);
-});
-
-test('approving still succeeds when the decision collector is busy', function () {
-    Sleep::fake(syncWithCarbon: true);
-    Exceptions::fake();
-    $post = approvalDecisionRequest($this)->first();
-    $group = $post->post_group_id ?? $post->id;
-    Cache::lock("post-approval-decision:{$group}:approved:{$this->owner->id}:{$this->requester->id}:lock", 10)->acquire();
-
-    ApprovePost::execute($post, $this->owner);
-
-    expect($post->refresh()->status)->toBe(PostStatus::Scheduled);
-    Exceptions::assertReported(LockTimeoutException::class);
+    Mail::assertNothingSent();
 });
 
 /**
@@ -190,12 +123,6 @@ test('approving a post someone else edited emails the member who asked, not the 
 
     ApprovePost::execute($post, $this->owner);
 
-    $job = Queue::pushed(SendApprovalDecisionEmail::class)->sole();
-
-    expect($job->requester->is($this->requester))->toBeTrue();
-
-    $job->handle();
-
     Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostApproved
         && $notification->user->is($this->requester));
 });
@@ -205,10 +132,8 @@ test('rejecting a post someone else edited emails the member who asked, not the 
 
     RejectPost::execute($post, workspaceMember($this->workspace, 'admin'));
 
-    $job = Queue::pushed(SendApprovalDecisionEmail::class)->sole();
-
-    expect($job->requester->is($this->requester))->toBeTrue()
-        ->and($job->decision)->toBe(ApprovalDecision::Rejected);
+    Queue::assertPushed(SendNotification::class, fn (SendNotification $notification): bool => $notification->mailable instanceof PostRejected
+        && $notification->user->is($this->requester));
 });
 
 test('rejecting a post another approver already approved fails and sends no email', function () {
@@ -222,7 +147,7 @@ test('rejecting a post another approver already approved fails and sends no emai
         ->toThrow(ValidationException::class, __('posts.approvals.errors.not_pending'));
 
     expect($post->refresh()->status)->toBe(PostStatus::Scheduled);
-    Queue::assertNotPushed(SendApprovalDecisionEmail::class);
+    Queue::assertNotPushed(SendNotification::class);
 });
 
 test('saving a pending post in the composer after it was rejected fails and sends no approval', function () {
@@ -236,5 +161,5 @@ test('saving a pending post in the composer after it was rejected fails and send
         ->toThrow(ValidationException::class, __('posts.approvals.errors.not_pending'));
 
     expect($post->refresh()->status)->toBe(PostStatus::Draft);
-    Queue::assertNotPushed(SendApprovalDecisionEmail::class);
+    Queue::assertNotPushed(SendNotification::class);
 });

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Dto\RemoteFile;
 use App\Enums\Analytics\PublicationContentType;
-use App\Enums\PostPlatform\ContentType;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Media\ImportRemoteMedia;
@@ -12,7 +11,6 @@ use App\Jobs\Post\ImportExternalPostMedia;
 use App\Models\AnalyticsPublication;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Post\ExternalMedia\ExternalMediaResolver;
 use App\Services\Post\ExternalMedia\ExternalMediaResolverFactory;
@@ -38,19 +36,12 @@ beforeEach(function () {
 
 function importedPostWithPublication(SocialAccount $account, array $publication = []): Post
 {
-    $post = Post::factory()->imported()->create(['workspace_id' => $account->workspace_id]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => ContentType::defaultFor($account->platform),
-        'platform_post_id' => 'remote-1',
-    ]);
+    $post = Post::factory()->forAccount($account)->imported()->create(['platform_post_id' => 'remote-1']);
     AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => $account->platform,
         'network' => $account->platform->network(),
         'remote_id' => 'remote-1',
@@ -283,7 +274,7 @@ test('a post whose account is gone uses the cover without asking the network', f
     Http::fake(['https://cdn.example.test/cover.png' => Http::response($this->png)]);
     $resolver = bindExternalFiles([]);
     $post = importedPostWithPublication($this->account);
-    $post->postPlatforms()->update(['social_account_id' => null]);
+    Post::query()->whereKey($post->id)->update(['social_account_id' => null]);
 
     runExternalMediaJob($post);
 
@@ -351,7 +342,7 @@ test('the limiter middleware and its key read the post platform once per attempt
     $job = new ImportExternalPostMedia($post->id);
     $reads = 0;
     DB::listen(function ($query) use (&$reads): void {
-        $reads += str_contains($query->sql, 'post_platforms') ? 1 : 0;
+        $reads += str_contains($query->sql, 'posts') ? 1 : 0;
     });
 
     $job->middleware();

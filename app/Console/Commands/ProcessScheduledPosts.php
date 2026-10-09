@@ -8,7 +8,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\Social\LimitRetryPolicy;
 use Illuminate\Console\Command;
 use Throwable;
@@ -41,26 +40,26 @@ class ProcessScheduledPosts extends Command
     }
 
     /**
-     * Targets a network refused for a limit wait in the database, not in a
+     * Posts a network refused for a limit wait in the database, not in a
      * delayed job, so a worker restart never loses them. Clearing retry_at
-     * claims the target, so each retry is dispatched once.
+     * claims the post, so each retry is dispatched once.
      */
     private function dispatchDueLimitRetries(): void
     {
-        PostPlatform::query()
-            ->enabled()
+        Post::query()
             ->dueForLimitRetry()
-            ->each(function (PostPlatform $postPlatform): void {
+            ->each(function (Post $post): void {
                 try {
-                    $claimed = PostPlatform::query()
-                        ->whereKey($postPlatform->id)
+                    $claimed = Post::query()
+                        ->whereKey($post->id)
                         ->dueForLimitRetry()
-                        ->update(['retry_at' => null]);
+                        ->toBase()
+                        ->update(['retry_at' => null, 'publication_updated_at' => now()]);
 
                     if ($claimed) {
                         PublishToSocialPlatform::dispatch(
-                            $postPlatform,
-                            LimitRetryPolicy::UNIQUE_ATTEMPT_OFFSET + LimitRetryPolicy::retriesSoFar($postPlatform->error_context),
+                            $post,
+                            LimitRetryPolicy::UNIQUE_ATTEMPT_OFFSET + LimitRetryPolicy::retriesSoFar($post->error_context),
                         );
                     }
                 } catch (Throwable $exception) {

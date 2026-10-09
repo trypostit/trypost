@@ -86,7 +86,8 @@ Posts publish natively through each platform's official API.
 
 Self-hosting media maintenance:
 
-- `php artisan release:trypost-2 --force` runs the one-off data steps of the 2.0 release once, after `php artisan migrate`: it splits multi-channel posts, purges posts of channels disconnected earlier, copies the old media library onto the posts and ideas that use it (then deletes the library) and queues the analytics backfill. Run it with a queue worker running. The individual commands live in `app/Console/Commands/Scripts/`.
+- Upgrading from v1.x: upgrade to v2.0.0 first and run `php artisan release:trypost-2 --force` there (with a queue worker running). Later versions merge each post's channel into the post and no longer ship that command; their first migration stops and explains what is left if you skip v2.0.0.
+- Before upgrading past v2.0.0, stop the scheduler and let every queue drain (including delayed jobs), so no job queued by the old version is left for the new one.
 - `php artisan media:prune-uploads` deletes unused uploads older than `MEDIA_UPLOAD_RETENTION_HOURS` (24 by default) and stale publish crops. The scheduler runs it hourly.
 - `php artisan posts:prune-history` deletes published posts, and their media, older than `POST_HISTORY_RETENTION_DAYS` (730 by default). The scheduler runs it daily; analytics are kept.
 

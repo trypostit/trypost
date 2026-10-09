@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Bir gönderi yayın için zamanlandığında.',
         'post_unscheduled' => 'Zamanlanmış bir gönderi taslaklara döndüğünde.',
         'post_published' => 'Bir gönderi bir kanalda yayınlandığında.',
-        'post_partially_published' => 'Bazı kanallar yayınlayıp diğerleri başarısız olduğunda.',
         'post_failed' => 'Bir gönderi yayınlanamadığında.',
         'post_deleted' => 'Bir gönderi silindiğinde.',
     ],

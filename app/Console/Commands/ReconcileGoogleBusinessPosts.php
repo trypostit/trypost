@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
-use App\Enums\PostPlatform\Status;
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\ReconcileGoogleBusinessPost;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use Illuminate\Console\Command;
 
 class ReconcileGoogleBusinessPosts extends Command
@@ -17,24 +17,23 @@ class ReconcileGoogleBusinessPosts extends Command
     protected $description = 'Settle Google Business Profile posts still awaiting review';
 
     /**
-     * Google clears review in minutes, so a target checked moments ago has
+     * Google clears review in minutes, so a post checked moments ago has
      * nothing new to say. Keeps a five-minute schedule from re-polling every
-     * pending target on every tick.
+     * pending post on every tick.
      */
     private const RECHECK_AFTER_MINUTES = 5;
 
     public function handle(): int
     {
-        PostPlatform::query()
-            ->enabled()
+        Post::query()
             ->where('platform', Platform::GoogleBusiness)
-            ->where('status', Status::PendingReview)
+            ->where('publish_status', PublishStatus::PendingReview)
             ->whereNotNull('platform_post_id')
             ->where(function ($query): void {
                 $query->whereNull('last_reconciled_at')
                     ->orWhere('last_reconciled_at', '<=', now()->subMinutes(self::RECHECK_AFTER_MINUTES));
             })
-            ->each(fn (PostPlatform $postPlatform) => ReconcileGoogleBusinessPost::dispatch($postPlatform));
+            ->each(fn (Post $post) => ReconcileGoogleBusinessPost::dispatch($post));
 
         return self::SUCCESS;
     }

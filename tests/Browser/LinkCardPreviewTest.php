@@ -10,7 +10,6 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -49,26 +48,17 @@ function seedLinkCardPreviewPost(
         'scopes' => $platform->requiredPublishScopes(),
     ]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, match ($platform) {
+        Platform::Facebook => ContentType::FacebookPost,
+        Platform::LinkedIn => ContentType::LinkedInPost,
+        Platform::Mastodon => ContentType::MastodonPost,
+        Platform::Bluesky => ContentType::BlueskyPost,
+        Platform::Threads => ContentType::ThreadsPost,
+        default => throw new LogicException('Unsupported link-card browser test platform.'),
+    })->create([
         'user_id' => $user->id,
         'content' => $content,
         'media' => $media,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $platform,
-        'enabled' => true,
-        'content_type' => match ($platform) {
-            Platform::Facebook => ContentType::FacebookPost,
-            Platform::LinkedIn => ContentType::LinkedInPost,
-            Platform::Mastodon => ContentType::MastodonPost,
-            Platform::Bluesky => ContentType::BlueskyPost,
-            Platform::Threads => ContentType::ThreadsPost,
-            default => throw new LogicException('Unsupported link-card browser test platform.'),
-        },
     ]);
 
     test()->actingAs($user);
@@ -292,7 +282,7 @@ test('the editor link card can be dropped and the post saves without it', functi
         ->click('@composer-save-draft')
         ->assertMissing('@post-composer-dialog');
 
-    expect($post->postPlatforms()->sole()->meta)->toEqual(['link_preview' => false]);
+    expect($post->fresh()->meta)->toEqual(['link_preview' => false]);
 })->with([
     'Facebook' => Platform::Facebook,
 ]);
@@ -395,5 +385,5 @@ test('a dropped link card comes back when the link changes', function () {
         ->click('@composer-save-draft')
         ->assertMissing('@post-composer-dialog');
 
-    expect(data_get($post->postPlatforms()->sole()->meta, 'link_preview'))->toBeNull();
+    expect(data_get($post->fresh()->meta, 'link_preview'))->toBeNull();
 });

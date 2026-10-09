@@ -132,6 +132,7 @@ const aiGenerated = computed({
             :video-duration-sec="videoDurationSec"
             :content-type="destination.content_type"
             :meta="destination.meta"
+            :platform-index="platformIndex"
             :disabled="disabled"
             @update:meta="update"
         />
@@ -150,6 +151,7 @@ const aiGenerated = computed({
             :boards="pinterestBoards?.boards ?? []"
             :boards-truncated="pinterestBoards?.truncated ?? false"
             :meta="destination.meta"
+            :platform-index="platformIndex"
             :disabled="disabled"
             @update:meta="update"
         />
@@ -175,6 +177,7 @@ const aiGenerated = computed({
             v-else-if="account.platform === Platform.Discord"
             :social-account="account"
             :meta="destination.meta"
+            :platform-index="platformIndex"
             :disabled="disabled"
             @update:meta="update"
         />

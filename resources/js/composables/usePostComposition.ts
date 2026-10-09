@@ -4,7 +4,11 @@ import { getContentTypeOptions } from '@/composables/usePlatformLogo';
 import { derivedContentTypeFor } from '@/lib/derivedContentType';
 import type { MediaItem } from '@/types/media';
 import { Platform } from '@/types/platform';
-import type { QueuePositionValue, ScheduleModeValue } from '@/types/post';
+import {
+    PostStatus,
+    type QueuePositionValue,
+    type ScheduleModeValue,
+} from '@/types/post';
 import type { PostingSchedule } from '@/types/posting-schedule';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
@@ -38,7 +42,10 @@ export interface PostComposition {
     scheduled_at: string | null;
     queue?: QueuePositionValue | null;
     queue_slot?: string;
-    status: 'draft' | 'scheduled' | 'publishing';
+    status:
+        | typeof PostStatus.Draft
+        | typeof PostStatus.Scheduled
+        | typeof PostStatus.Publishing;
     label_ids: string[];
     destinations: DestinationDraft[];
 }
@@ -353,8 +360,8 @@ export const usePostComposition = (
         content: content.value,
         media: [...media.value],
         scheduled_at:
-            status === 'scheduled' && !queue ? scheduledAt.value || null : null,
-        queue: status === 'scheduled' ? queue : null,
+            status === PostStatus.Scheduled && !queue ? scheduledAt.value || null : null,
+        queue: status === PostStatus.Scheduled ? queue : null,
         status,
         label_ids: [...labelIds.value],
         destinations: selectedAccounts.value.map((account) =>

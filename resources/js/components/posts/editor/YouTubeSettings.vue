@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 import { htmlToPlainText, toNullableText } from '@/lib/utils';
 import {
     getYouTubeDescriptionIssue,
@@ -52,7 +52,7 @@ const emit = defineEmits<{
     'update:meta': [value: Record<string, unknown>];
 }>();
 
-const errors = usePageErrors();
+const metaError = useMetaErrors(() => props.platformIndex);
 const descriptionId = computed(
     () => `youtube-description-${props.platformIndex}`,
 );
@@ -153,11 +153,7 @@ const labelFor = (
     options: readonly { value: string; labelKey: string }[],
     value: string,
 ): string => options.find((option) => option.value === value)?.labelKey ?? '';
-const titleError = computed(
-    () =>
-        errors.value[`destinations.${props.platformIndex}.meta.title`] ??
-        errors.value[`platforms.${props.platformIndex}.meta.title`],
-);
+const titleError = metaError('title');
 
 const description = computed({
     get: () => toNullableText(props.meta.description) ?? '',
@@ -167,11 +163,7 @@ const usedBytes = computed(() => youtubeDescriptionBytes(description.value));
 const descriptionIssueKey = computed(() =>
     getYouTubeDescriptionIssue(props.meta.description),
 );
-const descriptionServerError = computed(
-    () =>
-        errors.value[`destinations.${props.platformIndex}.meta.description`] ??
-        errors.value[`platforms.${props.platformIndex}.meta.description`],
-);
+const descriptionServerError = metaError('description');
 const hasDescriptionError = computed(
     () => !!descriptionIssueKey.value || !!descriptionServerError.value,
 );

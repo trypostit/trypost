@@ -8,28 +8,18 @@
       @{{ __('mail.post_approved.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
     </p>
 
-    @if(count($goesOutPerChannel) > 0)
+    @if($channel)
       <p class="m-0 mt-4 text-sm font-semibold text-foreground">
-        @{{ __('mail.post_approved.goes_out') }}
+        @{{ __('mail.post_approved.channel') }}
       </p>
-      @foreach($goesOutPerChannel as $goesOut)
-        <x-channel-list channels="$goesOut['channels']" />
-        <p class="m-0 mt-2 text-sm leading-6">
-          @{{ $goesOut['at'] ?? __('mail.post_approved.publishing_now') }}
-        </p>
-      @endforeach
-    @else
-      <p class="m-0 mt-4 text-sm font-semibold text-foreground">
-        @{{ __('mail.post_approved.channels') }}
-      </p>
-      <x-channel-list />
-      <p class="m-0 mt-4 text-sm font-semibold text-foreground">
-        @{{ __('mail.post_approved.goes_out') }}
-      </p>
-      <p class="m-0 mt-2 leading-6 text-sm">
-        @{{ $goesOutAt ?? __('mail.post_approved.publishing_now') }}
-      </p>
+      <x-channel-card />
     @endif
+    <p class="m-0 mt-4 text-sm font-semibold text-foreground">
+      @{{ __('mail.post_approved.goes_out') }}
+    </p>
+    <p class="m-0 mt-2 leading-6 text-sm">
+      @{{ $goesOutAt ?? __('mail.post_approved.publishing_now') }}
+    </p>
 
     <x-spacer height="24px" />
 

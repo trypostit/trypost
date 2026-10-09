@@ -11,28 +11,28 @@ use Illuminate\Support\Facades\Validator;
 
 test('custom meta messages only cover pinterest title and link', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
-        'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
-        'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
-        'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
-        'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
-        'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
+        'meta.link.url' => __('posts.form.pinterest.link_invalid'),
+        'meta.link.max' => __('posts.form.pinterest.link_max'),
+        'meta.title.max' => __('posts.form.pinterest.title_max'),
+        'meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
+        'meta.event.title.max' => __('posts.form.google_business.title_max'),
     ]);
 });
 
 test('custom meta attributes use translated field names', function () {
     expect(PostPlatformMetaRules::attributes())->toBe([
-        'platforms.*.meta.title' => __('posts.form.pinterest.title'),
-        'platforms.*.meta.description' => __('posts.form.youtube.description'),
-        'platforms.*.meta.link' => __('posts.form.pinterest.link'),
-        'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
-        'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+        'meta.title' => __('posts.form.pinterest.title'),
+        'meta.description' => __('posts.form.youtube.description'),
+        'meta.link' => __('posts.form.pinterest.link'),
+        'meta.event.title' => __('posts.form.google_business.event_title'),
+        'meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
     ]);
 });
 
 test('shared description validation rejects multibyte overflow', function () {
-    $validator = Validator::make(['platforms' => [['meta' => ['description' => str_repeat('é', 2501)]]]], PostPlatformMetaRules::rules());
+    $validator = Validator::make(['meta' => ['description' => str_repeat('é', 2501)]], PostPlatformMetaRules::rules());
     expect($validator->fails())->toBeTrue()
-        ->and($validator->errors()->has('platforms.0.meta.description'))->toBeTrue();
+        ->and($validator->errors()->has('meta.description'))->toBeTrue();
 });
 
 test('stored youtube description is checked without requiring it for other networks', function () {
@@ -45,13 +45,13 @@ test('stored youtube description is checked without requiring it for other netwo
 test('shared meta rules still include non-pinterest platform fields', function () {
     $rules = PostPlatformMetaRules::rules();
 
-    expect($rules)->not->toHaveKey('platforms.*.meta.aspect_ratio')
+    expect($rules)->not->toHaveKey('meta.aspect_ratio')
         ->and($rules)->toHaveKeys([
-            'platforms.*.meta.privacy_level',
-            'platforms.*.meta.board_id',
-            'platforms.*.meta.channel_id',
-            'platforms.*.meta.title',
-            'platforms.*.meta.link',
+            'meta.privacy_level',
+            'meta.board_id',
+            'meta.channel_id',
+            'meta.title',
+            'meta.link',
         ]);
 });
 
@@ -159,42 +159,42 @@ test('google business offer topic type with all event fields present has no viol
 test('google business meta rules validate topic_type and call_to_action shape', function () {
     $rules = PostPlatformMetaRules::rules();
 
-    expect($rules)->toHaveKey('platforms.*.meta.topic_type');
-    expect($rules)->toHaveKey('platforms.*.meta.call_to_action.action_type');
-    expect($rules)->toHaveKey('platforms.*.meta.call_to_action.url');
-    expect($rules)->toHaveKey('platforms.*.meta.event.title');
-    expect($rules)->toHaveKey('platforms.*.meta.offer.coupon_code');
+    expect($rules)->toHaveKey('meta.topic_type');
+    expect($rules)->toHaveKey('meta.call_to_action.action_type');
+    expect($rules)->toHaveKey('meta.call_to_action.url');
+    expect($rules)->toHaveKey('meta.event.title');
+    expect($rules)->toHaveKey('meta.offer.coupon_code');
 });
 
 test('google business event title is capped at the api length and coupon is not', function () {
     $rules = PostPlatformMetaRules::rules();
 
-    expect($rules['platforms.*.meta.event.title'])->toBe([
+    expect($rules['meta.event.title'])->toBe([
         'sometimes',
         'nullable',
         'string',
         'max:'.TopicType::TITLE_MAX_LENGTH,
     ])
-        ->and($rules['platforms.*.meta.offer.coupon_code'])->toBe(['sometimes', 'nullable', 'string']);
+        ->and($rules['meta.offer.coupon_code'])->toBe(['sometimes', 'nullable', 'string']);
 
     $tooLong = Validator::make(
-        ['platforms' => [['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)]]]]],
+        ['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH + 1)]]],
         PostPlatformMetaRules::rules(),
         PostPlatformMetaRules::messages(),
     );
     $atLimit = Validator::make(
-        ['platforms' => [['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH)]]]]],
+        ['meta' => ['event' => ['title' => str_repeat('t', TopicType::TITLE_MAX_LENGTH)]]],
         PostPlatformMetaRules::rules(),
         PostPlatformMetaRules::messages(),
     );
     $longCoupon = Validator::make(
-        ['platforms' => [['meta' => ['offer' => ['coupon_code' => str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20)]]]]],
+        ['meta' => ['offer' => ['coupon_code' => str_repeat('C', TopicType::TITLE_MAX_LENGTH + 20)]]],
         PostPlatformMetaRules::rules(),
         PostPlatformMetaRules::messages(),
     );
 
     expect($tooLong->fails())->toBeTrue()
-        ->and($tooLong->errors()->first('platforms.0.meta.event.title'))->toBe(__('posts.form.google_business.title_max'))
+        ->and($tooLong->errors()->first('meta.event.title'))->toBe(__('posts.form.google_business.title_max'))
         ->and($atLimit->fails())->toBeFalse()
         ->and($longCoupon->fails())->toBeFalse();
 });
@@ -202,17 +202,17 @@ test('google business event title is capped at the api length and coupon is not'
 test('google business call_to_action.url rule is unconditional, not required_unless', function () {
     $rules = PostPlatformMetaRules::rules();
 
-    expect($rules['platforms.*.meta.call_to_action.url'])->toBe(['sometimes', 'nullable', 'url:http,https', 'max:2048']);
+    expect($rules['meta.call_to_action.url'])->toBe(['sometimes', 'nullable', 'url:http,https', 'max:2048']);
 });
 
 test('google business call_to_action action types reject get offer', function () {
     $validator = Validator::make(
-        ['platforms' => [['meta' => ['call_to_action' => ['action_type' => 'GET_OFFER']]]]],
+        ['meta' => ['call_to_action' => ['action_type' => 'GET_OFFER']]],
         PostPlatformMetaRules::rules(),
     );
 
     expect($validator->fails())->toBeTrue()
-        ->and($validator->errors()->has('platforms.0.meta.call_to_action.action_type'))->toBeTrue();
+        ->and($validator->errors()->has('meta.call_to_action.action_type'))->toBeTrue();
 });
 
 test('google business same-day end time before start time is a required-meta violation', function () {
@@ -371,22 +371,22 @@ test('youtube title is checked only for youtube', function () {
 });
 
 test('youtube enum keys reject unknown values', function () {
-    $validator = Validator::make(['platforms' => [['meta' => [
+    $validator = Validator::make(['meta' => [
         'privacy_status' => 'friends',
         'license' => 'mine',
         'category_id' => 'music',
-    ]]]], PostPlatformMetaRules::rules());
+    ]], PostPlatformMetaRules::rules());
 
     expect($validator->errors()->keys())->toEqualCanonicalizing([
-        'platforms.0.meta.privacy_status',
-        'platforms.0.meta.license',
-        'platforms.0.meta.category_id',
+        'meta.privacy_status',
+        'meta.license',
+        'meta.category_id',
     ]);
 });
 
 test('youtube category accepts only the fixed category ids', function () {
     $validate = fn (string $categoryId): bool => Validator::make(
-        ['platforms' => [['meta' => ['category_id' => $categoryId]]]],
+        ['meta' => ['category_id' => $categoryId]],
         PostPlatformMetaRules::rules(),
     )->passes();
 
@@ -401,9 +401,9 @@ test('the meta documentation names every youtube key', function () {
 });
 
 test('youtube category accepts numeric ids', function () {
-    $validator = Validator::make(['platforms' => [['meta' => [
+    $validator = Validator::make(['meta' => [
         'category_id' => 27,
-    ]]]], PostPlatformMetaRules::rules());
+    ]], PostPlatformMetaRules::rules());
 
     expect($validator->passes())->toBeTrue()
         ->and(PostPlatformMetaRules::normalize(['category_id' => 27, 'title' => 'x']))->toBe(['category_id' => '27', 'title' => 'x'])

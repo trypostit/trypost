@@ -7,7 +7,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\DiscordPublishException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -31,19 +30,12 @@ beforeEach(function () {
         'platform_user_id' => '111222333', // guild id
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount, ContentType::DiscordMessage)->create([
         'user_id' => $this->user->id,
         'content' => 'Hello Discord',
     ]);
 
-    $this->makePostPlatform = fn (array $meta = ['channel_id' => '444555666']) => PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::Discord,
-        'content_type' => ContentType::DiscordMessage,
-        'meta' => $meta,
-    ]);
+    $this->postWithMeta = fn (array $meta = ['channel_id' => '444555666']) => tap($this->post)->update(['meta' => $meta]);
 
     $this->publisher = new DiscordPublisher;
 });
@@ -66,7 +58,7 @@ function fakeDiscord(array $messageResponse = ['id' => '777'], int $status = 200
 test('publishes a text-only message and suppresses accidental pings', function () {
     fakeDiscord();
 
-    $result = $this->publisher->publish(($this->makePostPlatform)());
+    $result = $this->publisher->publish(($this->postWithMeta)());
 
     expect($result['id'])->toBe('777');
     expect($result['url'])->toBe('https://discord.com/channels/111222333/444555666/777');
@@ -86,7 +78,7 @@ test('publishes a text-only message and suppresses accidental pings', function (
 test('builds allowed_mentions from explicit mention chips only', function () {
     fakeDiscord();
 
-    $this->publisher->publish(($this->makePostPlatform)([
+    $this->publisher->publish(($this->postWithMeta)([
         'channel_id' => '444555666',
         'mentions' => [
             ['token' => '@everyone', 'label' => '@everyone'],
@@ -109,7 +101,7 @@ test('builds allowed_mentions from explicit mention chips only', function () {
 test('includes rich embeds with clamped color', function () {
     fakeDiscord(['id' => '888']);
 
-    $this->publisher->publish(($this->makePostPlatform)([
+    $this->publisher->publish(($this->postWithMeta)([
         'channel_id' => '444555666',
         'embeds' => [[
             'title' => 'Release v2',
@@ -154,7 +146,7 @@ test('uploads media as a multipart attachment', function () {
         config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '901'], 200),
     ]);
 
-    $result = $this->publisher->publish(($this->makePostPlatform)());
+    $result = $this->publisher->publish(($this->postWithMeta)());
 
     expect($result['id'])->toBe('901');
 
@@ -194,7 +186,7 @@ test('sets the attachment description from image alt text, capped at the platfor
         config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '902'], 200),
     ]);
 
-    $this->publisher->publish(($this->makePostPlatform)());
+    $this->publisher->publish(($this->postWithMeta)());
 
     $expectedAlt = mb_substr($longAlt, 0, Platform::Discord->altTextMaxLength());
 
@@ -233,7 +225,7 @@ test('omits the attachment description when the image has no alt text', function
         config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '903'], 200),
     ]);
 
-    $this->publisher->publish(($this->makePostPlatform)());
+    $this->publisher->publish(($this->postWithMeta)());
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/messages')) {
@@ -266,7 +258,7 @@ test('does not set a description on a non-image attachment even if it carries al
         config('trypost.platforms.discord.api').'/channels/*/messages' => Http::response(['id' => '904'], 200),
     ]);
 
-    $this->publisher->publish(($this->makePostPlatform)());
+    $this->publisher->publish(($this->postWithMeta)());
 
     Http::assertSent(function ($request) {
         if (! str_contains($request->url(), '/messages')) {
@@ -280,14 +272,14 @@ test('does not set a description on a non-image attachment even if it carries al
 });
 
 test('throws when no channel is selected', function () {
-    expect(fn () => $this->publisher->publish(($this->makePostPlatform)(meta: [])))
+    expect(fn () => $this->publisher->publish(($this->postWithMeta)(meta: [])))
         ->toThrow(DiscordPublishException::class);
 });
 
 test('throws when the channel is not part of the guild', function () {
     fakeDiscord();
 
-    expect(fn () => $this->publisher->publish(($this->makePostPlatform)(['channel_id' => '999999999'])))
+    expect(fn () => $this->publisher->publish(($this->postWithMeta)(['channel_id' => '999999999'])))
         ->toThrow(DiscordPublishException::class);
 });
 
@@ -299,14 +291,14 @@ test('retries (does not permanently fail) when the channel lookup is transiently
 
     // A 5xx on the channel guard must surface as PlatformUnavailableException so
     // the publish job reschedules — not a permanent "channel not in server" fail.
-    expect(fn () => $this->publisher->publish(($this->makePostPlatform)()))
+    expect(fn () => $this->publisher->publish(($this->postWithMeta)()))
         ->toThrow(PlatformUnavailableException::class);
 });
 
 test('maps a missing-permission error to a publish exception', function () {
     fakeDiscord(['code' => 50013, 'message' => 'Missing Permissions'], 403);
 
-    expect(fn () => $this->publisher->publish(($this->makePostPlatform)()))
+    expect(fn () => $this->publisher->publish(($this->postWithMeta)()))
         ->toThrow(DiscordPublishException::class);
 });
 
@@ -317,7 +309,7 @@ test('discord publisher keeps links intact', function () {
 
     fakeDiscord();
 
-    $this->publisher->publish(($this->makePostPlatform)());
+    $this->publisher->publish(($this->postWithMeta)());
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/messages')
         && data_get($request->data(), 'content') === 'New post: https://acme.com/blog');

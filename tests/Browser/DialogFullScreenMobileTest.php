@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 use App\Models\Workspace;
+use App\Models\WorkspaceLabel;
 
 function waitForDialogFullScreenTestId(mixed $page, string $testId): void
 {
@@ -131,5 +132,33 @@ test('on a phone an alert dialog fills the screen with its footer in view', func
         'overflow' => false,
     ]);
 
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on a phone a delete confirmation stays a centered card instead of filling the screen', function () {
+    $user = dialogFullScreenAdmin();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $user->current_workspace_id, 'name' => 'Phone label']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.labels.index'))->resize(390, 844);
+    waitForDialogFullScreenTestId($page, "label-menu-{$label->id}");
+    $page->click("@label-menu-{$label->id}");
+    waitForDialogFullScreenTestId($page, "delete-label-{$label->id}");
+    $page->click("@delete-label-{$label->id}");
+    waitForDialogFullScreenTestId($page, 'confirm-delete-modal');
+
+    $geometry = $page->script(<<<'JS'
+        (() => {
+            const box = document.querySelector('[data-testid="confirm-delete-modal"]').getBoundingClientRect();
+
+            return {
+                compact: box.height < window.innerHeight / 2,
+                inset: box.left > 0 && box.right < window.innerWidth,
+                centered: Math.abs((box.top + box.bottom) / 2 - window.innerHeight / 2) <= 2,
+            };
+        })()
+    JS);
+
+    expect($geometry)->toBe(['compact' => true, 'inset' => true, 'centered' => true]);
     $page->assertNoJavaScriptErrors();
 });

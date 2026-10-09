@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { IconCheck, IconDotsVertical, IconFilter2 } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import CalendarStatusFilter from '@/components/publish/CalendarStatusFilter.vue';
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
@@ -23,8 +24,9 @@ const props = withDefaults(
         timezones: TimezoneOption[];
         showSlots?: boolean | null;
         manageSlotsHref?: string | null;
+        compact?: boolean | null;
     }>(),
-    { showSlots: null, manageSlotsHref: null },
+    { showSlots: null, manageSlotsHref: null, compact: null },
 );
 
 const timezone = defineModel<string>('timezone', { required: true });
@@ -34,7 +36,8 @@ const emit = defineEmits<{
     'update:showSlots': [value: boolean];
 }>();
 
-const compact = useBelowBreakpoint('md');
+const belowMd = useBelowBreakpoint('md');
+const isCompact = computed(() => props.compact ?? belowMd.value);
 
 const hasSlotOptions = (): boolean =>
     props.showSlots !== null || props.manageSlotsHref !== null;
@@ -53,7 +56,7 @@ const rowClass =
 
 <template>
     <ResponsivePopover
-        v-if="compact"
+        v-if="isCompact"
         :title="$t('posts.table.actions')"
         :test-id="`${testId}-menu-content`"
         content-class="w-72 p-2"

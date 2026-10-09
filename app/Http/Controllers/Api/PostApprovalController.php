@@ -17,7 +17,7 @@ class PostApprovalController extends Controller
     {
         /** @var Post $approved */
         $approved = data_get(ApprovePost::execute($post, $request->user(), $request->validated()), 'post');
-        $approved->load(['postPlatforms.socialAccount', 'labels']);
+        $approved->load(['socialAccount', 'labels']);
 
         return new PostResource($approved);
     }
@@ -27,7 +27,7 @@ class PostApprovalController extends Controller
         $this->authorize('approve', $post);
 
         $rejected = RejectPost::execute($post, $request->user());
-        $rejected->load(['postPlatforms.socialAccount', 'labels']);
+        $rejected->load(['socialAccount', 'labels']);
 
         return new PostResource($rejected);
     }

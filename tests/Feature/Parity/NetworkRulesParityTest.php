@@ -11,7 +11,6 @@ use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Facades\Queue;
@@ -107,12 +106,12 @@ function netParityAccepted(array $apiPayload, ?array $mcpPayload = null): array
     netParityApi()->postJson(route('api.posts.batch.store'), $apiPayload)->assertCreated();
     TryPostServer::actingAs(test()->user)->tool(CreatePostsTool::class, $mcpPayload ?? $apiPayload)->assertOk();
 
-    $posts = Post::query()->with('postPlatforms')->where('workspace_id', test()->workspace->id)->whereNotIn('id', $existing)->oldest()->get()->values();
+    $posts = Post::query()->where('workspace_id', test()->workspace->id)->whereNotIn('id', $existing)->oldest()->get()->values();
 
     expect($posts)->toHaveCount(2)
         ->and($posts[0]->status)->toBe($posts[1]->status)
-        ->and($posts[0]->postPlatforms->pluck('content_type'))->toEqual($posts[1]->postPlatforms->pluck('content_type'))
-        ->and($posts[0]->postPlatforms->pluck('meta')->all())->toEqual($posts[1]->postPlatforms->pluck('meta')->all());
+        ->and($posts[0]->content_type)->toBe($posts[1]->content_type)
+        ->and($posts[0]->meta)->toEqual($posts[1]->meta);
 
     return [$posts[0], $posts[1]];
 }
@@ -125,7 +124,7 @@ test('a scheduled pinterest pin without a board is refused by api and mcp and ac
 
     [$api] = netParityAccepted($payload(['board_id' => 'board-1']), $payload(['board_id' => 'board-1']));
 
-    expect($api->postPlatforms->first()->meta['board_id'])->toBe('board-1');
+    expect($api->meta['board_id'])->toBe('board-1');
 });
 
 test('a scheduled discord message without a channel is refused by api and mcp and accepted with one', function () {
@@ -136,7 +135,7 @@ test('a scheduled discord message without a channel is refused by api and mcp an
 
     [$api] = netParityAccepted($payload(['channel_id' => '123']), $payload(['channel_id' => '123']));
 
-    expect($api->postPlatforms->first()->meta['channel_id'])->toBe('123');
+    expect($api->meta['channel_id'])->toBe('123');
 });
 
 test('tiktok privacy level is required to schedule and is refused with an unknown value by api and mcp', function () {
@@ -165,7 +164,7 @@ test('tiktok flags and auto music are stored the same way through api and mcp', 
 
     [$api] = netParityAccepted($payload(), $payload());
 
-    expect($api->postPlatforms->first()->meta)->toEqual($meta);
+    expect($api->meta)->toEqual($meta);
 });
 
 test('tiktok photos need the photo content type and a video the video one, in api and mcp alike', function () {
@@ -203,21 +202,20 @@ test('tiktok photo carousels reject mixed media and more than 35 photos through 
         netParityPayload($account, ContentType::TikTokPhoto, ['media' => $photos(35)], $meta),
     );
 
-    expect($api->postPlatforms->first()->content_type)->toBe(ContentType::TikTokPhoto);
+    expect($api->content_type)->toBe(ContentType::TikTokPhoto);
 });
 
 test('a destination without content_type gets the type the web composer would send, on every api and mcp create path', function (Platform $platform, Closure $media, ContentType $composer) {
     $account = netParityAccount($platform);
-    $items = $media();
-    $batch = ['status' => 'draft', 'content' => 'Derived', 'media' => $items, 'destinations' => [['social_account_id' => $account->id]]];
-    $single = ['status' => 'draft', 'content' => 'Derived', 'media' => $items, 'platforms' => [['social_account_id' => $account->id]]];
+    $batch = fn (): array => ['status' => 'draft', 'content' => 'Derived', 'media' => $media(), 'destinations' => [['social_account_id' => $account->id]]];
+    $single = fn (): array => ['status' => 'draft', 'content' => 'Derived', 'media' => $media(), 'social_account_id' => $account->id];
 
-    netParityApi()->postJson(route('api.posts.batch.store'), $batch)->assertCreated();
-    netParityApi()->postJson(route('api.posts.store'), $single)->assertCreated();
-    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, $batch)->assertOk();
-    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $single)->assertOk();
+    netParityApi()->postJson(route('api.posts.batch.store'), $batch())->assertCreated();
+    netParityApi()->postJson(route('api.posts.store'), $single())->assertCreated();
+    TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, $batch())->assertOk();
+    TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $single())->assertOk();
 
-    $types = PostPlatform::query()->where('social_account_id', $account->id)->pluck('content_type');
+    $types = Post::query()->where('social_account_id', $account->id)->pluck('content_type');
 
     expect($types)->toHaveCount(4)
         ->and($types->unique()->all())->toBe([$composer]);
@@ -259,8 +257,8 @@ test('a scheduled tiktok post without content_type is validated as the type its 
 
     [$api, $mcp] = netParityAccepted($payload($photos(2)), $payload($photos(2)));
 
-    expect($api->postPlatforms->first()->content_type)->toBe(ContentType::TikTokPhoto)
-        ->and($mcp->postPlatforms->first()->content_type)->toBe(ContentType::TikTokPhoto);
+    expect($api->content_type)->toBe(ContentType::TikTokPhoto)
+        ->and($mcp->content_type)->toBe(ContentType::TikTokPhoto);
 });
 
 test('an explicit content_type that does not match the media is still refused with the media message by api and mcp', function () {
@@ -278,11 +276,13 @@ test('an explicit content_type that does not match the media is still refused wi
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [netParityImage()],
-        'platforms' => [['social_account_id' => $tiktok->id, 'content_type' => ContentType::TikTokVideo->value, 'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE']]],
+        'social_account_id' => $tiktok->id,
+        'content_type' => ContentType::TikTokVideo->value,
+        'meta' => ['privacy_level' => 'PUBLIC_TO_EVERYONE'],
     ];
 
     netParityApi()->postJson(route('api.posts.store'), $payload)
-        ->assertUnprocessable()->assertJsonValidationErrors(['destinations.0.content_type' => __('posts.form.warnings.no_image_allowed')]);
+        ->assertUnprocessable()->assertJsonValidationErrors(['content_type' => __('posts.form.warnings.no_image_allowed')]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $payload)->assertHasErrors([__('posts.form.warnings.no_image_allowed')]);
 
     expect(netParityPostCount())->toBe(0);
@@ -290,11 +290,8 @@ test('an explicit content_type that does not match the media is still refused wi
 
 test('new media without content_type re-decides a tiktok or pinterest post type on update through api and mcp, other networks keep theirs', function (Platform $platform, ContentType $stored, ContentType $expected, array $meta) {
     $account = netParityAccount($platform);
-    $posts = collect(['api', 'mcp'])->mapWithKeys(function (string $surface) use ($account, $platform, $stored, $meta): array {
-        $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-        PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => $platform, 'content_type' => $stored, 'meta' => $meta]);
-
-        return [$surface => $post];
+    $posts = collect(['api', 'mcp'])->mapWithKeys(function (string $surface) use ($account, $stored, $meta): array {
+        return [$surface => Post::factory()->forAccount($account, $stored)->draft()->create(['user_id' => $this->user->id, 'meta' => $meta])];
     });
     $update = fn () => [
         'status' => 'scheduled',
@@ -306,8 +303,8 @@ test('new media without content_type re-decides a tiktok or pinterest post type 
     netParityApi()->putJson(route('api.posts.update', $posts['api']), $update())->assertOk();
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $posts['mcp']->id, ...$update()])->assertOk();
 
-    expect($posts['api']->refresh()->postPlatforms->first()->content_type)->toBe($expected)
-        ->and($posts['mcp']->refresh()->postPlatforms->first()->content_type)->toBe($expected);
+    expect($posts['api']->refresh()->content_type)->toBe($expected)
+        ->and($posts['mcp']->refresh()->content_type)->toBe($expected);
 })->with([
     'tiktok photo to video' => [Platform::TikTok, ContentType::TikTokPhoto, ContentType::TikTokVideo, ['privacy_level' => 'PUBLIC_TO_EVERYONE']],
     'pinterest pin to video pin' => [Platform::Pinterest, ContentType::PinterestPin, ContentType::PinterestVideoPin, ['board_id' => 'board-1']],
@@ -322,7 +319,7 @@ test('scheduling a youtube short with no text and no title is refused by api and
 
     [$api] = netParityAccepted($payload(['title' => 'A title']), $payload(['title' => 'A title']));
 
-    expect($api->postPlatforms->first()->meta['title'])->toBe('A title');
+    expect($api->meta['title'])->toBe('A title');
 });
 
 test('a youtube title with angle brackets is refused even as a draft by api and mcp', function () {
@@ -336,11 +333,11 @@ test('a youtube title with angle brackets is refused on the single create path b
     $account = netParityAccount(Platform::YouTube);
     $payload = [
         'content' => 'Text',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['title' => 'Bad <title>']]],
+        'social_account_id' => $account->id, 'content_type' => ContentType::YouTubeShort->value, 'meta' => ['title' => 'Bad <title>'],
     ];
 
     netParityApi()->postJson(route('api.posts.store'), $payload)
-        ->assertUnprocessable()->assertJsonValidationErrors(['destinations.0.meta.title']);
+        ->assertUnprocessable()->assertJsonValidationErrors(['meta.title' => __('posts.form.youtube.title_invalid')]);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $payload)->assertHasErrors([__('posts.form.youtube.title_invalid')]);
 
     expect(netParityPostCount())->toBe(0);
@@ -414,7 +411,7 @@ test('facebook and instagram stories accept a photo through api and mcp', functi
 
     [$api] = netParityAccepted($payload(), $payload());
 
-    expect($api->postPlatforms->first()->content_type)->toBe($type);
+    expect($api->content_type)->toBe($type);
 })->with([
     'facebook' => [Platform::Facebook, ContentType::FacebookStory],
     'instagram' => [Platform::Instagram, ContentType::InstagramStory],
@@ -470,7 +467,7 @@ test('the mastodon content warning counts toward the 500 character limit through
 
     [$api] = netParityAccepted($payload(), $payload());
 
-    expect($api->postPlatforms->first()->meta['spoiler_text'])->toBe('cw');
+    expect($api->meta['spoiler_text'])->toBe('cw');
 });
 
 test('google business event and offer posts need a title and dates, and a url action needs a url, in api and mcp alike', function () {
@@ -506,7 +503,7 @@ test('a google business event is stored the same way through api and mcp', funct
 
     [$api] = netParityAccepted($payload(), $payload());
 
-    expect($api->postPlatforms->first()->meta['event']['title'])->toBe('Launch');
+    expect($api->meta['event']['title'])->toBe('Launch');
 });
 
 test('a linkedin document post stores its title the same way and refuses one over 300 characters through api and mcp', function () {
@@ -517,7 +514,7 @@ test('a linkedin document post stores its title the same way and refuses one ove
 
     [$api] = netParityAccepted($payload('Deck'), $payload('Deck'));
 
-    expect($api->postPlatforms->first()->meta['document_title'])->toBe('Deck');
+    expect($api->meta['document_title'])->toBe('Deck');
 });
 
 test('a threads topic tag is normalised and validated the same way through api and mcp', function () {
@@ -528,7 +525,7 @@ test('a threads topic tag is normalised and validated the same way through api a
 
     [$api] = netParityAccepted($payload('#ideas'), $payload('#ideas'));
 
-    expect($api->postPlatforms->first()->meta['topic_tag'])->toBe('ideas');
+    expect($api->meta['topic_tag'])->toBe('ideas');
 });
 
 test('link preview false is stored the same way and a non boolean is refused through api and mcp', function () {
@@ -539,7 +536,7 @@ test('link preview false is stored the same way and a non boolean is refused thr
 
     [$api] = netParityAccepted($payload(false), $payload(false));
 
-    expect($api->postPlatforms->first()->meta['link_preview'])->toBeFalse();
+    expect($api->meta['link_preview'])->toBeFalse();
 });
 
 test('meta aspect_ratio is dropped on the single create path by api and mcp', function () {
@@ -547,13 +544,13 @@ test('meta aspect_ratio is dropped on the single create path by api and mcp', fu
     $payload = fn () => [
         'content' => 'Ratio',
         'media' => [netParityImage()],
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => ['aspect_ratio' => '1:1', 'share_to_feed' => true]]],
+        'social_account_id' => $account->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => ['aspect_ratio' => '1:1', 'share_to_feed' => true],
     ];
 
     netParityApi()->postJson(route('api.posts.store'), $payload())->assertCreated();
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $payload())->assertOk();
 
-    $metas = PostPlatform::query()->where('social_account_id', $account->id)->get()->pluck('meta');
+    $metas = Post::query()->where('social_account_id', $account->id)->get()->pluck('meta');
 
     expect($metas)->toHaveCount(2)
         ->and($metas[0])->not->toHaveKey('aspect_ratio')
@@ -567,49 +564,47 @@ test('meta aspect_ratio is stripped on the batch create path by api and mcp alik
 
     [$api, $mcp] = netParityAccepted($payload(), $payload());
 
-    expect($api->postPlatforms->first()->meta)->not->toHaveKey('aspect_ratio')
-        ->and($mcp->postPlatforms->first()->meta)->not->toHaveKey('aspect_ratio')
-        ->and($api->postPlatforms->first()->meta['share_to_feed'])->toBeFalse()
-        ->and($mcp->postPlatforms->first()->meta['share_to_feed'])->toBeFalse();
+    expect($api->meta)->not->toHaveKey('aspect_ratio')
+        ->and($mcp->meta)->not->toHaveKey('aspect_ratio')
+        ->and($api->meta['share_to_feed'])->toBeFalse()
+        ->and($mcp->meta['share_to_feed'])->toBeFalse();
 });
 
 test('updating a draft with an invalid threads topic tag is refused by api and mcp', function () {
     $account = netParityAccount(Platform::Threads);
-    $apiPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $mcpPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $apiPlatform = PostPlatform::factory()->create(['post_id' => $apiPost->id, 'social_account_id' => $account->id, 'platform' => Platform::Threads, 'content_type' => ContentType::ThreadsPost]);
-    PostPlatform::factory()->create(['post_id' => $mcpPost->id, 'social_account_id' => $account->id, 'platform' => Platform::Threads, 'content_type' => ContentType::ThreadsPost]);
+    $apiPost = Post::factory()->forAccount($account, ContentType::ThreadsPost)->draft()->create(['user_id' => $this->user->id]);
+    $mcpPost = Post::factory()->forAccount($account, ContentType::ThreadsPost)->draft()->create(['user_id' => $this->user->id]);
 
     netParityApi()
-        ->putJson(route('api.posts.update', $apiPost), ['status' => 'draft', 'platforms' => [['id' => $apiPlatform->id, 'meta' => ['topic_tag' => 'bad.tag']]]])
-        ->assertUnprocessable()->assertJsonValidationErrors(['platforms.0.meta.topic_tag' => __('posts.form.threads.topic_invalid')]);
+        ->putJson(route('api.posts.update', $apiPost), ['status' => 'draft', 'meta' => ['topic_tag' => 'bad.tag']])
+        ->assertUnprocessable()->assertJsonValidationErrors(['meta.topic_tag' => __('posts.form.threads.topic_invalid')]);
 
     TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, ['post_id' => $mcpPost->id, 'meta' => ['topic_tag' => 'bad.tag']])
         ->assertHasErrors([__('posts.form.threads.topic_invalid')]);
 
-    expect($apiPost->refresh()->postPlatforms->first()->meta['topic_tag'] ?? null)->toBeNull()
-        ->and($mcpPost->refresh()->postPlatforms->first()->meta['topic_tag'] ?? null)->toBeNull()
+    expect($apiPost->refresh()->meta['topic_tag'] ?? null)->toBeNull()
+        ->and($mcpPost->refresh()->meta['topic_tag'] ?? null)->toBeNull()
         ->and($apiPost->status)->toBe(Status::Draft);
 });
 
 test('updating a draft with a non boolean link preview is refused with the same message by api and mcp', function () {
     $account = netParityAccount(Platform::Bluesky);
-    $apiPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $mcpPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $apiPlatform = PostPlatform::factory()->create(['post_id' => $apiPost->id, 'social_account_id' => $account->id, 'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost]);
-    PostPlatform::factory()->create(['post_id' => $mcpPost->id, 'social_account_id' => $account->id, 'platform' => Platform::Bluesky, 'content_type' => ContentType::BlueskyPost]);
-    $message = __('validation.boolean', ['attribute' => 'platforms.0.meta.link_preview']);
+    $apiPost = Post::factory()->forAccount($account, ContentType::BlueskyPost)->draft()->create(['user_id' => $this->user->id]);
+    $mcpPost = Post::factory()->forAccount($account, ContentType::BlueskyPost)->draft()->create(['user_id' => $this->user->id]);
 
-    netParityApi()
-        ->putJson(route('api.posts.update', $apiPost), ['status' => 'draft', 'platforms' => [['id' => $apiPlatform->id, 'meta' => ['link_preview' => 'false']]]])
-        ->assertUnprocessable()->assertJsonValidationErrors(['platforms.0.meta.link_preview' => $message]);
+    $message = netParityApi()
+        ->putJson(route('api.posts.update', $apiPost), ['status' => 'draft', 'meta' => ['link_preview' => 'false']])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['meta.link_preview'])
+        ->json('errors')['meta.link_preview'][0];
 
     TryPostServer::actingAs($this->user)
         ->tool(UpdatePostTool::class, ['post_id' => $mcpPost->id, 'meta' => ['link_preview' => 'false']])
         ->assertHasErrors([$message]);
 
-    expect($mcpPost->refresh()->postPlatforms->first()->meta['link_preview'] ?? null)->toBeNull();
+    expect($apiPost->refresh()->meta['link_preview'] ?? null)->toBeNull()
+        ->and($mcpPost->refresh()->meta['link_preview'] ?? null)->toBeNull();
 });
 
 test('onlyKnown keeps every key that has a meta rule and drops the rest', function () {
@@ -638,7 +633,7 @@ test('the single create path measures caption limits by status, not by a schedul
     $message = __('posts.form.content_exceeds_platform', ['platform' => Platform::X->label(), 'limit' => 280, 'over' => 1]);
     $payload = fn (array $overrides) => [
         'content' => str_repeat('a', 281),
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::XPost->value]],
+        'social_account_id' => $account->id, 'content_type' => ContentType::XPost->value,
         ...$overrides,
     ];
 

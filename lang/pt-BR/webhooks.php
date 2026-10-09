@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Quando um post é agendado para publicação.',
         'post_unscheduled' => 'Quando um post agendado volta para rascunhos.',
         'post_published' => 'Quando um post é publicado em um canal.',
-        'post_partially_published' => 'Quando alguns canais publicam e outros falham.',
         'post_failed' => 'Quando um post falha ao publicar.',
         'post_deleted' => 'Quando um post é excluído.',
     ],

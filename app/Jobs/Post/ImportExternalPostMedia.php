@@ -15,7 +15,6 @@ use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\AnalyticsPublication;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Media\RemoteMediaImporter;
@@ -117,7 +116,7 @@ class ImportExternalPostMedia implements ShouldBeUnique, ShouldQueue
 
     private function platform(): ?Platform
     {
-        return once(fn (): ?Platform => PostPlatform::query()->where('post_id', $this->postId)->value('platform'));
+        return once(fn (): ?Platform => Post::query()->find($this->postId, ['id', 'platform'])?->platform);
     }
 
     /**
@@ -127,10 +126,9 @@ class ImportExternalPostMedia implements ShouldBeUnique, ShouldQueue
     {
         $post = Post::query()
             ->imported()
-            ->with(['postPlatforms.socialAccount', 'postPlatforms.analyticsPublication'])
+            ->with(['socialAccount', 'analyticsPublication'])
             ->find($this->postId);
-        $target = $post?->postPlatforms->first();
-        $publication = $target?->analyticsPublication;
+        $publication = $post?->analyticsPublication;
 
         if ($post === null
             || $publication === null
@@ -139,7 +137,7 @@ class ImportExternalPostMedia implements ShouldBeUnique, ShouldQueue
             return [null, null, null];
         }
 
-        return [$post, $publication, $target->socialAccount];
+        return [$post, $publication, $post->socialAccount];
     }
 
     /**

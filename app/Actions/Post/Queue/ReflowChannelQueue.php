@@ -170,7 +170,7 @@ class ReflowChannelQueue
         $posts = $insert ? $queued->push($insert) : $queued;
 
         DB::transaction(function () use ($posts, $targets): void {
-            foreach ($posts as $post) {
+            foreach ($posts->sortBy('id', SORT_STRING) as $post) {
                 $slot = $targets[$post->id] ?? null;
 
                 if ($slot === null) {

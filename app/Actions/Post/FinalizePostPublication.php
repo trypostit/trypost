@@ -5,18 +5,18 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Enums\Notification\Type;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
-use App\Models\PostPlatform;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Settles a post once every enabled target has reached a terminal state, and
- * notifies the owner once. Shared by PublishToSocialPlatform, PublishPost::failed,
+ * Settles a post once its publication has reached a terminal state, and
+ * notifies the workspace once. Shared by PublishToSocialPlatform, PublishPost::failed,
  * RecoverStuckPosts, and ReconcileGoogleBusinessPost.
  */
 class FinalizePostPublication
@@ -26,7 +26,7 @@ class FinalizePostPublication
         /** @var array{post: Post, successful: bool}|null $outcome */
         $outcome = DB::transaction(function () use ($post): ?array {
             $post = Post::query()
-                ->with(['workspace.owner', 'postPlatforms.socialAccount'])
+                ->with(['workspace', 'socialAccount'])
                 ->whereKey($post->id)
                 ->lockForUpdate()
                 ->first();
@@ -35,32 +35,25 @@ class FinalizePostPublication
                 return null;
             }
 
-            $targets = $post->postPlatforms->where('enabled', true);
-
-            if ($targets->isEmpty()) {
+            if (! $post->hasChannel() && $post->publish_status->isInFlight()) {
                 if ($post->status !== PostStatus::Publishing) {
                     return null;
                 }
 
+                $post->markPublicationFailed(__('posts.errors.choose_channel'));
                 $post->markAsFailed();
 
                 return ['post' => $post, 'successful' => false];
             }
 
-            $finished = $targets->filter(fn (PostPlatform $target): bool => $target->status->isFinished());
-            $published = $finished->where('status', PostPlatformStatus::Published);
-            $failed = $finished->reject(fn (PostPlatform $target): bool => $target->status === PostPlatformStatus::Published);
-
-            if ($finished->count() < $targets->count()) {
+            if (! $post->publish_status->isFinished()) {
                 return null;
             }
 
-            $successful = $failed->isEmpty();
+            $successful = $post->publish_status === PublishStatus::Published;
 
             if ($successful) {
                 $post->markAsPublished();
-            } elseif ($published->isNotEmpty()) {
-                $post->markAsPartiallyPublished();
             } else {
                 $post->markAsFailed();
             }
@@ -77,18 +70,17 @@ class FinalizePostPublication
         $this->notify($outcome['post'], $outcome['successful']);
     }
 
+    /**
+     * Emails every member of the workspace (the owner is always one); each
+     * one's notification preferences decide whether it is sent.
+     */
     private function notify(Post $post, bool $successful): void
     {
-        $owner = $post->workspace->owner;
-
-        if (! $owner) {
-            return;
-        }
-
-        SendNotification::dispatch(
-            user: $owner,
-            type: $successful ? Type::PostPublished : Type::PostFailed,
-            mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
-        );
+        $post->workspace->members()->get()
+            ->each(fn (User $member) => SendNotification::dispatch(
+                user: $member,
+                type: $successful ? Type::PostPublished : Type::PostFailed,
+                mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
+            ));
     }
 }

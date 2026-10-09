@@ -29,6 +29,6 @@ class PostRecurrenceController extends Controller
 
     private function resource(Post $post): PostResource
     {
-        return new PostResource($post->fresh(['postPlatforms.socialAccount', 'labels']));
+        return new PostResource($post->fresh(['socialAccount', 'labels']));
     }
 }

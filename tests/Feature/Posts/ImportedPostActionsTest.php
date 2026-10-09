@@ -12,7 +12,6 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -73,7 +72,7 @@ test('duplicating an imported post creates a trypost draft with its text', funct
         ->and($copy->origin)->toBe(Origin::TryPost)
         ->and($copy->content)->toBe('Straight from the app')
         ->and($copy->user_id)->toBe($this->user->id)
-        ->and($copy->postPlatforms()->sole()->content_type)->toBe(ContentType::InstagramFeed);
+        ->and($copy->content_type)->toBe(ContentType::InstagramFeed);
 });
 
 test('a deleted imported post is never imported again', function () {
@@ -84,22 +83,19 @@ test('a deleted imported post is never imported again', function () {
     ImportExternalPosts::execute($this->account);
 
     expect($publication->fresh()->post_dismissed_at)->not->toBeNull()
-        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and($publication->fresh()->post_id)->toBeNull()
         ->and(Post::query()->imported()->count())->toBe(0);
 });
 
 test('a deleted trypost post is never imported back', function () {
-    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id]);
-    $target = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->account->id,
+    $post = Post::factory()->forAccount($this->account)->instagram()->published()->create([
         'platform_post_id' => 'ig-trypost',
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $this->workspace->id,
         'social_account_id' => $this->account->id,
         'social_account_key' => $this->account->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => $this->account->platform,
         'network' => $this->account->platform->network(),
         'remote_id' => 'ig-trypost',
@@ -109,7 +105,7 @@ test('a deleted trypost post is never imported back', function () {
     ImportExternalPosts::execute($this->account);
 
     expect($publication->fresh()->post_dismissed_at)->not->toBeNull()
-        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and($publication->fresh()->post_id)->toBeNull()
         ->and(Post::query()->count())->toBe(0);
 });
 

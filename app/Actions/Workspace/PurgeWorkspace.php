@@ -6,7 +6,7 @@ namespace App\Actions\Workspace;
 
 use App\Actions\Media\DeleteOwnedMedia;
 use App\Enums\SocialAccount\Platform;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 
@@ -18,11 +18,10 @@ class PurgeWorkspace
      */
     public static function execute(Workspace $workspace): void
     {
-        PostPlatform::query()
+        $workspace->posts()
             ->where('platform', Platform::GoogleBusiness)
-            ->whereIn('post_id', $workspace->posts()->select('id'))
-            ->pluck('id')
-            ->each(fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id));
+            ->select(['id'])
+            ->each(fn (Post $post) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($post));
 
         DeleteOwnedMedia::forWorkspace($workspace);
         $workspace->delete();

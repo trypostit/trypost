@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Mail\RecipientTime;
@@ -30,7 +30,7 @@ class PostAtRisk extends Mailable implements ShouldQueue
 
     /**
      * Only the workspace and the recipient (real Eloquent models, reduced to
-     * lightweight identifiers by SerializesModels), the post_platform IDs, and the count
+     * lightweight identifiers by SerializesModels), the post IDs, and the count
      * observed at dispatch time are carried on the queue payload. The rows
      * themselves are rehydrated in atRiskGroups() so the queued job's
      * serialized size stays small and the account/post details reflect
@@ -41,11 +41,11 @@ class PostAtRisk extends Mailable implements ShouldQueue
      * between dispatch and send, the subject may differ from the number of
      * rows actually listed in the body — an acceptable rare edge case.
      *
-     * @param  array<int, string>  $postPlatformIds
+     * @param  array<int, string>  $postIds
      */
     public function __construct(
         public Workspace $workspace,
-        public array $postPlatformIds,
+        public array $postIds,
         public int $count,
         ?User $recipient = null,
     ) {
@@ -81,7 +81,7 @@ class PostAtRisk extends Mailable implements ShouldQueue
     }
 
     /**
-     * @return Collection<int, array{account: mixed, postPlatforms: Collection<int, PostPlatform>, postCount: int, times: string}>
+     * @return Collection<int, array{account: mixed, posts: Collection<int, Post>, postCount: int, times: string}>
      */
     private function atRiskGroups(): Collection
     {
@@ -89,12 +89,12 @@ class PostAtRisk extends Mailable implements ShouldQueue
             return $this->atRiskGroups;
         }
 
-        $postPlatforms = PostPlatform::query()
-            ->with(['socialAccount', 'post'])
-            ->whereIn('id', $this->postPlatformIds)
+        $posts = Post::query()
+            ->with('socialAccount')
+            ->whereIn('id', $this->postIds)
             ->get();
 
-        return $this->atRiskGroups = $postPlatforms->groupBy('social_account_id')
+        return $this->atRiskGroups = $posts->groupBy('social_account_id')
             // The account can be null if it was hard-deleted between dispatch
             // and send — nothing meaningful to render for it (no platform, no
             // handle), so it's dropped rather than crashing the render.
@@ -102,10 +102,10 @@ class PostAtRisk extends Mailable implements ShouldQueue
             ->map(function (Collection $group) {
                 return [
                     'account' => $group->first()->socialAccount,
-                    'postPlatforms' => $group,
+                    'posts' => $group,
                     'postCount' => $group->count(),
-                    'times' => $group->sortBy(fn ($pp) => $pp->post->scheduled_at)
-                        ->map(fn ($pp) => RecipientTime::clock($pp->post->scheduled_at, $this->recipient()))
+                    'times' => $group->sortBy(fn (Post $post) => $post->scheduled_at)
+                        ->map(fn (Post $post) => RecipientTime::clock($post->scheduled_at, $this->recipient()))
                         ->implode(', '),
                 ];
             })->values();

@@ -26,8 +26,6 @@ const thumbnail = (draft: UndatedDraft): string | null =>
 
 const plainText = (draft: UndatedDraft): string =>
     htmlToPlainText(draft.content ?? '').trim();
-
-const target = (draft: UndatedDraft) => draft.post_platforms[0] ?? null;
 </script>
 
 <template>
@@ -95,17 +93,16 @@ const target = (draft: UndatedDraft) => draft.post_platforms[0] ?? null;
                     >
                         <div class="flex min-w-0 items-center gap-2">
                             <img
-                                v-if="target(draft)"
-                                :src="getPlatformLogo(target(draft)!.platform)"
-                                :alt="getPlatformLabel(target(draft)!.platform)"
+                                v-if="draft.platform"
+                                :src="getPlatformLogo(draft.platform)"
+                                :alt="getPlatformLabel(draft.platform)"
                                 class="size-4 shrink-0 rounded-sm"
                             />
                             <span
                                 class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
                             >
                                 {{
-                                    target(draft)?.social_account
-                                        ?.display_label ??
+                                    draft.social_account?.display_label ??
                                     $t('calendar.undated.no_channel')
                                 }}
                             </span>

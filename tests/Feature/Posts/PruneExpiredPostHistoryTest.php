@@ -9,7 +9,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
-use App\Models\PostPlatform;
 use App\Models\WorkspaceLabel;
 use App\Support\PostHistoryRetention;
 use Illuminate\Console\Scheduling\Schedule;
@@ -38,25 +37,23 @@ test('a post published past the retention is deleted with its media and keeps it
     Event::fake([PostDeleted::class]);
 
     $post = pruneHistoryPost();
-    $platform = PostPlatform::factory()->published()->create(['post_id' => $post->id]);
     $label = WorkspaceLabel::factory()->create(['workspace_id' => $post->workspace_id]);
     $post->labels()->attach($label->id);
     $note = PostNote::factory()->create(['post_id' => $post->id]);
     $medias = collect(range(1, 3))->map(fn () => pruneHistoryStoredMedia($post));
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $post->workspace_id,
-        'post_platform_id' => $platform->id,
+        'post_id' => $post->id,
     ]);
 
     $count = PruneExpiredPostHistory::execute(now()->subDays(730));
 
     expect($count)->toBe(1)
         ->and(Post::query()->find($post->id))->toBeNull()
-        ->and(PostPlatform::query()->find($platform->id))->toBeNull()
         ->and(PostNote::query()->find($note->id))->toBeNull()
         ->and(DB::table('post_workspace_label')->where('post_id', $post->id)->exists())->toBeFalse()
         ->and(Media::query()->where('post_id', $post->id)->exists())->toBeFalse()
-        ->and($publication->fresh()->post_platform_id)->toBeNull();
+        ->and($publication->fresh()->post_id)->toBeNull();
 
     $medias->each(fn (Media $media) => Storage::assertMissing($media->path));
     Event::assertNotDispatched(PostDeleted::class);
@@ -82,12 +79,12 @@ test('recent, unfinished and unrelated posts and media survive', function () {
     Storage::assertMissing($expiredFile->path);
 });
 
-test('a partially published post is pruned and a published post without a date is not', function () {
-    $partial = pruneHistoryPost(['status' => Status::PartiallyPublished]);
+test('a published post without a date is not pruned', function () {
+    $expired = pruneHistoryPost();
     $undated = Post::factory()->create(['status' => Status::Published, 'published_at' => null]);
 
     expect(PruneExpiredPostHistory::execute(now()->subDays(730)))->toBe(1)
-        ->and(Post::query()->find($partial->id))->toBeNull()
+        ->and(Post::query()->find($expired->id))->toBeNull()
         ->and(Post::query()->find($undated->id))->not->toBeNull();
 });
 

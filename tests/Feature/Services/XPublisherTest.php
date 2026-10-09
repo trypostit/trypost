@@ -7,7 +7,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\XPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Social\XPublisher;
@@ -23,12 +22,8 @@ beforeEach(function () {
         'access_token' => 'test-token',
         'token_expires_at' => now()->addDays(30),
     ]);
-    $this->post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'content' => 'Test tweet']);
-    $this->postPlatform = PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'content_type' => ContentType::XPost,
-    ]);
+    $this->post = Post::factory()->forAccount($this->socialAccount, ContentType::XPost)->create(['content' => 'Test tweet']);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 });
 
 test('x publisher publishes text only tweet', function () {
@@ -39,7 +34,7 @@ test('x publisher publishes text only tweet', function () {
     ]);
 
     $publisher = new XPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('tweet-123');
     expect($result['url'])->toBe('https://x.com/testuser/status/tweet-123');
@@ -55,7 +50,7 @@ test('x publisher throws token expired exception on 401', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -77,7 +72,7 @@ test('x publisher refreshes token when expired', function () {
     ]);
 
     $publisher = new XPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('tweet-123');
     $this->socialAccount->refresh();
@@ -92,7 +87,7 @@ test('x publisher throws exception when no refresh token', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'No refresh token available');
 });
 
@@ -106,7 +101,7 @@ test('x publisher throws exception on api error', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class);
 });
 
@@ -118,7 +113,7 @@ test('x publisher returns unknown id when no id in response', function () {
     ]);
 
     $publisher = new XPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('unknown');
     expect($result['url'])->toBeNull();
@@ -139,7 +134,7 @@ test('x publisher handles token refresh failure', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -162,7 +157,7 @@ test('x publisher does NOT rotate the token when it is only expiring soon but st
     ]);
 
     $publisher = new XPublisher;
-    $result = $publisher->publish($this->postPlatform);
+    $result = $publisher->publish($this->post);
 
     expect($result['id'])->toBe('tweet-123');
 
@@ -182,7 +177,7 @@ test('x publisher handles 403 error as generic error', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(XPublishException::class);
 });
 
@@ -193,6 +188,6 @@ test('x publisher handles empty error response', function () {
 
     $publisher = new XPublisher;
 
-    expect(fn () => $publisher->publish($this->postPlatform))
+    expect(fn () => $publisher->publish($this->post))
         ->toThrow(Exception::class);
 });

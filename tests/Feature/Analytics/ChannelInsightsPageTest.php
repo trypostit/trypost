@@ -11,7 +11,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -70,15 +69,10 @@ test('the insights page renders the channel report and its publications', functi
     $publication = channelInsightsPublication($this->instagram, '2026-09-20 10:00:00', ['reactions_count' => 8, 'comments_count' => 2], [
         'preview_metadata' => ['thumbnail_url' => 'https://cdn.example.com/a.jpg'],
     ]);
-    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $destination = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->instagram->id,
-        'platform' => Platform::Instagram,
-    ]);
+    $post = Post::factory()->forAccount($this->instagram)->published()->create(['user_id' => $this->user->id]);
     $insecure = channelInsightsPublication($this->instagram, '2026-09-19 10:00:00', ['reactions_count' => 3], [
         'preview_metadata' => ['thumbnail_url' => 'http://cdn.example.com/b.jpg'],
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
     ]);
 
     $this->actingAs($this->user)

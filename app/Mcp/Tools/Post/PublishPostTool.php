@@ -23,7 +23,7 @@ use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
 
 #[IsDestructive]
-#[Description('Publish a post now, schedule it at a custom time (scheduled_at) or put it in the channel queue (queue). Works on drafts and on scheduled posts. Use update-post-tool first to change its content, content_type or meta. It is validated like a scheduled post: text limits, required meta, the media rules of its content_type (see list-content-types-tool) and thread replies; a failure names the platform and field, and nothing is published. Posts that are publishing, published, partially_published or failed cannot be changed or deleted. When the acting member needs approval in this workspace, the post is stored with status pending_approval instead and waits for approve-post-tool. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
+#[Description('Publish a post now, schedule it at a custom time (scheduled_at) or put it in the channel queue (queue). Works on drafts and on scheduled posts. Use update-post-tool first to change its content, content_type or meta. It is validated like a scheduled post: text limits, required meta, the media rules of its content_type (see list-content-types-tool) and thread replies; a failure names the platform and field, and nothing is published. Posts that are publishing, published or failed cannot be changed or deleted. When the acting member needs approval in this workspace, the post is stored with status pending_approval instead and waits for approve-post-tool. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
 class PublishPostTool extends Tool
 {
     use AuthorizesMcpTool;
@@ -45,7 +45,7 @@ class PublishPostTool extends Tool
             return $denied;
         }
 
-        if (! $post->postPlatforms()->enabled()->exists()) {
+        if (! $post->hasChannel()) {
             return Response::error(__('posts.errors.no_social_account'));
         }
 
@@ -73,7 +73,7 @@ class PublishPostTool extends Tool
 
         /** @var Post $updated */
         $updated = data_get($result, 'post');
-        $updated->load(['postPlatforms.socialAccount', 'labels']);
+        $updated->load(['socialAccount', 'labels']);
 
         return Response::structured((new PostResource($updated))->resolve());
     }

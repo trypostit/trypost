@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Post;
 
+use App\Enums\Post\Status;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class StorePostRequest extends FormRequest
 {
@@ -19,7 +21,7 @@ class StorePostRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', 'in:draft,scheduled,publishing'],
+            'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
             'content' => ['sometimes', 'nullable', 'string'],
             'media' => ['sometimes', 'array'],
             'scheduled_at' => ['nullable', 'date'],

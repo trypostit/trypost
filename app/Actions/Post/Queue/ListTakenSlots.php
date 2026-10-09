@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post\Queue;
 
 use App\Models\Post;
-use App\Models\PostPlatform;
 use Carbon\CarbonInterface;
-use Illuminate\Database\Eloquent\Builder;
 
 class ListTakenSlots
 {
@@ -21,22 +19,18 @@ class ListTakenSlots
      */
     public static function handle(array $channelIds, CarbonInterface $from, CarbonInterface $until): array
     {
-        $taken = PostPlatform::query()
-            ->enabled()
-            ->whereIn('post_platforms.social_account_id', $channelIds)
-            ->whereHas('post', fn (Builder $post): Builder => $post->holdingSlot()
-                ->where('scheduled_at', '>=', $from)
-                ->where('scheduled_at', '<', $until))
-            ->select('post_platforms.social_account_id')
-            ->addSelect(['slot_at' => Post::query()->select('scheduled_at')->whereColumn('posts.id', 'post_platforms.post_id')])
-            ->withCasts(['slot_at' => 'datetime'])
-            ->get()
+        $taken = Post::query()
+            ->whereIn('social_account_id', $channelIds)
+            ->holdingSlot()
+            ->where('scheduled_at', '>=', $from)
+            ->where('scheduled_at', '<', $until)
+            ->get(['social_account_id', 'scheduled_at'])
             ->groupBy('social_account_id');
 
         return collect($channelIds)
             ->mapWithKeys(fn (string $channelId): array => [$channelId => $taken->get($channelId, collect())
-                ->sortBy(fn (PostPlatform $platform): int => $platform->slot_at->getTimestamp())
-                ->map(fn (PostPlatform $platform): string => $platform->slot_at->toIso8601ZuluString())
+                ->sortBy(fn (Post $post): int => $post->scheduled_at->getTimestamp())
+                ->map(fn (Post $post): string => $post->scheduled_at->toIso8601ZuluString())
                 ->unique()
                 ->values()
                 ->all()])

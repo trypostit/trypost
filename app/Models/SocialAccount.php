@@ -8,8 +8,8 @@ use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\SocialAccount\ApplyChannelDefaults;
 use App\Casts\PostingScheduleCast;
 use App\Enums\Notification\Type;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
@@ -263,26 +263,28 @@ class SocialAccount extends Model
             return;
         }
 
-        $awaitingPublish = [PostPlatformStatus::Pending, PostPlatformStatus::Retrying];
+        $awaitingPublish = [PublishStatus::Pending, PublishStatus::Retrying];
 
         $supported = array_values(array_map(
             fn (ContentType $contentType): string => $contentType->value,
             ContentType::forPlatform($to),
         ));
 
-        $account->postPlatforms()
-            ->whereIn('status', $awaitingPublish)
+        $account->posts()
+            ->whereIn('publish_status', $awaitingPublish)
             ->whereNotIn('content_type', $supported)
-            ->update(['content_type' => ContentType::defaultFor($to)->value]);
+            ->toBase()
+            ->update(['content_type' => ContentType::defaultFor($to)->value, 'publication_updated_at' => now()]);
 
-        $account->postPlatforms()
-            ->whereIn('status', $awaitingPublish)
-            ->update(['platform' => $to->value]);
+        $account->posts()
+            ->whereIn('publish_status', $awaitingPublish)
+            ->toBase()
+            ->update(['platform' => $to->value, 'publication_updated_at' => now()]);
     }
 
-    public function postPlatforms(): HasMany
+    public function posts(): HasMany
     {
-        return $this->hasMany(PostPlatform::class);
+        return $this->hasMany(Post::class);
     }
 
     public function analyticsSyncStates(): HasMany
@@ -371,7 +373,7 @@ class SocialAccount extends Model
     }
 
     /**
-     * The channel identity a new PostPlatform keeps, so the post still shows
+     * The channel identity a new post keeps, so the post still shows
      * who it went to after the account is renamed or disconnected.
      *
      * @return array{platform_name: string, platform_username: ?string, platform_avatar: ?string}

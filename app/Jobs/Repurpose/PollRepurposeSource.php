@@ -10,7 +10,7 @@ use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\SourceFormat;
 use App\Enums\Repurpose\Status;
 use App\Exceptions\Repurpose\SourceFetchException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -20,7 +20,6 @@ use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -223,11 +222,10 @@ class PollRepurposeSource implements ShouldBeUnique, ShouldQueue
             return [];
         }
 
-        return PostPlatform::query()
+        return Post::query()
             ->whereIn('platform_post_id', $ids)
-            ->whereHas('post', fn (Builder $query) => $query
-                ->createdInTryPost()
-                ->where('workspace_id', $this->account->workspace_id))
+            ->createdInTryPost()
+            ->where('workspace_id', $this->account->workspace_id)
             ->pluck('platform_post_id')
             ->all();
     }

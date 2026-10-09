@@ -17,8 +17,8 @@
         @{{ __('mail.post_note_added.post_title') }}
       </p>
       <p class="m-0 mt-2 leading-6 text-sm" style="white-space: pre-line;">@{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_note_added.post_without_text') }}</p>
-      @if(count($channels) > 0)
-        <x-channel-list />
+      @if($channel)
+        <x-channel-card />
       @endif
     </div>
 

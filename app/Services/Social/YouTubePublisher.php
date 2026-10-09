@@ -10,7 +10,7 @@ use App\Enums\YouTube\PrivacyStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\YouTubeDescription;
@@ -31,11 +31,11 @@ class YouTubePublisher
 
     private const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB chunks
 
-    public function publish(PostPlatform $postPlatform): array
+    public function publish(Post $post): array
     {
-        $this->validateContentLength($postPlatform);
+        $this->validateContentLength($post);
 
-        $metadataViolation = YouTubeMetadata::violation($postPlatform->meta);
+        $metadataViolation = YouTubeMetadata::violation($post->meta);
 
         if ($metadataViolation !== null) {
             throw new YouTubePublishException(
@@ -44,18 +44,16 @@ class YouTubePublisher
             );
         }
 
-        $content = $postPlatform->post->content
-            ? app(ContentSanitizer::class)->sanitize($postPlatform->post->content, $postPlatform->platform)
-            : null;
-        $description = $this->resolveDescription($postPlatform, $content);
+        $content = app(ContentSanitizer::class)->forPost($post);
+        $description = $this->resolveDescription($post, $content);
 
-        $account = $postPlatform->socialAccount;
+        $account = $post->socialAccount;
 
         if ($account->needsProactiveTokenRefresh()) {
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $media = $postPlatform->post->mediaItems;
+        $media = $post->mediaItems;
 
         if ($media->isEmpty()) {
             throw new YouTubePublishException(
@@ -73,7 +71,7 @@ class YouTubePublisher
             );
         }
 
-        return $this->publishShort($firstMedia, $account, $content, $description, $postPlatform->meta ?? []);
+        return $this->publishShort($firstMedia, $account, $content, $description, $post->meta ?? []);
     }
 
     private function createGoogleClient(SocialAccount $account): GoogleClient
@@ -241,10 +239,10 @@ class YouTubePublisher
         );
     }
 
-    private function resolveDescription(PostPlatform $postPlatform, ?string $content): string
+    private function resolveDescription(Post $post, ?string $content): string
     {
-        $description = YouTubeDescription::resolve($postPlatform->meta, $content);
-        $violation = YouTubeDescription::violation(data_get($postPlatform->meta, 'description'))
+        $description = YouTubeDescription::resolve($post->meta, $content);
+        $violation = YouTubeDescription::violation(data_get($post->meta, 'description'))
             ?? YouTubeDescription::violation($description);
 
         if ($violation !== null) {

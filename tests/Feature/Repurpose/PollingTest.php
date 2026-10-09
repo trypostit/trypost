@@ -12,7 +12,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Repurpose\PollRepurposeSource;
 use App\Jobs\Repurpose\ProcessRepurposeItem;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -141,8 +140,7 @@ test('media already published through trypost is skipped', function () {
     $account = instagramAccount();
     $repurpose = activeRepurposeOn($account);
 
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
-    PostPlatform::factory()->for($post)->create(['platform_post_id' => 'known-1']);
+    Post::factory()->instagram()->published()->create(['workspace_id' => $account->workspace_id, 'platform_post_id' => 'known-1']);
 
     poll($account);
 
@@ -158,8 +156,7 @@ test('another workspace publishing the same media id does not skip ours', functi
     $account = instagramAccount();
     $repurpose = activeRepurposeOn($account);
 
-    $post = Post::factory()->create(['workspace_id' => Workspace::factory()->create()->id]);
-    PostPlatform::factory()->for($post)->create(['platform_post_id' => 'known-1']);
+    Post::factory()->instagram()->published()->create(['workspace_id' => Workspace::factory()->create()->id, 'platform_post_id' => 'known-1']);
 
     poll($account);
 
@@ -392,8 +389,7 @@ test('a post imported from the network does not count as published through trypo
     $account = instagramAccount();
     $repurpose = activeRepurposeOn($account);
 
-    $post = Post::factory()->imported()->create(['workspace_id' => $account->workspace_id]);
-    PostPlatform::factory()->for($post)->create(['platform_post_id' => 'imported-1']);
+    Post::factory()->instagram()->imported()->create(['workspace_id' => $account->workspace_id, 'platform_post_id' => 'imported-1']);
 
     poll($account);
 

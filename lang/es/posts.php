@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publicando',
         'retrying' => 'Reintentando',
         'published' => 'Publicado',
-        'partially_published' => 'Parcialmente publicado',
         'failed' => 'Fallido',
     ],
 
@@ -637,17 +636,6 @@ return [
             'objects' => 'Objetos',
             'symbols' => 'Símbolos',
             'flags' => 'Banderas',
-        ],
-
-        'status' => [
-            'pending' => 'Pendiente',
-            'scheduled' => 'Programado',
-            'published' => 'Publicado',
-            'publishing' => 'Publicando...',
-            'retrying' => 'Reintentando...',
-            'failed' => 'Fallido',
-            'pending_review' => 'En revisión por Google',
-            'rejected' => 'Rechazado',
         ],
 
         'delete_modal' => [
@@ -819,12 +807,11 @@ return [
         'media_file_too_large' => 'Este archivo supera los :size MB permitidos para su tipo.',
         'queue_requires_schedule' => 'Este canal aún no tiene horarios de publicación. Añade horarios en los ajustes del canal para usar la cola.',
         'queue_with_scheduled_at' => 'Elige una posición en la cola o una fecha y hora, no ambas.',
-        'queue_legacy_post' => 'Esta publicación se creó para varios canales a la vez y no se puede añadir a una cola. Define una fecha y hora.',
         'queue_busy' => 'La cola se está actualizando. Inténtalo de nuevo.',
         'no_social_account' => 'Esta publicación no tiene una cuenta social, así que no se puede publicar.',
+        'choose_channel' => 'Elige un canal antes de programar o publicar esta publicación.',
         'queue_order_stale' => 'La cola ha cambiado desde que la abriste. Actualiza e inténtalo de nuevo.',
         'account_disconnected' => 'Cuenta social desconectada',
-        'target_disabled' => 'Este destino se desactivó',
         'account_token_expired' => 'Sesión de la cuenta social expirada — reconecta la cuenta',
         'platform_unavailable' => 'La plataforma no está disponible temporalmente. Reintentaremos en breve.',
         'platform_unavailable_exhausted' => 'La plataforma siguió sin estar disponible tras varios reintentos. Inténtalo de nuevo más tarde.',
@@ -907,6 +894,7 @@ return [
         'publishing_now' => 'Publicando ahora',
         'publishing_badge' => 'Publicando…',
         'publishing_on' => 'Publicando en :network…',
+        'in_google_review' => 'En revisión por Google',
         'retrying_at' => 'Reintento a las :time',
         'published_via' => 'Publicado en',
         'published_directly_from' => 'Publicado directamente desde :network',
@@ -993,8 +981,6 @@ return [
     ],
     'group' => [
         'channels' => 'Canales (:count)',
-        'collapse' => 'Ocultar canales',
-        'expand' => 'Mostrar canales',
     ],
     'approvals' => [
         'badge' => 'Aprobación',

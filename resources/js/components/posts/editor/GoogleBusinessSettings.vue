@@ -15,7 +15,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 import {
     GOOGLE_BUSINESS_CTA_OPTIONS,
     GoogleBusinessCtaAction,
@@ -27,7 +27,7 @@ import {
 } from '@/lib/googleBusiness';
 
 interface Props {
-    /** This panel's position in the submitted `destinations` (composer) or `platforms` array — see findError. */
+    /** This panel's position in the submitted `destinations` (composer); an edit has one and reports `meta.*` — see useMetaErrors. */
     platformIndex: number;
     meta: Record<string, any>;
     disabled?: boolean;
@@ -192,23 +192,17 @@ const offerCouponCode = offerField('coupon_code');
 const offerRedeemUrl = offerField('redeem_online_url');
 const offerTerms = offerField('terms_conditions');
 
-const errors = usePageErrors();
-const findError = (field: string) =>
-    computed<string | undefined>(
-        () =>
-            errors.value[`destinations.${props.platformIndex}.meta.${field}`] ??
-            errors.value[`platforms.${props.platformIndex}.meta.${field}`],
-    );
-const eventTitleError = findError('event.title');
-const eventStartDateError = findError('event.start_date');
-const eventEndDateError = findError('event.end_date');
-const eventStartTimeError = findError('event.start_time');
-const eventEndTimeError = findError('event.end_time');
-const offerCouponCodeError = findError('offer.coupon_code');
-const offerRedeemUrlError = findError('offer.redeem_online_url');
-const offerTermsError = findError('offer.terms_conditions');
-const ctaActionTypeError = findError('call_to_action.action_type');
-const ctaUrlError = findError('call_to_action.url');
+const metaError = useMetaErrors(() => props.platformIndex);
+const eventTitleError = metaError('event.title');
+const eventStartDateError = metaError('event.start_date');
+const eventEndDateError = metaError('event.end_date');
+const eventStartTimeError = metaError('event.start_time');
+const eventEndTimeError = metaError('event.end_time');
+const offerCouponCodeError = metaError('offer.coupon_code');
+const offerRedeemUrlError = metaError('offer.redeem_online_url');
+const offerTermsError = metaError('offer.terms_conditions');
+const ctaActionTypeError = metaError('call_to_action.action_type');
+const ctaUrlError = metaError('call_to_action.url');
 </script>
 
 <template>

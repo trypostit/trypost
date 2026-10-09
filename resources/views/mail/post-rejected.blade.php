@@ -67,14 +67,15 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                 <p style="margin: 0; line-height: 24px">
                   {{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
                 </p>
+                @if($channel)
                 <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
-                  {{ __('mail.post_rejected.channels') }}
-                </p>@foreach($channels as $emailChannel)
+                  {{ __('mail.post_rejected.channel') }}
+                </p>
                 <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
-                      $emailChannelPlatform = $emailChannel->platform;
-                      $emailChannelName = $emailChannel->display_name;
+                      $emailChannelPlatform = $channel->platform;
+                      $emailChannelName = $channel->display_name;
                       @endphp
                       <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
                         <tr>
@@ -92,7 +93,7 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                     </td>
                   </tr>
                 </table>
-                @endforeach <div role="separator" style="line-height: 24px">&zwj;</div>
+                @endif <div role="separator" style="line-height: 24px">&zwj;</div>
                 <div style="text-align: center">
                   <a href="{{ $url }}" style="display: inline-block; text-decoration: none; font-weight: 600; border-radius: 8px; border: 1px solid #ddd6fe; background-color: #ddd6fe; padding: 12px 24px; text-align: center; font-size: 16px; line-height: 24px; color: #292928">
                     <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->

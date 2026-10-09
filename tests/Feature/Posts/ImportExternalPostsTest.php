@@ -7,17 +7,17 @@ use App\Actions\Post\ImportExternalPosts;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Events\PostCreated;
 use App\Events\PostStatusChanged;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Support\Social\ThreadProgress;
@@ -50,25 +50,18 @@ function externalPublication(SocialAccount $account, array $attributes = []): An
     ]);
 }
 
-function sentByTryPost(SocialAccount $account, string $platformPostId, string $content, CarbonImmutable $publishedAt, ?ContentType $contentType = null): PostPlatform
+function sentByTryPost(SocialAccount $account, string $platformPostId, string $content, CarbonImmutable $publishedAt, ?ContentType $contentType = null): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
-        'content' => $content,
-        'status' => PostStatus::Published,
-        'origin' => Origin::TryPost,
-        'published_at' => $publishedAt,
-    ]);
-
-    return PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType ?? ($account->platform === Platform::TikTok ? ContentType::TikTokVideo : ContentType::defaultFor($account->platform)),
-        'platform_post_id' => $platformPostId,
-        'platform_url' => null,
-        'published_at' => $publishedAt,
-    ]);
+    return Post::factory()
+        ->forAccount($account, $contentType ?? ($account->platform === Platform::TikTok ? ContentType::TikTokVideo : ContentType::defaultFor($account->platform)))
+        ->published()
+        ->create([
+            'content' => $content,
+            'origin' => Origin::TryPost,
+            'platform_post_id' => $platformPostId,
+            'platform_url' => null,
+            'published_at' => $publishedAt,
+        ]);
 }
 
 test('a publication becomes a published network post linked to its analytics row', function () {
@@ -84,7 +77,6 @@ test('a publication becomes a published network post linked to its analytics row
     $created = ImportExternalPosts::execute($account);
 
     $post = Post::query()->imported()->sole();
-    $target = $post->postPlatforms()->sole();
 
     expect($created)->toBe([$post->id])
         ->and($post->origin)->toBe(Origin::Network)
@@ -98,15 +90,13 @@ test('a publication becomes a published network post linked to its analytics row
         ->and($post->content)->toBe("First line\nSecond line")
         ->and($post->media)->toBe([])
         ->and($post->published_at->toIso8601String())->toBe('2026-09-30T08:15:00+00:00')
-        ->and($target->social_account_id)->toBe($account->id)
-        ->and($target->platform)->toBe($account->platform)
-        ->and($target->status)->toBe(PostPlatformStatus::Published)
-        ->and($target->enabled)->toBeTrue()
-        ->and($target->content_type)->toBe(ContentType::InstagramReel)
-        ->and($target->platform_post_id)->toBe('ig-1')
-        ->and($target->platform_url)->toBe('https://www.instagram.com/reel/ig-1/')
-        ->and($target->published_at->toIso8601String())->toBe('2026-09-30T08:15:00+00:00')
-        ->and($publication->fresh()->post_platform_id)->toBe($target->id);
+        ->and($post->social_account_id)->toBe($account->id)
+        ->and($post->platform)->toBe($account->platform)
+        ->and($post->publish_status)->toBe(PublishStatus::Published)
+        ->and($post->content_type)->toBe(ContentType::InstagramReel)
+        ->and($post->platform_post_id)->toBe('ig-1')
+        ->and($post->platform_url)->toBe('https://www.instagram.com/reel/ig-1/')
+        ->and($publication->fresh()->post_id)->toBe($post->id);
 });
 
 test('an image-only publication without text imports with empty content', function () {
@@ -128,7 +118,7 @@ test('only the newest publications up to the limit are imported regardless of in
 
     ImportExternalPosts::execute($account);
 
-    expect(PostPlatform::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['d1', 'd2', 'd3']);
+    expect(Post::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['d1', 'd2', 'd3']);
 });
 
 test('stories have their own import limit and never push feed posts out', function () {
@@ -145,7 +135,7 @@ test('stories have their own import limit and never push feed posts out', functi
 
     ImportExternalPosts::execute($account);
 
-    expect(PostPlatform::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['feed-1', 'feed-2', 'story-1', 'story-2']);
+    expect(Post::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['feed-1', 'feed-2', 'story-1', 'story-2']);
 });
 
 test('discovery imports newer posts and never removes older imports', function () {
@@ -159,7 +149,7 @@ test('discovery imports newer posts and never removes older imports', function (
     externalPublication($account, ['remote_id' => 'new-2', 'provider_published_at' => now()->subDay()]);
     ImportExternalPosts::execute($account);
 
-    expect(PostPlatform::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['new-1', 'new-2', 'old-1', 'old-2']);
+    expect(Post::query()->pluck('platform_post_id')->sort()->values()->all())->toBe(['new-1', 'new-2', 'old-1', 'old-2']);
 });
 
 test('x imports only publications inside the configured day window', function () {
@@ -169,7 +159,7 @@ test('x imports only publications inside the configured day window', function ()
 
     ImportExternalPosts::execute($account);
 
-    expect(PostPlatform::query()->pluck('platform_post_id')->all())->toBe(['recent']);
+    expect(Post::query()->pluck('platform_post_id')->all())->toBe(['recent']);
 });
 
 test('running the import twice creates each post once', function () {
@@ -185,25 +175,21 @@ test('running the import twice creates each post once', function () {
 
 test('a publication trypost already published is linked instead of duplicated', function () {
     $account = SocialAccount::factory()->instagram()->create();
-    $tryPost = PostPlatform::factory()->instagram()->published()->create([
-        'social_account_id' => $account->id,
+    $tryPost = Post::factory()->forAccount($account)->instagram()->published()->create([
         'platform_post_id' => 'shared-1',
     ]);
-    $tryPost->post->update(['workspace_id' => $account->workspace_id]);
     $publication = externalPublication($account, ['remote_id' => 'shared-1']);
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($tryPost->id);
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });
 
 test('a facebook post links the trypost video it carries by video id', function () {
     $account = SocialAccount::factory()->facebook()->create();
-    $tryPost = PostPlatform::factory()->facebookReel()->published()->create([
-        'social_account_id' => $account->id,
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
         'platform_post_id' => 'video-9',
     ]);
-    $tryPost->post->update(['workspace_id' => $account->workspace_id]);
     $publication = externalPublication($account, [
         'remote_id' => 'page_post-1',
         'provider_metadata' => ['video_id' => 'video-9'],
@@ -212,17 +198,15 @@ test('a facebook post links the trypost video it carries by video id', function 
     ImportExternalPosts::execute($account);
 
     expect(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($tryPost->id);
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id);
 });
 
 test('a facebook video already tracked by its trypost publication is left unlinked', function () {
     $account = SocialAccount::factory()->facebook()->create();
-    $tryPost = PostPlatform::factory()->facebookReel()->published()->create([
-        'social_account_id' => $account->id,
+    $tryPost = Post::factory()->forAccount($account)->facebookReel()->published()->create([
         'platform_post_id' => 'video-9',
     ]);
-    $tryPost->post->update(['workspace_id' => $account->workspace_id]);
-    externalPublication($account, ['remote_id' => 'video-9', 'post_platform_id' => $tryPost->id]);
+    externalPublication($account, ['remote_id' => 'video-9', 'post_id' => $tryPost->id]);
     $external = externalPublication($account, [
         'remote_id' => 'page_post-1',
         'provider_metadata' => ['video_id' => 'video-9'],
@@ -231,7 +215,7 @@ test('a facebook video already tracked by its trypost publication is left unlink
     ImportExternalPosts::execute($account);
 
     expect(Post::query()->imported()->count())->toBe(0)
-        ->and($external->fresh()->post_platform_id)->toBeNull();
+        ->and($external->fresh()->post_id)->toBeNull();
 });
 
 test('a facebook photo discovered under its feed post id does not duplicate the original', function (bool $tracked) {
@@ -241,7 +225,7 @@ test('a facebook photo discovered under its feed post id does not duplicate the 
     if ($tracked) {
         externalPublication($account, [
             'remote_id' => 'photo-9',
-            'post_platform_id' => $original->id,
+            'post_id' => $original->id,
             'origin' => PublicationOrigin::TryPost,
         ]);
     }
@@ -266,7 +250,7 @@ test('a facebook photo discovered under its feed post id does not duplicate the 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($tracked ? null : $original->id);
+        ->and($publication->fresh()->post_id)->toBe($tracked ? null : $original->id);
 
     Http::assertSentCount(1);
 })->with(['untracked original' => false, 'tracked original' => true]);
@@ -294,8 +278,8 @@ test('a broken publication is reported and the rest of the page still imports', 
 
     ImportExternalPosts::execute($account);
 
-    expect(PostPlatform::query()->pluck('platform_post_id')->all())->toBe(['fine'])
-        ->and(DB::table('analytics_publications')->where('id', $broken->id)->value('post_platform_id'))->toBeNull();
+    expect(Post::query()->pluck('platform_post_id')->all())->toBe(['fine'])
+        ->and(DB::table('analytics_publications')->where('id', $broken->id)->value('post_id'))->toBeNull();
     Exceptions::assertReported(ValueError::class);
 });
 
@@ -318,7 +302,7 @@ test('an account only imports its own workspace publications', function () {
     $post = Post::query()->imported()->sole();
 
     expect($post->workspace_id)->toBe($ours->workspace_id)
-        ->and($post->postPlatforms()->sole()->platform_post_id)->toBe('ours');
+        ->and($post->platform_post_id)->toBe('ours');
 });
 
 test('a reconnected account does not import posts that already exist', function () {
@@ -368,9 +352,30 @@ test('an instagram post trypost published under its container id is linked inste
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($tryPost->id)
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id)
         ->and($tryPost->fresh()->platform_post_id)->toBe('media-1')
         ->and($tryPost->fresh()->platform_url)->toBe('https://www.instagram.com/p/media-1/');
+});
+
+test('linking a sent post to its publication moves only the publication clock and queues no sync', function () {
+    Queue::fake();
+    $account = SocialAccount::factory()->instagram()->create();
+    $tryPost = sentByTryPost($account, 'container-2', '<p>Quiet link</p>', now()->subHours(3)->toImmutable());
+    $tryPost->forceFill(['updated_at' => now()->subDays(2)->startOfSecond(), 'publication_updated_at' => now()->subDays(2)->startOfSecond()])->saveQuietly();
+    $updatedAt = $tryPost->fresh()->updated_at;
+    externalPublication($account, [
+        'remote_id' => 'media-2',
+        'excerpt' => 'Quiet link',
+        'provider_published_at' => now()->subHours(3)->addMinutes(2),
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tryPost->fresh())
+        ->platform_post_id->toBe('media-2')
+        ->updated_at->toIso8601String()->toBe($updatedAt->toIso8601String())
+        ->and($tryPost->fresh()->publication_updated_at->isAfter(now()->subMinute()))->toBeTrue();
+    Queue::assertNotPushed(SyncTryPostPublication::class);
 });
 
 test('a tiktok post still keyed by its publish id is reconciled into the discovered video', function (ContentType $contentType, string $publishId, string $ellipsis) {
@@ -383,10 +388,10 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
             'mime_type' => 'image/jpeg',
         ])->all()
         : [['id' => 'video-1', 'url' => 'https://cdn.example/video.mp4', 'mime_type' => 'video/mp4']];
-    $tryPost->post->update(['media' => $media]);
+    $tryPost->update(['media' => $media]);
     $provisional = externalPublication($account, [
         'remote_id' => $publishId,
-        'post_platform_id' => $tryPost->id,
+        'post_id' => $tryPost->id,
         'origin' => PublicationOrigin::TryPost,
         'provider_synced_at' => null,
         'excerpt' => 'A long description that the network cuts short',
@@ -408,9 +413,9 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
 
     expect(Post::query()->imported()->count())->toBe(0)
         ->and($provisional->remote_id)->toBe('7300000000000000001')
-        ->and($provisional->post_platform_id)->toBe($tryPost->id)
+        ->and($provisional->post_id)->toBe($tryPost->id)
         ->and($tryPost->content_type)->toBe($contentType)
-        ->and($tryPost->post->media)->toEqual($media)
+        ->and($tryPost->fresh()->media)->toEqual($media)
         ->and($tryPost->platform_post_id)->toBe('7300000000000000001')
         ->and($tryPost->platform_url)->toBe('https://www.tiktok.com/@trypost/video/7300000000000000001');
 })->with([
@@ -421,7 +426,7 @@ test('a tiktok post still keyed by its publish id is reconciled into the discove
 test('a trypost target whose id the network already confirmed is never relinked by text', function () {
     $account = SocialAccount::factory()->instagram()->create();
     $tryPost = sentByTryPost($account, 'media-0', 'Same caption', now()->subHour()->toImmutable());
-    externalPublication($account, ['remote_id' => 'media-0', 'post_platform_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
+    externalPublication($account, ['remote_id' => 'media-0', 'post_id' => $tryPost->id, 'origin' => PublicationOrigin::TryPost]);
     externalPublication($account, ['remote_id' => 'media-2', 'excerpt' => 'Same caption', 'provider_published_at' => now()->subHour()]);
 
     ImportExternalPosts::execute($account);
@@ -439,7 +444,7 @@ test('two trypost posts matching the same publication link neither and import no
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and($publication->fresh()->post_id)->toBeNull()
         ->and($first->fresh()->platform_post_id)->toBe('container-1')
         ->and($second->fresh()->platform_post_id)->toBe('container-2');
     Log::shouldHaveReceived('warning')->once();
@@ -459,7 +464,7 @@ test('a tiktok discovery matching both a photo and video waits instead of claimi
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and($publication->fresh()->post_id)->toBeNull()
         ->and($photo->fresh()->platform_post_id)->toBe('p_pub_url~123')
         ->and($video->fresh()->platform_post_id)->toBe('v_pub_url~123');
     Log::shouldHaveReceived('warning')->once();
@@ -507,7 +512,7 @@ test('captionless instagram discoveries wait without claiming an unresolved post
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->refresh()->post_platform_id)->toBeNull()
+        ->and($publication->refresh()->post_id)->toBeNull()
         ->and($publication->post_dismissed_at)->toBeNull()
         ->and($tryPost->fresh()->platform_post_id)->toBe('container-1');
 })->with([null, '', '   ', "\u{00A0}"]);
@@ -517,7 +522,7 @@ test('a captionless discovery imports once the other instagram post has a confir
     $original = sentByTryPost($account, 'media-ours', '', now()->subHour()->toImmutable());
     $tracked = externalPublication($account, [
         'remote_id' => 'media-ours',
-        'post_platform_id' => $original->id,
+        'post_id' => $original->id,
         'origin' => PublicationOrigin::TryPost,
         'provider_synced_at' => null,
     ]);
@@ -529,7 +534,7 @@ test('a captionless discovery imports once the other instagram post has a confir
 
     expect(ImportExternalPosts::execute($account))->toHaveCount(1)
         ->and(Post::query()->imported()->count())->toBe(1)
-        ->and($native->fresh()->post_platform_id)->not->toBe($original->id)
+        ->and($native->fresh()->post_id)->not->toBe($original->id)
         ->and($original->fresh()->platform_post_id)->toBe('media-ours');
 });
 
@@ -556,32 +561,34 @@ test('a captionless instagram discovery still links by its exact public id', fun
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($original->id);
+        ->and($publication->fresh()->post_id)->toBe($original->id);
 });
 
-test('instagram discoveries wait for an in-flight publication without claiming its id', function (PostPlatformStatus $status, string $caption) {
+test('instagram discoveries wait for an in-flight publication without claiming its id', function (PublishStatus $status, string $caption) {
     $account = SocialAccount::factory()->instagram()->create();
     $target = sentByTryPost($account, 'container-1', $caption, now()->toImmutable());
-    $target->update([
-        'status' => $status,
+    $target->forceFill([
+        'status' => PostStatus::Publishing,
+        'publish_status' => $status,
+        'publication_updated_at' => now(),
         'platform_post_id' => null,
         'published_at' => null,
-        'error_context' => $status === PostPlatformStatus::Retrying
+        'error_context' => $status === PublishStatus::Retrying
             ? ['instagram_workflow' => ['stage' => 'final_container', 'container_id' => 'container-1']]
             : null,
-    ]);
+    ])->save();
     $publication = externalPublication($account, ['remote_id' => 'media-1', 'excerpt' => $caption, 'provider_published_at' => now()]);
 
     expect(ImportExternalPosts::execute($account))->toBe([])
-        ->and($publication->refresh()->post_platform_id)->toBeNull()
+        ->and($publication->refresh()->post_id)->toBeNull()
         ->and($target->refresh()->platform_post_id)->toBeNull()
-        ->and($target->status)->toBe($status);
+        ->and($target->publish_status)->toBe($status);
 
-    $target->update(['status' => PostPlatformStatus::Failed]);
+    $target->forceFill(['status' => PostStatus::Failed, 'publish_status' => PublishStatus::Failed])->save();
 
     expect(ImportExternalPosts::execute($account))->toHaveCount(1)
-        ->and($publication->refresh()->post_platform_id)->not->toBe($target->id);
-})->with([PostPlatformStatus::Publishing, PostPlatformStatus::Retrying])->with(['', 'Our caption']);
+        ->and($publication->refresh()->post_id)->not->toBe($target->id);
+})->with([PublishStatus::Publishing, PublishStatus::Retrying])->with(['', 'Our caption']);
 
 test('an unrelated pending instagram target does not hold a native import', function (string $difference) {
     $account = SocialAccount::factory()->instagram()->create();
@@ -589,14 +596,15 @@ test('an unrelated pending instagram target does not hold a native import', func
         ? SocialAccount::factory()->instagram()->create(['workspace_id' => $account->workspace_id])
         : $account;
     $target = sentByTryPost($targetAccount, 'container-1', '', now()->toImmutable());
-    $target->update([
-        'status' => $difference === 'draft' ? PostPlatformStatus::Pending : PostPlatformStatus::Retrying,
-        'enabled' => $difference !== 'disabled',
+    $target->forceFill([
+        'status' => $difference === 'draft' ? PostStatus::Draft : PostStatus::Publishing,
+        'publish_status' => $difference === 'draft' ? PublishStatus::Pending : PublishStatus::Retrying,
+        'publication_updated_at' => now(),
         'content_type' => $difference === 'type' ? ContentType::InstagramStory : ContentType::InstagramFeed,
         'platform_post_id' => null,
         'published_at' => null,
         'error_context' => $difference === 'no container' ? null : ['instagram_workflow' => ['container_id' => 'container-1']],
-    ]);
+    ])->save();
     externalPublication($account, [
         'remote_id' => 'media-1',
         'excerpt' => null,
@@ -605,7 +613,7 @@ test('an unrelated pending instagram target does not hold a native import', func
 
     expect(ImportExternalPosts::execute($account))->toHaveCount(1)
         ->and($target->fresh()->platform_post_id)->toBeNull();
-})->with(['channel', 'time', 'type', 'disabled', 'draft', 'no container']);
+})->with(['channel', 'time', 'type', 'draft', 'no container']);
 
 test('a trypost story is not taken over by a native feed post with the same caption', function () {
     $account = SocialAccount::factory()->instagram()->create();
@@ -672,7 +680,7 @@ test('merging into the provisional trypost row keeps the network text and publis
     $tryPost = sentByTryPost($account, 'v_pub_url~9', 'A caption that is long enough to match', now()->subHour()->toImmutable());
     $provisional = externalPublication($account, [
         'remote_id' => 'v_pub_url~9',
-        'post_platform_id' => $tryPost->id,
+        'post_id' => $tryPost->id,
         'origin' => PublicationOrigin::TryPost,
         'provider_synced_at' => null,
         'excerpt' => 'stale excerpt',
@@ -700,7 +708,7 @@ test('a trypost feed video that instagram reports as a reel is linked', function
     ImportExternalPosts::execute($account);
 
     expect(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBe($tryPost->id)
+        ->and($publication->fresh()->post_id)->toBe($tryPost->id)
         ->and($tryPost->fresh()->platform_post_id)->toBe('reel-1');
 });
 
@@ -724,19 +732,14 @@ test('our own thread replies are never imported as external posts', function () 
 
     ImportExternalPosts::execute($account);
 
-    expect(AnalyticsPublication::where('remote_id', 'reply-1')->value('post_platform_id'))->toBeNull()
-        ->and(PostPlatform::where('platform_post_id', 'reply-1')->exists())->toBeFalse()
-        ->and(PostPlatform::where('platform_post_id', 'other-1')->exists())->toBeTrue();
+    expect(AnalyticsPublication::where('remote_id', 'reply-1')->value('post_id'))->toBeNull()
+        ->and(Post::where('platform_post_id', 'reply-1')->exists())->toBeFalse()
+        ->and(Post::where('platform_post_id', 'other-1')->exists())->toBeTrue();
 });
 
 test('the live part of a thread that failed midway is never imported as external posts', function () {
     $account = SocialAccount::factory()->bluesky()->create();
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Failed]);
-    PostPlatform::factory()->failed()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => ContentType::BlueskyPost,
+    Post::factory()->forAccount($account, ContentType::BlueskyPost)->failed()->create([
         'error_context' => ['category' => 'rate_limit', ThreadProgress::KEY => [
             ['hash' => 'h0', 'id' => 'root-1', 'uri' => 'at://did/app.bsky.feed.post/root-1', 'cid' => 'c1'],
             ['hash' => 'h1', 'id' => 'reply-1', 'uri' => 'at://did/app.bsky.feed.post/reply-1', 'cid' => 'c2'],
@@ -749,8 +752,8 @@ test('the live part of a thread that failed midway is never imported as external
     ImportExternalPosts::execute($account);
 
     expect(Post::where('origin', Origin::Network)->count())->toBe(1)
-        ->and(PostPlatform::where('platform_post_id', 'other-1')->exists())->toBeTrue()
-        ->and(AnalyticsPublication::whereIn('remote_id', ['root-1', 'reply-1'])->whereNotNull('post_platform_id')->exists())->toBeFalse();
+        ->and(Post::where('platform_post_id', 'other-1')->exists())->toBeTrue()
+        ->and(AnalyticsPublication::whereIn('remote_id', ['root-1', 'reply-1'])->whereNotNull('post_id')->exists())->toBeFalse();
 });
 
 test('captions that differ only after a less-than sign are not linked', function () {

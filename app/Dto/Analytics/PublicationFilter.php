@@ -14,7 +14,7 @@ use Illuminate\Database\Query\Builder;
 /**
  * Narrows a channel's publications by the labels of their TryPost post and by post type.
  *
- * Expects the publication query aliased as `publication`, left-joined to its post platform as `destination`.
+ * Expects the publication query aliased as `publication`, left-joined to its post as `destination`.
  * A publication with a post platform takes that post platform's content type; one without (published
  * outside TryPost and never imported) is typed through ContentType::fromPublication(), and an unknown
  * publication type matches no post type. A publication without a post carries no labels, so it only
@@ -77,7 +77,7 @@ final readonly class PublicationFilter
      */
     private function posts(): EloquentBuilder
     {
-        return Post::query()->select('posts.id')->whereColumn('posts.id', 'destination.post_id');
+        return Post::query()->select('posts.id')->whereColumn('posts.id', 'destination.id');
     }
 
     /**

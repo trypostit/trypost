@@ -11,7 +11,7 @@ import {
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { getPostStatusConfig } from '@/composables/usePostStatus';
 import date from '@/date';
-import { PostPlatformStatus } from '@/types/post';
+import { PublishStatus } from '@/types/post';
 import type { PostCard } from '@/types/publish';
 
 const props = defineProps<{
@@ -35,30 +35,30 @@ const CATEGORIES = [
 
 const status = computed(() => getPostStatusConfig(props.post.status));
 
-const failures = computed(() =>
-    props.post.post_platforms
-        .filter(
-            (target) =>
-                target.enabled &&
-                (target.status === PostPlatformStatus.Failed ||
-                    target.status === PostPlatformStatus.Rejected),
-        )
-        .map((target) => {
-            const category = target.error_context?.category ?? '';
-            const at = target.error_context?.failed_at ?? props.attemptedAt;
+const failure = computed(() => {
+    const post = props.post;
 
-            return {
-                id: target.id,
-                platform: target.platform,
-                account: target.social_account?.display_label ?? null,
-                reasonKey: CATEGORIES.includes(category)
-                    ? `posts.publish.failure.categories.${category}`
-                    : 'posts.publish.failure.generic',
-                details: target.error_message?.trim() || null,
-                at: at ? date.formatDateTimeInTimezone(at, props.timezone) : null,
-            };
-        }),
-);
+    if (
+        !post.platform ||
+        (post.publish_status !== PublishStatus.Failed &&
+            post.publish_status !== PublishStatus.Rejected)
+    ) {
+        return null;
+    }
+
+    const category = post.failure?.category ?? '';
+    const at = post.failure?.failed_at ?? props.attemptedAt;
+
+    return {
+        platform: post.platform,
+        account: post.social_account?.display_label ?? null,
+        reasonKey: CATEGORIES.includes(category)
+            ? `posts.publish.failure.categories.${category}`
+            : 'posts.publish.failure.generic',
+        details: post.error_message?.trim() || null,
+        at: at ? date.formatDateTimeInTimezone(at, props.timezone) : null,
+    };
+});
 </script>
 
 <template>
@@ -88,17 +88,13 @@ const failures = computed(() =>
                 {{ $t('posts.publish.failure.title') }}
             </p>
             <p
-                v-if="failures.length === 0"
+                v-if="!failure"
                 class="text-sm text-foreground"
                 :data-testid="`post-failure-reason-${testKey}`"
             >
                 {{ $t('posts.publish.failure.generic') }}
             </p>
-            <div
-                v-for="failure in failures"
-                :key="failure.id"
-                class="flex flex-col gap-2"
-            >
+            <div v-else class="flex flex-col gap-2">
                 <p
                     class="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
                 >

@@ -67,7 +67,7 @@ test('appending media derives the pinterest and tiktok type again', function (st
 
     AppendPostMedia::execute($post, [appendPostMediaItem($this->workspace, $video)], $this->user);
 
-    expect($post->postPlatforms()->sole()->content_type)->toBe($expected);
+    expect($post->fresh()->content_type)->toBe($expected);
 })->with([
     'pinterest second image' => ['pinterest', false, ContentType::PinterestCarousel],
     'pinterest video' => ['pinterest', true, ContentType::PinterestVideoPin],

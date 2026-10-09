@@ -18,7 +18,7 @@ class PruneExpiredPostHistory
     public static function execute(CarbonInterface $cutoff, bool $dryRun = false): int
     {
         $query = Post::query()
-            ->whereIn('status', [Status::Published, Status::PartiallyPublished])
+            ->where('status', Status::Published)
             ->whereNotNull('published_at')
             ->where('published_at', '<', $cutoff);
 

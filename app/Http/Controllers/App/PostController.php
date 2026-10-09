@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
@@ -18,9 +17,7 @@ use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Support\PostStatusRules;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -137,17 +134,6 @@ class PostController extends Controller
             ->with('created_post_ids', $posts->pluck('id')->all());
     }
 
-    public function platformMetrics(Request $request, Post $post, PostPlatform $postPlatform): JsonResponse
-    {
-        $this->authorize('view', $post);
-
-        if ($postPlatform->post_id !== $post->id) {
-            abort(404);
-        }
-
-        return response()->json(app(ReadPublicationAnalytics::class)->forPlatform($postPlatform));
-    }
-
     public function edit(Request $request, Post $post): Response|RedirectResponse
     {
         $workspace = $request->user()->currentWorkspace;
@@ -245,9 +231,9 @@ class PostController extends Controller
     {
         $this->authorize('duplicate', $post);
 
-        $post->load(['postPlatforms', 'labels']);
+        $post->load(['socialAccount', 'labels']);
 
-        $copy = DuplicatePost::execute($post, $request->user(), $request->input('post_platform_id'));
+        $copy = DuplicatePost::execute($post, $request->user());
 
         return redirect($this->publishPageReturnUrl(['edit' => $copy->id]) ?? route('app.posts.edit', $copy));
     }

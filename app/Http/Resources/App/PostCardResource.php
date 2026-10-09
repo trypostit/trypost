@@ -21,7 +21,13 @@ class PostCardResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        $card = $this->resource->toArray();
+        $card = [
+            ...$this->resource->toArray(),
+            'failure' => $this->resource->error_context === null ? null : [
+                'category' => data_get($this->resource->error_context, 'category'),
+                'failed_at' => data_get($this->resource->error_context, 'failed_at'),
+            ],
+        ];
 
         if ($this->resource->relationLoaded('user')) {
             $card['user'] = $this->user === null ? null : [

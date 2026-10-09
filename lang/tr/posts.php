@@ -535,7 +535,6 @@ return [
         'publishing' => 'Yayınlanıyor',
         'retrying' => 'Yeniden deneniyor',
         'published' => 'Yayınlandı',
-        'partially_published' => 'Kısmen Yayınlandı',
         'failed' => 'Başarısız',
     ],
 
@@ -639,17 +638,6 @@ return [
             'objects' => 'Nesneler',
             'symbols' => 'Semboller',
             'flags' => 'Bayraklar',
-        ],
-
-        'status' => [
-            'pending' => 'Beklemede',
-            'scheduled' => 'Zamanlandı',
-            'published' => 'Yayınlandı',
-            'publishing' => 'Yayınlanıyor...',
-            'retrying' => 'Yeniden deneniyor...',
-            'failed' => 'Başarısız',
-            'pending_review' => 'Google incelemesinde',
-            'rejected' => 'Reddedildi',
         ],
 
         'delete_modal' => [
@@ -821,12 +809,11 @@ return [
         'media_file_too_large' => 'Bu dosya, türü için izin verilen :size MB sınırını aşıyor.',
         'queue_requires_schedule' => 'Bu kanalın henüz paylaşım saati yok. Kuyruğu kullanmak için kanal ayarlarından paylaşım saatleri ekleyin.',
         'queue_with_scheduled_at' => 'Kuyruk konumu ya da tarih ve saat seçin, ikisini birden değil.',
-        'queue_legacy_post' => 'Bu gönderi aynı anda birden fazla kanal için oluşturuldu ve kuyruğa eklenemez. Bunun yerine tarih ve saat belirleyin.',
         'queue_busy' => 'Kuyruk güncelleniyor. Lütfen tekrar deneyin.',
         'no_social_account' => 'Bu gönderinin bir sosyal hesabı yok, bu yüzden yayınlanamaz.',
+        'choose_channel' => 'Bu gönderiyi planlamadan veya yayınlamadan önce bir kanal seçin.',
         'queue_order_stale' => 'Kuyruk siz açtıktan sonra değişti. Yenileyip tekrar deneyin.',
         'account_disconnected' => 'Sosyal hesabın bağlantısı kesildi',
-        'target_disabled' => 'Bu hedef kapatıldı',
         'account_token_expired' => 'Sosyal hesap oturumunun süresi doldu — lütfen yeniden bağlanın',
         'platform_unavailable' => 'Platform geçici olarak kullanılamıyor. Kısa süre içinde yeniden deneyeceğiz.',
         'platform_unavailable_exhausted' => 'Platform birkaç denemeden sonra kullanılamaz kaldı. Lütfen daha sonra tekrar deneyin.',
@@ -908,6 +895,7 @@ return [
         'publishing_now' => 'Şimdi yayınlanıyor',
         'publishing_badge' => 'Yayınlanıyor…',
         'publishing_on' => ':network üzerinde paylaşılıyor…',
+        'in_google_review' => 'Google incelemesinde',
         'retrying_at' => ':time itibarıyla yeniden denenecek',
         'published_via' => 'Yayınlandığı yer:',
         'published_directly_from' => 'Doğrudan :network üzerinden yayınlandı',
@@ -994,8 +982,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanallar (:count)',
-        'collapse' => 'Kanalları gizle',
-        'expand' => 'Kanalları göster',
     ],
     'approvals' => [
         'badge' => 'Onay',

@@ -814,11 +814,13 @@ const mediaErrorKeys = computed(() => {
     };
     for (const [key, message] of Object.entries(errors.value)) {
         const shared = /^media\.(\d+)(\.|$)/.exec(key);
-        if (shared) {
+        if (shared && !props.initialPost) {
             record('', submitted.shared, Number(shared[1]), message);
             continue;
         }
-        const match = /^destinations\.(\d+)\.media\.(\d+)(\.|$)/.exec(key);
+        const match = shared
+            ? ['', '0', shared[1]]
+            : /^destinations\.(\d+)\.media\.(\d+)(\.|$)/.exec(key);
         const destination = match
             ? submitted.destinations[Number(match[1])]
             : undefined;
@@ -1187,7 +1189,9 @@ const activeRemaining = (group: NetworkGroup): number | null => {
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
     for (const account of group.accounts) {
-        const prefix = `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
+        const prefix = props.initialPost
+            ? 'meta.thread_replies'
+            : `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
         for (const [key, message] of Object.entries(errors.value)) {
             const match = key.startsWith(`${prefix}.`)
                 ? Number(key.slice(prefix.length + 1).split('.')[0])
@@ -1809,17 +1813,17 @@ const onMediaEdited = async (changes: MediaEditChange[]): Promise<void> => {
 const submit = (status: PostComposition['status']): void => {
     if (
         !canSubmit.value ||
-        (status !== 'draft' && hasBlockingIssues.value)
+        (status !== PostStatus.Draft && hasBlockingIssues.value)
     )
         return;
     submittedMedia.value = snapshotMedia();
     const queue =
-        status === 'scheduled' &&
+        status === PostStatus.Scheduled &&
         (scheduleMode.value === 'next' || scheduleMode.value === 'top')
             ? scheduleMode.value
             : null;
     const payload = composition.materialize(status, queue);
-    if (status === 'scheduled' && !queue) {
+    if (status === PostStatus.Scheduled && !queue) {
         if (!scheduledInstant) return;
         payload.scheduled_at = scheduledInstant;
         if (isInitialQueueSlot()) payload.queue_slot = scheduledInstant;
@@ -1836,8 +1840,16 @@ const submit = (status: PostComposition['status']): void => {
     emit('submit', payload, createAnother.value && !props.postId);
 };
 
+const submitDraft = (): void => {
+    submit(PostStatus.Draft);
+};
+
 const submitSelectedSchedule = (): void => {
-    submit(scheduleMode.value === 'now' ? 'publishing' : 'scheduled');
+    submit(
+        scheduleMode.value === 'now'
+            ? PostStatus.Publishing
+            : PostStatus.Scheduled,
+    );
 };
 
 const isScheduleModeDisabled = (mode: ComposerScheduleMode): boolean =>
@@ -3326,7 +3338,7 @@ const close = (): void => emit('update:open', false);
                         class="max-sm:h-8 max-sm:px-3"
                         data-testid="composer-save-draft"
                         :disabled="!canSubmit"
-                        @click="submit('draft')"
+                        @click="submitDraft"
                         >{{ $t(draftActionLabel) }}</Button
                     >
                     <p

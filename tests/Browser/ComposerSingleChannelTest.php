@@ -7,7 +7,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -108,7 +107,7 @@ test('one channel opens its own editor directly and a second channel returns to 
         ->assertNoJavaScriptErrors();
 });
 
-test('saving a single channel draft keeps its network fields on the post platform', function () {
+test('saving a single channel draft keeps its network fields on the post', function () {
     [$user, $workspace] = singleChannelComposerWorkspace();
     $youtube = SocialAccount::factory()->youtube()->create(['workspace_id' => $workspace->id]);
     $this->actingAs($user);
@@ -123,12 +122,11 @@ test('saving a single channel draft keeps its network fields on the post platfor
     waitForSingleChannelComposerClosed($page);
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
-    $platform = $post->postPlatforms()->sole();
     expect($post->status)->toBe(PostStatus::Draft)
         ->and($post->content)->toBe('A short about the launch')
-        ->and($platform->social_account_id)->toBe($youtube->id)
-        ->and($platform->content_type)->toBe(ContentType::YouTubeShort)
-        ->and(data_get($platform->meta, 'title'))->toBe('Launch title');
+        ->and($post->social_account_id)->toBe($youtube->id)
+        ->and($post->content_type)->toBe(ContentType::YouTubeShort)
+        ->and(data_get($post->meta, 'title'))->toBe('Launch title');
 });
 
 test('the youtube title follows the caption until the title is edited', function () {
@@ -157,11 +155,11 @@ test('the youtube title follows the caption until the title is edited', function
         ->click('@composer-save-draft');
     waitForSingleChannelComposerClosed($page);
 
-    $platform = Post::where('workspace_id', $workspace->id)->sole()->postPlatforms()->sole();
-    expect(data_get($platform->meta, 'title'))->toBe('My own title');
+    $post = Post::where('workspace_id', $workspace->id)->sole();
+    expect(data_get($post->meta, 'title'))->toBe('My own title');
 });
 
-test('scheduling a single channel saves its post platform with the chosen format', function () {
+test('scheduling a single channel saves its post with the chosen format', function () {
     [$user, $workspace] = singleChannelComposerWorkspace();
     $facebook = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Facebook]);
     $this->actingAs($user);
@@ -189,26 +187,23 @@ test('scheduling a single channel saves its post platform with the chosen format
     waitForSingleChannelComposerClosed($page);
 
     $post = Post::where('workspace_id', $workspace->id)->sole();
-    $platform = $post->postPlatforms()->sole();
     expect($post->status)->toBe(PostStatus::Scheduled)
         ->and($post->schedule_mode)->toBe(ScheduleMode::Custom)
         ->and($post->scheduled_at)->not->toBeNull()
         ->and($post->content)->toBe('Scheduled for one page')
-        ->and($platform->social_account_id)->toBe($facebook->id)
-        ->and($platform->platform)->toBe(Platform::Facebook)
-        ->and($platform->content_type)->toBe(ContentType::FacebookPost);
+        ->and($post->social_account_id)->toBe($facebook->id)
+        ->and($post->platform)->toBe(Platform::Facebook)
+        ->and($post->content_type)->toBe(ContentType::FacebookPost);
 });
 
 test('editing a single channel post opens its own editor', function () {
     [$user, $workspace] = singleChannelComposerWorkspace();
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
         'content' => 'Already written',
     ]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post));

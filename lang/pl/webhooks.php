@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Gdy post zostanie zaplanowany do publikacji.',
         'post_unscheduled' => 'Gdy zaplanowany post wraca do wersji roboczych.',
         'post_published' => 'Gdy post zostanie opublikowany na kanale.',
-        'post_partially_published' => 'Gdy część kanałów publikuje, a część zawodzi.',
         'post_failed' => 'Gdy publikacja posta się nie powiedzie.',
         'post_deleted' => 'Gdy post zostanie usunięty.',
     ],

@@ -12,7 +12,6 @@ use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -41,20 +40,12 @@ beforeEach(function () {
 
 function mcpQueueDraft(object $test): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $test->workspace->id,
+    return Post::factory()->forAccount($test->channel)->create([
         'user_id' => $test->user->id,
         'status' => PostStatus::Draft,
         'scheduled_at' => null,
         'content' => 'Draft',
     ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $test->channel->id,
-        'enabled' => true,
-    ]);
-
-    return $post;
 }
 
 test('create posts with queue next queues the post', function () {
@@ -163,7 +154,7 @@ test('update post with queue on a channel without posting times is rejected', fu
         'platform' => Platform::LinkedIn,
     ]);
     $post = mcpQueueDraft($this);
-    $post->postPlatforms()->update(['social_account_id' => $bare->id]);
+    $post->forceFill(['social_account_id' => $bare->id])->save();
     $mode = $post->fresh()->schedule_mode;
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [

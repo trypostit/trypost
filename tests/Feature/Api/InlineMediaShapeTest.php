@@ -11,7 +11,6 @@ use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -43,10 +42,7 @@ function inlineMediaUpload(object $test): Media
 
 function inlineMediaPost(object $test): Post
 {
-    $post = Post::factory()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $test->channel->id, 'enabled' => true]);
-
-    return $post;
+    return Post::factory()->forAccount($test->channel)->create(['user_id' => $test->user->id]);
 }
 
 function inlineMediaDestinations(object $test): array
@@ -68,7 +64,8 @@ test('an upload token moves to the post and is spent', function () {
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Token',
         'media' => [['upload_token' => $upload->upload_token]],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertCreated();
 
     $post = Post::query()->sole();
@@ -80,7 +77,8 @@ test('an upload token moves to the post and is spent', function () {
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Again',
         'media' => [['upload_token' => $upload->upload_token]],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertUnprocessable()->assertJsonValidationErrors(['media.0.upload_token' => __('posts.errors.media_expired')]);
 
     expect(Post::query()->count())->toBe(1);
@@ -148,7 +146,7 @@ test('a batch gives each destination its own alt text and the shared one where i
     };
 
     $altText = fn (SocialAccount $channel): ?string => data_get(Post::query()
-        ->whereHas('postPlatforms', fn ($query) => $query->where('social_account_id', $channel->id))
+        ->where('social_account_id', $channel->id)
         ->sole()->media, '0.meta.alt_text');
 
     expect($altText($this->channels[0]))->toBe('First channel description')
@@ -164,7 +162,8 @@ test('an id of another posts media is copied and the other post keeps its file',
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Copy',
         'media' => [['id' => $source->id]],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertCreated();
 
     $copy = Post::query()->whereKeyNot($other->id)->sole()->ownedMedia()->sole();
@@ -179,7 +178,8 @@ test('an item with two references or the old snapshot keys fails the shape rule'
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Shape',
         'media' => [$item],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertUnprocessable()->assertJsonValidationErrors(['media.0' => __('posts.errors.media_item_shape')]);
 })->with([
     'id and url' => [['id' => '6f3c0a4e-0000-4000-8000-000000000000', 'url' => 'https://93.184.216.34/a.png']],
@@ -194,7 +194,8 @@ test('an old snapshot with a url downloads that url instead of trusting the path
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Snapshot',
         'media' => [['path' => 'medias/forged.jpg', 'url' => 'https://93.184.216.34/photo.png']],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertCreated();
 
     Http::assertSentCount(1);
@@ -204,14 +205,14 @@ test('an old snapshot with a url downloads that url instead of trusting the path
 test('every create and update entry point, REST and MCP, enforces the same shape error', function (string $entry) {
     $post = inlineMediaPost($this);
     $bad = [['id' => '6f3c0a4e-0000-4000-8000-000000000000', 'url' => 'https://93.184.216.34/a.png']];
-    $platforms = [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']];
+    $destination = ['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post'];
 
     match ($entry) {
-        'rest create' => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), ['media' => $bad, 'platforms' => $platforms])->assertJsonValidationErrors(['media.0']),
+        'rest create' => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), ['media' => $bad, ...$destination])->assertJsonValidationErrors(['media.0']),
         'rest batch' => $this->withHeaders($this->headers)->postJson(route('api.posts.batch.store'), ['status' => 'draft', 'media' => $bad, 'destinations' => inlineMediaDestinations($this)])->assertJsonValidationErrors(['media.0']),
         'rest batch override' => $this->withHeaders($this->headers)->postJson(route('api.posts.batch.store'), ['status' => 'draft', 'destinations' => [[...inlineMediaDestinations($this)[0], 'media' => $bad]]])->assertJsonValidationErrors(['destinations.0.media.0']),
         'rest update' => $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), ['status' => 'draft', 'media' => $bad])->assertJsonValidationErrors(['media.0']),
-        'mcp create' => TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, ['media' => $bad, 'platforms' => $platforms])->assertHasErrors([__('posts.errors.media_item_shape')]),
+        'mcp create' => TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, ['media' => $bad, ...$destination])->assertHasErrors([__('posts.errors.media_item_shape')]),
         'mcp batch' => TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, ['status' => 'draft', 'media' => $bad, 'destinations' => inlineMediaDestinations($this)])->assertHasErrors([__('posts.errors.media_item_shape')]),
         'mcp update' => TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, 'media' => $bad])->assertHasErrors([__('posts.errors.media_item_shape')]),
     };
@@ -228,7 +229,8 @@ test('the mcp tools accept the three shapes', function () {
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'media' => [['upload_token' => $upload->upload_token], ['id' => $source->id], ['url' => 'https://93.184.216.34/photo.png', 'alt' => 'Alt']],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertOk();
 
     $post = Post::query()->whereKeyNot($other->id)->sole();
@@ -288,16 +290,16 @@ test('another workspace\'s upload token or media id is rejected on every entry p
     $item = $reference === 'token' ? ['upload_token' => $upload->upload_token] : ['id' => $owned->id];
     $key = $reference === 'token' ? 'upload_token' : 'id';
     $expected = $reference === 'token' ? __('posts.errors.media_expired') : __('validation.exists', ['attribute' => 'media']);
-    $platforms = [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']];
+    $destination = ['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post'];
     $before = Media::query()->count();
     $postsBefore = Post::query()->count();
 
     match ($entry) {
-        'rest create' => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), ['media' => [$item], 'platforms' => $platforms])->assertJsonValidationErrors(["media.0.{$key}" => $expected]),
+        'rest create' => $this->withHeaders($this->headers)->postJson(route('api.posts.store'), ['media' => [$item], ...$destination])->assertJsonValidationErrors(["media.0.{$key}" => $expected]),
         'rest batch' => $this->withHeaders($this->headers)->postJson(route('api.posts.batch.store'), ['status' => 'draft', 'media' => [$item], 'destinations' => inlineMediaDestinations($this)])->assertJsonValidationErrors(["media.0.{$key}" => $expected]),
         'rest update' => $this->withHeaders($this->headers)->putJson(route('api.posts.update', $post), ['status' => 'draft', 'media' => [$item]])->assertJsonValidationErrors(["media.0.{$key}" => $expected]),
         'rest attach' => $this->withHeaders($this->headers)->postJson(route('api.posts.attach-media-from-upload', $post), ['upload_token' => $upload->upload_token])->assertJsonValidationErrors(['upload_token' => __('posts.errors.media_expired')]),
-        'mcp create' => TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, ['media' => [$item], 'platforms' => $platforms])->assertHasErrors([$expected]),
+        'mcp create' => TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, ['media' => [$item], ...$destination])->assertHasErrors([$expected]),
         'mcp batch' => TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, ['status' => 'draft', 'media' => [$item], 'destinations' => inlineMediaDestinations($this)])->assertHasErrors([$expected]),
         'mcp update' => TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, 'media' => [$item]])->assertHasErrors([$expected]),
         'mcp attach' => TryPostServer::actingAs($this->user)->tool(AttachMediaFromUploadTool::class, ['post_id' => $post->id, 'upload_token' => $upload->upload_token])->assertHasErrors([__('posts.errors.media_expired')]),
@@ -344,7 +346,8 @@ test('a token consumed by a concurrent save between hosting and saving fails wit
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'content' => 'Loser',
         'media' => [['upload_token' => $upload->upload_token]],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertUnprocessable()->assertJsonValidationErrors(['media.0' => __('posts.errors.media_expired')]);
 
     expect(Post::query()->where('content', 'Loser')->exists())->toBeFalse()
@@ -354,7 +357,8 @@ test('a token consumed by a concurrent save between hosting and saving fails wit
 test('a media object instead of a list is refused', function () {
     $this->withHeaders($this->headers)->postJson(route('api.posts.store'), [
         'media' => ['b' => ['url' => 'https://93.184.216.34/a.png'], 'a' => ['url' => 'https://93.184.216.34/b.png']],
-        'platforms' => [['social_account_id' => $this->channel->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->channel->id,
+        'content_type' => 'linkedin_post',
     ])->assertUnprocessable()->assertJsonValidationErrors(['media']);
 });
 

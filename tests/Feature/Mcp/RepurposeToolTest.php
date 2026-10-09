@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Enums\Repurpose\ItemStatus;
 use App\Enums\Repurpose\PauseReason;
 use App\Enums\Repurpose\PublishMode;
@@ -25,7 +25,6 @@ use App\Mcp\Tools\Repurpose\ListRepurposesTool;
 use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -314,20 +313,15 @@ test('the items tool carries each replicated post status', function () {
 
     $item = RepurposeItem::factory()->for($repurpose)->create();
 
-    $post = Post::factory()->create([
+    $post = Post::factory()->tiktok()->published()->create([
         'workspace_id' => $this->workspace->id,
         'repurpose_item_id' => $item->id,
-    ]);
-    PostPlatform::factory()->for($post)->create([
-        'platform' => Platform::TikTok,
-        'enabled' => true,
-        'status' => PostPlatformStatus::Published,
     ]);
 
     TryPostServer::actingAs($this->user)
         ->tool(ListRepurposeItemsTool::class, ['repurpose_id' => $repurpose->id])
         ->assertOk()
-        ->assertSee(PostPlatformStatus::Published->value);
+        ->assertSee(PublishStatus::Published->value);
 });
 
 test('the update tool keeps a draft destination that is still missing its board', function () {

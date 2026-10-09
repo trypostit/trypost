@@ -72,18 +72,11 @@ function apiSweepRecords(Workspace $workspace): array
         'posting_schedule' => collect(range(0, 6))->map(fn (int $day): array => ['day' => $day, 'enabled' => true, 'times' => ['09:00']])->all(),
     ]);
     $slots = $channel->posting_schedule->nextSlots(now()->addMinute(), 'UTC', 2);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($channel, ContentType::LinkedInPost)->create([
         'status' => Status::Scheduled,
         'content' => 'Untouched',
         'schedule_mode' => 'queue',
         'scheduled_at' => $slots[0],
-    ]);
-    $post->postPlatforms()->create([
-        'social_account_id' => $channel->id,
-        'platform' => 'linkedin',
-        'content_type' => ContentType::LinkedInPost->value,
-        'enabled' => true,
     ]);
     $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
 
@@ -185,7 +178,6 @@ function apiSweepSnapshot(array $records, string $apiTokenId): array
             ->filter(fn (mixed $record): bool => is_object($record))
             ->map(fn (object $record): ?array => $record->fresh()?->makeVisible($record->getHidden())->attributesToArray())
             ->all(),
-        'post_platforms' => $records['post']->postPlatforms()->get()->toArray(),
         'post_media' => $records['post']->ownedMedia()->count(),
         'apiToken' => AccessToken::query()->find($apiTokenId)?->attributesToArray(),
     ];
@@ -283,19 +275,13 @@ test('every api route that names a record answers 404 for one of another workspa
 test('a malformed id inside a body is a validation error, never a database error', function () {
     $result = createApiTestToken();
     $records = apiSweepRecords($result['workspace']);
-    $draft = Post::factory()->draft()->create(['workspace_id' => $result['workspace']->id]);
-    $target = $draft->postPlatforms()->create([
-        'social_account_id' => $records['channel']->id,
-        'platform' => 'linkedin',
-        'content_type' => ContentType::LinkedInPost->value,
-        'enabled' => true,
-    ]);
+    $draft = Post::factory()->forAccount($records['channel'], ContentType::LinkedInPost)->draft()->create();
     $tomorrow = now()->addDay()->toIso8601String();
     $calls = [
-        'post create' => ['POST', route('api.posts.store'), ['content' => 'Hello', 'platforms' => [['social_account_id' => 'not-a-uuid', 'content_type' => 'linkedin_post']]], 'platforms.0.social_account_id'],
-        'post create scheduled' => ['POST', route('api.posts.store'), ['content' => 'Hello', 'status' => 'scheduled', 'scheduled_at' => $tomorrow, 'platforms' => [['social_account_id' => 'not-a-uuid']]], 'platforms.0.social_account_id'],
-        'post update' => ['PUT', route('api.posts.update', $draft), ['status' => 'draft', 'platforms' => [['id' => 'not-a-uuid', 'content_type' => 'linkedin_post']]], 'platforms.0.id'],
-        'post update scheduled' => ['PUT', route('api.posts.update', $draft), ['status' => 'scheduled', 'scheduled_at' => $tomorrow, 'platforms' => [['id' => 'not-a-uuid']]], 'platforms.0.id'],
+        'post create' => ['POST', route('api.posts.store'), ['content' => 'Hello', 'social_account_id' => 'not-a-uuid', 'content_type' => 'linkedin_post'], 'social_account_id'],
+        'post create scheduled' => ['POST', route('api.posts.store'), ['content' => 'Hello', 'status' => 'scheduled', 'scheduled_at' => $tomorrow, 'social_account_id' => 'not-a-uuid'], 'social_account_id'],
+        'post update' => ['PUT', route('api.posts.update', $draft), ['status' => 'draft', 'label_ids' => ['not-a-uuid']], 'label_ids.0'],
+        'post update scheduled' => ['PUT', route('api.posts.update', $draft), ['status' => 'scheduled', 'scheduled_at' => $tomorrow, 'label_ids' => ['not-a-uuid']], 'label_ids.0'],
         'repurpose update' => ['PUT', route('api.repurposes.update', $records['repurpose']), ['destinations' => [['social_account_id' => 'not-a-uuid', 'content_type' => 'linkedin_post']]], 'destinations.0.social_account_id'],
     ];
 
@@ -307,7 +293,7 @@ test('a malformed id inside a body is a validation error, never a database error
             ->assertJsonValidationErrors([$field]);
     }
 
-    expect($target->fresh()->enabled)->toBeTrue()
+    expect($draft->fresh()->social_account_id)->toBe($records['channel']->id)
         ->and($draft->fresh()->content)->toBe($draft->content);
 });
 

@@ -8,7 +8,6 @@ use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Exceptions\Post\QueueBusyException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -31,16 +30,11 @@ beforeEach(function () {
 
 function makeQueuePost(SocialAccount $channel, array $attributes = []): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create(array_merge([
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => null,
     ], $attributes));
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id]);
-
-    return $post;
 }
 
 function localSlot(Post $post): string

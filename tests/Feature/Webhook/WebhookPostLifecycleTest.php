@@ -18,7 +18,6 @@ use App\Listeners\Webhook\SendPostCreatedWebhook;
 use App\Listeners\Webhook\SendPostDeletedWebhook;
 use App\Listeners\Webhook\SendPostStatusWebhook;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -49,7 +48,7 @@ function subscribeToWebhook(Workspace $workspace, array $events): Webhook
 /** @param array<string, mixed> $data */
 function createWebhookPost(Workspace $workspace, User $user, array $data): Post
 {
-    $destination = $data['platforms'][0] ?? null;
+    $destination = $data['destination'] ?? null;
     if ($destination === null) {
         $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
         $destination = [
@@ -91,7 +90,7 @@ test('creating a channel post queues a post.created webhook', function () {
     });
 });
 
-test('creating a channel post includes labels and platforms in the payload', function () {
+test('creating a channel post includes labels and its channel in the payload', function () {
     subscribeToWebhook($this->workspace, [EventType::PostCreated]);
 
     $label = WorkspaceLabel::factory()->recycle($this->workspace)->create([
@@ -107,11 +106,11 @@ test('creating a channel post includes labels and platforms in the payload', fun
         'content' => 'Hello from webhooks',
         'created_via' => CreatedVia::Web,
         'label_ids' => [$label->id],
-        'platforms' => [[
+        'destination' => [
             'social_account_id' => $account->id,
             'content_type' => ContentType::LinkedInPost->value,
             'meta' => ['document_title' => 'TryPost launch deck'],
-        ]],
+        ],
     ]);
 
     Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post, $label, $account) {
@@ -119,31 +118,24 @@ test('creating a channel post includes labels and platforms in the payload', fun
             && data_get($job->payload, 'id') === $post->id
             && data_get($job->payload, 'labels.0.id') === $label->id
             && data_get($job->payload, 'labels.0.name') === 'Launch'
-            && data_get($job->payload, 'platforms.0.social_account_id') === $account->id
-            && data_get($job->payload, 'platforms.0.enabled') === true
-            && data_get($job->payload, 'platforms.0.meta.document_title') === 'TryPost launch deck';
+            && data_get($job->payload, 'social_account_id') === $account->id
+            && data_get($job->payload, 'platform') === Platform::LinkedIn->value
+            && data_get($job->payload, 'meta.document_title') === 'TryPost launch deck';
     });
 });
 
-test('scheduling a post through UpdatePost includes labels and platforms from the same save', function () {
+test('scheduling a post through UpdatePost includes labels and meta from the same save', function () {
     subscribeToWebhook($this->workspace, [EventType::PostScheduled]);
-
-    $post = Post::factory()->createQuietly([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'content' => 'Ready to schedule',
-    ]);
 
     $label = WorkspaceLabel::factory()->recycle($this->workspace)->create([
         'name' => 'Launch',
         'color' => '#7C3AED',
     ]);
     $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create();
-    $platform = PostPlatform::factory()->recycle($post, $account)->create([
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'enabled' => false,
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->createQuietly([
+        'user_id' => $this->user->id,
+        'status' => PostStatus::Draft,
+        'content' => 'Ready to schedule',
         'meta' => [],
     ]);
 
@@ -151,22 +143,18 @@ test('scheduling a post through UpdatePost includes labels and platforms from th
         'status' => PostStatus::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'label_ids' => [$label->id],
-        'platforms' => [[
-            'id' => $platform->id,
-            'content_type' => ContentType::LinkedInPost->value,
-            'meta' => ['document_title' => 'TryPost launch deck'],
-        ]],
+        'content_type' => ContentType::LinkedInPost->value,
+        'meta' => ['document_title' => 'TryPost launch deck'],
     ]);
 
-    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post, $label, $platform) {
+    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($post, $label, $account) {
         return $job->eventType === EventType::PostScheduled->value
             && data_get($job->payload, 'id') === $post->id
             && data_get($job->payload, 'status') === PostStatus::Scheduled->value
             && data_get($job->payload, 'labels.0.id') === $label->id
             && data_get($job->payload, 'labels.0.name') === 'Launch'
-            && data_get($job->payload, 'platforms.0.id') === $platform->id
-            && data_get($job->payload, 'platforms.0.enabled') === true
-            && data_get($job->payload, 'platforms.0.meta.document_title') === 'TryPost launch deck';
+            && data_get($job->payload, 'social_account_id') === $account->id
+            && data_get($job->payload, 'meta.document_title') === 'TryPost launch deck';
     });
 });
 
@@ -185,7 +173,7 @@ test('creating a draft does not queue status webhooks', function () {
 test('unscheduling a post through UpdatePost queues a post.unscheduled webhook', function () {
     subscribeToWebhook($this->workspace, [EventType::PostUnscheduled]);
 
-    $post = Post::factory()->createQuietly([
+    $post = Post::factory()->linkedin()->createQuietly([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'status' => PostStatus::Scheduled,
@@ -250,7 +238,6 @@ test('changing post status through the observer queues the matching webhook', fu
             'scheduled_at' => now()->addDay(),
         ]),
         PostStatus::Published => $post->markAsPublished(),
-        PostStatus::PartiallyPublished => $post->markAsPartiallyPublished(),
         PostStatus::Failed => $post->markAsFailed(),
         default => $post->update(['status' => $status]),
     };
@@ -262,22 +249,27 @@ test('changing post status through the observer queues the matching webhook', fu
             && data_get($job->payload, 'workspace.id') === $this->workspace->id
             && array_key_exists('labels', $job->payload)
             && array_key_exists('media', $job->payload)
-            && array_key_exists('platforms', $job->payload);
+            && array_key_exists('publish_status', $job->payload)
+            && ! array_key_exists('platforms', $job->payload);
     });
 })->with([
     [PostStatus::Scheduled, EventType::PostScheduled],
     [PostStatus::Published, EventType::PostPublished],
-    [PostStatus::PartiallyPublished, EventType::PostPartiallyPublished],
     [PostStatus::Failed, EventType::PostFailed],
 ]);
 
 test('publishing a post queues the full webhook payload', function () {
     subscribeToWebhook($this->workspace, [EventType::PostPublished]);
 
-    $post = Post::factory()->createQuietly([
-        'workspace_id' => $this->workspace->id,
+    $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
+        'display_name' => 'Paulo Castellano',
+        'username' => 'paulocastellano',
+        'avatar_url' => 'avatars/li.jpg',
+    ]);
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->published()->createQuietly([
         'user_id' => $this->user->id,
         'status' => PostStatus::Draft,
+        'meta' => ['document_title' => 'TryPost launch deck'],
         'content' => '<p>Launch day. TryPost is live.</p>',
         'created_via' => CreatedVia::Web,
         'media' => [
@@ -299,22 +291,11 @@ test('publishing a post queues the full webhook payload', function () {
     ]);
     $post->labels()->attach($label);
 
-    $account = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
-        'display_name' => 'Paulo Castellano',
-        'username' => 'paulocastellano',
-        'avatar_url' => 'avatars/li.jpg',
-    ]);
-    $platform = PostPlatform::factory()->published()->recycle($post, $account)->create([
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'meta' => ['document_title' => 'TryPost launch deck'],
-    ]);
-
     $post->markAsPublished();
 
     $expected = app(WebhookService::class)->postPayload($post->fresh());
 
-    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($expected, $platform) {
+    Queue::assertPushed(DispatchWebhook::class, function (DispatchWebhook $job) use ($expected, $account) {
         return $job->eventType === EventType::PostPublished->value
             && $job->payload['id'] === $expected['id']
             && $job->payload['status'] === PostStatus::Published->value
@@ -322,8 +303,12 @@ test('publishing a post queues the full webhook payload', function () {
             && $job->payload['workspace'] === $expected['workspace']
             && $job->payload['labels'] === $expected['labels']
             && $job->payload['media'] === $expected['media']
-            && $job->payload['platforms'] === $expected['platforms']
-            && data_get($job->payload, 'platforms.0.id') === $platform->id;
+            && $job->payload['social_account'] === $expected['social_account']
+            && $job->payload['meta'] === ['document_title' => 'TryPost launch deck']
+            && $job->payload['publish_status'] === $expected['publish_status']
+            && $job->payload['platform_post_id'] === $expected['platform_post_id']
+            && $job->payload['social_account_id'] === $account->id
+            && ! array_key_exists('error_context', $job->payload);
     });
 });
 

@@ -6,10 +6,10 @@ namespace App\Actions\Post;
 
 use App\Actions\Media\SyncOwnedMedia;
 use App\Actions\Post\Queue\ReflowChannelQueue;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
 class CreateChannelPost
 {
     /**
-     * Create one post with exactly one publishing target from a resolved destination.
+     * Create one post for one channel from a resolved destination.
      * A destination with a `queue` position is enqueued on its channel, so the caller
      * must hold that channel's queue lock and run this inside a DB transaction.
      * The destination's media ends owned by the new post (see SyncOwnedMedia).
@@ -41,7 +41,7 @@ class CreateChannelPost
         $position = data_get($destination, 'queue');
         $pending = $status === PostStatus::PendingApproval;
 
-        $post = $workspace->posts()->create([
+        $post = $workspace->posts()->forceCreate([
             'post_group_id' => data_get($destination, 'post_group_id') ?? (string) Str::uuid7(),
             'user_id' => $user->id,
             'content' => $destination['content'],
@@ -58,15 +58,11 @@ class CreateChannelPost
                 ? Carbon::parse($destination['scheduled_at'])->utc()
                 : null,
             ...($pending ? PostApproval::transition(PostStatus::Draft, PostStatus::PendingApproval, $user, $position instanceof QueuePosition ? $position : null) : []),
-        ]);
-
-        $post->postPlatforms()->create([
             'social_account_id' => $account->id,
             'platform' => $account->platform,
             ...$account->channelSnapshot(),
             'content_type' => $destination['content_type'],
-            'status' => PostPlatformStatus::Pending,
-            'enabled' => true,
+            'publish_status' => PublishStatus::Pending,
             'meta' => PostPlatformMetaRules::normalize($destination['meta'] ?? []),
         ]);
 
@@ -76,6 +72,7 @@ class CreateChannelPost
             $batch,
             data_get($destination, 'media_error_key', 'media'),
             data_get($destination, 'legacy_media', []),
+            data_get($destination, 'meta_error_key', 'meta'),
         );
 
         if ($destination['label_ids'] !== []) {

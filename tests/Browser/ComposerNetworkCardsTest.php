@@ -88,8 +88,8 @@ function networkCardsCaptionCount(mixed $page): int
  */
 function networkCardsSavedContents(Workspace $workspace): array
 {
-    return Post::query()->where('workspace_id', $workspace->id)->with('postPlatforms')->get()
-        ->mapWithKeys(fn (Post $post): array => [$post->postPlatforms->sole()->social_account_id => $post->content])
+    return Post::query()->where('workspace_id', $workspace->id)->get()
+        ->mapWithKeys(fn (Post $post): array => [$post->social_account_id => $post->content])
         ->all();
 }
 
@@ -289,8 +289,8 @@ test('two pinterest accounts in one card keep their own boards', function () {
     $page->assertNoJavaScriptErrors()->click('@composer-save-draft');
     waitForNetworkCardsClosed($page);
 
-    $boards = Post::query()->where('workspace_id', $workspace->id)->with('postPlatforms')->get()
-        ->mapWithKeys(fn (Post $post): array => [$post->postPlatforms->sole()->social_account_id => data_get($post->postPlatforms->sole()->meta, 'board_id')]);
+    $boards = Post::query()->where('workspace_id', $workspace->id)->get()
+        ->mapWithKeys(fn (Post $post): array => [$post->social_account_id => data_get($post->meta, 'board_id')]);
     expect($boards[$second->id])->toBe('board_2')
         ->and($boards[$first->id])->not->toBe('board_2');
 });

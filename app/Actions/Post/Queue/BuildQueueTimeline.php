@@ -27,16 +27,15 @@ class BuildQueueTimeline
             ->where('workspace_id', $workspace->id)
             ->holdingSlot()
             ->whereBetween('scheduled_at', [now(), $until])
-            ->whereHas('postPlatforms', fn ($platforms) => $platforms->enabled()->whereIn('social_account_id', $channelIds))
+            ->whereIn('social_account_id', $channelIds)
             ->matchingLabelFilter($labelIds, $untagged)
-            ->with(['postPlatforms' => fn ($platforms) => $platforms->enabled()->whereIn('social_account_id', $channelIds)->orderBy('created_at')->orderBy('id')])
             ->get();
 
         $items = [];
         $occupied = [];
 
         foreach ($posts as $post) {
-            $channelId = data_get($post->postPlatforms->first(), 'social_account_id');
+            $channelId = $post->social_account_id;
 
             if ($channelId === null) {
                 continue;

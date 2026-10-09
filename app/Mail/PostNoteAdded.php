@@ -44,11 +44,7 @@ class PostNoteAdded extends Mailable implements ShouldQueue
                 'workspaceName' => $post->workspace->name,
                 'noteBody' => (string) $this->note->body,
                 'postExcerpt' => PostExcerpt::from($post->content, 200),
-                'channels' => $post->postPlatforms()
-                    ->with('socialAccount')
-                    ->enabled()
-                    ->get()
-                    ->all(),
+                'channel' => $post->loadMissing('socialAccount')->hasDestination() ? $post : null,
                 'url' => route('app.posts.edit', ['post' => $post, 'comment' => $this->note->id]),
             ],
         );

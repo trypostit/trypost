@@ -8,7 +8,6 @@ use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\PinterestPublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -32,19 +31,13 @@ beforeEach(function () {
         ],
     ]);
 
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'content' => 'Check out this pin!',
-    ]);
-
-    $this->postPlatform = PostPlatform::factory()->pinterest()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => Platform::Pinterest,
         'content_type' => ContentType::PinterestPin,
         'meta' => ['board_id' => 'board_123'],
     ]);
+    $this->post->setRelation('socialAccount', $this->socialAccount);
 
     $this->publisher = new PinterestPublisher;
 
@@ -80,7 +73,7 @@ test('pinterest publisher can publish image pin', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result)->toHaveKey('url');
@@ -93,12 +86,12 @@ test('pinterest publisher can publish image pin', function () {
 });
 
 test('pinterest publisher throws exception when no media for pin', function () {
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest requires at least one image');
 });
 
 test('pinterest publisher throws exception when no board id', function () {
-    $this->postPlatform->update(['meta' => []]);
+    $this->post->update(['meta' => []]);
     $this->socialAccount->update(['meta' => []]);
 
     $this->post->update([
@@ -113,12 +106,12 @@ test('pinterest publisher throws exception when no board id', function () {
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest board_id is required');
 });
 
 test('pinterest publisher throws exception for carousel when no board id', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'content_type' => ContentType::PinterestCarousel,
         'meta' => [],
     ]);
@@ -131,12 +124,12 @@ test('pinterest publisher throws exception for carousel when no board id', funct
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest board_id is required');
 });
 
 test('pinterest publisher throws exception for video pin when no board id', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'content_type' => ContentType::PinterestVideoPin,
         'meta' => [],
     ]);
@@ -148,12 +141,12 @@ test('pinterest publisher throws exception for video pin when no board id', func
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest board_id is required');
 });
 
 test('pinterest publisher uses default board id from account', function () {
-    $this->postPlatform->update(['meta' => []]); // No board_id in post meta
+    $this->post->update(['meta' => []]); // No board_id in post meta
 
     $this->post->update([
         'media' => [
@@ -174,7 +167,7 @@ test('pinterest publisher uses default board id from account', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -193,7 +186,7 @@ test('pinterest publisher can publish carousel', function () {
             'original_filename' => "image{$i}.jpg",
         ];
     }
-    $this->postPlatform->update(['content_type' => ContentType::PinterestCarousel]);
+    $this->post->update(['content_type' => ContentType::PinterestCarousel]);
 
     $this->post->update([
 
@@ -207,7 +200,7 @@ test('pinterest publisher can publish carousel', function () {
         ], 200),
     ]);
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('carousel_pin_123');
 
@@ -218,7 +211,7 @@ test('pinterest publisher can publish carousel', function () {
 });
 
 test('pinterest publisher throws exception for carousel with less than 2 images', function () {
-    $this->postPlatform->update(['content_type' => ContentType::PinterestCarousel]);
+    $this->post->update(['content_type' => ContentType::PinterestCarousel]);
 
     $this->post->update([
         'media' => [
@@ -232,7 +225,7 @@ test('pinterest publisher throws exception for carousel with less than 2 images'
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest carousel requires 2-5 images');
 });
 
@@ -247,7 +240,7 @@ test('pinterest publisher throws exception for carousel with more than 5 images'
             'original_filename' => "image{$i}.jpg",
         ];
     }
-    $this->postPlatform->update(['content_type' => ContentType::PinterestCarousel]);
+    $this->post->update(['content_type' => ContentType::PinterestCarousel]);
 
     $this->post->update([
 
@@ -255,7 +248,7 @@ test('pinterest publisher throws exception for carousel with more than 5 images'
 
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Pinterest carousel requires 2-5 images');
 });
 
@@ -280,7 +273,7 @@ test('pinterest publisher throws exception on api error', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class);
 });
 
@@ -305,7 +298,7 @@ test('pinterest publisher throws token expired exception on auth error', functio
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class);
 });
 
@@ -336,7 +329,7 @@ test('pinterest publisher refreshes token when expired', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), 'oauth/token');
@@ -368,12 +361,12 @@ test('pinterest publisher throws TokenExpiredException when refresh_token is rej
         ], 400),
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'Refresh token expired');
 });
 
 test('pinterest publisher includes title and link when provided', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'board_id' => 'board_123',
             'title' => 'My Pin Title',
@@ -401,7 +394,7 @@ test('pinterest publisher includes title and link when provided', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -425,7 +418,7 @@ test('pinterest publisher uses post content as description and ignores meta desc
         ],
     ]);
 
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'board_id' => 'board_123',
             'description' => 'Stale meta description must be ignored',
@@ -437,7 +430,7 @@ test('pinterest publisher uses post content as description and ignores meta desc
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -464,7 +457,7 @@ test('pinterest publisher omits description when post content is blank', functio
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -475,7 +468,7 @@ test('pinterest publisher omits description when post content is blank', functio
 test('pinterest publisher truncates title to 100 characters', function () {
     $longTitle = str_repeat('T', 150);
 
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'board_id' => 'board_123',
             'title' => $longTitle,
@@ -500,7 +493,7 @@ test('pinterest publisher truncates title to 100 characters', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -510,7 +503,7 @@ test('pinterest publisher truncates title to 100 characters', function () {
 });
 
 test('pinterest publisher omits blank title and link', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'board_id' => 'board_123',
             'title' => '',
@@ -536,7 +529,7 @@ test('pinterest publisher omits blank title and link', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         $data = $request->data();
@@ -571,7 +564,7 @@ test('pinterest publisher sends alt text from image meta capped to platform max'
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     $expectedAlt = mb_substr($longAlt, 0, Platform::Pinterest->altTextMaxLength());
 
@@ -602,7 +595,7 @@ test('pinterest publisher omits alt_text when image has no alt text set', functi
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -611,7 +604,7 @@ test('pinterest publisher omits alt_text when image has no alt text set', functi
 });
 
 test('pinterest publisher ignores postPlatform meta alt_text and only reads image alt', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'meta' => [
             'board_id' => 'board_123',
             'alt_text' => 'legacy per-platform alt text that should be ignored',
@@ -637,7 +630,7 @@ test('pinterest publisher ignores postPlatform meta alt_text and only reads imag
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -721,7 +714,7 @@ test('pinterest publisher stops board pagination on a repeated bookmark', functi
 });
 
 test('pinterest publisher can publish video pin', function () {
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
 
@@ -773,7 +766,7 @@ test('pinterest publisher can publish video pin', function () {
         return Http::response('fake-video-content', 200);
     });
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result)->toHaveKey('id');
     expect($result)->toHaveKey('url');
@@ -786,7 +779,7 @@ test('pinterest publisher can publish video pin', function () {
 });
 
 test('pinterest publisher includes title description and link on video pins', function () {
-    $this->postPlatform->update([
+    $this->post->update([
         'content_type' => ContentType::PinterestVideoPin,
         'meta' => [
             'board_id' => 'board_123',
@@ -836,7 +829,7 @@ test('pinterest publisher includes title description and link on video pins', fu
         return Http::response('fake-video-content', 200);
     });
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(fn ($request) => $request->url() === config('trypost.platforms.pinterest.api').'/pins'
         && data_get($request->data(), 'title') === 'Video Title'
@@ -857,7 +850,7 @@ test('pinterest publisher includes title description and link on carousels', fun
         ];
     }
 
-    $this->postPlatform->update([
+    $this->post->update([
         'content_type' => ContentType::PinterestCarousel,
         'meta' => [
             'board_id' => 'board_123',
@@ -875,7 +868,7 @@ test('pinterest publisher includes title description and link on carousels', fun
         '*/v5/pins' => Http::response(['id' => 'carousel_pin_123'], 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform->fresh());
+    $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(function ($request) {
         return str_contains($request->url(), '/v5/pins')
@@ -887,7 +880,7 @@ test('pinterest publisher includes title description and link on carousels', fun
 });
 
 test('pinterest video pin sends the chosen cover frame rounded to whole seconds and ignores a stored cover image url', function (?int $coverOffsetMs, int $keyFrameTime) {
-    $this->postPlatform->update([
+    $this->post->update([
         'content_type' => ContentType::PinterestVideoPin,
         'meta' => ['board_id' => 'board_123', 'cover_image_url' => 'https://example.com/cover.jpg'],
     ]);
@@ -931,7 +924,7 @@ test('pinterest video pin sends the chosen cover frame rounded to whole seconds 
         return Http::response('fake-video-content', 200);
     });
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request) => $request->url() === config('trypost.platforms.pinterest.api').'/pins'
         && data_get($request->data(), 'media_source.cover_image_url') === null
@@ -943,7 +936,7 @@ test('pinterest video pin sends the chosen cover frame rounded to whole seconds 
 ]);
 
 test('pinterest publisher throws exception for unsupported content type', function () {
-    $this->postPlatform->update(['content_type' => ContentType::InstagramFeed]);
+    $this->post->update(['content_type' => ContentType::InstagramFeed]);
 
     $this->post->update([
         'media' => [
@@ -957,14 +950,14 @@ test('pinterest publisher throws exception for unsupported content type', functi
         ],
     ]);
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(Exception::class, 'Unsupported content type');
 });
 
 test('pinterest publisher waits through pending video processing before creating the pin', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1009,7 +1002,7 @@ test('pinterest publisher waits through pending video processing before creating
         return Http::response('fake-video-content', 200);
     });
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_pin_after_wait')
         ->and($statusChecks)->toBe(3);
@@ -1020,7 +1013,7 @@ test('pinterest publisher waits through pending video processing before creating
 test('pinterest publisher treats video processing timeout as platform unavailable for retry', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1056,7 +1049,7 @@ test('pinterest publisher treats video processing timeout as platform unavailabl
         return Http::response('fake-video-content', 200);
     });
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PlatformUnavailableException::class, 'Pinterest media processing timeout after 60 attempts');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
@@ -1066,7 +1059,7 @@ test('pinterest publisher treats video processing timeout as platform unavailabl
 test('pinterest publisher fails hard when video processing reports failed', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1105,7 +1098,7 @@ test('pinterest publisher fails hard when video processing reports failed', func
         return Http::response('fake-video-content', 200);
     });
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PinterestPublishException::class, 'Pinterest media processing failed: VIDEO_TOO_LONG');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
@@ -1115,7 +1108,7 @@ test('pinterest publisher fails hard when video processing reports failed', func
 test('pinterest publisher treats media status 401 as token expired', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1151,7 +1144,7 @@ test('pinterest publisher treats media status 401 as token expired', function ()
         return Http::response('fake-video-content', 200);
     });
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(TokenExpiredException::class, 'Access token has expired or been revoked');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
@@ -1161,7 +1154,7 @@ test('pinterest publisher treats media status 401 as token expired', function ()
 test('pinterest publisher keeps polling through transient media status http errors', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1208,7 +1201,7 @@ test('pinterest publisher keeps polling through transient media status http erro
         return Http::response('fake-video-content', 200);
     });
 
-    $result = $this->publisher->publish($this->postPlatform);
+    $result = $this->publisher->publish($this->post);
 
     expect($result['id'])->toBe('video_pin_after_5xx')
         ->and($statusChecks)->toBe(3);
@@ -1219,7 +1212,7 @@ test('pinterest publisher keeps polling through transient media status http erro
 test('pinterest publisher treats unknown media status as still processing until timeout', function (string $status) {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1255,7 +1248,7 @@ test('pinterest publisher treats unknown media status as still processing until 
         return Http::response('fake-video-content', 200);
     });
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PlatformUnavailableException::class, 'Pinterest media processing timeout after 60 attempts');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
@@ -1269,7 +1262,7 @@ test('pinterest publisher treats unknown media status as still processing until 
 test('pinterest publisher treats media status connection errors as platform unavailable', function () {
     Sleep::fake();
 
-    $this->postPlatform->update(['content_type' => ContentType::PinterestVideoPin]);
+    $this->post->update(['content_type' => ContentType::PinterestVideoPin]);
 
     $this->post->update([
         'media' => [[
@@ -1305,7 +1298,7 @@ test('pinterest publisher treats media status connection errors as platform unav
         return Http::response('fake-video-content', 200);
     });
 
-    expect(fn () => $this->publisher->publish($this->postPlatform))
+    expect(fn () => $this->publisher->publish($this->post))
         ->toThrow(PlatformUnavailableException::class, 'Pinterest media status check connection failed');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/v5/pins'));
@@ -1331,7 +1324,7 @@ test('pinterest publisher keeps links intact', function () {
         '*' => Http::response('fake-image-content', 200),
     ]);
 
-    $this->publisher->publish($this->postPlatform);
+    $this->publisher->publish($this->post);
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/v5/pins')
         && $request['description'] === 'New post: https://acme.com/blog');

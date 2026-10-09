@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publiceren',
         'retrying' => 'Opnieuw proberen',
         'published' => 'Gepubliceerd',
-        'partially_published' => 'Gedeeltelijk gepubliceerd',
         'failed' => 'Mislukt',
     ],
 
@@ -637,17 +636,6 @@ return [
             'objects' => 'Objecten',
             'symbols' => 'Symbolen',
             'flags' => 'Vlaggen',
-        ],
-
-        'status' => [
-            'pending' => 'In afwachting',
-            'scheduled' => 'Gepland',
-            'published' => 'Gepubliceerd',
-            'publishing' => 'Publiceren...',
-            'retrying' => 'Opnieuw proberen...',
-            'failed' => 'Mislukt',
-            'pending_review' => 'In beoordeling bij Google',
-            'rejected' => 'Afgewezen',
         ],
 
         'delete_modal' => [
@@ -819,12 +807,11 @@ return [
         'media_file_too_large' => 'Dit bestand is groter dan de :size MB die voor dit type is toegestaan.',
         'queue_requires_schedule' => 'Dit kanaal heeft nog geen publicatietijden. Voeg tijden toe in de kanaalinstellingen om de wachtrij te gebruiken.',
         'queue_with_scheduled_at' => 'Kies een positie in de wachtrij of een datum en tijd, niet allebei.',
-        'queue_legacy_post' => 'Dit bericht is voor meerdere kanalen tegelijk gemaakt en kan niet aan een wachtrij worden toegevoegd. Stel in plaats daarvan een datum en tijd in.',
         'queue_busy' => 'De wachtrij wordt bijgewerkt. Probeer het opnieuw.',
         'no_social_account' => 'Dit bericht heeft geen social account en kan daarom niet worden gepubliceerd.',
+        'choose_channel' => 'Kies een kanaal voordat je dit bericht inplant of publiceert.',
         'queue_order_stale' => 'De wachtrij is gewijzigd sinds je hem opende. Vernieuw en probeer het opnieuw.',
         'account_disconnected' => 'Social account is losgekoppeld',
-        'target_disabled' => 'Deze bestemming is uitgeschakeld',
         'account_token_expired' => 'Sessie van social account verlopen — koppel opnieuw',
         'platform_unavailable' => 'Het platform is tijdelijk niet beschikbaar. We proberen het zo opnieuw.',
         'platform_unavailable_exhausted' => 'Het platform bleef na meerdere pogingen niet beschikbaar. Probeer het later opnieuw.',
@@ -906,6 +893,7 @@ return [
         'publishing_now' => 'Nu aan het publiceren',
         'publishing_badge' => 'Publiceren…',
         'publishing_on' => 'Publiceren op :network…',
+        'in_google_review' => 'In beoordeling bij Google',
         'retrying_at' => 'Nieuwe poging om :time',
         'published_via' => 'Gepubliceerd via',
         'published_directly_from' => 'Rechtstreeks gepubliceerd vanuit :network',
@@ -992,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanalen (:count)',
-        'collapse' => 'Kanalen verbergen',
-        'expand' => 'Kanalen tonen',
     ],
     'approvals' => [
         'badge' => 'Goedkeuring',

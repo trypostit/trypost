@@ -9,7 +9,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -35,18 +34,9 @@ beforeEach(function () {
  */
 function approvalsTabPost(SocialAccount $channel, User $author, array $attributes = []): Post
 {
-    $post = Post::factory()->pendingApproval()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->pendingApproval()->create(array_merge([
         'user_id' => $author->id,
     ], $attributes));
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-    ]);
-
-    return $post;
 }
 
 test('approvers count and list every pending post, timed first then unscheduled', function () {
@@ -117,13 +107,7 @@ test('a notes link to a pending post opens the approvals tab', function () {
 });
 
 test('a requester sees in approvals the scheduled post they sent back for approval', function () {
-    $scheduled = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->owner->id]);
-    PostPlatform::factory()->create([
-        'post_id' => $scheduled->id,
-        'social_account_id' => $this->channel->id,
-        'platform' => $this->channel->platform,
-        'content_type' => ContentType::LinkedInPost,
-    ]);
+    $scheduled = Post::factory()->forAccount($this->channel, ContentType::LinkedInPost)->scheduled()->create(['user_id' => $this->owner->id]);
 
     UpdatePost::execute($this->workspace, $scheduled, ['status' => 'scheduled', 'content' => 'Typo fixed'], $this->requester);
 

@@ -5,12 +5,12 @@ declare(strict_types=1);
 namespace App\Jobs;
 
 use App\Enums\Notification\Type;
-use App\Enums\PostPlatform\Status as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\SocialAccount\Status as SocialAccountStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\TokenExpiredException;
 use App\Mail\PostAtRisk;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -76,30 +76,21 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $postPlatforms = $this->atRiskPostPlatforms();
+        $posts = $this->atRiskPosts();
 
-        if ($postPlatforms->isEmpty()) {
+        if ($posts->isEmpty()) {
             return;
         }
 
         $atRisk = new Collection;
 
-        foreach ($postPlatforms->groupBy('social_account_id') as $group) {
+        foreach ($posts->groupBy('social_account_id') as $group) {
             $account = $group->first()->socialAccount;
 
             if (! $account) {
                 // The account was hard-deleted between the main query and its
                 // eager-loaded relation resolving (two separate queries) —
                 // nothing left to verify or warn about for this group.
-                continue;
-            }
-
-            $group = $group->filter(fn (PostPlatform $pp) => $pp->post !== null);
-
-            if ($group->isEmpty()) {
-                // Same race as above, but for the post: every row in this
-                // batch was hard-deleted between the main query and its
-                // eager-loaded relation resolving.
                 continue;
             }
 
@@ -116,7 +107,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
                 // Already known broken from an earlier run — don't re-verify,
                 // just warn about the posts that entered the window since then.
-                $atRisk->push(['account' => $account, 'postPlatforms' => $group]);
+                $atRisk->push(['account' => $account, 'posts' => $group]);
 
                 continue;
             }
@@ -127,7 +118,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 continue;
             }
 
-            $nearestScheduledAt = $group->min(fn (PostPlatform $pp) => $pp->post->scheduled_at);
+            $nearestScheduledAt = $group->min(fn (Post $post) => $post->scheduled_at);
 
             if ($nearestScheduledAt->isAfter(now()->addMinutes(self::VERIFY_LEAD_MINUTES))) {
                 // Not close enough to publishing yet — defer the actual API
@@ -192,7 +183,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                     continue;
                 }
 
-                $atRisk->push(['account' => $account, 'postPlatforms' => $group]);
+                $atRisk->push(['account' => $account, 'posts' => $group]);
             } catch (Exception $e) {
                 Log::error('Failed to verify social account connection for upcoming-post check', [
                     'account_id' => $account->id,
@@ -217,7 +208,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        // Conditioned on the same "unwarned" window atRiskPostPlatforms() selected
+        // Conditioned on the same "unwarned" window atRiskPosts() selected
         // on, so a concurrent run that already claimed some or all of these
         // exact rows (the ShouldBeUnique lock's TTL matches the schedule
         // cadence, so two instances can briefly overlap if a run takes
@@ -225,9 +216,9 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
         // the gap between reading which rows are still claimable and
         // stamping them — without it, two overlapping runs could both read
         // "unclaimed" for the same row before either writes.
-        $warnedIds = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']->pluck('id'));
+        $warnedIds = $atRisk->flatMap(fn (array $group) => $group['posts']->pluck('id'));
         $claimedIds = DB::transaction(function () use ($warnedIds) {
-            $claimableIds = PostPlatform::whereIn('id', $warnedIds)
+            $claimableIds = Post::whereIn('id', $warnedIds)
                 ->where(function ($query) {
                     $query->whereNull('connection_warning_sent_at')
                         ->orWhere('connection_warning_sent_at', '<', now()->subDay());
@@ -244,7 +235,7 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
                 return $claimableIds;
             }
 
-            PostPlatform::whereIn('id', $claimableIds)->update(['connection_warning_sent_at' => now()]);
+            Post::whereIn('id', $claimableIds)->toBase()->update(['connection_warning_sent_at' => now()]);
 
             return $claimableIds;
         }, attempts: 3);
@@ -255,24 +246,24 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
 
         // (Pre-existing trade-off, not introduced by this transaction: a
         // crash between the DB transaction above and notifyOwner() below
-        // loses the warning for 24h, until atRiskPostPlatforms()'s re-check window.)
+        // loses the warning for 24h, until atRiskPosts()'s re-check window.)
 
         // A concurrent run may have already claimed some (not all) of these
         // rows between when $atRisk was built and the claim above — narrow
         // the notification down to what THIS run actually claimed, so the
         // email never lists an account/post pair another run is already
         // notifying about. $claimedIds is a non-empty subset of $warnedIds,
-        // which is exactly the union of every group's post_platform ids, so
+        // which is exactly the union of every group's post ids, so
         // at least one group is guaranteed to survive this filter.
         $atRisk = $atRisk
             ->map(function (array $group) use ($claimedIds) {
-                $group['postPlatforms'] = $group['postPlatforms']->filter(
-                    fn (PostPlatform $pp) => $claimedIds->containsStrict($pp->id)
+                $group['posts'] = $group['posts']->filter(
+                    fn (Post $post) => $claimedIds->containsStrict($post->id)
                 );
 
                 return $group;
             })
-            ->filter(fn (array $group) => $group['postPlatforms']->isNotEmpty());
+            ->filter(fn (array $group) => $group['posts']->isNotEmpty());
 
         $this->notifyOwner($owner, $workspace, $atRisk);
     }
@@ -280,11 +271,11 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
     /**
      * Whether we've already sent a PostAtRisk notification covering this
      * account within the cooldown window — checked against any of its
-     * post_platforms, not just the ones in the current batch.
+     * posts, not just the ones in the current batch.
      */
     private function recentlyWarnedAbout(SocialAccount $account): bool
     {
-        return PostPlatform::query()
+        return Post::query()
             ->where('social_account_id', $account->id)
             ->where('connection_warning_sent_at', '>=', now()->subMinutes(self::RENOTIFY_COOLDOWN_MINUTES))
             ->exists();
@@ -301,45 +292,40 @@ class VerifyUpcomingPostConnections implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * @return Collection<int, PostPlatform>
+     * @return Collection<int, Post>
      */
-    private function atRiskPostPlatforms(): Collection
+    private function atRiskPosts(): Collection
     {
-        return PostPlatform::query()
-            ->where('status', PostPlatformStatus::Pending)
-            ->enabled() // PublishPost only iterates enabled platforms — an at-risk warning for a disabled one would be a false positive.
+        return Post::query()
+            ->where('workspace_id', $this->workspaceId)
+            ->scheduled()
+            ->whereBetween('scheduled_at', [now(), now()->addHour()])
+            ->where('publish_status', PublishStatus::Pending)
             ->whereHas('socialAccount')
             ->where(function ($query) {
                 $query->whereNull('connection_warning_sent_at')
                     ->orWhere('connection_warning_sent_at', '<', now()->subDay());
-            })
-            ->whereHas('post', function ($query) {
-                $query->where('workspace_id', $this->workspaceId)
-                    ->scheduled()
-                    ->whereBetween('scheduled_at', [now(), now()->addHour()]);
             })
             // socialAccount.workspace is eager-loaded even though this job
             // never reads it directly — SocialAccountObserver::syncUsage()
             // (fired by the ->update() calls below via markAsTokenExpired())
             // reads $account->workspace. Without this eager load every
             // account in the batch triggers its own extra query there.
-            ->with(['socialAccount.workspace', 'post'])
+            ->with(['socialAccount.workspace'])
             ->get();
     }
 
     /**
-     * @param  Collection<int, array{account: SocialAccount, postPlatforms: Collection<int, PostPlatform>}>  $atRisk
+     * @param  Collection<int, array{account: SocialAccount, posts: Collection<int, Post>}>  $atRisk
      */
     private function notifyOwner(User $owner, Workspace $workspace, Collection $atRisk): void
     {
-        $postPlatforms = $atRisk->flatMap(fn (array $group) => $group['postPlatforms']);
-        $postCount = $postPlatforms->pluck('post_id')->unique()->count();
-        $postPlatformIds = $postPlatforms->pluck('id')->all();
+        $postIds = $atRisk->flatMap(fn (array $group) => $group['posts'])->pluck('id')->unique()->values()->all();
 
         SendNotification::dispatch(
             user: $owner,
             type: Type::PostAtRisk,
-            mailable: new PostAtRisk($workspace, $postPlatformIds, $postCount, $owner),
+            mailable: new PostAtRisk($workspace, $postIds, count($postIds), $owner),
         );
     }
 }

@@ -2,17 +2,12 @@
 
 declare(strict_types=1);
 
-use App\Actions\SocialAccount\ApplyChannelDefaults;
-use App\Enums\Post\ScheduleMode;
 use App\Enums\SocialAccount\Platform;
 use App\Events\TelegramChannelConnected;
-use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
-use Illuminate\Support\Facades\Event;
 
 test('the posting schedule casts to and from JSON', function () {
     $account = SocialAccount::factory()->linkedin()->create([
@@ -88,34 +83,4 @@ test('the telegram connected broadcast carries the account id and created flag',
     $event = new TelegramChannelConnected('ws-1', 'nonce-1', 'acc-1', true);
 
     expect($event->broadcastWith())->toBe(['nonce' => 'nonce-1', 'account_id' => 'acc-1', 'created' => true]);
-});
-
-test('existing channels without a schedule get the new channel defaults from their workspace owner, quietly', function () {
-    [$owner, $workspace] = channelDefaultsWorkspace('America/Sao_Paulo');
-    $bare = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $custom = PostingSchedule::empty()->withTime(2, '10:15');
-    $configured = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'Asia/Tokyo', 'posting_goal' => 7, 'posting_schedule' => $custom]);
-    [, $ownerless] = channelDefaultsWorkspace('UTC');
-    $utc = SocialAccount::factory()->linkedin()->create(['workspace_id' => $ownerless->id]);
-    $scheduledAt = now()->addDays(2)->setTime(13, 37)->startOfSecond();
-    $post = Post::factory()->scheduled()->create(['workspace_id' => $workspace->id, 'scheduled_at' => $scheduledAt, 'schedule_mode' => ScheduleMode::Custom]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $bare->id]);
-    Event::fake();
-
-    expect(ApplyChannelDefaults::pending())->toBe(2)
-        ->and(ApplyChannelDefaults::backfill())->toBe(2)
-        ->and(ApplyChannelDefaults::backfill())->toBe(0);
-
-    $bare = $bare->fresh();
-
-    expect($bare->timezone)->toBe('America/Sao_Paulo')
-        ->and($bare->posting_goal)->toBe(3)
-        ->and($bare->posting_schedule->slotCount())->toBe(3)
-        ->and($utc->fresh()->timezone)->toBe('UTC')
-        ->and($utc->fresh()->posting_goal)->toBe(3)
-        ->and($configured->fresh()->timezone)->toBe('Asia/Tokyo')
-        ->and($configured->fresh()->posting_goal)->toBe(7)
-        ->and($configured->fresh()->posting_schedule->toArray())->toEqual($custom->toArray())
-        ->and($post->fresh()->scheduled_at->equalTo($scheduledAt))->toBeTrue();
-    expect(collect(Event::dispatchedEvents())->keys()->reject(fn (string $event): bool => str_starts_with($event, 'eloquent.retrieved') || str_starts_with($event, 'eloquent.booting') || str_starts_with($event, 'eloquent.booted'))->values()->all())->toBe([]);
 });

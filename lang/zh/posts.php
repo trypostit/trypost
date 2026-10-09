@@ -533,7 +533,6 @@ return [
         'publishing' => '发布中',
         'retrying' => '重试中',
         'published' => '已发布',
-        'partially_published' => '部分发布',
         'failed' => '已失败',
     ],
 
@@ -637,17 +636,6 @@ return [
             'objects' => '物品',
             'symbols' => '符号',
             'flags' => '旗帜',
-        ],
-
-        'status' => [
-            'pending' => '等待中',
-            'scheduled' => '已排期',
-            'published' => '已发布',
-            'publishing' => '发布中…',
-            'retrying' => '重试中…',
-            'failed' => '已失败',
-            'pending_review' => 'Google 审核中',
-            'rejected' => '已拒绝',
         ],
 
         'delete_modal' => [
@@ -819,12 +807,11 @@ return [
         'media_file_too_large' => '此文件超过其类型允许的 :size MB。',
         'queue_requires_schedule' => '此频道尚未设置发布时间。请在频道设置中添加发布时间以使用队列。',
         'queue_with_scheduled_at' => '请选择队列位置或日期时间，不能同时选择。',
-        'queue_legacy_post' => '此帖子是同时为多个频道创建的，无法加入队列。请改为设置日期和时间。',
         'queue_busy' => '队列正在更新，请重试。',
         'no_social_account' => '此帖子没有社交账号，因此无法发布。',
+        'choose_channel' => '请先选择一个频道，再安排或发布此帖子。',
         'queue_order_stale' => '自你打开以来队列已发生变化。请刷新后重试。',
         'account_disconnected' => '社交账号已断开连接',
-        'target_disabled' => '已关闭此发布目标',
         'account_token_expired' => '社交账号会话已过期——请重新连接',
         'platform_unavailable' => '平台暂时不可用。我们稍后会重试。',
         'platform_unavailable_exhausted' => '多次重试后平台仍不可用。请稍后再试。',
@@ -906,6 +893,7 @@ return [
         'publishing_now' => '正在发布',
         'publishing_badge' => '发布中…',
         'publishing_on' => '正在发布到 :network…',
+        'in_google_review' => 'Google 审核中',
         'retrying_at' => '将于 :time 重试',
         'published_via' => '发布于',
         'published_directly_from' => '直接从 :network 发布',
@@ -992,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => '频道 (:count)',
-        'collapse' => '隐藏频道',
-        'expand' => '显示频道',
     ],
     'approvals' => [
         'badge' => '审批',

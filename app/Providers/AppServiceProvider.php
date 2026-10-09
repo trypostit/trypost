@@ -20,7 +20,6 @@ use App\Models\NotificationPreference;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\PostNote;
-use App\Models\PostPlatform;
 use App\Models\PostTemplate;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -123,7 +122,6 @@ class AppServiceProvider extends ServiceProvider
             'rssFeedCollection' => RssFeedCollection::class,
             'rssFeedItem' => RssFeedItem::class,
             'postComment' => PostNote::class,
-            'postPlatform' => PostPlatform::class,
             'postTemplate' => PostTemplate::class,
             'socialAccount' => SocialAccount::class,
             'subscription' => Subscription::class,

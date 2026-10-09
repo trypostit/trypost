@@ -6,40 +6,38 @@ namespace App\Services\Post;
 
 use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Services\Social\ContentSanitizer;
 use App\Support\ThreadReplies;
 use App\Support\YouTubeDescription;
 use App\Support\YouTubeMetadata;
-use Illuminate\Support\Collection;
 
 /**
- * Renders per-platform previews of a post — applies the platform-specific
- * `ContentSanitizer` rules without publishing. Used by the REST API
- * preview endpoint and the MCP `PreviewPostTool` so the rendering rules
- * stay in one place.
+ * Renders the preview of a post for its channel — applies the platform-specific
+ * `ContentSanitizer` rules without publishing. Used by the REST API preview
+ * endpoint and the MCP `PreviewPostTool` so the rendering rules stay in one
+ * place.
  */
 class PostPreviewer
 {
     public function __construct(private readonly ContentSanitizer $sanitizer) {}
 
     /**
+     * Without a channel only the original text is returned.
+     *
      * @return array{
      *     post_id: string,
      *     original_content: string,
      *     original_length: int,
-     *     platforms: array<int, array{
-     *         post_platform_id: string,
-     *         platform: string,
-     *         content_type: ?string,
-     *         sanitized_content: string,
-     *         sanitized_length: int,
-     *         max_content_length: int,
-     *         truncated: bool,
-     *         description?: string,
-     *         description_length_bytes?: int,
-     *         thread_replies?: list<array{text: string, media: list<array<string, mixed>>}>
-     *     }>
+     *     platform?: string,
+     *     content_type?: ?string,
+     *     sanitized_content?: string,
+     *     sanitized_length?: int,
+     *     max_content_length?: int,
+     *     truncated?: bool,
+     *     title?: string,
+     *     description?: string,
+     *     description_length_bytes?: int,
+     *     thread_replies?: list<array{text: string, media: list<array<string, mixed>>}>
      * }
      */
     public function forPost(Post $post): array
@@ -50,49 +48,48 @@ class PostPreviewer
             'post_id' => $post->id,
             'original_content' => $original,
             'original_length' => mb_strlen($original),
-            'platforms' => $this->platformPreviews($post, $original)->all(),
+            ...$this->channelPreview($post, $original),
         ];
     }
 
     /**
-     * @return Collection<int, array<string, mixed>>
+     * @return array<string, mixed>
      */
-    private function platformPreviews(Post $post, string $original): Collection
+    private function channelPreview(Post $post, string $original): array
     {
-        return $post->postPlatforms
-            ->where('enabled', true)
-            ->values()
-            ->map(function (PostPlatform $pp) use ($original) {
-                $platform = $pp->socialAccount?->platform ?? $pp->platform;
-                $sanitized = $this->sanitizer->sanitize($original, $platform);
+        $platform = $post->socialAccount?->platform ?? $post->platform;
 
-                $preview = [
-                    'post_platform_id' => $pp->id,
-                    'platform' => $platform->value,
-                    'content_type' => $pp->content_type?->value,
-                    'sanitized_content' => $sanitized,
-                    'sanitized_length' => mb_strlen($sanitized),
-                    'max_content_length' => $pp->socialAccount?->maxContentLength() ?? $platform->maxContentLength(),
-                    'truncated' => mb_strlen($sanitized) < mb_strlen($original),
-                ];
+        if (blank($platform)) {
+            return [];
+        }
 
-                if ($platform === Platform::YouTube) {
-                    $description = YouTubeDescription::resolve($pp->meta, $sanitized);
-                    $preview['title'] = YouTubeMetadata::title($pp->meta, $sanitized);
-                    $preview['description'] = $description;
-                    $preview['description_length_bytes'] = strlen($description);
-                }
+        $sanitized = $this->sanitizer->sanitize($original, $platform);
 
-                $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($pp->meta) : [];
+        $preview = [
+            'platform' => $platform->value,
+            'content_type' => $post->content_type?->value,
+            'sanitized_content' => $sanitized,
+            'sanitized_length' => mb_strlen($sanitized),
+            'max_content_length' => $post->socialAccount?->maxContentLength() ?? $platform->maxContentLength(),
+            'truncated' => mb_strlen($sanitized) < mb_strlen($original),
+        ];
 
-                if ($replies !== []) {
-                    $preview['thread_replies'] = array_map(fn (array $reply): array => [
-                        'text' => $this->sanitizer->sanitize($reply['text'], $platform),
-                        'media' => $reply['media'],
-                    ], $replies);
-                }
+        if ($platform === Platform::YouTube) {
+            $description = YouTubeDescription::resolve($post->meta, $sanitized);
+            $preview['title'] = YouTubeMetadata::title($post->meta, $sanitized);
+            $preview['description'] = $description;
+            $preview['description_length_bytes'] = strlen($description);
+        }
 
-                return $preview;
-            });
+        $replies = ThreadReplies::supports($platform) ? ThreadReplies::of($post->meta) : [];
+
+        if ($replies !== []) {
+            $preview['thread_replies'] = array_map(fn (array $reply): array => [
+                'text' => $this->sanitizer->sanitize($reply['text'], $platform),
+                'media' => $reply['media'],
+            ], $replies);
+        }
+
+        return $preview;
     }
 }

@@ -122,11 +122,6 @@ interface CardGroup {
 }
 
 const NO_TIME = 'no-time';
-const SENT_STATUSES: readonly string[] = [
-    PostStatus.Published,
-    PostStatus.PartiallyPublished,
-    PostStatus.Failed,
-];
 
 const props = defineProps<Props>();
 const page = usePage();
@@ -233,24 +228,10 @@ const newPost = (): void => {
     );
 };
 
-const splitSettledTargets = (post: PostCard): PostCard[] => {
-    const targets = post.post_platforms.filter((target) => target.enabled);
-
-    if (!SENT_STATUSES.includes(post.status) || targets.length <= 1) {
-        return [post];
-    }
-
-    return targets.map((target) => ({
-        ...post,
-        card_key: `${post.id}:${target.id}`,
-        post_platforms: [target],
-    }));
-};
-
 const listGroups = computed<CardGroup[]>(() => {
     const groups = new Map<string, PostCard[]>();
 
-    for (const post of (props.posts?.data ?? []).flatMap(splitSettledTargets)) {
+    for (const post of props.posts?.data ?? []) {
         const at =
             props.tab === 'drafts' || props.tab === 'approvals'
                 ? post.scheduled_at
@@ -262,10 +243,6 @@ const listGroups = computed<CardGroup[]>(() => {
 
     return [...groups].map(([key, posts]) => ({ key, posts }));
 });
-
-const queueTarget = (post: PostCard): string | null =>
-    post.post_platforms.find((target) => target.enabled)?.social_account_id ??
-    null;
 
 const itemTime = (item: QueueItem): number => dayjs.utc(item.at).valueOf();
 
@@ -351,7 +328,7 @@ const queueSource = computed<QueueView>(() => {
     const postItems: QueueItem[] = [];
 
     for (const post of scheduled) {
-        const channelId = queueTarget(post);
+        const channelId = post.social_account_id;
 
         if (!post.scheduled_at || !channelId) {
             continue;
@@ -376,7 +353,7 @@ const queueSource = computed<QueueView>(() => {
             ? (props.queue?.days ?? []).flatMap((day) => day.items)
             : channelSlots.value.filter(loaded);
     const pendingItems = pending.flatMap((post): QueueItem[] => {
-        const channelId = queueTarget(post);
+        const channelId = post.social_account_id;
 
         return post.scheduled_at && channelId
             ? [
@@ -721,8 +698,7 @@ const composerSubmitting = ref(false);
 
 const initialPost = computed<ComposerInitialPost | null>(() => {
     const post = props.editPost;
-    const target = post?.post_platforms.find((platform) => platform.enabled);
-    if (!post || !target?.social_account_id) return null;
+    if (!post?.social_account_id) return null;
     return {
         content: post.content ?? '',
         media: post.media ?? [],
@@ -730,17 +706,16 @@ const initialPost = computed<ComposerInitialPost | null>(() => {
         status: post.status,
         schedule_mode: post.schedule_mode ?? null,
         queue_position: post.approval_queue_position ?? null,
-        social_account_id: target.social_account_id,
-        content_type: target.content_type ?? '',
-        meta: target.meta ?? {},
+        social_account_id: post.social_account_id,
+        content_type: post.content_type ?? '',
+        meta: post.meta ?? {},
         label_ids: post.labels?.map((label) => label.id) ?? [],
     };
 });
 
 const recoveryDraft = computed<ComposerInitialDraft | null>(() => {
     const post = props.editPost;
-    if (!post || post.post_platforms.some((target) => target.enabled))
-        return null;
+    if (!post || post.social_account_id) return null;
 
     return {
         content: post.content ?? '',
@@ -1066,7 +1041,7 @@ const submitComposition = (composition: PostComposition): void => {
                                 />
                                 <PostTimelineCard
                                     v-for="post in group.posts"
-                                    :key="post.card_key ?? post.id"
+                                    :key="post.id"
                                     :post="post"
                                     :tab="tab"
                                     :display-timezone="timezone"

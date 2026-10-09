@@ -7,7 +7,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -34,7 +33,7 @@ beforeEach(function () {
 
 test('an image url on a tiktok post is hosted and makes a tiktok photo', function () {
     $response = $this->postJson(route('api.posts.store'), [
-        'platforms' => [['social_account_id' => $this->tiktok->id]],
+        'social_account_id' => $this->tiktok->id,
         'media' => [['url' => 'https://example.com/a.png']],
     ], $this->headers);
 
@@ -43,18 +42,11 @@ test('an image url on a tiktok post is hosted and makes a tiktok photo', functio
     $post = Post::query()->findOrFail($response->json('id'));
 
     expect($post->media)->toHaveCount(1)
-        ->and($post->postPlatforms()->sole()->content_type)->toBe(ContentType::TikTokPhoto);
+        ->and($post->content_type)->toBe(ContentType::TikTokPhoto);
 });
 
 test('an image url attached to a tiktok post is added to the post', function () {
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->tiktok->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokPhoto,
-        'enabled' => true,
-    ]);
+    $post = Post::factory()->forAccount($this->tiktok, ContentType::TikTokPhoto)->create(['user_id' => $this->user->id]);
 
     $this->postJson(route('api.posts.attach-media-from-url', $post), [
         'urls' => [['url' => 'https://example.com/b.png']],
@@ -74,11 +66,9 @@ test('a tiktok video still refuses an image when it is scheduled', function () {
     $this->postJson(route('api.posts.store'), [
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
-        'platforms' => [[
-            'social_account_id' => $this->tiktok->id,
-            'content_type' => ContentType::TikTokVideo->value,
-            'meta' => ['privacy_level' => 'SELF_ONLY'],
-        ]],
+        'social_account_id' => $this->tiktok->id,
+        'content_type' => ContentType::TikTokVideo->value,
+        'meta' => ['privacy_level' => 'SELF_ONLY'],
         'media' => [['url' => 'https://example.com/c.png']],
     ], $this->headers)->assertUnprocessable();
 });

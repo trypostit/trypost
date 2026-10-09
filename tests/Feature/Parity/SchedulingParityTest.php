@@ -9,6 +9,7 @@ use App\Actions\Post\UpdatePostRecurrence;
 use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Resources\App\ChannelPostingScheduleResource;
 use App\Mcp\Servers\TryPostServer;
@@ -48,15 +49,7 @@ function schedulingParitySnapshot(Post $post): array
 
 function schedulingParityDraft(SocialAccount $account, string $workspaceId, string $userId): Post
 {
-    $post = Post::factory()->draft()->create(['workspace_id' => $workspaceId, 'user_id' => $userId, 'content' => 'Parity draft']);
-    $post->postPlatforms()->create([
-        'social_account_id' => $account->id,
-        'platform' => $account->platform->value,
-        'content_type' => 'linkedin_post',
-        'enabled' => true,
-    ]);
-
-    return $post;
+    return Post::factory()->forAccount($account, ContentType::LinkedInPost)->draft()->create(['workspace_id' => $workspaceId, 'user_id' => $userId, 'content' => 'Parity draft']);
 }
 
 beforeEach(function () {
@@ -77,7 +70,7 @@ test('queue next through the api and the mcp batch tool takes the first two free
         'content' => 'From the API',
         'status' => 'scheduled',
         'queue' => 'next',
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
@@ -100,14 +93,14 @@ test('queue top through the api and the mcp batch tool puts the new post first',
         'content' => 'Next from the API',
         'status' => 'scheduled',
         'queue' => 'next',
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), [
         'content' => 'Top from the API',
         'status' => 'scheduled',
         'queue' => 'top',
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
@@ -130,7 +123,7 @@ test('a custom time scheduled through the api and the mcp batch tool is stored t
         'content' => 'Custom time',
         'status' => 'scheduled',
         'scheduled_at' => $when->toIso8601String(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
@@ -154,14 +147,14 @@ test('the single-post mcp create tool queues next like the api', function () {
         'content' => 'Queued via API',
         'status' => 'scheduled',
         'queue' => 'next',
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Queued via MCP',
         'status' => 'scheduled',
         'queue' => 'next',
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertOk();
 
     $viaApi = Post::query()->where('content', 'Queued via API')->sole();
@@ -180,14 +173,14 @@ test('a custom time scheduled through the api and the single-post mcp create too
         'content' => 'Custom via API',
         'status' => 'scheduled',
         'scheduled_at' => $when->toIso8601String(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Custom via MCP',
         'status' => 'scheduled',
         'scheduled_at' => $when->toIso8601String(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertOk();
 
     $viaApi = Post::query()->where('content', 'Custom via API')->sole();
@@ -205,7 +198,7 @@ test('queue with a custom time is refused with the same message by the api and t
         'status' => 'scheduled',
         'queue' => 'next',
         'scheduled_at' => Carbon::now()->addDays(3)->toIso8601String(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ];
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)
@@ -293,7 +286,7 @@ test('queue_slot stores a queue post in that free slot on the api and the mcp to
         'content' => 'Slot via API',
         'status' => 'scheduled',
         'queue_slot' => $slots[2],
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertCreated();
     auth()->forgetGuards();
 
@@ -301,7 +294,7 @@ test('queue_slot stores a queue post in that free slot on the api and the mcp to
         'content' => 'Slot via MCP',
         'status' => 'scheduled',
         'queue_slot' => $slots[4],
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertOk();
 
     $posts = Post::query()->where('workspace_id', $this->workspace->id)->orderBy('scheduled_at')->get();
@@ -313,7 +306,7 @@ test('queue_slot stores a queue post in that free slot on the api and the mcp to
 
 test('queue_slot on a slot already taken is refused with the web message on the api and the mcp tool', function () {
     $slot = $this->withHeaders(parityApi($this->token))->getJson(route('api.channels.queue.slots', $this->account))->assertOk()->json('slots.1');
-    $payload = ['content' => 'Slot', 'status' => 'scheduled', 'queue_slot' => $slot, 'platforms' => [$this->destination]];
+    $payload = ['content' => 'Slot', 'status' => 'scheduled', 'queue_slot' => $slot, ...$this->destination];
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)->assertCreated();
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)
@@ -331,7 +324,7 @@ test('queue_slot at an instant that is not a free slot is refused', function () 
         'content' => 'Off schedule',
         'status' => 'scheduled',
         'queue_slot' => now()->addDays(3)->startOfDay()->addHours(11)->toIso8601ZuluString(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertUnprocessable()->assertJsonValidationErrors(['queue_slot']);
 
     expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
@@ -341,10 +334,10 @@ test('queue_slot is refused with queue or without status scheduled', function ()
     $slot = $this->withHeaders(parityApi($this->token))->getJson(route('api.channels.queue.slots', $this->account))->assertOk()->json('slots.0');
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), [
-        'status' => 'scheduled', 'queue' => 'next', 'queue_slot' => $slot, 'platforms' => [$this->destination],
+        'status' => 'scheduled', 'queue' => 'next', 'queue_slot' => $slot, ...$this->destination,
     ])->assertUnprocessable()->assertJsonValidationErrors(['queue_slot']);
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), [
-        'status' => 'draft', 'queue_slot' => $slot, 'platforms' => [$this->destination],
+        'status' => 'draft', 'queue_slot' => $slot, ...$this->destination,
     ])->assertUnprocessable()->assertJsonValidationErrors(['queue_slot']);
 });
 
@@ -357,7 +350,7 @@ test('a member who needs approval creating at a queue_slot holds the slot as a p
         'content' => 'Needs approval',
         'status' => 'scheduled',
         'queue_slot' => $slot,
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ])->assertOk();
 
     $post = Post::query()->where('workspace_id', $this->workspace->id)->sole();

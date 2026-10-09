@@ -12,7 +12,6 @@ use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\DispatchWebhook;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -176,15 +175,34 @@ test('postPayload includes the post lifecycle fields', function () {
         ],
         'labels' => [],
         'media' => [],
-        'platforms' => [],
+        'publish_status' => 'published',
+        'social_account_id' => null,
+        'platform' => null,
+        'content_type' => null,
+        'platform_post_id' => $post->platform_post_id,
+        'platform_url' => $post->platform_url,
+        'error_message' => null,
+        'display_name' => null,
+        'display_username' => null,
+        'display_avatar' => null,
+        'meta' => [],
+        'social_account' => null,
     ]);
 });
 
 test('postPayload matches the published webhook example', function () {
-    $post = Post::factory()->published()->createQuietly([
-        'workspace_id' => $this->workspace->id,
+    $instagram = SocialAccount::factory()->instagram()->recycle($this->workspace)->create([
+        'display_name' => 'TryPost',
+        'username' => 'trypost',
+        'avatar_url' => 'avatars/ig.jpg',
+        'access_token' => 'secret-access-token',
+        'refresh_token' => 'secret-refresh-token',
+    ]);
+
+    $post = Post::factory()->forAccount($instagram, ContentType::InstagramFeed)->published()->createQuietly([
         'user_id' => $this->user->id,
         'content' => '<p>Launch day. TryPost is live.</p>',
+        'meta' => ['is_ai_generated' => true],
         'created_via' => CreatedVia::Web,
         'media' => [
             [
@@ -224,42 +242,7 @@ test('postPayload matches the published webhook example', function () {
     ]);
     $post->labels()->attach($label);
 
-    $instagram = SocialAccount::factory()->instagram()->recycle($this->workspace)->create([
-        'display_name' => 'TryPost',
-        'username' => 'trypost',
-        'avatar_url' => 'avatars/ig.jpg',
-        'access_token' => 'secret-access-token',
-        'refresh_token' => 'secret-refresh-token',
-    ]);
-    $linkedin = SocialAccount::factory()->linkedin()->recycle($this->workspace)->create([
-        'display_name' => 'Paulo Castellano',
-        'username' => 'paulocastellano',
-        'avatar_url' => 'avatars/li.jpg',
-    ]);
-    $x = SocialAccount::factory()->x()->recycle($this->workspace)->create([
-        'display_name' => 'TryPost',
-        'username' => 'trypost',
-        'avatar_url' => 'avatars/x.jpg',
-    ]);
-
-    $instagramPlatform = PostPlatform::factory()->published()->recycle($post, $instagram)->create([
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
-        'meta' => ['is_ai_generated' => true],
-    ]);
-    $linkedinPlatform = PostPlatform::factory()->published()->recycle($post, $linkedin)->create([
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'meta' => ['document_title' => 'TryPost launch deck'],
-    ]);
-    $xPlatform = PostPlatform::factory()->published()->recycle($post, $x)->create([
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
-        'meta' => [],
-    ]);
-
     $payload = $this->service->postPayload($post->fresh());
-    $platforms = collect($payload['platforms'])->keyBy('id');
 
     expect($payload)
         ->toHaveKeys([
@@ -277,7 +260,18 @@ test('postPayload matches the published webhook example', function () {
             'workspace',
             'labels',
             'media',
-            'platforms',
+            'publish_status',
+            'social_account_id',
+            'platform',
+            'content_type',
+            'platform_post_id',
+            'platform_url',
+            'error_message',
+            'display_name',
+            'display_username',
+            'display_avatar',
+            'meta',
+            'social_account',
         ])
         ->and($payload['id'])->toBe($post->id)
         ->and($payload['workspace_id'])->toBe($this->workspace->id)
@@ -333,78 +327,25 @@ test('postPayload matches the published webhook example', function () {
                 ],
             ],
         ])
-        ->and($payload['platforms'])->toHaveCount(3)
-        ->and($platforms[$instagramPlatform->id])->toEqual([
-            'id' => $instagramPlatform->id,
-            'social_account_id' => $instagram->id,
+        ->and($payload)->not->toHaveKey('platforms')
+        ->and($payload)->not->toHaveKey('error_context')
+        ->and($payload['publish_status'])->toBe('published')
+        ->and($payload['social_account_id'])->toBe($instagram->id)
+        ->and($payload['platform'])->toBe(Platform::Instagram->value)
+        ->and($payload['content_type'])->toBe(ContentType::InstagramFeed->value)
+        ->and($payload['platform_post_id'])->toBe($post->platform_post_id)
+        ->and($payload['platform_url'])->toBe($post->platform_url)
+        ->and($payload['error_message'])->toBeNull()
+        ->and($payload['display_name'])->toBe('TryPost')
+        ->and($payload['display_username'])->toBe('trypost')
+        ->and($payload['display_avatar'])->toBe(Storage::url('avatars/ig.jpg'))
+        ->and($payload['meta'])->toEqual(['is_ai_generated' => true])
+        ->and($payload['social_account'])->toEqual([
+            'id' => $instagram->id,
             'platform' => Platform::Instagram->value,
-            'content_type' => ContentType::InstagramFeed->value,
-            'enabled' => true,
-            'status' => 'published',
-            'platform_post_id' => $instagramPlatform->platform_post_id,
-            'platform_url' => $instagramPlatform->platform_url,
-            'published_at' => $instagramPlatform->published_at?->toIso8601String(),
-            'error_message' => null,
-            'error_context' => null,
             'display_name' => 'TryPost',
-            'display_username' => 'trypost',
-            'display_avatar' => Storage::url('avatars/ig.jpg'),
-            'meta' => ['is_ai_generated' => true],
-            'social_account' => [
-                'id' => $instagram->id,
-                'platform' => Platform::Instagram->value,
-                'display_name' => 'TryPost',
-                'username' => 'trypost',
-                'status' => 'connected',
-            ],
-        ])
-        ->and($platforms[$linkedinPlatform->id])->toEqual([
-            'id' => $linkedinPlatform->id,
-            'social_account_id' => $linkedin->id,
-            'platform' => Platform::LinkedIn->value,
-            'content_type' => ContentType::LinkedInPost->value,
-            'enabled' => true,
-            'status' => 'published',
-            'platform_post_id' => $linkedinPlatform->platform_post_id,
-            'platform_url' => $linkedinPlatform->platform_url,
-            'published_at' => $linkedinPlatform->published_at?->toIso8601String(),
-            'error_message' => null,
-            'error_context' => null,
-            'display_name' => 'Paulo Castellano',
-            'display_username' => 'paulocastellano',
-            'display_avatar' => Storage::url('avatars/li.jpg'),
-            'meta' => ['document_title' => 'TryPost launch deck'],
-            'social_account' => [
-                'id' => $linkedin->id,
-                'platform' => Platform::LinkedIn->value,
-                'display_name' => 'Paulo Castellano',
-                'username' => 'paulocastellano',
-                'status' => 'connected',
-            ],
-        ])
-        ->and($platforms[$xPlatform->id])->toEqual([
-            'id' => $xPlatform->id,
-            'social_account_id' => $x->id,
-            'platform' => Platform::X->value,
-            'content_type' => ContentType::XPost->value,
-            'enabled' => true,
-            'status' => 'published',
-            'platform_post_id' => $xPlatform->platform_post_id,
-            'platform_url' => $xPlatform->platform_url,
-            'published_at' => $xPlatform->published_at?->toIso8601String(),
-            'error_message' => null,
-            'error_context' => null,
-            'display_name' => 'TryPost',
-            'display_username' => 'trypost',
-            'display_avatar' => Storage::url('avatars/x.jpg'),
-            'meta' => [],
-            'social_account' => [
-                'id' => $x->id,
-                'platform' => Platform::X->value,
-                'display_name' => 'TryPost',
-                'username' => 'trypost',
-                'status' => 'connected',
-            ],
+            'username' => 'trypost',
+            'status' => 'connected',
         ])
         ->and(json_encode($payload))->not->toContain('secret-access-token')
         ->and(json_encode($payload))->not->toContain('secret-refresh-token')
@@ -412,27 +353,21 @@ test('postPayload matches the published webhook example', function () {
         ->and(json_encode($payload))->not->toContain('refresh_token');
 });
 
-test('postPayload includes failed platform errors', function () {
-    $post = Post::factory()->published()->createQuietly([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
+test('postPayload includes the failed publication error', function () {
     $account = SocialAccount::factory()->tiktok()->recycle($this->workspace)->create();
-    $platform = PostPlatform::factory()->failed()->recycle($post, $account)->create([
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->failed()->createQuietly([
+        'user_id' => $this->user->id,
         'meta' => ['privacy_level' => PrivacyLevel::PublicToEveryone->value],
         'error_context' => ['retry_count' => 2],
     ]);
 
     $payload = $this->service->postPayload($post->fresh());
 
-    expect(data_get($payload, 'platforms.0.id'))->toBe($platform->id)
-        ->and(data_get($payload, 'platforms.0.status'))->toBe('failed')
-        ->and(data_get($payload, 'platforms.0.error_message'))->toBe('Failed to publish')
-        ->and(data_get($payload, 'platforms.0.error_context'))->toEqual(['retry_count' => 2])
-        ->and(data_get($payload, 'platforms.0.meta.privacy_level'))->toBe(PrivacyLevel::PublicToEveryone->value);
+    expect($payload['social_account_id'])->toBe($account->id)
+        ->and($payload['publish_status'])->toBe('failed')
+        ->and($payload['error_message'])->toBe('Failed to publish')
+        ->and($payload)->not->toHaveKey('error_context')
+        ->and(data_get($payload, 'meta.privacy_level'))->toBe(PrivacyLevel::PublicToEveryone->value);
 });
 
 test('postPayload accepts integer media ids from generated attachments', function () {
@@ -472,9 +407,6 @@ test('postPayload keeps display fields when the social account is gone', functio
     $post = Post::factory()->published()->createQuietly([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-    ]);
-
-    $platform = PostPlatform::factory()->published()->recycle($post)->create([
         'social_account_id' => null,
         'platform' => Platform::X,
         'content_type' => ContentType::XPost,
@@ -485,11 +417,11 @@ test('postPayload keeps display fields when the social account is gone', functio
 
     $payload = $this->service->postPayload($post->fresh());
 
-    expect(data_get($payload, 'platforms.0.id'))->toBe($platform->id)
-        ->and(data_get($payload, 'platforms.0.social_account_id'))->toBeNull()
-        ->and(data_get($payload, 'platforms.0.social_account'))->toBeNull()
-        ->and(data_get($payload, 'platforms.0.display_name'))->toBe('TryPost')
-        ->and(data_get($payload, 'platforms.0.display_username'))->toBe('trypost');
+    expect($payload['platform'])->toBe(Platform::X->value)
+        ->and($payload['social_account_id'])->toBeNull()
+        ->and($payload['social_account'])->toBeNull()
+        ->and($payload['display_name'])->toBe('TryPost')
+        ->and($payload['display_username'])->toBe('trypost');
 });
 
 function webhookServiceDns(array $answers): void

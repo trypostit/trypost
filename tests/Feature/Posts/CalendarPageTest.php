@@ -8,7 +8,6 @@ use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -33,21 +32,13 @@ beforeEach(function () {
 
 function calendarPost(SocialAccount $account, ?string $scheduledAtUtc, string $content, PostStatus $status = PostStatus::Scheduled, array $attributes = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
+    return Post::factory()->forAccount($account)->create([
         'user_id' => $account->workspace->user_id,
         'status' => $status,
         'scheduled_at' => $scheduledAtUtc ? CarbonImmutable::parse($scheduledAtUtc, 'UTC') : null,
         'content' => $content,
         ...$attributes,
     ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-    ]);
-
-    return $post;
 }
 
 test('the calendar buckets posts into days of the user time zone by default', function () {
@@ -169,7 +160,7 @@ test('calendar posts carry the timeline card fields', function () {
             ->where('posts.2026-10-06.0.notes_count', 0)
             ->where('posts.2026-10-06.0.can_delete', true)
             ->where('posts.2026-10-06.0.user.name', $this->user->name)
-            ->where('posts.2026-10-06.0.post_platforms.0.social_account.has_posting_schedule', false)
+            ->where('posts.2026-10-06.0.social_account.has_posting_schedule', false)
             ->missing('posts.2026-10-06.0.metrics')
             ->where('posts.2026-10-05.0.content', 'Sent card')
             ->has('posts.2026-10-05.0.metrics'));
@@ -187,7 +178,7 @@ test('the calendar filters by channels and ignores ids that are not uuids', func
             ->has('filterAccounts', 2)
             ->has('posts.2026-10-06', 1)
             ->where('posts.2026-10-06.0.content', 'X post')
-            ->where('posts.2026-10-06.0.post_platforms.0.social_account_id', $this->x->id));
+            ->where('posts.2026-10-06.0.social_account_id', $this->x->id));
 });
 
 test('the calendar filters by labels', function () {
@@ -247,7 +238,6 @@ test('the status filter narrows the calendar to drafts, scheduled or sent posts'
     calendarPost($this->linkedin, '2026-10-06 15:00:00', 'Scheduled post');
     calendarPost($this->linkedin, '2026-10-06 16:00:00', 'Dated draft', PostStatus::Draft);
     calendarPost($this->linkedin, '2026-10-05 09:00:00', 'Published post', PostStatus::Published);
-    calendarPost($this->linkedin, '2026-10-05 09:30:00', 'Partial post', PostStatus::PartiallyPublished);
     calendarPost($this->linkedin, '2026-10-05 09:45:00', 'Failed post', PostStatus::Failed);
     calendarPost($this->linkedin, '2026-10-05 09:55:00', 'Publishing post', PostStatus::Publishing);
 
@@ -257,11 +247,11 @@ test('the status filter narrows the calendar to drafts, scheduled or sent posts'
 
     $flatten = fn (array $days): array => collect($days)->flatten(1)->pluck('content')->sort()->values()->all();
 
-    expect($flatten($contents(null)))->toHaveCount(6)
+    expect($flatten($contents(null)))->toHaveCount(5)
         ->and($flatten($contents('drafts')))->toBe(['Dated draft'])
         ->and($flatten($contents('scheduled')))->toBe(['Publishing post', 'Scheduled post'])
-        ->and($flatten($contents('sent')))->toBe(['Failed post', 'Partial post', 'Published post'])
-        ->and($flatten($contents('bogus')))->toHaveCount(6);
+        ->and($flatten($contents('sent')))->toBe(['Failed post', 'Published post'])
+        ->and($flatten($contents('bogus')))->toHaveCount(5);
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'week', 'status' => 'sent']))
@@ -367,14 +357,8 @@ test('posting slots load only when enabled, cover the visible range and follow t
 });
 
 test('an imported post sits on the day it was published', function () {
-    $post = Post::factory()->imported()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->x)->imported()->create([
         'published_at' => CarbonImmutable::parse('2026-10-07 14:20:00', 'UTC'),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->x->id,
-        'platform' => $this->x->platform,
     ]);
 
     $this->actingAs($this->user)

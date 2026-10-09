@@ -6,7 +6,6 @@ use App\Ai\Agents\MediaAltTextGenerator;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
  * A draft whose images are the 200x200 quadrant fixture, inlined as data URLs so
  * the editor canvas can read their pixels without a signed storage URL.
  *
- * @return array{0: Post, 1: PostPlatform}
+ * @return array{0: Post}
  */
 function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFeed, int $imageCount = 1, ?string $firstMediaId = null): array
 {
@@ -26,8 +25,14 @@ function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFe
     $user->update(['current_workspace_id' => $workspace->id]);
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
 
-    $post = Post::factory()->create([
+    $platform = $contentType->platform();
+    $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
+        'platform' => $platform,
+        'scopes' => $platform->requiredPublishScopes(),
+    ]);
+
+    $post = Post::factory()->forAccount($account, $contentType)->create([
         'user_id' => $user->id,
         'content' => 'Editing media',
         'media' => array_map(fn (int $index): array => [
@@ -41,22 +46,9 @@ function seedMediaEditorPost(ContentType $contentType = ContentType::InstagramFe
         ], range(1, $imageCount)),
     ]);
 
-    $platform = $contentType->platform();
-    $account = SocialAccount::factory()->create([
-        'workspace_id' => $workspace->id,
-        'platform' => $platform,
-        'scopes' => $platform->requiredPublishScopes(),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $platform,
-        'content_type' => $contentType,
-    ]);
-
     test()->actingAs($user);
 
-    return [$post, $postPlatform];
+    return [$post];
 }
 
 /**
@@ -75,9 +67,9 @@ function waitForMediaEditor(mixed $page, string $condition): void
     JS);
 }
 
-function openMediaEditor(mixed $page, PostPlatform $postPlatform, int $index = 0): void
+function openMediaEditor(mixed $page, string $accountId, int $index = 0): void
 {
-    openMediaEditorPanel($page, $postPlatform->social_account_id, $index);
+    openMediaEditorPanel($page, $accountId, $index);
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-selection\"]')?.getBoundingClientRect().width > 0");
 }
 
@@ -123,9 +115,9 @@ function saveMediaEditorDraft(mixed $page): void
 }
 
 test('the media editor keeps its preview and controls separate at every viewport', function (int $width, int $height) {
-    [$post, $postPlatform] = seedMediaEditorPost(imageCount: 2);
+    [$post] = seedMediaEditorPost(imageCount: 2);
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->assertScript(<<<'JS'
         (() => {
@@ -174,9 +166,9 @@ test('the media editor keeps its preview and controls separate at every viewport
 ]);
 
 test('rotating an image uploads the rotated pixels', function (int $width, int $height) {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-rotate-right')
         ->assertSee('Apply changes to 1 item')
@@ -203,9 +195,9 @@ test('rotating an image uploads the rotated pixels', function (int $width, int $
 ]);
 
 test('one apply saves edits made to several images', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(imageCount: 2);
+    [$post] = seedMediaEditorPost(imageCount: 2);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@crop-aspect-1-1')
         ->click('@media-editor-thumb-1')
@@ -222,9 +214,9 @@ test('one apply saves edits made to several images', function () {
 });
 
 test('people tagged on an Instagram image are saved with their position', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-tags-tab')
         ->click('@media-editor-tags-start');
@@ -247,10 +239,10 @@ test('people tagged on an Instagram image are saved with their position', functi
 
 test('alt text can be generated with AI for a post image', function () {
     MediaAltTextGenerator::fake(['Four coloured squares in a grid.']);
-    [$post, $postPlatform] = seedMediaEditorPost(firstMediaId: '00000000-0000-4000-8000-000000000001');
+    [$post] = seedMediaEditorPost(firstMediaId: '00000000-0000-4000-8000-000000000001');
     Media::factory()->ownedByPost($post)->create(['id' => '00000000-0000-4000-8000-000000000001']);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-alt-tab')
         ->click('@media-editor-alt-generate');
@@ -262,18 +254,18 @@ test('alt text can be generated with AI for a post image', function () {
 });
 
 test('an Instagram feed post offers Edit, Alt Text and Tag People', function () {
-    [$post, $postPlatform] = seedMediaEditorPost(ContentType::InstagramFeed);
+    [$post] = seedMediaEditorPost(ContentType::InstagramFeed);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     expect(mediaEditorSegmentIds($page))->toBe(['media-editor-edit-tab', 'media-editor-alt-tab', 'media-editor-tags-tab']);
     $page->assertNoJavaScriptErrors();
 });
 
 test('center and reset only enable once the geometry changes', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $isDisabled = fn (string $testId): bool => $page->script("document.querySelector('[data-testid=\"{$testId}\"]').disabled");
 
@@ -296,9 +288,9 @@ test('center and reset only enable once the geometry changes', function () {
 });
 
 test('the stage only takes tags while tagging and switching tabs ends tagging mode', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-tags-tab');
     clickMediaEditorStage($page, 0.5, 0.5);
@@ -333,9 +325,9 @@ test('the stage only takes tags while tagging and switching tabs ends tagging mo
 });
 
 test('closing with the × discards edits like Cancel', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-rotate-right')
         ->assertSee('Apply changes to 1 item')
@@ -343,7 +335,7 @@ test('closing with the × discards edits like Cancel', function () {
     waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor\"]')");
     $page->assertMissing('@media-editor');
 
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
     $page->assertDisabled('@media-editor-apply')
         ->assertDisabled('@media-editor-reset')
         ->click('@media-editor-close');
@@ -354,7 +346,7 @@ test('closing with the × discards edits like Cancel', function () {
 });
 
 test('at 20 tags tagging cannot start and the stage opens no form', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $media = $post->media;
     $media[0]['meta']['user_tags'] = array_map(
         fn (int $index): array => ['username' => "person{$index}", 'x' => 0.5, 'y' => 0.5],
@@ -362,7 +354,7 @@ test('at 20 tags tagging cannot start and the stage opens no form', function () 
     );
     $post->update(['media' => $media]);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-tags-tab')
         ->assertDisabled('@media-editor-tags-start');
@@ -527,9 +519,7 @@ function applyMediaEditorAltText(mixed $page, string $prefix, string $altText): 
 function mediaEditorSavedAltTexts(SocialAccount ...$accounts): array
 {
     return collect($accounts)->mapWithKeys(fn (SocialAccount $account): array => [
-        $account->id => data_get(Post::query()
-            ->whereIn('id', PostPlatform::query()->where('social_account_id', $account->id)->pluck('post_id'))
-            ->sole()->media, '0.meta.alt_text'),
+        $account->id => data_get(Post::query()->where('social_account_id', $account->id)->sole()->media, '0.meta.alt_text'),
     ])->all();
 }
 
@@ -618,7 +608,7 @@ test('a step 1 edit replaces the shared item in place and every post owns its ow
     $page->click('@composer-save-draft');
     waitForMediaEditor($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
-    $posts = Post::query()->whereIn('id', PostPlatform::query()->whereIn('social_account_id', [$first->id, $second->id])->pluck('post_id'))->get();
+    $posts = Post::query()->whereIn('social_account_id', [$first->id, $second->id])->get();
     expect($posts)->toHaveCount(2);
     $paths = [];
     foreach ($posts as $post) {
@@ -640,7 +630,7 @@ test('a step 2 edit replaces only that channel\'s item and leaves the shared lis
 
     $page->click('@composer-next')
         ->click("@composer-account-{$first->id}");
-    openMediaEditor($page, PostPlatform::make(['social_account_id' => $first->id]));
+    openMediaEditor($page, $first->id);
     $page->click('@media-editor-rotate-right');
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-editor-apply\"]')?.disabled === false");
     $page->click('@media-editor-apply');
@@ -698,11 +688,11 @@ test('a failed edit upload shows the inline error and keeps the original tile', 
 });
 
 /**
- * @return array{0: Post, 1: PostPlatform}
+ * @return array{0: Post}
  */
 function seedMediaEditorVideoPost(ContentType $contentType): array
 {
-    [$post, $postPlatform] = seedMediaEditorPost($contentType);
+    [$post] = seedMediaEditorPost($contentType);
     $webm = base64_encode((string) file_get_contents(base_path('tests/fixtures/cover-3s.webm')));
     $post->update(['media' => [[
         'id' => 'video-1',
@@ -714,12 +704,12 @@ function seedMediaEditorVideoPost(ContentType $contentType): array
         'meta' => ['width' => 16, 'height' => 16],
     ]]]);
 
-    return [$post, $postPlatform];
+    return [$post];
 }
 
 test('a reel video gets a Thumbnail segment whose frame is saved as the cover offset', function () {
-    [$post, $postPlatform] = seedMediaEditorVideoPost(ContentType::InstagramReel);
-    $accountId = $postPlatform->social_account_id;
+    [$post] = seedMediaEditorVideoPost(ContentType::InstagramReel);
+    $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$accountId}-edit-0\"]')");
     $page->click("@composer-{$accountId}-edit-0");
@@ -760,8 +750,8 @@ test('a reel video gets a Thumbnail segment whose frame is saved as the cover of
 });
 
 test('a video on an X post shows no pencil', function () {
-    [$post, $postPlatform] = seedMediaEditorVideoPost(ContentType::XPost);
-    $accountId = $postPlatform->social_account_id;
+    [$post] = seedMediaEditorVideoPost(ContentType::XPost);
+    $accountId = $post->social_account_id;
     $page = visit(route('app.posts.edit', $post));
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"composer-{$accountId}-media-item-0\"]')");
 
@@ -771,9 +761,9 @@ test('a video on an X post shows no pencil', function () {
 });
 
 test('only a freeform crop can be resized; a chosen ratio only moves', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@crop-aspect-4-5');
     waitForMediaEditor($page, "!document.querySelector('[data-testid=\"media-editor-handle-nw\"]')");
@@ -788,9 +778,9 @@ test('only a freeform crop can be resized; a chosen ratio only moves', function 
 });
 
 test('filter intensity shows for a filter, not for the original, and sliders fill from their origin', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-appearance-section');
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-filter-sepia\"]')");
@@ -832,7 +822,7 @@ test('filter intensity shows for a filter, not for the original, and sliders fil
 });
 
 test('an image stored on another host is edited through the app, so applying works without CORS', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $row = Media::factory()->ownedByPost($post)->create(['path' => 'uploads/remote.png', 'mime_type' => 'image/png', 'collection' => Media::COLLECTION_MEDIA]);
     Storage::put('uploads/remote.png', (string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $post->update(['media' => [[
@@ -845,7 +835,7 @@ test('an image stored on another host is edited through the app, so applying wor
         'meta' => ['width' => 200, 'height' => 200],
     ]]]);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditorPanel($page, $postPlatform->social_account_id);
+    openMediaEditorPanel($page, $post->social_account_id);
 
     $page->click('@media-editor-rotate-right')
         ->click('@media-editor-apply');
@@ -872,9 +862,9 @@ function setMediaEditorRange(mixed $page, string $testId, int $value): void
 }
 
 test('the filter intensity reaches the saved pixels', function (int $intensity) {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditor($page, $postPlatform);
+    openMediaEditor($page, $post->social_account_id);
 
     $page->click('@media-editor-appearance-section')->click('@media-filter-mono');
     waitForMediaEditor($page, "document.querySelector('[data-testid=\"media-filter-intensity\"]')");
@@ -895,7 +885,7 @@ test('the filter intensity reaches the saved pixels', function (int $intensity) 
 })->with([100]);
 
 test('a crop with a filter on an image stored on another host is applied and saved', function () {
-    [$post, $postPlatform] = seedMediaEditorPost();
+    [$post] = seedMediaEditorPost();
     $row = Media::factory()->ownedByPost($post)->create(['path' => 'uploads/remote.png', 'mime_type' => 'image/png', 'collection' => Media::COLLECTION_MEDIA]);
     Storage::put('uploads/remote.png', (string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $post->update(['media' => [[
@@ -908,7 +898,7 @@ test('a crop with a filter on an image stored on another host is applied and sav
         'meta' => ['width' => 200, 'height' => 200],
     ]]]);
     $page = visit(route('app.posts.edit', $post));
-    openMediaEditorPanel($page, $postPlatform->social_account_id);
+    openMediaEditorPanel($page, $post->social_account_id);
 
     $page->click('@crop-aspect-1-91-1')
         ->click('@media-editor-appearance-section')

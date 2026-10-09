@@ -28,11 +28,13 @@ use App\Http\Resources\Api\PostResource;
 use App\Models\Media;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
+use App\Support\PostCompositionValidator;
 use App\Support\PostStatusRules;
 use App\Support\Requests\Post\PostMediaRequestRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -48,7 +50,7 @@ class PostController extends Controller
             ->visiblePendingApprovalsFor(BuildPublishPageProps::pendingApprovalsRequester($user, $workspace))
             ->onChannels(data_get($filters, 'channels') ?: null)
             ->matchingLabelFilter(data_get($filters, 'labels'), data_get($filters, 'untagged'))
-            ->with(['postPlatforms.socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels'])
+            ->with(['socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels'])
             ->latestScheduledFirst()
             ->paginate((int) config('app.pagination.default'));
 
@@ -66,7 +68,7 @@ class PostController extends Controller
             ->exists();
         abort_unless($visible, Response::HTTP_NOT_FOUND);
 
-        $post->load(['postPlatforms.socialAccount', 'user', 'labels']);
+        $post->load(['socialAccount', 'user', 'labels']);
 
         return new PostResource($post);
     }
@@ -78,7 +80,7 @@ class PostController extends Controller
 
         $data = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($request->selectedPlatforms()), $data);
 
-        $post = CreatePosts::execute($workspace, $request->user(), [
+        $post = PostCompositionValidator::forSinglePost(fn (): Post => CreatePosts::execute($workspace, $request->user(), [
             'status' => $data['status'] ?? 'draft',
             'content' => $data['content'] ?? '',
             'media' => $data['media'] ?? [],
@@ -87,10 +89,10 @@ class PostController extends Controller
             'queue_slot' => $data['queue_slot'] ?? null,
             'label_ids' => $data['label_ids'] ?? [],
             'created_via' => CreatedVia::Api,
-            'destinations' => [$data['platforms'][0]],
-        ])->sole();
+            'destinations' => [Arr::only($data, ['social_account_id', 'content_type', 'meta'])],
+        ])->sole());
 
-        $post->load(['postPlatforms.socialAccount', 'labels']);
+        $post->load(['socialAccount', 'labels']);
 
         return (new PostResource($post))
             ->response()
@@ -107,7 +109,7 @@ class PostController extends Controller
 
         return response()->json([
             'posts' => $posts->map(function (Post $post): array {
-                $post->load(['postPlatforms.socialAccount', 'labels']);
+                $post->load(['socialAccount', 'labels']);
 
                 return (new PostResource($post))->resolve();
             })->all(),
@@ -132,7 +134,7 @@ class PostController extends Controller
         }
 
         $updated = data_get($result, 'post');
-        $updated->load(['postPlatforms.socialAccount', 'labels']);
+        $updated->load(['socialAccount', 'labels']);
 
         return new PostResource($updated);
     }
@@ -158,7 +160,7 @@ class PostController extends Controller
 
         AppendPostMedia::execute($post, [MediaItem::fromMedia($media)->toArray()], $request->user());
 
-        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+        $post->refresh()->load(['socialAccount', 'labels']);
 
         return new PostResource($post);
     }
@@ -173,7 +175,7 @@ class PostController extends Controller
 
         AppendPostMedia::execute($post, [MediaItem::fromMedia($media, $request->validated('alt'))->toArray()], $request->user());
 
-        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+        $post->refresh()->load(['socialAccount', 'labels']);
 
         return new PostResource($post);
     }
@@ -182,7 +184,7 @@ class PostController extends Controller
     {
         $result = app(MediaAttacher::class)->attachFromUrls($post, $request->validated('urls'), $request->user());
 
-        $post->refresh()->load(['postPlatforms.socialAccount', 'labels']);
+        $post->refresh()->load(['socialAccount', 'labels']);
 
         return new PostMediaAttachResource($post, $result);
     }
@@ -191,7 +193,7 @@ class PostController extends Controller
     {
         $this->authorize('view', $post);
 
-        $post->load(['postPlatforms.socialAccount']);
+        $post->load(['socialAccount']);
 
         return new PostMetricsResource($post);
     }
@@ -200,7 +202,7 @@ class PostController extends Controller
     {
         $this->authorize('view', $post);
 
-        $post->load(['postPlatforms.socialAccount']);
+        $post->load(['socialAccount']);
 
         return new PostPreviewResource($post);
     }

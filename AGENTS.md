@@ -436,13 +436,10 @@ approval, failed, sent and imported) goes with its media. There is no orphaned
 history — a post without a channel is a history that no longer exists.
 
 - Quiet: no `post.deleted` webhook or notification per post.
-- A legacy post with another live, enabled target keeps that target and loses
-  only this one (a Publishing post is re-settled through `FinalizePostPublication`).
+- It deletes by `posts.social_account_id`, without a workspace clause: a post
+  has one channel, so every post pointing at the account goes.
 - Analytics publications stay and are only unlinked, never dismissed, so
   reconnecting the same identity re-imports its recent posts once.
-- Orphans left by disconnects before this rule are removed once by the release
-  script (`release:trypost-2`, step `posts:purge-orphaned`, in
-  `app/Console/Commands/Scripts/`), through the same action.
 
 ## Member permissions and post approvals
 
@@ -488,11 +485,16 @@ publishes directly.
 - A repurpose item created by a member who requires approval stays marked
   Published while its posts are pending approval: the item records the hand-off to
   the queue, not the network publication.
-- Approval emails go through `SendNotification` with `Type::Collaboration`.
-  Requests email every approver except the requester, list only the posts still
-  pending when the job runs and are dropped when none is; decisions are grouped
-  per `post_group_id`, approver and requester by `NotifyApprovalDecision`
-  (cache + one unique delayed job).
+- Approval emails go through `SendNotification` with `Type::Collaboration`, one
+  email per post (owner decision October 2026): posts created together for
+  several channels are separate posts, each approved on its own, so they are
+  never grouped by `post_group_id`. A request emails every approver except the
+  requester and is dropped when its post is no longer pending; a decision
+  (`NotifyApprovalDecision`) emails the requester once it commits and is dropped
+  when its post was deleted.
+- The published and failed emails (`FinalizePostPublication::notify()`) go to
+  every member of the workspace (owner decision October 2026; the owner is always
+  a member); each user's notification preferences still decide whether it is sent.
 
 ## UI locale (`users.locale`)
 
@@ -747,13 +749,52 @@ TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hos
     - **JSON object key order is not preserved.** MySQL reorders object keys on storage (by length, then lexicographically); PostgreSQL keeps insertion order. Assert JSON read back from the database with `toEqual` (recursive, order-independent), never `toBe`/`assertSame`. Array *element* order is preserved on both.
     - **`$table->timestamp()` tops out at 2038-01-19.** PostgreSQL has no such limit, so 2038-01-19 is the app's ceiling: nothing written to a `timestamp()` column may go past it — scheduled posts, expiry sentinels and test fixtures alike. `2037-12-31` reads as "far future" and works on both. Do not widen a column to escape the limit without a deliberate decision; it changes what self-hosted MySQL installs can store.
     - **Raw query-builder reads carry no Eloquent cast**, so the driver's native shape leaks through: `DB::table(...)->value('some_bool')` is `true` on PostgreSQL and `1` on MySQL. Read through the model, or use `assertDatabaseHas`.
-    - **Identifier quoting differs** — PostgreSQL emits `"post_platforms"`, MySQL emits backticks. Never match logged SQL (`DB::listen`) against a quoted identifier.
+    - **Identifier quoting differs** — PostgreSQL emits `"posts"`, MySQL emits backticks. Never match logged SQL (`DB::listen`) against a quoted identifier.
     - **MySQL refuses to drop the only index backing a foreign key** (SQLSTATE `1553`). A migration `down()` that drops a unique whose leftmost prefix is an FK column must create a standalone index for that column first.
     - **DDL implicitly commits**, which defeats `RefreshDatabase`'s rollback: schema changes made inside a test leak into the tests that follow. Keep them idempotent.
 
-## Per-Platform Post Meta (`PostPlatform.meta`)
+## One destination per post (`posts` carries its channel)
 
-- All `platforms.*.meta` validation (the parent array rule AND every per-platform sub-key: TikTok `privacy_level`/flags, Pinterest `board_id`, Discord `channel_id`/`mentions`/`embeds`, etc.) lives in ONE place: `App\Support\PostPlatformMetaRules`.
+A post has at most one channel, stored on the post row: `social_account_id`,
+`platform`, `content_type`, `meta`, the channel snapshot (`platform_name`,
+`platform_username`, `platform_avatar`) and the publication result
+(`publish_status`, `platform_post_id`, `platform_url`, `error_message`,
+`error_context`, `thread_reply_ids`, `submitted_at`, `last_reconciled_at`,
+`retry_at`, `connection_warning_sent_at`). The `post_platforms` table was merged
+into `posts` in October 2026 (owner decision); never reintroduce a targets table,
+an `enabled` flag or posts with several channels. Posts created together share
+`post_group_id`.
+
+- **Two status columns.** `posts.status` is the lifecycle (draft,
+  pending_approval, scheduled, publishing, published, failed). `posts.publish_status`
+  (`App\Enums\Post\PublishStatus`) is the network side (pending, publishing,
+  retrying, pending_review, published, failed, rejected). Publishers write
+  `publish_status` through the `markPublication*()` methods; only
+  `FinalizePostPublication` moves `status` to published or failed. There is no
+  `partially_published`.
+- **Publication writes have their own clock.** `writePublication()` (and every
+  `markPublication*()`) sets `publication_updated_at` and leaves `updated_at`
+  alone, so a publish attempt never moves the post's `updated_at` (API, webhooks)
+  and a label or note never moves the publication clock. System writes by query
+  (`toBase()->update`) follow the same rule.
+- **A draft may have no channel.** Drafts written before every post had one
+  channel keep `platform` null. They stay editable as drafts and become channel
+  posts only through `RecoverEmptyDraft`; scheduling or publishing one fails with
+  `posts.errors.choose_channel`. `platform`/`content_type` therefore stay nullable.
+  `Post::hasDestination()` (platform set) and `Post::hasChannel()` (account still
+  there) are the two checks.
+- **Not fillable on purpose:** `social_account_id`, `platform_post_id`,
+  `publish_status`, `scheduled_before_media_checks` — set them
+  with `forceCreate`/`forceFill` in `CreateChannelPost`, `ImportExternalPosts` and
+  the publication methods only.
+- **Public contract:** API, MCP and webhook payloads carry the channel fields at
+  the top of the post (no `platforms[]`); inputs take top-level
+  `social_account_id` / `content_type` / `meta`, and validation errors are keyed
+  `meta.*` (`destinations.{i}.meta.*` in batches).
+
+## Per-Platform Post Meta (`posts.meta`)
+
+- All `meta` validation (the parent array rule AND every per-platform sub-key: TikTok `privacy_level`/flags, Pinterest `board_id`, Discord `channel_id`/`mentions`/`embeds`, etc.) lives in ONE place: `App\Support\PostPlatformMetaRules`.
     - Every post create/update entry point — web (`App\Http\Requests\App\Post\UpdatePostRequest`), public API (`App\Http\Requests\Api\Post\{Store,Update}PostRequest`), and MCP (`App\Mcp\Tools\Post\{Create,Update}PostTool`) — spreads `...PostPlatformMetaRules::rules()`. NEVER add a per-platform meta rule inline to a single request/tool.
     - Why: `FormRequest::validated()` (and MCP `$request->validate()`) STRIPS any key without a rule. A meta field defined in only one entry point is silently dropped everywhere else — which is exactly how Discord/Pinterest/TikTok meta was lost via API/MCP before this was centralized.
 - Required-on-publish (meta a platform needs to publish, e.g. Discord `channel_id`) also lives there: `addRequiredOnPublishErrors()` for request-driven flows (web/API update `withValidator`), `assertStoredPostPublishable()` for flows that publish stored state without resubmitting platforms (MCP `PublishPostTool`). Add new required-meta rules to `requiredMetaViolation()`, not inline.
@@ -776,8 +817,8 @@ TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hos
 - Reply media rows are owned by the post like its root media. `SyncOwnedMedia` resolves them from the post's stored `meta.thread_replies` and writes the canonical items back, so write the target's meta **before** calling it; it never deletes a row a reply still uses. Every segment's checkpoint hash covers its media ids.
 - In the composer each post of a thread shows its own media under it; the toolbar, paste, drop and the toolbar upload button add to the active post.
 - X replies go through `POST /2/tweets` with `reply.in_reply_to_tweet_id` on the previous segment. X restricts API replies (February 2026) to posts whose author summoned the replier; replying to your own post is the case that stays allowed. Each reply is billed as a post.
-- Each segment already live is checkpointed in `post_platforms.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
-- `post_platforms.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
+- Each segment already live is checkpointed in `posts.error_context.thread_progress` (`App\Support\Social\ThreadProgress`), so a retry resumes instead of re-posting, and a resume keeps the root hash. `posts:retry` keeps the live segments.
+- `posts.thread_reply_ids` lists the reply ids so `ImportExternalPosts` does not import TryPost's own replies as new posts.
 
 ## Composer steps
 
@@ -787,7 +828,7 @@ TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hos
 
 ## Link preview card
 
-- `meta.link_preview === false` (the × on the card) is honoured only by the Facebook post, Bluesky and LinkedIn publishers, through `PostPlatform::attachesLinkPreview()`. Threads has no ×: its API always cards the first link.
+- `meta.link_preview === false` (the × on the card) is honoured only by the Facebook post, Bluesky and LinkedIn publishers, through `Post::attachesLinkPreview()`. Threads has no ×: its API always cards the first link.
 - "Replace link preview with media" goes through `LinkPreviewMediaController`.
 
 ## YouTube
@@ -835,7 +876,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 
 ## Eloquent Models & Morph Map
 
-- EVERY Eloquent model in `app/Models` MUST be registered in `Relation::enforceMorphMap([...])` inside `AppServiceProvider::configureMorphMap()`, keyed by a camelCase alias (e.g. `'postPlatform' => PostPlatform::class`).
+- EVERY Eloquent model in `app/Models` MUST be registered in `Relation::enforceMorphMap([...])` inside `AppServiceProvider::configureMorphMap()`, keyed by a camelCase alias (e.g. `'postTemplate' => PostTemplate::class`).
 - When you add a new model, add it to the morph map in the same change. `tests/Unit/MorphMapTest.php` fails if any model is missing.
 - The alias is persisted in polymorphic columns, so never rename or remove an existing alias for a model that has stored rows.
 

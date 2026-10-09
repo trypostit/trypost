@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -24,9 +23,9 @@ beforeEach(function () {
             return $this->socialHttp()->get($url);
         }
 
-        public function callValidateContentLength(PostPlatform $postPlatform): void
+        public function callValidateContentLength(Post $post): void
         {
-            $this->validateContentLength($postPlatform);
+            $this->validateContentLength($post);
         }
     };
 });
@@ -84,32 +83,26 @@ test('validateContentLength passes when content is within limit', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => str_repeat('a', 100)]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $socialAccount->id,
-        'platform' => Platform::LinkedIn,
+    $post = Post::factory()->forAccount($socialAccount)->create([
+        'user_id' => $user->id,
+        'content' => str_repeat('a', 100),
         'content_type' => ContentType::LinkedInPost,
     ]);
 
-    expect(fn () => $this->client->callValidateContentLength($postPlatform))->not->toThrow(Exception::class);
+    expect(fn () => $this->client->callValidateContentLength($post))->not->toThrow(Exception::class);
 });
 
 test('validateContentLength throws when content exceeds limit', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => str_repeat('a', 4000)]);
-
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $socialAccount->id,
-        'platform' => Platform::LinkedIn,
+    $post = Post::factory()->forAccount($socialAccount)->create([
+        'user_id' => $user->id,
+        'content' => str_repeat('a', 4000),
         'content_type' => ContentType::LinkedInPost,
     ]);
 
-    expect(fn () => $this->client->callValidateContentLength($postPlatform))
+    expect(fn () => $this->client->callValidateContentLength($post))
         ->toThrow(ContentLimitException::class, __('posts.errors.content_too_long', [
             'platform' => Platform::LinkedIn->label(),
             'max' => 3000,

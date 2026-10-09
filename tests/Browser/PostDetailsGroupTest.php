@@ -70,7 +70,6 @@ test('post details lists the posts created together and switches between them', 
     [$first, $second, $draft] = $posts->all();
     $draft->update(['status' => PostStatus::Draft, 'schedule_mode' => null, 'scheduled_at' => null]);
     $second->update(['scheduled_at' => $second->scheduled_at->addHour()]);
-    $secondTarget = $second->postPlatforms()->first();
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
@@ -89,7 +88,7 @@ test('post details lists the posts created together and switches between them', 
         ->and($page->script("document.querySelector('[data-testid=\"post-details-rail-item-{$first->id}\"]').getAttribute('aria-current')"))->toBe('true');
 
     $page->click("@post-details-rail-item-{$second->id}");
-    waitForDetailsGroupTestId($page, "post-details-target-{$secondTarget->id}");
+    waitForDetailsGroupTestId($page, "post-details-target-{$second->id}");
 
     $page->assertSeeIn("@post-details-text-{$second->id}", 'Grouped details post')
         ->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.scheduled'));
@@ -101,13 +100,8 @@ test('post details lists the posts created together and switches between them', 
     $page->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.draft'))
         ->assertMissing("@post-details-publish-now-{$draft->id}");
 
-    $page->click("@post-details-rail-collapse-{$first->id}");
-    waitForDetailsGroupTestId($page, "post-details-rail-expand-{$first->id}");
-    $page->assertMissing("@post-details-rail-{$first->id}");
-
-    $page->click("@post-details-rail-expand-{$first->id}");
-    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
     $page->assertVisible("@post-details-rail-{$first->id}")
+        ->assertMissing("@post-details-rail-collapse-{$first->id}")
         ->assertNoJavaScriptErrors();
 });
 
@@ -122,6 +116,26 @@ test('post details of a post created alone has no rail', function () {
     $page->assertSeeIn("@post-details-{$post->id}", 'Grouped details post')
         ->assertMissing("@post-details-rail-{$post->id}")
         ->assertMissing("@post-details-rail-loading-{$post->id}")
-        ->assertMissing("@post-details-rail-expand-{$post->id}")
         ->assertNoJavaScriptErrors();
+});
+
+test('the channels rail stays in place while only the post details scroll', function () {
+    [$user, $posts] = detailsGroupSetup(3);
+    [$first] = $posts->all();
+    $first->update(['content' => collect(range(1, 80))->map(fn (int $line): string => "<p>Line {$line} of a long post</p>")->implode('')]);
+    $this->actingAs($user);
+    $page = visit(route('app.posts.index'));
+    $page->resize(1440, 900);
+    openDetailsFromCard($page, $first->id);
+    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
+
+    waitForDetailsGroupTestId($page, "post-details-see-more-{$first->id}");
+    $page->click("@post-details-see-more-{$first->id}");
+    $railTop = $page->script("document.querySelector('[data-testid=\"post-details-rail-{$first->id}\"]').getBoundingClientRect().top");
+    $page->script("document.querySelector('[data-testid=\"post-details-body-{$first->id}\"]').scrollTop = 100000");
+
+    expect($page->script("document.querySelector('[data-testid=\"post-details-body-{$first->id}\"]').scrollTop"))->toBeGreaterThan(0)
+        ->and($page->script("document.querySelector('[data-testid=\"post-details-{$first->id}\"]').scrollTop"))->toBe(0)
+        ->and($page->script("document.querySelector('[data-testid=\"post-details-rail-{$first->id}\"]').getBoundingClientRect().top"))->toBe($railTop);
+    $page->assertNoJavaScriptErrors();
 });

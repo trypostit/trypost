@@ -10,7 +10,6 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -36,13 +35,12 @@ test('insights rows carry the live connection status and the top post avatar of 
         'date' => '2026-09-15',
         'followers_count' => 500,
     ]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $user->id]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'account_avatar_url' => 'https://example.test/avatar.png',
         'provider_published_at' => CarbonImmutable::parse('2026-09-15 12:00:00', 'UTC'),

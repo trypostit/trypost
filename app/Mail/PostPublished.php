@@ -30,11 +30,7 @@ class PostPublished extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $postPlatform = $this->post->postPlatforms()
-            ->with('socialAccount')
-            ->enabled()
-            ->published()
-            ->first();
+        $this->post->loadMissing('socialAccount');
 
         return new Content(
             view: 'mail.post-published',
@@ -42,12 +38,12 @@ class PostPublished extends Mailable implements ShouldQueue
                 'title' => __('mail.post_published.title'),
                 'previewText' => __('mail.post_published.preview'),
                 'workspaceName' => $this->post->workspace->name,
-                'publication' => $postPlatform ? [
-                    'accountName' => $postPlatform->display_name,
-                    'platform' => $postPlatform->platform,
-                ] : null,
+                'publication' => [
+                    'accountName' => $this->post->display_name,
+                    'platform' => $this->post->platform,
+                ],
                 'postPreview' => PostPreview::from($this->post),
-                'publishedUrl' => $postPlatform?->platform_url,
+                'publishedUrl' => $this->post->platform_url,
                 'url' => route('app.posts.edit', $this->post),
             ],
         );

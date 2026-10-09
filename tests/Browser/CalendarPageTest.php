@@ -11,7 +11,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -66,19 +65,11 @@ function waitForCalendarCondition(mixed $page, string $condition): void
 
 function calendarPagePost(SocialAccount $account, ?CarbonInterface $at, PostStatus $status = PostStatus::Scheduled): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
+    return Post::factory()->forAccount($account)->create([
         'user_id' => $account->workspace->user_id,
         'status' => $status,
         'scheduled_at' => $at,
     ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-    ]);
-
-    return $post;
 }
 
 function calendarChipSlot(mixed $page, Post $post): ?string
@@ -86,7 +77,7 @@ function calendarChipSlot(mixed $page, Post $post): ?string
     return $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]')?.closest('[data-testid^=\"calendar-slot-\"]')?.dataset.testid ?? null");
 }
 
-test('the week grid places posts in their hour row, side by side when they share it', function () {
+test('the week grid places posts in their hour row, stacked as compact rows when they share it', function () {
     [$user, $linkedin, $x] = calendarPageSetup();
     $weekStart = now('UTC')->startOfWeek()->addWeek();
     $day = $weekStart->copy()->addDays(2);
@@ -114,17 +105,17 @@ test('the week grid places posts in their hour row, side by side when they share
             const second = box('{$second->id}');
 
             return {
-                sameRow: Math.abs(first.top - second.top) < 1,
-                sideBySide: second.left >= first.right,
+                stacked: second.top >= first.bottom && Math.abs(first.left - second.left) < 1,
+                sameWidth: Math.abs(first.width - second.width) < 1,
                 hourOffset: Math.round(slot.top - midnight.top),
-                inSlot: first.top >= slot.top && first.bottom <= slot.bottom,
+                inSlot: first.top >= slot.top && second.bottom <= slot.bottom,
             };
         })()
     JS);
 
     expect($layout)->toBe([
-        'sameRow' => true,
-        'sideBySide' => true,
+        'stacked' => true,
+        'sameWidth' => true,
         'hourOffset' => 14 * 106,
         'inSlot' => true,
     ]);
@@ -162,7 +153,7 @@ test('the calendar honours the channels filter and the display time zone', funct
         'week' => $weekStart->format('Y-m-d'),
         'channels' => [$x->id],
         'tz' => 'Asia/Tokyo',
-    ]));
+    ]))->resize(1600, 900);
     waitForCalendarTestId($page, "calendar-post-{$xPost->id}");
 
     $page->assertMissing("@calendar-post-{$linkedinPost->id}")
@@ -213,7 +204,7 @@ test('the status filter narrows the calendar to one kind of post', function () {
 
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]));
+    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]))->resize(1600, 900);
     waitForCalendarTestId($page, "calendar-post-{$scheduled->id}");
     $page->assertSeeIn('@calendar-status-filter', 'All posts')
         ->click('@calendar-status-filter');
@@ -322,6 +313,8 @@ test('show posting times renders empty slots in the week and month views', funct
 
     $page->hover("@calendar-posting-slot-{$slotKey}");
     $page->assertSeeIn("@calendar-posting-slot-{$slotKey}", __('posts.publish.add_post_in_slot'));
+    expect($page->script("document.querySelector('[data-testid=\"calendar-add-{$day->format('Y-m-d')}-15\"]').getBoundingClientRect().height"))
+        ->toBe($page->script("document.querySelector('[data-testid=\"calendar-posting-slot-{$slotKey}\"]').getBoundingClientRect().height"));
 
     expect($page->script("document.querySelector('[data-testid=\"calendar-posting-slot-{$slotKey}\"]').closest('[data-testid^=\"calendar-slot-\"]').dataset.testid"))
         ->toBe("calendar-slot-{$day->format('Y-m-d')}-15");
@@ -424,16 +417,9 @@ test('a published post popover shows its metrics, go to post and the sent menu',
     [$user] = calendarPageSetup();
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id, 'timezone' => 'UTC']);
 
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $instagram->workspace_id,
+    $post = Post::factory()->forAccount($instagram)->published()->create([
         'user_id' => $user->id,
         'content' => 'Already live',
-        'published_at' => now()->subHour(),
-    ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $instagram->id,
-        'platform' => Platform::Instagram,
         'platform_url' => 'https://www.instagram.com/p/abc/',
         'published_at' => now()->subHour(),
     ]);
@@ -441,10 +427,10 @@ test('a published post popover shows its metrics, go to post and the sent menu',
         'workspace_id' => $instagram->workspace_id,
         'social_account_id' => $instagram->id,
         'social_account_key' => $instagram->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'network' => Platform::Instagram->network(),
-        'remote_id' => $target->platform_post_id,
+        'remote_id' => $post->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
@@ -482,29 +468,48 @@ test('a published post popover shows its metrics, go to post and the sent menu',
         ->assertNoJavaScriptErrors();
 });
 
-test('an overflowing month day expands and collapses back', function () {
+test('an overflowing month day expands and collapses back, scrolling inside its cell', function () {
     [$user, $linkedin] = calendarPageSetup();
     $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(12);
     $dayKey = $day->format('Y-m-d');
-    $posts = collect(range(0, 3))->map(fn (int $index) => calendarPagePost($linkedin, $day->copy()->setTime(9 + $index, 0)));
+    $posts = collect(range(0, 9))->map(fn (int $index) => calendarPagePost($linkedin, $day->copy()->setTime(9 + $index, 0)));
+    $last = $posts->last();
 
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $dayKey]));
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $dayKey]))->resize(1440, 900);
     waitForCalendarTestId($page, "calendar-more-{$dayKey}");
 
-    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 1]))
-        ->assertMissing("@calendar-post-{$posts[3]->id}")
-        ->click("@calendar-more-{$dayKey}");
-    waitForCalendarTestId($page, "calendar-post-{$posts[3]->id}");
+    $cellHeight = "document.querySelector('[data-testid=\"calendar-day-{$dayKey}\"]').getBoundingClientRect().height";
+    $heightBefore = $page->script($cellHeight);
 
-    $page->assertVisible("@calendar-post-{$posts[3]->id}")
-        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.less'))
+    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
+        ->assertMissing("@calendar-post-{$last->id}")
         ->click("@calendar-more-{$dayKey}");
-    waitForCalendarCondition($page, "!document.querySelector('[data-testid=\"calendar-post-{$posts[3]->id}\"]')");
+    waitForCalendarTestId($page, "calendar-post-{$last->id}");
 
-    $page->assertMissing("@calendar-post-{$posts[3]->id}")
-        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 1]))
+    $layout = $page->script(<<<JS
+        (() => {
+            const cell = document.querySelector('[data-testid="calendar-day-{$dayKey}"]').getBoundingClientRect();
+            const items = document.querySelector('[data-testid="calendar-items-{$dayKey}"]');
+            const more = document.querySelector('[data-testid="calendar-more-{$dayKey}"]').getBoundingClientRect();
+
+            return {
+                scrolls: items.scrollHeight > items.clientHeight,
+                moreInCell: more.bottom <= cell.bottom + 0.5,
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe(['scrolls' => true, 'moreInCell' => true])
+        ->and(abs($page->script($cellHeight) - $heightBefore))->toBeLessThan(1);
+
+    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.less'))
+        ->click("@calendar-more-{$dayKey}");
+    waitForCalendarCondition($page, "!document.querySelector('[data-testid=\"calendar-post-{$last->id}\"]')");
+
+    $page->assertMissing("@calendar-post-{$last->id}")
+        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
         ->assertNoJavaScriptErrors();
 });
 
@@ -670,4 +675,16 @@ test('on a phone the period picker opens from the bottom, switches the view in p
     $page->resize(1280, 900);
     waitForCalendarTestId($page, 'calendar-previous');
     $page->assertVisible('@calendar-next')->assertVisible('@calendar-view-trigger');
+});
+
+test('the previous period arrow starts on the same line as the calendar', function () {
+    [$user] = calendarPageSetup();
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'week']))->resize(1440, 900);
+    waitForCalendarTestId($page, 'calendar-time-grid');
+
+    expect($page->script("Math.round(document.querySelector('[data-testid=\"calendar-previous\"]').getBoundingClientRect().left)"))
+        ->toBe($page->script("Math.round(document.querySelector('[data-testid=\"calendar-grid\"]').getBoundingClientRect().left)"));
+    $page->assertNoJavaScriptErrors();
 });

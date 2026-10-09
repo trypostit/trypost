@@ -7,7 +7,15 @@ import {
     IconPlus,
 } from '@tabler/icons-vue';
 import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import {
+    computed,
+    onMounted,
+    onUnmounted,
+    provide,
+    ref,
+    useTemplateRef,
+    watch,
+} from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
 import AppHeaderActions from '@/components/AppHeaderActions.vue';
@@ -24,6 +32,7 @@ import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
+import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
@@ -265,6 +274,18 @@ const todayKey = computed(() =>
 
 const isDesktop = useAtLeastBreakpoint('md');
 
+const toolbar = useTemplateRef<HTMLElement>('toolbar');
+const periodPicker =
+    useTemplateRef<InstanceType<typeof CalendarPeriodPicker>>('periodPicker');
+const { collapsed: filtersCollapsed, expand: showAllFilters } =
+    useCollapseWhenTruncated(
+        toolbar,
+        () => periodPicker.value?.missingTitleWidth() ?? 0,
+    );
+const compactFilters = computed(
+    () => !isDesktop.value || filtersCollapsed.value,
+);
+
 const weekdayNames = computed(() => {
     const start = localized().startOf('week');
 
@@ -324,6 +345,8 @@ const headerTitle = computed(() =>
         ? monthDate.value.format('MMMM YYYY')
         : weekHeaderTitle.value,
 );
+
+watch(headerTitle, showAllFilters);
 
 const currentDateQuery = (
     view: CalendarView = props.view,
@@ -563,10 +586,12 @@ const goToDay = (key: string): void => {
 
         <div class="flex min-h-0 flex-1 flex-col">
             <div
-                class="mx-4 mt-2 flex h-12 shrink-0 items-center justify-between gap-2 md:mx-8 md:gap-4"
+                class="mx-4 mt-2 flex h-12 shrink-0 items-center justify-between gap-2 md:mx-8"
+                ref="toolbar"
                 data-testid="calendar-toolbar"
             >
                 <CalendarPeriodPicker
+                    ref="periodPicker"
                     :view="view"
                     :views="VIEWS"
                     :title="isDesktop ? headerTitle : mobileTitle"
@@ -578,7 +603,7 @@ const goToDay = (key: string): void => {
                 />
 
                 <div
-                    class="flex shrink-0 items-center gap-1 md:ms-auto md:gap-2"
+                    class="flex shrink-0 items-center gap-1 md:ms-auto md:gap-0"
                     data-testid="calendar-filters"
                 >
                     <PostChannelFilter
@@ -586,10 +611,18 @@ const goToDay = (key: string): void => {
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
                     />
+                    <div class="shrink-0 max-md:hidden">
+                        <LabelFilter
+                            v-model="selectedLabelIds"
+                            v-model:untagged="selectedUntagged"
+                            :labels="labels"
+                        />
+                    </div>
                     <PublishFilterMenu
                         v-model:status="selectedStatus"
                         :timezone="timezone"
                         test-id="calendar"
+                        :compact="compactFilters"
                         :timezones="timezones"
                         :show-slots="showSlots"
                         :manage-slots-href="
@@ -599,15 +632,7 @@ const goToDay = (key: string): void => {
                         "
                         @update:timezone="setTimezone"
                         @update:show-slots="toggleSlots"
-                    >
-                        <template #desktop-filters>
-                            <LabelFilter
-                                v-model="selectedLabelIds"
-                                v-model:untagged="selectedUntagged"
-                                :labels="labels"
-                            />
-                        </template>
-                    </PublishFilterMenu>
+                    />
                     <AppHeaderActions>
                         <ScheduleViewSwitch
                             active-view="calendar"
@@ -686,13 +711,13 @@ const goToDay = (key: string): void => {
                             <div
                                 v-for="(week, weekIndex) in calendarWeeks"
                                 :key="weekIndex"
-                                class="grid min-h-24 flex-1 grid-cols-7 border-border-strong md:min-h-[208px]"
+                                class="grid min-h-24 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
                                 :class="{ 'border-t': weekIndex > 0 }"
                             >
                                 <div
                                     v-for="(day, index) in week"
                                     :key="dayKey(day)"
-                                    class="group flex min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
+                                    class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
                                     :class="{
                                         'border-l': index > 0,
                                         'bg-accent': isPast(day),
@@ -727,7 +752,15 @@ const goToDay = (key: string): void => {
                                         </button>
                                     </div>
 
-                                    <div class="flex flex-col gap-1">
+                                    <div class="relative min-h-0 flex-1">
+                                    <div
+                                        class="flex flex-col gap-1"
+                                        :class="{
+                                            'absolute inset-0 overflow-y-auto overscroll-contain':
+                                                expandedDays.includes(dayKey(day)),
+                                        }"
+                                        :data-testid="`calendar-items-${dayKey(day)}`"
+                                    >
                                         <template
                                             v-for="item in visibleMonthItems(day)"
                                             :key="item.key"
@@ -749,12 +782,14 @@ const goToDay = (key: string): void => {
                                                 :can-create-post="canCreatePost"
                                             />
                                         </template>
-                                        <button
+                                    </div>
+                                    </div>
+                                    <button
                                             v-if="
                                                 itemsFor(day).length > MONTH_CHIPS
                                             "
                                             type="button"
-                                            class="inline-flex h-6 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
+                                            class="inline-flex h-6 shrink-0 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
                                             :aria-expanded="
                                                 expandedDays.includes(dayKey(day))
                                             "
@@ -784,7 +819,6 @@ const goToDay = (key: string): void => {
                                                       })
                                             }}
                                         </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>

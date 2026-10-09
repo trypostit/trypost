@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -40,18 +38,9 @@ function seedXDefusingPost(string $content): array
 
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
 
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create([
         'user_id' => $user->id,
         'content' => $content,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
-        'enabled' => true,
     ]);
 
     test()->actingAs($user);

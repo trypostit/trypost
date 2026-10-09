@@ -8,6 +8,7 @@ use App\Actions\Media\ResolveWorkspaceMedia;
 use App\Actions\Media\SyncOwnedMedia;
 use App\Dto\MediaItem;
 use App\Enums\Post\QueuePosition;
+use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -23,13 +24,35 @@ use Illuminate\Validation\Validator as LaravelValidator;
 class PostCompositionValidator
 {
     /**
+     * Runs a single-destination write, reporting its errors under the post's own keys
+     * (`meta.title`, `content_type`) instead of `destinations.0.*`.
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $write
+     * @return TResult
+     */
+    public static function forSinglePost(callable $write): mixed
+    {
+        try {
+            return $write();
+        } catch (ValidationException $exception) {
+            $errors = collect($exception->errors())
+                ->mapWithKeys(fn (array $messages, string $key): array => [Str::after($key, 'destinations.0.') => $messages])
+                ->all();
+
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */
     public static function validate(Workspace $workspace, array $composition, array $existingMedia = []): array
     {
         Validator::make($composition, [
-            'status' => ['required', Rule::in(['draft', 'scheduled', 'publishing'])],
+            'status' => ['required', Rule::in([Status::Draft->value, Status::Scheduled->value, Status::Publishing->value])],
             'content' => ['sometimes', 'nullable', 'string', new PostContentFitsMaxLength],
             'media' => ['sometimes', 'array'],
             'destinations' => ['required', 'array', 'min:1'],
@@ -63,6 +86,7 @@ class PostCompositionValidator
                 $destination['media_error_key'] = array_key_exists('media', $destination)
                     ? "destinations.{$index}.media"
                     : 'media';
+                $destination['meta_error_key'] = "destinations.{$index}.meta";
                 $destination['content'] = array_key_exists('content', $destination)
                     ? $destination['content']
                     : ($composition['content'] ?? '');
@@ -120,25 +144,12 @@ class PostCompositionValidator
         foreach (PostMediaRules::hostedRules() as $key => $rules) {
             $mediaRules[str_replace('media', 'destinations.*.media', $key)] = $rules;
         }
-        $metaRules = [];
-        foreach (PostPlatformMetaRules::rules() as $key => $rules) {
-            $metaRules[str_replace('platforms.', 'destinations.', $key)] = array_map(
-                fn (mixed $rule): mixed => is_string($rule)
-                    ? str_replace('platforms.', 'destinations.', $rule)
-                    : $rule,
-                $rules,
-            );
-        }
-        $metaMessages = [];
-        foreach (PostPlatformMetaRules::messages() as $key => $message) {
-            $metaMessages[str_replace('platforms.', 'destinations.', $key)] = $message;
-        }
-        $metaAttributes = [];
-        foreach (PostPlatformMetaRules::attributes() as $key => $attribute) {
-            $metaAttributes[str_replace('platforms.', 'destinations.', $key)] = $attribute;
-        }
-
-        $validator = Validator::make($composition, [...$mediaRules, ...$metaRules], $metaMessages, $metaAttributes);
+        $validator = Validator::make(
+            $composition,
+            [...$mediaRules, ...PostPlatformMetaRules::rules('destinations.*.meta')],
+            PostPlatformMetaRules::messages('destinations.*.meta'),
+            PostPlatformMetaRules::attributes('destinations.*.meta'),
+        );
         $validator->after(function (LaravelValidator $validator) use ($composition, $accounts, $assets, $existingMedia, $workspace): void {
             $seen = [];
 

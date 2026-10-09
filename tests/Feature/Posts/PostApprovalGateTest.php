@@ -18,7 +18,6 @@ use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Webhook;
@@ -135,10 +134,8 @@ test('a requester cannot reach the public api, so it can never bypass approval',
         ->postJson(route('api.posts.store'), [
             'status' => 'publishing',
             'content' => 'From the API',
-            'platforms' => [[
-                'social_account_id' => $this->channel->id,
-                'content_type' => ContentType::LinkedInPost->value,
-            ]],
+            'social_account_id' => $this->channel->id,
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertForbidden();
 
@@ -165,7 +162,7 @@ test('editing an approved queued post returns it to pending and keeps reserving 
     expect(approvalGateSlot($second))->toBe('Wed 09:00');
 
     $this->actingAs($this->requester)
-        ->put(route('app.posts.update', $first), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Edited by a requester'])
+        ->put(route('app.posts.update', $first), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Edited by a requester'])
         ->assertSessionHasNoErrors();
 
     $first->refresh();
@@ -183,7 +180,7 @@ test('editing a pending post keeps the original request time', function () {
     $this->travel(5)->minutes();
 
     $this->actingAs($this->requester)
-        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'content' => 'Second try'])
+        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'content' => 'Second try'])
         ->assertSessionHasNoErrors();
 
     $request->refresh();
@@ -212,7 +209,7 @@ test('a direct publisher saving a pending post approves it', function () {
     $request = approvalGateStore($this, $this->requester);
 
     $this->actingAs($this->owner)
-        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Fixed and approved'])
+        ->put(route('app.posts.update', $request), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Fixed and approved'])
         ->assertSessionHasNoErrors();
 
     $request->refresh();
@@ -297,7 +294,7 @@ test('a requester editing someone else\'s approved post becomes the one who aske
     $scheduled = approvalGateStore($this, $this->owner);
 
     $this->actingAs($this->requester)
-        ->put(route('app.posts.update', $scheduled), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Typo fixed'])
+        ->put(route('app.posts.update', $scheduled), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Typo fixed'])
         ->assertSessionHasNoErrors();
 
     $scheduled->refresh();
@@ -324,7 +321,7 @@ test('returning an approved post to approval queues a post.unscheduled webhook',
     $scheduled = approvalGateStore($this, $this->owner);
 
     $this->actingAs($this->requester)
-        ->put(route('app.posts.update', $scheduled), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Edited'])
+        ->put(route('app.posts.update', $scheduled), ['status' => 'scheduled', 'content_type' => ContentType::LinkedInPost->value, 'queue' => 'next', 'content' => 'Edited'])
         ->assertSessionHasNoErrors();
 
     Queue::assertPushed(DispatchWebhook::class, fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostUnscheduled->value
@@ -379,39 +376,25 @@ test('a requester editing an approved post through mcp returns it to approval', 
 });
 
 /**
- * A legacy post with two enabled targets, scheduled by the owner.
+ * A post scheduled by the owner at a custom time.
  */
-function approvalGateLegacyPost(object $test, PostStatus $status = PostStatus::Scheduled): Post
+function approvalGateCustomPost(object $test, PostStatus $status = PostStatus::Scheduled): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $test->workspace->id,
+    return Post::factory()->forAccount($test->channel, ContentType::LinkedInPost)->create([
         'user_id' => $test->owner->id,
         'status' => $status,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->addDays(2),
-        'content' => 'Legacy post',
+        'content' => 'Custom post',
         'approval_requested_at' => $status === PostStatus::PendingApproval ? now() : null,
     ]);
-    $x = SocialAccount::factory()->x()->create(['workspace_id' => $test->workspace->id]);
-
-    foreach ([$test->channel, $x] as $channel) {
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $channel->id,
-            'platform' => $channel->platform,
-            'content_type' => $channel->platform === Platform::X ? ContentType::XPost : ContentType::LinkedInPost,
-            'enabled' => true,
-        ]);
-    }
-
-    return $post;
 }
 
-test('a requester editing a legacy multi-target post returns it to approval', function () {
-    $legacy = approvalGateLegacyPost($this);
+test('a requester editing a custom-time post returns it to approval at the same time', function () {
+    $legacy = approvalGateCustomPost($this);
     $requestedAt = $legacy->scheduled_at;
 
-    UpdatePost::execute($this->workspace, $legacy, ['status' => 'scheduled', 'content' => 'Legacy edit'], $this->requester);
+    UpdatePost::execute($this->workspace, $legacy, ['status' => 'scheduled', 'content' => 'Edited'], $this->requester);
 
     $legacy->refresh();
 
@@ -422,8 +405,8 @@ test('a requester editing a legacy multi-target post returns it to approval', fu
     Queue::assertNotPushed(PublishPost::class);
 });
 
-test('approving a legacy multi-target request to publish now drops the requested time', function () {
-    $legacy = approvalGateLegacyPost($this, PostStatus::PendingApproval);
+test('approving a custom-time request to publish now drops the requested time', function () {
+    $legacy = approvalGateCustomPost($this, PostStatus::PendingApproval);
 
     UpdatePost::execute($this->workspace, $legacy, ['status' => 'publishing'], $this->owner);
 

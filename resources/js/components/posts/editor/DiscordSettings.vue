@@ -14,7 +14,7 @@ import SettingsSection from '@/components/posts/editor/SettingsSection.vue';
 import SearchableSelect from '@/components/SearchableSelect.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 
 interface SocialAccount {
     id: string;
@@ -55,6 +55,7 @@ const props = withDefaults(
     defineProps<{
         socialAccount: SocialAccount | null;
         meta: Record<string, any>;
+        platformIndex: number;
         disabled?: boolean;
     }>(),
     { disabled: false },
@@ -133,16 +134,10 @@ watch(
     { immediate: true },
 );
 
-const errors = usePageErrors();
-const channelError = computed<string | undefined>(() => {
-    if (props.meta?.channel_id) {
-        return undefined;
-    }
-
-    return Object.entries(errors.value).find(([key]) =>
-        key.endsWith('.meta.channel_id'),
-    )?.[1];
-});
+const storedChannelError = useMetaErrors(() => props.platformIndex)('channel_id');
+const channelError = computed(() =>
+    props.meta?.channel_id ? undefined : storedChannelError.value,
+);
 
 const mentionQuery = ref('');
 const mentionResults = ref<MentionTarget[]>([]);

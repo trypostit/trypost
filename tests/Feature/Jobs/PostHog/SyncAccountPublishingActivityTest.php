@@ -2,12 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostPlatform\Status;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Models\Account;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
@@ -35,29 +33,26 @@ test('handle sends the latest confirmed account publication directly to PostHog'
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $olderPost = Post::factory()->create([
+    Post::factory()->x()->published()->create([
         'workspace_id' => $olderWorkspace->id,
         'user_id' => $this->user->id,
-    ]);
-    $latestPost = Post::factory()->create([
-        'workspace_id' => $latestWorkspace->id,
-        'user_id' => $this->user->id,
-    ]);
-    PostPlatform::factory()->published()->recycle($olderPost)->create([
-        'platform' => Platform::X,
         'published_at' => now()->subDay(),
     ]);
-    $latestPublication = PostPlatform::factory()->published()->recycle($latestPost)->create([
+    $latestPublication = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $latestWorkspace->id,
+        'user_id' => $this->user->id,
         'platform' => Platform::LinkedInPage,
         'published_at' => now()->subHour(),
     ]);
-    PostPlatform::factory()->published()->create(['published_at' => now()]);
-    PostPlatform::factory()->recycle($latestPost)->create([
-        'status' => Status::PendingReview,
+    Post::factory()->x()->published()->create(['published_at' => now()]);
+    Post::factory()->linkedin()->pendingReview()->create([
+        'workspace_id' => $latestWorkspace->id,
+        'user_id' => $this->user->id,
         'published_at' => now()->addHour(),
     ]);
-    PostPlatform::factory()->recycle($latestPost)->create([
-        'status' => Status::Published,
+    Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $latestWorkspace->id,
+        'user_id' => $this->user->id,
         'published_at' => null,
     ]);
 
@@ -69,7 +64,7 @@ test('handle sends the latest confirmed account publication directly to PostHog'
                 && $groupKey === (string) $this->account->id
                 && $properties['last_post_published_at'] === $latestPublication->published_at->toIso8601String()
                 && $properties['last_post_published_network'] === 'linkedin'
-                && $properties['last_published_post_id'] === $latestPublication->post_id;
+                && $properties['last_published_post_id'] === $latestPublication->id;
         });
 
     $job->handle($postHog);
@@ -80,11 +75,10 @@ test('handle clears publishing activity when the account has no confirmed public
         'account_id' => $this->account->id,
         'user_id' => $this->user->id,
     ]);
-    $post = Post::factory()->create([
+    Post::factory()->linkedin()->pendingReview()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $this->user->id,
     ]);
-    PostPlatform::factory()->recycle($post)->create(['status' => Status::PendingReview]);
 
     $postHog = Mockery::mock(PostHogService::class);
     $postHog->shouldReceive('groupIdentifyNow')

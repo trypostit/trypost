@@ -7,7 +7,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -50,7 +49,7 @@ test('an Instagram media warning links to the network limits', function () {
 /**
  * @param  array<string, string>  $platformMeta
  * @param  array<string, int>  $imageMeta
- * @return array{Post, PostPlatform}
+ * @return array{Post}
  */
 function seedInstagramFeedImagePost(array $platformMeta = [], array $imageMeta = ['width' => 1080, 'height' => 1600], int $size = 1024, int $imageCount = 5, Platform $platform = Platform::Instagram): array
 {
@@ -60,9 +59,9 @@ function seedInstagramFeedImagePost(array $platformMeta = [], array $imageMeta =
     $user->update(['current_workspace_id' => $workspace->id]);
 
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, $platform === Platform::Facebook ? ContentType::FacebookPost : ContentType::InstagramFeed)->create([
         'user_id' => $user->id,
+        'meta' => $platformMeta,
         'content' => 'A five-image carousel',
         'media' => array_map(fn (int $index): array => [
             'id' => "image-{$index}",
@@ -74,17 +73,9 @@ function seedInstagramFeedImagePost(array $platformMeta = [], array $imageMeta =
             'meta' => $imageMeta,
         ], range(1, $imageCount)),
     ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $platform,
-        'content_type' => $platform === Platform::Facebook ? ContentType::FacebookPost : ContentType::InstagramFeed,
-        'meta' => $platformMeta,
-    ]);
-
     test()->actingAs($user);
 
-    return [$post, $postPlatform];
+    return [$post];
 }
 
 test('Instagram feed has no global aspect control and asks to adjust unsupported images', function () {
@@ -107,10 +98,10 @@ test('Instagram feed has no global aspect control and asks to adjust unsupported
 });
 
 test('Facebook has no aspect ratio selector and accepts an image of any ratio', function (int $width, int $height) {
-    [$post, $postPlatform] = seedInstagramFeedImagePost(imageMeta: ['width' => $width, 'height' => $height], imageCount: 1, platform: Platform::Facebook);
+    [$post] = seedInstagramFeedImagePost(imageMeta: ['width' => $width, 'height' => $height], imageCount: 1, platform: Platform::Facebook);
 
     $page = visit(route('app.posts.edit', $post));
-    waitForChannelIssueTestId($page, "channel-{$postPlatform->id}");
+    waitForChannelIssueTestId($page, "composer-account-{$post->social_account_id}");
 
     expect($page->script('document.querySelectorAll("[data-testid^=facebook-aspect-]").length'))->toBe(0);
 
@@ -122,7 +113,7 @@ test('Facebook has no aspect ratio selector and accepts an image of any ratio', 
 ]);
 
 test('saving an Instagram post stores no global aspect ratio', function () {
-    [$post, $postPlatform] = seedInstagramFeedImagePost([], ['width' => 1080, 'height' => 1350], imageCount: 1);
+    [$post] = seedInstagramFeedImagePost([], ['width' => 1080, 'height' => 1350], imageCount: 1);
     $asset = Media::factory()->ownedByPost($post)->create([
         'meta' => ['width' => 1080, 'height' => 1350],
     ]);
@@ -147,7 +138,7 @@ test('saving an Instagram post stores no global aspect ratio', function () {
     JS);
 
     expect($page->script('Boolean(document.querySelector("[data-testid=post-composer-dialog]"))'))->toBeFalse();
-    expect(data_get($postPlatform->fresh()->meta, 'aspect_ratio'))->toBeNull();
+    expect(data_get($post->fresh()->meta, 'aspect_ratio'))->toBeNull();
 
     Storage::delete([$asset->path, ...$post->ownedMedia()->pluck('path')->all()]);
 });
@@ -240,7 +231,7 @@ test('Instagram image editor saves alt text on the selected slide', function () 
 });
 
 test('appearance filter saves a new image without cropping its original dimensions', function () {
-    [$post, $postPlatform] = seedInstagramFeedImagePost(imageMeta: ['width' => 200, 'height' => 200], imageCount: 1);
+    [$post] = seedInstagramFeedImagePost(imageMeta: ['width' => 200, 'height' => 200], imageCount: 1);
     $base64 = base64_encode((string) file_get_contents(base_path('tests/fixtures/crop-quadrants.png')));
     $media = $post->media;
     $media[0]['url'] = "data:image/png;base64,{$base64}";
@@ -248,8 +239,8 @@ test('appearance filter saves a new image without cropping its original dimensio
 
     $page = visit(route('app.posts.edit', $post));
 
-    waitForChannelIssueTestId($page, "composer-{$postPlatform->social_account_id}-edit-0");
-    $page->click("@composer-{$postPlatform->social_account_id}-edit-0")
+    waitForChannelIssueTestId($page, "composer-{$post->social_account_id}-edit-0");
+    $page->click("@composer-{$post->social_account_id}-edit-0")
         ->click('@media-editor-appearance-section')
         ->click('@media-filter-mono');
 
@@ -286,7 +277,7 @@ test('appearance filter saves a new image without cropping its original dimensio
 });
 
 test('a media ratio warning names the destination with the same message the server returns', function () {
-    [$post, $postPlatform] = seedInstagramFeedImagePost(imageCount: 1);
+    [$post] = seedInstagramFeedImagePost(imageCount: 1);
     $post->update(['media' => [[
         'id' => 'reel-1',
         'type' => 'video',
@@ -296,7 +287,7 @@ test('a media ratio warning names the destination with the same message the serv
         'size' => 1024,
         'meta' => ['width' => 2200, 'height' => 200, 'duration' => 10],
     ]]]);
-    $postPlatform->update(['content_type' => ContentType::InstagramReel]);
+    $post->update(['content_type' => ContentType::InstagramReel]);
 
     $page = visit(route('app.posts.edit', $post));
     waitForChannelIssueTestId($page, 'media-rules-warning');
@@ -313,11 +304,11 @@ test('a media ratio warning names the destination with the same message the serv
 });
 
 test('an Instagram feed post without media shows the inline warning once, under the post type', function () {
-    [$post, $postPlatform] = seedInstagramFeedImagePost();
+    [$post] = seedInstagramFeedImagePost();
     $post->update(['media' => []]);
 
     $page = visit(route('app.posts.edit', $post));
-    $warning = "composer-media-warning-{$postPlatform->social_account_id}";
+    $warning = "composer-media-warning-{$post->social_account_id}";
     waitForChannelIssueTestId($page, $warning);
 
     $page->assertSeeIn("@{$warning}", 'Please include an image or video.')

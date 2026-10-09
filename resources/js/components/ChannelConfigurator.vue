@@ -45,9 +45,6 @@ const emit = defineEmits<{
 
 const isSelected = (id: string): boolean => props.selectedIds.includes(id);
 
-// Order matches the `platforms` array the editor submits (both filter the same
-// post_platforms list by the same selection), so a settings panel's position
-// here is the `platforms.{index}.*` index its backend errors are keyed by.
 const selectedChannels = computed(() =>
     props.channels.filter((channel) => isSelected(channel.id)),
 );
@@ -179,6 +176,7 @@ const settingsIndex = (channel: Channel): number =>
                         :video-duration-sec="videoDurationSec"
                         :content-type="channel.contentType"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />
@@ -191,6 +189,7 @@ const settingsIndex = (channel: Channel): number =>
                         :boards="channel.boards ?? []"
                         :boards-truncated="channel.boardsTruncated ?? false"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />
@@ -217,6 +216,7 @@ const settingsIndex = (channel: Channel): number =>
                         v-else-if="channel.platform === Platform.Discord"
                         :social-account="channel.socialAccount"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />

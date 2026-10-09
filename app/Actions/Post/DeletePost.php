@@ -37,20 +37,16 @@ class DeletePost
                 throw ValidationException::withMessages(['post' => __('posts.flash.cannot_delete_published')]);
             }
 
-            $googleBusinessIds = $post->postPlatforms()
-                ->where('platform', Platform::GoogleBusiness)
-                ->pluck('id');
-
             AnalyticsPublication::query()
-                ->whereIn('post_platform_id', $post->postPlatforms()->pluck('id')->all())
+                ->where('post_id', $post->id)
                 ->update(['post_dismissed_at' => now()]);
 
             DeleteOwnedMedia::forPosts([$postId]);
             $post->delete();
 
-            DB::afterCommit(fn () => $googleBusinessIds->each(
-                fn (string $id) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($id),
-            ));
+            if ($post->platform === Platform::GoogleBusiness) {
+                DB::afterCommit(fn () => app(GoogleBusinessDerivativeCleaner::class)->cleanup($post));
+            }
 
             return true;
         });

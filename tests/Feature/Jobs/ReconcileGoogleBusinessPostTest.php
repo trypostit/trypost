@@ -2,14 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Status as AccountStatus;
 use App\Jobs\PostHog\SyncAccountPublishingActivity;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Jobs\SendNotification;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,18 +21,14 @@ use Illuminate\Support\Facades\Storage;
 beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
+    $this->workspace->members()->attach($this->user->id, membershipPivot('admin'));
     $this->account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->addHour(),
     ]);
-    $this->post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($this->account)->scheduled()->create([
         'user_id' => $this->user->id,
-    ]);
-    $this->target = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $this->account->id,
-        'status' => PlatformStatus::PendingReview,
+        'publish_status' => PlatformStatus::PendingReview,
         'platform_post_id' => 'accounts/123456789/locations/987654321/localPosts/999',
         'submitted_at' => now()->subMinutes(10),
     ]);
@@ -42,17 +37,17 @@ beforeEach(function () {
 test('a connection failure during review is deferred until the ceiling', function () {
     Http::fake(fn () => throw new ConnectionException('timed out'));
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
 test('settling a live review prunes the JPEG derivative', function () {
     Queue::fake([SendNotification::class]);
     Storage::fake();
-    $path = GoogleBusinessDerivativeCleaner::pathFor($this->target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($this->post);
     Storage::put($path, 'image');
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
@@ -62,7 +57,7 @@ test('settling a live review prunes the JPEG derivative', function () {
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
     Storage::assertMissing($path);
 });
@@ -79,10 +74,10 @@ test('a live review on a publishing parent settles the post as published', funct
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
-        ->and($this->target->fresh()->platform_url)->toBe('https://posts.google.com/999')
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published)
+        ->and($this->post->fresh()->platform_url)->toBe('https://posts.google.com/999')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
     Queue::assertPushed(SendNotification::class, 1);
     Queue::assertPushed(
@@ -101,11 +96,11 @@ test('a post that went live is published with the search URL Google returned', f
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
-        ->and($this->target->fresh()->platform_url)->toBe('https://posts.google.com/999')
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published)
+        ->and($this->post->fresh()->platform_url)->toBe('https://posts.google.com/999')
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
 });
 
@@ -118,10 +113,10 @@ test('a post Google refused in review is rejected and fails the post', function 
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.rejected_in_review'))
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.rejected_in_review'))
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
@@ -133,10 +128,10 @@ test('a scheduled post is left in review and marked as checked', function () {
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
@@ -148,10 +143,10 @@ test('an unspecified post is left in review and marked as checked', function () 
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
@@ -163,16 +158,16 @@ test('a post still processing is left in review and marked as checked', function
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
 test('a post that never settles is given up on once the review ceiling passes', function () {
     Queue::fake([SendNotification::class]);
-    $this->target->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
+    $this->post->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
             'name' => 'accounts/123456789/locations/987654321/localPosts/999',
@@ -180,10 +175,10 @@ test('a post that never settles is given up on once the review ceiling passes', 
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
@@ -197,13 +192,13 @@ test('a recurring post is treated as live', function () {
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
 });
 
-test('a dead token during review is refreshed before the target is deferred', function () {
+test('a dead token during review is refreshed before the post is deferred', function () {
     Queue::fake([SendNotification::class]);
     $posts = 0;
     $info = 0;
@@ -238,9 +233,9 @@ test('a dead token during review is refreshed before the target is deferred', fu
         ]);
     });
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Published)
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($this->account->fresh()->access_token)->toBe('rotated-token')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
 });
@@ -255,10 +250,10 @@ test('a local posts 401 after a successful verify defers without expiring the ac
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->account->fresh()->status)->toBe(AccountStatus::Connected)
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
@@ -276,10 +271,10 @@ test('a dead token during review is deferred and expires the account when refres
         ], 400),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->account->fresh()->status)->toBe(AccountStatus::TokenExpired)
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
@@ -291,10 +286,10 @@ test('a rate limit during review is deferred until the ceiling', function () {
         ], 429),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
@@ -307,30 +302,30 @@ test('an unknown remote state during review is left in review', function () {
         ]),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->platform_url)->toBe('https://posts.google.com/updated')
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->platform_url)->toBe('https://posts.google.com/updated')
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
-test('reconcile does not call google when the target is no longer in review', function () {
+test('reconcile does not call google when the post is no longer in review', function () {
     Http::fake();
-    $this->target->update(['status' => PlatformStatus::Published]);
+    $this->post->forceFill(['publish_status' => PlatformStatus::Published])->save();
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
     Http::assertNothingSent();
 });
 
 test('reconcile does not call google when the remote post id is missing', function () {
     Http::fake();
-    $this->target->update(['platform_post_id' => null]);
+    $this->post->forceFill(['platform_post_id' => null])->save();
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
     Http::assertNothingSent();
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview);
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview);
 });
 
 test('a google 5xx during review is deferred until the ceiling', function () {
@@ -340,10 +335,10 @@ test('a google 5xx during review is deferred until the ceiling', function () {
         ], 503),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull();
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull();
 });
 
 test('a missing remote post during review fails immediately', function () {
@@ -354,11 +349,11 @@ test('a missing remote post during review fails immediately', function () {
         ], 404),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.google_business.not_found'))
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.google_business.not_found'))
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
@@ -370,11 +365,11 @@ test('an invalid argument during review fails immediately', function () {
         ], 400),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe('summary too long')
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe('summary too long')
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
@@ -386,54 +381,54 @@ test('permission denied during review fails immediately', function () {
         ], 403),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.google_business.permission_denied'))
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.google_business.permission_denied'))
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
 test('a disconnected account during review is given up on immediately', function () {
     Queue::fake([SendNotification::class]);
     Storage::fake();
-    $path = GoogleBusinessDerivativeCleaner::pathFor($this->target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($this->post);
     Storage::put($path, 'image');
 
     $this->account->delete();
 
-    (new ReconcileGoogleBusinessPost($this->target->fresh()))->handle();
+    (new ReconcileGoogleBusinessPost($this->post->fresh()))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.account_disconnected'))
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.account_disconnected'))
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
     Storage::assertMissing($path);
     Queue::assertPushed(SendNotification::class, 1);
 });
 
 test('an exhausted reconcile job defers until the review ceiling', function () {
-    (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
+    (new ReconcileGoogleBusinessPost($this->post))->failed(new RuntimeException('worker died'));
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview)
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Scheduled);
 });
 
 test('an exhausted reconcile job gives up once the review ceiling passes', function () {
     Queue::fake([SendNotification::class]);
-    $this->target->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
+    $this->post->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->failed(new RuntimeException('worker died'));
+    (new ReconcileGoogleBusinessPost($this->post))->failed(new RuntimeException('worker died'));
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($this->target->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
-        ->and($this->target->fresh()->last_reconciled_at)->not->toBeNull()
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
+        ->and($this->post->fresh()->error_message)->toBe(__('posts.errors.review_unconfirmed'))
+        ->and($this->post->fresh()->last_reconciled_at)->not->toBeNull()
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });
 
 test('a dead token after the review ceiling gives up', function () {
     Queue::fake([SendNotification::class]);
-    $this->target->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
+    $this->post->update(['submitted_at' => now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS + 1)]);
     Http::fake([
         config('trypost.platforms.google_business.local_posts_api').'/*' => Http::response([
             'error' => ['status' => 'UNAUTHENTICATED'],
@@ -446,8 +441,8 @@ test('a dead token after the review ceiling gives up', function () {
         ], 400),
     ]);
 
-    (new ReconcileGoogleBusinessPost($this->target))->handle();
+    (new ReconcileGoogleBusinessPost($this->post))->handle();
 
-    expect($this->target->fresh()->status)->toBe(PlatformStatus::Rejected)
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Rejected)
         ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
 });

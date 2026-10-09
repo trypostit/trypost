@@ -134,7 +134,8 @@ function ownedMediaInvariantWritePaths(): array
             $test->withHeaders(ownedMediaInvariantHeaders($test))->postJson(route('api.posts.store'), [
                 'content' => 'Invariant',
                 'media' => [['upload_token' => ownedMediaInvariantToken($test->workspace)]],
-                'platforms' => [['social_account_id' => $test->channel->id, 'content_type' => ContentType::LinkedInPost->value]],
+                'social_account_id' => $test->channel->id,
+                'content_type' => ContentType::LinkedInPost->value,
             ])->assertCreated();
 
             return Post::query()->sole();
@@ -143,7 +144,8 @@ function ownedMediaInvariantWritePaths(): array
             TryPostServer::actingAs($test->user)->tool(CreatePostTool::class, [
                 'content' => 'Invariant',
                 'media' => [['upload_token' => ownedMediaInvariantToken($test->workspace)]],
-                'platforms' => [['social_account_id' => $test->channel->id, 'content_type' => ContentType::LinkedInPost->value]],
+                'social_account_id' => $test->channel->id,
+                'content_type' => ContentType::LinkedInPost->value,
             ])->assertOk();
 
             return Post::query()->sole();

@@ -96,7 +96,6 @@ return [
         'post_scheduled' => 'Quand une publication est programmée.',
         'post_unscheduled' => 'Quand une publication programmée repasse en brouillon.',
         'post_published' => 'Quand une publication est en ligne sur un canal.',
-        'post_partially_published' => 'Quand certains canaux publient et d’autres échouent.',
         'post_failed' => 'Quand une publication échoue.',
         'post_deleted' => 'Quand une publication est supprimée.',
     ],

@@ -4,9 +4,8 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
+use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -57,22 +56,14 @@ function composerSharedDataSetup(): array
 
 function composerSharedDataPost(Workspace $workspace, SocialAccount $account, ContentType $contentType, array $meta = []): Post
 {
-    $post = Post::factory()->create([
+    return Post::factory()->forAccount($account, $contentType)->create([
         'workspace_id' => $workspace->id,
         'user_id' => $workspace->user_id,
         'status' => PostStatus::Scheduled,
         'content' => 'Shared data post',
         'scheduled_at' => now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10)->setTime(10, 0),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
         'meta' => $meta,
     ]);
-
-    return $post;
 }
 
 function waitForComposerSharedDataCondition(mixed $page, string $condition): void
@@ -221,12 +212,9 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
             'max_video_post_duration_sec' => 600,
         ]]),
     ]);
-    $post = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'TikTok draft']);
-    $target = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktok->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($tiktok, ContentType::TikTokVideo)->draft()->create([
+        'user_id' => $user->id,
+        'content' => 'TikTok draft',
         'meta' => ['privacy_level' => 'SELF_ONLY', 'allow_comments' => true],
     ]);
     $this->actingAs($user);
@@ -236,5 +224,40 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
     $page->click('@composer-save-draft');
     waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
-    expect(data_get($target->fresh()->meta, 'allow_comments'))->toBeTrue();
+    expect(data_get($post->fresh()->meta, 'allow_comments'))->toBeTrue();
+});
+
+test('editing a post shows a server media error on the item it belongs to', function () {
+    [$user, $workspace] = composerSharedDataSetup();
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->draft()->create(['user_id' => $user->id, 'content' => 'Two images']);
+    $media = collect(['kept.png', 'gone.png'])->map(fn (string $name): Media => Media::factory()->create([
+        'workspace_id' => $workspace->id,
+        'post_id' => $post->id,
+        'mediable_type' => null,
+        'mediable_id' => null,
+        'collection' => Media::COLLECTION_MEDIA,
+        'original_filename' => $name,
+        'mime_type' => 'image/png',
+    ]));
+    $post->update(['media' => $media->map(fn (Media $item): array => [
+        'id' => $item->id,
+        'path' => $item->path,
+        'url' => $item->url,
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'original_filename' => $item->original_filename,
+        'meta' => ['width' => 1200, 'height' => 1200],
+    ])->all()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['edit' => $post->id]));
+    waitForComposerSharedDataCondition($page, "document.querySelectorAll('[data-testid\$=\"-media-item\"]').length === 2");
+    $media->last()->delete();
+
+    $page->click('@composer-save-draft');
+    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid\$=\"-media-error-1\"]') !== null");
+
+    expect($page->script("document.querySelector('[data-testid\$=\"-media-error-0\"]')"))->toBeNull();
+    $page->assertNoJavaScriptErrors();
 });

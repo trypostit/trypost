@@ -54,7 +54,7 @@ class MovePostToSlotTool extends Tool
             return Response::error(__('posts.errors.queue_busy'));
         }
 
-        $post = Post::query()->with(['postPlatforms.socialAccount', 'labels'])->findOrFail(data_get($validated, 'post_id'));
+        $post = Post::query()->with(['socialAccount', 'labels'])->findOrFail(data_get($validated, 'post_id'));
 
         return Response::structured((new PostResource($post))->resolve());
     }

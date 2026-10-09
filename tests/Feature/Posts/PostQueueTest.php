@@ -13,7 +13,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -90,8 +89,8 @@ test('storing with queue next gives each channel its own first slot', function (
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('app.posts.index', ['tab' => 'queue']));
 
-    $posts = Post::query()->with('postPlatforms')->whereIn('id', session('created_post_ids'))->get()
-        ->keyBy(fn (Post $post): string => $post->postPlatforms->first()->social_account_id);
+    $posts = Post::query()->whereIn('id', session('created_post_ids'))->get()
+        ->keyBy(fn (Post $post): string => $post->social_account_id);
 
     expect($posts)->toHaveCount(2)
         ->and($posts[$this->channel->id]->schedule_mode)->toBe(ScheduleMode::Queue)
@@ -179,7 +178,7 @@ test('updating only the content of a queued post keeps every slot', function () 
     $second = postQueueStore($this, $this->channel);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $first), ['status' => 'scheduled', 'content' => 'Edited caption'])
+        ->put(route('app.posts.update', $first), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'scheduled', 'content' => 'Edited caption'])
         ->assertSessionHasNoErrors();
 
     $first->refresh();
@@ -197,6 +196,7 @@ test('giving a queued post a custom time pins it and the others keep their slots
 
     $this->actingAs($this->user)
         ->put(route('app.posts.update', $first), [
+            'content_type' => ContentType::LinkedInPost->value,
             'status' => 'scheduled',
             'content' => 'Pinned',
             'scheduled_at' => $custom->toIso8601String(),
@@ -215,7 +215,7 @@ test('moving a queued post to draft clears its mode and leaves its slot free', f
     $second = postQueueStore($this, $this->channel);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $first), ['status' => 'draft', 'content' => 'Back to draft'])
+        ->put(route('app.posts.update', $first), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'draft', 'content' => 'Back to draft'])
         ->assertSessionHasNoErrors();
 
     $first->refresh();
@@ -230,7 +230,7 @@ test('publishing a queued post now leaves the others in their slots', function (
     $second = postQueueStore($this, $this->channel);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $first), ['status' => 'publishing', 'content' => 'Now'])
+        ->put(route('app.posts.update', $first), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'publishing', 'content' => 'Now'])
         ->assertSessionHasNoErrors();
 
     expect($first->refresh()->schedule_mode)->toBeNull()
@@ -247,7 +247,7 @@ test('adding a draft to the queue puts it at the end', function () {
     $draft = Post::findOrFail(session('created_post_ids')[0]);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $draft), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Joining'])
+        ->put(route('app.posts.update', $draft), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'scheduled', 'queue' => 'next', 'content' => 'Joining'])
         ->assertSessionHasNoErrors();
 
     $draft->refresh();
@@ -265,7 +265,7 @@ test('updating with queue is rejected when the channel has no slots', function (
     $draft = Post::sole();
 
     $this->actingAs($this->user)
-        ->putJson(route('app.posts.update', $draft), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Joining'])
+        ->putJson(route('app.posts.update', $draft), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'scheduled', 'queue' => 'next', 'content' => 'Joining'])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['queue']);
 
@@ -277,31 +277,13 @@ test('updating with queue and scheduled_at is rejected', function () {
 
     $this->actingAs($this->user)
         ->putJson(route('app.posts.update', $post), [
+            'content_type' => ContentType::LinkedInPost->value,
             'status' => 'scheduled',
             'queue' => 'next',
             'scheduled_at' => now()->addDay()->toIso8601String(),
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['queue']);
-});
-
-test('queueing a legacy multi-target post is rejected', function () {
-    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->channel->id, 'enabled' => true]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $other->id, 'enabled' => true]);
-
-    $this->actingAs($this->user)
-        ->putJson(route('app.posts.update', $post), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Legacy'])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors(['queue' => __('posts.errors.queue_legacy_post')]);
-
-    expect($post->refresh()->status)->toBe(PostStatus::Draft)
-        ->and($post->schedule_mode)->toBeNull();
 });
 
 test('deleting a queued post leaves its slot free and the others in place', function () {
@@ -455,8 +437,7 @@ test('a time zone change moves a pending holder to the first free slot when its 
     postQueueStoreAtSlot($this, $requester, $this->channel, CarbonImmutable::parse('2026-10-05 09:00', 'America/Sao_Paulo'))
         ->assertSessionHasNoErrors();
     $holder = Post::query()->sole();
-    $custom = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'scheduled_at' => CarbonImmutable::parse('2026-10-05 09:00', 'UTC'), 'schedule_mode' => ScheduleMode::Custom]);
-    PostPlatform::factory()->create(['post_id' => $custom->id, 'social_account_id' => $this->channel->id, 'enabled' => true]);
+    $custom = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id, 'scheduled_at' => CarbonImmutable::parse('2026-10-05 09:00', 'UTC'), 'schedule_mode' => ScheduleMode::Custom]);
 
     $this->actingAs($this->user)
         ->putJson(route('app.channels.posting-schedule.update', $this->channel), [
@@ -476,8 +457,7 @@ test('a time zone change with no slot left turns a pending holder custom at its 
     postQueueStoreAtSlot($this, $requester, $this->channel, CarbonImmutable::parse('2037-12-30 09:00', 'America/Sao_Paulo'))
         ->assertSessionHasNoErrors();
     $holder = Post::query()->sole();
-    $custom = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'scheduled_at' => CarbonImmutable::parse('2037-12-30 09:00', 'UTC'), 'schedule_mode' => ScheduleMode::Custom]);
-    PostPlatform::factory()->create(['post_id' => $custom->id, 'social_account_id' => $this->channel->id, 'enabled' => true]);
+    $custom = Post::factory()->forAccount($this->channel)->scheduled()->create(['user_id' => $this->user->id, 'scheduled_at' => CarbonImmutable::parse('2037-12-30 09:00', 'UTC'), 'schedule_mode' => ScheduleMode::Custom]);
     $queued = postQueueStore($this, $this->channel);
     $at = $holder->refresh()->scheduled_at;
 
@@ -617,7 +597,7 @@ test('re-sending queue next on a queued post keeps its slot', function () {
     $second = postQueueStore($this, $this->channel);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $first), ['status' => 'scheduled', 'queue' => 'next', 'content' => 'Edited'])
+        ->put(route('app.posts.update', $first), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'scheduled', 'queue' => 'next', 'content' => 'Edited'])
         ->assertSessionHasNoErrors();
 
     expect($first->refresh()->content)->toBe('Edited')
@@ -632,7 +612,7 @@ test('queue top on a queued post moves it to the top', function () {
     $third = postQueueStore($this, $this->channel);
 
     $this->actingAs($this->user)
-        ->put(route('app.posts.update', $second), ['status' => 'scheduled', 'queue' => 'top', 'content' => 'Urgent'])
+        ->put(route('app.posts.update', $second), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'scheduled', 'queue' => 'top', 'content' => 'Urgent'])
         ->assertSessionHasNoErrors();
 
     expect(postQueueSlot($second))->toBe('Mon 09:00')

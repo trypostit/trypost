@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social\Concerns;
 
 use App\Dto\MediaItem;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\ContentSanitizer;
 use App\Support\Social\ThreadProgress;
 use App\Support\ThreadReplies;
@@ -25,26 +25,26 @@ trait PublishesThreads
      * @param  (callable(array<string, mixed>): void)|null  $afterThread
      * @return array{id: string, url: ?string, thread_reply_ids?: list<string>}
      */
-    protected function publishThread(PostPlatform $postPlatform, string $rootHash, callable $postRoot, callable $postReply, ?callable $afterThread = null): array
+    protected function publishThread(Post $post, string $rootHash, callable $postRoot, callable $postReply, ?callable $afterThread = null): array
     {
         $replies = array_map(
             fn (array $reply): array => [
-                'text' => app(ContentSanitizer::class)->sanitize($reply['text'], $postPlatform->platform),
+                'text' => app(ContentSanitizer::class)->sanitize($reply['text'], $post->platform),
                 'media' => ThreadReplies::mediaItems($reply),
             ],
-            ThreadReplies::supports($postPlatform->platform) ? ThreadReplies::of($postPlatform->meta) : [],
+            ThreadReplies::supports($post->platform) ? ThreadReplies::of($post->meta) : [],
         );
         $hashes = [
-            ThreadProgress::rootHash($postPlatform->error_context) ?? $rootHash,
+            ThreadProgress::rootHash($post->error_context) ?? $rootHash,
             ...array_map(fn (array $reply): string => ThreadProgress::hash($reply['text'], $reply['media']->map(fn (MediaItem $item): string => $item->id)->all()), $replies),
         ];
-        $posted = ThreadProgress::resumable($postPlatform->error_context, $hashes);
+        $posted = ThreadProgress::resumable($post->error_context, $hashes);
 
         if ($posted === []) {
             $posted[] = self::threadSegment($hashes[0], $postRoot());
 
             if ($replies !== []) {
-                ThreadProgress::remember($postPlatform, $posted);
+                ThreadProgress::remember($post, $posted);
             }
         }
 
@@ -57,7 +57,7 @@ trait PublishesThreads
 
             $posted[] = self::threadSegment($hashes[$position], $postReply($reply['text'], $reply['media'], $posted[$position - 1], $posted[0]));
 
-            ThreadProgress::remember($postPlatform, $posted);
+            ThreadProgress::remember($post, $posted);
         }
 
         if ($afterThread !== null) {

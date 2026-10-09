@@ -11,10 +11,10 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useComposerTimezone } from '@/composables/useComposerTimezone';
 import { toastFirstError } from '@/composables/usePostCardActions';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { userTimezone } from '@/preferences';
 import { ScheduleMode } from '@/types/post';
 import type { PostCard } from '@/types/publish';
 
@@ -33,10 +33,8 @@ const isQueued = computed(
     () => props.post.schedule_mode === ScheduleMode.Queue,
 );
 
-const postTimezone = useComposerTimezone(() =>
-    props.post.post_platforms
-        .filter((platform) => platform.enabled)
-        .map((platform) => platform.social_account ?? {}),
+const postTimezone = computed(
+    () => props.post.social_account?.timezone ?? userTimezone.value,
 );
 
 const needsTime = computed(

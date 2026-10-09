@@ -28,7 +28,7 @@ class AnalyticsPublicationFactory extends Factory
             'workspace_id' => Workspace::factory(),
             'social_account_id' => null,
             'social_account_key' => fake()->uuid(),
-            'post_platform_id' => null,
+            'post_id' => null,
             'network' => Platform::Instagram->network(),
             'platform_user_id' => fake()->uuid(),
             'platform' => Platform::Instagram,

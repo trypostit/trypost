@@ -32,7 +32,7 @@ class ChannelQueueController extends Controller
             $request->user(),
         );
 
-        $post = Post::query()->with(['postPlatforms.socialAccount', 'labels'])->findOrFail($request->validated('post_id'));
+        $post = Post::query()->with(['socialAccount', 'labels'])->findOrFail($request->validated('post_id'));
 
         return new PostResource($post);
     }

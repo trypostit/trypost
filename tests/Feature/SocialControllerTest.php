@@ -2,12 +2,9 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\Status;
-use App\Enums\PostPlatform\Status as PlatformStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\SendNotification;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -144,26 +141,11 @@ test('disconnect removes social account', function () {
 test('disconnect deletes the channel drafts and published history', function () {
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    $draftPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $draftPost = Post::factory()->forAccount($account)->draft()->create([
         'user_id' => $this->user->id,
-        'status' => Status::Draft,
     ]);
-    $publishedPost = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $publishedPost = Post::factory()->forAccount($account)->published()->create([
         'user_id' => $this->user->id,
-        'status' => Status::Published,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $draftPost->id,
-        'social_account_id' => $account->id,
-        'status' => PlatformStatus::Pending,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $publishedPost->id,
-        'social_account_id' => $account->id,
-        'status' => PlatformStatus::Published,
     ]);
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
@@ -176,17 +158,11 @@ test('disconnect deletes a google business post still waiting on the account and
     Storage::fake();
 
     $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->pendingReview()->create([
         'user_id' => $this->user->id,
-        'status' => Status::Publishing,
-    ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($post);
     Storage::put($path, 'image');
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
@@ -232,8 +208,7 @@ test('a workspace admin who is not the owner can disconnect a channel that lost 
 test('a member who needs approval cannot disconnect a channel or its posts', function () {
     $member = workspaceMember($this->workspace, 'approval');
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $member->id, 'status' => Status::Draft]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+    $post = Post::factory()->forAccount($account)->draft()->create(['user_id' => $member->id]);
 
     $this->actingAs($member)->delete(route('app.channels.disconnect', $account))->assertForbidden();
 

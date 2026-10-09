@@ -70,7 +70,6 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                 <p style="margin: 0; line-height: 24px">
                   {{ __('mail.post_publish_failed.body', ['workspace' => $workspaceName]) }}
                 </p>
-                @if($publication)
                 <table role="presentation" style="margin-top: 24px; width: 100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td class="sm-p-4" style="border-radius: 12px; border: 1px solid #eae8e5; padding: 20px">@php
@@ -110,7 +109,6 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                     </td>
                   </tr>
                 </table>
-                @endif
                 @endif <div role="separator" style="line-height: 24px">&zwj;</div>
                 <div style="text-align: center">
                   <a href="{{ $url }}" style="display: inline-block; text-decoration: none; font-weight: 600; border-radius: 8px; border: 1px solid #ddd6fe; background-color: #ddd6fe; padding: 12px 24px; text-align: center; font-size: 16px; line-height: 24px; color: #292928">

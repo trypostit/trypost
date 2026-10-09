@@ -533,7 +533,6 @@ return [
         'publishing' => 'قيد النشر',
         'retrying' => 'إعادة المحاولة',
         'published' => 'منشور',
-        'partially_published' => 'منشور جزئيًا',
         'failed' => 'فشل',
     ],
 
@@ -637,17 +636,6 @@ return [
             'objects' => 'الأشياء',
             'symbols' => 'الرموز',
             'flags' => 'الأعلام',
-        ],
-
-        'status' => [
-            'pending' => 'قيد الانتظار',
-            'scheduled' => 'مجدول',
-            'published' => 'منشور',
-            'publishing' => 'جارٍ النشر...',
-            'retrying' => 'جارٍ إعادة المحاولة...',
-            'failed' => 'فشل',
-            'pending_review' => 'قيد مراجعة Google',
-            'rejected' => 'مرفوض',
         ],
 
         'delete_modal' => [
@@ -819,12 +807,11 @@ return [
         'media_file_too_large' => 'حجم هذا الملف يتجاوز :size ميغابايت المسموح بها لنوعه.',
         'queue_requires_schedule' => 'ليس لهذه القناة أوقات نشر بعد. أضف أوقات النشر من إعدادات القناة لاستخدام قائمة الانتظار.',
         'queue_with_scheduled_at' => 'اختر موضعًا في قائمة الانتظار أو تاريخًا ووقتًا، وليس كليهما.',
-        'queue_legacy_post' => 'أُنشئ هذا المنشور لعدة قنوات دفعة واحدة ولا يمكن إضافته إلى قائمة الانتظار. حدّد تاريخًا ووقتًا بدلًا من ذلك.',
         'queue_busy' => 'يجري تحديث قائمة الانتظار. يرجى المحاولة مرة أخرى.',
         'no_social_account' => 'لا يحتوي هذا المنشور على حساب اجتماعي، لذا لا يمكن نشره.',
+        'choose_channel' => 'اختر قناة قبل جدولة هذا المنشور أو نشره.',
         'queue_order_stale' => 'تغيّرت قائمة الانتظار منذ فتحتها. حدّث الصفحة وحاول مرة أخرى.',
         'account_disconnected' => 'الحساب الاجتماعي مفصول',
-        'target_disabled' => 'تم إيقاف وجهة النشر هذه',
         'account_token_expired' => 'انتهت جلسة الحساب الاجتماعي — يرجى إعادة الربط',
         'platform_unavailable' => 'المنصة غير متاحة مؤقتًا. سنعيد المحاولة قريبًا.',
         'platform_unavailable_exhausted' => 'ظلت المنصة غير متاحة بعد عدة محاولات. يرجى المحاولة لاحقًا.',
@@ -906,6 +893,7 @@ return [
         'publishing_now' => 'يُنشر الآن',
         'publishing_badge' => 'جارٍ النشر…',
         'publishing_on' => 'جارٍ النشر على :network…',
+        'in_google_review' => 'قيد مراجعة Google',
         'retrying_at' => 'إعادة المحاولة في :time',
         'published_via' => 'نُشر عبر',
         'published_directly_from' => 'نُشر مباشرةً من :network',
@@ -992,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'القنوات (:count)',
-        'collapse' => 'إخفاء القنوات',
-        'expand' => 'إظهار القنوات',
     ],
     'approvals' => [
         'badge' => 'موافقة',

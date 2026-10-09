@@ -48,13 +48,19 @@ class HostInlineMedia
             }
         }
 
-        return self::threadReplies($workspace, $data, 'destinations', $fetched);
+        foreach (data_get($data, 'destinations', []) as $index => $destination) {
+            if (is_array(data_get($destination, 'meta'))) {
+                $data['destinations'][$index]['meta'] = self::threadReplies($workspace, data_get($destination, 'meta'), "destinations.{$index}.meta", $fetched);
+            }
+        }
+
+        return $data;
     }
 
     /**
-     * Host the media of a single post request and of the thread replies of
-     * its targets (`platforms.*.meta.thread_replies.*.media`), so a URL is
-     * accepted wherever a post takes media.
+     * Host the media of a single post request and of its thread replies
+     * (`meta.thread_replies.*.media`), so a URL is accepted wherever a post
+     * takes media.
      *
      * @param  array<MediaType>  $allowedTypes
      * @param  array<string, mixed>  $data
@@ -70,7 +76,11 @@ class HostInlineMedia
             $data['media'] = self::execute($workspace, $allowedTypes, $data['media'], fetched: $fetched);
         }
 
-        return self::threadReplies($workspace, $data, 'platforms', $fetched);
+        if (is_array(data_get($data, 'meta'))) {
+            $data['meta'] = self::threadReplies($workspace, data_get($data, 'meta'), 'meta', $fetched);
+        }
+
+        return $data;
     }
 
     /**
@@ -146,37 +156,29 @@ class HostInlineMedia
     }
 
     /**
-     * Host the reply media of every target listed under `$listKey` that
-     * carries a URL. Replies sent only as ids or upload tokens are left for
-     * the save to resolve, as before.
-     *
-     * @param  array<string, mixed>  $data
+     * @param  array<string, mixed>  $meta
      * @param  array<string, string>  $fetched
      * @return array<string, mixed>
-     *
-     * @throws ValidationException
      */
-    private static function threadReplies(Workspace $workspace, array $data, string $listKey, array &$fetched): array
+    private static function threadReplies(Workspace $workspace, array $meta, string $errorPrefix, array &$fetched): array
     {
-        foreach ((array) data_get($data, $listKey, []) as $target => $entry) {
-            foreach ((array) data_get($entry, 'meta.thread_replies', []) as $index => $reply) {
-                $media = (array) data_get($reply, 'media', []);
+        foreach ((array) data_get($meta, 'thread_replies', []) as $index => $reply) {
+            $media = (array) data_get($reply, 'media', []);
 
-                if (! collect($media)->contains(fn (mixed $item): bool => filled(data_get($item, 'url')))) {
-                    continue;
-                }
-
-                $data[$listKey][$target]['meta']['thread_replies'][$index]['media'] = self::execute(
-                    $workspace,
-                    MediaType::cases(),
-                    $media,
-                    "{$listKey}.{$target}.meta.thread_replies.{$index}.media",
-                    $fetched,
-                );
+            if (! collect($media)->contains(fn (mixed $item): bool => filled(data_get($item, 'url')))) {
+                continue;
             }
+
+            $meta['thread_replies'][$index]['media'] = self::execute(
+                $workspace,
+                MediaType::cases(),
+                $media,
+                "{$errorPrefix}.thread_replies.{$index}.media",
+                $fetched,
+            );
         }
 
-        return $data;
+        return $meta;
     }
 
     /**

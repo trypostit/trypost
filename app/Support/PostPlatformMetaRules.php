@@ -12,7 +12,6 @@ use App\Enums\YouTube\Category;
 use App\Enums\YouTube\License;
 use App\Enums\YouTube\PrivacyStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Rules\ValidYouTubeDescription;
 use App\Services\Social\ContentSanitizer;
@@ -37,22 +36,23 @@ class PostPlatformMetaRules
     public const SYSTEM_KEYS = ['reactions'];
 
     /**
-     * Validation rules for `platforms.*.meta` and all its per-platform sub-keys.
+     * Validation rules for the post's meta and all its per-platform sub-keys,
+     * under `$prefix` (`meta`, or `destinations.*.meta` for a list of channels).
      * Spread into a FormRequest/MCP tool rule set as the complete meta contract.
      *
      * @return array<string, mixed>
      */
-    public static function rules(): array
+    public static function rules(string $prefix = 'meta'): array
     {
         return [
-            'platforms.*.meta' => ['sometimes', 'nullable', 'array'],
+            "{$prefix}" => ['sometimes', 'nullable', 'array'],
 
-            'platforms.*.meta.share_to_feed' => ['sometimes', 'boolean'],
+            "{$prefix}.share_to_feed" => ['sometimes', 'boolean'],
 
-            'platforms.*.meta.spoiler_text' => ['sometimes', 'nullable', 'string', 'max:500'],
+            "{$prefix}.spoiler_text" => ['sometimes', 'nullable', 'string', 'max:500'],
 
-            'platforms.*.meta.thread_replies' => ['sometimes', 'nullable', 'array', 'max:'.ThreadReplies::MAX_REPLIES],
-            'platforms.*.meta.thread_replies.*' => ['nullable', function (string $attribute, mixed $value, Closure $fail): void {
+            "{$prefix}.thread_replies" => ['sometimes', 'nullable', 'array', 'max:'.ThreadReplies::MAX_REPLIES],
+            "{$prefix}.thread_replies.*" => ['nullable', function (string $attribute, mixed $value, Closure $fail): void {
                 if (! is_string($value) && ! is_array($value)) {
                     $fail(__('validation.array', ['attribute' => $attribute]));
                 }
@@ -61,73 +61,73 @@ class PostPlatformMetaRules
                     $fail(__('validation.max.string', ['attribute' => $attribute, 'max' => Post::CONTENT_MAX_LENGTH]));
                 }
             }],
-            'platforms.*.meta.thread_replies.*.text' => ['sometimes', 'nullable', 'string', 'max:'.Post::CONTENT_MAX_LENGTH],
-            'platforms.*.meta.thread_replies.*.media' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.thread_replies.*.media.*' => ['array'],
-            'platforms.*.meta.thread_replies.*.media.*.id' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.thread_replies.*.media.*.upload_token' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.thread_replies.*.media.*.url' => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.thread_replies.*.text" => ['sometimes', 'nullable', 'string', 'max:'.Post::CONTENT_MAX_LENGTH],
+            "{$prefix}.thread_replies.*.media" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.thread_replies.*.media.*" => ['array'],
+            "{$prefix}.thread_replies.*.media.*.id" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.thread_replies.*.media.*.upload_token" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.thread_replies.*.media.*.url" => ['sometimes', 'nullable', 'string'],
 
-            'platforms.*.meta.document_title' => ['sometimes', 'nullable', 'string', 'max:300'],
+            "{$prefix}.document_title" => ['sometimes', 'nullable', 'string', 'max:300'],
 
-            'platforms.*.meta.privacy_level' => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
-            'platforms.*.meta.auto_add_music' => ['sometimes', 'boolean'],
-            'platforms.*.meta.allow_comments' => ['sometimes', 'boolean'],
-            'platforms.*.meta.allow_duet' => ['sometimes', 'boolean'],
-            'platforms.*.meta.allow_stitch' => ['sometimes', 'boolean'],
-            'platforms.*.meta.is_aigc' => ['sometimes', 'boolean'],
-            'platforms.*.meta.disclose' => ['sometimes', 'boolean'],
-            'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
-            'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
+            "{$prefix}.privacy_level" => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyLevel::class)],
+            "{$prefix}.auto_add_music" => ['sometimes', 'boolean'],
+            "{$prefix}.allow_comments" => ['sometimes', 'boolean'],
+            "{$prefix}.allow_duet" => ['sometimes', 'boolean'],
+            "{$prefix}.allow_stitch" => ['sometimes', 'boolean'],
+            "{$prefix}.is_aigc" => ['sometimes', 'boolean'],
+            "{$prefix}.disclose" => ['sometimes', 'boolean'],
+            "{$prefix}.brand_content_toggle" => ['sometimes', 'boolean'],
+            "{$prefix}.brand_organic_toggle" => ['sometimes', 'boolean'],
 
-            'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
-            'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            "{$prefix}.board_id" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.title" => ['sometimes', 'nullable', 'string', 'max:100'],
+            "{$prefix}.link" => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
 
-            'platforms.*.meta.description' => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
-            'platforms.*.meta.category_id' => ['sometimes', 'nullable', Rule::in(array_column(Category::cases(), 'value'))],
-            'platforms.*.meta.privacy_status' => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyStatus::class)],
-            'platforms.*.meta.license' => ['sometimes', 'nullable', 'string', Rule::enum(License::class)],
-            'platforms.*.meta.notify_subscribers' => ['sometimes', 'boolean'],
-            'platforms.*.meta.embeddable' => ['sometimes', 'boolean'],
-            'platforms.*.meta.made_for_kids' => ['sometimes', 'boolean'],
+            "{$prefix}.description" => ['sometimes', 'nullable', 'string', new ValidYouTubeDescription],
+            "{$prefix}.category_id" => ['sometimes', 'nullable', Rule::in(array_column(Category::cases(), 'value'))],
+            "{$prefix}.privacy_status" => ['sometimes', 'nullable', 'string', Rule::enum(PrivacyStatus::class)],
+            "{$prefix}.license" => ['sometimes', 'nullable', 'string', Rule::enum(License::class)],
+            "{$prefix}.notify_subscribers" => ['sometimes', 'boolean'],
+            "{$prefix}.embeddable" => ['sometimes', 'boolean'],
+            "{$prefix}.made_for_kids" => ['sometimes', 'boolean'],
 
-            'platforms.*.meta.is_ai_generated' => ['sometimes', 'boolean'],
+            "{$prefix}.is_ai_generated" => ['sometimes', 'boolean'],
 
-            'platforms.*.meta.link_preview' => ['sometimes', 'boolean:strict'],
+            "{$prefix}.link_preview" => ['sometimes', 'boolean:strict'],
 
-            'platforms.*.meta.topic_tag' => ['sometimes', 'nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
+            "{$prefix}.topic_tag" => ['sometimes', 'nullable', 'string', function (string $attribute, mixed $value, Closure $fail): void {
                 if (! self::isThreadsTopicTag((string) $value)) {
                     $fail(__('posts.form.threads.topic_invalid'));
                 }
             }],
 
-            'platforms.*.meta.channel_id' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.channel_name' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.mentions' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.mentions.*.token' => ['required', 'string'],
-            'platforms.*.meta.mentions.*.label' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.embeds' => ['sometimes', 'nullable', 'array', 'max:10'],
-            'platforms.*.meta.embeds.*.title' => ['sometimes', 'nullable', 'string', 'max:256'],
-            'platforms.*.meta.embeds.*.description' => ['sometimes', 'nullable', 'string', 'max:4096'],
-            'platforms.*.meta.embeds.*.url' => ['sometimes', 'nullable', 'url'],
-            'platforms.*.meta.embeds.*.image' => ['sometimes', 'nullable', 'url'],
-            'platforms.*.meta.embeds.*.color' => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
+            "{$prefix}.channel_id" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.channel_name" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.mentions" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.mentions.*.token" => ['required', 'string'],
+            "{$prefix}.mentions.*.label" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.embeds" => ['sometimes', 'nullable', 'array', 'max:10'],
+            "{$prefix}.embeds.*.title" => ['sometimes', 'nullable', 'string', 'max:256'],
+            "{$prefix}.embeds.*.description" => ['sometimes', 'nullable', 'string', 'max:4096'],
+            "{$prefix}.embeds.*.url" => ['sometimes', 'nullable', 'url'],
+            "{$prefix}.embeds.*.image" => ['sometimes', 'nullable', 'url'],
+            "{$prefix}.embeds.*.color" => ['sometimes', 'nullable', 'string', 'regex:/^#?[0-9A-Fa-f]{6}$/'],
 
-            'platforms.*.meta.topic_type' => ['sometimes', 'nullable', 'string', Rule::enum(TopicType::class)],
-            'platforms.*.meta.call_to_action' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.call_to_action.action_type' => ['sometimes', 'nullable', 'string', Rule::enum(CtaAction::class)],
-            'platforms.*.meta.call_to_action.url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
-            'platforms.*.meta.event' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.event.title' => ['sometimes', 'nullable', 'string', 'max:'.TopicType::TITLE_MAX_LENGTH],
-            'platforms.*.meta.event.start_date' => ['sometimes', 'nullable', 'date'],
-            'platforms.*.meta.event.end_date' => ['sometimes', 'nullable', 'date', 'after_or_equal:platforms.*.meta.event.start_date'],
-            'platforms.*.meta.event.start_time' => ['sometimes', 'nullable', 'date_format:H:i'],
-            'platforms.*.meta.event.end_time' => ['sometimes', 'nullable', 'date_format:H:i'],
-            'platforms.*.meta.offer' => ['sometimes', 'nullable', 'array'],
-            'platforms.*.meta.offer.coupon_code' => ['sometimes', 'nullable', 'string'],
-            'platforms.*.meta.offer.redeem_online_url' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
-            'platforms.*.meta.offer.terms_conditions' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            "{$prefix}.topic_type" => ['sometimes', 'nullable', 'string', Rule::enum(TopicType::class)],
+            "{$prefix}.call_to_action" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.call_to_action.action_type" => ['sometimes', 'nullable', 'string', Rule::enum(CtaAction::class)],
+            "{$prefix}.call_to_action.url" => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            "{$prefix}.event" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.event.title" => ['sometimes', 'nullable', 'string', 'max:'.TopicType::TITLE_MAX_LENGTH],
+            "{$prefix}.event.start_date" => ['sometimes', 'nullable', 'date'],
+            "{$prefix}.event.end_date" => ['sometimes', 'nullable', 'date', "after_or_equal:{$prefix}.event.start_date"],
+            "{$prefix}.event.start_time" => ['sometimes', 'nullable', 'date_format:H:i'],
+            "{$prefix}.event.end_time" => ['sometimes', 'nullable', 'date_format:H:i'],
+            "{$prefix}.offer" => ['sometimes', 'nullable', 'array'],
+            "{$prefix}.offer.coupon_code" => ['sometimes', 'nullable', 'string'],
+            "{$prefix}.offer.redeem_online_url" => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
+            "{$prefix}.offer.terms_conditions" => ['sometimes', 'nullable', 'string', 'max:5000'],
         ];
     }
 
@@ -140,8 +140,8 @@ class PostPlatformMetaRules
     public static function onlyKnown(array $meta): array
     {
         $known = collect(array_keys(self::rules()))
-            ->filter(fn (string $key): bool => str_starts_with($key, 'platforms.*.meta.'))
-            ->map(fn (string $key): string => explode('.', substr($key, strlen('platforms.*.meta.')))[0])
+            ->filter(fn (string $key): bool => str_starts_with($key, 'meta.'))
+            ->map(fn (string $key): string => explode('.', substr($key, strlen('meta.')))[0])
             ->unique()
             ->all();
 
@@ -165,66 +165,34 @@ class PostPlatformMetaRules
     }
 
     /**
-     * The meta of each submitted platform entry, keyed by the given field.
-     *
-     * @param  array<int, mixed>  $platforms
-     * @return array<string, array<string, mixed>>
-     */
-    public static function metaByKey(array $platforms, string $keyField): array
-    {
-        return collect($platforms)
-            ->filter(fn (mixed $platform): bool => is_string(data_get($platform, $keyField)))
-            ->mapWithKeys(fn (mixed $platform): array => [data_get($platform, $keyField) => (array) data_get($platform, 'meta', [])])
-            ->all();
-    }
-
-    /**
-     * The content type of each submitted platform entry, keyed by the given
-     * field, falling back to the stored one when the entry omits it.
-     *
-     * @param  array<int, mixed>  $platforms
-     * @param  array<string, string|null>  $stored
-     * @return array<string, string|null>
-     */
-    public static function contentTypesByKey(array $platforms, string $keyField, array $stored = []): array
-    {
-        return collect($platforms)
-            ->filter(fn (mixed $platform): bool => is_string(data_get($platform, $keyField)))
-            ->mapWithKeys(fn (mixed $platform): array => [
-                data_get($platform, $keyField) => data_get($platform, 'content_type', data_get($stored, data_get($platform, $keyField))),
-            ])
-            ->all();
-    }
-
-    /**
      * Custom validation messages for meta fields shown in the UI.
      *
      * @return array<string, string>
      */
-    public static function messages(): array
+    public static function messages(string $prefix = 'meta'): array
     {
         return [
-            'platforms.*.meta.link.url' => __('posts.form.pinterest.link_invalid'),
-            'platforms.*.meta.link.max' => __('posts.form.pinterest.link_max'),
-            'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
-            'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
-            'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
+            "{$prefix}.link.url" => __('posts.form.pinterest.link_invalid'),
+            "{$prefix}.link.max" => __('posts.form.pinterest.link_max'),
+            "{$prefix}.title.max" => __('posts.form.pinterest.title_max'),
+            "{$prefix}.event.end_date.after_or_equal" => __('posts.form.google_business.event_end_date_before_start'),
+            "{$prefix}.event.title.max" => __('posts.form.google_business.title_max'),
         ];
     }
 
     /**
-     * Friendly attribute names so default messages never expose `platforms.0.meta.*`.
+     * Friendly attribute names so default messages never expose raw meta keys.
      *
      * @return array<string, string>
      */
-    public static function attributes(): array
+    public static function attributes(string $prefix = 'meta'): array
     {
         return [
-            'platforms.*.meta.title' => __('posts.form.pinterest.title'),
-            'platforms.*.meta.description' => __('posts.form.youtube.description'),
-            'platforms.*.meta.link' => __('posts.form.pinterest.link'),
-            'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
-            'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+            "{$prefix}.title" => __('posts.form.pinterest.title'),
+            "{$prefix}.description" => __('posts.form.youtube.description'),
+            "{$prefix}.link" => __('posts.form.pinterest.link'),
+            "{$prefix}.event.title" => __('posts.form.google_business.event_title'),
+            "{$prefix}.call_to_action.url" => __('posts.form.google_business.cta_url'),
         ];
     }
 
@@ -253,66 +221,46 @@ class PostPlatformMetaRules
     }
 
     /**
-     * Adds validation errors for per-platform meta that becomes mandatory once a
-     * post is published or scheduled (TikTok privacy, Pinterest board, Discord
-     * channel), based on the submitted request platforms. The caller resolves each
-     * platform row to its Platform enum, since that lookup differs between create
-     * (by social account) and update (by post platform).
-     *
-     * @param  array<int, mixed>  $platforms
-     * @param  callable(mixed, int): (Platform|SocialAccount|null)  $resolvePlatform
+     * Adds the validation error for meta that becomes mandatory once a post is
+     * published or scheduled (TikTok privacy, Pinterest board, Discord channel).
      */
-    public static function addRequiredOnPublishErrors(Validator $validator, array $platforms, callable $resolvePlatform): void
+    public static function addRequiredOnPublishErrors(Validator $validator, Platform|SocialAccount|null $target, mixed $meta, string $prefix = 'meta'): void
     {
-        foreach ($platforms as $index => $platform) {
-            $violation = self::requiredMetaViolation($resolvePlatform($platform, $index), data_get($platform, 'meta'));
+        $violation = self::requiredMetaViolation($target, $meta);
 
-            if ($violation !== null) {
-                [$field, $message] = $violation;
-                $key = "platforms.{$index}.meta.{$field}";
+        if (blank($violation)) {
+            return;
+        }
 
-                if (! $validator->errors()->has($key)) {
-                    $validator->errors()->add($key, $message);
-                }
-            }
+        [$field, $message] = $violation;
+        $key = "{$prefix}.{$field}";
+
+        if (! $validator->errors()->has($key)) {
+            $validator->errors()->add($key, $message);
         }
     }
 
     /**
-     * Asserts that every ENABLED platform already stored on a post has the meta it
-     * needs to publish. Used by entry points that publish a post's stored state
-     * without resubmitting platforms (e.g. the MCP publish tool), so a misconfigured
-     * post fails fast with a clear message instead of only at publish time.
-     *
-     * @param  array<int, string>  $platformIds  Submitted order for indexed errors.
+     * Asserts that the post's stored meta is enough to publish. Used by entry
+     * points that publish a post's stored state without resubmitting it (e.g.
+     * the MCP publish tool), so a misconfigured post fails fast with a clear
+     * message instead of only at publish time.
      *
      * @throws ValidationException
      */
-    public static function assertStoredPostPublishable(Post $post, array $platformIds = []): void
+    public static function assertStoredPostPublishable(Post $post): void
     {
-        $platforms = $post->postPlatforms()->enabled()->with('socialAccount')->get()->values();
-
-        if ($platformIds !== []) {
-            $platformsById = $platforms->keyBy('id');
-            $platforms = collect($platformIds)
-                ->map(fn (string $id): ?PostPlatform => $platformsById->get($id))
-                ->filter();
+        if (! $post->hasDestination()) {
+            return;
         }
 
-        $errors = [];
+        $violation = self::requiredMetaViolation($post->socialAccount ?? $post->platform, $post->meta)
+            ?? self::contentMetaViolation($post->platform, $post->meta, (string) $post->content);
 
-        foreach ($platforms as $index => $postPlatform) {
-            $violation = self::requiredMetaViolation($postPlatform->socialAccount ?? $postPlatform->platform, $postPlatform->meta)
-                ?? self::contentMetaViolation($postPlatform->platform, $postPlatform->meta, (string) $post->content);
+        if (filled($violation)) {
+            [$field, $message] = $violation;
 
-            if ($violation !== null) {
-                [$field, $message] = $violation;
-                $errors["platforms.{$index}.meta.{$field}"] = $message;
-            }
-        }
-
-        if ($errors !== []) {
-            throw ValidationException::withMessages($errors);
+            throw ValidationException::withMessages(["meta.{$field}" => $message]);
         }
     }
 

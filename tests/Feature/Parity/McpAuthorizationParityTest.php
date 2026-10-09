@@ -134,13 +134,7 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
         'platform' => Platform::LinkedIn,
         'timezone' => 'UTC',
     ]);
-    $post = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $owner->id, 'content' => 'Draft']);
-    $postPlatform = $post->postPlatforms()->create([
-        'social_account_id' => $linkedin->id,
-        'platform' => 'linkedin',
-        'content_type' => ContentType::LinkedInPost->value,
-        'enabled' => true,
-    ]);
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->draft()->create(['user_id' => $owner->id, 'content' => 'Draft']);
     $pending = CreatePosts::execute($workspace, workspaceMember($workspace, 'approval'), [
         'status' => 'scheduled',
         'scheduled_at' => now()->addDays(2)->toIso8601String(),
@@ -162,19 +156,12 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
     $queued = [];
 
     foreach (['queue', 'custom'] as $mode) {
-        $queued[$mode] = Post::factory()->create([
-            'workspace_id' => $workspace->id,
+        $queued[$mode] = Post::factory()->forAccount($queueChannel, ContentType::LinkedInPost)->create([
             'user_id' => $owner->id,
             'status' => Status::Scheduled,
             'content' => 'Queued parity post',
             'schedule_mode' => $mode,
             'scheduled_at' => $mode === 'queue' ? $queueSlots[0] : now()->addDays(9)->setTime(10, 7),
-        ]);
-        $queued[$mode]->postPlatforms()->create([
-            'social_account_id' => $queueChannel->id,
-            'platform' => 'linkedin',
-            'content_type' => ContentType::LinkedInPost->value,
-            'enabled' => true,
         ]);
     }
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
@@ -189,7 +176,6 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
         'customPost' => $queued['custom'],
         'freeSlot' => $queueSlots[1]->toIso8601ZuluString(),
         'post' => $post,
-        'postPlatform' => $postPlatform,
         'note' => PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $owner->id]),
         'tiktok' => SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id, 'platform_user_id' => (string) Str::uuid()]),
         'pending' => $pending,
@@ -276,9 +262,9 @@ function mcpAuthParityTools(): array
         'attach-media-from-upload-tool' => [AttachMediaFromUploadTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'draft', 'content' => 'Edited', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'upload_token' => $f['uploadToken']]],
         'attach-media-from-url-tool' => [AttachMediaFromUrlTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'draft', 'content' => 'Edited', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'urls' => [['url' => 'https://example.com/photo.jpg']]]],
         'create-posts-tool' => [CreatePostsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('app.posts.store'), ['status' => 'draft', 'content' => 'Hello', 'media' => [], 'destinations' => [mcpAuthParityDestination($f)]]), fn (array $f) => ['status' => 'draft', 'content' => 'Hello', 'destinations' => [mcpAuthParityDestination($f)]]],
-        'create-post-tool' => [CreatePostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('app.posts.store'), ['status' => 'draft', 'content' => 'Hello', 'media' => [], 'destinations' => [mcpAuthParityDestination($f)]]), fn (array $f) => ['content' => 'Hello', 'platforms' => [mcpAuthParityDestination($f)]]],
+        'create-post-tool' => [CreatePostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->post(route('app.posts.store'), ['status' => 'draft', 'content' => 'Hello', 'media' => [], 'destinations' => [mcpAuthParityDestination($f)]]), fn (array $f) => ['content' => 'Hello', ...mcpAuthParityDestination($f)]],
         'delete-post-tool' => [DeletePostTool::class, $publishers, fn (TestCase $t, array $f) => $t->delete(route('app.posts.destroy', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
-        'get-post-metrics-tool' => [GetPostMetricsTool::class, [], fn (TestCase $t, array $f) => $t->getJson(route('app.posts.platforms.metrics', [$f['post'], $f['postPlatform']])), fn (array $f) => ['post_id' => $f['post']->id]],
+        'get-post-metrics-tool' => [GetPostMetricsTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'get-post-tool' => [GetPostTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'list-post-notes-tool' => [ListPostNotesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.notes.index', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
         'create-post-note-tool' => [CreatePostNoteTool::class, $everyMember, fn (TestCase $t, array $f) => $t->postJson(route('app.posts.notes.store', $f['post']), ['body' => 'Looks good']), fn (array $f) => ['post_id' => $f['post']->id, 'body' => 'Looks good']],
@@ -287,7 +273,7 @@ function mcpAuthParityTools(): array
         'get-tiktok-creator-info-tool' => [GetTikTokCreatorInfoTool::class, $everyMember, fn (TestCase $t, array $f) => $t->getJson(route('app.posts.composer.account', $f['tiktok'])), fn (array $f) => ['account_id' => $f['tiktok']->id]],
         'list-posts-tool' => [ListPostsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.posts.index')), fn (array $f) => []],
         'preview-post-tool' => [PreviewPostTool::class, [], fn (TestCase $t, array $f) => $t->get(route('app.posts.edit', $f['post'])), fn (array $f) => ['post_id' => $f['post']->id]],
-        'publish-post-tool' => [PublishPostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'scheduled', 'scheduled_at' => now()->addDays(2)->toIso8601String(), 'content' => 'Draft', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'scheduled_at' => now()->addDays(2)->toIso8601String()]],
+        'publish-post-tool' => [PublishPostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'scheduled', 'scheduled_at' => now()->addDays(2)->toIso8601String(), 'content' => 'Draft', 'media' => [], 'content_type' => ContentType::LinkedInPost->value]), fn (array $f) => ['post_id' => $f['post']->id, 'scheduled_at' => now()->addDays(2)->toIso8601String()]],
         'request-media-upload-tool' => [RequestMediaUploadTool::class, $everyMember, fn (TestCase $t, array $f) => $t->postJson(route('app.media.store-chunked')), fn (array $f) => []],
         'update-post-tool' => [UpdatePostTool::class, $everyMember, fn (TestCase $t, array $f) => $t->put(route('app.posts.update', $f['post']), ['status' => 'draft', 'content' => 'Edited', 'media' => []]), fn (array $f) => ['post_id' => $f['post']->id, 'content' => 'Edited']],
         'activate-repurpose-tool' => [ActivateRepurposeTool::class, $publishers, fn (TestCase $t, array $f) => $t->post(route('app.repurposes.activate', $f['repurposeReady'])), fn (array $f) => ['repurpose_id' => $f['repurposeReady']->id]],
@@ -374,17 +360,8 @@ test('a member who needs approval ends pending when scheduling through create-po
     $requester = workspaceMember($this->workspace, 'approval');
     $fixture = mcpAuthParityFixture($this->workspace, $this->owner);
     $at = now()->addDays(2)->startOfHour()->toIso8601String();
-    $webDraft = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $requester->id, 'content' => 'Web draft']);
-    $mcpDraft = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $requester->id, 'content' => 'Mcp draft']);
-
-    foreach ([$webDraft, $mcpDraft] as $draft) {
-        $draft->postPlatforms()->create([
-            'social_account_id' => $fixture['linkedin']->id,
-            'platform' => 'linkedin',
-            'content_type' => ContentType::LinkedInPost->value,
-            'enabled' => true,
-        ]);
-    }
+    $webDraft = Post::factory()->forAccount($fixture['linkedin'], ContentType::LinkedInPost)->draft()->create(['user_id' => $requester->id, 'content' => 'Web draft']);
+    $mcpDraft = Post::factory()->forAccount($fixture['linkedin'], ContentType::LinkedInPost)->draft()->create(['user_id' => $requester->id, 'content' => 'Mcp draft']);
 
     $this->actingAs($requester)->post(route('app.posts.store'), [
         'status' => 'scheduled',
@@ -398,6 +375,7 @@ test('a member who needs approval ends pending when scheduling through create-po
         'scheduled_at' => $at,
         'content' => 'Web draft',
         'media' => [],
+        'content_type' => ContentType::LinkedInPost->value,
     ])->assertRedirect();
 
     auth()->forgetGuards();
@@ -405,7 +383,7 @@ test('a member who needs approval ends pending when scheduling through create-po
         'content' => 'Created through mcp',
         'status' => 'scheduled',
         'scheduled_at' => $at,
-        'platforms' => [mcpAuthParityDestination($fixture)],
+        ...mcpAuthParityDestination($fixture),
     ])->assertOk();
     TryPostServer::actingAs($requester)->tool(UpdatePostTool::class, [
         'post_id' => $mcpDraft->id,

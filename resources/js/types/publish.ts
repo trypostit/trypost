@@ -4,6 +4,7 @@ import type { MediaItem } from '@/types/media';
 import type {
     PostOriginValue,
     PostStatusValue,
+    PublishStatusValue,
     QueuePositionValue,
     ScheduleModeValue,
 } from '@/types/post';
@@ -38,21 +39,6 @@ export interface PublishChannel extends PublishSocialAccount {
     has_grid: boolean;
 }
 
-export interface PostCardPlatform {
-    id: string;
-    social_account_id: string;
-    enabled: boolean;
-    platform: string;
-    status: string;
-    platform_url?: string | null;
-    error_message?: string | null;
-    error_context?: { category?: string | null; failed_at?: string | null } | null;
-    retry_at?: string | null;
-    social_account: PublishSocialAccount | null;
-    content_type?: string;
-    meta?: Record<string, any>;
-}
-
 export interface PostCardLabel {
     id: string;
     name: string;
@@ -66,11 +52,25 @@ export interface UnavailablePostMetrics {
 
 export type PostCardMetrics = PublicationAnalyticsDetail | UnavailablePostMetrics;
 
+export interface PostCardFailure {
+    category?: string | null;
+    failed_at?: string | null;
+}
+
 export interface PostCard {
     id: string;
-    card_key?: string;
     content: string | null;
     status: PostStatusValue;
+    publish_status: PublishStatusValue;
+    social_account_id: string | null;
+    social_account: PublishSocialAccount | null;
+    platform: string | null;
+    content_type?: string | null;
+    meta?: Record<string, any> | null;
+    platform_url?: string | null;
+    error_message?: string | null;
+    failure?: PostCardFailure | null;
+    retry_at?: string | null;
     origin: PostOriginValue;
     created_at: string;
     updated_at: string;
@@ -87,12 +87,11 @@ export interface PostCard {
     recurrence_origin_at?: string | null;
     published_at: string | null;
     user: { name: string } | null;
-    post_platforms: PostCardPlatform[];
     labels: PostCardLabel[];
     notes_count: number;
     media?: MediaItem[];
     can_delete: boolean;
-    metrics?: Record<string, PostCardMetrics | null>;
+    metrics?: PostCardMetrics | null;
 }
 
 export interface QueueItem {

@@ -58,7 +58,7 @@ class ListPostsTool extends Tool
                 RequestIds::uuidList(collect((array) data_get($validated, 'labels'))),
                 filter_var(data_get($validated, 'untagged'), FILTER_VALIDATE_BOOLEAN),
             )
-            ->with(['postPlatforms.socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels']);
+            ->with(['socialAccount', 'user', 'approvalRequestedBy', 'approver', 'labels']);
 
         $query = match (data_get($validated, 'status')) {
             Status::Draft->value => $query->draft(),
@@ -89,8 +89,8 @@ class ListPostsTool extends Tool
     {
         return [
             'status' => $schema->string()
-                ->enum(['draft', 'scheduled', 'published', 'failed', 'pending_approval'])
-                ->description('Filter by status. "published" includes partially-published posts.'),
+                ->enum([Status::Draft->value, Status::Scheduled->value, Status::Published->value, Status::Failed->value, Status::PendingApproval->value])
+                ->description('Filter by status.'),
             'search' => $schema->string()->description('Case-insensitive substring match against the post content.'),
             'channels' => $schema->array()->items($schema->string())->description('Only posts on one of these social account IDs (list-social-accounts-tool).'),
             'labels' => $schema->array()->items($schema->string())->description('Only posts with one of these label IDs.'),

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Mail;
 
 use App\Models\User;
-use App\Support\Mail\ApprovalEmailPosts;
+use App\Support\Mail\ApprovalEmailPost;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -17,11 +17,8 @@ class PostRejected extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 
-    /**
-     * @param  list<string>  $postIds
-     */
     public function __construct(
-        public array $postIds,
+        public string $postId,
         public User $approver,
     ) {}
 
@@ -34,8 +31,8 @@ class PostRejected extends Mailable implements ShouldQueue
 
     public function content(): Content
     {
-        $posts = ApprovalEmailPosts::load($this->postIds);
-        $workspaceName = (string) $posts->first()?->workspace?->name;
+        $post = ApprovalEmailPost::find($this->postId);
+        $workspaceName = (string) $post?->workspace?->name;
 
         return new Content(
             view: 'mail.post-rejected',
@@ -44,7 +41,7 @@ class PostRejected extends Mailable implements ShouldQueue
                 'previewText' => __('mail.post_rejected.preview', ['name' => $this->approver->name]),
                 'approverName' => $this->approver->name,
                 'workspaceName' => $workspaceName,
-                'channels' => ApprovalEmailPosts::channels($posts),
+                'channel' => ApprovalEmailPost::channel($post),
                 'url' => route('app.posts.index', ['tab' => 'drafts']),
             ],
         );

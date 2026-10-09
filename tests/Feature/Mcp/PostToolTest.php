@@ -13,7 +13,6 @@ use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -46,7 +45,8 @@ test('list posts returns wrapped posts array with PostResource shape', function 
     $response->assertOk()
         ->assertStructuredContent(function (AssertableJson $json) {
             $json->has('posts', 3, function (AssertableJson $post) {
-                $post->hasAll(['id', 'post_group_id', 'author', 'content', 'media', 'status', 'schedule_mode', 'scheduled_at', 'published_at', 'approval_requested_by', 'approval_requested_at', 'approved_by', 'approved_at', 'recurrence', 'origin', 'platforms', 'labels', 'created_at', 'updated_at'])
+                $post->hasAll(['id', 'post_group_id', 'author', 'content', 'media', 'status', 'schedule_mode', 'scheduled_at', 'published_at', 'approval_requested_by', 'approval_requested_at', 'approved_by', 'approved_at', 'recurrence', 'origin', 'publish_status', 'platform', 'content_type', 'meta', 'platform_url', 'error_message', 'display_name', 'display_username', 'display_avatar', 'social_account', 'labels', 'created_at', 'updated_at'])
+                    ->missing('platforms')
                     ->missing('user_id')
                     ->missing('workspace_id');
             })->where('total', 3)->where('current_page', 1)->where('last_page', 1)->has('per_page');
@@ -147,9 +147,8 @@ test('create post with content and date', function () {
         ->tool(CreatePostTool::class, [
             'content' => 'My new post',
             'scheduled_at' => '2037-12-31T15:30:00Z',
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ]);
 
     $response->assertOk()
@@ -168,21 +167,18 @@ test('create post with content and date', function () {
 test('create post creates unscheduled draft without a schedule', function (string $case) {
     $payload = match ($case) {
         'empty' => [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ],
         'omitted' => [
             'content' => 'Draft without schedule',
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ],
         'null' => [
             'content' => 'Draft without schedule',
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
             'scheduled_at' => null,
         ],
     };
@@ -205,22 +201,20 @@ test('create post creates unscheduled draft without a schedule', function (strin
     'explicit null schedule' => ['null'],
 ]);
 
-test('create post with platforms enables only those', function () {
+test('create post stores the chosen social account on the post', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'content' => 'with platforms',
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'content' => 'with an account',
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
         ]);
 
     $response->assertOk();
 
-    $post = Post::where('workspace_id', $this->workspace->id)->first();
-    $enabled = $post->postPlatforms()->where('enabled', true)->get();
-    expect($enabled)->toHaveCount(1);
-    expect($enabled->first()->social_account_id)->toBe($this->socialAccount->id);
-    expect($enabled->first()->content_type->value)->toBe('linkedin_post');
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->social_account_id)->toBe($this->socialAccount->id)
+        ->and($post->platform)->toBe(Platform::LinkedIn)
+        ->and($post->content_type->value)->toBe('linkedin_post');
 });
 
 test('the single MCP create tool adopts a temporary upload submitted by id', function () {
@@ -228,9 +222,8 @@ test('the single MCP create tool adopts a temporary upload submitted by id', fun
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'media' => [['id' => $asset->id]],
-        'platforms' => [
-            ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-        ],
+        'social_account_id' => $this->socialAccount->id,
+        'content_type' => 'linkedin_post',
     ])->assertOk();
 
     $post = Post::query()->where('workspace_id', $this->workspace->id)->sole();
@@ -239,12 +232,14 @@ test('the single MCP create tool adopts a temporary upload submitted by id', fun
         ->and(data_get($post->media, '0.id'))->toBe($asset->id);
 });
 
-test('the single MCP create tool rejects multiple accounts', function () {
+test('the single MCP create tool rejects the removed platforms input', function () {
     $secondAccount = SocialAccount::factory()->linkedin()->create([
         'workspace_id' => $this->workspace->id,
     ]);
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
+        'social_account_id' => $this->socialAccount->id,
+        'content_type' => 'linkedin_post',
         'platforms' => [
             ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
             ['social_account_id' => $secondAccount->id, 'content_type' => 'linkedin_post'],
@@ -294,13 +289,8 @@ test('the MCP batch tool rejects a foreign account without creating a partial ba
 });
 
 test('the MCP edit tool rejects a replacement social account', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-    $target = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
     $otherAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
@@ -309,7 +299,7 @@ test('the MCP edit tool rejects a replacement social account', function () {
         'social_account_id' => $otherAccount->id,
     ])->assertHasErrors();
 
-    expect($target->fresh()->social_account_id)->toBe($this->socialAccount->id);
+    expect($post->fresh()->social_account_id)->toBe($this->socialAccount->id);
 });
 
 test('create post rejects scheduled_at in the past', function () {
@@ -322,9 +312,8 @@ test('create post rejects scheduled_at in the past', function () {
 test('create post rejects a content_type not in the enum', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'made_up_type'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'made_up_type',
         ]);
 
     $response->assertHasErrors();
@@ -333,22 +322,16 @@ test('create post rejects a content_type not in the enum', function () {
 test('create post rejects instagram_carousel — carousel is not a stored content_type', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'instagram_carousel'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'instagram_carousel',
         ]);
 
     $response->assertHasErrors();
 });
 
 test('update post rejects instagram_carousel — carousel is not a stored content_type', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -364,9 +347,8 @@ test('create post rejects a content_type that does not match the social account 
     // x_post on a LinkedIn account — ContentTypeMatchesPlatform should reject.
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'x_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'x_post',
         ]);
 
     $response->assertHasErrors();
@@ -378,9 +360,8 @@ test('create post rejects a label_id from another workspace', function () {
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
             'label_ids' => [$foreignLabel->id],
         ]);
 
@@ -393,9 +374,8 @@ test('create post rejects a deleted label', function () {
 
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post'],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
             'label_ids' => [$label->id],
         ])
         ->assertHasErrors();
@@ -443,51 +423,45 @@ test('delete post validates post_id required', function () {
 test('create post persists platform meta (link_preview)', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => false]],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => false],
         ]);
 
     $response->assertOk();
 
-    $platform = Post::where('workspace_id', $this->workspace->id)->first()
-        ->postPlatforms()->where('social_account_id', $this->socialAccount->id)->first();
-    expect($platform->meta['link_preview'])->toBeFalse();
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect($post->social_account_id)->toBe($this->socialAccount->id)
+        ->and($post->meta['link_preview'])->toBeFalse();
 });
 
 test('create post no longer stores an aspect_ratio meta', function () {
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['aspect_ratio' => '4:5']],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['aspect_ratio' => '4:5'],
         ])
         ->assertOk();
 
-    $platform = Post::where('workspace_id', $this->workspace->id)->first()
-        ->postPlatforms()->where('social_account_id', $this->socialAccount->id)->first();
-    expect(data_get($platform->meta, 'aspect_ratio'))->toBeNull();
+    $post = Post::where('workspace_id', $this->workspace->id)->sole();
+    expect(data_get($post->meta, 'aspect_ratio'))->toBeNull();
 });
 
 test('create post rejects an invalid link_preview', function () {
     $response = TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => 'nope']],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => 'nope'],
         ]);
 
     $response->assertHasErrors();
 });
 
 test('update post rejects an invalid link_preview', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
 
     $response = TryPostServer::actingAs($this->user)
@@ -502,12 +476,12 @@ test('update post rejects an invalid link_preview', function () {
 test('create post returns the platform meta in the response (read-back)', function () {
     TryPostServer::actingAs($this->user)
         ->tool(CreatePostTool::class, [
-            'platforms' => [
-                ['social_account_id' => $this->socialAccount->id, 'content_type' => 'linkedin_post', 'meta' => ['link_preview' => false]],
-            ],
+            'social_account_id' => $this->socialAccount->id,
+            'content_type' => 'linkedin_post',
+            'meta' => ['link_preview' => false],
         ])
         ->assertOk()
-        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('platforms.0.meta.link_preview', false)->etc());
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->where('meta.link_preview', false)->etc());
 });
 
 test('update post rejects scheduled status without a future scheduled_at', function (?string $existingScheduledAt) {
@@ -540,8 +514,8 @@ test('update post rejects scheduled status without a future scheduled_at', funct
 
 test('update post accepts scheduled status reusing an existing future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
+        'content' => 'Ready to schedule',
         'user_id' => $this->user->id,
         'scheduled_at' => $scheduledAt,
     ]);
@@ -561,8 +535,8 @@ test('update post accepts scheduled status reusing an existing future scheduled_
 
 test('update post schedules an unscheduled draft with an explicit future scheduled_at', function () {
     $scheduledAt = now()->addDay()->startOfSecond();
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
+        'content' => 'Ready to schedule',
         'user_id' => $this->user->id,
         'scheduled_at' => null,
     ]);
@@ -606,13 +580,8 @@ test('update post keeps an unscheduled draft when saving as draft without schedu
 });
 
 test('update post accepts a valid platform meta and persists it', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
 
     TryPostServer::actingAs($this->user)
@@ -622,7 +591,7 @@ test('update post accepts a valid platform meta and persists it', function () {
         ])
         ->assertOk();
 
-    expect($platform->fresh()->meta['link_preview'])->toBeFalse();
+    expect($post->fresh()->meta['link_preview'])->toBeFalse();
 });
 
 test('members who need approval can list and get posts via mcp', function () {
@@ -698,15 +667,10 @@ test('get post returns the network origin of an imported post', function () {
 });
 
 test('the MCP edit tool edits a draft whose kept time has passed', function () {
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => 'draft',
         'scheduled_at' => now()->subDay(),
-    ]);
-    PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
@@ -718,21 +682,15 @@ test('the MCP edit tool edits a draft whose kept time has passed', function () {
 });
 
 test('a malformed account or destination id is a validation error, never a database error', function () {
-    $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $post->postPlatforms()->create([
-        'social_account_id' => $this->socialAccount->id,
-        'platform' => 'linkedin',
-        'content_type' => 'linkedin_post',
-        'enabled' => true,
-    ]);
+    $post = Post::factory()->forAccount($this->socialAccount)->draft()->create(['user_id' => $this->user->id]);
 
     TryPostServer::actingAs($this->user)
-        ->tool(CreatePostTool::class, ['content' => 'Hello', 'platforms' => [['social_account_id' => 'not-a-uuid', 'content_type' => 'linkedin_post']]])
+        ->tool(CreatePostTool::class, ['content' => 'Hello', 'social_account_id' => 'not-a-uuid', 'content_type' => 'linkedin_post'])
         ->assertHasErrors(['must be a valid UUID'])
         ->assertDontSee('SQLSTATE');
 
     TryPostServer::actingAs($this->user)
-        ->tool(UpdatePostTool::class, ['post_id' => $post->id, 'platforms' => [['id' => 'not-a-uuid', 'content_type' => 'linkedin_post']]])
+        ->tool(UpdatePostTool::class, ['post_id' => $post->id, 'label_ids' => ['not-a-uuid']])
         ->assertHasErrors(['must be a valid UUID'])
         ->assertDontSee('SQLSTATE');
 

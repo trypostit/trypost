@@ -12,7 +12,6 @@ test('every webhook event has the expected value', function (EventType $event, s
     [EventType::PostScheduled, 'post.scheduled'],
     [EventType::PostUnscheduled, 'post.unscheduled'],
     [EventType::PostPublished, 'post.published'],
-    [EventType::PostPartiallyPublished, 'post.partially_published'],
     [EventType::PostFailed, 'post.failed'],
     [EventType::PostDeleted, 'post.deleted'],
 ]);
@@ -22,7 +21,6 @@ test('fromPostStatus maps publishable statuses and ignores the rest', function (
 })->with([
     [PostStatus::Scheduled, EventType::PostScheduled],
     [PostStatus::Published, EventType::PostPublished],
-    [PostStatus::PartiallyPublished, EventType::PostPartiallyPublished],
     [PostStatus::Failed, EventType::PostFailed],
     [PostStatus::Draft, null],
     [PostStatus::Draft, EventType::PostUnscheduled, PostStatus::Scheduled],

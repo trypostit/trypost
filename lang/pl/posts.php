@@ -533,7 +533,6 @@ return [
         'publishing' => 'Publikowanie',
         'retrying' => 'Ponawianie',
         'published' => 'Opublikowany',
-        'partially_published' => 'Częściowo opublikowany',
         'failed' => 'Nieudany',
     ],
 
@@ -637,17 +636,6 @@ return [
             'objects' => 'Przedmioty',
             'symbols' => 'Symbole',
             'flags' => 'Flagi',
-        ],
-
-        'status' => [
-            'pending' => 'Oczekuje',
-            'scheduled' => 'Zaplanowany',
-            'published' => 'Opublikowany',
-            'publishing' => 'Publikowanie...',
-            'retrying' => 'Ponawianie...',
-            'failed' => 'Nieudany',
-            'pending_review' => 'W weryfikacji przez Google',
-            'rejected' => 'Odrzucony',
         ],
 
         'delete_modal' => [
@@ -819,12 +807,11 @@ return [
         'media_file_too_large' => 'Ten plik jest większy niż dozwolone dla jego typu :size MB.',
         'queue_requires_schedule' => 'Ten kanał nie ma jeszcze godzin publikacji. Dodaj je w ustawieniach kanału, aby korzystać z kolejki.',
         'queue_with_scheduled_at' => 'Wybierz albo pozycję w kolejce, albo datę i godzinę, ale nie oba naraz.',
-        'queue_legacy_post' => 'Ten post został utworzony jednocześnie dla kilku kanałów i nie można go dodać do kolejki. Ustaw zamiast tego datę i godzinę.',
         'queue_busy' => 'Kolejka jest aktualizowana. Spróbuj ponownie.',
         'no_social_account' => 'Ten post nie ma konta społecznościowego, więc nie można go opublikować.',
+        'choose_channel' => 'Wybierz kanał przed zaplanowaniem lub opublikowaniem tego posta.',
         'queue_order_stale' => 'Kolejka zmieniła się od momentu jej otwarcia. Odśwież stronę i spróbuj ponownie.',
         'account_disconnected' => 'Konto społecznościowe jest rozłączone',
-        'target_disabled' => 'Ten cel publikacji został wyłączony',
         'account_token_expired' => 'Sesja konta społecznościowego wygasła — połącz ponownie',
         'platform_unavailable' => 'Platforma jest tymczasowo niedostępna. Spróbujemy ponownie wkrótce.',
         'platform_unavailable_exhausted' => 'Platforma pozostała niedostępna po kilku próbach. Spróbuj ponownie później.',
@@ -906,6 +893,7 @@ return [
         'publishing_now' => 'Trwa publikacja',
         'publishing_badge' => 'Publikowanie…',
         'publishing_on' => 'Publikowanie w :network…',
+        'in_google_review' => 'W weryfikacji przez Google',
         'retrying_at' => 'Ponowna próba o :time',
         'published_via' => 'Opublikowano przez',
         'published_directly_from' => 'Opublikowano bezpośrednio w :network',
@@ -992,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanały (:count)',
-        'collapse' => 'Ukryj kanały',
-        'expand' => 'Pokaż kanały',
     ],
     'approvals' => [
         'badge' => 'Zatwierdzenie',

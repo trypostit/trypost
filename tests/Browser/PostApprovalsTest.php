@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\User\TimeFormat;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -120,13 +119,11 @@ test('an approver adds a queue request to the queue and rejects another', functi
 test('a request whose time has passed asks for a new time or publish now', function () {
     Queue::fake([PublishPost::class]);
     [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
-    $late = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $workspace->id,
+    $late = Post::factory()->forAccount($channel)->pendingApproval()->create([
         'user_id' => $requester->id,
         'content' => 'Too late',
         'scheduled_at' => now()->subHour(),
     ]);
-    PostPlatform::factory()->create(['post_id' => $late->id, 'social_account_id' => $channel->id, 'platform' => $channel->platform]);
     $this->actingAs($owner);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));
@@ -185,13 +182,11 @@ test('a new time for a late request is typed in the channel zone', function () {
     [$owner, $workspace, $channel, $requester] = approvalsBrowserSetup();
     $owner->update(['timezone' => 'Asia/Tokyo', 'time_format' => TimeFormat::TwentyFourHour]);
     $channel->update(['timezone' => 'America/Sao_Paulo']);
-    $late = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $workspace->id,
+    $late = Post::factory()->forAccount($channel)->pendingApproval()->create([
         'user_id' => $requester->id,
         'content' => 'Too late',
         'scheduled_at' => now()->subHour(),
     ]);
-    PostPlatform::factory()->create(['post_id' => $late->id, 'social_account_id' => $channel->id, 'platform' => $channel->platform]);
     $this->actingAs($owner);
 
     $page = visit(route('app.posts.index', ['tab' => 'approvals']));

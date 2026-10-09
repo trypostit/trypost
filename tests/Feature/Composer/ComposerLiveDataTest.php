@@ -6,7 +6,6 @@ use App\Actions\Post\Queue\ListTakenSlots;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -162,9 +161,7 @@ test('only pinterest and tiktok channels of the current workspace have account d
 
 test('taken slots cover only the asked day and never the past', function () {
     $from = now()->addDays(3)->startOfDay();
-    $at = fn (CarbonInterface $instant): Post => tap(Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'scheduled_at' => $instant]), function (Post $post): void {
-        PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->pinterest->id]);
-    });
+    $at = fn (CarbonInterface $instant): Post => Post::factory()->forAccount($this->pinterest)->scheduled()->create(['user_id' => $this->user->id, 'scheduled_at' => $instant]);
     $at($from->copy()->subMinute());
     $first = $at($from->copy());
     $last = $at($from->copy()->addDay()->subMinute());
@@ -267,8 +264,7 @@ test('taken slots are read in one query whatever the number of channels', functi
     $count = function (int $channels) use (&$queries): int {
         $ids = SocialAccount::factory()->count($channels)->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::X])
             ->each(function (SocialAccount $account): void {
-                $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'scheduled_at' => now()->addDay()]);
-                PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+                Post::factory()->forAccount($account)->scheduled()->create(['user_id' => $this->user->id, 'scheduled_at' => now()->addDay()]);
             })
             ->modelKeys();
 

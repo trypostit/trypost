@@ -18,11 +18,9 @@ class SidebarChannelResource
     public static function collection(Workspace $workspace): array
     {
         return $workspace->socialAccounts()
-            ->withCount(['postPlatforms as scheduled_posts_count' => fn (Builder $query) => $query
-                ->where('enabled', true)
-                ->whereHas('post', fn (Builder $post) => $post
-                    ->where('workspace_id', $workspace->id)
-                    ->where('status', PostStatus::Scheduled))])
+            ->withCount(['posts as scheduled_posts_count' => fn (Builder $query) => $query
+                ->where('workspace_id', $workspace->id)
+                ->where('status', PostStatus::Scheduled)])
             ->get()
             ->map(fn (SocialAccount $account): array => [
                 'id' => $account->id,
