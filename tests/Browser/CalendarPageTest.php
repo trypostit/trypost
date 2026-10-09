@@ -468,29 +468,48 @@ test('a published post popover shows its metrics, go to post and the sent menu',
         ->assertNoJavaScriptErrors();
 });
 
-test('an overflowing month day expands and collapses back', function () {
+test('an overflowing month day expands and collapses back, scrolling inside its cell', function () {
     [$user, $linkedin] = calendarPageSetup();
     $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(12);
     $dayKey = $day->format('Y-m-d');
-    $posts = collect(range(0, 3))->map(fn (int $index) => calendarPagePost($linkedin, $day->copy()->setTime(9 + $index, 0)));
+    $posts = collect(range(0, 9))->map(fn (int $index) => calendarPagePost($linkedin, $day->copy()->setTime(9 + $index, 0)));
+    $last = $posts->last();
 
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $dayKey]));
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $dayKey]))->resize(1440, 900);
     waitForCalendarTestId($page, "calendar-more-{$dayKey}");
 
-    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 1]))
-        ->assertMissing("@calendar-post-{$posts[3]->id}")
-        ->click("@calendar-more-{$dayKey}");
-    waitForCalendarTestId($page, "calendar-post-{$posts[3]->id}");
+    $cellHeight = "document.querySelector('[data-testid=\"calendar-day-{$dayKey}\"]').getBoundingClientRect().height";
+    $heightBefore = $page->script($cellHeight);
 
-    $page->assertVisible("@calendar-post-{$posts[3]->id}")
-        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.less'))
+    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
+        ->assertMissing("@calendar-post-{$last->id}")
         ->click("@calendar-more-{$dayKey}");
-    waitForCalendarCondition($page, "!document.querySelector('[data-testid=\"calendar-post-{$posts[3]->id}\"]')");
+    waitForCalendarTestId($page, "calendar-post-{$last->id}");
 
-    $page->assertMissing("@calendar-post-{$posts[3]->id}")
-        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 1]))
+    $layout = $page->script(<<<JS
+        (() => {
+            const cell = document.querySelector('[data-testid="calendar-day-{$dayKey}"]').getBoundingClientRect();
+            const items = document.querySelector('[data-testid="calendar-day-items-{$dayKey}"]');
+            const more = document.querySelector('[data-testid="calendar-more-{$dayKey}"]').getBoundingClientRect();
+
+            return {
+                scrolls: items.scrollHeight > items.clientHeight,
+                moreInCell: more.bottom <= cell.bottom + 0.5,
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe(['scrolls' => true, 'moreInCell' => true])
+        ->and(abs($page->script($cellHeight) - $heightBefore))->toBeLessThan(1);
+
+    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.less'))
+        ->click("@calendar-more-{$dayKey}");
+    waitForCalendarCondition($page, "!document.querySelector('[data-testid=\"calendar-post-{$last->id}\"]')");
+
+    $page->assertMissing("@calendar-post-{$last->id}")
+        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
         ->assertNoJavaScriptErrors();
 });
 

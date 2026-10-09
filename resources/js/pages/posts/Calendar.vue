@@ -711,13 +711,13 @@ const goToDay = (key: string): void => {
                             <div
                                 v-for="(week, weekIndex) in calendarWeeks"
                                 :key="weekIndex"
-                                class="grid min-h-24 flex-1 grid-cols-7 border-border-strong md:min-h-[208px]"
+                                class="grid min-h-24 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
                                 :class="{ 'border-t': weekIndex > 0 }"
                             >
                                 <div
                                     v-for="(day, index) in week"
                                     :key="dayKey(day)"
-                                    class="group flex min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
+                                    class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
                                     :class="{
                                         'border-l': index > 0,
                                         'bg-accent': isPast(day),
@@ -752,7 +752,15 @@ const goToDay = (key: string): void => {
                                         </button>
                                     </div>
 
-                                    <div class="flex flex-col gap-1">
+                                    <div class="relative min-h-0 flex-1">
+                                    <div
+                                        class="flex flex-col gap-1"
+                                        :class="{
+                                            'absolute inset-0 overflow-y-auto overscroll-contain':
+                                                expandedDays.includes(dayKey(day)),
+                                        }"
+                                        :data-testid="`calendar-day-items-${dayKey(day)}`"
+                                    >
                                         <template
                                             v-for="item in visibleMonthItems(day)"
                                             :key="item.key"
@@ -774,12 +782,14 @@ const goToDay = (key: string): void => {
                                                 :can-create-post="canCreatePost"
                                             />
                                         </template>
-                                        <button
+                                    </div>
+                                    </div>
+                                    <button
                                             v-if="
                                                 itemsFor(day).length > MONTH_CHIPS
                                             "
                                             type="button"
-                                            class="inline-flex h-6 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
+                                            class="inline-flex h-6 shrink-0 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
                                             :aria-expanded="
                                                 expandedDays.includes(dayKey(day))
                                             "
@@ -809,7 +819,6 @@ const goToDay = (key: string): void => {
                                                       })
                                             }}
                                         </button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
