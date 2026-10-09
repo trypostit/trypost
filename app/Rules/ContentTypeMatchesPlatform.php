@@ -13,8 +13,8 @@ use Illuminate\Support\Str;
 
 /**
  * Ensures the chosen content_type is supported by the platform of the account
- * it is sent with: a top-level `social_account_id` (pass its attribute name)
- * or the sibling of each `destinations.*.content_type`.
+ * sent next to it: the top-level `social_account_id`, or the sibling of each
+ * `destinations.*.content_type`.
  */
 class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
 {
@@ -22,12 +22,10 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
     private array $data = [];
 
     /**
-     * `$accountAttribute` names the field holding the account id; without it
-     * the rule reads the sibling `social_account_id` of the content type. An
-     * account outside `$workspaceId` is left to the `exists` rule, so its
+     * An account outside `$workspaceId` is left to the `exists` rule, so its
      * network is never revealed.
      */
-    public function __construct(private ?string $workspaceId, private ?string $accountAttribute = null) {}
+    public function __construct(private ?string $workspaceId) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -41,7 +39,7 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
 
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {
-        $accountId = data_get($this->data, $this->accountAttribute ?? Str::beforeLast($attribute, '.').'.social_account_id');
+        $accountId = data_get($this->data, self::siblingAccountPath($attribute));
 
         if (! $accountId || ! Str::isUuid((string) $accountId)) {
             return;
@@ -61,5 +59,16 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
                 $account->platform->label(),
             ));
         }
+    }
+
+    /**
+     * The account sent next to the content type: `social_account_id` at the top,
+     * `destinations.{i}.social_account_id` inside a destination.
+     */
+    private static function siblingAccountPath(string $attribute): string
+    {
+        $parent = Str::beforeLast($attribute, '.');
+
+        return $parent === $attribute ? 'social_account_id' : "{$parent}.social_account_id";
     }
 }

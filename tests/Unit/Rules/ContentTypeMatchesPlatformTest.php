@@ -89,11 +89,11 @@ test('skips validation when content_type is not a known enum value', function ()
     expect(runMatchesPlatformRule('completely_made_up', $linkedin->id))->toBe([]);
 });
 
-test('reads a top-level account attribute when one is named', function () {
+test('reads the top-level account next to a top-level content type', function () {
     $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
     $errors = [];
 
-    (new ContentTypeMatchesPlatform($linkedin->workspace_id, 'social_account_id'))
+    (new ContentTypeMatchesPlatform($linkedin->workspace_id))
         ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
         ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
@@ -107,7 +107,7 @@ test('says nothing about an account from another workspace', function () {
     $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
     $errors = [];
 
-    (new ContentTypeMatchesPlatform(Workspace::factory()->create()->id, 'social_account_id'))
+    (new ContentTypeMatchesPlatform(Workspace::factory()->create()->id))
         ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
         ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
