@@ -306,16 +306,8 @@ const openDetails = (): void => {
     detailsOpen.value = true;
 };
 
-const opensDetailsOnClick = computed(
-    () =>
-        !props.popover &&
-        canCreatePost.value &&
-        !isEditable.value &&
-        !isPublishing.value,
-);
-
 const openDetailsFromCard = (): void => {
-    if (opensDetailsOnClick.value) {
+    if (!isEditable.value) {
         openDetails();
     }
 };
@@ -567,8 +559,7 @@ defineExpose({ openDetails });
                     :is="isEditable ? Link : 'div'"
                     :href="isEditable ? editUrl(post) : undefined"
                     :draggable="draggable ? 'false' : undefined"
-                    class="flex min-w-0 flex-1 flex-col gap-4 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:outline-offset-[-2px] focus-visible:after:outline-ring"
-                    :class="{ 'cursor-pointer': opensDetailsOnClick }"
+                    class="flex min-w-0 flex-1 cursor-pointer flex-col gap-4 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:outline-offset-[-2px] focus-visible:after:outline-ring"
                     :data-testid="`post-open-${testKey}`"
                     @click="openDetailsFromCard"
                 >
