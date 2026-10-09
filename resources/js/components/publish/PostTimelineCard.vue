@@ -122,8 +122,6 @@ watch(
     },
 );
 
-const testKey = computed(() => props.post.id);
-
 const authUserId = computed(() => String(page.props.authUserId ?? ''));
 const openPostNotesId = computed(
     () => (page.props.openPostNotesId as string | null | undefined) ?? null,
@@ -306,7 +304,6 @@ const openDetails = (): void => {
     detailsOpen.value = true;
 };
 
-
 const recurrenceOpen = ref(false);
 
 watch(detailsOpen, (open) => emit('details', open));
@@ -371,7 +368,7 @@ defineExpose({ openDetails });
 
 <template>
     <div
-        :data-testid="`post-card-${testKey}`"
+        :data-testid="`post-card-${post.id}`"
         :data-post-id="post.id"
         class="group/post relative"
         :class="
@@ -397,7 +394,7 @@ defineExpose({ openDetails });
                             ? 'shrink-0 transition-opacity active:cursor-grabbing md:absolute md:top-0.5 md:left-[79px] md:opacity-0 md:group-focus-within/post:opacity-100 md:group-hover/post:opacity-100 md:in-data-dragging:opacity-100'
                             : 'md:-ms-5'
                     "
-                    :data-testid="`post-drag-handle-${testKey}`"
+                    :data-testid="`post-drag-handle-${post.id}`"
                     aria-hidden="true"
                 />
                 <time
@@ -405,7 +402,7 @@ defineExpose({ openDetails });
                     class="text-sm text-foreground"
                     :class="popover ? 'font-emphasis' : 'font-medium'"
                     :datetime="time"
-                    :data-testid="`post-time-${testKey}`"
+                    :data-testid="`post-time-${post.id}`"
                 >
                     {{
                         popover
@@ -421,7 +418,7 @@ defineExpose({ openDetails });
                 v-if="isPending"
                 variant="warning"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
-                :data-testid="`post-approval-badge-${testKey}`"
+                :data-testid="`post-approval-badge-${post.id}`"
             >
                 <IconEdit />
                 {{ $t('posts.approvals.badge') }}
@@ -429,14 +426,14 @@ defineExpose({ openDetails });
             <span
                 v-if="timePassed"
                 class="text-xs text-destructive-text"
-                :data-testid="`post-time-passed-${testKey}`"
+                :data-testid="`post-time-passed-${post.id}`"
             >
                 {{ $t('posts.approvals.time_passed') }}
             </span>
             <span
                 v-if="recurrence"
                 class="inline-flex items-center gap-0.5 text-xs text-muted-foreground"
-                :data-testid="`post-recurring-${testKey}`"
+                :data-testid="`post-recurring-${post.id}`"
             >
                 <IconRepeat class="size-3" />
                 {{ $t('posts.recurrence.marker') }}
@@ -450,7 +447,7 @@ defineExpose({ openDetails });
             <PostFailurePopover
                 v-if="showStatus && hasFailure"
                 :post="post"
-                :test-key="testKey"
+                :test-key="post.id"
                 :attempted-at="time"
                 :timezone="timezone"
             />
@@ -458,7 +455,7 @@ defineExpose({ openDetails });
                 v-else-if="showStatus && !isPublishing"
                 :variant="getPostStatusConfig(post.status).variant"
                 class="h-6 gap-1 px-2 [&>svg]:size-4"
-                :data-testid="`post-status-${testKey}`"
+                :data-testid="`post-status-${post.id}`"
             >
                 <component
                     :is="getPostStatusConfig(post.status).icon"
@@ -472,7 +469,7 @@ defineExpose({ openDetails });
                 size="icon"
                 class="-my-1 ms-auto -me-2"
                 :aria-label="$t('posts.show.title')"
-                :data-testid="`post-details-expand-${testKey}`"
+                :data-testid="`post-details-expand-${post.id}`"
                 @click="openDetails"
             >
                 <IconArrowsMaximize class="size-4" />
@@ -489,7 +486,7 @@ defineExpose({ openDetails });
             <p
                 v-if="recurrence && post.scheduled_at"
                 class="flex items-start gap-2 border-b border-border-strong bg-secondary px-4 py-2.5 text-sm text-foreground"
-                :data-testid="`post-recurrence-banner-${testKey}`"
+                :data-testid="`post-recurrence-banner-${post.id}`"
             >
                 <IconRepeat class="mt-0.5 size-4 shrink-0" />
                 <PostRecurrenceSummary
@@ -504,13 +501,13 @@ defineExpose({ openDetails });
                 v-if="isPublishing && !popover"
                 class="relative flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-strong bg-secondary px-4 py-2.5 text-sm text-foreground"
                 role="status"
-                :data-testid="`post-publishing-${testKey}`"
+                :data-testid="`post-publishing-${post.id}`"
             >
                 <span
                     v-if="!isInGoogleReview"
                     class="absolute inset-x-0 -bottom-px h-0.5 overflow-hidden"
                     aria-hidden="true"
-                    :data-testid="`post-publishing-progress-${testKey}`"
+                    :data-testid="`post-publishing-progress-${post.id}`"
                 >
                     <span
                         class="motion-progress-sweep block h-full w-2/5 rounded-full bg-primary-strong"
@@ -519,7 +516,7 @@ defineExpose({ openDetails });
                 <span
                     v-if="limitRetryAt"
                     class="inline-flex items-center gap-2"
-                    :data-testid="`post-limit-retry-${testKey}`"
+                    :data-testid="`post-limit-retry-${post.id}`"
                 >
                     <IconClockPause
                         class="size-4 text-primary-strong"
@@ -534,7 +531,7 @@ defineExpose({ openDetails });
                 <span
                     v-else-if="isInGoogleReview"
                     class="inline-flex items-center gap-2"
-                    :data-testid="`post-google-review-${testKey}`"
+                    :data-testid="`post-google-review-${post.id}`"
                 >
                     <IconHourglass
                         class="size-4 text-primary-strong"
@@ -563,7 +560,7 @@ defineExpose({ openDetails });
                 <div
                     :draggable="draggable ? 'false' : undefined"
                     class="flex min-w-0 flex-1 cursor-pointer flex-col gap-4 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:outline-offset-[-2px] focus-visible:after:outline-ring"
-                    :data-testid="`post-open-${testKey}`"
+                    :data-testid="`post-open-${post.id}`"
                     @click="open"
                 >
                     <div class="flex items-center gap-3">
@@ -601,7 +598,7 @@ defineExpose({ openDetails });
                             v-if="contentTypeKey"
                             variant="secondary"
                             class="ms-auto h-6 gap-1 px-2"
-                            :data-testid="`post-content-type-${testKey}`"
+                            :data-testid="`post-content-type-${post.id}`"
                         >
                             <component
                                 :is="contentTypeIcon"
@@ -637,7 +634,7 @@ defineExpose({ openDetails });
                         :aria-label="$t('common.media_lightbox.open')"
                         :draggable="draggable ? 'false' : undefined"
                         class="group/thumbnail relative block aspect-square cursor-zoom-in overflow-hidden rounded-md border border-border-strong bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                        :data-testid="`post-thumbnail-${testKey}-${index}`"
+                        :data-testid="`post-thumbnail-${post.id}-${index}`"
                         @click="openLightbox(index)"
                     >
                         <img
@@ -655,7 +652,7 @@ defineExpose({ openDetails });
                                 muted
                                 playsinline
                                 preload="metadata"
-                                :data-testid="`post-thumbnail-video-${testKey}-${index}`"
+                                :data-testid="`post-thumbnail-video-${post.id}-${index}`"
                             />
                             <IconPlayerPlayFilled
                                 aria-hidden="true"
@@ -668,7 +665,7 @@ defineExpose({ openDetails });
                         >
                             <IconArrowsMaximize
                                 class="size-6 text-white opacity-0 drop-shadow transition-opacity group-hover/thumbnail:opacity-100"
-                                :data-testid="`post-thumbnail-expand-${testKey}-${index}`"
+                                :data-testid="`post-thumbnail-expand-${post.id}-${index}`"
                             />
                         </span>
                     </button>
@@ -677,7 +674,7 @@ defineExpose({ openDetails });
                         type="button"
                         :aria-label="$t('common.media_lightbox.open')"
                         class="absolute right-1.5 bottom-1.5 inline-flex size-6 cursor-zoom-in items-center justify-center rounded-full bg-foreground/60 text-xs font-medium text-background transition-colors hover:bg-foreground/80 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                        :data-testid="`post-thumbnail-more-${testKey}`"
+                        :data-testid="`post-thumbnail-more-${post.id}`"
                         @click="openLightbox(MAX_THUMBNAILS)"
                     >
                         +{{ hiddenVisuals }}
@@ -707,21 +704,21 @@ defineExpose({ openDetails });
                 class="-mt-1 px-4 pb-4"
                 :post-id="post.id"
                 :labels="post.labels ?? []"
-                :test-key="testKey"
+                :test-key="post.id"
             />
 
             <PostMetricsBand
                 v-if="tab === 'sent' && metricsDetail && hasMetrics"
                 :detail="metricsDetail"
                 :channel-id="account?.id ?? null"
-                :metrics-test-id="`post-metrics-${testKey}`"
-                :insights-test-id="`post-insights-${testKey}`"
+                :metrics-test-id="`post-metrics-${post.id}`"
+                :insights-test-id="`post-insights-${post.id}`"
             />
 
             <div
                 class="m-2 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-muted p-3 [&_[data-variant=ghost]:hover]:bg-secondary"
                 :class="popover ? 'justify-end' : 'justify-between'"
-                :data-testid="`post-footer-${testKey}`"
+                :data-testid="`post-footer-${post.id}`"
             >
                 <p
                     v-if="!popover"
@@ -736,19 +733,19 @@ defineExpose({ openDetails });
                             <TooltipTrigger as-child>
                                 <span
                                     class="inline-flex cursor-default items-center gap-1"
-                                    :data-testid="`post-published-via-${testKey}`"
+                                    :data-testid="`post-published-via-${post.id}`"
                                 >
                                     {{ $t('posts.publish.published_via') }}
                                     <PlatformBrandIcon
                                         :platform="platform"
-                                        :data-testid="`post-published-via-icon-${testKey}`"
+                                        :data-testid="`post-published-via-icon-${post.id}`"
                                     />
                                     <template v-if="platform !== Platform.X">
                                         {{ getPlatformLabel(platform) }}
                                     </template>
                                 </span>
                             </TooltipTrigger>
-                            <TooltipContent :data-testid="`post-published-via-tooltip-${testKey}`">
+                            <TooltipContent :data-testid="`post-published-via-tooltip-${post.id}`">
                                 {{
                                     $t('posts.publish.published_directly_from', {
                                         network: getPlatformLabel(platform),
@@ -759,7 +756,7 @@ defineExpose({ openDetails });
                     </TooltipProvider>
                     <span
                         v-else-if="post.user?.name"
-                        :data-testid="`post-created-by-${testKey}`"
+                        :data-testid="`post-created-by-${post.id}`"
                         >{{
                         $t('posts.publish.created_by', {
                             name: post.user.name,
@@ -769,14 +766,14 @@ defineExpose({ openDetails });
                 </p>
                 <div
                     class="flex max-w-full shrink-0 flex-wrap items-center gap-1 max-sm:ms-auto"
-                    :data-testid="`post-actions-${testKey}`"
+                    :data-testid="`post-actions-${post.id}`"
                 >
                     <template v-if="isPending && canApprove">
-                        <ApprovePostButton :post="post" :test-key="testKey" />
+                        <ApprovePostButton :post="post" :test-key="post.id" />
                         <Button
                             variant="outline"
                             class="text-destructive-text"
-                            :data-testid="`post-reject-${testKey}`"
+                            :data-testid="`post-reject-${post.id}`"
                             @click="rejectPost"
                         >
                             <IconX class="size-4" />
@@ -786,7 +783,7 @@ defineExpose({ openDetails });
                     <Button
                         v-else-if="isPending"
                         variant="outline"
-                        :data-testid="`post-revert-${testKey}`"
+                        :data-testid="`post-revert-${post.id}`"
                         @click="revertRequest"
                     >
                         <IconX class="size-4" />
@@ -796,7 +793,7 @@ defineExpose({ openDetails });
                         <Button
                             v-if="canQueue"
                             variant="outline"
-                            :data-testid="`post-add-to-queue-${testKey}`"
+                            :data-testid="`post-add-to-queue-${post.id}`"
                             @click="addToQueue"
                         >
                             <IconListNumbers class="size-4" />
@@ -809,7 +806,7 @@ defineExpose({ openDetails });
                                         <Button
                                             variant="outline"
                                             disabled
-                                            :data-testid="`post-add-to-queue-${testKey}`"
+                                            :data-testid="`post-add-to-queue-${post.id}`"
                                         >
                                             <IconListNumbers class="size-4" />
                                             {{
@@ -838,14 +835,14 @@ defineExpose({ openDetails });
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 variant="outline"
-                                :data-testid="`post-view-${testKey}`"
+                                :data-testid="`post-view-${post.id}`"
                             >
                                 <IconExternalLink class="size-4" />
                                 {{ $t('posts.publish.actions.view_post') }}
                             </Button>
                         </TooltipTrigger>
                         <TooltipContent
-                            :data-testid="`post-view-tooltip-${testKey}`"
+                            :data-testid="`post-view-tooltip-${post.id}`"
                         >
                             {{
                                 $t('posts.publish.actions.open_on_network', {
@@ -859,7 +856,7 @@ defineExpose({ openDetails });
                     <Button
                         v-if="canPublishDirectly && post.status === PostStatus.Scheduled"
                         variant="outline"
-                        :data-testid="`post-publish-now-${testKey}`"
+                        :data-testid="`post-publish-now-${post.id}`"
                         @click="schedulePostCard(post.id, 'publish_now')"
                     >
                         <IconSend class="size-4" />
@@ -871,7 +868,7 @@ defineExpose({ openDetails });
                                 variant="outline"
                                 size="icon"
                                 :aria-label="$t('posts.publish.actions.edit')"
-                                :data-testid="`post-edit-${testKey}`"
+                                :data-testid="`post-edit-${post.id}`"
                                 @click="edit()"
                             >
                                 <IconPencil class="size-4" />
@@ -884,7 +881,7 @@ defineExpose({ openDetails });
                     <PostCardMenu
                         v-if="canCreatePost && !isPublishing"
                         :post="post"
-                        :test-key="testKey"
+                        :test-key="post.id"
                         :can-move-up="canMoveUp"
                         :can-move-down="canMoveDown"
                         :movable="movable"
@@ -894,7 +891,7 @@ defineExpose({ openDetails });
                         v-if="canCreatePost"
                         v-model:open="detailsOpen"
                         :post="post"
-                        :test-key="testKey"
+                        :test-key="post.id"
                         :timezone="timezone"
                         @select="runPostAction"
                         @edit="edit"
@@ -905,7 +902,7 @@ defineExpose({ openDetails });
                         :post="
                             recurrencePost.id === post.id ? post : recurrencePost
                         "
-                        :test-key="testKey"
+                        :test-key="post.id"
                         :timezone="recurrenceTimezone"
                     />
                 </div>
