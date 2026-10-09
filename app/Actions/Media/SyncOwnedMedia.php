@@ -65,7 +65,7 @@ class SyncOwnedMedia
         $workspace = $owner->workspace;
         $items = self::withoutRepeats(array_values($items));
         $replies = $locked instanceof Post ? ThreadReplies::of($locked->meta) : [];
-        $replyItems = array_merge([], ...array_column($replies, 'media'));
+        $replyItems = self::replyMedia($replies);
         $ids = self::column([...$items, ...$replyItems], 'id');
         $uploadTokens = self::column([...$items, ...$replyItems], 'upload_token');
         self::lockRows($workspace->id, $ownerColumn, $owner->getKey(), $ids, $uploadTokens);
@@ -114,19 +114,22 @@ class SyncOwnedMedia
         };
 
         $final = $sync($items, $errorKey);
-        $kept = self::column($final, 'id');
-        $replyErrorKey = Str::beforeLast($errorKey, 'media').'meta.thread_replies';
-
-        foreach ($replies as $index => $reply) {
-            $replies[$index]['media'] = $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}.{$index}.media");
-            $kept = [...$kept, ...self::column($replies[$index]['media'], 'id')];
-        }
+        $replyErrorKey = Str::beforeLast($errorKey, 'media');
+        $replies = array_map(
+            fn (array $reply, int $index): array => [
+                ...$reply,
+                'media' => $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}meta.thread_replies.{$index}.media"),
+            ],
+            $replies,
+            array_keys($replies),
+        );
+        $kept = self::column([...$final, ...self::replyMedia($replies)], 'id');
 
         DeleteOwnedMedia::forRows($owner->ownedMedia()->whereNotIn('id', $kept)->pluck('id')->all());
-        $owner->forceFill([
+        $owner->update($replies === [] ? ['media' => $final] : [
             'media' => $final,
-            ...($replies !== [] ? ['meta' => [...($locked->meta ?? []), 'thread_replies' => $replies]] : []),
-        ])->save();
+            'meta' => [...($locked->meta ?? []), 'thread_replies' => $replies],
+        ]);
 
         return $final;
     }
@@ -280,6 +283,15 @@ class SyncOwnedMedia
         }
 
         return $owned;
+    }
+
+    /**
+     * @param  list<array{media: list<array<string, mixed>>}>  $replies
+     * @return list<array<string, mixed>>
+     */
+    private static function replyMedia(array $replies): array
+    {
+        return array_merge([], ...array_column($replies, 'media'));
     }
 
     /**
