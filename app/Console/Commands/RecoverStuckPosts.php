@@ -21,8 +21,6 @@ class RecoverStuckPosts extends Command
 
     protected $description = 'Recover posts stuck in publishing status for more than 1 hour';
 
-    private const array IN_FLIGHT = [PublishStatus::Publishing, PublishStatus::Pending, PublishStatus::Retrying];
-
     public function __construct(
         private readonly TikTokPhotoDerivativeCleaner $tiktokPhotoDerivativeCleaner,
         private readonly GoogleBusinessDerivativeCleaner $googleBusinessDerivativeCleaner,
@@ -36,7 +34,7 @@ class RecoverStuckPosts extends Command
             ->where('status', PostStatus::Publishing)
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post): void {
-                $stale = in_array($post->publish_status, self::IN_FLIGHT, true)
+                $stale = $post->publish_status->isInFlight()
                     && blank($post->retry_at)
                     && (blank($post->publication_updated_at) || $post->publication_updated_at->lessThanOrEqualTo(now()->subHour()));
 
@@ -59,7 +57,7 @@ class RecoverStuckPosts extends Command
 
                 // A delayed platform-unavailable retry keeps the post Retrying
                 // with a fresh clock: do not finalize while that work is live.
-                if (in_array($post->publish_status, [...self::IN_FLIGHT, PublishStatus::PendingReview], true)) {
+                if (! $post->publish_status->isFinished()) {
                     return;
                 }
 

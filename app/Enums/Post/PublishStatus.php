@@ -30,4 +30,10 @@ enum PublishStatus: string
     {
         return $this->isFinished() || $this === self::PendingReview;
     }
+
+    /** Still to be sent or being sent: pending, publishing or retrying. */
+    public function isInFlight(): bool
+    {
+        return ! $this->isClosed();
+    }
 }

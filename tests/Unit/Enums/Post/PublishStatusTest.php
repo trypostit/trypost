@@ -27,3 +27,15 @@ test('a closed publication must not be published again', function (PublishStatus
     [PublishStatus::Publishing, false],
     [PublishStatus::Retrying, false],
 ]);
+
+test('a pending, publishing or retrying publication is in flight', function (PublishStatus $status, bool $inFlight) {
+    expect($status->isInFlight())->toBe($inFlight);
+})->with([
+    [PublishStatus::Pending, true],
+    [PublishStatus::Publishing, true],
+    [PublishStatus::Retrying, true],
+    [PublishStatus::PendingReview, false],
+    [PublishStatus::Published, false],
+    [PublishStatus::Failed, false],
+    [PublishStatus::Rejected, false],
+]);
