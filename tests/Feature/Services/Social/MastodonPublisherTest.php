@@ -274,7 +274,7 @@ test('mastodon publisher sends no description part when image has no alt text', 
     @unlink($optimizedFile);
 });
 
-test('mastodon publisher does not send a description for a non-image even if it carries alt text', function () {
+test('mastodon publisher sends a video alt text as the media description', function () {
     $this->post->update([
         'media' => [
             [
@@ -283,7 +283,7 @@ test('mastodon publisher does not send a description for a non-image even if it 
                 'url' => 'https://example.com/media/2026-01/clip.mp4',
                 'mime_type' => 'video/mp4',
                 'original_filename' => 'clip.mp4',
-                'meta' => ['alt_text' => 'alt must not be sent for a video'],
+                'meta' => ['alt_text' => 'A pixel-art flyover of Brisbane'],
             ],
         ],
     ]);
@@ -316,7 +316,10 @@ test('mastodon publisher does not send a description for a non-image even if it 
             return false;
         }
 
-        return collect($request->data())->firstWhere('name', 'description') === null;
+        // Mastodon accepts descriptions on any media type, video included.
+        $description = collect($request->data())->firstWhere('name', 'description');
+
+        return $description !== null && $description['contents'] === 'A pixel-art flyover of Brisbane';
     });
 });
 

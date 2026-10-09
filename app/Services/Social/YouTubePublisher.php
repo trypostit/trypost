@@ -18,7 +18,9 @@ use App\Support\YouTubeMetadata;
 use Google\Client as GoogleClient;
 use Google\Service\Exception;
 use Google\Service\YouTube;
+use Google\Service\YouTube\GeoPoint;
 use Google\Service\YouTube\Video;
+use Google\Service\YouTube\VideoRecordingDetails;
 use Google\Service\YouTube\VideoSnippet;
 use Google\Service\YouTube\VideoStatus;
 use Google_Http_MediaFileUpload;
@@ -192,7 +194,7 @@ class YouTubePublisher
             $youtube = new YouTube($client);
             $mediaUpload = new Google_Http_MediaFileUpload(
                 $client,
-                $youtube->videos->insert('snippet,status', $video, $insertParameters),
+                $youtube->videos->insert($video->getRecordingDetails() !== null ? 'snippet,status,recordingDetails' : 'snippet,status', $video, $insertParameters),
                 $media->mime_type ?: 'video/mp4',
                 null,
                 true,
@@ -283,9 +285,36 @@ class YouTubePublisher
         $status->setSelfDeclaredMadeForKids((bool) data_get($meta, 'made_for_kids', false));
         $status->setContainsSyntheticMedia((bool) data_get($meta, 'is_ai_generated', false));
 
+        $tags = array_values(array_filter(array_map(
+            fn ($tag) => trim((string) $tag),
+            (array) data_get($meta, 'tags', []),
+        )));
+        if ($tags !== []) {
+            $snippet->setTags($tags);
+        }
+
+        if (filled($language = data_get($meta, 'default_language'))) {
+            $snippet->setDefaultLanguage((string) $language);
+        }
+
         $video = new Video;
         $video->setSnippet($snippet);
         $video->setStatus($status);
+
+        $recording = data_get($meta, 'recording_location');
+        if (is_array($recording) && isset($recording['lat'], $recording['lng'])) {
+            $location = new GeoPoint;
+            $location->setLatitude((float) $recording['lat']);
+            $location->setLongitude((float) $recording['lng']);
+
+            $details = new VideoRecordingDetails;
+            $details->setLocation($location);
+            if (filled($recording['description'] ?? null)) {
+                $details->setLocationDescription((string) $recording['description']);
+            }
+
+            $video->setRecordingDetails($details);
+        }
 
         return $video;
     }

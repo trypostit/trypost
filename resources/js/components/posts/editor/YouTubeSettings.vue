@@ -175,6 +175,64 @@ const descriptionServerError = computed(
 const hasDescriptionError = computed(
     () => !!descriptionIssueKey.value || !!descriptionServerError.value,
 );
+
+const FIRST_COMMENT_MAX = 2200;
+const firstCommentId = computed(
+    () => `youtube-first-comment-${props.platformIndex}`,
+);
+const firstComment = computed({
+    get: () => toNullableText(props.meta.first_comment) ?? '',
+    set: (value: string) => update({ first_comment: toNullableText(value) }),
+});
+const firstCommentError = computed(
+    () =>
+        errors.value[
+            `destinations.${props.platformIndex}.meta.first_comment`
+        ] ?? errors.value[`platforms.${props.platformIndex}.meta.first_comment`],
+);
+
+const tags = computed({
+    get: () => ((props.meta.tags as string[] | undefined) ?? []).join(', '),
+    set: (value: string) => {
+        const parsed = value
+            .split(',')
+            .map((tag) => tag.trim())
+            .filter(Boolean);
+        update({ tags: parsed.length ? parsed : null });
+    },
+});
+const defaultLanguage = computed({
+    get: () => toNullableText(props.meta.default_language) ?? '',
+    set: (value: string) =>
+        update({ default_language: toNullableText(value.trim()) }),
+});
+const recording = computed(
+    () =>
+        (props.meta.recording_location as Record<string, unknown> | undefined) ??
+        null,
+);
+const setRecording = (patch: Record<string, unknown>) => {
+    const next = { ...(recording.value ?? {}), ...patch };
+    const empty =
+        !String(next.lat ?? '').length &&
+        !String(next.lng ?? '').length &&
+        !String(next.description ?? '').trim();
+    update({ recording_location: empty ? null : next });
+};
+const recLat = computed({
+    get: () => String(recording.value?.lat ?? ''),
+    set: (value: string) =>
+        setRecording({ lat: value === '' ? null : Number(value) }),
+});
+const recLng = computed({
+    get: () => String(recording.value?.lng ?? ''),
+    set: (value: string) =>
+        setRecording({ lng: value === '' ? null : Number(value) }),
+});
+const recDescription = computed({
+    get: () => (recording.value?.description as string | undefined) || '',
+    set: (value: string) => setRecording({ description: value || null }),
+});
 </script>
 
 <template>
@@ -347,6 +405,92 @@ const hasDescriptionError = computed(
                         : descriptionServerError
                 "
             />
+        </SettingsRow>
+        <SettingsRow
+            :label="$t('posts.form.first_comment.label')"
+            :label-for="firstCommentId"
+            align-top
+        >
+            <Textarea
+                :id="firstCommentId"
+                v-model="firstComment"
+                :data-testid="firstCommentId"
+                :disabled="disabled"
+                :maxlength="FIRST_COMMENT_MAX"
+                :aria-invalid="firstCommentError ? true : undefined"
+                :placeholder="$t('posts.form.first_comment.placeholder')"
+                class="field-sizing-fixed min-h-20 w-full resize-y"
+            />
+            <CharacterCounter
+                class="block"
+                :exceeded="firstComment.length > FIRST_COMMENT_MAX"
+                data-testid="youtube-first-comment-count"
+            >
+                {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+            </CharacterCounter>
+            <p class="text-xs text-foreground/60">
+                {{ $t('posts.form.first_comment.hint') }}
+            </p>
+            <InputError :message="firstCommentError" />
+        </SettingsRow>
+        <SettingsRow
+            :label="$t('posts.form.youtube.tags')"
+            :label-for="`youtube-tags-${platformIndex}`"
+        >
+            <Input
+                :id="`youtube-tags-${platformIndex}`"
+                v-model="tags"
+                data-testid="youtube-tags"
+                type="text"
+                :placeholder="$t('posts.form.youtube.tags_placeholder')"
+                :disabled="disabled"
+            />
+            <p class="text-xs text-foreground/60">
+                {{ $t('posts.form.youtube.tags_hint') }}
+            </p>
+        </SettingsRow>
+        <SettingsRow
+            :label="$t('posts.form.youtube.language')"
+            :label-for="`youtube-language-${platformIndex}`"
+        >
+            <Input
+                :id="`youtube-language-${platformIndex}`"
+                v-model="defaultLanguage"
+                data-testid="youtube-language"
+                type="text"
+                placeholder="en"
+                :disabled="disabled"
+            />
+        </SettingsRow>
+        <SettingsRow
+            :label="$t('posts.form.youtube.location')"
+            :label-for="`youtube-location-${platformIndex}`"
+            align-top
+        >
+            <Input
+                :id="`youtube-location-${platformIndex}`"
+                v-model="recDescription"
+                data-testid="youtube-location"
+                type="text"
+                :placeholder="$t('posts.form.youtube.location_placeholder')"
+                :disabled="disabled"
+            />
+            <div class="grid grid-cols-2 gap-3">
+                <Input
+                    v-model="recLat"
+                    data-testid="youtube-location-lat"
+                    type="text"
+                    :placeholder="$t('posts.form.youtube.lat')"
+                    :disabled="disabled"
+                />
+                <Input
+                    v-model="recLng"
+                    data-testid="youtube-location-lng"
+                    type="text"
+                    :placeholder="$t('posts.form.youtube.lng')"
+                    :disabled="disabled"
+                />
+            </div>
         </SettingsRow>
     </SettingsSection>
 </template>

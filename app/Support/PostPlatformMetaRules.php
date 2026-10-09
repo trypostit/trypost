@@ -80,6 +80,26 @@ class PostPlatformMetaRules
             'platforms.*.meta.brand_content_toggle' => ['sometimes', 'boolean'],
             'platforms.*.meta.brand_organic_toggle' => ['sometimes', 'boolean'],
 
+            // First comment posted right after a successful publish (YouTube and
+            // Instagram). Capped at Instagram's comment limit, the stricter of
+            // the two.
+            'platforms.*.meta.first_comment' => ['sometimes', 'nullable', 'string', 'max:2200'],
+
+            // Instagram / Facebook — place tag. Meta closed place search to
+            // third parties, so the ID is entered by hand; location_name is
+            // only for display in the editor.
+            'platforms.*.meta.location_id' => ['sometimes', 'nullable', 'string', 'max:64'],
+            'platforms.*.meta.location_name' => ['sometimes', 'nullable', 'string', 'max:200'],
+
+            // YouTube (title and category_id reuse the shared rules below)
+            'platforms.*.meta.tags' => ['sometimes', 'nullable', 'array', 'max:30'],
+            'platforms.*.meta.tags.*' => ['required', 'string', 'max:100'],
+            'platforms.*.meta.default_language' => ['sometimes', 'nullable', 'string', 'max:12'],
+            'platforms.*.meta.recording_location' => ['sometimes', 'nullable', 'array'],
+            'platforms.*.meta.recording_location.lat' => ['required_with:platforms.*.meta.recording_location', 'numeric', 'between:-90,90'],
+            'platforms.*.meta.recording_location.lng' => ['required_with:platforms.*.meta.recording_location', 'numeric', 'between:-180,180'],
+            'platforms.*.meta.recording_location.description' => ['sometimes', 'nullable', 'string', 'max:200'],
+
             'platforms.*.meta.board_id' => ['sometimes', 'nullable', 'string'],
             'platforms.*.meta.title' => ['sometimes', 'nullable', 'string', 'max:100'],
             'platforms.*.meta.link' => ['sometimes', 'nullable', 'url:http,https', 'max:2048'],
@@ -209,6 +229,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.title.max' => __('posts.form.pinterest.title_max'),
             'platforms.*.meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
             'platforms.*.meta.event.title.max' => __('posts.form.google_business.title_max'),
+            'platforms.*.meta.first_comment.max' => __('posts.form.first_comment.max'),
         ];
     }
 
@@ -225,6 +246,7 @@ class PostPlatformMetaRules
             'platforms.*.meta.link' => __('posts.form.pinterest.link'),
             'platforms.*.meta.event.title' => __('posts.form.google_business.event_title'),
             'platforms.*.meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+            'platforms.*.meta.first_comment' => __('posts.form.first_comment.label'),
         ];
     }
 
@@ -247,6 +269,8 @@ class PostPlatformMetaRules
             'Facebook, Bluesky, LinkedIn: link_preview (default true; false publishes a text post with a link without its preview card).',
             'LinkedIn (profile and page): document_title (≤300, the title shown on a PDF document post; defaults to the file name).',
             'Google Business Profile: topic_type STANDARD (default)|EVENT|OFFER; call_to_action {action_type: '.implode('|', array_column(CtaAction::cases(), 'value')).', url} (not on OFFER; url required unless NONE or CALL); event {title ≤'.TopicType::TITLE_MAX_LENGTH.', start_date, end_date (YYYY-MM-DD), start_time, end_time (HH:MM)} (required on EVENT and OFFER, the title being the offer title); offer {coupon_code, redeem_online_url, terms_conditions ≤5000} (OFFER only).',
+            'YouTube Shorts and Instagram: first_comment (≤2200, posted by the account right after a successful publish).',
+            'Instagram/Facebook: location_id (Facebook place ID) + location_name (display label). YouTube Shorts also: tags (string array, ≤30 of ≤100 chars), default_language (BCP-47), recording_location {lat, lng, description}.',
             'Telegram, Facebook reels and stories: no settings. Stories (Instagram and Facebook) publish no text.',
             'Threads of posts: thread_replies (list of up to '.ThreadReplies::MAX_REPLIES.' replies published under the post as a thread, each {text, media} where media is a list of up to 4 media items ({url}, {id} or {upload_token}, with optional meta.alt_text) for that reply alone; a plain string is a text-only reply) on Bluesky, Mastodon and X only; each reply needs text or media, its media follows the rules of a post on that network, and its text must fit the account limit (Bluesky 300, Mastodon 500 including the content warning, which every reply repeats, X 280 or 25000 for accounts with long posts).',
         ]);

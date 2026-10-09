@@ -41,6 +41,7 @@ export interface Channel {
     creatorInfo?: ChannelTikTokCreatorInfo | null;
     boards?: PinterestBoard[];
     boardsTruncated?: boolean;
+    contentLimit?: number | null;
 }
 
 export interface SidebarChannel {
