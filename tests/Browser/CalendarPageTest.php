@@ -553,18 +553,20 @@ test('the three days view shows three columns, and only the phone picker offers 
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
 
     $page->resize(1280, 900);
-    waitForCalendarTestId($page, 'calendar-view-trigger');
-    $page->assertSeeIn('@calendar-view-trigger', __('calendar.days'))
-        ->click('@calendar-view-trigger');
     waitForCalendarTestId($page, 'calendar-view-week');
-    $page->assertPresent('@calendar-view-month')
+    $page->assertVisible('@calendar-view-month')
         ->assertMissing('@calendar-view-days')
-        ->keys('@calendar-view-week', 'Escape');
-    waitForCalendarCondition($page, '!document.querySelector(\'[data-testid="calendar-view-week"]\')');
-    $page->click('@calendar-next');
+        ->assertScript('document.querySelector(\'[aria-current="page"][data-testid^="calendar-view-"]\')', null)
+        ->click('@calendar-next');
     waitForCalendarCondition($page, "new URLSearchParams(location.search).get('day') === '{$day->copy()->addDays(3)->format('Y-m-d')}'");
 
-    $page->assertMissing("@calendar-post-{$post->id}")->assertNoJavaScriptErrors();
+    $page->assertMissing("@calendar-post-{$post->id}")
+        ->click('@calendar-view-month');
+    $monthPath = parse_url(route('app.calendar', ['view' => 'month']), PHP_URL_PATH);
+    waitForCalendarCondition($page, "location.pathname === '{$monthPath}'");
+    waitForCalendarCondition($page, 'document.querySelector(\'[data-testid="calendar-view-month"]\')?.getAttribute(\'aria-current\') === \'page\'');
+
+    $page->assertNoJavaScriptErrors();
 });
 
 test('on a phone the month shows its weeks in columns with the posts of each day', function () {
