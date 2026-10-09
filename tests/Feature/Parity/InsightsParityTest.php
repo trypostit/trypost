@@ -286,11 +286,17 @@ test('the post metrics are the same on the web, the api and mcp', function () {
         'metrics' => ['reactions' => ['value' => 7, 'unit' => 'count', 'availability' => 'available']],
     ]);
 
-    $web = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post))
+    $web = null;
+    $this->actingAs($this->user)
+        ->get(route('app.posts.index', ['tab' => 'sent']))
         ->assertOk()
-        ->assertJsonPath('metrics.reactions.value', 7)
-        ->json();
+        ->assertInertia(function (Assert $page) use ($post, &$web): void {
+            $page->loadDeferredProps(function (Assert $reload) use ($post, &$web): void {
+                $reload->where('posts.data.0.id', $post->id)
+                    ->where('posts.data.0.metrics.metrics.reactions.value', 7);
+                $web = data_get($reload->toArray(), 'props.posts.data.0.metrics');
+            });
+        });
 
     auth()->forgetGuards();
     $api = $this->withHeaders(parityApi($this->token))

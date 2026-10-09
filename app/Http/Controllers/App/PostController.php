@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Actions\Analytics\ReadPublicationAnalytics;
 use App\Actions\Post\BuildCalendarPageProps;
 use App\Actions\Post\CreatePosts;
 use App\Actions\Post\DeletePost;
@@ -19,7 +18,6 @@ use App\Http\Requests\App\Post\StorePostRequest;
 use App\Http\Requests\App\Post\UpdatePostRequest;
 use App\Models\Post;
 use App\Support\PostStatusRules;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -134,13 +132,6 @@ class PostController extends Controller
 
         return redirect($this->publishPageReturnUrl($tab) ?? route('app.posts.index', $tab))
             ->with('created_post_ids', $posts->pluck('id')->all());
-    }
-
-    public function metrics(Request $request, Post $post): JsonResponse
-    {
-        $this->authorize('view', $post);
-
-        return response()->json(app(ReadPublicationAnalytics::class)->metricsFor($post));
     }
 
     public function edit(Request $request, Post $post): Response|RedirectResponse

@@ -2,9 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Post\CreatedVia;
-use App\Enums\Post\PublishStatus as Status;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -12,8 +10,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PublishPost;
-use App\Models\AnalyticsPublication;
-use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
 use App\Models\PostNote;
 use App\Models\SocialAccount;
@@ -24,7 +20,6 @@ use App\Support\LinkTlds;
 use App\Support\PostingSchedule;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
@@ -1167,169 +1162,6 @@ test('update post can sync multiple labels', function () {
     $post->refresh();
     expect($post->labels)->toHaveCount(2);
     expect($post->labels->pluck('id')->toArray())->toEqualCanonicalizing([$label2->id, $label3->id]);
-});
-
-test('post metrics returns unsupported when post not published', function () {
-    $post = Post::factory()->forAccount($this->socialAccount)->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
-        'publish_status' => Status::Pending,
-    ]);
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post));
-
-    $response->assertOk();
-    $response->assertJson(['unsupported' => true, 'reason' => 'not_published']);
-});
-
-test('post metrics returns 404 for post in another workspace', function () {
-    $otherWorkspace = Workspace::factory()->create();
-    $otherPost = Post::factory()->forAccount($this->socialAccount)->create([
-        'workspace_id' => $otherWorkspace->id,
-    ]);
-
-    $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $otherPost))
-        ->assertNotFound();
-});
-
-test('post metrics reads persisted X analytics without a provider request', function () {
-    $xAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'platform' => Platform::X,
-    ]);
-
-    $post = Post::factory()->forAccount($xAccount)->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'platform' => Platform::X,
-        'publish_status' => Status::Published,
-        'platform_post_id' => '1234567890',
-    ]);
-
-    $publication = AnalyticsPublication::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'social_account_id' => $xAccount->id,
-        'social_account_key' => $xAccount->id,
-        'post_id' => $post->id,
-        'platform' => Platform::X,
-        'network' => Platform::X->network(),
-        'remote_id' => '1234567890',
-    ]);
-    AnalyticsPublicationDailySnapshot::factory()->create([
-        'publication_id' => $publication->id,
-        'impressions_count' => 500,
-        'reactions_count' => 42,
-        'metrics' => ['impressions' => ['value' => 500, 'unit' => 'count', 'availability' => 'available']],
-    ]);
-    Http::fake();
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post));
-
-    $response->assertOk();
-    $response->assertJsonPath('available', true);
-    $response->assertJsonPath('metrics.impressions.value', 500);
-    $response->assertJsonPath('metrics.impressions.unit', 'count');
-    Http::assertNothingSent();
-});
-
-test('post metrics reads persisted TikTok analytics without a provider request', function () {
-    $tiktokAccount = SocialAccount::factory()->tiktok()->create([
-        'workspace_id' => $this->workspace->id,
-        'username' => 'tiktoker',
-        'token_expires_at' => now()->addDays(1),
-    ]);
-
-    $post = Post::factory()->forAccount($tiktokAccount)->tiktok()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'platform' => Platform::TikTok,
-        'publish_status' => Status::Published,
-        'platform_post_id' => '7685359243088103444',
-    ]);
-
-    $publication = AnalyticsPublication::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'social_account_id' => $tiktokAccount->id,
-        'social_account_key' => $tiktokAccount->id,
-        'post_id' => $post->id,
-        'platform' => Platform::TikTok,
-        'network' => Platform::TikTok->network(),
-        'remote_id' => '7685359243088103444',
-        'content_type' => PublicationContentType::Video,
-    ]);
-    AnalyticsPublicationDailySnapshot::factory()->create([
-        'publication_id' => $publication->id,
-        'views_count' => 220,
-        'reactions_count' => 11,
-        'metrics' => ['views' => ['value' => 220, 'unit' => 'count', 'availability' => 'available']],
-    ]);
-    Http::fake();
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post));
-
-    $response->assertOk();
-    $response->assertJsonPath('available', true);
-    $response->assertJsonPath('metrics.views.value', 220);
-    $response->assertJsonPath('metrics.views.unit', 'count');
-    Http::assertNothingSent();
-});
-
-test('post metrics excludes LinkedIn profile in V1', function () {
-    $linkedinAccount = SocialAccount::factory()->linkedin()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-    ]);
-
-    $post = Post::factory()->forAccount($linkedinAccount)->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'platform' => Platform::LinkedIn,
-        'content_type' => ContentType::LinkedInPost,
-        'publish_status' => Status::Published,
-        'platform_post_id' => 'urn:li:share:7503082467755646976',
-    ]);
-
-    Http::fake();
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post));
-
-    $response->assertOk();
-    $response->assertJsonPath('unsupported', true);
-    $response->assertJsonPath('reason', 'platform_not_supported');
-    Http::assertNothingSent();
-});
-
-test('post metrics excludes LinkedIn Page in V1', function () {
-    $pageAccount = SocialAccount::factory()->linkedinPage()->create([
-        'workspace_id' => $this->workspace->id,
-        'token_expires_at' => now()->addDay(),
-        'platform_user_id' => '99920311',
-    ]);
-
-    $post = Post::factory()->forAccount($pageAccount)->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'platform' => Platform::LinkedInPage,
-        'content_type' => ContentType::LinkedInPagePost,
-        'publish_status' => Status::Published,
-        'platform_post_id' => 'urn:li:ugcPost:7504988143797075969',
-    ]);
-
-    Http::fake();
-
-    $response = $this->actingAs($this->user)
-        ->getJson(route('app.posts.metrics', $post));
-
-    $response->assertOk();
-    $response->assertJsonPath('unsupported', true);
-    $response->assertJsonPath('reason', 'platform_not_supported');
-    Http::assertNothingSent();
 });
 
 test('the standalone post page no longer exists', function () {
