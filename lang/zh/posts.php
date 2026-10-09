@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => '频道 (:count)',
-        'collapse' => '隐藏频道',
-        'expand' => '显示频道',
     ],
     'approvals' => [
         'badge' => '审批',

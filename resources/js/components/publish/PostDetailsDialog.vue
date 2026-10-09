@@ -2,8 +2,6 @@
 import { useHttp } from '@inertiajs/vue3';
 import {
     IconExternalLink,
-    IconLayoutSidebarLeftCollapse,
-    IconLayoutSidebarLeftExpand,
     IconPencil,
     IconRepeat,
     IconSend,
@@ -70,16 +68,6 @@ const selectedId = ref(props.post.id);
 
 const selectSibling = (id: typeof selectedId.value): void => {
     selectedId.value = id;
-};
-
-const railCollapsed = ref(false);
-
-const collapseRail = (): void => {
-    railCollapsed.value = true;
-};
-
-const expandRail = (): void => {
-    railCollapsed.value = false;
 };
 
 const loadGroup = async (): Promise<void> => {
@@ -266,34 +254,23 @@ const siblingMoment = (sibling: PostCard): string | null => {
         <DialogContent
             class="gap-0 p-0 sm:overflow-hidden"
             :class="
-                isGrouped && !railCollapsed ? 'sm:max-w-4xl' : 'sm:max-w-xl'
+                isGrouped ? 'sm:max-w-4xl' : 'sm:max-w-xl'
             "
             :data-testid="`post-details-${testKey}`"
         >
             <div class="flex min-h-0 min-w-0 flex-col sm:max-h-[85dvh] sm:flex-row">
                 <aside
-                    v-if="showRail && !railCollapsed"
+                    v-if="showRail"
                     class="flex shrink-0 flex-col gap-2 border-b border-border p-4 sm:w-64 sm:overflow-y-auto sm:border-e sm:border-b-0"
                     :data-testid="`post-details-rail-${testKey}`"
                 >
-                    <div class="flex items-center justify-between gap-2">
-                        <p class="text-sm text-muted-foreground">
-                            {{
-                                $t('posts.group.channels', {
-                                    count: String(siblings.length),
-                                })
-                            }}
-                        </p>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            :aria-label="$t('posts.group.collapse')"
-                            :data-testid="`post-details-rail-collapse-${testKey}`"
-                            @click="collapseRail"
-                        >
-                            <IconLayoutSidebarLeftCollapse class="size-4" />
-                        </Button>
-                    </div>
+                    <p class="text-sm text-muted-foreground">
+                        {{
+                            $t('posts.group.channels', {
+                                count: String(siblings.length),
+                            })
+                        }}
+                    </p>
                     <button
                         v-for="sibling in siblings"
                         :key="sibling.id"
@@ -357,19 +334,7 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     :data-testid="`post-details-body-${testKey}`"
                 >
                     <DialogHeader class="pe-8">
-                        <div class="flex items-center gap-2">
-                            <Button
-                                v-if="showRail && railCollapsed"
-                                variant="ghost"
-                                size="icon"
-                                :aria-label="$t('posts.group.expand')"
-                                :data-testid="`post-details-rail-expand-${testKey}`"
-                                @click="expandRail"
-                            >
-                                <IconLayoutSidebarLeftExpand class="size-4" />
-                            </Button>
-                            <DialogTitle>{{ $t('posts.show.title') }}</DialogTitle>
-                        </div>
+                        <DialogTitle>{{ $t('posts.show.title') }}</DialogTitle>
                         <DialogDescription
                             class="flex flex-wrap items-center gap-2"
                             as="div"

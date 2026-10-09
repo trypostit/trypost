@@ -982,8 +982,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanallar (:count)',
-        'collapse' => 'Kanalları gizle',
-        'expand' => 'Kanalları göster',
     ],
     'approvals' => [
         'badge' => 'Onay',

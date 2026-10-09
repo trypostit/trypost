@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'Κανάλια (:count)',
-        'collapse' => 'Απόκρυψη καναλιών',
-        'expand' => 'Εμφάνιση καναλιών',
     ],
     'approvals' => [
         'badge' => 'Προς έγκριση',

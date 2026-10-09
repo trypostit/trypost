@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanalen (:count)',
-        'collapse' => 'Kanalen verbergen',
-        'expand' => 'Kanalen tonen',
     ],
     'approvals' => [
         'badge' => 'Goedkeuring',

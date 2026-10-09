@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'Канали (:count)',
-        'collapse' => 'Сховати канали',
-        'expand' => 'Показати канали',
     ],
     'approvals' => [
         'badge' => 'Схвалення',

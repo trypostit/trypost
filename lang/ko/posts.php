@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => '채널 (:count)',
-        'collapse' => '채널 숨기기',
-        'expand' => '채널 보기',
     ],
     'approvals' => [
         'badge' => '승인',

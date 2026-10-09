@@ -980,8 +980,6 @@ return [
     ],
     'group' => [
         'channels' => 'チャンネル (:count)',
-        'collapse' => 'チャンネルを隠す',
-        'expand' => 'チャンネルを表示',
     ],
     'approvals' => [
         'badge' => '承認',

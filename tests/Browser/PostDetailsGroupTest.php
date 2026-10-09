@@ -100,13 +100,8 @@ test('post details lists the posts created together and switches between them', 
     $page->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.draft'))
         ->assertMissing("@post-details-publish-now-{$draft->id}");
 
-    $page->click("@post-details-rail-collapse-{$first->id}");
-    waitForDetailsGroupTestId($page, "post-details-rail-expand-{$first->id}");
-    $page->assertMissing("@post-details-rail-{$first->id}");
-
-    $page->click("@post-details-rail-expand-{$first->id}");
-    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
     $page->assertVisible("@post-details-rail-{$first->id}")
+        ->assertMissing("@post-details-rail-collapse-{$first->id}")
         ->assertNoJavaScriptErrors();
 });
 
@@ -121,7 +116,6 @@ test('post details of a post created alone has no rail', function () {
     $page->assertSeeIn("@post-details-{$post->id}", 'Grouped details post')
         ->assertMissing("@post-details-rail-{$post->id}")
         ->assertMissing("@post-details-rail-loading-{$post->id}")
-        ->assertMissing("@post-details-rail-expand-{$post->id}")
         ->assertNoJavaScriptErrors();
 });
 

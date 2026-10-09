@@ -982,8 +982,6 @@ return [
     ],
     'group' => [
         'channels' => 'Kanäle (:count)',
-        'collapse' => 'Kanäle ausblenden',
-        'expand' => 'Kanäle anzeigen',
     ],
     'approvals' => [
         'badge' => 'Freigabe',
