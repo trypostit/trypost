@@ -6,8 +6,6 @@ use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Enums\Analytics\PublicationContentType;
-use App\Enums\Post\PublishStatus as PlatformStatus;
-use App\Enums\Post\Status;
 use App\Events\PostDeleted;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -16,7 +14,6 @@ use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -39,40 +36,37 @@ beforeEach(function () {
 });
 
 /**
- * @return array{0: Post, 1: PostPlatform, 2: Media}
+ * @return array{0: Post, 1: Media}
  */
-function channelPost(SocialAccount $account, Post $post, ?PlatformStatus $status = null): array
+function channelPost(SocialAccount $account, ?string $state = null): array
 {
-    $target = PostPlatform::factory()->instagram()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => $status ?? PlatformStatus::Pending,
-        'platform_post_id' => $status === PlatformStatus::Published ? fake()->uuid() : null,
-    ]);
+    $post = Post::factory()
+        ->forAccount($account)
+        ->when($state, fn ($factory) => $factory->{$state}())
+        ->create();
     $media = Media::factory()->ownedByPost($post)->create();
     Storage::put($media->path, 'bytes');
 
-    return [$post, $target, $media];
+    return [$post, $media];
 }
 
 test('disconnecting deletes every post of the channel, whatever its status or origin, with its media', function () {
     Event::fake([PostDeleted::class]);
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    $in = ['workspace_id' => $this->workspace->id];
 
     $posts = collect([
-        channelPost($account, Post::factory()->draft()->create($in)),
-        channelPost($account, Post::factory()->scheduled()->create($in)),
-        channelPost($account, Post::factory()->pendingApproval()->create($in)),
-        channelPost($account, Post::factory()->failed()->create($in), PlatformStatus::Failed),
-        channelPost($account, Post::factory()->published()->create($in), PlatformStatus::Published),
-        channelPost($account, Post::factory()->imported()->create($in), PlatformStatus::Published),
+        channelPost($account, 'draft'),
+        channelPost($account, 'scheduled'),
+        channelPost($account, 'pendingApproval'),
+        channelPost($account, 'failed'),
+        channelPost($account, 'published'),
+        channelPost($account, 'imported'),
     ]);
-    [, $importedTarget] = $posts->last();
+    [$importedPost] = $posts->last();
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $this->workspace->id,
         'social_account_id' => $account->id,
-        'post_platform_id' => $importedTarget->id,
+        'post_id' => $importedPost->id,
     ]);
     $snapshot = AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
 
@@ -80,13 +74,13 @@ test('disconnecting deletes every post of the channel, whatever its status or or
 
     expect(SocialAccount::query()->find($account->id))->toBeNull()
         ->and(Post::query()->whereKey($posts->map(fn (array $row): string => $row[0]->id))->count())->toBe(0)
-        ->and(PostPlatform::query()->whereNull('social_account_id')->count())->toBe(0)
-        ->and(Media::query()->whereKey($posts->map(fn (array $row): string => $row[2]->id))->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBeNull()
+        ->and(Post::query()->whereNull('social_account_id')->whereNotNull('platform')->count())->toBe(0)
+        ->and(Media::query()->whereKey($posts->map(fn (array $row): string => $row[1]->id))->count())->toBe(0)
+        ->and($publication->fresh()->post_id)->toBeNull()
         ->and($publication->fresh()->post_dismissed_at)->toBeNull()
         ->and(AnalyticsPublicationDailySnapshot::query()->whereKey($snapshot->id)->exists())->toBeTrue();
 
-    $posts->each(fn (array $row) => Storage::assertMissing($row[2]->path));
+    $posts->each(fn (array $row) => Storage::assertMissing($row[1]->path));
     Event::assertNotDispatched(PostDeleted::class);
     Queue::assertNotPushed(SendNotification::class);
 });
@@ -96,52 +90,24 @@ test('disconnecting leaves other channels and other workspaces alone', function 
     $sibling = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
     $elsewhere = SocialAccount::factory()->instagram()->create();
 
-    [$gone] = channelPost($account, Post::factory()->published()->create(['workspace_id' => $this->workspace->id]), PlatformStatus::Published);
-    [$siblingPost] = channelPost($sibling, Post::factory()->published()->create(['workspace_id' => $this->workspace->id]), PlatformStatus::Published);
-    [$otherWorkspacePost] = channelPost($elsewhere, Post::factory()->published()->create(['workspace_id' => $elsewhere->workspace_id]), PlatformStatus::Published);
+    [$gone] = channelPost($account, 'published');
+    [$siblingPost] = channelPost($sibling, 'published');
+    [$otherWorkspacePost] = channelPost($elsewhere, 'published');
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     expect(Post::query()->whereKey($gone->id)->exists())->toBeFalse()
         ->and(Post::query()->whereKey($siblingPost->id)->exists())->toBeTrue()
         ->and(Post::query()->whereKey($otherWorkspacePost->id)->exists())->toBeTrue()
-        ->and($siblingPost->postPlatforms()->sole()->social_account_id)->toBe($sibling->id);
-});
-
-test('a legacy post on several channels keeps its other channels and settles once the disconnected one is gone', function () {
-    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
-
-    $settled = Post::factory()->published()->create(['workspace_id' => $this->workspace->id]);
-    channelPost($account, $settled, PlatformStatus::Published);
-    $kept = PostPlatform::factory()->published()->create(['post_id' => $settled->id, 'social_account_id' => $other->id]);
-
-    $inFlight = Post::factory()->create(['workspace_id' => $this->workspace->id, 'status' => Status::Publishing]);
-    PostPlatform::factory()->instagram()->create(['post_id' => $inFlight->id, 'social_account_id' => $account->id, 'status' => PlatformStatus::Publishing]);
-    PostPlatform::factory()->published()->create(['post_id' => $inFlight->id, 'social_account_id' => $other->id]);
-
-    $placeholderOnly = Post::factory()->published()->create(['workspace_id' => $this->workspace->id]);
-    channelPost($account, $placeholderOnly, PlatformStatus::Published);
-    PostPlatform::factory()->disabled()->create(['post_id' => $placeholderOnly->id, 'social_account_id' => $other->id]);
-
-    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
-
-    expect($settled->fresh())->not->toBeNull()
-        ->and($settled->postPlatforms()->pluck('id')->all())->toBe([$kept->id])
-        ->and($inFlight->fresh()->status)->toBe(Status::Published)
-        ->and($inFlight->postPlatforms()->count())->toBe(1)
-        ->and(Post::query()->whereKey($placeholderOnly->id)->exists())->toBeFalse();
+        ->and($siblingPost->fresh()->social_account_id)->toBe($sibling->id);
 });
 
 test('disconnecting prunes the google business image of a post still waiting for review', function () {
     $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'status' => Status::Publishing]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
+    $post = Post::factory()->forAccount($account)->pendingReview()->create([
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($post);
     Storage::put($path, 'image');
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
@@ -167,7 +133,7 @@ test('reconnecting the same identity imports its posts again without duplicates'
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account));
 
     expect(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->fresh()->post_platform_id)->toBeNull();
+        ->and($publication->fresh()->post_id)->toBeNull();
 
     $reconnected = SocialAccount::factory()->instagram()->create([
         'workspace_id' => $this->workspace->id,
@@ -180,35 +146,31 @@ test('reconnecting the same identity imports its posts again without duplicates'
     $imported = Post::query()->imported()->sole();
 
     expect(AnalyticsPublication::query()->count())->toBe(1)
-        ->and($imported->postPlatforms()->sole()->social_account_id)->toBe($reconnected->id)
-        ->and($publication->fresh()->post_platform_id)->toBe($imported->postPlatforms()->sole()->id);
+        ->and($imported->social_account_id)->toBe($reconnected->id)
+        ->and($publication->fresh()->post_id)->toBe($imported->id);
 });
 
 test('a disconnect that fails to delete the channel keeps its posts, media and images', function () {
     $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id]);
-    $target = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->scheduled()->create();
     $media = Media::factory()->ownedByPost($post)->create();
     Storage::put($media->path, 'bytes');
-    Storage::put(GoogleBusinessDerivativeCleaner::pathFor($target->id), 'jpeg');
+    Storage::put(GoogleBusinessDerivativeCleaner::pathFor($post), 'jpeg');
     Event::listen('eloquent.deleting: '.SocialAccount::class, fn () => throw new RuntimeException('delete failed'));
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertServerError();
 
     expect(SocialAccount::query()->find($account->id))->not->toBeNull()
         ->and(Post::query()->find($post->id))->not->toBeNull()
-        ->and(PostPlatform::query()->find($target->id))->not->toBeNull()
+        ->and($post->fresh()->social_account_id)->toBe($account->id)
         ->and(Media::query()->find($media->id))->not->toBeNull();
     Storage::assertExists($media->path);
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($target->id));
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($post));
 });
 
 test('a disconnect waits for the channel queue lock and changes nothing while a save holds it', function () {
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    [$post] = channelPost($account, Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id]));
+    [$post] = channelPost($account, 'scheduled');
     $lock = Cache::lock("queue:{$account->id}", 10);
     expect($lock->get())->toBeTrue();
 

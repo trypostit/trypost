@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\GoogleBusiness\LocalPostState;
 use App\Enums\GoogleBusiness\TopicType;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Exceptions\Social\GoogleBusinessPublishException;
 use App\Models\Post;
@@ -63,7 +62,7 @@ test('publish keeps the jpeg while Google is still reviewing', function (string 
     $result = $this->publisher->publish($this->post->fresh());
 
     expect($result['state'])->toBe($recorded);
-    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->post->id));
+    Storage::assertExists(GoogleBusinessDerivativeCleaner::pathFor($this->post));
 })->with([
     [LocalPostState::Processing->value, LocalPostState::Processing->value],
     [LocalPostState::Scheduled->value, LocalPostState::Scheduled->value],

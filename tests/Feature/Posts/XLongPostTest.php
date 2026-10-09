@@ -3,10 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -53,13 +51,10 @@ test('a premium x account publishes a long post', function () {
         'meta' => ['x_subscription_type' => 'Premium'],
         'token_expires_at' => now()->addHours(2),
     ]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => str_repeat('a', 2000)]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::X, 'content_type' => ContentType::XPost,
-    ]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create(['user_id' => $this->user->id, 'content' => str_repeat('a', 2000)]);
     Http::fake([config('trypost.platforms.x.api').'/tweets' => Http::response(['data' => ['id' => '99']], 201)]);
 
-    expect((new XPublisher)->publish($postPlatform)['id'])->toBe('99');
+    expect((new XPublisher)->publish($post)['id'])->toBe('99');
     Http::assertSent(fn (Request $request): bool => mb_strlen((string) data_get($request->data(), 'text')) === 2000);
 });
 
@@ -69,13 +64,10 @@ test('an account that lost premium fails the long post at publish', function () 
         'meta' => ['x_subscription_type' => 'None'],
         'token_expires_at' => now()->addHours(2),
     ]);
-    $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => str_repeat('a', 2000)]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::X, 'content_type' => ContentType::XPost,
-    ]);
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->create(['user_id' => $this->user->id, 'content' => str_repeat('a', 2000)]);
     Http::fake();
 
-    expect(fn () => (new XPublisher)->publish($postPlatform))
+    expect(fn () => (new XPublisher)->publish($post))
         ->toThrow(ContentLimitException::class, __('posts.errors.content_too_long', ['platform' => 'X', 'max' => 280, 'provided' => 2000]));
     Http::assertNothingSent();
 });
@@ -87,7 +79,8 @@ test('post content accepts up to the long post size on the api', function () {
     $this->withHeaders(['Authorization' => "Bearer {$result['plain_token']}"])
         ->postJson(route('api.posts.store'), [
             'content' => str_repeat('a', 20000),
-            'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::XPost->value]],
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPost->value,
         ])->assertCreated();
 });
 
@@ -108,7 +101,8 @@ test('the post content cap counts the text a reader sees, not the editor markup'
     $response = $this->withHeaders(['Authorization' => "Bearer {$result['plain_token']}"])
         ->postJson(route('api.posts.store'), [
             'content' => $content,
-            'platforms' => [['social_account_id' => $account->id, 'content_type' => ContentType::XPost->value]],
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::XPost->value,
         ]);
 
     $accepted ? $response->assertCreated() : $response->assertUnprocessable()->assertJsonValidationErrors(['content']);

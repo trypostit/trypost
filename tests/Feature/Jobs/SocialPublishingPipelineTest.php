@@ -15,7 +15,6 @@ use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\FacebookPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\InstagramPublicationCollector;
@@ -57,19 +56,19 @@ beforeEach(function () {
     $this->workerOptions = new WorkerOptions(sleep: 0, maxTries: 1);
 });
 
-function scheduledPipelineTarget(Platform $platform): PostPlatform
+function scheduledPipelineTarget(Platform $platform): Post
 {
     $account = SocialAccount::factory()->create([
         'platform' => $platform,
         'scopes' => $platform->requiredPublishScopes(),
     ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $account->workspace_id,
+    $contentType = ContentType::defaultFor($platform);
+    $post = Post::factory()->forAccount($account, $contentType)->scheduled()->create([
         'user_id' => $account->workspace->user_id,
         'scheduled_at' => now()->subMinute(),
         'content' => 'Publishing pipeline regression',
+        'meta' => $platform === Platform::TikTok ? ['privacy_level' => PrivacyLevel::SelfOnly->value] : [],
     ]);
-    $contentType = ContentType::defaultFor($platform);
 
     if ($contentType->requiresMedia()) {
         $factory = Media::factory()->ownedByPost($post)->stored();
@@ -80,21 +79,15 @@ function scheduledPipelineTarget(Platform $platform): PostPlatform
         $post->update(['media' => [$media->toArray()]]);
     }
 
-    return PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $platform,
-        'content_type' => $contentType,
-        'meta' => $platform === Platform::TikTok ? ['privacy_level' => PrivacyLevel::SelfOnly->value] : [],
-    ]);
+    return $post->fresh();
 }
 
 test('a published facebook photo is not imported again when publishing returned only the photo id', function () {
     $target = scheduledPipelineTarget(Platform::Facebook);
     $account = $target->socialAccount;
     $account->update(['scopes' => [...$account->scopes, 'pages_read_engagement']]);
-    $media = Media::factory()->ownedByPost($target->post)->stored()->create(['size' => 100000]);
-    $target->post->update(['media' => [$media->toArray()]]);
+    $media = Media::factory()->ownedByPost($target)->stored()->create(['size' => 100000]);
+    $target->update(['media' => [$media->toArray()]]);
     $base = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
@@ -102,7 +95,7 @@ test('a published facebook photo is not imported again when publishing returned 
         "{$base}/{$account->platform_user_id}/published_posts*" => Http::response(['data' => [[
             'id' => 'page_post-123',
             'status_type' => 'added_photos',
-            'message' => $target->post->content,
+            'message' => $target->content,
             'created_time' => now()->toIso8601String(),
             'attachments' => ['data' => [[
                 'type' => 'photo',
@@ -114,7 +107,7 @@ test('a published facebook photo is not imported again when publishing returned 
 
     (new PublishToSocialPlatform($target))->handle();
 
-    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+    expect($target->refresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($target->platform_post_id)->toBe('photo-123');
 
     $page = app(FacebookPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
@@ -122,7 +115,7 @@ test('a published facebook photo is not imported again when publishing returned 
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($target->post->refresh()->status)->toBe(PostStatus::Published);
+        ->and($target->refresh()->status)->toBe(PostStatus::Published);
     Http::assertSentCount(2);
     Exceptions::assertNothingReported();
 });
@@ -141,14 +134,14 @@ test('a published threads post keeps its identity through a failed permalink loo
         "{$base}/{$account->platform_user_id}/threads?*" => Http::response(['data' => [[
             'id' => 'post-123',
             'media_type' => 'TEXT_POST',
-            'text' => $target->post->content,
+            'text' => $target->content,
             'timestamp' => now()->toIso8601String(),
         ]]]),
     ]);
 
     (new PublishToSocialPlatform($target))->handle();
 
-    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+    expect($target->refresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($target->platform_post_id)->toBe('post-123')
         ->and($target->platform_url)->toBeNull();
 
@@ -157,7 +150,7 @@ test('a published threads post keeps its identity through a failed permalink loo
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($target->post->refresh()->status)->toBe(PostStatus::Published);
+        ->and($target->refresh()->status)->toBe(PostStatus::Published);
     expect(Http::recorded(fn (Request $request): bool => $request->method() === 'POST'
         && Str::endsWith($request->url(), '/threads_publish')))->toHaveCount(1);
     Exceptions::assertNothingReported();
@@ -165,7 +158,7 @@ test('a published threads post keeps its identity through a failed permalink loo
 
 test('instagram does not duplicate a captionless publication after losing its media id', function (Platform $platform, ContentType $contentType) {
     $target = scheduledPipelineTarget($platform);
-    $target->post->update(['content' => '']);
+    $target->update(['content' => '']);
     $target->update([
         'content_type' => $contentType,
         'error_context' => ['instagram_workflow' => [
@@ -193,23 +186,23 @@ test('instagram does not duplicate a captionless publication after losing its me
     ]);
 
     (new PublishToSocialPlatform($target))->handle();
-    expect($target->refresh()->status)->toBe(PlatformStatus::Retrying);
+    expect($target->refresh()->publish_status)->toBe(PlatformStatus::Retrying);
 
     $page = app(InstagramPublicationCollector::class)->page($account, null, now()->subDay()->toImmutable());
     expect($page->publications)->toHaveCount(1);
     $publication = app(UpsertAnalyticsPublication::class)->external($account, $page->publications[0]);
 
     expect(ImportExternalPosts::execute($account))->toBe([])
-        ->and($publication->refresh()->post_platform_id)->toBeNull();
+        ->and($publication->refresh()->post_id)->toBeNull();
 
     $this->travel(61)->seconds();
     (new PublishToSocialPlatform($target))->handle();
-    expect($target->refresh()->status)->toBe(PlatformStatus::Published)
+    expect($target->refresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($target->platform_post_id)->toBe('container-123');
 
     expect(ImportExternalPosts::execute($account))->toBe([])
         ->and(Post::query()->imported()->count())->toBe(0)
-        ->and($publication->refresh()->post_platform_id)->toBeNull()
+        ->and($publication->refresh()->post_id)->toBeNull()
         ->and($target->refresh()->platform_post_id)->toBe('container-123');
 })->with([
     'Instagram feed' => [Platform::Instagram, ContentType::InstagramFeed],
@@ -223,7 +216,7 @@ test('each network queue consumes scheduled posts and delayed retries through th
     $broken = scheduledPipelineTarget($platform);
     $retryCalls = 0;
     $publisher = Mockery::mock($publisherClass);
-    $publisher->shouldReceive('publish')->times(4)->andReturnUsing(function (PostPlatform $target) use ($retrying, $broken, &$retryCalls): array {
+    $publisher->shouldReceive('publish')->times(4)->andReturnUsing(function (Post $target) use ($retrying, $broken, &$retryCalls): array {
         if ($target->is($retrying) && ++$retryCalls === 1) {
             throw new PlatformUnavailableException('Temporary outage');
         }
@@ -252,8 +245,8 @@ test('each network queue consumes scheduled posts and delayed retries through th
         $this->publishingWorker->runNextJob('database', $platform->queue(), $this->workerOptions);
     }
 
-    expect($retrying->refresh()->status)->toBe(PlatformStatus::Retrying)
-        ->and($broken->refresh()->status)->toBe(PlatformStatus::Failed)
+    expect($retrying->refresh()->publish_status)->toBe(PlatformStatus::Retrying)
+        ->and($broken->refresh()->publish_status)->toBe(PlatformStatus::Failed)
         ->and($this->publishingQueue->pendingSize($platform->queue()))->toBe(0)
         ->and($this->publishingQueue->delayedSize($platform->queue()))->toBe(1);
 
@@ -262,14 +255,14 @@ test('each network queue consumes scheduled posts and delayed retries through th
     $this->publishingWorker->runNextJob('database', 'default', $this->workerOptions);
     $this->publishingWorker->runNextJob('database', $platform->queue(), $this->workerOptions);
 
-    expect($healthy->refresh()->status)->toBe(PlatformStatus::Published)
-        ->and($healthy->post->status)->toBe(PostStatus::Published);
+    expect($healthy->refresh()->publish_status)->toBe(PlatformStatus::Published)
+        ->and($healthy->status)->toBe(PostStatus::Published);
 
     $this->travel(10)->minutes();
     $this->publishingWorker->runNextJob('database', $platform->queue(), $this->workerOptions);
 
-    expect($retrying->refresh()->status)->toBe(PlatformStatus::Published)
-        ->and($retrying->post->status)->toBe(PostStatus::Published)
+    expect($retrying->refresh()->publish_status)->toBe(PlatformStatus::Published)
+        ->and($retrying->status)->toBe(PostStatus::Published)
         ->and($this->publishingQueue->size($platform->queue()))->toBe(0);
     $this->assertDatabaseCount('failed_jobs', 0);
 })->with([
@@ -326,18 +319,18 @@ test('the TikTok worker publishes through the real publisher and token refresh f
     $this->publishingWorker->runNextJob('database', 'default', $this->workerOptions);
     $this->publishingWorker->runNextJob('database', Platform::TikTok->queue(), $this->workerOptions);
 
-    expect($healthy->refresh()->status)->toBe(PlatformStatus::Published)
+    expect($healthy->refresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($healthy->socialAccount->status)->toBe(AccountStatus::Connected)
-        ->and($healthy->post->status)->toBe(PostStatus::Published);
+        ->and($healthy->status)->toBe(PostStatus::Published);
 
     if ($scenario === 'temporary refresh') {
-        expect($affected->refresh()->status)->toBe(PlatformStatus::Retrying)
+        expect($affected->refresh()->publish_status)->toBe(PlatformStatus::Retrying)
             ->and($affected->socialAccount->status)->toBe(AccountStatus::Connected);
         $this->travel(10)->minutes();
         $this->publishingWorker->runNextJob('database', Platform::TikTok->queue(), $this->workerOptions);
     }
 
-    expect($affected->refresh()->status)->toBe($scenario === 'dead refresh' ? PlatformStatus::Failed : PlatformStatus::Published)
+    expect($affected->refresh()->publish_status)->toBe($scenario === 'dead refresh' ? PlatformStatus::Failed : PlatformStatus::Published)
         ->and($affected->socialAccount->status)->toBe($scenario === 'dead refresh' ? AccountStatus::TokenExpired : AccountStatus::Connected)
         ->and($this->publishingQueue->size(Platform::TikTok->queue()))->toBe(0);
     expect(Http::recorded(fn (Request $request) => str_ends_with($request->url(), '/post/publish/video/init/')))

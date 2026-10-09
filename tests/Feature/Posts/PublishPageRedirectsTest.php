@@ -7,7 +7,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -27,20 +26,11 @@ beforeEach(function () {
 
 function publishRedirectPost(SocialAccount $channel, PostStatus $status = PostStatus::Draft): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create([
         'user_id' => $channel->workspace->user_id,
         'status' => $status,
         'content' => 'Caption',
     ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-    ]);
-
-    return $post;
 }
 
 /**
@@ -51,9 +41,7 @@ function publishRedirectUpdatePayload(Post $post, string $status): array
     return [
         'status' => $status,
         'content' => 'Edited caption',
-        'platforms' => [
-            ['id' => $post->postPlatforms->first()->id, 'content_type' => ContentType::LinkedInPost->value],
-        ],
+        'content_type' => ContentType::LinkedInPost->value,
         ...($status === 'scheduled' ? ['scheduled_at' => now()->addDay()->toIso8601String()] : []),
     ];
 }

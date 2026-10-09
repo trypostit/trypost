@@ -14,7 +14,6 @@ use App\Mcp\Tools\Post\RequestMediaUploadTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Services\Media\MediaOptimizer;
@@ -84,16 +83,7 @@ function mediaFlowScheduled(): string
 
 function mediaFlowPost(object $test, SocialAccount $account, ContentType $contentType, PostStatus $status = PostStatus::Draft): Post
 {
-    $post = Post::factory()->create(['workspace_id' => $test->workspace->id, 'user_id' => $test->user->id, 'status' => $status]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
-        'enabled' => true,
-    ]);
-
-    return $post;
+    return Post::factory()->forAccount($account, $contentType)->create(['user_id' => $test->user->id, 'status' => $status]);
 }
 
 /**
@@ -119,7 +109,7 @@ test('an agent uploads a file through the signed url, schedules an x post with i
         'media' => [['upload_token' => $token, 'alt' => 'A single pixel']],
         'status' => 'scheduled',
         'scheduled_at' => mediaFlowScheduled(),
-        'platforms' => [['social_account_id' => $this->x->id]],
+        'social_account_id' => $this->x->id,
     ])->assertOk();
 
     $post = Post::query()->sole();
@@ -148,7 +138,7 @@ test('an agent uploads a file through the signed url, schedules an x post with i
         default => Http::response('', 404),
     });
 
-    (new XPublisher)->publish($post->postPlatforms()->sole());
+    (new XPublisher)->publish($post);
 
     Http::assertSent(fn (Request $request): bool => $request->url() === data_get($item, 'url'));
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/media/metadata')
@@ -169,7 +159,7 @@ test('a heic photo sent to the signed upload url reaches the post as a jpeg', fu
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'From the phone',
         'media' => [['upload_token' => $token]],
-        'platforms' => [['social_account_id' => $this->instagram->id]],
+        'social_account_id' => $this->instagram->id,
     ])->assertOk();
 
     $item = data_get(Post::query()->sole()->media, '0');
@@ -189,7 +179,8 @@ test('carousel files keep the order the agent gives them', function () {
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Carousel',
         'media' => array_map(fn (string $token): array => ['upload_token' => $token], $tokens),
-        'platforms' => [['social_account_id' => $this->instagram->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'social_account_id' => $this->instagram->id,
+        'content_type' => ContentType::InstagramFeed->value,
     ])->assertOk();
 
     expect(array_column(Post::query()->sole()->media, 'original_filename'))->toBe(['first.png', 'second.png', 'third.png']);
@@ -201,7 +192,8 @@ test('a reply file by upload token is checked against the network at save', func
         'content' => 'Root',
         'status' => 'scheduled',
         'scheduled_at' => mediaFlowScheduled(),
-        'platforms' => [['social_account_id' => $this->x->id, 'meta' => ['thread_replies' => [['text' => 'Reply', 'media' => [['upload_token' => $token]]]]]]],
+        'social_account_id' => $this->x->id,
+        'meta' => ['thread_replies' => [['text' => 'Reply', 'media' => [['upload_token' => $token]]]]],
     ];
     $message = __('posts.form.warnings.no_document_allowed');
 
@@ -239,11 +231,12 @@ test('a reply image by upload token is accepted, owned by the post and stored wh
         'content' => 'Root',
         'status' => 'scheduled',
         'scheduled_at' => mediaFlowScheduled(),
-        'platforms' => [['social_account_id' => $this->x->id, 'meta' => ['thread_replies' => [['text' => 'Reply', 'media' => [['upload_token' => $token]]]]]]],
+        'social_account_id' => $this->x->id,
+        'meta' => ['thread_replies' => [['text' => 'Reply', 'media' => [['upload_token' => $token]]]]],
     ])->assertOk();
 
     $post = Post::query()->sole();
-    $reply = data_get($post->postPlatforms()->sole()->meta, 'thread_replies.0.media.0');
+    $reply = data_get($post->meta, 'thread_replies.0.media.0');
     $row = Media::query()->sole();
 
     expect(data_get($reply, 'type'))->toBe('image')
@@ -261,7 +254,7 @@ test('a member who needs approval schedules a post with an uploaded file and it 
         'media' => [['upload_token' => $token]],
         'status' => 'scheduled',
         'scheduled_at' => mediaFlowScheduled(),
-        'platforms' => [['social_account_id' => $this->linkedin->id]],
+        'social_account_id' => $this->linkedin->id,
     ])->assertOk();
 
     $post = Post::query()->sole();
@@ -308,7 +301,7 @@ test('media null is refused and an empty list removes every file', function (str
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Root',
         'media' => [['upload_token' => $token]],
-        'platforms' => [['social_account_id' => $this->linkedin->id]],
+        'social_account_id' => $this->linkedin->id,
     ])->assertOk();
     $post = Post::query()->sole();
 
@@ -339,13 +332,13 @@ test('a url that cannot be hosted says why, on create and on attach', function (
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'x',
         'media' => [['url' => 'https://example.com/huge.png']],
-        'platforms' => [['social_account_id' => $this->linkedin->id]],
+        'social_account_id' => $this->linkedin->id,
     ])->assertHasErrors([__('posts.composer.media_sources.errors.too_large')]);
 
     $this->postJson(route('api.posts.store'), [
         'content' => 'x',
         'media' => [['url' => 'https://example.com/page.html']],
-        'platforms' => [['social_account_id' => $this->linkedin->id]],
+        'social_account_id' => $this->linkedin->id,
     ], $this->headers)->assertJsonValidationErrors(['media.0.url' => __('posts.composer.media_sources.errors.type_not_allowed')]);
 
     $post = mediaFlowPost($this, $this->linkedin, ContentType::LinkedInPost);

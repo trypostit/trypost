@@ -25,7 +25,6 @@ use App\Jobs\SendNotification;
 use App\Mail\PostApprovalRequested;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -102,7 +101,7 @@ test('it creates one post per destination and publishes each', function () {
             ->and($post->status)->toBe(PostStatus::Scheduled)
             ->and($post->schedule_mode)->toBe(ScheduleMode::Custom)
             ->and($post->media)->toHaveCount(1)
-            ->and($post->postPlatforms()->enabled()->count())->toBe(1);
+            ->and($post->social_account_id)->not->toBeNull();
     }
 
     expect(Post::query()->due()->whereIn('id', $posts->pluck('id'))->count())->toBe(2);
@@ -127,7 +126,7 @@ test('the video is downloaded once and every post owns its own copy', function (
         ->and($paths->unique())->toHaveCount(2);
 });
 
-test('destination meta is carried onto the post platform', function () {
+test('destination meta is carried onto the post', function () {
     Bus::fake([PublishPost::class]);
     fakeVideoDownload();
 
@@ -135,13 +134,12 @@ test('destination meta is carried onto the post platform', function () {
 
     processItem($item);
 
-    $tiktokPlatform = PostPlatform::query()
-        ->enabled()
-        ->whereHas('post', fn ($query) => $query->where('repurpose_item_id', $item->id))
+    $tiktokPost = Post::query()
+        ->where('repurpose_item_id', $item->id)
         ->where('platform', Platform::TikTok)
         ->sole();
 
-    expect($tiktokPlatform->meta)->toEqual(['privacy_level' => PrivacyLevel::PublicToEveryone->value]);
+    expect($tiktokPost->meta)->toEqual(['privacy_level' => PrivacyLevel::PublicToEveryone->value]);
 });
 
 test('a caption over a destination limit is shortened for that post only', function () {
@@ -153,12 +151,10 @@ test('a caption over a destination limit is shortened for that post only', funct
 
     processItem($item, $long);
 
-    $captions = PostPlatform::query()
-        ->enabled()
-        ->whereHas('post', fn ($query) => $query->where('repurpose_item_id', $item->id))
-        ->with('post')
+    $captions = Post::query()
+        ->where('repurpose_item_id', $item->id)
         ->get()
-        ->mapWithKeys(fn (PostPlatform $platform) => [$platform->platform->value => $platform->post->content]);
+        ->mapWithKeys(fn (Post $post) => [$post->platform->value => $post->content]);
 
     expect(Platform::TikTok->contentOverflow($captions[Platform::TikTok->value]))->toBe(0)
         ->and(Platform::YouTube->contentOverflow($captions[Platform::YouTube->value]))->toBe(0)
@@ -730,7 +726,7 @@ test('a stored google business destination is skipped quietly', function () {
 
     processItem($item->fresh());
 
-    $platforms = PostPlatform::query()->whereIn('post_id', Post::where('repurpose_item_id', $item->id)->pluck('id'))->pluck('social_account_id');
+    $platforms = Post::query()->where('repurpose_item_id', $item->id)->pluck('social_account_id');
 
     expect($item->fresh()->status)->toBe(ItemStatus::Published)
         ->and($platforms)->not->toContain($googleBusiness->id)

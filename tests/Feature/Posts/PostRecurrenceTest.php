@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Actions\Post\UpdatePost;
-use App\Enums\Post\PublishStatus as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\PublishPostTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -39,28 +39,19 @@ beforeEach(function () {
 
 function recurringPost(SocialAccount $channel, User $user, array $attributes = []): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create(array_merge([
         'user_id' => $user->id,
         'content' => 'A recurring caption',
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->addDays(2),
-    ], $attributes));
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
         'meta' => ['visibility' => 'PUBLIC'],
-    ]);
-
-    return $post->refresh();
+    ], $attributes))->refresh();
 }
 
-function publishRecurringPost(Post $post, PostPlatformStatus $status = PostPlatformStatus::Published): void
+function publishRecurringPost(Post $post, PublishStatus $status = PublishStatus::Published): void
 {
-    $post->update(['status' => PostStatus::Publishing]);
-    $post->postPlatforms()->update(['status' => $status]);
+    $post->forceFill(['status' => PostStatus::Publishing, 'publish_status' => $status])->save();
 
     app(FinalizePostPublication::class)->handle($post);
 }
@@ -70,7 +61,7 @@ function nextOccurrence(Post $post): ?Post
     return Post::query()
         ->where('workspace_id', $post->workspace_id)
         ->whereKeyNot($post->id)
-        ->with('postPlatforms', 'labels')
+        ->with('labels')
         ->first();
 }
 
@@ -258,9 +249,9 @@ test('publishing a recurring post schedules exactly one next occurrence', functi
         ->and($next->recurrence_remaining)->toBe(2)
         ->and($next->post_group_id)->not->toBeNull()
         ->and($next->post_group_id)->not->toBe($post->post_group_id)
-        ->and($next->postPlatforms)->toHaveCount(1)
-        ->and($next->postPlatforms->first()->social_account_id)->toBe($this->channel->id)
-        ->and($next->postPlatforms->first()->meta)->toEqual(['visibility' => 'PUBLIC'])
+        ->and($next->social_account_id)->toBe($this->channel->id)
+        ->and($next->publish_status)->toBe(PublishStatus::Pending)
+        ->and($next->meta)->toEqual(['visibility' => 'PUBLIC'])
         ->and($next->labels->pluck('id')->all())->toBe([$label->id]);
 })->with([
     'day' => [RecurrenceFrequency::Day, '2026-10-05 09:00', '2026-10-06 09:00:00'],
@@ -349,7 +340,7 @@ test('a failed post hands its recurrence to the next occurrence', function () {
         'recurrence_remaining' => 5,
     ]);
 
-    publishRecurringPost($post, PostPlatformStatus::Failed);
+    publishRecurringPost($post, PublishStatus::Failed);
 
     $next = nextOccurrence($post);
 
@@ -369,7 +360,7 @@ test('retrying a failed occurrence never creates a second next occurrence', func
         'recurrence_remaining' => 5,
     ]);
 
-    publishRecurringPost($post, PostPlatformStatus::Failed);
+    publishRecurringPost($post, PublishStatus::Failed);
     publishRecurringPost($post->refresh());
 
     expect($post->refresh()->status)->toBe(PostStatus::Published)
@@ -405,33 +396,6 @@ test('a failure while scheduling the next occurrence keeps the rule for a later 
     expect($post->refresh()->isRecurring())->toBeFalse()
         ->and(Post::count())->toBe(2)
         ->and(nextOccurrence($post)->recurrence_remaining)->toBe(4);
-});
-
-test('a multi-channel post continues the series on every enabled channel', function () {
-    $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $disabled = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    $post = recurringPost($this->channel, $this->user, [
-        'scheduled_at' => now()->subMinute(),
-        'recurrence_interval' => 1,
-        'recurrence_frequency' => RecurrenceFrequency::Day,
-        'recurrence_remaining' => 2,
-    ]);
-    PostPlatform::factory()->failed()->create(['post_id' => $post->id, 'social_account_id' => $other->id]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $disabled->id, 'enabled' => false]);
-    $post->update(['status' => PostStatus::Publishing]);
-    $post->postPlatforms()->where('social_account_id', $this->channel->id)->update(['status' => PostPlatformStatus::Published]);
-
-    app(FinalizePostPublication::class)->handle($post);
-
-    $occurrences = Post::query()->whereKeyNot($post->id)->with('postPlatforms')->get();
-
-    expect($post->refresh()->status)->toBe(PostStatus::PartiallyPublished)
-        ->and($post->isRecurring())->toBeFalse()
-        ->and($occurrences)->toHaveCount(2)
-        ->and($occurrences->map(fn (Post $occurrence): string => $occurrence->postPlatforms->sole()->social_account_id)->sort()->values()->all())
-        ->toBe(collect([$this->channel->id, $other->id])->sort()->values()->all())
-        ->and($occurrences->every(fn (Post $occurrence): bool => $occurrence->recurrence_remaining === 1
-            && $occurrence->scheduled_at->equalTo(now()->subMinute()->addDay())))->toBeTrue();
 });
 
 test('an anchor in the past catches up and consumes the skipped occurrences', function () {
@@ -505,7 +469,7 @@ test('publishing now from any entry point keeps the rhythm of the original time'
 })->with([
     'composer' => [function ($test, Post $post): void {
         $test->actingAs($test->user)
-            ->put(route('app.posts.update', $post), ['status' => 'publishing', 'content' => 'Now', 'scheduled_at' => null])
+            ->put(route('app.posts.update', $post), ['content_type' => ContentType::LinkedInPost->value, 'status' => 'publishing', 'content' => 'Now', 'scheduled_at' => null])
             ->assertSessionHasNoErrors();
     }],
     'mcp' => [function ($test, Post $post): void {
@@ -673,11 +637,11 @@ test('the next occurrence does not inherit the reactions of the published one', 
         'recurrence_frequency' => RecurrenceFrequency::Day,
         'recurrence_remaining' => 2,
     ]);
-    $post->postPlatforms()->sole()->update(['meta' => ['visibility' => 'PUBLIC', 'reactions' => [['type' => '👍', 'count' => 3]]]]);
+    $post->forceFill(['meta' => ['visibility' => 'PUBLIC', 'reactions' => [['type' => '👍', 'count' => 3]]]])->save();
 
     publishRecurringPost($post);
 
-    expect(nextOccurrence($post)->postPlatforms->sole()->meta)->toEqual(['visibility' => 'PUBLIC']);
+    expect(nextOccurrence($post)->meta)->toEqual(['visibility' => 'PUBLIC']);
 });
 
 test('an author who left the workspace hands the next occurrence to the workspace owner', function () {

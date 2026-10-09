@@ -6,7 +6,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\MastodonPublishException;
-use App\Models\PostPlatform;
+use App\Models\Post;
 use App\Services\Social\Concerns\PublishesThreads;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Support\Collection;
@@ -17,17 +17,15 @@ function threadPublisher(): object
     {
         use PublishesThreads;
 
-        public function run(PostPlatform $postPlatform, callable $postRoot, callable $postReply, ?callable $afterThread = null): array
+        public function run(Post $post, callable $postRoot, callable $postReply, ?callable $afterThread = null): array
         {
-            return $this->publishThread($postPlatform, ThreadProgress::hash('root'), $postRoot, $postReply, $afterThread);
+            return $this->publishThread($post, ThreadProgress::hash('root'), $postRoot, $postReply, $afterThread);
         }
     };
 }
 
 beforeEach(function () {
-    $this->post = PostPlatform::factory()->create([
-        'platform' => Platform::Mastodon,
-        'content_type' => ContentType::MastodonPost,
+    $this->post = Post::factory()->mastodon()->create([
         'meta' => ['thread_replies' => ['two', 'three']],
     ]);
 });

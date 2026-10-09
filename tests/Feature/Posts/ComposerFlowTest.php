@@ -8,7 +8,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -64,8 +63,7 @@ function composerFlowPayload(array $destinations, array $overrides = []): array
 
 function composerFlowPost(Workspace $workspace, User $author, SocialAccount $account, array $attributes = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    return Post::factory()->forAccount($account, ContentType::LinkedInPost)->create([
         'user_id' => $author->id,
         'content' => 'Existing caption',
         'status' => PostStatus::Scheduled,
@@ -73,21 +71,11 @@ function composerFlowPost(Workspace $workspace, User $author, SocialAccount $acc
         'scheduled_at' => now()->addDay(),
         ...$attributes,
     ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => ContentType::LinkedInPost,
-    ]);
-
-    return $post;
 }
 
 test('a user outside the workspace cannot create, edit, duplicate or delete a post', function () {
     $outsider = workspaceOutsider($this->workspace);
     $post = composerFlowPost($this->workspace, $this->owner, $this->linkedin);
-    $postPlatform = $post->postPlatforms()->sole();
 
     $this->actingAs($outsider)
         ->post(route('app.posts.store'), composerFlowPayload([composerFlowDestination($this->linkedin, ContentType::LinkedInPost)]))
@@ -96,7 +84,7 @@ test('a user outside the workspace cannot create, edit, duplicate or delete a po
         ->put(route('app.posts.update', $post), [
             'status' => 'draft',
             'content' => 'Hijacked',
-            'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::LinkedInPost->value]],
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertForbidden();
     $this->actingAs($outsider)->post(route('app.posts.duplicate', $post))->assertForbidden();
@@ -112,13 +100,12 @@ test('a post of another workspace cannot be edited, duplicated or deleted from t
     $foreignWorkspace = Workspace::factory()->create(['account_id' => $foreignOwner->account_id, 'user_id' => $foreignOwner->id]);
     $foreignAccount = SocialAccount::factory()->create(['workspace_id' => $foreignWorkspace->id, 'platform' => Platform::LinkedIn]);
     $post = composerFlowPost($foreignWorkspace, $foreignOwner, $foreignAccount);
-    $postPlatform = $post->postPlatforms()->sole();
 
     $this->actingAs($this->owner)
         ->put(route('app.posts.update', $post), [
             'status' => 'draft',
             'content' => 'Hijacked',
-            'platforms' => [['id' => $postPlatform->id, 'content_type' => ContentType::LinkedInPost->value]],
+            'content_type' => ContentType::LinkedInPost->value,
         ])
         ->assertNotFound();
     $this->actingAs($this->owner)->post(route('app.posts.duplicate', $post))->assertNotFound();
@@ -211,11 +198,11 @@ test('each network keeps its own text and settings when the post is customized p
         ]))
         ->assertSessionHasNoErrors();
 
-    $linkedinPost = Post::query()->whereHas('postPlatforms', fn ($query) => $query->where('social_account_id', $this->linkedin->id))->sole();
-    $xPost = Post::query()->whereHas('postPlatforms', fn ($query) => $query->where('social_account_id', $x->id))->sole();
+    $linkedinPost = Post::query()->where('social_account_id', $this->linkedin->id)->sole();
+    $xPost = Post::query()->where('social_account_id', $x->id)->sole();
 
     expect($linkedinPost->content)->toBe('Long form for LinkedIn')
-        ->and($linkedinPost->postPlatforms->sole()->meta)->toEqual(['link_preview' => false])
+        ->and($linkedinPost->meta)->toEqual(['link_preview' => false])
         ->and($xPost->content)->toBe('Short for X')
         ->and($xPost->post_group_id)->toBe($linkedinPost->post_group_id)
         ->and($xPost->scheduled_at->equalTo($linkedinPost->scheduled_at))->toBeTrue();
@@ -295,7 +282,7 @@ test('the mastodon content warning counts against the 500 characters in the comp
         ))
         ->assertSessionHasNoErrors();
 
-    expect(Post::query()->where('workspace_id', $this->workspace->id)->sole()->postPlatforms->sole()->meta['spoiler_text'])->toBe('cw');
+    expect(Post::query()->where('workspace_id', $this->workspace->id)->sole()->meta['spoiler_text'])->toBe('cw');
 });
 
 test('an x thread from the composer stores its replies as text objects and refuses a reply over the account limit', function () {
@@ -317,7 +304,7 @@ test('an x thread from the composer stores its replies as text objects and refus
         ))
         ->assertSessionHasNoErrors();
 
-    expect(Post::query()->sole()->postPlatforms->sole()->meta['thread_replies'])->toEqual([
+    expect(Post::query()->sole()->meta['thread_replies'])->toEqual([
         ['text' => 'Second', 'media' => []],
         ['text' => 'Third', 'media' => []],
     ]);
@@ -325,19 +312,12 @@ test('an x thread from the composer stores its replies as text objects and refus
 
 test('editing an x thread from the composer refuses a reply over the account limit and keeps the stored thread', function () {
     $x = SocialAccount::factory()->x()->create(['workspace_id' => $this->workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($x, ContentType::XPost)->create([
         'user_id' => $this->owner->id,
         'content' => 'Root',
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->addDay(),
-    ]);
-    $postPlatform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $x->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
         'meta' => ['thread_replies' => [['text' => 'Second', 'media' => []]]],
     ]);
 
@@ -346,15 +326,12 @@ test('editing an x thread from the composer refuses a reply over the account lim
             'status' => 'scheduled',
             'scheduled_at' => now()->addDay()->toIso8601String(),
             'content' => 'Root',
-            'platforms' => [[
-                'id' => $postPlatform->id,
-                'content_type' => ContentType::XPost->value,
-                'meta' => ['thread_replies' => ['Second', str_repeat('a', 281)]],
-            ]],
+            'content_type' => ContentType::XPost->value,
+            'meta' => ['thread_replies' => ['Second', str_repeat('a', 281)]],
         ])
         ->assertSessionHasErrors();
 
-    expect($postPlatform->fresh()->meta['thread_replies'])->toEqual([['text' => 'Second', 'media' => []]]);
+    expect($post->fresh()->meta['thread_replies'])->toEqual([['text' => 'Second', 'media' => []]]);
 });
 
 test('a member who needs approval duplicating a scheduled post gets a draft, never a request', function () {

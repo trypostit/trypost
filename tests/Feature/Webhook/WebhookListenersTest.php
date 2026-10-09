@@ -86,7 +86,6 @@ test('SendPostStatusWebhook dispatches for known post statuses', function (PostS
 })->with([
     [PostStatus::Scheduled, EventType::PostScheduled],
     [PostStatus::Published, EventType::PostPublished],
-    [PostStatus::PartiallyPublished, EventType::PostPartiallyPublished],
     [PostStatus::Failed, EventType::PostFailed],
 ]);
 

@@ -11,7 +11,6 @@ use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -42,8 +41,7 @@ beforeEach(function () {
 
 function groupedPost(SocialAccount $channel, User $user, ?string $groupId, array $attributes = []): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create(array_merge([
         'user_id' => $user->id,
         'post_group_id' => $groupId,
         'content' => 'Shared caption',
@@ -51,10 +49,6 @@ function groupedPost(SocialAccount $channel, User $user, ?string $groupId, array
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->addDay(),
     ], $attributes));
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id]);
-
-    return $post;
 }
 
 function groupDestinations(iterable $channels): array
@@ -160,7 +154,7 @@ test('the group endpoint lists the posts created together, ordered by time then 
         ->getJson(route('app.posts.group.show', $firstChannelLast))
         ->assertOk()
         ->assertJsonCount(4)
-        ->assertJsonPath('0.post_platforms.0.social_account.id', $this->channels[1]->id)
+        ->assertJsonPath('0.social_account.id', $this->channels[1]->id)
         ->assertJsonPath('0.can_delete', true)
         ->assertJsonPath('3.status', PostStatus::Draft->value);
 
@@ -215,25 +209,18 @@ test('the group endpoint is tenancy scoped', function () {
 test('the group endpoint carries the latest metrics of its sent posts', function () {
     $groupId = '0190a3b2-0000-7000-8000-000000000010';
     $channel = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    $sent = Post::factory()->published()->create([
-        'workspace_id' => $this->workspace->id,
+    $sent = Post::factory()->forAccount($channel, ContentType::InstagramFeed)->published()->create([
         'user_id' => $this->user->id,
         'post_group_id' => $groupId,
-    ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $sent->id,
-        'social_account_id' => $channel->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $this->workspace->id,
         'social_account_id' => $channel->id,
         'social_account_key' => $channel->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $sent->id,
         'platform' => Platform::Instagram,
         'network' => Platform::Instagram->network(),
-        'remote_id' => $target->platform_post_id,
+        'remote_id' => $sent->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
@@ -248,8 +235,8 @@ test('the group endpoint carries the latest metrics of its sent posts', function
 
     $posts = collect($response->json())->keyBy('id');
 
-    expect(data_get($posts, "{$sent->id}.metrics.{$target->id}.available"))->toBeTrue()
-        ->and(data_get($posts, "{$sent->id}.metrics.{$target->id}.metrics.reactions.value"))->toBe(12)
+    expect(data_get($posts, "{$sent->id}.metrics.available"))->toBeTrue()
+        ->and(data_get($posts, "{$sent->id}.metrics.metrics.reactions.value"))->toBe(12)
         ->and(data_get($posts, "{$scheduled->id}.metrics"))->toBeNull();
 });
 
@@ -280,25 +267,18 @@ test('the group endpoint runs a fixed number of queries with sent siblings', fun
     $groupId = '0190a3b2-0000-7000-8000-00000000000f';
     $channel = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
     $sentSibling = function () use ($channel, $groupId): void {
-        $sent = Post::factory()->published()->create([
-            'workspace_id' => $this->workspace->id,
+        $sent = Post::factory()->forAccount($channel, ContentType::InstagramFeed)->published()->create([
             'user_id' => $this->user->id,
             'post_group_id' => $groupId,
-        ]);
-        $target = PostPlatform::factory()->published()->create([
-            'post_id' => $sent->id,
-            'social_account_id' => $channel->id,
-            'platform' => Platform::Instagram,
-            'content_type' => ContentType::InstagramFeed,
         ]);
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $this->workspace->id,
             'social_account_id' => $channel->id,
             'social_account_key' => $channel->id,
-            'post_platform_id' => $target->id,
+            'post_id' => $sent->id,
             'platform' => Platform::Instagram,
             'network' => Platform::Instagram->network(),
-            'remote_id' => $target->platform_post_id,
+            'remote_id' => $sent->platform_post_id,
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
     };

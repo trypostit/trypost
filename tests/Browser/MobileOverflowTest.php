@@ -6,7 +6,6 @@ use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\ReferralSource;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\User;
 use App\Models\Workspace;
 
@@ -55,12 +54,11 @@ test('key pages do not overflow horizontally on a phone', function () {
     $workspace->members()->attach($user->id, membershipPivot('member'));
     $user->update(['current_workspace_id' => $workspace->id]);
 
-    $post = Post::factory()->create([
+    $post = Post::factory()->linkedin()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $user->id,
         'content' => 'Launching our new mobile editor today!',
     ]);
-    PostPlatform::factory()->count(2)->create(['post_id' => $post->id]);
 
     $this->actingAs($user);
 

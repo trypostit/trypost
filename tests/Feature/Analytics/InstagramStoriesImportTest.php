@@ -19,7 +19,6 @@ use App\Jobs\Post\ImportExternalPostMedia;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
@@ -113,8 +112,8 @@ test('backfill on connect imports live stories as story posts next to feed posts
 
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
-    $types = PostPlatform::query()->pluck('content_type', 'platform_post_id')->all();
-    $story = Post::query()->imported()->whereRelation('postPlatforms', 'platform_post_id', 'story-1')->sole();
+    $types = Post::query()->pluck('content_type', 'platform_post_id')->all();
+    $story = Post::query()->imported()->where('platform_post_id', 'story-1')->sole();
 
     expect($types)->toEqual([
         'feed-1' => ContentType::InstagramFeed,
@@ -155,7 +154,7 @@ test('discovery picks up a new story even when it is older than the watermark ov
 
     runStoryDiscovery($account, $state);
 
-    expect(PostPlatform::query()->sole())
+    expect(Post::query()->sole())
         ->platform_post_id->toBe('story-1')
         ->content_type->toBe(ContentType::InstagramStory);
 });
@@ -174,17 +173,8 @@ test('a story seen on every discovery run is imported once', function () {
 
 test('a story trypost published is linked instead of imported again', function () {
     $account = SocialAccount::factory()->instagram()->create();
-    $post = Post::factory()->create([
-        'workspace_id' => $account->workspace_id,
-        'status' => PostStatus::Published,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramStory)->published()->create([
         'origin' => Origin::TryPost,
-        'published_at' => now()->subHours(2),
-    ]);
-    $tryPost = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => ContentType::InstagramStory,
         'platform_post_id' => 'story-1',
         'published_at' => now()->subHours(2),
     ]);
@@ -194,7 +184,7 @@ test('a story trypost published is linked instead of imported again', function (
     runStoryDiscovery($account, $state);
 
     expect(Post::query()->imported()->exists())->toBeFalse()
-        ->and(AnalyticsPublication::query()->sole()->post_platform_id)->toBe($tryPost->id);
+        ->and(AnalyticsPublication::query()->sole()->post_id)->toBe($post->id);
 });
 
 test('story metrics are scheduled once however many runs see the story', function () {
@@ -224,6 +214,6 @@ test('a stories permission error does not stop the feed page', function () {
 
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
-    expect(PostPlatform::query()->sole()->platform_post_id)->toBe('feed-1')
+    expect(Post::query()->sole()->platform_post_id)->toBe('feed-1')
         ->and($state->fresh()->status)->toBe(SyncStatus::Complete);
 });

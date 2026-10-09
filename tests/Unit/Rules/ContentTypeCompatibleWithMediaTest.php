@@ -10,7 +10,7 @@ function runMediaRule(string $contentType, array $media): array
 {
     $errors = [];
     $rule = (new ContentTypeCompatibleWithMedia)->setData(['media' => $media]);
-    $rule->validate('platforms.0.content_type', $contentType, function (string $message) use (&$errors): void {
+    $rule->validate('content_type', $contentType, function (string $message) use (&$errors): void {
         $errors[] = $message;
     });
 
@@ -362,7 +362,7 @@ test('falls back to stored media when the request omits the media key', function
     $errors = [];
     (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
         ->setData([]) // no 'media' key in the request -> use the fallback
-        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
+        ->validate('content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
         });
 
@@ -372,7 +372,7 @@ test('falls back to stored media when the request omits the media key', function
     $xErrors = [];
     (new ContentTypeCompatibleWithMedia([['type' => 'document', 'mime_type' => 'application/pdf']]))
         ->setData([])
-        ->validate('platforms.0.content_type', ContentType::XPost->value, function (string $message) use (&$xErrors): void {
+        ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$xErrors): void {
             $xErrors[] = $message;
         });
 
@@ -389,7 +389,7 @@ test('request media takes precedence over the stored fallback', function () {
             ['type' => 'document', 'mime_type' => 'application/pdf'],
             ['type' => 'image', 'mime_type' => 'image/jpeg'],
         ]])
-        ->validate('platforms.0.content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
+        ->validate('content_type', ContentType::LinkedInPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
         });
 

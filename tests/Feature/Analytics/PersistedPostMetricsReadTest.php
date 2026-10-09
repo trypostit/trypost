@@ -12,7 +12,6 @@ use App\Mcp\Tools\Post\GetPostMetricsTool;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
@@ -26,17 +25,12 @@ test('web REST and MCP post metrics read the same persisted observation without 
     $user = $access['user'];
     $workspace = $access['workspace'];
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id]);
-    $destination = PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform_post_id' => '123',
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $user->id, 'platform_post_id' => '123']);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'content_type' => PublicationContentType::Reel,
     ]);
@@ -53,7 +47,7 @@ test('web REST and MCP post metrics read the same persisted observation without 
     Http::fake();
 
     $this->actingAs($user)
-        ->getJson(route('app.posts.platforms.metrics', [$post, $destination]))
+        ->getJson(route('app.posts.metrics', $post))
         ->assertOk()
         ->assertJsonPath('available', true)
         ->assertJsonPath('metrics.reactions.value', 7)
@@ -62,23 +56,28 @@ test('web REST and MCP post metrics read the same persisted observation without 
     $this->withHeaders(['Authorization' => 'Bearer '.$access['plain_token']])
         ->getJson(route('api.posts.metrics', $post))
         ->assertOk()
-        ->assertJsonPath('platforms.0.metrics.available', true)
-        ->assertJsonPath('platforms.0.metrics.metrics.reactions.value', 7)
-        ->assertJsonPath('platforms.0.metrics.metrics.watch_time_milliseconds.value', 180000)
-        ->assertJsonMissingPath('platforms.0.analytics');
+        ->assertJsonPath('post_id', $post->id)
+        ->assertJsonPath('platform', Platform::Instagram->value)
+        ->assertJsonPath('metrics.available', true)
+        ->assertJsonPath('metrics.metrics.reactions.value', 7)
+        ->assertJsonPath('metrics.metrics.watch_time_milliseconds.value', 180000)
+        ->assertJsonMissingPath('platforms')
+        ->assertJsonMissingPath('analytics');
 
     TryPostServer::actingAs($user)
         ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json
             ->where('post_id', $post->id)
-            ->where('platforms.0.metrics.available', true)
-            ->where('platforms.0.metrics.metrics.reactions.value', 7)
-            ->where('platforms.0.metrics.metrics.watch_time_milliseconds.value', 180000)
-            ->missing('platforms.0.analytics')
+            ->where('platform_post_id', '123')
+            ->where('metrics.available', true)
+            ->where('metrics.metrics.reactions.value', 7)
+            ->where('metrics.metrics.watch_time_milliseconds.value', 180000)
+            ->missing('platforms')
+            ->missing('analytics')
             ->etc());
 
-    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['snapshot']['reactions_count'])->toBe(7);
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['snapshot']['reactions_count'])->toBe(7);
     Http::assertNothingSent();
 });
 
@@ -86,14 +85,10 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $access = createApiTestToken();
     $account = SocialAccount::factory()->create(['workspace_id' => $access['workspace']->id, 'platform' => Platform::LinkedIn]);
-    $post = Post::factory()->published()->create(['workspace_id' => $access['workspace']->id, 'user_id' => $access['user']->id]);
-    $destination = PostPlatform::factory()->linkedin()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['user_id' => $access['user']->id]);
 
     $this->actingAs($access['user'])
-        ->getJson(route('app.posts.platforms.metrics', [$post, $destination]))
+        ->getJson(route('app.posts.metrics', $post))
         ->assertOk()
         ->assertJsonPath('unsupported', true)
         ->assertJsonPath('reason', 'platform_not_supported');
@@ -102,28 +97,24 @@ test('excluded destinations expose no analytics and a foreign post cannot be rea
         ->tool(GetPostMetricsTool::class, ['post_id' => $post->id])
         ->assertOk()
         ->assertStructuredContent(fn (AssertableJson $json) => $json
-            ->where('platforms.0.metrics.unsupported', true)
-            ->where('platforms.0.metrics.reason', 'platform_not_supported')
+            ->where('metrics.unsupported', true)
+            ->where('metrics.reason', 'platform_not_supported')
             ->etc());
 
-    $foreignPost = Post::factory()->published()->create();
+    $foreignPost = Post::factory()->linkedin()->published()->create();
     $this->actingAs($access['user'])
-        ->getJson(route('app.posts.platforms.metrics', [$foreignPost, $destination]))
+        ->getJson(route('app.posts.metrics', $foreignPost))
         ->assertNotFound();
 });
 
 test('post metrics preserve metric keys and availability from persisted observations', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->threads()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create();
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Threads,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
@@ -133,28 +124,27 @@ test('post metrics preserve metric keys and availability from persisted observat
         ],
     ]);
 
-    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics']['reactions'])->toEqual([
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['metrics']['reactions'])->toEqual([
         'value' => 9,
         'unit' => 'count',
         'availability' => 'available',
     ]);
 });
 
-test('post detail loads all destination observations in bounded queries', function () {
+test('post cards load the observations of every post in bounded queries', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
+    $posts = collect();
 
     foreach (range(1, 3) as $number) {
-        $destination = PostPlatform::factory()->instagram()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
+        $post = Post::factory()->forAccount($account)->published()->create([
             'platform_post_id' => "provider-{$number}",
         ]);
+        $posts->push($post);
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $workspace->id,
             'social_account_id' => $account->id,
-            'post_platform_id' => $destination->id,
+            'post_id' => $post->id,
             'platform' => Platform::Instagram,
             'remote_id' => "provider-{$number}",
         ]);
@@ -173,7 +163,7 @@ test('post detail loads all destination observations in bounded queries', functi
         }
     }
 
-    $post = $post->fresh();
+    $posts = $posts->map->fresh();
     $reads = [];
     DB::listen(function ($query) use (&$reads): void {
         if (str_starts_with(strtolower(ltrim($query->sql)), 'select')) {
@@ -181,27 +171,23 @@ test('post detail loads all destination observations in bounded queries', functi
         }
     });
 
-    $metrics = app(ReadPublicationAnalytics::class)->forPost($post);
+    $metrics = collect(app(ReadPublicationAnalytics::class)->latestForPosts($workspace->id, $posts));
 
     expect($metrics)->toHaveCount(3)
-        ->and($metrics->pluck('metrics.snapshot.reactions_count')->sort()->values()->all())->toBe([1, 2, 3])
-        ->and($reads)->toHaveCount(3);
+        ->and($metrics->keys()->all())->toBe($posts->pluck('id')->all())
+        ->and($metrics->pluck('snapshot.reactions_count')->sort()->values()->all())->toBe([1, 2, 3])
+        ->and($reads)->toHaveCount(2);
 });
 
 test('post metrics derive the engagement rate from the snapshot exposure like the channel reports', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->x()->createQuietly(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->x()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform_post_id' => '1840000000000000000',
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => '1840000000000000000']);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::X,
         'content_type' => PublicationContentType::Text,
     ]);
@@ -218,7 +204,7 @@ test('post metrics derive the engagement rate from the snapshot exposure like th
         ],
     ]);
 
-    $metrics = app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics'];
+    $metrics = app(ReadPublicationAnalytics::class)->latestFor($post)['metrics'];
 
     expect(data_get($metrics, 'engagement_rate.value'))->toBe(3.5)
         ->and(data_get($metrics, 'engagement_rate.unit'))->toBe('percent')
@@ -228,18 +214,12 @@ test('post metrics derive the engagement rate from the snapshot exposure like th
 test('post metrics leave the engagement rate out when the network reports no exposure', function () {
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->mastodon()->createQuietly(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->published()->create(['workspace_id' => $workspace->id]);
-    $destination = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Mastodon,
-        'platform_post_id' => '117304063461175259',
-    ]);
+    $post = Post::factory()->forAccount($account)->published()->create(['platform_post_id' => '117304063461175259']);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $destination->id,
+        'post_id' => $post->id,
         'platform' => Platform::Mastodon,
         'content_type' => PublicationContentType::Text,
     ]);
@@ -252,5 +232,5 @@ test('post metrics leave the engagement rate out when the network reports no exp
         'metrics' => ['engagements' => ['value' => 6, 'unit' => 'count', 'availability' => 'available']],
     ]);
 
-    expect(app(ReadPublicationAnalytics::class)->forPlatform($destination)['metrics'])->not->toHaveKey('engagement_rate');
+    expect(app(ReadPublicationAnalytics::class)->latestFor($post)['metrics'])->not->toHaveKey('engagement_rate');
 });

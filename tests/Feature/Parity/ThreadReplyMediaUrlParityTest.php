@@ -9,7 +9,6 @@ use App\Mcp\Tools\Post\CreatePostsTool;
 use App\Mcp\Tools\Post\CreatePostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -30,30 +29,32 @@ function threadReplyUrlMeta(string $url = 'https://example.com/reply.png'): arra
     return ['thread_replies' => [['text' => 'Second', 'media' => [['url' => $url]]]]];
 }
 
-function threadReplyStoredMedia(PostPlatform $target): array
+function threadReplyStoredMedia(Post $post): array
 {
-    return data_get($target->fresh()->meta, 'thread_replies.0.media', []);
+    return data_get($post->fresh()->meta, 'thread_replies.0.media', []);
 }
 
 test('a reply media url is hosted on create through api and mcp', function () {
     $payload = [
         'content' => 'First',
-        'platforms' => [['social_account_id' => $this->account->id, 'content_type' => ContentType::BlueskyPost->value, 'meta' => threadReplyUrlMeta()]],
+        'social_account_id' => $this->account->id,
+        'content_type' => ContentType::BlueskyPost->value,
+        'meta' => threadReplyUrlMeta(),
     ];
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)->assertCreated();
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $payload)->assertOk();
 
-    $targets = PostPlatform::query()->with('post')->where('social_account_id', $this->account->id)->get();
+    $posts = Post::query()->where('social_account_id', $this->account->id)->get();
 
-    expect($targets)->toHaveCount(2);
+    expect($posts)->toHaveCount(2);
 
-    foreach ($targets as $target) {
-        $media = threadReplyStoredMedia($target);
+    foreach ($posts as $post) {
+        $media = threadReplyStoredMedia($post);
 
         expect($media)->toHaveCount(1)
             ->and(data_get($media, '0.type'))->toBe('image')
-            ->and($target->post->ownedMedia()->count())->toBe(1);
+            ->and($post->ownedMedia()->count())->toBe(1);
     }
 });
 
@@ -67,7 +68,7 @@ test('a reply media url is hosted in a batch through api and mcp', function () {
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.batch.store'), $payload)->assertCreated();
     TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, $payload)->assertOk();
 
-    $targets = PostPlatform::query()->where('social_account_id', $this->account->id)->get();
+    $targets = Post::query()->where('social_account_id', $this->account->id)->get();
 
     expect($targets)->toHaveCount(2)
         ->and(threadReplyStoredMedia($targets[0]))->toHaveCount(1)
@@ -76,34 +77,27 @@ test('a reply media url is hosted in a batch through api and mcp', function () {
 
 test('a reply media url is hosted on update through api and mcp', function () {
     $posts = collect([0, 1])->map(function (): Post {
-        $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $this->account->id,
-            'platform' => Platform::Bluesky,
-            'content_type' => ContentType::BlueskyPost,
-            'enabled' => true,
-        ]);
-
-        return $post;
+        return Post::factory()->forAccount($this->account, ContentType::BlueskyPost)->create(['user_id' => $this->user->id]);
     });
 
     $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.update', $posts[0]), ['meta' => threadReplyUrlMeta()])->assertOk();
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $posts[1]->id, 'meta' => threadReplyUrlMeta()])->assertOk();
 
     foreach ($posts as $post) {
-        expect(threadReplyStoredMedia($post->postPlatforms()->sole()))->toHaveCount(1);
+        expect(threadReplyStoredMedia($post))->toHaveCount(1);
     }
 });
 
 test('an unreachable reply media url is refused instead of dropped through api and mcp', function () {
     $payload = [
         'content' => 'First',
-        'platforms' => [['social_account_id' => $this->account->id, 'content_type' => ContentType::BlueskyPost->value, 'meta' => threadReplyUrlMeta('https://example.com/missing.png')]],
+        'social_account_id' => $this->account->id,
+        'content_type' => ContentType::BlueskyPost->value,
+        'meta' => threadReplyUrlMeta('https://example.com/missing.png'),
     ];
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)
-        ->assertJsonValidationErrors(['platforms.0.meta.thread_replies.0.media.0.url']);
+        ->assertJsonValidationErrors(['meta.thread_replies.0.media.0.url']);
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, $payload)->assertHasErrors();
 
     expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);

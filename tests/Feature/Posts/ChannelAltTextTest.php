@@ -51,9 +51,7 @@ function channelAltTextItem(Media $media, array $meta = []): array
 
 function channelAltTextPost(SocialAccount $account): Post
 {
-    return Post::query()
-        ->whereHas('postPlatforms', fn ($query) => $query->where('social_account_id', $account->id))
-        ->sole();
+    return Post::query()->where('social_account_id', $account->id)->sole();
 }
 
 /**
@@ -130,8 +128,8 @@ test('each publisher sends the alt text of its own channel', function () {
         };
     });
 
-    (new XPublisher)->publish(channelAltTextPost($this->x)->postPlatforms()->sole());
-    (new BlueskyPublisher)->publish(channelAltTextPost($this->bluesky)->postPlatforms()->sole());
+    (new XPublisher)->publish(channelAltTextPost($this->x));
+    (new BlueskyPublisher)->publish(channelAltTextPost($this->bluesky));
 
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/media/metadata')
         && data_get($request->data(), 'metadata.alt_text.text') === 'Shared description');

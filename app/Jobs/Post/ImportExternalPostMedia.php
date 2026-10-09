@@ -137,7 +137,7 @@ class ImportExternalPostMedia implements ShouldBeUnique, ShouldQueue
             return [null, null, null];
         }
 
-        return [$post, $publication, $target->socialAccount];
+        return [$post, $publication, $post->socialAccount];
     }
 
     /**

@@ -72,7 +72,7 @@ const privacyError = computed<string | undefined>(() => {
     }
 
     return Object.entries(errors.value).find(([key]) =>
-        key.endsWith('.meta.privacy_level'),
+        key === 'meta.privacy_level' || key.endsWith('.meta.privacy_level'),
     )?.[1];
 });
 

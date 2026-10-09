@@ -28,6 +28,7 @@ use App\Http\Resources\Api\PostResource;
 use App\Models\Media;
 use App\Models\Post;
 use App\Services\Post\MediaAttacher;
+use App\Support\PostCompositionValidator;
 use App\Support\PostStatusRules;
 use App\Support\Requests\Post\PostMediaRequestRules;
 use Illuminate\Http\JsonResponse;
@@ -79,7 +80,7 @@ class PostController extends Controller
 
         $data = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($request->selectedPlatforms()), $data);
 
-        $post = CreatePosts::execute($workspace, $request->user(), [
+        $post = PostCompositionValidator::forSinglePost(fn (): Post => CreatePosts::execute($workspace, $request->user(), [
             'status' => $data['status'] ?? 'draft',
             'content' => $data['content'] ?? '',
             'media' => $data['media'] ?? [],
@@ -89,7 +90,7 @@ class PostController extends Controller
             'label_ids' => $data['label_ids'] ?? [],
             'created_via' => CreatedVia::Api,
             'destinations' => [Arr::only($data, ['social_account_id', 'content_type', 'meta'])],
-        ])->sole();
+        ])->sole());
 
         $post->load(['socialAccount', 'labels']);
 

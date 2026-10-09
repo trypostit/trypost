@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus as PlatformStatus;
+use App\Enums\Post\Status as PostStatus;
 use App\Jobs\ReconcileGoogleBusinessPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,17 +16,11 @@ beforeEach(function () {
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
     $this->account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
-    $this->post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
 });
 
 $target = function (array $attributes = []) {
-    return PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => test()->post->id,
-        'social_account_id' => test()->account->id,
-        'status' => PlatformStatus::PendingReview,
+    return Post::factory()->forAccount(test()->account)->pendingReview()->create([
+        'user_id' => test()->user->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
         'submitted_at' => now()->subMinutes(30),
         ...$attributes,
@@ -35,18 +29,18 @@ $target = function (array $attributes = []) {
 
 test('it dispatches a reconciliation for every target still awaiting review', function () use ($target) {
     $awaiting = $target();
-    $published = $target(['status' => PlatformStatus::Published]);
+    $published = $target(['status' => PostStatus::Published, 'publish_status' => PlatformStatus::Published]);
 
     $this->artisan('social:reconcile-google-business-posts')->assertSuccessful();
 
     Queue::assertPushed(ReconcileGoogleBusinessPost::class, 1);
     Queue::assertPushed(
         ReconcileGoogleBusinessPost::class,
-        fn (ReconcileGoogleBusinessPost $job): bool => $job->postPlatform->id === $awaiting->id,
+        fn (ReconcileGoogleBusinessPost $job): bool => $job->post->id === $awaiting->id,
     );
     Queue::assertNotPushed(
         ReconcileGoogleBusinessPost::class,
-        fn (ReconcileGoogleBusinessPost $job): bool => $job->postPlatform->id === $published->id,
+        fn (ReconcileGoogleBusinessPost $job): bool => $job->post->id === $published->id,
     );
 });
 
@@ -65,16 +59,8 @@ test('it dispatches again once the reconciliation interval has passed', function
 
     Queue::assertPushed(
         ReconcileGoogleBusinessPost::class,
-        fn (ReconcileGoogleBusinessPost $job): bool => $job->postPlatform->id === $awaiting->id,
+        fn (ReconcileGoogleBusinessPost $job): bool => $job->post->id === $awaiting->id,
     );
-});
-
-test('it skips a disabled target still awaiting review', function () use ($target) {
-    $target(['enabled' => false]);
-
-    $this->artisan('social:reconcile-google-business-posts')->assertSuccessful();
-
-    Queue::assertNotPushed(ReconcileGoogleBusinessPost::class);
 });
 
 test('it skips a target that has no remote post id', function () use ($target) {

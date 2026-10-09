@@ -3,11 +3,9 @@
 declare(strict_types=1);
 
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -95,19 +93,10 @@ function mediaLightboxSetup(array $media, string $state = 'published'): array
     subscribeAccount($user->account);
 
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
-    $post = Post::factory()->{$state}()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->{$state}()->create([
         'user_id' => $user->id,
         'content' => 'Lightbox post',
         'media' => $media,
-        ...($state === 'published' ? ['published_at' => now()->subHour()] : []),
-    ]);
-    $target = $state === 'published' ? PostPlatform::factory()->published() : PostPlatform::factory();
-    $target->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
         ...($state === 'published' ? ['published_at' => now()->subHour()] : []),
     ]);
 

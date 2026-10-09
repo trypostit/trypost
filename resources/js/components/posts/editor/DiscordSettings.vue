@@ -140,7 +140,7 @@ const channelError = computed<string | undefined>(() => {
     }
 
     return Object.entries(errors.value).find(([key]) =>
-        key.endsWith('.meta.channel_id'),
+        key === 'meta.channel_id' || key.endsWith('.meta.channel_id'),
     )?.[1];
 });
 

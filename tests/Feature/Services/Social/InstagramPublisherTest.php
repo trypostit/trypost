@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\PublishStatus as PlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -880,7 +880,7 @@ test('instagram retries long interruptions without abandoning or duplicating the
     for ($minute = 0; $minute < $minutes; $minute++) {
         $job->handle();
 
-        expect($this->post->refresh()->status)->toBe(PlatformStatus::Retrying)
+        expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Retrying)
             ->and($this->post->error_context['instagram_workflow'])->toBe($workflow)
             ->and($this->post->error_context['processing_retry_count'])->toBe($minute + 1);
 
@@ -894,7 +894,7 @@ test('instagram retries long interruptions without abandoning or duplicating the
         if ($minute >= 59) {
             $this->artisan('social:recover-stuck-posts')->assertSuccessful();
 
-            expect($this->post->refresh()->status)->toBe(PlatformStatus::Retrying)
+            expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Retrying)
                 ->and($this->post->refresh()->status)->toBe(PostStatus::Publishing);
         }
     }
@@ -902,7 +902,7 @@ test('instagram retries long interruptions without abandoning or duplicating the
     expect(now()->equalTo($availableAt))->toBeTrue();
     $job->handle();
 
-    expect($this->post->refresh()->status)->toBe($recovers ? PlatformStatus::Published : PlatformStatus::Failed)
+    expect($this->post->refresh()->publish_status)->toBe($recovers ? PublishStatus::Published : PublishStatus::Failed)
         ->and($this->post->refresh()->status)->toBe($recovers ? PostStatus::Published : PostStatus::Failed);
     Queue::assertPushed(PublishToSocialPlatform::class, $minutes);
     Http::assertNotSent(fn (Request $request) => str_ends_with($request->url(), '/media'));
@@ -1557,7 +1557,7 @@ test('instagram facebook publisher recovers a published container on graph.faceb
         'token_expires_at' => null,
         'scopes' => Platform::InstagramFacebook->requiredPublishScopes(),
     ]);
-    $this->post->update([
+    $this->post->forceFill([
         'social_account_id' => $account->id,
         'platform' => Platform::InstagramFacebook,
         'error_context' => [
@@ -1566,7 +1566,8 @@ test('instagram facebook publisher recovers a published container on graph.faceb
                 'container_id' => 'container-123',
             ],
         ],
-    ]);
+    ])->save();
+    $this->post->setRelation('socialAccount', $account);
 
     $graph = (string) config('trypost.platforms.instagram-facebook.graph_api');
 

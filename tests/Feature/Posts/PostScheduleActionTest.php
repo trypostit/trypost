@@ -9,7 +9,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -36,18 +35,13 @@ beforeEach(function () {
 
 function scheduleActionPost(SocialAccount $channel, User $user, array $attributes = []): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create(array_merge([
         'user_id' => $user->id,
         'content' => 'A caption',
         'status' => PostStatus::Draft,
         'schedule_mode' => null,
         'scheduled_at' => null,
-    ], $attributes));
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id]);
-
-    return $post->refresh();
+    ], $attributes))->refresh();
 }
 
 function scheduleActionQueued(SocialAccount $channel, User $user): Post
@@ -150,19 +144,18 @@ test('publish now dispatches the publish job', function () {
     Queue::assertPushed(PublishPost::class, fn (PublishPost $job): bool => $job->post->is($draft));
 });
 
-test('publish now on a post without enabled platforms is rejected', function () {
+test('publish now on a post without a channel is rejected', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'content' => 'A caption',
         'status' => PostStatus::Draft,
     ]);
-    PostPlatform::factory()->disabled()->create(['post_id' => $post->id, 'social_account_id' => $this->channel->id]);
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'publish_now'])
         ->assertRedirect()
-        ->assertSessionHasErrors('platforms');
+        ->assertSessionHasErrors('social_account_id');
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft);
     Queue::assertNotPushed(PublishPost::class);

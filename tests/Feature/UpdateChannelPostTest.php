@@ -9,7 +9,6 @@ use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -44,10 +43,10 @@ test('editing one Instagram post changes its type, media and caption without cha
 
     expect($posts[0]->fresh()->content)->toBe('Legenda do Reel')
         ->and($posts[0]->fresh()->status)->toBe(PostStatus::Scheduled)
-        ->and($posts[0]->postPlatforms()->sole()->content_type)->toBe(ContentType::InstagramReel)
-        ->and($posts[0]->postPlatforms()->sole()->social_account_id)->toBe($accounts[0]->id)
+        ->and($posts[0]->fresh()->content_type)->toBe(ContentType::InstagramReel)
+        ->and($posts[0]->fresh()->social_account_id)->toBe($accounts[0]->id)
         ->and($posts[1]->fresh()->content)->toBe('Texto inicial')
-        ->and($posts[1]->postPlatforms()->sole()->content_type)->toBe(ContentType::InstagramFeed);
+        ->and($posts[1]->fresh()->content_type)->toBe(ContentType::InstagramFeed);
 });
 
 test('an incompatible type and media leaves the edited post unchanged', function () {
@@ -71,7 +70,7 @@ test('an incompatible type and media leaves the edited post unchanged', function
 
     expect($post->fresh()->content)->toBe('Antes')
         ->and($post->fresh()->status)->toBe(PostStatus::Draft)
-        ->and($post->postPlatforms()->sole()->content_type)->toBe(ContentType::InstagramFeed);
+        ->and($post->fresh()->content_type)->toBe(ContentType::InstagramFeed);
 });
 
 test('the selected social account cannot change during edit', function () {
@@ -93,33 +92,25 @@ test('the selected social account cannot change during edit', function () {
         'platforms' => [['social_account_id' => $accounts[1]->id]],
     ]))->toThrow(ValidationException::class);
 
-    expect($post->postPlatforms()->sole()->social_account_id)->toBe($accounts[0]->id);
+    expect($post->fresh()->social_account_id)->toBe($accounts[0]->id);
 });
 
-test('settled posts and legacy multi-target posts cannot use the independent editor', function () {
+test('a settled post cannot use the independent editor', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
-    $xAccount = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
     $post = CreatePosts::execute($workspace, $user, [
         'status' => 'draft',
         'destinations' => [['social_account_id' => $instagram->id, 'content_type' => ContentType::InstagramFeed->value]],
     ])->sole();
 
-    PostPlatform::factory()->x()->create(['post_id' => $post->id, 'social_account_id' => $xAccount->id]);
-
-    expect(fn () => UpdatePost::execute($workspace, $post, [
-        'status' => PostStatus::Draft->value,
-        'content_type' => ContentType::InstagramStory->value,
-    ]))->toThrow(ValidationException::class);
-
-    $post->postPlatforms()->where('social_account_id', $xAccount->id)->delete();
     $post->update(['status' => PostStatus::Published]);
 
     expect(UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Draft->value,
         'content_type' => ContentType::InstagramStory->value,
-    ])['action'])->toBe(PostAction::Finalized);
+    ])['action'])->toBe(PostAction::Finalized)
+        ->and($post->fresh()->content_type)->toBe(ContentType::InstagramFeed);
 });
 
 test('an edit stores only known meta keys and keeps the system-written ones', function () {
@@ -131,15 +122,14 @@ test('an edit stores only known meta keys and keeps the system-written ones', fu
         'content' => 'Caption',
         'destinations' => [['social_account_id' => $account->id]],
     ])->sole();
-    $target = $post->postPlatforms()->sole();
-    $target->update(['meta' => ['reactions' => [['type' => '👍', 'count' => 3]], 'aspect_ratio' => '4:5']]);
+    $post->forceFill(['meta' => ['reactions' => [['type' => '👍', 'count' => 3]], 'aspect_ratio' => '4:5']])->save();
 
     UpdatePost::execute($workspace, $post, [
         'status' => 'draft',
         'meta' => ['bogus_key' => 'zzz', 'aspect_ratio' => '1:1', 'is_ai_generated' => true, 'reactions' => []],
     ]);
 
-    expect($target->fresh()->meta)->toEqual([
+    expect($post->fresh()->meta)->toEqual([
         'is_ai_generated' => true,
         'reactions' => [['type' => '👍', 'count' => 3]],
     ]);

@@ -23,6 +23,28 @@ use Illuminate\Validation\Validator as LaravelValidator;
 class PostCompositionValidator
 {
     /**
+     * Runs a single-destination write, reporting its errors under the post's own keys
+     * (`meta.title`, `content_type`) instead of `destinations.0.*`.
+     *
+     * @template TResult
+     *
+     * @param  callable(): TResult  $write
+     * @return TResult
+     */
+    public static function forSinglePost(callable $write): mixed
+    {
+        try {
+            return $write();
+        } catch (ValidationException $exception) {
+            $errors = collect($exception->errors())
+                ->mapWithKeys(fn (array $messages, string $key): array => [Str::after($key, 'destinations.0.') => $messages])
+                ->all();
+
+            throw ValidationException::withMessages($errors);
+        }
+    }
+
+    /**
      * @param  array<string, mixed>  $composition
      * @return array<string, mixed>
      */

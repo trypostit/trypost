@@ -69,7 +69,7 @@ test('tools that schedule or publish list the required meta', function (string $
 ]);
 
 test('tools that change a post list the statuses that block it', function (string $tool) {
-    expect(mcpToolText($tool))->toContain('partially_published')->toContain('failed');
+    expect(mcpToolText($tool))->toContain('publishing, published or failed');
 })->with([
     'update-post' => [UpdatePostTool::class],
     'delete-post' => [DeletePostTool::class],

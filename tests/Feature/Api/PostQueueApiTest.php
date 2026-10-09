@@ -128,7 +128,7 @@ test('queue on a channel without posting times is rejected', function () {
         'content' => 'Queued',
         'social_account_id' => $this->bareChannel->id,
         'content_type' => ContentType::LinkedInPost->value,
-    ])->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)->assertJsonValidationErrorFor('destinations.0.social_account_id');
+    ])->assertStatus(Response::HTTP_UNPROCESSABLE_ENTITY)->assertJsonValidationErrorFor('social_account_id');
 
     expect(Post::query()->where('workspace_id', $this->workspace->id)->count())->toBe(0);
 

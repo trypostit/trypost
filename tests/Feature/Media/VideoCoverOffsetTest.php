@@ -9,7 +9,6 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -26,18 +25,10 @@ beforeEach(function () {
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
 
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id]);
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $this->post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
         'user_id' => $this->user->id,
         'status' => Status::Draft,
         'scheduled_at' => null,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => ContentType::InstagramReel,
-        'enabled' => true,
     ]);
     $this->video = Media::factory()->video()->ownedByPost($this->post)->stored()->create(['meta' => ['duration' => 10]]);
     $this->post->update(['media' => [videoCoverOffsetItem($this->video, [])]]);
@@ -126,7 +117,7 @@ test('the rest api rejects a negative or past-the-end cover offset', function (i
     expect(data_get($this->post->fresh()->media, '0.meta.cover_offset_ms'))->toBeNull();
 })->with([
     'negative' => [-1, 'media.0.meta', '0 ms or more'],
-    'past the end of a 10 s video' => [99999999, 'destinations.0.media.0.meta', '10000 ms or less'],
+    'past the end of a 10 s video' => [99999999, 'media.0.meta', '10000 ms or less'],
 ]);
 
 test('mcp rejects a negative or past-the-end cover offset', function (int $offset, string $message) {
@@ -146,7 +137,7 @@ test('a forged duration cannot stretch the measured one', function () {
         'status' => 'draft',
         'content' => 'hi',
         'media' => [[...videoCoverOffsetItem($this->video, ['cover_offset_ms' => 60000]), 'meta' => ['duration' => 999, 'cover_offset_ms' => 60000]]],
-    ])->assertSessionHasErrors(['destinations.0.media.0.meta' => 'The video cover time must be 10000 ms or less.']);
+    ])->assertSessionHasErrors(['media.0.meta' => 'The video cover time must be 10000 ms or less.']);
 
     expect(data_get($this->post->fresh()->media, '0.meta.cover_offset_ms'))->toBeNull();
 });

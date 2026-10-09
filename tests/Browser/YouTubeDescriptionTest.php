@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 use App\Dto\MediaItem;
 use App\Enums\Post\Status;
+use App\Enums\PostPlatform\ContentType;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -27,29 +27,23 @@ function seedYouTubeDescriptionEditor(): array
     ]);
     Storage::put($asset->path, (string) file_get_contents(base_path('tests/fixtures/sample.mp4')));
 
-    $platforms = collect(range(1, 2))->map(function (int $number) use ($workspace, $user, $asset) {
+    $posts = collect(range(1, 2))->map(function (int $number) use ($workspace, $user, $asset) {
         $account = SocialAccount::factory()->youtube()->create([
             'workspace_id' => $workspace->id,
             'username' => "ytchannel{$number}",
         ]);
-        $post = Post::factory()->create([
-            'workspace_id' => $workspace->id,
+
+        return Post::factory()->forAccount($account, ContentType::YouTubeShort)->create([
             'user_id' => $user->id,
             'content' => 'Short title',
             'status' => Status::Draft,
             'media' => [MediaItem::fromMedia($asset)->toArray()],
-        ]);
-
-        return PostPlatform::factory()->youtube()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'enabled' => true,
             'meta' => ['description' => "Channel {$number}"],
         ]);
     });
     test()->actingAs($user);
 
-    return [$platforms[0]->post, $platforms];
+    return [$posts[0], $posts];
 }
 
 function waitForYouTubeElement(mixed $page, string $testId): void
@@ -66,7 +60,7 @@ function waitForYouTubeElement(mixed $page, string $testId): void
 }
 
 test('youtube description editor counts UTF-8 bytes and saves only its independent post', function (int $width, int $height) {
-    [$post, $platforms] = seedYouTubeDescriptionEditor();
+    [$post, $posts] = seedYouTubeDescriptionEditor();
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
     waitForYouTubeElement($page, 'youtube-description-0');
     $page->assertValue('@youtube-description-0', 'Channel 1');
@@ -91,21 +85,21 @@ test('youtube description editor counts UTF-8 bytes and saves only its independe
     }
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
-    expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBe($description)
-        ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe('Channel 2')
+    expect(data_get($posts[0]->fresh()->meta, 'description'))->toBe($description)
+        ->and(data_get($posts[1]->fresh()->meta, 'description'))->toBe('Channel 2')
         ->and($post->fresh()->content)->toBe('Short title');
 })->with([[375, 812]]);
 
 test('youtube description clearing restores content fallback without changing another post', function (string $description) {
-    [$post, $platforms] = seedYouTubeDescriptionEditor();
+    [$post, $posts] = seedYouTubeDescriptionEditor();
     $page = visit(route('app.posts.edit', $post))->resize(375, 812);
     waitForYouTubeElement($page, 'youtube-description-0');
     $page->fill('@youtube-description-0', $description)
         ->click('@composer-save-draft')
         ->assertMissing('@post-composer-dialog');
 
-    expect(data_get($platforms[0]->fresh()->meta, 'description'))->toBeNull()
-        ->and(data_get($platforms[1]->fresh()->meta, 'description'))->toBe('Channel 2');
+    expect(data_get($posts[0]->fresh()->meta, 'description'))->toBeNull()
+        ->and(data_get($posts[1]->fresh()->meta, 'description'))->toBe('Channel 2');
 
     $page = visit(route('app.posts.edit', $post))->resize(375, 812);
     $page->click('@composer-view-preview')
@@ -117,9 +111,9 @@ test('youtube description clearing restores content fallback without changing an
 ]);
 
 test('youtube description long preview stays inside the preview card', function (int $width, int $height) {
-    [$post, $platforms] = seedYouTubeDescriptionEditor();
+    [$post, $posts] = seedYouTubeDescriptionEditor();
     $description = "Full description\n".str_repeat('https://example.com/'.str_repeat('a', 100)."\n", 35);
-    $platforms[0]->update(['meta' => ['description' => $description]]);
+    $posts[0]->update(['meta' => ['description' => $description]]);
     $page = visit(route('app.posts.edit', $post))->resize($width, $height);
     if ($width < 1024) {
         $page->click('@composer-view-preview');

@@ -2,9 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\PublishStatus as PlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ContentLimitException;
 use App\Exceptions\Social\ErrorCategory;
@@ -1399,16 +1398,16 @@ test('x status connection failures reschedule and resume the uploaded media', fu
 
     (new PublishToSocialPlatform($this->post))->handle();
 
-    expect($this->post->refresh()->status)->toBe(PlatformStatus::Retrying)
+    expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Retrying)
         ->and($this->post->error_context[PublishCheckpoint::X_MEDIA])->toBe(['test-media-video' => 'media_ready'])
         ->and($this->post->error_context['retry_count'])->toBe(1);
-    Queue::assertPushed(PublishToSocialPlatform::class, fn ($job) => $job->postPlatform->is($this->post)
+    Queue::assertPushed(PublishToSocialPlatform::class, fn ($job) => $job->post->is($this->post)
         && $job->delay->isFuture());
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/2/tweets'));
 
     (new PublishToSocialPlatform($this->post, 1))->handle();
 
-    expect($this->post->refresh()->status)->toBe(PlatformStatus::Published);
+    expect($this->post->refresh()->publish_status)->toBe(PublishStatus::Published);
     expect(Http::recorded(fn ($request) => str_contains($request->url(), '/initialize')))->toHaveCount($checkpointed ? 0 : 1);
     expect(Http::recorded(fn ($request) => str_contains($request->url(), '/2/tweets')))->toHaveCount(1);
 })->with([

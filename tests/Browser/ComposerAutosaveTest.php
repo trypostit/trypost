@@ -451,8 +451,8 @@ test('an unfinished post from the old shared editor restores one card per networ
  */
 function composerAutosaveSavedContents(Workspace $workspace): array
 {
-    return Post::query()->where('workspace_id', $workspace->id)->with('postPlatforms')->get()
-        ->mapWithKeys(fn (Post $post): array => [$post->postPlatforms->sole()->social_account_id => $post->content])
+    return Post::query()->where('workspace_id', $workspace->id)->get()
+        ->mapWithKeys(fn (Post $post): array => [$post->social_account_id => $post->content])
         ->all();
 }
 

@@ -70,7 +70,6 @@ test('post details lists the posts created together and switches between them', 
     [$first, $second, $draft] = $posts->all();
     $draft->update(['status' => PostStatus::Draft, 'schedule_mode' => null, 'scheduled_at' => null]);
     $second->update(['scheduled_at' => $second->scheduled_at->addHour()]);
-    $secondTarget = $second->postPlatforms()->first();
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
@@ -89,7 +88,7 @@ test('post details lists the posts created together and switches between them', 
         ->and($page->script("document.querySelector('[data-testid=\"post-details-rail-item-{$first->id}\"]').getAttribute('aria-current')"))->toBe('true');
 
     $page->click("@post-details-rail-item-{$second->id}");
-    waitForDetailsGroupTestId($page, "post-details-target-{$secondTarget->id}");
+    waitForDetailsGroupTestId($page, "post-details-target-{$second->id}");
 
     $page->assertSeeIn("@post-details-text-{$second->id}", 'Grouped details post')
         ->assertSeeIn("@post-details-status-{$first->id}", __('posts.status.scheduled'));

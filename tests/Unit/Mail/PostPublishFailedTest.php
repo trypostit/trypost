@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 
@@ -15,12 +14,7 @@ test('failed email falls back to the page display name when facebook has no user
         'username' => null,
         'display_name' => 'InboxPlacement.io',
     ]);
-    $post = Post::factory()->failed()->create(['workspace_id' => $workspace->id]);
-    PostPlatform::factory()->facebook()->failed()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-    ]);
+    $post = Post::factory()->forAccount($account)->failed()->create();
 
     $mail = new PostPublishFailed($post);
 

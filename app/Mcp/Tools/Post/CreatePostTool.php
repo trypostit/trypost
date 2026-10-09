@@ -17,6 +17,7 @@ use App\Mcp\Concerns\DescribesPostMedia;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Support\PostCompositionValidator;
 use App\Support\PostPlatformMetaRules;
 use App\Support\PostStatusRules;
 use App\Support\Requests\Post\PostRequestRules;
@@ -55,7 +56,7 @@ class CreatePostTool extends Tool
         $validated = HostInlineMedia::forPost($workspace, Post::allowedMediaTypesFor($platforms), $validated);
 
         try {
-            $post = CreatePosts::execute($workspace, $request->user(), [
+            $post = PostCompositionValidator::forSinglePost(fn (): Post => CreatePosts::execute($workspace, $request->user(), [
                 'status' => $validated['status'] ?? Status::Draft->value,
                 'content' => $validated['content'] ?? '',
                 'media' => $validated['media'] ?? [],
@@ -65,7 +66,7 @@ class CreatePostTool extends Tool
                 'label_ids' => $validated['label_ids'] ?? [],
                 'created_via' => CreatedVia::Mcp,
                 'destinations' => [Arr::only($validated, ['social_account_id', 'content_type', 'meta'])],
-            ])->sole();
+            ])->sole());
         } catch (QueueBusyException) {
             return Response::error(__('posts.errors.queue_busy'));
         }

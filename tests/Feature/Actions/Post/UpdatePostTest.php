@@ -9,7 +9,6 @@ use App\Enums\Post\PublishStatus as PlatformStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -18,170 +17,90 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
-test('execute prunes a google business jpeg when the target is switched off', function () {
-    Storage::fake();
-
+test('execute rejects a platforms list from a stale client', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account)->scheduled()->create([
         'user_id' => $user->id,
+        'content' => 'Original',
     ]);
-    $linkedin = PostPlatform::factory()->linkedin()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->linkedin()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-    ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
-    ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
-    Storage::put($path, 'image');
-
-    UpdatePost::execute($workspace, $post, [
-        'status' => PostStatus::Scheduled->value,
-        'platforms' => [['id' => $linkedin->id]],
-    ]);
-
-    expect($target->fresh()->enabled)->toBeFalse()
-        ->and($target->fresh()->status)->toBe(PlatformStatus::Rejected)
-        ->and($target->fresh()->error_message)->toBe(__('posts.errors.target_disabled'))
-        ->and($linkedin->fresh()->enabled)->toBeTrue()
-        ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
-    Storage::assertMissing($path);
-});
-
-test('execute rejects switching off the sole social account', function () {
-    Storage::fake();
-
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-    ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
-    ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
-    Storage::put($path, 'image');
 
     expect(fn () => UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Scheduled->value,
+        'content' => 'Edited',
         'platforms' => [],
     ]))->toThrow(ValidationException::class);
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::PendingReview)
-        ->and($target->fresh()->enabled)->toBeTrue()
+    expect($post->fresh()->content)->toBe('Original')
         ->and($post->fresh()->status)->toBe(PostStatus::Scheduled);
-    Storage::assertExists($path);
 });
 
-test('execute keeps the google business jpeg when the target stays enabled', function () {
+test('a draft without a channel keeps its edits but cannot be scheduled', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $post = Post::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'content' => 'Original',
+    ]);
+
+    UpdatePost::execute($workspace, $post, ['status' => PostStatus::Draft->value, 'content' => 'Edited']);
+
+    expect($post->fresh()->content)->toBe('Edited')
+        ->and($post->fresh()->status)->toBe(PostStatus::Draft);
+
+    expect(fn () => UpdatePost::execute($workspace, $post->fresh(), [
+        'status' => PostStatus::Scheduled->value,
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+    ]))->toThrow(ValidationException::class);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Draft);
+});
+
+test('execute keeps the google business jpeg on an edit', function () {
     Storage::fake();
 
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->googleBusiness()->pendingReview()->create([
         'user_id' => $user->id,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
         'content' => 'Current promotion',
-    ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($post);
     Storage::put($path, 'image');
 
     UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Scheduled->value,
-        'platforms' => [['id' => $target->id]],
+        'content' => 'Updated promotion',
     ]);
 
-    expect($target->fresh()->enabled)->toBeTrue();
+    expect($post->fresh()->publish_status)->toBe(PlatformStatus::PendingReview);
     Storage::assertExists($path);
 });
 
-test('invalid publication metadata rolls back before cleaning a disabled google business target', function () {
-    Storage::fake();
-
+test('invalid publication metadata rolls the edit back', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->youtube()->create([
         'user_id' => $user->id,
         'status' => PostStatus::Draft,
-    ]);
-    $youtube = PostPlatform::factory()->youtube()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->youtube()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
+        'content' => 'Original',
         'meta' => ['description' => str_repeat('a', 5001)],
     ]);
-    $target = PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
-    ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
-    Storage::put($path, 'image');
 
     expect(fn () => UpdatePost::execute($workspace, $post, [
         'status' => PostStatus::Scheduled->value,
-        'platforms' => [['id' => $youtube->id]],
+        'scheduled_at' => now()->addDay()->toIso8601String(),
+        'content' => 'Edited',
     ]))->toThrow(ValidationException::class);
 
     expect($post->fresh()->status)->toBe(PostStatus::Draft)
-        ->and($target->fresh()->enabled)->toBeTrue()
-        ->and($target->fresh()->status)->toBe(PlatformStatus::PendingReview);
-    Storage::assertExists($path);
+        ->and($post->fresh()->content)->toBe('Original');
 });
-
-test('disabled youtube metadata does not block scheduling', function (bool $resubmitPlatforms) {
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $user->id,
-    ]);
-    $platform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->youtube()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'enabled' => false,
-        'meta' => ['description' => str_repeat('a', 5001)],
-    ]);
-    $data = ['status' => PostStatus::Scheduled->value];
-
-    if ($resubmitPlatforms) {
-        $data['platforms'] = [];
-    }
-
-    UpdatePost::execute($workspace, $post, $data);
-
-    expect($post->fresh()->status)->toBe(PostStatus::Scheduled)
-        ->and($platform->fresh()->enabled)->toBeFalse();
-})->with([
-    'omitted platforms' => [false],
-    'deselected platforms' => [true],
-]);
 
 test('an edit does not land on a post the scheduler claimed after it was loaded', function () {
     $user = User::factory()->create();

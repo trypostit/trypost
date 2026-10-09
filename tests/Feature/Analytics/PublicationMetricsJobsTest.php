@@ -16,7 +16,6 @@ use App\Jobs\Analytics\ScheduleInstagramStoryMetrics;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
@@ -65,19 +64,14 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
     $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
     CarbonImmutable::setTestNow($date);
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
-    $postPlatform = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
         'platform_post_id' => 'v_pub_abc',
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $postPlatform->id,
+        'post_id' => $post->id,
         'network' => Platform::TikTok->network(),
         'platform' => Platform::TikTok,
         'platform_user_id' => $account->platform_user_id,
@@ -94,7 +88,7 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
     app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
 
     expect($publication->fresh()->remote_id)->toBe('123456789')
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('123456789')
+        ->and($post->fresh()->platform_post_id)->toBe('123456789')
         ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
     Http::assertSentCount(2);
 });

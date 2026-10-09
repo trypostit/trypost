@@ -49,7 +49,7 @@ test('a reply keeps its own media, owned by the post and apart from the root med
         'Three',
     ], [MediaItem::fromMedia($rootImage)->toArray()], 'scheduled');
 
-    $replies = $post->postPlatforms()->sole()->meta['thread_replies'];
+    $replies = $post->fresh()->meta['thread_replies'];
 
     expect(collect($post->fresh()->media)->pluck('id')->all())->toBe([$rootImage->id])
         ->and($replies[0]['text'])->toBe('Two')
@@ -94,7 +94,7 @@ test('removing a reply media deletes its row and appending to the root keeps the
     AppendPostMedia::execute($post->fresh(), [MediaItem::fromMedia($rootImage)->toArray()], $this->user);
 
     expect(Media::query()->whereKey($replyImage->id)->exists())->toBeTrue()
-        ->and($post->postPlatforms()->sole()->meta['thread_replies'][0]['media'][0]['id'])->toBe($replyImage->id);
+        ->and($post->fresh()->meta['thread_replies'][0]['media'][0]['id'])->toBe($replyImage->id);
 
     UpdatePost::execute($this->workspace, $post->fresh(), [
         'status' => PostStatus::Draft->value,
@@ -110,7 +110,7 @@ test('a duplicate copies the reply media and deleting the post deletes it', func
     $post = threadReplyMediaPost($this, [['text' => 'Two', 'media' => [MediaItem::fromMedia($replyImage)->toArray()]]]);
 
     $copy = DuplicatePost::execute($post->fresh(), $this->user);
-    $copiedId = $copy->postPlatforms()->sole()->meta['thread_replies'][0]['media'][0]['id'];
+    $copiedId = $copy->fresh()->meta['thread_replies'][0]['media'][0]['id'];
 
     expect($copiedId)->not->toBe($replyImage->id)
         ->and(Media::query()->find($copiedId)->post_id)->toBe($copy->id);

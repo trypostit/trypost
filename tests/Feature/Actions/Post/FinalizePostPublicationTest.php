@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Notification\Type;
-use App\Enums\Post\PublishStatus as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -30,18 +29,15 @@ test('a published post queues the published email for the owner', function () {
         'username' => 'inbox',
         'display_name' => 'InboxPlacement.io',
     ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->facebook()->scheduled()->create([
         'user_id' => $owner->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->facebook()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
 
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
         return $job->type === Type::PostPublished
             && $job->user->is($owner)
@@ -58,18 +54,15 @@ test('a failed post queues the failed email for the owner', function () {
         'username' => 'inbox',
         'display_name' => 'InboxPlacement.io',
     ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->facebook()->scheduled()->create([
         'user_id' => $owner->id,
-    ]);
-    $postPlatform = PostPlatform::factory()->facebook()->failed()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
+        'publish_status' => PublishStatus::Failed,
+        'error_message' => 'Failed to publish',
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
 
+    expect($post->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class, function (SendNotification $job) use ($owner, $post) {
         return $job->type === Type::PostFailed
             && $job->user->is($owner)
@@ -78,19 +71,13 @@ test('a failed post queues the failed email for the owner', function () {
     });
 });
 
-test('a publishing post with no enabled targets is failed', function () {
+test('a publishing post without a destination is failed', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $owner->id,
         'status' => PostStatus::Publishing,
-    ]);
-    PostPlatform::factory()->facebook()->disabled()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
@@ -99,19 +86,13 @@ test('a publishing post with no enabled targets is failed', function () {
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
 });
 
-test('a draft with no enabled targets is left alone', function () {
+test('a draft without a destination is left alone', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
     $post = Post::factory()->create([
         'workspace_id' => $workspace->id,
         'user_id' => $owner->id,
         'status' => PostStatus::Draft,
-    ]);
-    PostPlatform::factory()->facebook()->disabled()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
@@ -120,19 +101,11 @@ test('a draft with no enabled targets is left alone', function () {
     Queue::assertNotPushed(SendNotification::class);
 });
 
-test('a google business target still in review does not settle the post', function () {
+test('a google business post still in review is not settled', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->googleBusiness()->pendingReview()->create([
         'user_id' => $owner->id,
-        'status' => PostStatus::Publishing,
-    ]);
-    PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
     ]);
 
@@ -142,78 +115,29 @@ test('a google business target still in review does not settle the post', functi
     Queue::assertNotPushed(SendNotification::class);
 });
 
-test('a published sibling does not settle the post while google business is in review', function () {
+test('a google business post rejected in review is failed', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->googleBusiness()->publishing()->create([
         'user_id' => $owner->id,
-        'status' => PostStatus::Publishing,
-    ]);
-    PostPlatform::factory()->facebook()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-    ]);
-    PostPlatform::factory()->googleBusiness()->pendingReview()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
-    ]);
-
-    app(FinalizePostPublication::class)->handle($post);
-
-    expect($post->fresh()->status)->toBe(PostStatus::Publishing);
-    Queue::assertNotPushed(SendNotification::class);
-});
-
-test('a rejected google business target next to a published sibling is partial', function () {
-    $owner = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $owner->id,
-        'status' => PostStatus::Publishing,
-    ]);
-    PostPlatform::factory()->facebook()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-    ]);
-    PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'status' => PostPlatformStatus::Rejected,
+        'publish_status' => PublishStatus::Rejected,
         'platform_post_id' => 'accounts/1/locations/2/localPosts/3',
         'error_message' => __('posts.errors.rejected_in_review'),
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
 
-    expect($post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
+    expect($post->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job) => $job->type === Type::PostFailed);
 });
 
 test('a second settle does not notify again', function () {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
         'user_id' => $owner->id,
-        'status' => PostStatus::Publishing,
-    ]);
-    PostPlatform::factory()->facebook()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'enabled' => true,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
     ]);
 
     $finalize = app(FinalizePostPublication::class);
@@ -227,18 +151,12 @@ test('a second settle does not notify again', function () {
 test('an already settled post is left alone', function (PostStatus $status) {
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->create([
         'user_id' => $owner->id,
         'status' => $status,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
         'published_at' => $status === PostStatus::Failed ? null : now(),
-    ]);
-    PostPlatform::factory()->facebook()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->facebook()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-        'enabled' => true,
     ]);
 
     app(FinalizePostPublication::class)->handle($post);
@@ -247,6 +165,5 @@ test('an already settled post is left alone', function (PostStatus $status) {
     Queue::assertNotPushed(SendNotification::class);
 })->with([
     PostStatus::Published,
-    PostStatus::PartiallyPublished,
     PostStatus::Failed,
 ]);

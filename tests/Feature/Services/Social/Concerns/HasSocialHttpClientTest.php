@@ -6,7 +6,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ContentLimitException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -24,7 +23,7 @@ beforeEach(function () {
             return $this->socialHttp()->get($url);
         }
 
-        public function callValidateContentLength(PostPlatform $post): void
+        public function callValidateContentLength(Post $post): void
         {
             $this->validateContentLength($post);
         }

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\PublishStatus as PostPlatformStatus;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
@@ -13,7 +13,6 @@ use App\Http\Resources\Api\RepurposeResource as ApiRepurposeResource;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
@@ -506,24 +505,14 @@ test('the activity list exposes each replicated post status', function () {
 
     $item = RepurposeItem::factory()->for($repurpose)->create();
 
-    $published = Post::factory()->create([
+    Post::factory()->mastodon()->published()->create([
         'workspace_id' => $this->workspace->id,
         'repurpose_item_id' => $item->id,
-    ]);
-    PostPlatform::factory()->for($published)->create([
-        'platform' => Platform::Mastodon,
-        'enabled' => true,
-        'status' => PostPlatformStatus::Published,
     ]);
 
-    $failed = Post::factory()->create([
+    Post::factory()->threads()->failed()->create([
         'workspace_id' => $this->workspace->id,
         'repurpose_item_id' => $item->id,
-    ]);
-    PostPlatform::factory()->for($failed)->create([
-        'platform' => Platform::Threads,
-        'enabled' => true,
-        'status' => PostPlatformStatus::Failed,
     ]);
 
     $this->actingAs($this->user)
@@ -531,10 +520,10 @@ test('the activity list exposes each replicated post status', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->has('items.data.0.posts', 2)
             ->where('items.data.0.posts', fn (Collection $posts): bool => $posts
-                ->pluck('platforms.0.status')
+                ->pluck('publish_status')
                 ->sort()
                 ->values()
-                ->all() === [PostPlatformStatus::Failed->value, PostPlatformStatus::Published->value]));
+                ->all() === [PublishStatus::Failed->value, PublishStatus::Published->value]));
 });
 
 test('google business is never a repurpose destination', function () {

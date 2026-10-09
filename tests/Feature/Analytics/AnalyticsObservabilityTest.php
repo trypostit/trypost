@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BackfillAccountPublications;
-use App\Jobs\Analytics\BackfillTryPostPublications;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\CollectPublicationMetrics;
@@ -30,7 +29,6 @@ test('horizon supervises every analytics job on a dedicated queue', function () 
 
     foreach ([
         new BackfillAccountPublications('account', 'state'),
-        new BackfillTryPostPublications(['destination']),
         new BootstrapAccountAnalytics('account'),
         new CollectAccountDailySnapshot('account', '2026-09-23'),
         new CollectPublicationMetrics('publication', '2026-09-23'),

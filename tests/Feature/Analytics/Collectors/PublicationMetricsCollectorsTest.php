@@ -12,7 +12,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Analytics\AnalyticsCollectionException;
 use App\Models\AnalyticsPublication;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\BlueskyPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\FacebookPublicationMetricsCollector;
@@ -364,19 +363,14 @@ test('Meta publication metrics classify missing permission on HTTP 400', functio
 
 test('TikTok resolves a TryPost publish id before collecting the public video', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
-    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
-    $postPlatform = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
         'platform_post_id' => 'v_pub_abc',
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $account->workspace_id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $postPlatform->id,
+        'post_id' => $post->id,
         'network' => Platform::TikTok->network(),
         'platform' => Platform::TikTok,
         'platform_user_id' => $account->platform_user_id,
@@ -395,7 +389,7 @@ test('TikTok resolves a TryPost publish id before collecting the public video', 
 
     expect($metrics->all())->toBe(['views' => 12, 'reactions' => 0, 'engagements' => 0])
         ->and($publication->fresh()->remote_id)->toBe('v_pub_abc')
-        ->and($postPlatform->fresh()->platform_post_id)->toBe('v_pub_abc');
+        ->and($post->fresh()->platform_post_id)->toBe('v_pub_abc');
     Http::assertSentCount(2);
 });
 

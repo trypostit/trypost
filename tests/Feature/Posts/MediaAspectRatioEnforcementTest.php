@@ -10,7 +10,6 @@ use App\Mcp\Tools\Post\PublishPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -89,27 +88,17 @@ function sidewaysJpeg(int $rawWidth, int $rawHeight): string
 }
 
 /**
- * @param  array<string, mixed>  $platformMeta
+ * @param  array<string, mixed>  $meta
  */
-function aspectTestPost(Workspace $workspace, User $user, SocialAccount $account, Media $asset, ContentType $contentType, array $platformMeta = []): array
+function aspectTestPost(Workspace $workspace, User $user, SocialAccount $account, Media $asset, ContentType $contentType, array $meta = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    return Post::factory()->forAccount($account, $contentType)->create([
         'user_id' => $user->id,
         'status' => Status::Draft,
         'scheduled_at' => null,
         'media' => [MediaItem::fromMedia($asset)->toArray()],
+        'meta' => $meta,
     ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
-        'enabled' => true,
-        'meta' => $platformMeta,
-    ]);
-
-    return [$post, $platform];
 }
 
 /**
@@ -133,13 +122,13 @@ function tooWideForInstagramFeed(): string
 
 test('the web schedule rejects an instagram feed image wider than 1.91 with a per-network message', function (string $status) {
     $upload = uploadAspectTestImage($this->user, 2000, 1000);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
 
     $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => $status,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'content_type' => ContentType::InstagramFeed->value,
     ]);
 
     $errors = sessionErrorMessages();
@@ -151,13 +140,13 @@ test('the web schedule rejects an instagram feed image wider than 1.91 with a pe
 
 test('the web schedule accepts a 4:5 instagram feed image', function () {
     $upload = uploadAspectTestImage($this->user, 1080, 1350);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'content_type' => ContentType::InstagramFeed->value,
     ])->assertSessionHasNoErrors();
 
     expect($post->fresh()->status)->toBe(Status::Scheduled);
@@ -165,7 +154,7 @@ test('the web schedule accepts a 4:5 instagram feed image', function () {
 
 test('client-sent dimensions never override the stored row', function () {
     $upload = uploadAspectTestImage($this->user, 2000, 1000);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
     $item = MediaItem::fromMedia($upload)->toArray();
     $item['meta'] = [...($item['meta'] ?? []), 'width' => 1080, 'height' => 1350];
 
@@ -173,7 +162,7 @@ test('client-sent dimensions never override the stored row', function () {
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [$item],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'content_type' => ContentType::InstagramFeed->value,
     ]);
 
     expect(sessionErrorMessages())->toContain(tooWideForInstagramFeed())
@@ -182,13 +171,13 @@ test('client-sent dimensions never override the stored row', function () {
 
 test('an instagram story fits any image into the frame', function () {
     $upload = uploadAspectTestImage($this->user, 2000, 1000);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramStory);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramStory);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramStory->value]],
+        'content_type' => ContentType::InstagramStory->value,
     ])->assertSessionHasNoErrors();
 
     expect($post->fresh()->status)->toBe(Status::Scheduled);
@@ -202,10 +191,11 @@ test('the rest api rejects a too-wide instagram feed image on create and update'
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [['id' => $wide->id]],
-        'platforms' => [['social_account_id' => $this->instagram->id, 'content_type' => ContentType::InstagramFeed->value]],
-    ])->assertUnprocessable()->assertJsonValidationErrors(['destinations.0.content_type' => tooWideForInstagramFeed()]);
+        'social_account_id' => $this->instagram->id,
+        'content_type' => ContentType::InstagramFeed->value,
+    ])->assertUnprocessable()->assertJsonValidationErrors(['content_type' => tooWideForInstagramFeed()]);
 
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
     $this->withHeaders($headers)->putJson(route('api.posts.update', $post), [
         'status' => 'scheduled',
@@ -223,13 +213,14 @@ test('the rest api accepts a 4:5 instagram feed image', function () {
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [['id' => $portrait->id]],
-        'platforms' => [['social_account_id' => $this->instagram->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'social_account_id' => $this->instagram->id,
+        'content_type' => ContentType::InstagramFeed->value,
     ])->assertCreated();
 });
 
 test('mcp scheduling and publishing reject the stored too-wide image with the same message', function () {
     $wide = aspectTestAsset($this->workspace, 2000, 1000, ['width' => 2000, 'height' => 1000]);
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $post->id,
@@ -245,7 +236,7 @@ test('mcp scheduling and publishing reject the stored too-wide image with the sa
 
 test('the stored-post publish guard rejects the too-wide image', function () {
     $wide = aspectTestAsset($this->workspace, 2000, 1000, ['width' => 2000, 'height' => 1000]);
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
     expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
@@ -253,7 +244,7 @@ test('the stored-post publish guard rejects the too-wide image', function () {
 
 test('a row without dimensions is measured from its file and written back', function () {
     $wide = aspectTestAsset($this->workspace, 2000, 1000);
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
 
     expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
@@ -263,7 +254,7 @@ test('a row without dimensions is measured from its file and written back', func
 
 test('an unreadable row skips the dimension check', function () {
     $broken = Media::factory()->temporaryUpload($this->workspace)->create(['meta' => []]);
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $broken, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $broken, ContentType::InstagramFeed);
 
     PostStatusRules::assertStoredPostPublishable($post);
 
@@ -273,7 +264,7 @@ test('an unreadable row skips the dimension check', function () {
 test('google business rejects an image under 250 px on its short edge', function () {
     $account = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $this->workspace->id]);
     $small = aspectTestAsset($this->workspace, 200, 200, ['width' => 200, 'height' => 200]);
-    [$post] = aspectTestPost($this->workspace, $this->user, $account, $small, ContentType::GoogleBusinessPost);
+    $post = aspectTestPost($this->workspace, $this->user, $account, $small, ContentType::GoogleBusinessPost);
 
     $message = trans('posts.form.warnings.image_too_small_dimensions', [
         'destination' => ContentType::GoogleBusinessPost->destinationLabel(),
@@ -292,13 +283,14 @@ test('the destination names the network and the post type', function () {
 
 test('a legacy aspect ratio no longer lets a too-wide instagram feed image through on web, api and mcp', function (string $legacyRatio) {
     $upload = uploadAspectTestImage($this->user, 2000, 1000);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed, ['aspect_ratio' => $legacyRatio]);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed, ['aspect_ratio' => $legacyRatio]);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramFeed->value, 'meta' => ['aspect_ratio' => $legacyRatio]]],
+        'content_type' => ContentType::InstagramFeed->value,
+        'meta' => ['aspect_ratio' => $legacyRatio],
     ]);
 
     expect(sessionErrorMessages())->toContain(tooWideForInstagramFeed())
@@ -311,14 +303,12 @@ test('a legacy aspect ratio no longer lets a too-wide instagram feed image throu
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [['id' => $wide->id]],
-        'platforms' => [[
-            'social_account_id' => $this->instagram->id,
-            'content_type' => ContentType::InstagramFeed->value,
-            'meta' => ['aspect_ratio' => $legacyRatio],
-        ]],
+        'social_account_id' => $this->instagram->id,
+        'content_type' => ContentType::InstagramFeed->value,
+        'meta' => ['aspect_ratio' => $legacyRatio],
     ])->assertUnprocessable()->assertJsonFragment([tooWideForInstagramFeed()]);
 
-    [$stored] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed, ['aspect_ratio' => $legacyRatio]);
+    $stored = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed, ['aspect_ratio' => $legacyRatio]);
 
     $this->withHeaders($headers)->putJson(route('api.posts.update', $stored), [
         'status' => 'scheduled',
@@ -339,7 +329,7 @@ test('a legacy aspect ratio no longer lets a too-wide instagram feed image throu
 
 test('the web schedule still refuses a ratio-breaking composer item that carries a non-null upload_token', function () {
     $upload = aspectTestAsset($this->workspace, 500, 1000, ['width' => 500, 'height' => 1000]);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $upload, ContentType::InstagramFeed);
 
     expect($upload->upload_token)->not->toBeNull();
 
@@ -347,7 +337,7 @@ test('the web schedule still refuses a ratio-breaking composer item that carries
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [[...MediaItem::fromMedia($upload)->toArray(), 'upload_token' => $upload->upload_token]],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::InstagramFeed->value]],
+        'content_type' => ContentType::InstagramFeed->value,
     ]);
 
     expect(implode(' ', sessionErrorMessages()))->toContain('0.50')
@@ -357,13 +347,13 @@ test('the web schedule still refuses a ratio-breaking composer item that carries
 test('a facebook post schedules an image of any ratio on web, api and mcp', function (int $width, int $height) {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     $upload = uploadAspectTestImage($this->user, $width, $height);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $facebook, $upload, ContentType::FacebookPost);
+    $post = aspectTestPost($this->workspace, $this->user, $facebook, $upload, ContentType::FacebookPost);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::FacebookPost->value]],
+        'content_type' => ContentType::FacebookPost->value,
     ])->assertSessionHasNoErrors();
 
     expect($post->fresh()->status)->toBe(Status::Scheduled);
@@ -376,10 +366,13 @@ test('a facebook post schedules an image of any ratio on web, api and mcp', func
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [['id' => $asset->id]],
-        'platforms' => [['social_account_id' => $facebook->id, 'content_type' => ContentType::FacebookPost->value]],
+        'social_account_id' => $facebook->id,
+        'content_type' => ContentType::FacebookPost->value,
     ])->assertCreated();
 
-    [$mcpPost] = aspectTestPost($this->workspace, $this->user, $facebook, $asset, ContentType::FacebookPost);
+    $mcpAsset = aspectTestAsset($this->workspace, $width, $height, ['width' => $width, 'height' => $height]);
+    $mcpAsset->update(['size' => 500_000]);
+    $mcpPost = aspectTestPost($this->workspace, $this->user, $facebook, $mcpAsset, ContentType::FacebookPost);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $mcpPost->id,
@@ -400,10 +393,10 @@ test('a sideways phone photo is measured as people see it', function () {
     expect($tall->meta)->toMatchArray(['width' => 1080, 'height' => 1350])
         ->and($wide->meta)->toMatchArray(['width' => 2000, 'height' => 1000]);
 
-    [$accepted] = aspectTestPost($this->workspace, $this->user, $this->instagram, $tall, ContentType::InstagramFeed);
+    $accepted = aspectTestPost($this->workspace, $this->user, $this->instagram, $tall, ContentType::InstagramFeed);
     PostStatusRules::assertStoredPostPublishable($accepted);
 
-    [$rejected] = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
+    $rejected = aspectTestPost($this->workspace, $this->user, $this->instagram, $wide, ContentType::InstagramFeed);
     expect(fn () => PostStatusRules::assertStoredPostPublishable($rejected))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
 });
@@ -411,7 +404,7 @@ test('a sideways phone photo is measured as people see it', function () {
 test('a row measured on demand applies the exif orientation', function () {
     $asset = Media::factory()->temporaryUpload($this->workspace)->create(['meta' => []]);
     Storage::put($asset->path, sidewaysJpeg(1000, 2000));
-    [$post] = aspectTestPost($this->workspace, $this->user, $this->instagram, $asset, ContentType::InstagramFeed);
+    $post = aspectTestPost($this->workspace, $this->user, $this->instagram, $asset, ContentType::InstagramFeed);
 
     expect(fn () => PostStatusRules::assertStoredPostPublishable($post))
         ->toThrow(ValidationException::class, tooWideForInstagramFeed());
@@ -435,8 +428,8 @@ test('telegram limits the ratio of photos only', function () {
     $strip = aspectTestAsset($this->workspace, 3000, 100, ['width' => 3000, 'height' => 100]);
     $video = Media::factory()->video()->temporaryUpload($this->workspace)->create(['meta' => ['width' => 3000, 'height' => 100, 'duration' => 5]]);
 
-    [$photoPost] = aspectTestPost($this->workspace, $this->user, $account, $strip, ContentType::TelegramPost);
-    [$videoPost] = aspectTestPost($this->workspace, $this->user, $account, $video, ContentType::TelegramPost);
+    $photoPost = aspectTestPost($this->workspace, $this->user, $account, $strip, ContentType::TelegramPost);
+    $videoPost = aspectTestPost($this->workspace, $this->user, $account, $video, ContentType::TelegramPost);
 
     expect(fn () => PostStatusRules::assertStoredPostPublishable($photoPost))->toThrow(ValidationException::class);
 
@@ -451,13 +444,13 @@ test('an upload stores the dimensions measured from its bytes', function () {
 test('a facebook story schedules an image of any ratio, fitted into the frame at publish', function (int $width, int $height) {
     $facebook = SocialAccount::factory()->facebook()->create(['workspace_id' => $this->workspace->id]);
     $upload = uploadAspectTestImage($this->user, $width, $height);
-    [$post, $platform] = aspectTestPost($this->workspace, $this->user, $facebook, $upload, ContentType::FacebookStory);
+    $post = aspectTestPost($this->workspace, $this->user, $facebook, $upload, ContentType::FacebookStory);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $post), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => now()->addDay()->toIso8601String(),
         'media' => [MediaItem::fromMedia($upload)->toArray()],
-        'platforms' => [['id' => $platform->id, 'content_type' => ContentType::FacebookStory->value]],
+        'content_type' => ContentType::FacebookStory->value,
     ])->assertSessionHasNoErrors();
 
     expect($post->fresh()->status)->toBe(Status::Scheduled);

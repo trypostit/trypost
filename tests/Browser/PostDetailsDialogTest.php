@@ -11,7 +11,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -56,9 +55,9 @@ function postDetailsDialogSetup(): array
  */
 function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $metrics = [], PublicationContentType $contentType = PublicationContentType::Image): Post
 {
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $account->workspace_id,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create([
         'content' => 'Details dialog post',
+        'platform_url' => 'https://www.instagram.com/p/abc/',
         'published_at' => now()->subHour(),
         'media' => $images === 0 ? [] : collect(range(1, $images))->map(fn (int $index): array => [
             'id' => (string) Str::uuid(),
@@ -70,25 +69,17 @@ function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $m
             'size' => 1024,
         ])->all(),
     ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
-        'platform_url' => 'https://www.instagram.com/p/abc/',
-        'published_at' => now()->subHour(),
-    ]);
 
     if ($metrics !== []) {
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $account->workspace_id,
             'social_account_id' => $account->id,
             'social_account_key' => $account->id,
-            'post_platform_id' => $target->id,
+            'post_id' => $post->id,
             'platform' => $account->platform,
             'network' => $account->platform->network(),
             'content_type' => $contentType,
-            'remote_id' => $target->platform_post_id,
+            'remote_id' => $post->platform_post_id,
         ]);
         AnalyticsPublicationDailySnapshot::factory()->create([
             'publication_id' => $publication->id,
@@ -332,16 +323,8 @@ test('a publishing post shows a spinning status in its details', function () {
 test('the details of a sent thread show every post of the thread with its own media', function () {
     [$user, $instagram] = postDetailsDialogSetup();
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $instagram->workspace_id, 'timezone' => 'UTC', 'meta' => ['x_verified_type' => 'blue']]);
-    $post = Post::factory()->published()->create([
-        'workspace_id' => $account->workspace_id,
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->published()->create([
         'content' => 'First post of the thread',
-        'published_at' => now()->subHour(),
-    ]);
-    PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
         'published_at' => now()->subHour(),
         'meta' => ['thread_replies' => [
             ['text' => 'Second post of the thread', 'media' => [[

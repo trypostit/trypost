@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
@@ -10,7 +9,6 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -58,9 +56,10 @@ function importedCardSetup(): array
 
 function importedCardPost(Workspace $workspace, SocialAccount $account, ContentType $contentType = ContentType::InstagramReel): Post
 {
-    $post = Post::factory()->imported()->create([
+    $post = Post::factory()->forAccount($account, $contentType)->imported()->create([
         'workspace_id' => $workspace->id,
         'content' => 'Posted straight from the app',
+        'platform_url' => 'https://www.instagram.com/reel/abc/',
         'published_at' => now()->subHour(),
         'media' => [[
             'id' => (string) Str::uuid(),
@@ -72,29 +71,21 @@ function importedCardPost(Workspace $workspace, SocialAccount $account, ContentT
             'size' => 1024,
         ]],
     ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => $contentType,
-        'platform_url' => 'https://www.instagram.com/reel/abc/',
-        'published_at' => now()->subHour(),
-    ]);
-    importedCardMetrics($workspace, $account, $target);
+    importedCardMetrics($workspace, $account, $post);
 
     return $post;
 }
 
-function importedCardMetrics(Workspace $workspace, SocialAccount $account, PostPlatform $target): void
+function importedCardMetrics(Workspace $workspace, SocialAccount $account, Post $post): void
 {
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => Platform::Instagram,
         'network' => Platform::Instagram->network(),
-        'remote_id' => $target->platform_post_id,
+        'remote_id' => $post->platform_post_id,
     ]);
     AnalyticsPublicationDailySnapshot::factory()->create([
         'publication_id' => $publication->id,
@@ -176,15 +167,8 @@ test('content type badges follow the display rules for each platform', function 
     $expectations = [];
 
     foreach ($formats as [$contentType, $showsBadge]) {
-        $post = Post::factory()->published()->create([
-            'workspace_id' => $workspace->id,
+        $post = Post::factory()->forAccount($account, $contentType)->published()->create([
             'user_id' => $user->id,
-        ]);
-        PostPlatform::factory()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'platform' => $platform,
-            'content_type' => $contentType,
         ]);
         $expectations[] = [$post, $contentType, $showsBadge];
     }
@@ -299,19 +283,11 @@ test('on a phone the details dialog of an imported post hides the published via 
 
 test('a trypost sent post keeps the created by footer and shows its metrics in its details', function () {
     [$user, $workspace, $account] = importedCardSetup();
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create([
         'user_id' => $user->id,
-        'status' => PostStatus::Published,
         'published_at' => now()->subHour(),
     ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
-    ]);
-    importedCardMetrics($workspace, $account, $target);
+    importedCardMetrics($workspace, $account, $post);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'sent']));
@@ -331,15 +307,8 @@ test('a trypost sent post keeps the created by footer and shows its metrics in i
 
 test('a draft shows no metrics band in its details', function () {
     [$user, $workspace, $account] = importedCardSetup();
-    $post = Post::factory()->draft()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->draft()->create([
         'user_id' => $user->id,
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::Instagram,
-        'content_type' => ContentType::InstagramFeed,
     ]);
     $this->actingAs($user);
 
@@ -366,15 +335,8 @@ test('the content type badge has an icon for stories and reels and is hidden for
     $tiktok = SocialAccount::factory()->tiktok()->create(['workspace_id' => $workspace->id]);
 
     foreach ([ContentType::TikTokPhoto, ContentType::TikTokVideo] as $contentType) {
-        $post = Post::factory()->published()->create([
-            'workspace_id' => $workspace->id,
+        $post = Post::factory()->forAccount($tiktok, $contentType)->published()->create([
             'user_id' => $user->id,
-        ]);
-        PostPlatform::factory()->published()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $tiktok->id,
-            'platform' => Platform::TikTok,
-            'content_type' => $contentType,
         ]);
         $expectations[] = [$post, null];
     }

@@ -9,7 +9,6 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -34,29 +33,16 @@ function videoRatioAsset(Workspace $workspace, int $width, int $height): Media
     ]);
 }
 
-/**
- * @return array{0: Post, 1: PostPlatform}
- */
-function videoRatioDraft(Workspace $workspace, User $user, SocialAccount $account, Media $video, ContentType $contentType): array
+function videoRatioDraft(Workspace $workspace, User $user, SocialAccount $account, Media $video, ContentType $contentType): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    return Post::factory()->forAccount($account, $contentType)->create([
         'user_id' => $user->id,
         'status' => Status::Draft,
         'scheduled_at' => null,
         'content' => 'Video caption',
         'media' => [MediaItem::fromMedia($video)->toArray()],
-    ]);
-    $platform = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
-        'enabled' => true,
         'meta' => $contentType === ContentType::YouTubeShort ? ['title' => 'Video title'] : [],
     ]);
-
-    return [$post, $platform];
 }
 
 test('a video ratio the network accepts now schedules on web, api and mcp', function (string $accountState, ContentType $contentType, int $width, int $height) {
@@ -64,13 +50,14 @@ test('a video ratio the network accepts now schedules on web, api and mcp', func
     $video = videoRatioAsset($this->workspace, $width, $height);
     $scheduledAt = now()->addDay()->toIso8601String();
 
-    [$webPost, $webPlatform] = videoRatioDraft($this->workspace, $this->user, $account, $video, $contentType);
+    $webPost = videoRatioDraft($this->workspace, $this->user, $account, $video, $contentType);
 
     $this->actingAs($this->user)->put(route('app.posts.update', $webPost), [
         'status' => Status::Scheduled->value,
         'scheduled_at' => $scheduledAt,
         'media' => [MediaItem::fromMedia($video)->toArray()],
-        'platforms' => [['id' => $webPlatform->id, 'content_type' => $contentType->value, 'meta' => $webPlatform->meta]],
+        'content_type' => $contentType->value,
+        'meta' => $webPost->meta,
     ])->assertSessionHasNoErrors();
 
     expect($webPost->fresh()->status)->toBe(Status::Scheduled);
@@ -81,14 +68,12 @@ test('a video ratio the network accepts now schedules on web, api and mcp', func
             'status' => 'scheduled',
             'scheduled_at' => $scheduledAt,
             'media' => [['id' => videoRatioAsset($this->workspace, $width, $height)->id]],
-            'platforms' => [[
-                'social_account_id' => $account->id,
-                'content_type' => $contentType->value,
-                'meta' => $webPlatform->meta,
-            ]],
+            'social_account_id' => $account->id,
+            'content_type' => $contentType->value,
+            'meta' => $webPost->meta,
         ])->assertCreated();
 
-    [$mcpPost] = videoRatioDraft($this->workspace, $this->user, $account, videoRatioAsset($this->workspace, $width, $height), $contentType);
+    $mcpPost = videoRatioDraft($this->workspace, $this->user, $account, videoRatioAsset($this->workspace, $width, $height), $contentType);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $mcpPost->id,
@@ -123,10 +108,11 @@ test('a video ratio outside the documented range is still rejected with the per-
             'status' => 'scheduled',
             'scheduled_at' => now()->addDay()->toIso8601String(),
             'media' => [['id' => $video->id]],
-            'platforms' => [['social_account_id' => $account->id, 'content_type' => $contentType->value]],
-        ])->assertUnprocessable()->assertJsonValidationErrors(['destinations.0.content_type' => $message]);
+            'social_account_id' => $account->id,
+            'content_type' => $contentType->value,
+        ])->assertUnprocessable()->assertJsonValidationErrors(['content_type' => $message]);
 
-    [$post] = videoRatioDraft($this->workspace, $this->user, $account, $video, $contentType);
+    $post = videoRatioDraft($this->workspace, $this->user, $account, $video, $contentType);
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, [
         'post_id' => $post->id,

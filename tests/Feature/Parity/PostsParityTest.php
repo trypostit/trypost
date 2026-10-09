@@ -14,7 +14,6 @@ use App\Mcp\Tools\Post\ListPostsTool;
 use App\Mcp\Tools\Post\PreviewPostTool;
 use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\WorkspaceLabel;
 use App\Support\Requests\Post\PostRequestRules;
@@ -25,15 +24,15 @@ use Inertia\Testing\AssertableInertia;
 
 function postsParitySnapshot(Post $post): array
 {
-    $post->loadMissing('postPlatforms', 'labels');
+    $post->loadMissing('labels');
 
     return [
         'status' => $post->status,
         'content' => $post->content,
         'schedule_mode' => $post->schedule_mode,
         'scheduled' => $post->scheduled_at !== null,
-        'channels' => $post->postPlatforms->pluck('social_account_id')->all(),
-        'content_types' => $post->postPlatforms->pluck('content_type')->all(),
+        'channels' => [$post->social_account_id],
+        'content_types' => [$post->content_type],
         'labels' => $post->labels->pluck('id')->sort()->values()->all(),
     ];
 }
@@ -49,12 +48,14 @@ test('a draft created through the api and through mcp is stored the same way', f
         ->postJson(route('api.posts.store'), [
             'content' => 'Parity draft',
             'status' => 'draft',
-            'platforms' => [['social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']],
+            'social_account_id' => $this->account->id,
+            'content_type' => 'linkedin_post',
         ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostTool::class, [
         'content' => 'Parity draft',
-        'platforms' => [['social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->account->id,
+        'content_type' => 'linkedin_post',
     ])->assertOk();
 
     $posts = Post::query()->where('workspace_id', $this->workspace->id)->get();
@@ -100,7 +101,8 @@ test('a scheduled post created through the api and through the mcp batch tool is
     $this->withHeaders(parityApi($this->token))
         ->postJson(route('api.posts.store'), [
             ...$payload,
-            'platforms' => [['social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']],
+            'social_account_id' => $this->account->id,
+            'content_type' => 'linkedin_post',
         ])->assertCreated();
 
     TryPostServer::actingAs($this->user)->tool(CreatePostsTool::class, [
@@ -131,8 +133,8 @@ test('updating the content of a draft through the api and through mcp gives the 
 });
 
 test('moving a scheduled post back to draft through the api and through mcp gives the same result', function () {
-    $apiPost = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $mcpPost = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+    $apiPost = Post::factory()->forAccount($this->account)->scheduled()->create(['user_id' => $this->user->id]);
+    $mcpPost = Post::factory()->forAccount($this->account)->scheduled()->create(['user_id' => $this->user->id]);
 
     $this->withHeaders(parityApi($this->token))
         ->putJson(route('api.posts.update', $apiPost), ['status' => 'draft'])
@@ -182,8 +184,7 @@ test('a post from another workspace is not shown through the api nor through mcp
 });
 
 test('previewing a post returns the same payload through the api and through mcp', function () {
-    $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Preview parity']);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']);
+    $post = Post::factory()->forAccount($this->account)->draft()->create(['user_id' => $this->user->id, 'content' => 'Preview parity']);
 
     $api = $this->withHeaders(parityApi($this->token))
         ->getJson(route('api.posts.preview', $post))
@@ -194,7 +195,9 @@ test('previewing a post returns the same payload through the api and through mcp
         ->assertOk()
         ->assertStructuredContent($api);
 
-    expect($api)->not->toBeEmpty();
+    expect($api)->toHaveKey('platform', Platform::LinkedIn->value)
+        ->toHaveKey('content_type', 'linkedin_post')
+        ->not->toHaveKey('platforms');
 });
 
 test('labels set through the api and through mcp end up on the post', function () {
@@ -227,7 +230,7 @@ test('listing posts: the api has no status filter while mcp filters by status', 
         ->assertDontSee($published->id);
 });
 
-test('deleting a publishing, published, partially published or failed post is refused with the web message on the api and mcp', function (Status $status) {
+test('deleting a publishing, published or failed post is refused with the web message on the api and mcp', function (Status $status) {
     $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => $status]);
     $message = __('posts.flash.cannot_delete_published');
 
@@ -243,11 +246,10 @@ test('deleting a publishing, published, partially published or failed post is re
         ->assertHasErrors([$message]);
 
     expect(Post::query()->whereKey($post->id)->exists())->toBeTrue();
-})->with([Status::Publishing, Status::Published, Status::PartiallyPublished, Status::Failed]);
+})->with([Status::Publishing, Status::Published, Status::Failed]);
 
 test('a channel disconnect still deletes published posts', function () {
-    $post = Post::factory()->published()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $this->account->id, 'platform' => Platform::LinkedIn]);
+    $post = Post::factory()->forAccount($this->account)->published()->create(['user_id' => $this->user->id]);
 
     DeleteChannelPosts::forAccount($this->account);
 
@@ -262,7 +264,8 @@ test('a member who requires approval scheduling through the single-post mcp crea
         'content' => 'Member schedule',
         'status' => 'scheduled',
         'scheduled_at' => now()->addDays(2)->toIso8601String(),
-        'platforms' => [['social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->account->id,
+        'content_type' => 'linkedin_post',
     ])->assertOk();
 
     $post = Post::query()->where('content', 'Member schedule')->sole();
@@ -276,7 +279,8 @@ test('a scheduled post over the account limit is refused with the same message b
         'content' => str_repeat('a', 281),
         'status' => 'scheduled',
         'scheduled_at' => now()->addDays(2)->toIso8601String(),
-        'platforms' => [['social_account_id' => $this->second->id, 'content_type' => 'x_post']],
+        'social_account_id' => $this->second->id,
+        'content_type' => 'x_post',
     ];
 
     $response = $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)
@@ -298,21 +302,20 @@ test('the shared post rules validate without a request or an authenticated user'
         'content' => 'Rules only',
         'status' => 'scheduled',
         'queue' => 'next',
-        'platforms' => [['social_account_id' => $account->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $account->id,
+        'content_type' => 'linkedin_post',
     ];
     $validate = fn (array $data) => Validator::make($data, PostRequestRules::store($this->workspace, $data), PostRequestRules::messages(), PostRequestRules::attributes());
 
     expect(auth()->check())->toBeFalse()
         ->and($validate($input($this->account))->passes())->toBeTrue()
-        ->and($validate($input($foreign))->errors()->keys())->toBe(['platforms.0.social_account_id']);
+        ->and($validate($input($foreign))->errors()->keys())->toBe(['social_account_id']);
 });
 
 test('publishing now through the api update and the mcp update tool gives the same result', function () {
     Queue::fake();
-    $apiPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Now']);
-    $mcpPost = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'content' => 'Now']);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $apiPost->id, 'social_account_id' => $this->account->id]);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $mcpPost->id, 'social_account_id' => $this->account->id]);
+    $apiPost = Post::factory()->forAccount($this->account)->draft()->create(['user_id' => $this->user->id, 'content' => 'Now']);
+    $mcpPost = Post::factory()->forAccount($this->account)->draft()->create(['user_id' => $this->user->id, 'content' => 'Now']);
 
     $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.update', $apiPost), ['status' => 'publishing'])->assertOk();
 
@@ -324,21 +327,21 @@ test('publishing now through the api update and the mcp update tool gives the sa
         ->and($mcpPost->fresh()->status)->toBe(Status::Publishing);
 });
 
-test('an update naming a disabled destination is refused by the api and the mcp update tool', function () {
-    $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $disabled = PostPlatform::factory()->linkedin()->create(['post_id' => $post->id, 'social_account_id' => $this->account->id, 'enabled' => false]);
-    $payload = ['status' => 'draft', 'platforms' => [['id' => $disabled->id, 'content_type' => 'linkedin_post']]];
+test('an update sending the removed platforms input is refused with the same message by the api and the mcp update tool', function () {
+    $post = Post::factory()->forAccount($this->account)->draft()->create(['user_id' => $this->user->id, 'content' => 'Kept']);
+    $payload = ['status' => 'draft', 'content' => 'Changed', 'platforms' => [['social_account_id' => $this->second->id, 'content_type' => 'x_post']]];
 
     $response = $this->withHeaders(parityApi($this->token))->putJson(route('api.posts.update', $post), $payload)
         ->assertUnprocessable()
-        ->assertJsonValidationErrors(['platforms.0.id']);
+        ->assertJsonValidationErrors(['platforms']);
 
     auth()->forgetGuards();
 
     TryPostServer::actingAs($this->user)->tool(UpdatePostTool::class, ['post_id' => $post->id, ...$payload])
-        ->assertHasErrors([$response->json('errors')['platforms.0.id'][0]]);
+        ->assertHasErrors([$response->json('errors.platforms.0')]);
 
-    expect($disabled->fresh()->enabled)->toBeFalse();
+    expect($post->fresh()->content)->toBe('Kept')
+        ->and($post->fresh()->social_account_id)->toBe($this->account->id);
 });
 
 test('a deleted label is refused by the api create and the single-post mcp create tool', function () {
@@ -347,7 +350,8 @@ test('a deleted label is refused by the api create and the single-post mcp creat
     $payload = [
         'content' => 'Labelled',
         'label_ids' => [$label->id],
-        'platforms' => [['social_account_id' => $this->account->id, 'content_type' => 'linkedin_post']],
+        'social_account_id' => $this->account->id,
+        'content_type' => 'linkedin_post',
     ];
 
     $this->withHeaders(parityApi($this->token))->postJson(route('api.posts.store'), $payload)
@@ -362,9 +366,9 @@ test('a deleted label is refused by the api create and the single-post mcp creat
 });
 
 test('filtering posts by channel, label and untagged returns the same posts on the web publish list, the api and mcp', function () {
-    $draft = function (SocialAccount $account, array $labels = [], bool $enabled = true): Post {
-        $post = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-        PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => $account->platform, 'enabled' => $enabled]);
+    $draft = function (?SocialAccount $account, array $labels = []): Post {
+        $factory = $account === null ? Post::factory()->state(['workspace_id' => $this->workspace->id]) : Post::factory()->forAccount($account);
+        $post = $factory->draft()->create(['user_id' => $this->user->id]);
         $post->labels()->attach($labels);
 
         return $post;
@@ -378,7 +382,7 @@ test('filtering posts by channel, label and untagged returns the same posts on t
     $second = $draft($this->account);
     $third = $draft($this->second, [$promo->id]);
     $fourth = $draft($this->second, [$launch->id, $promo->id]);
-    $disabled = $draft($this->second, [], false);
+    $channelless = $draft(null);
 
     $web = function (array $filters): array {
         $ids = [];
@@ -395,15 +399,15 @@ test('filtering posts by channel, label and untagged returns the same posts on t
     };
 
     $cases = [
-        'no filter' => [[], [$first, $second, $third, $fourth, $disabled]],
+        'no filter' => [[], [$first, $second, $third, $fourth, $channelless]],
         'one channel' => [['channels' => [$this->account->id]], [$first, $second]],
         'two channels' => [['channels' => [$this->account->id, $this->second->id]], [$first, $second, $third, $fourth]],
         'a foreign channel' => [['channels' => [$foreignAccount->id]], []],
-        'a channel id that is not a uuid' => [['channels' => ['not-a-uuid']], [$first, $second, $third, $fourth, $disabled]],
+        'a channel id that is not a uuid' => [['channels' => ['not-a-uuid']], [$first, $second, $third, $fourth, $channelless]],
         'one label' => [['labels' => [$launch->id]], [$first, $fourth]],
         'two labels' => [['labels' => [$launch->id, $promo->id]], [$first, $third, $fourth]],
-        'untagged' => [['untagged' => '1'], [$second, $disabled]],
-        'label or untagged' => [['labels' => [$promo->id], 'untagged' => '1'], [$second, $third, $fourth, $disabled]],
+        'untagged' => [['untagged' => '1'], [$second, $channelless]],
+        'label or untagged' => [['labels' => [$promo->id], 'untagged' => '1'], [$second, $third, $fourth, $channelless]],
         'a foreign label' => [['labels' => [$foreignLabel->id]], []],
         'channel and label' => [['channels' => [$this->second->id], 'labels' => [$launch->id]], [$fourth]],
     ];
@@ -477,8 +481,7 @@ test('the api and mcp post lists page by the configured size in the same order',
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Bluesky]);
 
     foreach (range(0, 2) as $minutes) {
-        $post = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id, 'status' => Status::Draft, 'scheduled_at' => now()->addDays(10)->subMinutes($minutes)]);
-        PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id]);
+        Post::factory()->forAccount($account)->create(['user_id' => $this->user->id, 'status' => Status::Draft, 'scheduled_at' => now()->addDays(10)->subMinutes($minutes)]);
     }
 
     $first = $this->withHeaders(parityApi($this->token))->getJson(route('api.posts.index', ['per_page' => 50]))->assertOk()->assertJsonCount(2, 'data')->assertJsonPath('meta.per_page', 2)->assertJsonPath('meta.total', 3);

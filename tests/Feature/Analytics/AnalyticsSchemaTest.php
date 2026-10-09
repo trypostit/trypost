@@ -36,7 +36,7 @@ test('analytics tables expose the portable persistence contract', function () {
     ]))->toBeTrue()
         ->and(Schema::hasColumns('analytics_publications', [
             'id', 'workspace_id', 'social_account_id', 'social_account_key',
-            'post_platform_id', 'network', 'platform_user_id', 'platform',
+            'post_id', 'network', 'platform_user_id', 'platform',
             'remote_id', 'provider_published_at', 'origin', 'content_type',
             'availability', 'provider_content_type', 'permalink', 'excerpt',
             'preview_metadata', 'account_display_name', 'account_username',

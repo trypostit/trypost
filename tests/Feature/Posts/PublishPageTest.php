@@ -11,7 +11,6 @@ use App\Enums\User\WeekStart;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -50,21 +49,12 @@ function publishPageSchedule(): PostingSchedule
     return $schedule;
 }
 
-function publishPagePost(SocialAccount $channel, PostStatus $status, array $attributes = [], array $platform = []): Post
+function publishPagePost(SocialAccount $channel, PostStatus $status, array $attributes = [], array $publication = []): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create(array_merge([
         'user_id' => $channel->workspace->user_id,
         'status' => $status,
-    ], $attributes));
-
-    PostPlatform::factory()->create(array_merge([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-    ], $platform));
-
-    return $post;
+    ], $publication, $attributes));
 }
 
 /**
@@ -85,7 +75,7 @@ function publishPageQueryCount(object $test, string $tab, int $postsPerStatus): 
                 'approval_requested_at' => now(),
             ]);
             publishPagePost($channel, PostStatus::Published, ['published_at' => now()->subDay()], [
-                'status' => PlatformStatus::Published,
+                'publish_status' => PlatformStatus::Published,
                 'published_at' => now()->subDay(),
                 'platform_post_id' => "urn:li:share:{$test->queryCountBatch}{$index}",
             ]);
@@ -173,19 +163,19 @@ test('the drafts tab returns only drafts and no queue', function () {
                 ->where('posts.data.0.id', $undated->id)
                 ->where('posts.data.1.id', $dated->id)
                 ->where('posts.data.0.can_delete', true)
-                ->where('posts.data.0.post_platforms.0.social_account.has_posting_schedule', true)));
+                ->where('posts.data.0.social_account.has_posting_schedule', true)));
 });
 
 test('the sent tab returns settled posts newest first with metrics', function () {
     $older = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(3)], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => now()->subDays(3),
     ]);
-    $partial = publishPagePost($this->channel, PostStatus::PartiallyPublished, ['published_at' => now()->subDay()], [
-        'status' => PlatformStatus::Published,
+    $recent = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDay()], [
+        'publish_status' => PlatformStatus::Published,
         'published_at' => now()->subDay(),
     ]);
-    $failed = publishPagePost($this->channel, PostStatus::Failed, ['published_at' => null, 'scheduled_at' => now()->subDays(5)], ['status' => PlatformStatus::Failed]);
+    $failed = publishPagePost($this->channel, PostStatus::Failed, ['published_at' => null, 'scheduled_at' => now()->subDays(5)], ['publish_status' => PlatformStatus::Failed]);
     publishPagePost($this->channel, PostStatus::Draft);
 
     $this->actingAs($this->user)
@@ -196,13 +186,13 @@ test('the sent tab returns settled posts newest first with metrics', function ()
             ->loadDeferredProps(fn ($reload) => $reload
                 ->missing('queue')
                 ->has('posts.data', 3)
-                ->where('posts.data.0.id', $partial->id)
+                ->where('posts.data.0.id', $recent->id)
                 ->where('posts.data.1.id', $older->id)
                 ->where('posts.data.2.id', $failed->id)
                 ->where('posts.data.0.can_delete', false)
                 ->where('posts.data.2.can_delete', false)
-                ->has("posts.data.0.metrics.{$partial->postPlatforms->first()->id}")
-                ->where("posts.data.2.metrics.{$failed->postPlatforms->first()->id}.reason", 'not_published')));
+                ->has('posts.data.0.metrics')
+                ->where('posts.data.2.metrics.reason', 'not_published')));
 });
 
 test('the sent tab places a failed post at the time it was attempted, not when its row was last touched', function () {
@@ -222,9 +212,9 @@ test('the sent tab places a failed post at the time it was attempted, not when i
                 ->where('posts.data.3.id', $unscheduledFailed->id)));
 });
 
-test('the sent tab lists failed and partially published posts with the published ones, never a publishing one', function () {
-    $published = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(4)]);
-    $partial = publishPagePost($this->channel, PostStatus::PartiallyPublished, ['published_at' => now()->subDays(3)]);
+test('the sent tab lists failed posts with the published ones, never a publishing one', function () {
+    $older = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(4)]);
+    $published = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDays(3)]);
     $failed = publishPagePost($this->channel, PostStatus::Failed, ['scheduled_at' => now()->subDays(2)]);
     publishPagePost($this->channel, PostStatus::Publishing, ['scheduled_at' => now()->subMinute()]);
     publishPagePost($this->channel, PostStatus::Scheduled, ['scheduled_at' => now()->addDay()]);
@@ -236,7 +226,7 @@ test('the sent tab lists failed and partially published posts with the published
             ->where('counts.queue', 2)
             ->loadDeferredProps(fn ($reload) => $reload
                 ->missing('queue')
-                ->where('posts.data', fn ($posts) => collect($posts)->pluck('id')->all() === [$failed->id, $partial->id, $published->id])));
+                ->where('posts.data', fn ($posts) => collect($posts)->pluck('id')->all() === [$failed->id, $published->id, $older->id])));
 
     $this->get(route('app.channels.publish', [$this->channel, 'tab' => 'sent']))
         ->assertInertia(fn (AssertableInertia $page) => $page
@@ -273,7 +263,7 @@ test('a focused publishing post opens the queue tab in its publishing group', fu
 test('a publishing post waiting for a network limit carries its retry time to the card', function () {
     $retryAt = now()->addHour();
     $post = publishPagePost($this->channel, PostStatus::Publishing, ['scheduled_at' => now()->subMinute()], [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => $retryAt,
         'error_message' => 'LinkedIn rate limit reached. Please try again later.',
     ]);
@@ -284,8 +274,8 @@ test('a publishing post waiting for a network limit carries its retry time to th
             ->loadDeferredProps(fn ($reload) => $reload
                 ->has('queue.publishing', 1)
                 ->where('queue.publishing.0.id', $post->id)
-                ->where('queue.publishing.0.post_platforms.0.status', PlatformStatus::Retrying->value)
-                ->where('queue.publishing.0.post_platforms.0.retry_at', $retryAt->toJSON())));
+                ->where('queue.publishing.0.publish_status', PlatformStatus::Retrying->value)
+                ->where('queue.publishing.0.retry_at', $retryAt->toJSON())));
 });
 
 test('a partial reload resolves only the props it asks for', function () {
@@ -333,7 +323,7 @@ test('counts follow the page scope', function () {
     publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subDay()]);
     publishPagePost($other, PostStatus::Draft);
     publishPagePost($other, PostStatus::Failed);
-    publishPagePost($other, PostStatus::PartiallyPublished, ['published_at' => now()->subDay()]);
+    publishPagePost($other, PostStatus::Published, ['published_at' => now()->subDay()]);
     Post::factory()->create(['status' => PostStatus::Draft]);
 
     $this->actingAs($this->user)
@@ -421,7 +411,7 @@ test('scheduled posts in the queue are sent as paginated cards', function () {
                 ->has('posts.data', 1)
                 ->where('posts.data.0.id', $post->id)
                 ->where('posts.data.0.can_delete', true)
-                ->where('posts.data.0.post_platforms.0.social_account.has_posting_schedule', true)));
+                ->where('posts.data.0.social_account.has_posting_schedule', true)));
 });
 
 test('an invalid time zone and an oversized queue window fall back safely', function () {
@@ -447,17 +437,12 @@ test("sent this week starts on the viewer's week start in the channel time zone"
     $this->user->update(['week_starts_on' => $weekStart]);
 
     publishPagePost($this->channel, PostStatus::Published, [], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => CarbonImmutable::parse('2026-09-28 00:30:00', 'America/Sao_Paulo')->utc(),
     ]);
     publishPagePost($this->channel, PostStatus::Published, [], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => CarbonImmutable::parse('2026-09-27 23:30:00', 'America/Sao_Paulo')->utc(),
-    ]);
-    publishPagePost($this->channel, PostStatus::Published, [], [
-        'status' => PlatformStatus::Published,
-        'enabled' => false,
-        'published_at' => CarbonImmutable::parse('2026-09-29 10:00:00', 'America/Sao_Paulo')->utc(),
     ]);
 
     $this->actingAs($this->user)
@@ -482,9 +467,6 @@ test('scheduled this week counts the posts still to go out before the week ends 
     publishPagePost($this->channel, PostStatus::Scheduled, [
         'scheduled_at' => CarbonImmutable::parse('2026-10-05 00:30:00', 'America/Sao_Paulo')->utc(),
     ]);
-    publishPagePost($this->channel, PostStatus::Scheduled, [
-        'scheduled_at' => CarbonImmutable::parse('2026-10-03 10:00:00', 'America/Sao_Paulo')->utc(),
-    ], ['enabled' => false]);
     publishPagePost($this->channel, PostStatus::Draft);
 
     $this->actingAs($this->user)
@@ -827,7 +809,7 @@ test('a label filter without matching scheduled posts shows neither posts nor sl
 
 test('the sent tab lists imported posts by publish time and counts them', function () {
     $tryPost = publishPagePost($this->channel, PostStatus::Published, ['published_at' => now()->subHours(2)], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => now()->subHours(2),
     ]);
     $imported = publishPagePost($this->channel, PostStatus::Published, [
@@ -835,7 +817,7 @@ test('the sent tab lists imported posts by publish time and counts them', functi
         'user_id' => null,
         'published_at' => now()->subHour(),
     ], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => now()->subHour(),
     ]);
 
@@ -855,7 +837,7 @@ test('imported posts count toward the weekly posting goal', function () {
     $this->travelTo(CarbonImmutable::parse('2026-09-30 12:00:00', 'UTC'));
 
     publishPagePost($this->channel, PostStatus::Published, ['origin' => Origin::Network, 'user_id' => null], [
-        'status' => PlatformStatus::Published,
+        'publish_status' => PlatformStatus::Published,
         'published_at' => CarbonImmutable::parse('2026-09-29 10:00:00', 'UTC'),
     ]);
 
@@ -900,7 +882,7 @@ test('the queue carries the pending queue requests holding a slot, and the slot 
                 ->where('queue.pending.0.id', $holder->id)
                 ->where('queue.pending.0.status', PostStatus::PendingApproval->value)
                 ->where('queue.pending.0.scheduled_at', fn ($value) => CarbonImmutable::parse($value)->equalTo($slot))
-                ->where('queue.pending.0.post_platforms.0.social_account_id', $this->channel->id)
+                ->where('queue.pending.0.social_account_id', $this->channel->id)
                 ->where('queue.days', fn ($days) => collect($days)->flatMap(fn ($day) => $day['items'])
                     ->where('type', 'slot')
                     ->doesntContain('at', $slot->toIso8601String()))));

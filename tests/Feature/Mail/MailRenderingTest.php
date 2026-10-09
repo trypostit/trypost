@@ -17,7 +17,6 @@ use App\Models\Account;
 use App\Models\Invite;
 use App\Models\Post;
 use App\Models\PostNote;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -105,20 +104,14 @@ test('the post note email renders the note, the post and its channels', function
         'user_id' => $author->id,
         'name' => 'Acme Workspace',
     ]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => $author->id,
-        'content' => '<p>Launch day is <strong>here</strong></p>',
-    ]);
     $account = SocialAccount::factory()->create([
         'workspace_id' => $workspace->id,
         'platform' => Platform::LinkedIn,
         'display_name' => 'Acme Inc',
     ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::LinkedIn,
+    $post = Post::factory()->forAccount($account)->create([
+        'user_id' => $author->id,
+        'content' => '<p>Launch day is <strong>here</strong></p>',
     ]);
     $note = PostNote::factory()->create([
         'post_id' => $post->id,
@@ -218,15 +211,13 @@ test('the approval request email renders who asked, the channels, the excerpt an
     $requester = User::factory()->create(['name' => 'Rita Requester', 'email' => 'rita@example.com']);
     $approver = User::factory()->create(['account_id' => $requester->account_id, 'timezone' => 'UTC']);
     $workspace = Workspace::factory()->create(['account_id' => $requester->account_id, 'user_id' => $requester->id, 'name' => 'Acme Workspace']);
-    $post = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn, 'display_name' => 'Acme Inc']);
+    $post = Post::factory()->forAccount($account)->pendingApproval()->create([
         'user_id' => $requester->id,
         'content' => '<p>Big <strong>launch</strong> tomorrow</p>',
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => null,
     ]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn, 'display_name' => 'Acme Inc']);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::LinkedIn]);
 
     $mailable = (new PostApprovalRequested([$post->id], $requester, $approver))->locale($locale->value);
 
@@ -245,14 +236,12 @@ test('the approved and rejected emails render the approver, the channels and the
     $author = User::factory()->create(['timezone' => 'UTC']);
     $approver = User::factory()->create(['account_id' => $author->account_id, 'name' => 'Ada Approver']);
     $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id, 'name' => 'Acme Workspace']);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn, 'display_name' => 'Acme Inc']);
+    $post = Post::factory()->forAccount($account)->create([
         'user_id' => $author->id,
         'status' => PostStatus::Scheduled,
         'scheduled_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
     ]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn, 'display_name' => 'Acme Inc']);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => Platform::LinkedIn]);
 
     $approved = (new PostApproved([$post->id], $approver, $author))->locale($locale->value);
 
@@ -280,15 +269,12 @@ test('the approved and rejected emails render the approver, the channels and the
  */
 function approvalEmailPost(Workspace $workspace, User $author, Platform $platform, string $displayName, array $attributes = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform, 'display_name' => $displayName]);
+
+    return Post::factory()->forAccount($account)->create([
         'user_id' => $author->id,
         ...$attributes,
     ]);
-    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform, 'display_name' => $displayName]);
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $account->id, 'platform' => $platform]);
-
-    return $post;
 }
 
 function approvalEmailTimeLabel(CarbonImmutable $at, User $recipient, Locale $locale): string
@@ -371,11 +357,11 @@ test('the approved email lists the time of each channel when they go out at diff
     $mailable = (new PostApproved([$linkedIn->id, $x->id, $mastodon->id], $approver, $author))->locale($locale->value);
 
     $mailable->assertSeeInOrderInHtml([
-        $linkedIn->postPlatforms()->sole()->display_name,
+        $linkedIn->display_name,
         approvalEmailTimeLabel($morning, $author, $locale),
-        $x->postPlatforms()->sole()->display_name,
+        $x->display_name,
         approvalEmailTimeLabel($evening, $author, $locale),
-        $mastodon->postPlatforms()->sole()->display_name,
+        $mastodon->display_name,
         __('mail.post_approved.publishing_now', [], $locale->value),
     ]);
     $document = new Crawler($mailable->render());

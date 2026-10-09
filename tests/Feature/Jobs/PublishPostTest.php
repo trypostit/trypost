@@ -2,12 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PublishPost;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -22,15 +22,8 @@ beforeEach(function () {
 test('publish post marks post as publishing', function () {
     Queue::fake();
 
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->scheduled()->create([
         'user_id' => $this->user->id,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     (new PublishPost($post))->handle();
@@ -39,91 +32,47 @@ test('publish post marks post as publishing', function () {
     expect($post->status)->toBe(PostStatus::Publishing);
 });
 
-test('publish post dispatches publish to social platform for each enabled platform', function () {
+test('publish post dispatches one publish job for the channel of the post', function () {
     Queue::fake();
 
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->scheduled()->create([
         'user_id' => $this->user->id,
-    ]);
-
-    $platform1 = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
-    ]);
-
-    $platform2 = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     (new PublishPost($post))->handle();
 
-    Queue::assertPushed(PublishToSocialPlatform::class, 2);
+    Queue::assertPushed(PublishToSocialPlatform::class, 1);
+    Queue::assertPushed(
+        PublishToSocialPlatform::class,
+        fn (PublishToSocialPlatform $job): bool => $job->post->is($post),
+    );
 });
 
-test('publish post dispatches google business targets onto the social publish job', function () {
+test('publish post dispatches google business posts onto the social publish job', function () {
     Queue::fake();
 
     $account = SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $this->workspace->id,
     ]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($account)->scheduled()->create([
         'user_id' => $this->user->id,
-    ]);
-    $platform = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'enabled' => true,
     ]);
 
     (new PublishPost($post))->handle();
 
     Queue::assertPushed(
         PublishToSocialPlatform::class,
-        fn (PublishToSocialPlatform $job): bool => $job->postPlatform->is($platform),
+        fn (PublishToSocialPlatform $job): bool => $job->post->is($post),
     );
     expect($post->fresh()->status)->toBe(PostStatus::Publishing);
 });
 
-test('publish post does not dispatch for disabled platforms', function () {
+test('publish post sends nothing to a network for a post without a channel', function () {
     Queue::fake();
 
     $post = Post::factory()->scheduled()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
-    ]);
-
-    PostPlatform::factory()->disabled()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-    ]);
-
-    (new PublishPost($post))->handle();
-
-    Queue::assertPushed(PublishToSocialPlatform::class, 1);
-});
-
-test('publish post does nothing when no platforms enabled', function () {
-    Queue::fake();
-
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-    ]);
-
-    PostPlatform::factory()->disabled()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
     ]);
 
     (new PublishPost($post))->handle();
@@ -131,19 +80,13 @@ test('publish post does nothing when no platforms enabled', function () {
     Queue::assertNotPushed(PublishToSocialPlatform::class);
 });
 
-test('publish post failed leaves the post open while targets are still unfinished', function () {
+test('publish post failed leaves the post open while the publication is still unfinished', function () {
     Queue::fake();
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Publishing,
-    ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
+        'publish_status' => PublishStatus::Pending,
     ]);
 
     (new PublishPost($post))->failed(new RuntimeException('queue exploded'));
@@ -152,19 +95,12 @@ test('publish post failed leaves the post open while targets are still unfinishe
     Queue::assertNotPushed(SendNotification::class);
 });
 
-test('publish post failed finalizes when every target already finished', function () {
+test('publish post failed finalizes when the publication already finished', function () {
     Queue::fake();
 
-    $post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
+    $post = Post::factory()->forAccount($this->socialAccount)->failed()->create([
         'user_id' => $this->user->id,
         'status' => PostStatus::Publishing,
-    ]);
-
-    PostPlatform::factory()->failed()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $this->socialAccount->id,
-        'enabled' => true,
     ]);
 
     (new PublishPost($post))->failed(new RuntimeException('queue exploded'));

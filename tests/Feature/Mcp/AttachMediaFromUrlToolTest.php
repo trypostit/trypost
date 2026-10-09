@@ -8,7 +8,6 @@ use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Post\AttachMediaFromUrlTool;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -123,10 +122,11 @@ test('attaches a pdf document from a url to a LinkedIn post', function () {
     ]);
 
     $linkedin = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
-    PostPlatform::factory()->create([
-        'post_id' => $this->post->id, 'social_account_id' => $linkedin->id,
-        'platform' => Platform::LinkedIn, 'content_type' => ContentType::LinkedInPost, 'enabled' => true,
-    ]);
+    $this->post->forceFill([
+        'social_account_id' => $linkedin->id,
+        'platform' => Platform::LinkedIn,
+        'content_type' => ContentType::LinkedInPost,
+    ])->save();
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
@@ -151,10 +151,11 @@ test('rejects a pdf url for a post with no PDF-capable platform', function () {
     ]);
 
     $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
-    PostPlatform::factory()->create([
-        'post_id' => $this->post->id, 'social_account_id' => $tiktok->id,
-        'platform' => Platform::TikTok, 'content_type' => ContentType::TikTokVideo, 'enabled' => true,
-    ]);
+    $this->post->forceFill([
+        'social_account_id' => $tiktok->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokVideo,
+    ])->save();
 
     $response = TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [
@@ -257,10 +258,11 @@ test('attaches an image from url to a tiktok photo post', function () {
     ]);
 
     $tiktok = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::TikTok]);
-    PostPlatform::factory()->create([
-        'post_id' => $this->post->id, 'social_account_id' => $tiktok->id,
-        'platform' => Platform::TikTok, 'content_type' => ContentType::TikTokPhoto, 'enabled' => true,
-    ]);
+    $this->post->forceFill([
+        'social_account_id' => $tiktok->id,
+        'platform' => Platform::TikTok,
+        'content_type' => ContentType::TikTokPhoto,
+    ])->save();
 
     TryPostServer::actingAs($this->user)
         ->tool(AttachMediaFromUrlTool::class, [

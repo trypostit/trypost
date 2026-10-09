@@ -3,7 +3,6 @@
 declare(strict_types=1);
 
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -28,8 +27,7 @@ test('a post card footer sits in a rounded muted panel and a draft drops its sta
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
-    $draft = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'A draft']);
-    PostPlatform::factory()->linkedin()->create(['post_id' => $draft->id, 'social_account_id' => $account->id]);
+    $draft = Post::factory()->forAccount($account)->draft()->create(['user_id' => $user->id, 'content' => 'A draft']);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1440, 900);

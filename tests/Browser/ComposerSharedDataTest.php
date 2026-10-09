@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -57,22 +55,14 @@ function composerSharedDataSetup(): array
 
 function composerSharedDataPost(Workspace $workspace, SocialAccount $account, ContentType $contentType, array $meta = []): Post
 {
-    $post = Post::factory()->create([
+    return Post::factory()->forAccount($account, $contentType)->create([
         'workspace_id' => $workspace->id,
         'user_id' => $workspace->user_id,
         'status' => PostStatus::Scheduled,
         'content' => 'Shared data post',
         'scheduled_at' => now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10)->setTime(10, 0),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'content_type' => $contentType,
         'meta' => $meta,
     ]);
-
-    return $post;
 }
 
 function waitForComposerSharedDataCondition(mixed $page, string $condition): void
@@ -221,12 +211,9 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
             'max_video_post_duration_sec' => 600,
         ]]),
     ]);
-    $post = Post::factory()->draft()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'TikTok draft']);
-    $target = PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $tiktok->id,
-        'platform' => Platform::TikTok,
-        'content_type' => ContentType::TikTokVideo,
+    $post = Post::factory()->forAccount($tiktok, ContentType::TikTokVideo)->draft()->create([
+        'user_id' => $user->id,
+        'content' => 'TikTok draft',
         'meta' => ['privacy_level' => 'SELF_ONLY', 'allow_comments' => true],
     ]);
     $this->actingAs($user);
@@ -236,5 +223,5 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
     $page->click('@composer-save-draft');
     waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
-    expect(data_get($target->fresh()->meta, 'allow_comments'))->toBeTrue();
+    expect(data_get($post->fresh()->meta, 'allow_comments'))->toBeTrue();
 });

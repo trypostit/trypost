@@ -66,7 +66,7 @@ const fieldError = (field: string) =>
     computed<string | undefined>(
         () =>
             Object.entries(errors.value).find(([key]) =>
-                key.endsWith(`.meta.${field}`),
+                key === `meta.${field}` || key.endsWith(`.meta.${field}`),
             )?.[1],
     );
 const titleError = fieldError('title');

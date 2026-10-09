@@ -8,7 +8,6 @@ use App\Enums\User\Locale;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Support\Mail\PostPreview;
 use Symfony\Component\DomCrawler\Crawler;
@@ -34,23 +33,15 @@ test('the email channel component resolves the platform name and its network log
 
 test('publication emails show the channel and escaped post content separately', function (Status $status, Locale $locale) {
     app()->setLocale($locale->value);
-    $post = Post::factory()->create(['content' => '<p>Tom &amp; Jerry</p><p>New post</p>']);
     $account = SocialAccount::factory()->instagram()->create([
-        'workspace_id' => $post->workspace_id,
         'display_name' => 'Paulo Castellano',
         'username' => 'paulocastellano',
     ]);
-    PostPlatform::factory()->instagram()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'status' => $status,
+    $post = Post::factory()->forAccount($account)->create([
+        'content' => '<p>Tom &amp; Jerry</p><p>New post</p>',
+        'publish_status' => $status,
         'platform_url' => 'https://www.instagram.com/p/published-post/',
         'error_message' => 'Connection expired <script>alert(1)</script>',
-    ]);
-    PostPlatform::factory()->disabled()->create([
-        'post_id' => $post->id,
-        'status' => $status,
-        'error_message' => 'Disabled target error',
     ]);
 
     $mail = $status === Status::Published ? new PostPublished($post) : new PostPublishFailed($post);
@@ -58,7 +49,7 @@ test('publication emails show the channel and escaped post content separately', 
     $document = new Crawler($html);
 
     expect($html)->toContain("Tom &amp; Jerry\nNew post", 'Paulo Castellano', 'Instagram')
-        ->not->toContain('Instagram (@paulocastellano)', 'Disabled target error')
+        ->not->toContain('Instagram (@paulocastellano)')
         ->and($document->filter('script')->count())->toBe(0)
         ->and($document->filter('img[src="'.asset('images/accounts/instagram.png').'"]')->count())->toBe(1);
 
@@ -85,9 +76,8 @@ test('publication emails show the channel and escaped post content separately', 
 })->with([Status::Published, Status::Failed])->with([Locale::English, Locale::PortugueseBrazil, Locale::Arabic]);
 
 test('published email keeps the channel snapshot and falls back to the app when no public link exists', function () {
-    $post = Post::factory()->published()->create(['content' => null]);
-    PostPlatform::factory()->instagram()->published()->create([
-        'post_id' => $post->id,
+    $post = Post::factory()->instagram()->published()->create([
+        'content' => null,
         'social_account_id' => null,
         'platform_name' => 'Archived profile',
         'platform_url' => null,
@@ -145,7 +135,7 @@ test('the email preview does not render a video as an image', function () {
 });
 
 test('the image preview renders without a caption and escapes its alternative text', function () {
-    $post = Post::factory()->published()->create([
+    $post = Post::factory()->instagram()->published()->create([
         'content' => null,
         'media' => [[
             'path' => 'photo.jpg',
@@ -154,7 +144,6 @@ test('the image preview renders without a caption and escapes its alternative te
             'meta' => ['alt_text' => 'Studio " onclick="alert(1)'],
         ]],
     ]);
-    PostPlatform::factory()->instagram()->published()->create(['post_id' => $post->id]);
 
     $document = new Crawler((new PostPublished($post))->render());
     $image = $document->filter('img[src="https://example.test/photo.jpg"]');

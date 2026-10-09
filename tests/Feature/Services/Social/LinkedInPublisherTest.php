@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\Media\Type as MediaType;
 use App\Enums\PostPlatform\ContentType;
-use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\LinkedInPublishException;
 use App\Exceptions\TokenExpiredException;

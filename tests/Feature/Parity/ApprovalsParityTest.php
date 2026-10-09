@@ -74,7 +74,7 @@ test('a member who needs approval ends pending when creating through mcp while t
         'content' => 'Needs a review',
         'status' => 'scheduled',
         'scheduled_at' => now()->addDay()->toIso8601String(),
-        'platforms' => [$this->destination],
+        ...$this->destination,
     ];
 
     $this->withHeaders(parityApi($this->memberToken))
@@ -95,13 +95,7 @@ test('a member who needs approval ends pending when creating through mcp while t
 });
 
 test('a member who needs approval ends pending when scheduling a draft through mcp while the api is closed to them', function () {
-    $draft = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->member->id, 'content' => 'Draft to schedule']);
-    $draft->postPlatforms()->create([
-        'social_account_id' => $this->account->id,
-        'platform' => 'linkedin',
-        'content_type' => 'linkedin_post',
-        'enabled' => true,
-    ]);
+    $draft = Post::factory()->forAccount($this->account, ContentType::LinkedInPost)->draft()->create(['user_id' => $this->member->id, 'content' => 'Draft to schedule']);
     $at = now()->addDays(2)->toIso8601String();
 
     $this->withHeaders(parityApi($this->memberToken))
@@ -214,13 +208,7 @@ test('a requester queueing or publishing now through mcp ends pending', function
     ];
     TryPostServer::actingAs($this->member)->tool(CreatePostsTool::class, $queued)->assertOk();
 
-    $draft = Post::factory()->draft()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->member->id, 'content' => 'Publish me']);
-    $draft->postPlatforms()->create([
-        'social_account_id' => $this->account->id,
-        'platform' => 'linkedin',
-        'content_type' => 'linkedin_post',
-        'enabled' => true,
-    ]);
+    $draft = Post::factory()->forAccount($this->account, ContentType::LinkedInPost)->draft()->create(['user_id' => $this->member->id, 'content' => 'Publish me']);
     TryPostServer::actingAs($this->member)->tool(PublishPostTool::class, ['post_id' => $draft->id])->assertOk();
 
     expect($draft->fresh()->status)->toBe(Status::PendingApproval)
@@ -401,15 +389,9 @@ test('the requester and an approver still reach a pending request on web and mcp
 });
 
 test('a member who needs approval deletes only their own posts on web, api and mcp', function () {
-    $scheduled = fn (User $author): Post => tap(Post::factory()->scheduled()->create([
-        'workspace_id' => $this->workspace->id,
+    $scheduled = fn (User $author): Post => Post::factory()->forAccount($this->account, ContentType::LinkedInPost)->scheduled()->create([
         'user_id' => $author->id,
-    ]), fn (Post $post) => $post->postPlatforms()->create([
-        'social_account_id' => $this->account->id,
-        'platform' => 'linkedin',
-        'content_type' => 'linkedin_post',
-        'enabled' => true,
-    ]));
+    ]);
     $othersOnWeb = $scheduled($this->publisher);
     $othersOnMcp = $scheduled($this->publisher);
     $ownOnWeb = $scheduled($this->member);

@@ -8,7 +8,6 @@ use App\Enums\Post\QueuePosition;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -40,15 +39,12 @@ beforeEach(function () {
 
 function reorderQueuedPost(SocialAccount $channel, User $user, array $attributes = [], bool $enqueue = true): Post
 {
-    $post = Post::factory()->create(array_merge([
-        'workspace_id' => $channel->workspace_id,
+    $post = Post::factory()->forAccount($channel)->create(array_merge([
         'user_id' => $user->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Queue,
         'scheduled_at' => null,
     ], $attributes));
-
-    PostPlatform::factory()->create(['post_id' => $post->id, 'social_account_id' => $channel->id]);
 
     if ($enqueue) {
         ReflowChannelQueue::handle($channel, $post, QueuePosition::Next);

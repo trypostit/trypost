@@ -174,7 +174,7 @@ class UpdatePost
             default => $post->schedule_mode ?? ScheduleMode::Custom,
         };
         $storedStatus = $pending ? PostStatus::PendingApproval : PostStatus::from($status);
-        $resolved = PostCompositionValidator::validate($workspace, [
+        $resolved = PostCompositionValidator::forSinglePost(fn (): array => PostCompositionValidator::validate($workspace, [
             'status' => $status,
             'queue' => $keepsPending ? null : $position?->value,
             'content' => array_key_exists('content', $data) ? $data['content'] : $post->content,
@@ -187,7 +187,7 @@ class UpdatePost
                     ?? (array_key_exists('media', $data) && ContentType::derivesFromMedia($post->platform) ? null : $post->content_type->value),
                 'meta' => $meta,
             ]],
-        ], $post->media ?? []);
+        ], $post->media ?? []));
 
         $write = fn (): array => MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($post, $channel, $data, $resolved, $scheduledAt, $mode, $position, $pending, $approvesHolder, $previousStatus, $storedStatus, $actor): array {
             if (self::finalizedMeanwhile($post)) {

@@ -69,7 +69,7 @@ class UpdatePostRequest extends FormRequest
             'queue' => PostStatusRules::queueRules(),
             'social_account_id' => ['prohibited'],
             'content_type' => [
-                $enforcesMediaCompatibility && $post->hasChannel() ? 'required' : 'sometimes',
+                'sometimes',
                 'string',
                 Rule::in(array_column(ContentType::cases(), 'value')),
                 new ContentTypeMatchesPostChannel($post),

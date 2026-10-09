@@ -9,7 +9,6 @@ use App\Exceptions\Social\BlueskyPublishException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -2164,9 +2163,9 @@ test('a bluesky thread stops on reply media failure and resumes without repeatin
         && data_get($request->data(), 'record.embed.images.0.image.ref.$link') === 'reply-blob');
 });
 
-function blueskyThreadCheckpoint(PostPlatform $postPlatform): void
+function blueskyThreadCheckpoint(Post $post): void
 {
-    ThreadProgress::remember($postPlatform, [
+    ThreadProgress::remember($post, [
         ['hash' => 'root', 'id' => 'r1', 'url' => 'https://bsky.app/profile/testuser.bsky.social/post/r1', 'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r1', 'cid' => 'c1'],
         ['hash' => ThreadProgress::hash('Two'), 'id' => 'r2', 'url' => 'https://bsky.app/profile/testuser.bsky.social/post/r2', 'uri' => 'at://did:plc:testuser123/app.bsky.feed.post/r2', 'cid' => 'c2'],
     ]);

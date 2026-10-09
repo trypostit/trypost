@@ -981,7 +981,7 @@ test('a backfill page imports its publications as network posts', function () {
     $post = Post::query()->imported()->sole();
 
     expect($post->content)->toBe('From the app')
-        ->and($post->postPlatforms()->sole()->platform_post_id)->toBe('native-1');
+        ->and($post->platform_post_id)->toBe('native-1');
 });
 
 test('discovery imports a post published since the last run', function () {
@@ -1004,7 +1004,7 @@ test('discovery imports a post published since the last run', function () {
 
     app()->call([new DiscoverAccountPublications($account->id, $discovery->id), 'handle']);
 
-    expect(Post::query()->imported()->sole()->postPlatforms()->sole()->platform_post_id)->toBe('fresh-1');
+    expect(Post::query()->imported()->sole()->platform_post_id)->toBe('fresh-1');
 });
 
 test('a page dispatches one media import per imported post', function () {

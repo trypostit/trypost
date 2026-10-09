@@ -7,7 +7,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -42,22 +41,13 @@ beforeEach(function () {
 
 function privacyPost(SocialAccount $channel, User $author, array $attributes = []): Post
 {
-    $post = Post::factory()->create([
-        'workspace_id' => $channel->workspace_id,
+    return Post::factory()->forAccount($channel)->create([
         'user_id' => $author->id,
         'status' => PostStatus::Scheduled,
         'schedule_mode' => ScheduleMode::Custom,
         'scheduled_at' => now()->addDay(),
         ...$attributes,
     ]);
-
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $channel->id,
-        'platform' => $channel->platform,
-    ]);
-
-    return $post;
 }
 
 function deferredPublishPayload(object $test, User $viewer, array $query): array

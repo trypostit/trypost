@@ -15,12 +15,12 @@ function runMatchesPlatformRule(string $contentType, ?string $accountId, array $
 {
     $errors = [];
     $rule = (new ContentTypeMatchesPlatform)->setData(array_merge([
-        'platforms' => [
+        'destinations' => [
             ['social_account_id' => $accountId, 'content_type' => $contentType],
         ],
     ], $extraData));
 
-    $rule->validate('platforms.0.content_type', $contentType, function (string $message) use (&$errors): void {
+    $rule->validate('destinations.0.content_type', $contentType, function (string $message) use (&$errors): void {
         $errors[] = $message;
     });
 
@@ -85,4 +85,18 @@ test('skips validation when content_type is not a known enum value', function ()
     // Unknown content_types are caught by Rule::in elsewhere; this rule
     // intentionally no-ops so it doesn't double-report.
     expect(runMatchesPlatformRule('completely_made_up', $linkedin->id))->toBe([]);
+});
+
+test('reads a top-level account attribute when one is named', function () {
+    $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
+    $errors = [];
+
+    (new ContentTypeMatchesPlatform('social_account_id'))
+        ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
+        ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
+            $errors[] = $message;
+        });
+
+    expect($errors)->toHaveCount(1)
+        ->and($errors[0])->toContain('not compatible');
 });

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Post\CreatePosts;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -10,7 +11,6 @@ use App\Enums\SocialAccount\Platform;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -102,8 +102,7 @@ function publishPagePost(User $user, Workspace $workspace, SocialAccount $channe
 test('the weekly goal shows its progress, fills the pie and opens a popover with sent, scheduled and to do', function () {
     [$user, $workspace, $channel] = publishPageSetup();
     $sent = publishPagePost($user, $workspace, $channel);
-    $sent->update(['status' => PostStatus::Published]);
-    $sent->postPlatforms()->update(['status' => 'published', 'published_at' => now()]);
+    $sent->forceFill(['status' => PostStatus::Published, 'publish_status' => PublishStatus::Published, 'published_at' => now()])->save();
     $this->actingAs($user);
 
     $page = visit(route('app.channels.publish', $channel));
@@ -210,27 +209,19 @@ test('saving a queued post edited on a channel page returns to that page and tab
 test('a sent card shows the metrics band in order and links to the publication insights', function () {
     [$user, $workspace] = publishPageSetup();
     $account = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account, ContentType::XPost)->published()->create([
         'user_id' => $user->id,
-        'status' => PostStatus::Published,
         'scheduled_at' => now()->subHour(),
         'published_at' => now()->subHour(),
-    ]);
-    $target = PostPlatform::factory()->published()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => Platform::X,
-        'content_type' => ContentType::XPost,
     ]);
     $publication = AnalyticsPublication::factory()->create([
         'workspace_id' => $workspace->id,
         'social_account_id' => $account->id,
         'social_account_key' => $account->id,
-        'post_platform_id' => $target->id,
+        'post_id' => $post->id,
         'platform' => Platform::X,
         'network' => Platform::X->network(),
-        'remote_id' => $target->platform_post_id,
+        'remote_id' => $post->platform_post_id,
     ]);
     $metric = fn (float $value, string $unit = 'count'): array => ['value' => $value, 'unit' => $unit, 'availability' => 'available'];
     AnalyticsPublicationDailySnapshot::factory()->create([
@@ -259,26 +250,15 @@ test('a sent card shows the metrics band in order and links to the publication i
 
 test('the approvals tab groups pending posts by day with unscheduled requests last', function () {
     [$user, $workspace, $channel] = publishPageSetup();
-    $timed = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $workspace->id,
+    $timed = Post::factory()->forAccount($channel)->pendingApproval()->create([
         'user_id' => $user->id,
         'scheduled_at' => now()->utc()->addDays(2)->setTime(12, 0),
     ]);
-    $queued = Post::factory()->pendingApproval()->create([
-        'workspace_id' => $workspace->id,
+    $queued = Post::factory()->forAccount($channel)->pendingApproval()->create([
         'user_id' => $user->id,
         'scheduled_at' => null,
         'schedule_mode' => ScheduleMode::Queue,
     ]);
-
-    foreach ([$timed, $queued] as $post) {
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $channel->id,
-            'platform' => $channel->platform,
-            'enabled' => true,
-        ]);
-    }
 
     $this->actingAs($user);
 
@@ -482,6 +462,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
 
     $page->resize(390, 844);
     waitForPublishPageTestId($page, 'publish-tabs-mobile-trigger');
+    waitForPublishPageScript($page, '!document.querySelector(\'[data-testid="posts-label-filter"]\')');
 
     $phone = $page->script(<<<'JS'
         (() => {

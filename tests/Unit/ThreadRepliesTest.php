@@ -48,7 +48,7 @@ test('resume keeps the longest matching prefix', function () {
 });
 
 test('thread_replies has a rule so validated() keeps it', function () {
-    expect(PostPlatformMetaRules::rules())->toHaveKeys(['platforms.*.meta.thread_replies', 'platforms.*.meta.thread_replies.*'])
+    expect(PostPlatformMetaRules::rules())->toHaveKeys(['meta.thread_replies', 'meta.thread_replies.*'])
         ->and(ThreadReplies::supports(Platform::X))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::Mastodon))->toBeTrue()
         ->and(ThreadReplies::supports(Platform::Bluesky))->toBeTrue()

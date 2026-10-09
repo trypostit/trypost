@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Models\Media;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -48,17 +47,12 @@ test('purge workspace prunes google business jpegs before the cascade', function
         'account_id' => $owner->account_id,
         'user_id' => $owner->id,
     ]);
-    $post = Post::factory()->create([
+    $post = Post::factory()->forAccount(SocialAccount::factory()->googleBusiness()->create([
         'workspace_id' => $workspace->id,
+    ]))->create([
         'user_id' => $owner->id,
     ]);
-    $target = PostPlatform::factory()->googleBusiness()->create([
-        'post_id' => $post->id,
-        'social_account_id' => SocialAccount::factory()->googleBusiness()->create([
-            'workspace_id' => $workspace->id,
-        ])->id,
-    ]);
-    $path = GoogleBusinessDerivativeCleaner::pathFor($target->id);
+    $path = GoogleBusinessDerivativeCleaner::pathFor($post);
     Storage::put($path, 'image');
 
     PurgeWorkspace::execute($workspace);

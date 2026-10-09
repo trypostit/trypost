@@ -9,7 +9,6 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -111,31 +110,33 @@ test('youtube description reaches the resumable upload request', function (?stri
 ]);
 
 test('youtube description builds independent upload metadata', function () {
+    $media = [[
+        'id' => 'video-1',
+        'type' => 'video',
+        'path' => 'medias/video.mp4',
+        'url' => 'https://example.com/video.mp4',
+        'mime_type' => 'video/mp4',
+        'original_filename' => 'video.mp4',
+    ]];
     $this->post->update([
         'content' => 'Short title',
-        'media' => [[
-            'id' => 'video-1',
-            'type' => 'video',
-            'path' => 'medias/video.mp4',
-            'url' => 'https://example.com/video.mp4',
-            'mime_type' => 'video/mp4',
-            'original_filename' => 'video.mp4',
-        ]],
+        'media' => $media,
+        'meta' => ['description' => 'First channel description'],
     ]);
-    $this->post->update(['meta' => ['description' => 'First channel description']]);
     $secondAccount = SocialAccount::factory()->youtube()->create([
         'workspace_id' => $this->workspace->id,
         'token_expires_at' => now()->addDays(7),
     ]);
-    $secondPlatform = PostPlatform::factory()->youtube()->create([
-        'post_id' => $this->post->id,
-        'social_account_id' => $secondAccount->id,
+    $secondPost = Post::factory()->forAccount($secondAccount, ContentType::YouTubeShort)->create([
+        'user_id' => $this->user->id,
+        'content' => 'Short title',
+        'media' => $media,
         'meta' => ['description' => 'Second channel description'],
     ]);
     $publisher = fakeYouTubeUpload();
 
     $publisher->publish($this->post->fresh());
-    $publisher->publish($secondPlatform);
+    $publisher->publish($secondPost);
 
     foreach (['First channel description', 'Second channel description'] as $description) {
         Http::assertSent(function (Request $request) use ($description): bool {
@@ -394,8 +395,8 @@ function youtubeVideoPost(mixed $test, array $meta): void
             'id' => 'video-1', 'type' => 'video', 'path' => 'medias/video.mp4',
             'url' => 'https://example.com/video.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'video.mp4',
         ]],
+        'meta' => $meta,
     ]);
-    $test->postPlatform->update(['meta' => $meta]);
 }
 
 test('youtube metadata reaches videos.insert', function () {

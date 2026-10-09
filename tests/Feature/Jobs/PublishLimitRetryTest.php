@@ -25,7 +25,6 @@ use App\Exceptions\Social\YouTubePublishException;
 use App\Jobs\PublishToSocialPlatform;
 use App\Jobs\SendNotification;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -60,12 +59,6 @@ beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-10-06 12:00:00', 'UTC'));
     $this->user = User::factory()->create();
     $this->workspace = Workspace::factory()->create(['user_id' => $this->user->id]);
-    $this->post = Post::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'status' => PostStatus::Publishing,
-        'scheduled_at' => now()->subMinute(),
-    ]);
 });
 
 /**
@@ -79,7 +72,7 @@ function limitRetryResponse(int $status, array $body, array $headers = []): Resp
     return Http::get('https://limit-retry.test/refusal');
 }
 
-function limitRetryTarget(object $test, Platform $platform, array $attributes = []): PostPlatform
+function limitRetryTarget(object $test, Platform $platform, array $attributes = []): Post
 {
     $factory = SocialAccount::factory();
     $state = match ($platform) {
@@ -100,13 +93,11 @@ function limitRetryTarget(object $test, Platform $platform, array $attributes = 
     };
     $account = $state->create(['workspace_id' => $test->workspace->id]);
 
-    return PostPlatform::factory()->create([
-        'post_id' => $test->post->id,
-        'social_account_id' => $account->id,
-        'platform' => $platform,
-        'content_type' => ContentType::defaultFor($platform),
-        'enabled' => true,
-        'status' => PlatformStatus::Pending,
+    return Post::factory()->forAccount($account, ContentType::defaultFor($platform))->create([
+        'user_id' => $test->user->id,
+        'status' => PostStatus::Publishing,
+        'scheduled_at' => now()->subMinute(),
+        'publish_status' => PlatformStatus::Pending,
         'scheduled_before_media_checks' => true,
         ...$attributes,
     ]);
@@ -157,12 +148,12 @@ test('a network limit waits an hour instead of failing', function (Platform $pla
 
     $target->refresh();
     expect($exception->category)->toBe(ErrorCategory::RateLimit)
-        ->and($target->status)->toBe(PlatformStatus::Retrying)
+        ->and($target->publish_status)->toBe(PlatformStatus::Retrying)
         ->and($target->retry_at->toIso8601String())->toBe(now()->addHour()->toIso8601String())
         ->and($target->error_message)->toBe($exception->userMessage)
         ->and(data_get($target->error_context, 'category'))->toBe(ErrorCategory::RateLimit->value)
         ->and(data_get($target->error_context, LimitRetryPolicy::ATTEMPTS_KEY))->toBe(1)
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Publishing);
+        ->and($target->fresh()->status)->toBe(PostStatus::Publishing);
     Queue::assertNotPushed(SendNotification::class);
 })->with('network limit refusals');
 
@@ -174,7 +165,7 @@ test('a limit retries after 1h, 2h and 4h through the scheduler, then fails with
     (new PublishToSocialPlatform($target))->handle();
 
     foreach ([1, 2, 4] as $attempt => $hours) {
-        expect($target->fresh()->status)->toBe(PlatformStatus::Retrying)
+        expect($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying)
             ->and($target->fresh()->retry_at->toIso8601String())->toBe(now()->addHours($hours)->toIso8601String());
 
         $this->travel(($hours * 60) - 1)->minutes();
@@ -190,11 +181,11 @@ test('a limit retries after 1h, 2h and 4h through the scheduler, then fails with
     }
 
     $target->refresh();
-    expect($target->status)->toBe(PlatformStatus::Failed)
+    expect($target->publish_status)->toBe(PlatformStatus::Failed)
         ->and($target->retry_at)->toBeNull()
         ->and($target->error_message)->toBe('LinkedIn rate limit reached. Please try again later.')
         ->and(data_get($target->error_context, LimitRetryPolicy::ATTEMPTS_KEY))->toBe(3)
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+        ->and($target->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class, 1);
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::PostFailed);
 });
@@ -212,10 +203,10 @@ test('a limit that lifts publishes on the next attempt', function () {
     $this->artisan('posts:process-scheduled')->assertSuccessful();
     (new PublishToSocialPlatform($target->fresh()))->handle();
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Published)
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Published)
         ->and($target->fresh()->retry_at)->toBeNull()
         ->and($target->fresh()->error_context)->toBeNull()
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Published);
+        ->and($target->fresh()->status)->toBe(PostStatus::Published);
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::PostPublished);
 });
 
@@ -251,7 +242,7 @@ test('a bluesky 429 retries when the pds RateLimit-Reset says the limit lifts', 
 
     (new PublishToSocialPlatform($target))->handle();
 
-    expect($target->fresh()->status)->not->toBe(PlatformStatus::Failed)
+    expect($target->fresh()->publish_status)->not->toBe(PlatformStatus::Failed)
         ->and($target->fresh()->retry_at->toIso8601String())->toBe($resetAt->toIso8601String());
 });
 
@@ -262,9 +253,9 @@ test('a permanent refusal still fails at once', function (Platform $platform, st
 
     (new PublishToSocialPlatform($target))->handle();
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Failed)
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Failed)
         ->and($target->fresh()->retry_at)->toBeNull()
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
+        ->and($target->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::PostFailed);
 })->with([
     'tiktok banned from posting' => [Platform::TikTok, TikTokPublisher::class, fn (): SocialPublishException => TikTokPublishException::fromFailReason('spam_risk_user_banned_from_posting')],
@@ -275,7 +266,7 @@ test('a permanent refusal still fails at once', function (Platform $platform, st
 
 test('a job that runs before retry_at does nothing', function () {
     $target = limitRetryTarget($this, Platform::LinkedIn, [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => now()->addHour(),
         'error_context' => [LimitRetryPolicy::ATTEMPTS_KEY => 1],
     ]);
@@ -286,23 +277,18 @@ test('a job that runs before retry_at does nothing', function () {
     (new PublishToSocialPlatform($target))->handle();
     (new PublishToSocialPlatform($target))->failed(new RuntimeException('worker died'));
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Retrying);
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying);
 });
 
 test('a due retry survives a worker restart: the scheduler dispatches it once from the database', function () {
     Queue::fake();
     $target = limitRetryTarget($this, Platform::LinkedIn, [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => now()->subMinute(),
         'error_context' => [LimitRetryPolicy::ATTEMPTS_KEY => 2],
     ]);
-    $disabled = limitRetryTarget($this, Platform::LinkedIn, [
-        'enabled' => false,
-        'status' => PlatformStatus::Retrying,
-        'retry_at' => now()->subMinute(),
-    ]);
     $notDue = limitRetryTarget($this, Platform::LinkedIn, [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => now()->addMinute(),
     ]);
 
@@ -310,17 +296,16 @@ test('a due retry survives a worker restart: the scheduler dispatches it once fr
     $this->artisan('posts:process-scheduled')->assertSuccessful();
 
     Queue::assertPushed(PublishToSocialPlatform::class, 1);
-    Queue::assertPushed(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->postPlatform->is($target)
+    Queue::assertPushed(PublishToSocialPlatform::class, fn (PublishToSocialPlatform $job): bool => $job->post->is($target)
         && $job->uniqueAttempt === LimitRetryPolicy::UNIQUE_ATTEMPT_OFFSET + 2);
     expect($target->fresh()->retry_at)->toBeNull()
-        ->and($target->fresh()->status)->toBe(PlatformStatus::Retrying)
-        ->and($disabled->fresh()->retry_at)->not->toBeNull()
+        ->and($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying)
         ->and($notDue->fresh()->retry_at)->not->toBeNull();
 });
 
 test('recovering stuck posts never fails a target waiting for a limit', function () {
     $target = limitRetryTarget($this, Platform::LinkedIn, [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => now()->addHours(3),
         'error_context' => [LimitRetryPolicy::ATTEMPTS_KEY => 2],
     ]);
@@ -328,54 +313,31 @@ test('recovering stuck posts never fails a target waiting for a limit', function
 
     $this->artisan('social:recover-stuck-posts')->assertSuccessful();
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Retrying)
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Publishing);
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying)
+        ->and($target->fresh()->status)->toBe(PostStatus::Publishing);
 });
 
 test('a claimed retry whose worker died is timed out by recover after an hour', function () {
     Queue::fake();
     $target = limitRetryTarget($this, Platform::LinkedIn, [
-        'status' => PlatformStatus::Retrying,
+        'publish_status' => PlatformStatus::Retrying,
         'retry_at' => now()->subMinute(),
         'error_context' => [LimitRetryPolicy::ATTEMPTS_KEY => 1],
     ]);
-    Post::query()->whereKey($this->post->id)->update(['updated_at' => now()->subHours(2)]);
+    Post::query()->whereKey($target->id)->update(['updated_at' => now()->subHours(2)]);
 
     $this->artisan('posts:process-scheduled')->assertSuccessful();
     $this->travel(61)->minutes();
     $this->artisan('social:recover-stuck-posts')->assertSuccessful();
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Failed)
-        ->and($this->post->fresh()->status)->toBe(PostStatus::Failed);
-});
-
-test('a multi-target post stays publishing while one target waits, then settles partially published', function () {
-    Queue::fake();
-    $published = limitRetryTarget($this, Platform::Bluesky, [
-        'status' => PlatformStatus::Published,
-        'platform_post_id' => 'at://live',
-    ]);
-    $waiting = limitRetryTarget($this, Platform::LinkedIn);
-    limitRetryPublisherThrows(LinkedInPublisher::class, LinkedInPublishException::fromApiResponse(limitRetryResponse(429, ['message' => 'Throttled'])));
-
-    (new PublishToSocialPlatform($waiting))->handle();
-
-    expect($this->post->fresh()->status)->toBe(PostStatus::Publishing);
-    Queue::assertNotPushed(SendNotification::class);
-
-    $waiting->update(['error_context' => [...$waiting->fresh()->error_context, LimitRetryPolicy::ATTEMPTS_KEY => 3], 'retry_at' => null]);
-    (new PublishToSocialPlatform($waiting->fresh()))->handle();
-
-    expect($waiting->fresh()->status)->toBe(PlatformStatus::Failed)
-        ->and($published->fresh()->status)->toBe(PlatformStatus::Published)
-        ->and($this->post->fresh()->status)->toBe(PostStatus::PartiallyPublished);
-    Queue::assertPushed(SendNotification::class, 1);
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Failed)
+        ->and($target->fresh()->status)->toBe(PostStatus::Failed);
 });
 
 test('a thread refused for a limit midway resumes after the live segments without posting them again', function () {
     Queue::fake();
-    $this->post->update(['content' => 'Root']);
     $target = limitRetryTarget($this, Platform::Mastodon, [
+        'content' => 'Root',
         'content_type' => ContentType::MastodonPost,
         'meta' => ['thread_replies' => ['Two', 'Three']],
     ]);
@@ -392,7 +354,7 @@ test('a thread refused for a limit midway resumes after the live segments withou
     (new PublishToSocialPlatform($target))->handle();
 
     $waiting = $target->fresh();
-    expect($waiting->status)->toBe(PlatformStatus::Retrying)
+    expect($waiting->publish_status)->toBe(PlatformStatus::Retrying)
         ->and(collect(data_get($waiting->error_context, ThreadProgress::KEY))->pluck('id')->all())->toBe(['1', '2']);
 
     $this->travel(1)->hour();
@@ -400,7 +362,7 @@ test('a thread refused for a limit midway resumes after the live segments withou
     (new PublishToSocialPlatform($target->fresh()))->handle();
 
     $published = $target->fresh();
-    expect($published->status)->toBe(PlatformStatus::Published)
+    expect($published->publish_status)->toBe(PlatformStatus::Published)
         ->and($published->platform_post_id)->toBe('1')
         ->and($published->thread_reply_ids)->toEqual(['2', '3']);
     Http::assertSent(fn ($request): bool => data_get($request->data(), 'status') === 'Three' && data_get($request->data(), 'in_reply_to_id') === '2');
@@ -420,7 +382,7 @@ test('a refused tiktok publish_id is dropped so the retry starts a new publish',
 
     (new PublishToSocialPlatform($target))->handle();
 
-    expect($target->fresh()->status)->toBe(PlatformStatus::Retrying)
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying)
         ->and(PublishCheckpoint::tiktokPublishId($target->fresh()->error_context))->toBeNull()
         ->and(data_get($target->fresh()->error_context, PublishCheckpoint::TIKTOK_STATUS))->toBeNull();
 });
@@ -439,7 +401,7 @@ test('a limit wait drops the x media checkpoint so the retry uploads the media a
     (new PublishToSocialPlatform($target))->handle();
 
     $context = $target->fresh()->error_context;
-    expect($target->fresh()->status)->toBe(PlatformStatus::Retrying)
+    expect($target->fresh()->publish_status)->toBe(PlatformStatus::Retrying)
         ->and($context)->not->toHaveKey(PublishCheckpoint::X_MEDIA)
         ->and(PublishCheckpoint::xMedia($context))->toBe([])
         ->and(data_get($context, ThreadProgress::KEY))->toEqual($threadProgress)

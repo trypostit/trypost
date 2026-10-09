@@ -2,10 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Enums\Post\PublishStatus as PostPlatformStatus;
 use App\Jobs\VerifyUpcomingPostConnections;
 use App\Models\Post;
-use App\Models\PostPlatform;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Event;
@@ -19,15 +17,8 @@ test('dispatches the job once per workspace with at-risk posts, even with multip
     $account = SocialAccount::factory()->facebook()->create(['workspace_id' => $workspace->id]);
 
     foreach (range(1, 5) as $i) {
-        $post = Post::factory()->scheduled()->create([
-            'workspace_id' => $workspace->id,
+        $post = Post::factory()->forAccount($account)->scheduled()->create([
             'scheduled_at' => now()->addMinutes(10 * $i),
-        ]);
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'platform' => $account->platform,
-            'status' => PostPlatformStatus::Pending,
         ]);
     }
 
@@ -43,15 +34,8 @@ test('dispatches nothing when no workspace has posts in the window', function ()
 
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->scheduled()->create([
         'scheduled_at' => now()->addHours(5),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
     ]);
 
     $this->artisan('social:check-upcoming-connections')->assertSuccessful();
@@ -59,45 +43,15 @@ test('dispatches nothing when no workspace has posts in the window', function ()
     Queue::assertNothingPushed();
 });
 
-test('dispatches nothing when the only at-risk post_platform was already warned today', function () {
+test('dispatches nothing when the only at-risk post was already warned today', function () {
     Event::fake();
     Queue::fake();
 
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->scheduled()->create([
         'scheduled_at' => now()->addMinutes(30),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
         'connection_warning_sent_at' => now()->subHours(2),
-    ]);
-
-    $this->artisan('social:check-upcoming-connections')
-        ->assertSuccessful();
-
-    Queue::assertNothingPushed();
-});
-
-test('dispatches nothing when the only at-risk post_platform is disabled', function () {
-    Event::fake();
-    Queue::fake();
-
-    $workspace = Workspace::factory()->create();
-    $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->scheduled()->create([
-        'workspace_id' => $workspace->id,
-        'scheduled_at' => now()->addMinutes(30),
-    ]);
-    PostPlatform::factory()->disabled()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
     ]);
 
     $this->artisan('social:check-upcoming-connections')
@@ -112,15 +66,8 @@ test('dispatches nothing when the only at-risk post is still a draft', function 
 
     $workspace = Workspace::factory()->create();
     $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-    $post = Post::factory()->draft()->create([
-        'workspace_id' => $workspace->id,
+    $post = Post::factory()->forAccount($account)->draft()->create([
         'scheduled_at' => now()->addMinutes(30),
-    ]);
-    PostPlatform::factory()->create([
-        'post_id' => $post->id,
-        'social_account_id' => $account->id,
-        'platform' => $account->platform,
-        'status' => PostPlatformStatus::Pending,
     ]);
 
     $this->artisan('social:check-upcoming-connections')
@@ -138,15 +85,8 @@ test('dispatches one job per distinct workspace when multiple workspaces have at
 
     foreach ([$workspaceA, $workspaceB] as $workspace) {
         $account = SocialAccount::factory()->threads()->create(['workspace_id' => $workspace->id]);
-        $post = Post::factory()->scheduled()->create([
-            'workspace_id' => $workspace->id,
+        $post = Post::factory()->forAccount($account)->scheduled()->create([
             'scheduled_at' => now()->addMinutes(30),
-        ]);
-        PostPlatform::factory()->create([
-            'post_id' => $post->id,
-            'social_account_id' => $account->id,
-            'platform' => $account->platform,
-            'status' => PostPlatformStatus::Pending,
         ]);
     }
 
