@@ -38,11 +38,11 @@ class PostPublishFailed extends Mailable implements ShouldQueue
                 'title' => __('mail.post_publish_failed.title'),
                 'previewText' => __('mail.post_publish_failed.preview'),
                 'workspaceName' => $this->post->workspace->name,
-                'publication' => $this->post->hasDestination() ? [
+                'publication' => [
                     'accountName' => $this->post->display_name,
                     'platform' => $this->post->platform,
                     'error' => $this->post->error_message,
-                ] : null,
+                ],
                 'postPreview' => PostPreview::from($this->post),
                 'url' => route('app.posts.index', ['tab' => 'sent', 'post' => $this->post->id]),
             ],

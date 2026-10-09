@@ -8,13 +8,11 @@
       @{{ __('mail.post_publish_failed.body', ['workspace' => $workspaceName]) }}
     </p>
 
-    @if($publication)
-      <x-post-preview />
-      @if($publication['error'])
-        <x-alert title-key="mail.post_preview.error">
-          @{{ $publication['error'] }}
-        </x-alert>
-      @endif
+    <x-post-preview />
+    @if($publication['error'])
+      <x-alert title-key="mail.post_preview.error">
+        @{{ $publication['error'] }}
+      </x-alert>
     @endif
 
     <x-spacer height="24px" />

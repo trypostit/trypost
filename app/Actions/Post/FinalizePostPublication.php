@@ -39,10 +39,7 @@ class FinalizePostPublication
                     return null;
                 }
 
-                if ($post->hasDestination()) {
-                    $post->markPublicationFailed(__('posts.errors.choose_channel'));
-                }
-
+                $post->markPublicationFailed(__('posts.errors.choose_channel'));
                 $post->markAsFailed();
 
                 return ['post' => $post, 'successful' => false];
