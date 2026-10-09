@@ -20,13 +20,6 @@ test('it deletes the managed google business jpeg for a post', function () {
     Storage::assertExists('uploads/keep.jpg');
 });
 
-test('a post merged from a legacy destination keeps the destination file name', function () {
-    $post = Post::factory()->make(['id' => '123e4567-e89b-12d3-a456-426614174000']);
-    $post->forceFill(['legacy_target_id' => '00000000-0000-0000-0000-000000000001']);
-
-    expect(GoogleBusinessDerivativeCleaner::pathFor($post))->toEndWith('/00000000-0000-0000-0000-000000000001.jpg');
-});
-
 test('it no-ops when the derivative is already gone', function () {
     Storage::fake();
 

@@ -17,7 +17,6 @@ use App\Services\Media\MediaOptimizer;
 use App\Services\Social\MastodonPublisher;
 use App\Support\Social\ThreadProgress;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create();
@@ -711,15 +710,4 @@ test('a mastodon thread with a reply over the limit fails before posting anythin
         ->toThrow(ContentLimitException::class, __('posts.form.thread.reply_too_long', ['limit' => 490, 'over' => 5]));
 
     Http::assertNothingSent();
-});
-
-test('a post merged from an older destination keeps that destination id in its idempotency key', function () {
-    $legacyTargetId = (string) Str::uuid7();
-    $this->post->forceFill(['legacy_target_id' => $legacyTargetId])->save();
-    $instance = data_get($this->socialAccount->meta, 'instance');
-    Http::fake(["{$instance}/api/v1/statuses" => Http::response(['id' => '1', 'url' => "{$instance}/@t/1"])]);
-
-    $this->publisher->publish($this->post->fresh());
-
-    Http::assertSent(fn ($request): bool => str_starts_with((string) data_get($request->header('Idempotency-Key'), 0), "{$legacyTargetId}:"));
 });

@@ -85,6 +85,12 @@ deixa de existir, pode sobrar para o código novo.
    where status in ('publishing', 'retrying') and retry_at is null
      and updated_at > now() - interval '1 hour';
    ```
+   E que nenhum post do Google Business está em revisão (deve dar 0; o JPEG de um
+   post em revisão tem o id do destino antigo no nome e ficaria órfão no bucket):
+   ```sql
+   select count(*) from post_platforms
+   where platform = 'google_business' and status = 'pending_review';
+   ```
 3. Deploy pelo Forge, com o build **antes** do `migrate`, para um build quebrado
    falhar antes de qualquer escrita:
    `composer install` → `artisan optimize` → `npm ci && npm run build` →

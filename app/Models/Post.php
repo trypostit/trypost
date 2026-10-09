@@ -87,7 +87,6 @@ class Post extends Model
      */
     protected $hidden = [
         'error_context',
-        'legacy_target_id',
         'scheduled_before_media_checks',
         'last_reconciled_at',
         'connection_warning_sent_at',

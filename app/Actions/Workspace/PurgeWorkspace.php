@@ -20,7 +20,7 @@ class PurgeWorkspace
     {
         $workspace->posts()
             ->where('platform', Platform::GoogleBusiness)
-            ->select(['id', 'legacy_target_id'])
+            ->select(['id'])
             ->each(fn (Post $post) => app(GoogleBusinessDerivativeCleaner::class)->cleanup($post));
 
         DeleteOwnedMedia::forWorkspace($workspace);

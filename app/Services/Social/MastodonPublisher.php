@@ -39,12 +39,11 @@ class MastodonPublisher
         $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');
 
         $rootHash = ThreadProgress::hash((string) $content, $post->mediaItems->map(fn (MediaItem $item): string => $item->id)->all());
-        $idempotencyPrefix = $post->legacy_target_id ?? $post->id;
 
         return $this->publishThread(
             $post,
             $rootHash,
-            fn (): array => $this->publishRoot($post, $account, $instance, $content, "{$idempotencyPrefix}:{$rootHash}"),
+            fn (): array => $this->publishRoot($post, $account, $instance, $content, "{$post->id}:{$rootHash}"),
             fn (string $text, Collection $media, array $parent): array => $this->createStatus(
                 $account,
                 $instance,
@@ -52,7 +51,7 @@ class MastodonPublisher
                     ...$this->replyPayload($post, $text, (string) $parent['id']),
                     ...$this->mediaPayload($account, $instance, $media),
                 ],
-                "{$idempotencyPrefix}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all()),
+                "{$post->id}:{$parent['id']}:".ThreadProgress::hash($text, $media->map(fn (MediaItem $item): string => $item->id)->all()),
             ),
         );
     }

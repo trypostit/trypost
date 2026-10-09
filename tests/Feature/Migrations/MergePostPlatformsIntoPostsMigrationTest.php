@@ -182,7 +182,7 @@ test('backfill copies every destination onto its post without touching updated_a
     DB::table('posts')->where('id', $post->id)->update(['updated_at' => $updatedAt]);
     $targetUpdatedAt = now()->subHour()->startOfSecond();
     $retryAt = now()->addHour()->startOfSecond();
-    $target = ($this->target)($post, [
+    ($this->target)($post, [
         'social_account_id' => $account->id,
         'platform_name' => 'Acme',
         'platform_username' => 'acme',
@@ -215,7 +215,6 @@ test('backfill copies every destination onto its post without touching updated_a
         ->error_message->toBe('Rate limited')
         ->thread_reply_ids->toBe(['2', '3'])
         ->scheduled_before_media_checks->toBeTrue()
-        ->legacy_target_id->toBe($target)
         ->and($fresh->meta)->toEqual(['document_title' => 'Deck', 'link_preview' => false])
         ->and($fresh->error_context)->toEqual(['category' => 'rate_limit', 'thread_progress' => [['id' => '1', 'hash' => 'a']]])
         ->and($fresh->retry_at->toIso8601String())->toBe($retryAt->toIso8601String())
@@ -267,7 +266,6 @@ test('backfill clears the copy of a destination that vanished before it runs aga
     $this->backfill->up();
 
     expect(Post::query()->find($post->id))
-        ->legacy_target_id->toBeNull()
         ->social_account_id->toBeNull()
         ->platform->toBeNull();
 });
@@ -367,3 +365,12 @@ test('drop refuses analytics publications that were not linked to their post', f
     expect(fn () => $this->drop->up())->toThrow(RuntimeException::class, 'were not linked to their posts')
         ->and(Schema::hasTable('post_platforms'))->toBeTrue();
 });
+
+test('backfill parity refuses a post that still has two destinations', function () {
+    $account = SocialAccount::factory()->create();
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
+    ($this->target)($post, ['social_account_id' => $account->id]);
+    ($this->target)($post, ['social_account_id' => $account->id]);
+
+    $this->backfill->up();
+})->throws(RuntimeException::class, 'Backfill parity failed');

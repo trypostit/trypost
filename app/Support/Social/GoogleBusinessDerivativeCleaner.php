@@ -14,15 +14,11 @@ class GoogleBusinessDerivativeCleaner
     public const string DIRECTORY = 'google-business-derivatives';
 
     /**
-     * The JPEG is named after the post. A post published before posts and
-     * their destinations were merged keeps its destination's id until its
-     * file is gone.
+     * The JPEG is named after the post.
      */
     public static function pathFor(Post $post): string
     {
-        $fileName = $post->legacy_target_id ?? $post->id;
-
-        return self::DIRECTORY."/{$fileName}.jpg";
+        return self::DIRECTORY."/{$post->id}.jpg";
     }
 
     public function cleanup(Post $post): void

@@ -12,7 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         $unmirrored = DB::table('post_platforms')
-            ->whereNotIn('id', DB::table('posts')->whereNotNull('legacy_target_id')->select('legacy_target_id'))
+            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
+                ->from('posts')
+                ->whereColumn('posts.id', 'post_platforms.post_id')
+                ->whereColumn('posts.platform', 'post_platforms.platform')
+                ->whereColumn('posts.social_account_id', 'post_platforms.social_account_id'))
             ->count();
 
         if ($unmirrored > 0) {

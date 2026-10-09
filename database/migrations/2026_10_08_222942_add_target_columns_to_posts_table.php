@@ -30,7 +30,6 @@ return new class extends Migration
             $table->timestamp('retry_at')->nullable();
             $table->timestamp('publication_updated_at')->nullable();
             $table->boolean('scheduled_before_media_checks')->default(false);
-            $table->uuid('legacy_target_id')->nullable()->unique();
 
             $table->index(['social_account_id', 'status', 'scheduled_at']);
             $table->index(['social_account_id', 'publish_status', 'published_at']);
@@ -70,7 +69,6 @@ return new class extends Migration
             $table->dropIndex(['publish_status', 'last_reconciled_at']);
             $table->dropIndex(['publish_status', 'retry_at']);
             $table->dropIndex(['workspace_id', 'publish_status', 'published_at']);
-            $table->dropUnique(['legacy_target_id']);
             $table->dropColumn([
                 'social_account_id',
                 'publish_status',
@@ -91,7 +89,6 @@ return new class extends Migration
                 'retry_at',
                 'publication_updated_at',
                 'scheduled_before_media_checks',
-                'legacy_target_id',
             ]);
         });
     }

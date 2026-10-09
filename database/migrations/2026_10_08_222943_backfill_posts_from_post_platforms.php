@@ -54,14 +54,13 @@ return new class extends Migration
     private function clearCopiesOfVanishedTargets(): void
     {
         DB::table('posts')
-            ->whereNotNull('legacy_target_id')
-            ->whereNotIn('legacy_target_id', DB::table('post_platforms')->select('id'))
+            ->whereNotNull('platform')
+            ->whereNotIn('id', DB::table('post_platforms')->select('post_id'))
             ->update([
                 ...array_fill_keys(self::TARGET_COLUMNS, null),
                 'scheduled_before_media_checks' => false,
                 'publish_status' => 'pending',
                 'publication_updated_at' => null,
-                'legacy_target_id' => null,
             ]);
     }
 
@@ -86,7 +85,6 @@ return new class extends Migration
                             'publish_status' => $target->pp_status,
                             'published_at' => $target->pp_status === 'published' ? ($target->p_published_at ?? $target->pp_published_at) : $target->pp_published_at,
                             'publication_updated_at' => $target->pp_updated_at,
-                            'legacy_target_id' => $target->pp_id,
                         ]);
                     }
                 });
@@ -116,20 +114,19 @@ return new class extends Migration
     private function assertParity(): void
     {
         $targets = DB::table('post_platforms')->count();
-        $copies = DB::table('posts')->whereNotNull('legacy_target_id')->count();
+        $posts = DB::table('post_platforms')->distinct()->count('post_id');
+        $copies = DB::table('posts')->whereNotNull('platform')->count();
 
-        if ($targets !== $copies) {
-            throw new RuntimeException("Backfill parity failed: {$targets} destinations, {$copies} posts carry one.");
+        if ($targets !== $posts || $targets !== $copies) {
+            throw new RuntimeException("Backfill parity failed: {$targets} destinations on {$posts} posts, {$copies} posts carry one.");
         }
 
         $scalarColumns = array_values(array_diff(self::TARGET_COLUMNS, self::JSON_COLUMNS));
 
         DB::table('post_platforms')
-            ->join('posts', 'posts.legacy_target_id', '=', 'post_platforms.id')
+            ->join('posts', 'posts.id', '=', 'post_platforms.post_id')
             ->select([
                 'post_platforms.id as pp_id',
-                'post_platforms.post_id as pp_post_id',
-                'posts.id as p_id',
                 'post_platforms.status as pp_status',
                 'posts.publish_status as p_publish_status',
                 ...array_map(fn (string $column): string => "post_platforms.{$column} as pp_{$column}", self::TARGET_COLUMNS),
@@ -137,7 +134,7 @@ return new class extends Migration
             ])
             ->chunkById(500, function ($rows) use ($scalarColumns): void {
                 foreach ($rows as $row) {
-                    $mismatch = $row->pp_post_id !== $row->p_id || $row->pp_status !== $row->p_publish_status
+                    $mismatch = $row->pp_status !== $row->p_publish_status
                         || collect($scalarColumns)->contains(fn (string $column): bool => ! $this->sameScalar($row->{"pp_{$column}"}, $row->{"p_{$column}"}))
                         || collect(self::JSON_COLUMNS)->contains(fn (string $column): bool => ! $this->sameJson($row->{"pp_{$column}"}, $row->{"p_{$column}"}));
 

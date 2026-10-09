@@ -779,13 +779,9 @@ an `enabled` flag or posts with several channels. Posts created together share
   `Post::hasDestination()` (platform set) and `Post::hasChannel()` (account still
   there) are the two checks.
 - **Not fillable on purpose:** `social_account_id`, `platform_post_id`,
-  `publish_status`, `legacy_target_id`, `scheduled_before_media_checks` — set them
+  `publish_status`, `scheduled_before_media_checks` — set them
   with `forceCreate`/`forceFill` in `CreateChannelPost`, `ImportExternalPosts` and
   the publication methods only.
-- **`legacy_target_id`** is the id the post's destination had in `post_platforms`.
-  Google Business derivative files of posts published before the merge are named
-  after it (`GoogleBusinessDerivativeCleaner::pathFor()`); drop the column once
-  no such file is left.
 - **Public contract:** API, MCP and webhook payloads carry the channel fields at
   the top of the post (no `platforms[]`); inputs take top-level
   `social_account_id` / `content_type` / `meta`, and validation errors are keyed

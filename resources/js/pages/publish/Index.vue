@@ -244,9 +244,6 @@ const listGroups = computed<CardGroup[]>(() => {
     return [...groups].map(([key, posts]) => ({ key, posts }));
 });
 
-const queueTarget = (post: PostCard): string | null =>
-    post.social_account_id;
-
 const itemTime = (item: QueueItem): number => dayjs.utc(item.at).valueOf();
 
 const groupQueueItems = (items: QueueItem[]): QueueDay[] => {
@@ -331,7 +328,7 @@ const queueSource = computed<QueueView>(() => {
     const postItems: QueueItem[] = [];
 
     for (const post of scheduled) {
-        const channelId = queueTarget(post);
+        const channelId = post.social_account_id;
 
         if (!post.scheduled_at || !channelId) {
             continue;
@@ -356,7 +353,7 @@ const queueSource = computed<QueueView>(() => {
             ? (props.queue?.days ?? []).flatMap((day) => day.items)
             : channelSlots.value.filter(loaded);
     const pendingItems = pending.flatMap((post): QueueItem[] => {
-        const channelId = queueTarget(post);
+        const channelId = post.social_account_id;
 
         return post.scheduled_at && channelId
             ? [

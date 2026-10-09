@@ -26,7 +26,7 @@ class DeleteChannelPosts
 
         Post::query()
             ->where('social_account_id', $account->id)
-            ->select(['id', 'platform', 'legacy_target_id'])
+            ->select(['id', 'platform'])
             ->chunkById(PruneExpiredPostHistory::CHUNK, function (Collection $posts) use (&$deletedPosts): void {
                 self::pruneGoogleBusinessImages($posts);
 
