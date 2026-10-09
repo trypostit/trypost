@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3';
 import { type DateValue, parseDate } from '@internationalized/date';
 import {
     IconCalendarEvent,
+    IconCheck,
     IconChevronDown,
     IconChevronLeft,
     IconChevronRight,
@@ -12,6 +12,12 @@ import { computed, ref, useTemplateRef } from 'vue';
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { useCalendarLocale } from '@/composables/useCalendarLocale';
 import type { CalendarView } from '@/types/publish';
@@ -21,8 +27,6 @@ const props = defineProps<{
     views: readonly CalendarView[];
     title: string;
     selectedDayKey: string;
-    viewHref: (view: CalendarView) => string;
-    reloadProps: string[];
 }>();
 
 const emit = defineEmits<{
@@ -190,28 +194,31 @@ defineExpose({ missingTitleWidth });
         >
             {{ $t('calendar.today') }}
         </Button>
-        <nav
-            class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border-strong bg-card p-[3px]"
-            :aria-label="$t('calendar.title')"
-        >
-            <Link
-                v-for="option in desktopViews"
-                :key="option"
-                :href="viewHref(option)"
-                :only="reloadProps"
-                preserve-state
-                preserve-scroll
-                :aria-current="view === option ? 'page' : undefined"
-                class="inline-flex h-6 items-center rounded-md border border-transparent px-2 text-sm font-medium transition-control"
-                :class="
-                    view === option
-                        ? 'bg-primary-selected text-primary-text'
-                        : 'text-foreground hover:bg-accent'
-                "
-                :data-testid="`calendar-view-${option}`"
-            >
-                {{ $t(`calendar.${option}`) }}
-            </Link>
-        </nav>
+        <DropdownMenu>
+            <DropdownMenuTrigger as-child>
+                <Button
+                    variant="ghost"
+                    class="shrink-0 data-[state=open]:bg-accent"
+                    data-testid="calendar-view-trigger"
+                >
+                    {{ $t(`calendar.${view}`) }}
+                    <IconChevronDown class="size-4 text-muted-foreground" />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+                <DropdownMenuItem
+                    v-for="option in desktopViews"
+                    :key="option"
+                    :data-testid="`calendar-view-${option}`"
+                    @click="changeView(option)"
+                >
+                    <IconCheck
+                        class="size-4"
+                        :class="view === option ? '' : 'invisible'"
+                    />
+                    {{ $t(`calendar.${option}`) }}
+                </DropdownMenuItem>
+            </DropdownMenuContent>
+        </DropdownMenu>
     </div>
 </template>

@@ -596,8 +596,6 @@ const goToDay = (key: string): void => {
                     :views="VIEWS"
                     :title="isDesktop ? headerTitle : mobileTitle"
                     :selected-day-key="selectedDayKey"
-                    :view-href="calendarUrl"
-                    :reload-props="RELOAD_PROPS"
                     @navigate="navigate"
                     @today="goToToday"
                     @change-view="switchView"
