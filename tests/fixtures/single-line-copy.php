@@ -101,6 +101,7 @@ return [
     'posts.form.youtube.visibility' => 13,
     'posts.list_view' => 6,
     'posts.publish.actions.add_to_queue' => 28,
+    'posts.publish.in_google_review' => 28,
     'settings.api_keys.description' => 42,
     'settings.members.access.admin_description' => 41,
     'settings.members.access.needs_approval' => 25,

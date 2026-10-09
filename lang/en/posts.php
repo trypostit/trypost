@@ -638,7 +638,6 @@ return [
             'flags' => 'Flags',
         ],
 
-
         'delete_modal' => [
             'title' => 'Delete Post',
             'description' => 'Are you sure you want to delete this post? This action cannot be undone.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Publishing now',
         'publishing_badge' => 'Publishing…',
         'publishing_on' => 'Publishing on :network…',
+        'in_google_review' => 'In review by Google',
         'retrying_at' => 'Retrying at :time',
         'published_via' => 'Published via',
         'published_directly_from' => 'This was published directly from :network',

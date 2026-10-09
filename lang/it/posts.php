@@ -638,7 +638,6 @@ return [
             'flags' => 'Bandiere',
         ],
 
-
         'delete_modal' => [
             'title' => 'Elimina post',
             'description' => 'Vuoi davvero eliminare questo post? Questa azione non può essere annullata.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'In pubblicazione',
         'publishing_badge' => 'Pubblicazione…',
         'publishing_on' => 'Pubblicazione su :network…',
+        'in_google_review' => 'In revisione da Google',
         'retrying_at' => 'Nuovo tentativo alle :time',
         'published_via' => 'Pubblicato tramite',
         'published_directly_from' => 'Pubblicato direttamente da :network',

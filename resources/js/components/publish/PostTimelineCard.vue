@@ -8,6 +8,7 @@ import {
     IconGripVertical,
     IconListNumbers,
     IconClockPause,
+    IconHourglass,
     IconLoader2,
     IconPencil,
     IconPlayerPlayFilled,
@@ -147,6 +148,12 @@ const recurrenceTimezone = computed(
 
 const isPublishing = computed(
     () => props.post.status === PostStatus.Publishing,
+);
+
+const isInGoogleReview = computed(
+    () =>
+        isPublishing.value &&
+        props.post.publish_status === PublishStatus.PendingReview,
 );
 
 const scheduleMode = computed(() => {
@@ -522,6 +529,17 @@ defineExpose({ openDetails });
                             time: formatTime(limitRetryAt),
                         })
                     }}
+                </span>
+                <span
+                    v-else-if="isInGoogleReview"
+                    class="inline-flex items-center gap-2"
+                    :data-testid="`post-google-review-${testKey}`"
+                >
+                    <IconHourglass
+                        class="size-4 text-primary-strong"
+                        aria-hidden="true"
+                    />
+                    {{ $t('posts.publish.in_google_review') }}
                 </span>
                 <span v-else class="inline-flex items-center gap-2">
                     <IconLoader2

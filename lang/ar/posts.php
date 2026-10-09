@@ -638,7 +638,6 @@ return [
             'flags' => 'الأعلام',
         ],
 
-
         'delete_modal' => [
             'title' => 'حذف المنشور',
             'description' => 'هل أنت متأكد من رغبتك في حذف هذا المنشور؟ لا يمكن التراجع عن هذا الإجراء.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'يُنشر الآن',
         'publishing_badge' => 'جارٍ النشر…',
         'publishing_on' => 'جارٍ النشر على :network…',
+        'in_google_review' => 'قيد مراجعة Google',
         'retrying_at' => 'إعادة المحاولة في :time',
         'published_via' => 'نُشر عبر',
         'published_directly_from' => 'نُشر مباشرةً من :network',

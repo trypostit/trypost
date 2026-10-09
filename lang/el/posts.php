@@ -638,7 +638,6 @@ return [
             'flags' => 'Σημαίες',
         ],
 
-
         'delete_modal' => [
             'title' => 'Διαγραφή δημοσίευσης',
             'description' => 'Είστε βέβαιοι ότι θέλετε να διαγράψετε αυτή τη δημοσίευση; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Δημοσιεύεται τώρα',
         'publishing_badge' => 'Δημοσίευση…',
         'publishing_on' => 'Δημοσίευση στο :network…',
+        'in_google_review' => 'Σε έλεγχο από την Google',
         'retrying_at' => 'Νέα προσπάθεια στις :time',
         'published_via' => 'Δημοσιεύτηκε μέσω',
         'published_directly_from' => 'Δημοσιεύτηκε απευθείας από το :network',

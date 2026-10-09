@@ -638,7 +638,6 @@ return [
             'flags' => 'Flagi',
         ],
 
-
         'delete_modal' => [
             'title' => 'Usuń post',
             'description' => 'Czy na pewno chcesz usunąć ten post? Tej operacji nie można cofnąć.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Trwa publikacja',
         'publishing_badge' => 'Publikowanie…',
         'publishing_on' => 'Publikowanie w :network…',
+        'in_google_review' => 'W weryfikacji przez Google',
         'retrying_at' => 'Ponowna próba o :time',
         'published_via' => 'Opublikowano przez',
         'published_directly_from' => 'Opublikowano bezpośrednio w :network',

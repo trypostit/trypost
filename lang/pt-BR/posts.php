@@ -638,7 +638,6 @@ return [
             'flags' => 'Bandeiras',
         ],
 
-
         'delete_modal' => [
             'title' => 'Excluir Post',
             'description' => 'Tem certeza que deseja excluir este post? Esta ação não pode ser desfeita.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Publicando agora',
         'publishing_badge' => 'Publicando…',
         'publishing_on' => 'Publicando no :network…',
+        'in_google_review' => 'Em revisão pelo Google',
         'retrying_at' => 'Nova tentativa às :time',
         'published_via' => 'Publicado via',
         'published_directly_from' => 'Publicado diretamente pelo :network',

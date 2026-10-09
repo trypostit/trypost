@@ -638,7 +638,6 @@ return [
             'flags' => '旗',
         ],
 
-
         'delete_modal' => [
             'title' => '投稿を削除',
             'description' => 'この投稿を削除してもよろしいですか？この操作は取り消せません。',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => '公開中',
         'publishing_badge' => '公開中…',
         'publishing_on' => ':network に投稿中…',
+        'in_google_review' => 'Google が審査中',
         'retrying_at' => ':time に再試行',
         'published_via' => '公開先:',
         'published_directly_from' => ':network から直接公開されました',

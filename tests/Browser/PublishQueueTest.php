@@ -609,6 +609,25 @@ test('a publishing post waiting for a network limit shows when it retries', func
         ->assertNoJavaScriptErrors();
 });
 
+test('a google business post waiting for review says google is reviewing it', function () {
+    [$user, $workspace] = publishQueueSetup();
+    $channel = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $workspace->id]);
+    $inReview = Post::factory()->forAccount($channel)->pendingReview()->create([
+        'user_id' => $user->id,
+        'schedule_mode' => ScheduleMode::Custom,
+        'scheduled_at' => now()->subMinute(),
+        'content' => 'Waiting for Google',
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitForPublishQueueTestId($page, "post-google-review-{$inReview->id}");
+
+    $page->assertSeeIn("@post-google-review-{$inReview->id}", __('posts.publish.in_google_review'))
+        ->assertDontSeeIn("@post-publishing-{$inReview->id}", __('posts.publish.publishing_on', ['network' => $channel->platform->label()]))
+        ->assertNoJavaScriptErrors();
+});
+
 test('a publishing post sits in its own queue group and moves to sent once it settles', function () {
     [$user, $workspace, $channel] = publishQueueSetup();
     $scheduled = publishQueuePost($user, $channel);

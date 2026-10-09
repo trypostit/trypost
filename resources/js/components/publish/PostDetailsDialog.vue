@@ -46,7 +46,7 @@ import { type ThreadReply, threadRepliesOf } from '@/lib/threadReplies';
 import type { MediaItem } from '@/types/media';
 import { THREAD_PLATFORMS } from '@/types/network-options';
 import { Platform } from '@/types/platform';
-import { PostOrigin, PostStatus } from '@/types/post';
+import { PostOrigin, PostStatus, PublishStatus } from '@/types/post';
 import type { PostCard, PostCardMenuAction } from '@/types/publish';
 
 const props = defineProps<{
@@ -127,6 +127,20 @@ const current = computed<PostCard>(() =>
         ? props.post
         : (siblings.value.find((sibling) => sibling.id === selectedId.value) ??
           props.post),
+);
+
+const isInGoogleReview = computed(
+    () =>
+        current.value.status === PostStatus.Publishing &&
+        current.value.publish_status === PublishStatus.PendingReview,
+);
+
+const currentStatusConfig = computed(() =>
+    getPostStatusConfig(
+        isInGoogleReview.value
+            ? PublishStatus.PendingReview
+            : current.value.status,
+    ),
 );
 
 const currentKey = computed(() =>
@@ -365,15 +379,19 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             as="div"
                         >
                             <Badge
-                                :variant="getPostStatusConfig(current.status).variant"
+                                :variant="currentStatusConfig.variant"
                                 class="h-6 gap-1 px-2 [&>svg]:size-4"
                                 :data-testid="`post-details-status-${testKey}`"
                             >
                                 <component
-                                    :is="getPostStatusConfig(current.status).icon"
-                                    :class="getPostStatusConfig(current.status).iconClass"
+                                    :is="currentStatusConfig.icon"
+                                    :class="currentStatusConfig.iconClass"
                                 />
-                                {{ $t(`posts.status.${current.status}`) }}
+                                {{
+                                    isInGoogleReview
+                                        ? $t('posts.publish.in_google_review')
+                                        : $t(`posts.status.${current.status}`)
+                                }}
                             </Badge>
                             <span
                                 class="text-sm text-muted-foreground"

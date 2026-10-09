@@ -638,7 +638,6 @@ return [
             'flags' => 'Флаги',
         ],
 
-
         'delete_modal' => [
             'title' => 'Удалить пост',
             'description' => 'Вы уверены, что хотите удалить этот пост? Это действие нельзя отменить.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Публикуется сейчас',
         'publishing_badge' => 'Публикация…',
         'publishing_on' => 'Публикация в :network…',
+        'in_google_review' => 'На проверке в Google',
         'retrying_at' => 'Повтор в :time',
         'published_via' => 'Опубликовано через',
         'published_directly_from' => 'Опубликовано напрямую из :network',

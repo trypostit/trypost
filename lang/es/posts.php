@@ -638,7 +638,6 @@ return [
             'flags' => 'Banderas',
         ],
 
-
         'delete_modal' => [
             'title' => 'Eliminar post',
             'description' => '¿Estás seguro de que deseas eliminar este post? Esta acción no se puede deshacer.',
@@ -895,6 +894,7 @@ return [
         'publishing_now' => 'Publicando ahora',
         'publishing_badge' => 'Publicando…',
         'publishing_on' => 'Publicando en :network…',
+        'in_google_review' => 'En revisión por Google',
         'retrying_at' => 'Reintento a las :time',
         'published_via' => 'Publicado en',
         'published_directly_from' => 'Publicado directamente desde :network',

@@ -640,7 +640,6 @@ return [
             'flags' => 'Flaggen',
         ],
 
-
         'delete_modal' => [
             'title' => 'Beitrag löschen',
             'description' => 'Möchtest du diesen Beitrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
@@ -896,6 +895,7 @@ return [
         'publishing_now' => 'Wird jetzt veröffentlicht',
         'publishing_badge' => 'Veröffentlichen…',
         'publishing_on' => 'Wird auf :network veröffentlicht…',
+        'in_google_review' => 'Google-Prüfung läuft',
         'retrying_at' => 'Neuer Versuch um :time',
         'published_via' => 'Veröffentlicht über',
         'published_directly_from' => 'Direkt über :network veröffentlicht',

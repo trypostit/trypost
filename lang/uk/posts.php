@@ -638,7 +638,6 @@ return [
             'flags' => 'Прапори',
         ],
 
-
         'delete_modal' => [
             'title' => 'Видалити пост',
             'description' => 'Ви впевнені, що хочете видалити цей пост? Цю дію не можна скасувати.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Публікується зараз',
         'publishing_badge' => 'Публікація…',
         'publishing_on' => 'Публікація в :network…',
+        'in_google_review' => 'На перевірці в Google',
         'retrying_at' => 'Повтор о :time',
         'published_via' => 'Опубліковано через',
         'published_directly_from' => 'Опубліковано напряму з :network',

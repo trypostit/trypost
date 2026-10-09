@@ -638,7 +638,6 @@ return [
             'flags' => '旗帜',
         ],
 
-
         'delete_modal' => [
             'title' => '删除帖子',
             'description' => '确定要删除此帖子吗？此操作无法撤销。',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => '正在发布',
         'publishing_badge' => '发布中…',
         'publishing_on' => '正在发布到 :network…',
+        'in_google_review' => 'Google 审核中',
         'retrying_at' => '将于 :time 重试',
         'published_via' => '发布于',
         'published_directly_from' => '直接从 :network 发布',

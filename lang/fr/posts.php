@@ -638,7 +638,6 @@ return [
             'flags' => 'Drapeaux',
         ],
 
-
         'delete_modal' => [
             'title' => 'Supprimer la publication',
             'description' => 'Voulez-vous vraiment supprimer cette publication ? Cette action est irréversible.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Publication en cours',
         'publishing_badge' => 'Publication…',
         'publishing_on' => 'Publication sur :network…',
+        'in_google_review' => 'En cours d\'examen par Google',
         'retrying_at' => 'Nouvel essai à :time',
         'published_via' => 'Publié via',
         'published_directly_from' => 'Publié directement depuis :network',

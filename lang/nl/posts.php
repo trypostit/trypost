@@ -638,7 +638,6 @@ return [
             'flags' => 'Vlaggen',
         ],
 
-
         'delete_modal' => [
             'title' => 'Post verwijderen',
             'description' => 'Weet je zeker dat je deze post wilt verwijderen? Deze actie kan niet ongedaan worden gemaakt.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => 'Nu aan het publiceren',
         'publishing_badge' => 'Publiceren…',
         'publishing_on' => 'Publiceren op :network…',
+        'in_google_review' => 'In beoordeling bij Google',
         'retrying_at' => 'Nieuwe poging om :time',
         'published_via' => 'Gepubliceerd via',
         'published_directly_from' => 'Rechtstreeks gepubliceerd vanuit :network',

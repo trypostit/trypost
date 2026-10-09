@@ -640,7 +640,6 @@ return [
             'flags' => 'Bayraklar',
         ],
 
-
         'delete_modal' => [
             'title' => 'Gönderiyi Sil',
             'description' => 'Bu gönderiyi silmek istediğinizden emin misiniz? Bu işlem geri alınamaz.',
@@ -896,6 +895,7 @@ return [
         'publishing_now' => 'Şimdi yayınlanıyor',
         'publishing_badge' => 'Yayınlanıyor…',
         'publishing_on' => ':network üzerinde paylaşılıyor…',
+        'in_google_review' => 'Google incelemesinde',
         'retrying_at' => ':time itibarıyla yeniden denenecek',
         'published_via' => 'Yayınlandığı yer:',
         'published_directly_from' => 'Doğrudan :network üzerinden yayınlandı',

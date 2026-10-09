@@ -638,7 +638,6 @@ return [
             'flags' => '깃발',
         ],
 
-
         'delete_modal' => [
             'title' => '게시물 삭제',
             'description' => '이 게시물을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.',
@@ -894,6 +893,7 @@ return [
         'publishing_now' => '지금 게시 중',
         'publishing_badge' => '게시 중…',
         'publishing_on' => ':network에 게시 중…',
+        'in_google_review' => 'Google 검토 중',
         'retrying_at' => ':time에 재시도',
         'published_via' => '게시 채널:',
         'published_directly_from' => ':network에서 직접 게시됨',
