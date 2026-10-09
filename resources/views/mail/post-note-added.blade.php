@@ -75,12 +75,12 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                     {{ __('mail.post_note_added.post_title') }}
                   </p>
                   <p style="white-space: pre-line; margin: 8px 0 0; font-size: 14px; line-height: 24px">{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_note_added.post_without_text') }}</p>
-                  @if(count($channels) > 0)@foreach($channels as $emailChannel)
+                  @if($channel)
                   <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
                     <tr>
                       <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
-                        $emailChannelPlatform = $emailChannel->platform;
-                        $emailChannelName = $emailChannel->display_name;
+                        $emailChannelPlatform = $channel->platform;
+                        $emailChannelName = $channel->display_name;
                         @endphp
                         <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
                           <tr>
@@ -98,7 +98,6 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                       </td>
                     </tr>
                   </table>
-                  @endforeach
                   @endif
                 </div>
                 <div role="separator" style="line-height: 24px">&zwj;</div>

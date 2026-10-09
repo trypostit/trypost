@@ -97,7 +97,7 @@ test('the workspace invite names the invited access', function (string $access, 
     'needs approval' => ['approval', 'needs_approval'],
 ]);
 
-test('the post note email renders the note, the post and its channels', function (Locale $locale) {
+test('the post note email renders the note, the post and its channel', function (Locale $locale) {
     $author = User::factory()->create(['name' => 'Ana Author']);
     $workspace = Workspace::factory()->create([
         'account_id' => $author->account_id,
@@ -132,13 +132,14 @@ test('the post note email renders the note, the post and its channels', function
     $mailable->assertSeeInHtml(route('app.posts.edit', ['post' => $post, 'comment' => $note->id]), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
-test('the post note email falls back when the post has no text', function () {
+test('the post note email falls back when the post has no text and no channel', function () {
     $author = User::factory()->create();
     $post = Post::factory()->create(['user_id' => $author->id, 'content' => '']);
     $note = PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $author->id]);
 
     (new PostNoteAdded($note, $author))
-        ->assertSeeInHtml(__('mail.post_note_added.post_without_text'));
+        ->assertSeeInHtml(__('mail.post_note_added.post_without_text'))
+        ->assertDontSeeInHtml('images/accounts/', false);
 });
 
 test('the disconnected-connections digest renders every account and reason', function () {
