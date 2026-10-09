@@ -785,6 +785,10 @@ return [
             'label' => 'Post',
             'description' => 'Pojawia się w twoim Profilu Biznesowym w Wyszukiwaniu i Mapach',
         ],
+        'vk_post' => [
+            'label' => 'Post',
+            'description' => 'Post tekstowy z opcjonalnymi mediami',
+        ],
     ],
 
     'platforms' => [

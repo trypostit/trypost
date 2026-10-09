@@ -36,4 +36,7 @@
 @case('google_business')
 - Scannable local-business update with one call to action, no hashtags.
 @break
+@case('vk')
+- Conversational wall post; a few hashtags at the end are fine.
+@break
 @endswitch

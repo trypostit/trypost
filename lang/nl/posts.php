@@ -785,6 +785,10 @@ return [
             'label' => 'Bericht',
             'description' => 'Wordt weergegeven in je Bedrijfsprofiel in Zoeken en Kaarten',
         ],
+        'vk_post' => [
+            'label' => 'Bericht',
+            'description' => 'Tekstbericht met optionele media',
+        ],
     ],
 
     'platforms' => [

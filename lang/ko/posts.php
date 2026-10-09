@@ -785,6 +785,10 @@ return [
             'label' => '게시물',
             'description' => '비즈니스 프로필에 검색 및 지도에 표시됩니다',
         ],
+        'vk_post' => [
+            'label' => '게시물',
+            'description' => '미디어를 선택적으로 첨부할 수 있는 텍스트 게시물',
+        ],
     ],
 
     'platforms' => [

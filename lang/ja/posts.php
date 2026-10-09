@@ -785,6 +785,10 @@ return [
             'label' => '投稿',
             'description' => 'ビジネス プロフィールに検索とマップで表示されます',
         ],
+        'vk_post' => [
+            'label' => '投稿',
+            'description' => 'メディア添付可能なテキスト投稿',
+        ],
     ],
 
     'platforms' => [

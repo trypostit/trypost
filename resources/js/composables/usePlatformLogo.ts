@@ -16,6 +16,7 @@ const PLATFORM_LOGOS: Record<string, string> = {
     telegram: '/images/accounts/telegram.png',
     discord: '/images/accounts/discord.png',
     google_business: '/images/accounts/google_business.png',
+    vk: '/images/accounts/vk.png',
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
@@ -34,6 +35,7 @@ const PLATFORM_LABELS: Record<string, string> = {
     telegram: 'Telegram',
     discord: 'Discord',
     google_business: 'Google Business Profile',
+    vk: 'VK',
 };
 
 const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
@@ -56,6 +58,7 @@ const PLATFORM_CONTENT_TYPES: Record<string, string[]> = {
     telegram: ['telegram_post'],
     discord: ['discord_message'],
     google_business: ['google_business_post'],
+    vk: ['vk_post'],
 };
 
 const PLATFORM_CONTENT_TYPE_BADGES: Record<string, string[]> = {

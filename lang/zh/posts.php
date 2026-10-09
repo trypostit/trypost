@@ -785,6 +785,10 @@ return [
             'label' => '帖子',
             'description' => '在搜索和地图中显示在您的商业资料中',
         ],
+        'vk_post' => [
+            'label' => '帖子',
+            'description' => '可附带媒体的文字帖子',
+        ],
     ],
 
     'platforms' => [

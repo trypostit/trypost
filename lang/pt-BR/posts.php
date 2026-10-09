@@ -785,6 +785,10 @@ return [
             'label' => 'Publicação',
             'description' => 'Aparece no seu Perfil Empresarial em Pesquisa e Mapas',
         ],
+        'vk_post' => [
+            'label' => 'Publicação',
+            'description' => 'Publicação de texto com mídia opcional',
+        ],
     ],
 
     'platforms' => [
