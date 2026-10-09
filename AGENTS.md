@@ -492,6 +492,9 @@ publishes directly.
   requester and is dropped when its post is no longer pending; a decision
   (`NotifyApprovalDecision`) emails the requester once it commits and is dropped
   when its post was deleted.
+- The published and failed emails (`FinalizePostPublication::notify()`) go to
+  every member of the workspace and its owner, once each (owner decision October
+  2026); each user's notification preferences still decide whether it is sent.
 
 ## UI locale (`users.locale`)
 

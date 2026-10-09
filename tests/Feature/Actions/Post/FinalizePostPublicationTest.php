@@ -46,6 +46,25 @@ test('a published post queues the published email for the owner', function () {
     });
 });
 
+test('every member of the workspace gets the email once, the owner included', function () {
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $owner->id]);
+    $workspace->members()->attach($owner->id, membershipPivot('admin'));
+    $member = workspaceMember($workspace, 'member');
+    $requester = workspaceMember($workspace, 'approval');
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account)->scheduled()->create([
+        'user_id' => $member->id,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'li-1',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect(Queue::pushed(SendNotification::class)->map(fn (SendNotification $job): string => $job->user->id)->sort()->values()->all())
+        ->toBe(collect([$owner->id, $member->id, $requester->id])->sort()->values()->all());
+});
+
 test('a failed post queues the failed email for the owner', function () {
     $owner = User::factory()->create(['locale' => Locale::PortugueseBrazil]);
     $workspace = Workspace::factory()->create(['user_id' => $owner->id]);

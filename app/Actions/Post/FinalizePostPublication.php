@@ -11,11 +11,12 @@ use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Settles a post once its publication has reached a terminal state, and
- * notifies the owner once. Shared by PublishToSocialPlatform, PublishPost::failed,
+ * notifies the workspace once. Shared by PublishToSocialPlatform, PublishPost::failed,
  * RecoverStuckPosts, and ReconcileGoogleBusinessPost.
  */
 class FinalizePostPublication
@@ -69,18 +70,22 @@ class FinalizePostPublication
         $this->notify($outcome['post'], $outcome['successful']);
     }
 
+    /**
+     * Emails every member of the workspace, and its owner when they are not a
+     * member; each one's notification preferences decide whether it is sent.
+     */
     private function notify(Post $post, bool $successful): void
     {
-        $owner = $post->workspace->owner;
+        $workspace = $post->workspace;
 
-        if (! $owner) {
-            return;
-        }
-
-        SendNotification::dispatch(
-            user: $owner,
-            type: $successful ? Type::PostPublished : Type::PostFailed,
-            mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
-        );
+        $workspace->members()->get()
+            ->push($workspace->owner)
+            ->filter()
+            ->unique('id')
+            ->each(fn (User $member) => SendNotification::dispatch(
+                user: $member,
+                type: $successful ? Type::PostPublished : Type::PostFailed,
+                mailable: $successful ? new PostPublished($post) : new PostPublishFailed($post),
+            ));
     }
 }
