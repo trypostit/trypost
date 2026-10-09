@@ -578,7 +578,7 @@ const goToDay = (key: string): void => {
                 />
 
                 <div
-                    class="flex shrink-0 items-center gap-1 md:ms-auto md:gap-2"
+                    class="flex shrink-0 items-center gap-1 md:ms-auto md:gap-0"
                     data-testid="calendar-filters"
                 >
                     <PostChannelFilter

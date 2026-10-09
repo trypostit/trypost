@@ -147,7 +147,7 @@ const pickDay = (value: DateValue | undefined): void => {
         </div>
     </ResponsivePopover>
 
-    <div v-else class="flex h-12 min-w-0 items-center gap-4">
+    <div v-else class="flex h-12 min-w-0 items-center gap-2">
         <div class="flex min-w-0 items-center">
             <Button
                 variant="ghost"
