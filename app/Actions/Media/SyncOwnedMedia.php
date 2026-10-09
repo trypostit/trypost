@@ -51,13 +51,15 @@ class SyncOwnedMedia
      *
      * A post's thread replies (`meta.thread_replies`) own media too: their
      * items are synced the same way and written back to the reply, and their
-     * rows are kept, so save the post's meta before calling this.
+     * rows are kept, so save the post's meta before calling this. Their errors
+     * are keyed under `$metaErrorKey` (`meta`, or `destinations.{n}.meta` in a
+     * batch), whichever list the root media came from.
      *
      * @param  list<array<string, mixed>>  $items
      * @param  list<array<string, mixed>>  $legacyItems
      * @return list<array<string, mixed>>
      */
-    public static function execute(Post|Idea $owner, array $items, MediaCopyBatch $batch, string $errorKey = 'media', array $legacyItems = []): array
+    public static function execute(Post|Idea $owner, array $items, MediaCopyBatch $batch, string $errorKey = 'media', array $legacyItems = [], string $metaErrorKey = 'meta'): array
     {
         $ownerColumn = $owner instanceof Post ? 'post_id' : 'idea_id';
         $locked = $owner::query()->whereKey($owner->getKey())->lockForUpdate()->firstOrFail();
@@ -114,11 +116,10 @@ class SyncOwnedMedia
         };
 
         $final = $sync($items, $errorKey);
-        $replyErrorKey = Str::replaceLast('media', 'meta.thread_replies', $errorKey);
         $replies = collect($replies)
             ->map(fn (array $reply, int $index): array => [
                 ...$reply,
-                'media' => $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}.{$index}.media"),
+                'media' => $sync(self::withoutRepeats($reply['media']), "{$metaErrorKey}.thread_replies.{$index}.media"),
             ])
             ->all();
         $kept = self::column([...$final, ...self::replyMedia($replies)], 'id');

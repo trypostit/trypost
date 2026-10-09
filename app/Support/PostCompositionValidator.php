@@ -86,6 +86,7 @@ class PostCompositionValidator
                 $destination['media_error_key'] = array_key_exists('media', $destination)
                     ? "destinations.{$index}.media"
                     : 'media';
+                $destination['meta_error_key'] = "destinations.{$index}.meta";
                 $destination['content'] = array_key_exists('content', $destination)
                     ? $destination['content']
                     : ($composition['content'] ?? '');

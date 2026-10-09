@@ -15,6 +15,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\PostCompositionValidator;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 
@@ -97,6 +98,32 @@ test('editing a reply with a media that no longer exists fails on that reply ite
             'status' => 'draft',
             'meta' => ['thread_replies' => [['text' => 'Two', 'media' => [$item]]]],
         ], $this->user);
+        $this->fail('A reply media that was deleted should not save.');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toHaveKey('meta.thread_replies.0.media.0');
+    }
+});
+
+test('a reply media that no longer exists fails on that destination reply in a batch', function () {
+    $image = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    $item = MediaItem::fromMedia($image)->toArray();
+    $image->delete();
+
+    try {
+        threadReplyMediaPost($this, [['text' => 'Two', 'media' => [$item]]]);
+        $this->fail('A reply media that was deleted should not save.');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toHaveKey('destinations.0.meta.thread_replies.0.media.0');
+    }
+});
+
+test('a single post keeps the reply media error under its own meta', function () {
+    $image = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    $item = MediaItem::fromMedia($image)->toArray();
+    $image->delete();
+
+    try {
+        PostCompositionValidator::forSinglePost(fn (): Post => threadReplyMediaPost($this, [['text' => 'Two', 'media' => [$item]]]));
         $this->fail('A reply media that was deleted should not save.');
     } catch (ValidationException $e) {
         expect($e->errors())->toHaveKey('meta.thread_replies.0.media.0');

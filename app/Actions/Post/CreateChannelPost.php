@@ -72,6 +72,7 @@ class CreateChannelPost
             $batch,
             data_get($destination, 'media_error_key', 'media'),
             data_get($destination, 'legacy_media', []),
+            data_get($destination, 'meta_error_key', 'meta'),
         );
 
         if ($destination['label_ids'] !== []) {
