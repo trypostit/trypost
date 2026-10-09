@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3';
 import { IconCheck, IconDotsVertical, IconFilter2 } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import CalendarStatusFilter from '@/components/publish/CalendarStatusFilter.vue';
 import ResponsivePopover from '@/components/ResponsivePopover.vue';
@@ -23,9 +24,9 @@ const props = withDefaults(
         timezones: TimezoneOption[];
         showSlots?: boolean | null;
         manageSlotsHref?: string | null;
-        compactBelow?: 'md' | 'lg' | 'xl' | '2xl';
+        compact?: boolean;
     }>(),
-    { showSlots: null, manageSlotsHref: null, compactBelow: 'md' },
+    { showSlots: null, manageSlotsHref: null, compact: undefined },
 );
 
 const timezone = defineModel<string>('timezone', { required: true });
@@ -35,7 +36,8 @@ const emit = defineEmits<{
     'update:showSlots': [value: boolean];
 }>();
 
-const compact = useBelowBreakpoint(props.compactBelow);
+const belowMd = useBelowBreakpoint('md');
+const compact = computed(() => props.compact ?? belowMd.value);
 
 const hasSlotOptions = (): boolean =>
     props.showSlots !== null || props.manageSlotsHref !== null;

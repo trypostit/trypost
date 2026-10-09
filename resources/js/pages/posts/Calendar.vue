@@ -6,8 +6,12 @@ import {
     IconLayoutSidebarRightExpand,
     IconPlus,
 } from '@tabler/icons-vue';
-import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
-import { computed, onMounted, onUnmounted, provide, ref, watch } from 'vue';
+import {
+    useResizeObserver,
+    useSwipe,
+    type UseSwipeDirection,
+} from '@vueuse/core';
+import { computed, nextTick, onMounted, onUnmounted, provide, ref, watch } from 'vue';
 
 import { destroy as destroyPost } from '@/actions/App/Http/Controllers/App/PostController';
 import AppHeaderActions from '@/components/AppHeaderActions.vue';
@@ -265,6 +269,44 @@ const todayKey = computed(() =>
 
 const isDesktop = useAtLeastBreakpoint('md');
 
+const toolbar = ref<HTMLElement | null>(null);
+const filtersCollapsed = ref(false);
+const widthForAllFilters = ref<number | null>(null);
+const compactFilters = computed(
+    () => !isDesktop.value || filtersCollapsed.value,
+);
+
+const fitFilters = (): void => {
+    const element = toolbar.value;
+
+    if (!element || !isDesktop.value) {
+        return;
+    }
+
+    if (filtersCollapsed.value) {
+        if (
+            widthForAllFilters.value !== null &&
+            element.clientWidth >= widthForAllFilters.value
+        ) {
+            filtersCollapsed.value = false;
+        }
+
+        return;
+    }
+
+    const title = element.querySelector<HTMLElement>(
+        '[data-testid="calendar-title"]',
+    );
+    const missing = title ? title.scrollWidth - title.clientWidth : 0;
+
+    if (missing > 0) {
+        widthForAllFilters.value = element.clientWidth + missing;
+        filtersCollapsed.value = true;
+    }
+};
+
+useResizeObserver(toolbar, fitFilters);
+
 const weekdayNames = computed(() => {
     const start = localized().startOf('week');
 
@@ -324,6 +366,17 @@ const headerTitle = computed(() =>
         ? monthDate.value.format('MMMM YYYY')
         : weekHeaderTitle.value,
 );
+
+watch(headerTitle, () => {
+    filtersCollapsed.value = false;
+    nextTick(fitFilters);
+});
+
+watch(filtersCollapsed, (collapsed) => {
+    if (!collapsed) {
+        nextTick(fitFilters);
+    }
+});
 
 const currentDateQuery = (
     view: CalendarView = props.view,
@@ -564,6 +617,7 @@ const goToDay = (key: string): void => {
         <div class="flex min-h-0 flex-1 flex-col">
             <div
                 class="mx-4 mt-2 flex h-12 shrink-0 items-center justify-between gap-2 md:mx-8"
+                ref="toolbar"
                 data-testid="calendar-toolbar"
             >
                 <CalendarPeriodPicker
@@ -597,7 +651,7 @@ const goToDay = (key: string): void => {
                         v-model:status="selectedStatus"
                         :timezone="timezone"
                         test-id="calendar"
-                        compact-below="2xl"
+                        :compact="compactFilters"
                         :timezones="timezones"
                         :show-slots="showSlots"
                         :manage-slots-href="
