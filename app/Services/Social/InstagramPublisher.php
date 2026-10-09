@@ -55,7 +55,7 @@ class InstagramPublisher
         $instagramId = $account->platform_user_id;
         $accessToken = $account->access_token;
 
-        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         $pendingWorkflow = PublishCheckpoint::instagramWorkflow($post->error_context);
 

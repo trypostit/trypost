@@ -30,7 +30,7 @@ class StoreTelegramReactions
             ->whereHas('socialAccount', fn ($query) => $query->where('meta->chat_id', $chatId))
             ->first();
 
-        if ($post === null) {
+        if (blank($post)) {
             return;
         }
 

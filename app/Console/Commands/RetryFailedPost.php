@@ -71,7 +71,7 @@ class RetryFailedPost extends Command
 
         $post->refresh();
 
-        if ($post->platform === SocialPlatform::TikTok && PublishCheckpoint::tiktokPublishId($post->error_context) === null) {
+        if ($post->platform === SocialPlatform::TikTok && blank(PublishCheckpoint::tiktokPublishId($post->error_context))) {
             $this->tiktokPhotoDerivativeCleaner->cleanup($originalContext, $post->id);
         }
 

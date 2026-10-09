@@ -77,9 +77,7 @@ abstract class AbstractLinkedInPublisher
     {
         $this->validateContentLength($post);
 
-        $content = $post->content
-            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
-            : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         $this->account = $post->socialAccount;
         $this->hasRetried = false;

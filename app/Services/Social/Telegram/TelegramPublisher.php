@@ -33,9 +33,7 @@ class TelegramPublisher
         $account = $post->socialAccount;
         $chatId = (string) data_get($account->meta, 'chat_id');
 
-        $content = $post->content
-            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
-            : '';
+        $content = app(ContentSanitizer::class)->forPost($post) ?? '';
 
         $media = $post->mediaItems->take(self::ALBUM_CHUNK);
 

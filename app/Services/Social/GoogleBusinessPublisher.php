@@ -125,9 +125,7 @@ class GoogleBusinessPublisher
 
         return [
             'languageCode' => $locale->bcp47(),
-            'summary' => $post->content
-                ? app(ContentSanitizer::class)->sanitize($post->content, Platform::GoogleBusiness)
-                : '',
+            'summary' => app(ContentSanitizer::class)->forPost($post) ?? '',
             'topicType' => $topicType->value,
             ...array_filter([
                 'callToAction' => $this->callToAction($post, $topicType),

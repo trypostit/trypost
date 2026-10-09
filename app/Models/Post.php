@@ -396,7 +396,7 @@ class Post extends Model
      */
     public function hasDestination(): bool
     {
-        return $this->platform !== null;
+        return filled($this->platform);
     }
 
     /**
@@ -404,7 +404,7 @@ class Post extends Model
      */
     public function hasChannel(): bool
     {
-        return $this->social_account_id !== null;
+        return filled($this->social_account_id);
     }
 
     /**
@@ -445,7 +445,7 @@ class Post extends Model
      */
     public function notificationLabel(): string
     {
-        if ($this->platform === null) {
+        if (blank($this->platform)) {
             return '';
         }
 

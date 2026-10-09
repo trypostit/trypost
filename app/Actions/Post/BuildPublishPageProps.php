@@ -182,7 +182,7 @@ class BuildPublishPageProps
      */
     private static function hasData(string $tab, Workspace $workspace, ?SocialAccount $channel, ?User $requester): bool
     {
-        $posts = $workspace->posts()->when($channel !== null, fn (Builder $query) => $query->where('posts.social_account_id', $channel->id));
+        $posts = $workspace->posts()->when(filled($channel), fn (Builder $query) => $query->where('posts.social_account_id', $channel->id));
 
         return match ($tab) {
             self::TAB_QUEUE => $posts->where(fn (Builder $query) => $query
@@ -406,7 +406,7 @@ class BuildPublishPageProps
 
             $account = $post->socialAccount;
 
-            if ($account !== null) {
+            if (filled($account)) {
                 $hasSchedule[$account->id] ??= $account->hasPostingSchedule();
                 $account->setAttribute('has_posting_schedule', $hasSchedule[$account->id]);
             }

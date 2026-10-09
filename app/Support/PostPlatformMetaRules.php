@@ -228,7 +228,7 @@ class PostPlatformMetaRules
     {
         $violation = self::requiredMetaViolation($target, $meta);
 
-        if ($violation === null) {
+        if (blank($violation)) {
             return;
         }
 
@@ -257,7 +257,7 @@ class PostPlatformMetaRules
         $violation = self::requiredMetaViolation($post->socialAccount ?? $post->platform, $post->meta)
             ?? self::contentMetaViolation($post->platform, $post->meta, (string) $post->content);
 
-        if ($violation !== null) {
+        if (filled($violation)) {
             [$field, $message] = $violation;
 
             throw ValidationException::withMessages(["meta.{$field}" => $message]);

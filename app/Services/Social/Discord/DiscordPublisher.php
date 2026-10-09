@@ -52,9 +52,7 @@ class DiscordPublisher
         // bot is in (including another workspace's).
         $this->guardChannelBelongsToGuild($guildId, $channelId);
 
-        $content = $post->content
-            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
-            : '';
+        $content = app(ContentSanitizer::class)->forPost($post) ?? '';
 
         $content = $this->appendMentions($content, $post);
 

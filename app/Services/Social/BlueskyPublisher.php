@@ -56,7 +56,7 @@ class BlueskyPublisher
     {
         $this->validateContentLength($post);
 
-        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
         $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
@@ -66,7 +66,7 @@ class BlueskyPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $lookForLiveReply = ThreadProgress::rootHash($post->error_context) !== null;
+        $lookForLiveReply = filled(ThreadProgress::rootHash($post->error_context));
 
         return $this->publishThread(
             $post,

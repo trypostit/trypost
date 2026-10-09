@@ -120,7 +120,7 @@ class PostRequestRules
                 Rule::when(
                     in_array($status, [Status::Scheduled->value, Status::Publishing->value], true),
                     [new ContentFitsPlatformLimits(
-                        collect($target === null ? [] : ['post' => $target]),
+                        collect(filled($target) ? ['post' => $target] : []),
                         ['post' => self::effectiveMeta($post, $input)],
                         ['post' => data_get($input, 'content_type') ?? $post->content_type?->value],
                     )],

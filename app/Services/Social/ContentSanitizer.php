@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Social;
 
 use App\Enums\SocialAccount\Platform;
+use App\Models\Post;
 use App\Support\LinkTlds;
 
 class ContentSanitizer
@@ -28,6 +29,14 @@ class ContentSanitizer
     private const TAG_PATTERN = '~<'.self::TAG_BODY.'~i';
 
     private const TYPED_BRACKET_PATTERN = '~<(?!'.self::TAG_BODY.')~i';
+
+    /**
+     * The post's text as its network receives it, or null when it has none.
+     */
+    public function forPost(Post $post): ?string
+    {
+        return filled($post->content) ? $this->sanitize($post->content, $post->platform) : null;
+    }
 
     public function sanitize(string $content, Platform $platform): string
     {

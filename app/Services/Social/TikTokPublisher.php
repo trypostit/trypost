@@ -47,7 +47,7 @@ class TikTokPublisher
     {
         $this->validateContentLength($post);
 
-        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
 

@@ -107,7 +107,7 @@ class ImportExternalPosts
             ->orderByDesc('id')
             ->limit($limit)
             ->get(['id', 'post_id', 'post_dismissed_at'])
-            ->filter(fn (AnalyticsPublication $publication): bool => $publication->post_id === null && $publication->post_dismissed_at === null)
+            ->filter(fn (AnalyticsPublication $publication): bool => blank($publication->post_id) && blank($publication->post_dismissed_at))
             ->pluck('id')
             ->values()
             ->all();
@@ -118,7 +118,7 @@ class ImportExternalPosts
         return DB::transaction(function () use ($account, $publicationId): ?string {
             $publication = AnalyticsPublication::query()->lockForUpdate()->find($publicationId);
 
-            if ($publication === null || $publication->post_id !== null || $publication->post_dismissed_at !== null) {
+            if (blank($publication) || filled($publication->post_id) || filled($publication->post_dismissed_at)) {
                 return null;
             }
 

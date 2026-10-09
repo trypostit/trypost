@@ -33,7 +33,7 @@ class MastodonPublisher
     {
         $this->validateContentLength($post);
 
-        $content = $post->content ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform) : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
         $instance = $account->meta['instance'] ?? config('trypost.platforms.mastodon.default_instance');

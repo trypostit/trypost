@@ -37,8 +37,8 @@ class RecoverStuckPosts extends Command
             ->where('updated_at', '<=', now()->subHour())
             ->each(function (Post $post): void {
                 $stale = in_array($post->publish_status, self::IN_FLIGHT, true)
-                    && $post->retry_at === null
-                    && ($post->publication_updated_at === null || $post->publication_updated_at->lessThanOrEqualTo(now()->subHour()));
+                    && blank($post->retry_at)
+                    && (blank($post->publication_updated_at) || $post->publication_updated_at->lessThanOrEqualTo(now()->subHour()));
 
                 if ($stale) {
                     $this->tiktokPhotoDerivativeCleaner->cleanupUnlessPublishInFlight($post->error_context, $post->id);
@@ -82,7 +82,7 @@ class RecoverStuckPosts extends Command
     {
         $cutoff = now()->subHours(ReconcileGoogleBusinessPost::REVIEW_CEILING_HOURS);
 
-        if ($post->publish_status !== PublishStatus::PendingReview || $post->submitted_at === null || $post->submitted_at->greaterThan($cutoff)) {
+        if ($post->publish_status !== PublishStatus::PendingReview || blank($post->submitted_at) || $post->submitted_at->greaterThan($cutoff)) {
             return;
         }
 

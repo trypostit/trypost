@@ -21,7 +21,7 @@ class DuplicatePost
     public static function execute(Post $original, User $user): Post
     {
         return MediaCopyBatch::run(function (MediaCopyBatch $batch) use ($original, $user): Post {
-            if ($original->socialAccount === null) {
+            if (blank($original->socialAccount)) {
                 throw ValidationException::withMessages([
                     'post' => __('posts.errors.choose_channel'),
                 ]);

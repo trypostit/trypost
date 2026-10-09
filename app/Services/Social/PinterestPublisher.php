@@ -43,9 +43,7 @@ class PinterestPublisher
             app(ConnectionVerifier::class)->refreshToken($account);
         }
 
-        $content = $post->content
-            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
-            : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
 
         return match ($post->content_type) {
             ContentType::PinterestPin => $this->publishImagePin($post, $content),

@@ -58,7 +58,7 @@ class UpdatePostRequest extends FormRequest
                 Rule::when(
                     $enforcesMediaCompatibility,
                     [new ContentFitsPlatformLimits(
-                        collect($target === null ? [] : ['post' => $target]),
+                        collect(filled($target) ? ['post' => $target] : []),
                         ['post' => $this->effectiveMeta()],
                         ['post' => $this->input('content_type') ?? $post->content_type?->value],
                     )]

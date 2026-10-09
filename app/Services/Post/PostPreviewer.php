@@ -59,7 +59,7 @@ class PostPreviewer
     {
         $platform = $post->socialAccount?->platform ?? $post->platform;
 
-        if ($platform === null) {
+        if (blank($platform)) {
             return [];
         }
 

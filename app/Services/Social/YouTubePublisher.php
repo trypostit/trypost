@@ -44,9 +44,7 @@ class YouTubePublisher
             );
         }
 
-        $content = $post->content
-            ? app(ContentSanitizer::class)->sanitize($post->content, $post->platform)
-            : null;
+        $content = app(ContentSanitizer::class)->forPost($post);
         $description = $this->resolveDescription($post, $content);
 
         $account = $post->socialAccount;

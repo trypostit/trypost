@@ -38,7 +38,7 @@ class ScheduleNextOccurrence
         }
 
         $current = $post->currentOccurrence();
-        $targets = $post->loadMissing('socialAccount')->socialAccount !== null ? collect([$post]) : collect();
+        $targets = filled($post->loadMissing('socialAccount')->socialAccount) ? collect([$post]) : collect();
         $author = $post->user;
         $user = $author !== null && ($author->ownsAccountOf($post->workspace) || $author->belongsToWorkspace($post->workspace))
             ? $author
