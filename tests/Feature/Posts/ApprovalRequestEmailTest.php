@@ -70,19 +70,25 @@ function approvalEmailRecipients(): array
         ->all();
 }
 
-test('a multi-channel request sends one email per approver listing every channel', function () {
+test('a multi-channel request sends every approver one email per post', function () {
     $this->actingAs($this->requester)
         ->post(route('app.posts.store'), approvalEmailPayload([$this->linkedin, $this->x]))
         ->assertSessionHasNoErrors();
 
-    $expected = collect([$this->owner->id, $this->publisher->id])->sort()->values()->all();
+    $postIds = session('created_post_ids');
+    $approvers = collect([$this->owner->id, $this->publisher->id]);
 
-    expect(approvalEmailRecipients())->toBe($expected);
+    expect($postIds)->toHaveCount(2)
+        ->and(approvalEmailRecipients())->toBe($approvers->flatMap(fn (string $id): array => [$id, $id])->sort()->values()->all());
 
-    Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === Type::Collaboration
-        && $job->mailable instanceof PostApprovalRequested
-        && count($job->mailable->postIds) === 2
-        && $job->mailable->requester->is($this->requester));
+    $approvers->each(fn (string $approverId) => collect($postIds)->each(fn (string $postId) => Queue::assertPushed(
+        SendNotification::class,
+        fn (SendNotification $job): bool => $job->type === Type::Collaboration
+            && $job->mailable instanceof PostApprovalRequested
+            && $job->user->id === $approverId
+            && $job->mailable->postId === $postId
+            && $job->mailable->requester->is($this->requester),
+    )));
 });
 
 test('a draft or a direct publisher sends no approval email', function () {
@@ -116,14 +122,14 @@ test('the collaboration preference silences the email', function () {
     NotificationPreference::factory()->create(['user_id' => $this->owner->id, 'collaboration' => false]);
     $post = Post::factory()->pendingApproval()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->requester->id]);
 
-    (new SendNotification($this->owner->fresh(), Type::Collaboration, new PostApprovalRequested([$post->id], $this->requester, $this->owner)))->handle();
+    (new SendNotification($this->owner->fresh(), Type::Collaboration, new PostApprovalRequested($post->id, $this->requester, $this->owner)))->handle();
     Mail::assertNothingQueued();
 
-    (new SendNotification($this->publisher->fresh(), Type::Collaboration, new PostApprovalRequested([$post->id], $this->requester, $this->publisher)))->handle();
+    (new SendNotification($this->publisher->fresh(), Type::Collaboration, new PostApprovalRequested($post->id, $this->requester, $this->publisher)))->handle();
     Mail::assertQueued(PostApprovalRequested::class);
 });
 
-test('the request email is not sent once none of its posts is still pending', function (string $outcome) {
+test('the request email is not sent once its post is no longer pending', function (string $outcome) {
     Mail::fake();
     $post = Post::factory()->pendingApproval()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->requester->id]);
 
@@ -133,17 +139,7 @@ test('the request email is not sent once none of its posts is still pending', fu
         'deleted' => $post->delete(),
     };
 
-    (new SendNotification($this->owner->fresh(), Type::Collaboration, new PostApprovalRequested([$post->id], $this->requester, $this->owner)))->handle();
+    (new SendNotification($this->owner->fresh(), Type::Collaboration, new PostApprovalRequested($post->id, $this->requester, $this->owner)))->handle();
 
     Mail::assertNothingQueued();
 })->with(['approved', 'rejected', 'deleted']);
-
-test('the request email lists only the posts still pending', function () {
-    Mail::fake();
-    $pending = Post::factory()->pendingApproval()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->requester->id]);
-    $approved = Post::factory()->scheduled()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->requester->id]);
-
-    (new SendNotification($this->owner->fresh(), Type::Collaboration, new PostApprovalRequested([$pending->id, $approved->id], $this->requester, $this->owner)))->handle();
-
-    Mail::assertQueued(PostApprovalRequested::class, fn (PostApprovalRequested $mail): bool => $mail->postIds === [$pending->id]);
-});

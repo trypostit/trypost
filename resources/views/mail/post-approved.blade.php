@@ -67,16 +67,15 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                 <p style="margin: 0; line-height: 24px">
                   {{ __('mail.post_approved.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
                 </p>
-                @if(count($goesOutPerChannel) > 0)
+                @if($channel)
                 <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
-                  {{ __('mail.post_approved.goes_out') }}
+                  {{ __('mail.post_approved.channel') }}
                 </p>
-                @foreach($goesOutPerChannel as $goesOut)@foreach($goesOut['channels'] as $emailChannel)
                 <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
-                      $emailChannelPlatform = $emailChannel->platform;
-                      $emailChannelName = $emailChannel->display_name;
+                      $emailChannelPlatform = $channel->platform;
+                      $emailChannelName = $channel->display_name;
                       @endphp
                       <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
                         <tr>
@@ -94,45 +93,14 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                     </td>
                   </tr>
                 </table>
-                @endforeach
-                <p style="margin: 8px 0 0; font-size: 14px; line-height: 24px">
-                  {{ $goesOut['at'] ?? __('mail.post_approved.publishing_now') }}
-                </p>
-                @endforeach
-                @else
-                <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
-                  {{ __('mail.post_approved.channels') }}
-                </p>@foreach($channels as $emailChannel)
-                <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
-                  <tr>
-                    <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
-                      $emailChannelPlatform = $emailChannel->platform;
-                      $emailChannelName = $emailChannel->display_name;
-                      @endphp
-                      <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
-                        <tr>
-                          <td style="width: 44px; vertical-align: middle">
-                            <img src="{{ asset('images/accounts/'.$emailChannelPlatform->network().'.png') }}" width="32" height="32" alt style="max-width: 100%; vertical-align: middle; display: block; border-radius: 8px">
-                          </td>
-                          <td style="vertical-align: middle">
-                            <p style="margin: 0; font-size: 16px; font-weight: 600; line-height: 20px; color: #292928">{{ $emailChannelName }}</p>
-                            @if($emailChannelName !== $emailChannelPlatform->label())
-                            <p style="margin: 2px 0 0; font-size: 13px; line-height: 18px; color: #5a5a59">{{ $emailChannelPlatform->label() }}</p>
-                            @endif
-                          </td>
-                        </tr>
-                      </table>
-                    </td>
-                  </tr>
-                </table>
-                @endforeach
+                @endif
                 <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
                   {{ __('mail.post_approved.goes_out') }}
                 </p>
                 <p style="margin: 8px 0 0; font-size: 14px; line-height: 24px">
                   {{ $goesOutAt ?? __('mail.post_approved.publishing_now') }}
                 </p>
-                @endif <div role="separator" style="line-height: 24px">&zwj;</div>
+                <div role="separator" style="line-height: 24px">&zwj;</div>
                 <div style="text-align: center">
                   <a href="{{ $url }}" style="display: inline-block; text-decoration: none; font-weight: 600; border-radius: 8px; border: 1px solid #ddd6fe; background-color: #ddd6fe; padding: 12px 24px; text-align: center; font-size: 16px; line-height: 24px; color: #292928">
                     <!--[if mso]><i style="mso-font-width: 150%; mso-text-raise: 31px" hidden>&emsp;</i><![endif]-->

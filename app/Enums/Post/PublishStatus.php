@@ -25,6 +25,15 @@ enum PublishStatus: string
         };
     }
 
+    /** The network refused the post or the attempt gave up. */
+    public function isFailure(): bool
+    {
+        return match ($this) {
+            self::Failed, self::Rejected => true,
+            default => false,
+        };
+    }
+
     /** The publish job must not run again. Pending review waits on reconcile. */
     public function isClosed(): bool
     {

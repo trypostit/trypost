@@ -485,11 +485,13 @@ publishes directly.
 - A repurpose item created by a member who requires approval stays marked
   Published while its posts are pending approval: the item records the hand-off to
   the queue, not the network publication.
-- Approval emails go through `SendNotification` with `Type::Collaboration`.
-  Requests email every approver except the requester, list only the posts still
-  pending when the job runs and are dropped when none is; decisions are grouped
-  per `post_group_id`, approver and requester by `NotifyApprovalDecision`
-  (cache + one unique delayed job).
+- Approval emails go through `SendNotification` with `Type::Collaboration`, one
+  email per post (owner decision October 2026): posts created together for
+  several channels are separate posts, each approved on its own, so they are
+  never grouped by `post_group_id`. A request emails every approver except the
+  requester and is dropped when its post is no longer pending; a decision
+  (`NotifyApprovalDecision`) emails the requester once it commits and is dropped
+  when its post was deleted.
 
 ## UI locale (`users.locale`)
 

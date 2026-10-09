@@ -8,10 +8,12 @@
       @{{ __('mail.post_rejected.body', ['name' => $approverName, 'workspace' => $workspaceName]) }}
     </p>
 
-    <p class="m-0 mt-4 text-sm font-semibold text-foreground">
-      @{{ __('mail.post_rejected.channels') }}
-    </p>
-    <x-channel-list />
+    @if($channel)
+      <p class="m-0 mt-4 text-sm font-semibold text-foreground">
+        @{{ __('mail.post_rejected.channel') }}
+      </p>
+      <x-channel-card />
+    @endif
 
     <x-spacer height="24px" />
 

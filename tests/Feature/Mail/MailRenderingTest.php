@@ -20,7 +20,7 @@ use App\Models\PostNote;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Support\Mail\ApprovalEmailPosts;
+use App\Support\Mail\ApprovalEmailPost;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -208,7 +208,7 @@ test('the password reset email is sent in the user locale', function () {
         ->not->toContain(__('mail.password_reset.body', [], 'en'));
 });
 
-test('the approval request email renders who asked, the channels, the excerpt and the queue slot', function (Locale $locale) {
+test('the approval request email renders who asked, the channel, the excerpt and the queue slot', function (Locale $locale) {
     $requester = User::factory()->create(['name' => 'Rita Requester', 'email' => 'rita@example.com']);
     $approver = User::factory()->create(['account_id' => $requester->account_id, 'timezone' => 'UTC']);
     $workspace = Workspace::factory()->create(['account_id' => $requester->account_id, 'user_id' => $requester->id, 'name' => 'Acme Workspace']);
@@ -220,7 +220,7 @@ test('the approval request email renders who asked, the channels, the excerpt an
         'scheduled_at' => null,
     ]);
 
-    $mailable = (new PostApprovalRequested([$post->id], $requester, $approver))->locale($locale->value);
+    $mailable = (new PostApprovalRequested($post->id, $requester, $approver))->locale($locale->value);
 
     $mailable->assertHasSubject(__('mail.post_approval_requested.subject', ['name' => 'Rita Requester'], $locale->value));
     $mailable->assertSeeInHtml(__('mail.post_approval_requested.heading', [], $locale->value));
@@ -233,7 +233,7 @@ test('the approval request email renders who asked, the channels, the excerpt an
     $mailable->assertSeeInHtml(route('app.posts.index', ['tab' => 'approvals']), false);
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
-test('the approved and rejected emails render the approver, the channels and their button', function (Locale $locale) {
+test('the approved and rejected emails render the approver, the channel and their button', function (Locale $locale) {
     $author = User::factory()->create(['timezone' => 'UTC']);
     $approver = User::factory()->create(['account_id' => $author->account_id, 'name' => 'Ada Approver']);
     $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id, 'name' => 'Acme Workspace']);
@@ -244,7 +244,7 @@ test('the approved and rejected emails render the approver, the channels and the
         'scheduled_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
     ]);
 
-    $approved = (new PostApproved([$post->id], $approver, $author))->locale($locale->value);
+    $approved = (new PostApproved($post->id, $approver, $author))->locale($locale->value);
 
     $approved->assertHasSubject(__('mail.post_approved.subject', ['name' => 'Ada Approver'], $locale->value));
     $approved->assertSeeInHtml(__('mail.post_approved.heading', [], $locale->value));
@@ -254,7 +254,7 @@ test('the approved and rejected emails render the approver, the channels and the
     $approved->assertSeeInHtml('LinkedIn');
     $approved->assertSeeInHtml(route('app.posts.index', ['tab' => 'queue']), false);
 
-    $rejected = (new PostRejected([$post->id], $approver))->locale($locale->value);
+    $rejected = (new PostRejected($post->id, $approver))->locale($locale->value);
 
     $rejected->assertSeeInHtml(asset('images/accounts/linkedin.png'));
     $approved->assertSeeInHtml(asset('images/accounts/linkedin.png'));
@@ -282,7 +282,7 @@ function approvalEmailTimeLabel(CarbonImmutable $at, User $recipient, Locale $lo
 {
     $previous = app()->getLocale();
     app()->setLocale($locale->value);
-    $label = (string) ApprovalEmailPosts::time($at, $recipient);
+    $label = (string) ApprovalEmailPost::time($at, $recipient);
     app()->setLocale($previous);
 
     return $label;
@@ -297,7 +297,7 @@ test('the approval request email keeps the paragraph breaks of the post', functi
         'content' => '<p>First paragraph</p><p>Second <strong>paragraph</strong><br>and a line</p>',
     ]);
 
-    $html = (new PostApprovalRequested([$post->id], $requester, $approver))->render();
+    $html = (new PostApprovalRequested($post->id, $requester, $approver))->render();
 
     expect($html)->toContain("First paragraph\nSecond paragraph\nand a line");
 });
@@ -323,7 +323,7 @@ test('a queue request holding its slot shows that time, not the next queue slot'
         'scheduled_at' => $at,
     ]);
 
-    $mailable = (new PostApprovalRequested([$post->id], $requester, $approver))->locale($locale->value);
+    $mailable = (new PostApprovalRequested($post->id, $requester, $approver))->locale($locale->value);
 
     $mailable->assertSeeInHtml(approvalEmailTimeLabel($at, $approver, $locale))
         ->assertDontSeeInHtml(__('mail.post_approval_requested.next_queue_slot', [], $locale->value));
@@ -339,50 +339,27 @@ test('a publish now request says it goes out as soon as it is approved', functio
         'scheduled_at' => null,
     ]);
 
-    $mailable = (new PostApprovalRequested([$post->id], $requester, $approver))->locale($locale->value);
+    $mailable = (new PostApprovalRequested($post->id, $requester, $approver))->locale($locale->value);
 
     $mailable->assertSeeInHtml(__('mail.post_approval_requested.as_soon_as_approved', [], $locale->value))
         ->assertDontSeeInHtml(__('mail.post_approval_requested.next_queue_slot', [], $locale->value));
 })->with([Locale::English, Locale::PortugueseBrazil]);
 
-test('the approved email lists the time of each channel when they go out at different times', function (Locale $locale) {
-    $author = User::factory()->create(['timezone' => 'UTC']);
-    $approver = User::factory()->create(['account_id' => $author->account_id]);
-    $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id]);
-    $morning = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
-    $evening = CarbonImmutable::parse('2026-10-08 18:00', 'UTC');
-    $linkedIn = approvalEmailPost($workspace, $author, Platform::LinkedIn, 'Acme Inc', ['status' => PostStatus::Scheduled, 'scheduled_at' => $morning]);
-    $x = approvalEmailPost($workspace, $author, Platform::X, 'acmex', ['status' => PostStatus::Scheduled, 'scheduled_at' => $evening]);
-    $mastodon = approvalEmailPost($workspace, $author, Platform::Mastodon, 'acmetoot', ['status' => PostStatus::Publishing, 'scheduled_at' => null]);
-
-    $mailable = (new PostApproved([$linkedIn->id, $x->id, $mastodon->id], $approver, $author))->locale($locale->value);
-
-    $mailable->assertSeeInOrderInHtml([
-        $linkedIn->display_name,
-        approvalEmailTimeLabel($morning, $author, $locale),
-        $x->display_name,
-        approvalEmailTimeLabel($evening, $author, $locale),
-        $mastodon->display_name,
-        __('mail.post_approved.publishing_now', [], $locale->value),
-    ]);
-    $document = new Crawler($mailable->render());
-    foreach ([Platform::LinkedIn, Platform::X, Platform::Mastodon] as $platform) {
-        expect($document->filter('img[src="'.asset('images/accounts/'.$platform->network().'.png').'"]')->count())->toBe(1);
-    }
-})->with([Locale::English, Locale::PortugueseBrazil, Locale::French]);
-
-test('the approved email shows one time when every channel goes out together', function () {
+test('the approved email shows its channel and when its post goes out', function (Locale $locale) {
     $author = User::factory()->create(['timezone' => 'UTC']);
     $approver = User::factory()->create(['account_id' => $author->account_id]);
     $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id]);
     $at = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
-    $linkedIn = approvalEmailPost($workspace, $author, Platform::LinkedIn, 'Acme Inc', ['status' => PostStatus::Scheduled, 'scheduled_at' => $at]);
-    $x = approvalEmailPost($workspace, $author, Platform::X, 'acmex', ['status' => PostStatus::Scheduled, 'scheduled_at' => $at]);
+    $scheduled = approvalEmailPost($workspace, $author, Platform::LinkedIn, 'Acme Inc', ['status' => PostStatus::Scheduled, 'scheduled_at' => $at]);
+    $publishing = approvalEmailPost($workspace, $author, Platform::Mastodon, 'acmetoot', ['status' => PostStatus::Publishing, 'scheduled_at' => null]);
 
-    $html = (new PostApproved([$linkedIn->id, $x->id], $approver, $author))->render();
+    (new PostApproved($scheduled->id, $approver, $author))->locale($locale->value)
+        ->assertSeeInOrderInHtml([$scheduled->display_name, approvalEmailTimeLabel($at, $author, $locale)])
+        ->assertDontSeeInHtml(__('mail.post_approved.publishing_now', [], $locale->value));
 
-    expect(substr_count($html, "{$at->locale('en')->isoFormat('LLL')} (UTC)"))->toBe(1);
-});
+    (new PostApproved($publishing->id, $approver, $author))->locale($locale->value)
+        ->assertSeeInOrderInHtml([$publishing->display_name, __('mail.post_approved.publishing_now', [], $locale->value)]);
+})->with([Locale::English, Locale::PortugueseBrazil, Locale::French]);
 
 test('approval emails show the time in the recipient zone and clock', function (TimeFormat $format, Locale $locale, string $expected) {
     $author = User::factory()->create(['timezone' => 'America/Sao_Paulo', 'time_format' => $format]);
@@ -393,7 +370,7 @@ test('approval emails show the time in the recipient zone and clock', function (
         'scheduled_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
     ]);
 
-    $html = (new PostApproved([$post->id], $approver, $author))->locale($locale->value)->render();
+    $html = (new PostApproved($post->id, $approver, $author))->locale($locale->value)->render();
 
     expect($html)->toContain($expected);
 })->with([
@@ -411,7 +388,7 @@ test('approval emails name the canonical zone of a legacy alias', function () {
         'scheduled_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
     ]);
 
-    expect((new PostApproved([$post->id], $approver, $author))->render())->toContain('October 7, 2026 20:30 (Asia/Kolkata)');
+    expect((new PostApproved($post->id, $approver, $author))->render())->toContain('October 7, 2026 20:30 (Asia/Kolkata)');
 });
 
 test('the email layout carries the recipient locale and direction', function (Locale $locale, string $direction) {
@@ -430,16 +407,15 @@ test('the email layout carries the recipient locale and direction', function (Lo
     'portuguese' => [Locale::PortugueseBrazil, 'ltr'],
 ]);
 
-test('approval emails keep distinct channels with the same name and escape their names', function () {
+test('approval emails show one channel card and escape its name', function () {
     $author = User::factory()->create(['timezone' => 'UTC']);
     $workspace = Workspace::factory()->create(['account_id' => $author->account_id, 'user_id' => $author->id]);
-    $first = approvalEmailPost($workspace, $author, Platform::Instagram, 'Studio <Team>');
-    $second = approvalEmailPost($workspace, $author, Platform::Instagram, 'Studio <Team>');
+    $post = approvalEmailPost($workspace, $author, Platform::Instagram, 'Studio <Team>');
 
-    $html = (new PostRejected([$first->id, $second->id], $author))->render();
+    $html = (new PostRejected($post->id, $author))->render();
     $document = new Crawler($html);
 
-    expect($document->filter('img[src="'.asset('images/accounts/instagram.png').'"]')->count())->toBe(2)
+    expect($document->filter('img[src="'.asset('images/accounts/instagram.png').'"]')->count())->toBe(1)
         ->and($html)->toContain('Studio &lt;Team&gt;')
         ->not->toContain('Studio <Team>');
 });

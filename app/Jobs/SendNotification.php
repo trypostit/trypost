@@ -7,6 +7,8 @@ namespace App\Jobs;
 use App\Enums\Notification\Channel;
 use App\Enums\Notification\Type;
 use App\Mail\PostApprovalRequested;
+use App\Mail\PostApproved;
+use App\Mail\PostRejected;
 use App\Models\Post;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -36,7 +38,7 @@ class SendNotification implements ShouldQueue
 
     public function handle(): void
     {
-        if (! $this->deliversEmail || ! $this->user->wantsEmailFor($this->type) || ! $this->keepsPendingApprovalPosts()) {
+        if (! $this->deliversEmail || ! $this->user->wantsEmailFor($this->type) || ! $this->stillAboutItsPost()) {
             return;
         }
 
@@ -59,19 +61,16 @@ class SendNotification implements ShouldQueue
     }
 
     /**
-     * An approval request lists only its posts still waiting for approval, and
-     * is not sent once every one was approved, rejected or deleted.
+     * An approval request is not sent once its post was approved, rejected or
+     * deleted, and a decision is not sent once its post was deleted.
      */
-    private function keepsPendingApprovalPosts(): bool
+    private function stillAboutItsPost(): bool
     {
-        if (! $this->mailable instanceof PostApprovalRequested) {
-            return true;
-        }
-
-        $pendingIds = Post::query()->whereIn('id', $this->mailable->postIds)->pendingApproval()->pluck('id')->all();
-        $this->mailable->postIds = array_values(array_intersect($this->mailable->postIds, $pendingIds));
-
-        return $this->mailable->postIds !== [];
+        return match (true) {
+            $this->mailable instanceof PostApprovalRequested => Post::query()->whereKey($this->mailable->postId)->pendingApproval()->exists(),
+            $this->mailable instanceof PostApproved, $this->mailable instanceof PostRejected => Post::query()->whereKey($this->mailable->postId)->exists(),
+            default => true,
+        };
     }
 
     public function failed(Throwable $exception): void

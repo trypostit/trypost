@@ -12,10 +12,12 @@
       <p class="m-0 leading-6 text-sm text-foreground" style="white-space: pre-line;">@{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_approval_requested.post_without_text') }}</p>
     </div>
 
-    <p class="m-0 mt-4 text-sm font-semibold text-foreground">
-      @{{ __('mail.post_approval_requested.channels') }}
-    </p>
-    <x-channel-list />
+    @if($channel)
+      <p class="m-0 mt-4 text-sm font-semibold text-foreground">
+        @{{ __('mail.post_approval_requested.channel') }}
+      </p>
+      <x-channel-card />
+    @endif
 
     <p class="m-0 mt-4 text-sm font-semibold text-foreground">
       @{{ __('mail.post_approval_requested.requested_time') }}

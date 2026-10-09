@@ -14,8 +14,9 @@ use Illuminate\Support\Collection;
 final class NotifyApprovalRequested
 {
     /**
-     * One email per approver for one request; the posts created together for
-     * several channels are listed in the same email. Never emails the requester.
+     * One email per post for every approver: posts created together for
+     * several channels are separate posts, each approved on its own. Never
+     * emails the requester.
      *
      * @param  Collection<int, Post>  $posts
      */
@@ -23,18 +24,16 @@ final class NotifyApprovalRequested
     {
         $workspace = $posts->first()?->workspace;
 
-        if ($workspace === null) {
+        if (blank($workspace)) {
             return;
         }
 
-        $postIds = $posts->pluck('id')->values()->all();
+        $approvers = $workspace->approvers()->reject(fn (User $approver): bool => $approver->id === $requester->id);
 
-        $workspace->approvers()
-            ->reject(fn (User $approver): bool => $approver->id === $requester->id)
-            ->each(fn (User $approver) => SendNotification::dispatch(
-                $approver,
-                Type::Collaboration,
-                new PostApprovalRequested($postIds, $requester, $approver),
-            )->afterCommit());
+        $posts->each(fn (Post $post) => $approvers->each(fn (User $approver) => SendNotification::dispatch(
+            $approver,
+            Type::Collaboration,
+            new PostApprovalRequested($post->id, $requester, $approver),
+        )->afterCommit()));
     }
 }

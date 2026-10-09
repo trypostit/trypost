@@ -664,11 +664,10 @@ test('a requester repurpose run emails each approver once with every post, never
 
     expect($ownerId)->not->toBeNull()
         ->and($postIds)->toHaveCount(2)
-        ->and($notifications->map(fn (SendNotification $job): string => $job->user->id)->sort()->values()->all())
-        ->toBe(collect([$ownerId, $publisher->id])->sort()->values()->all());
+        ->and($notifications->map(fn (SendNotification $job): string => "{$job->user->id}:{$job->mailable->postId}")->sort()->values()->all())
+        ->toBe(collect([$ownerId, $publisher->id])->crossJoin($postIds)->map(fn (array $pair): string => implode(':', $pair))->sort()->values()->all());
 
     $notifications->each(fn (SendNotification $job) => expect($job->type)->toBe(Type::Collaboration)
-        ->and(collect($job->mailable->postIds)->sort()->values()->all())->toBe($postIds)
         ->and($job->mailable->requester->is($requester))->toBeTrue());
     expect(Post::whereIn('id', $postIds)->pluck('approval_requested_by')->unique()->values()->all())->toBe([$requester->id]);
 });
@@ -692,8 +691,8 @@ test('a retry after the approval request was lost still emails the approvers', f
     expect($item->fresh()->status)->toBe(ItemStatus::Published)
         ->and($postIds)->toHaveCount(2);
 
-    Queue::assertPushed(SendNotification::class, fn (SendNotification $job): bool => $job->mailable instanceof PostApprovalRequested
-        && collect($job->mailable->postIds)->sort()->values()->all() === $postIds);
+    expect(Queue::pushed(SendNotification::class, fn (SendNotification $job): bool => $job->mailable instanceof PostApprovalRequested)
+        ->map(fn (SendNotification $job): string => $job->mailable->postId)->unique()->sort()->values()->all())->toBe($postIds);
 });
 
 test('a requester repurpose in draft mode sends no approval email', function () {

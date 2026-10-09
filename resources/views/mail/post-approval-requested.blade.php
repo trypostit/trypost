@@ -70,14 +70,15 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                 <div style="margin-top: 16px; border-radius: 8px; background-color: #f7f6f3; padding: 16px">
                   <p style="white-space: pre-line; margin: 0; font-size: 14px; line-height: 24px; color: #292928">{{ $postExcerpt !== '' ? $postExcerpt : __('mail.post_approval_requested.post_without_text') }}</p>
                 </div>
+                @if($channel)
                 <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
-                  {{ __('mail.post_approval_requested.channels') }}
-                </p>@foreach($channels as $emailChannel)
+                  {{ __('mail.post_approval_requested.channel') }}
+                </p>
                 <table role="presentation" style="margin-top: 12px; width: 100%" cellpadding="0" cellspacing="0">
                   <tr>
                     <td style="border-radius: 12px; border: 1px solid #eae8e5; background-color: #ffffff; padding: 16px">@php
-                      $emailChannelPlatform = $emailChannel->platform;
-                      $emailChannelName = $emailChannel->display_name;
+                      $emailChannelPlatform = $channel->platform;
+                      $emailChannelName = $channel->display_name;
                       @endphp
                       <table role="presentation" style="width: 100%" cellpadding="0" cellspacing="0">
                         <tr>
@@ -95,7 +96,8 @@ $direction = Locale::tryFrom(app()->getLocale())?->direction() ?? 'ltr';
                     </td>
                   </tr>
                 </table>
-                @endforeach <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
+                @endif
+                <p style="margin: 16px 0 0; font-size: 14px; font-weight: 600; color: #292928">
                   {{ __('mail.post_approval_requested.requested_time') }}
                 </p>
                 <p style="margin: 8px 0 0; font-size: 14px; line-height: 24px">

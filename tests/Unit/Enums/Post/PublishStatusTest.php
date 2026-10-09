@@ -27,3 +27,15 @@ test('a closed publication must not be published again', function (PublishStatus
     [PublishStatus::Publishing, false],
     [PublishStatus::Retrying, false],
 ]);
+
+test('a failed or rejected publication is a failure', function (PublishStatus $status, bool $failure) {
+    expect($status->isFailure())->toBe($failure);
+})->with([
+    [PublishStatus::Failed, true],
+    [PublishStatus::Rejected, true],
+    [PublishStatus::Published, false],
+    [PublishStatus::PendingReview, false],
+    [PublishStatus::Pending, false],
+    [PublishStatus::Publishing, false],
+    [PublishStatus::Retrying, false],
+]);
