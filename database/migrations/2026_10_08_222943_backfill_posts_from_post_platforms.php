@@ -78,7 +78,7 @@ return new class extends Migration
                         DB::table('posts')->where('id', $target->pp_post_id)->update([
                             ...collect(self::TARGET_COLUMNS)->mapWithKeys(fn (string $column): array => [$column => $target->{"pp_{$column}"}])->all(),
                             'publish_status' => $target->pp_status,
-                            'published_at' => $target->pp_published_at ?? ($target->pp_status === 'published' ? $target->p_published_at : null),
+                            'published_at' => $target->pp_status === 'published' ? ($target->p_published_at ?? $target->pp_published_at) : $target->pp_published_at,
                             'publication_updated_at' => $target->pp_updated_at,
                             'legacy_target_id' => $target->pp_id,
                         ]);

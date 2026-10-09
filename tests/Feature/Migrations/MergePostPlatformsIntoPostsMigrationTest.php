@@ -224,17 +224,20 @@ test('backfill copies every destination onto its post without touching updated_a
         ->and($fresh->updated_at->toIso8601String())->toBe($updatedAt->toIso8601String());
 });
 
-test('backfill keeps the post publish time only for a published destination', function () {
+test('backfill keeps the publish time the post already shows, only for a published destination', function () {
     $account = SocialAccount::factory()->create();
     $postTime = now()->subDay()->startOfSecond();
     $published = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => $postTime]);
-    ($this->target)($published, ['social_account_id' => $account->id, 'status' => 'published']);
+    ($this->target)($published, ['social_account_id' => $account->id, 'status' => 'published', 'published_at' => $postTime->subSecond()]);
+    $imported = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => null]);
+    ($this->target)($imported, ['social_account_id' => $account->id, 'status' => 'published', 'published_at' => $postTime]);
     $failed = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Failed, 'published_at' => $postTime]);
     ($this->target)($failed, ['social_account_id' => $account->id, 'status' => 'failed']);
 
     $this->backfill->up();
 
     expect(Post::query()->find($published->id)->published_at->toIso8601String())->toBe($postTime->toIso8601String())
+        ->and(Post::query()->find($imported->id)->published_at->toIso8601String())->toBe($postTime->toIso8601String())
         ->and(Post::query()->find($failed->id)->published_at)->toBeNull();
 });
 
