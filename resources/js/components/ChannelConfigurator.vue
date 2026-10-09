@@ -176,6 +176,7 @@ const settingsIndex = (channel: Channel): number =>
                         :video-duration-sec="videoDurationSec"
                         :content-type="channel.contentType"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />
@@ -188,6 +189,7 @@ const settingsIndex = (channel: Channel): number =>
                         :boards="channel.boards ?? []"
                         :boards-truncated="channel.boardsTruncated ?? false"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />
@@ -214,6 +216,7 @@ const settingsIndex = (channel: Channel): number =>
                         v-else-if="channel.platform === Platform.Discord"
                         :social-account="channel.socialAccount"
                         :meta="channel.meta"
+                        :platform-index="settingsIndex(channel)"
                         :disabled="disabled"
                         @update:meta="updateMeta(channel, $event)"
                     />

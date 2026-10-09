@@ -6,7 +6,7 @@ import PinterestBoardPicker from '@/components/posts/editor/PinterestBoardPicker
 import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
 import SettingsSection from '@/components/posts/editor/SettingsSection.vue';
 import { Input } from '@/components/ui/input';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 import type { PinterestBoard } from '@/types';
 
 interface SocialAccount {
@@ -19,6 +19,7 @@ interface Props {
     boards: PinterestBoard[];
     boardsTruncated?: boolean;
     meta: Record<string, any>;
+    platformIndex: number;
     disabled?: boolean;
 }
 
@@ -61,17 +62,10 @@ const pinLink = computed({
     },
 });
 
-const errors = usePageErrors();
-const fieldError = (field: string) =>
-    computed<string | undefined>(
-        () =>
-            Object.entries(errors.value).find(([key]) =>
-                key === `meta.${field}` || key.endsWith(`.meta.${field}`),
-            )?.[1],
-    );
-const titleError = fieldError('title');
-const linkError = fieldError('link');
-const storedBoardError = fieldError('board_id');
+const metaError = useMetaErrors(() => props.platformIndex);
+const titleError = metaError('title');
+const linkError = metaError('link');
+const storedBoardError = metaError('board_id');
 const boardError = computed(() =>
     props.meta?.board_id ? undefined : storedBoardError.value,
 );

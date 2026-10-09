@@ -16,7 +16,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { usePageErrors } from '@/composables/usePageErrors';
+import { useMetaErrors } from '@/composables/useMetaErrors';
 import { ContentType } from '@/types/content-type';
 import {
     isTikTokPrivacyLevel,
@@ -52,6 +52,7 @@ interface Props {
     videoDurationSec?: number | null;
     contentType: string;
     meta: Record<string, any>;
+    platformIndex: number;
     disabled?: boolean;
 }
 
@@ -65,16 +66,13 @@ const emit = defineEmits<{
     'update:meta': [value: Record<string, any>];
 }>();
 
-const errors = usePageErrors();
-const privacyError = computed<string | undefined>(() => {
-    if (isTikTokPrivacyLevel(props.meta?.privacy_level)) {
-        return undefined;
-    }
-
-    return Object.entries(errors.value).find(([key]) =>
-        key === 'meta.privacy_level' || key.endsWith('.meta.privacy_level'),
-    )?.[1];
-});
+const metaError = useMetaErrors(() => props.platformIndex);
+const storedPrivacyError = metaError('privacy_level');
+const privacyError = computed(() =>
+    isTikTokPrivacyLevel(props.meta?.privacy_level)
+        ? undefined
+        : storedPrivacyError.value,
+);
 
 const updateMeta = (patch: Record<string, any>) => {
     emit('update:meta', { ...props.meta, ...patch });
