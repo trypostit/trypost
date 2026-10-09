@@ -5,6 +5,11 @@ ordem. Cada post passa a guardar o seu canal e o resultado da publicação na
 própria linha de `posts`; a tabela `post_platforms` é copiada para `posts` e
 removida no mesmo deploy.
 
+> **Pré-requisito antes do merge:** marcar a `main` atual (o 2.0 que está no ar,
+> `311767990`) com a tag e a release `v2.0.0`. Hoje a última tag é a `v1.1.0`, e
+> sem a `v2.0.0` o self-hosted não tem por onde passar pelo `release:trypost-2`,
+> que esta versão remove.
+
 O roteiro do deploy do TryPost 2.0 (`release:trypost-2`) fica na tag `v2.0.0`.
 Self-hosted que ainda está na `v1.1.0` **precisa passar por ela antes**: atualizar
 para a `v2.0.0`, rodar `php artisan release:trypost-2 --force` e só então
