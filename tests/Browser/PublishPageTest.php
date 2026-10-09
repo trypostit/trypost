@@ -367,7 +367,7 @@ test('the tabs row border keeps the page padding instead of touching the panel e
     $page->assertNoJavaScriptErrors();
 });
 
-test('on a phone the calendar row holds the channels, filter menu, view switch and no date last, with the filters in a sheet', function () {
+test('the calendar keeps its filters in one menu until the screen is wide enough for all of them', function () {
     [$user, , $channel] = publishPageSetup();
     $this->actingAs($user);
 
@@ -390,7 +390,7 @@ test('on a phone the calendar row holds the channels, filter menu, view switch a
                 noDateSquare: Math.round(noDate.width) === Math.round(noDate.height),
                 noDateLabelHidden: document.querySelector('[data-testid="calendar-no-date"] span').getBoundingClientRect().width <= 1,
                 channelText: [...channelFilter.querySelectorAll('span')].filter((span) => visible(span) && span.textContent.trim() !== '').length,
-                tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')),
+                tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')?.getClientRects().length),
                 overflow: document.documentElement.scrollWidth > window.innerWidth,
             };
         })()
@@ -414,12 +414,20 @@ test('on a phone the calendar row holds the channels, filter menu, view switch a
         ->assertVisible('@publish-timezone-trigger')
         ->assertVisible('@calendar-toggle-slots');
 
-    $page->resize(1280, 900);
+    $page->keys('@calendar-menu-content', 'Escape');
+    $page->resize(1300, 900);
+    waitForPublishPageScript($page, 'Boolean(document.querySelector(\'[data-testid="posts-label-filter"]\')?.getClientRects().length)');
+
+    expect($page->script('Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))'))->toBeFalse()
+        ->and($page->script('Boolean(document.querySelector(\'[data-testid="calendar-menu"]\')?.getClientRects().length)'))->toBeTrue()
+        ->and($page->script('document.documentElement.scrollWidth > window.innerWidth'))->toBeFalse();
+
+    $page->resize(1600, 900);
 
     waitForPublishPageScript($page, 'Boolean(document.querySelector(\'[data-testid="calendar-status-filter"]\'))');
 
     $order = $page->script(<<<'JS'
-        (() => ['posts-channel-filter', 'calendar-status-filter', 'posts-label-filter', 'publish-timezone-trigger', 'calendar-no-date', 'calendar-menu']
+        (() => ['posts-channel-filter', 'posts-label-filter', 'calendar-status-filter', 'publish-timezone-trigger', 'calendar-no-date', 'calendar-menu']
             .map((id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().left)
             .every((left, index, lefts) => index === 0 || left > lefts[index - 1]))()
     JS);
@@ -473,7 +481,7 @@ test('the channel page adapts its filters, tabs, calendar link and notes button 
             return {
                 oneRow: row.every((box) => Math.abs(middle(box) - middle(row[0])) <= 2),
                 belowGoal: row[0].top >= rect('publish-goal-progress').bottom,
-                tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')),
+                tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')?.getClientRects().length),
                 overflow: document.documentElement.scrollWidth > window.innerWidth,
             };
         })()

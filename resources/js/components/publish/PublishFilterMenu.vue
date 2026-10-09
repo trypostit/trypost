@@ -23,8 +23,9 @@ const props = withDefaults(
         timezones: TimezoneOption[];
         showSlots?: boolean | null;
         manageSlotsHref?: string | null;
+        compactBelow?: 'md' | 'lg' | 'xl' | '2xl';
     }>(),
-    { showSlots: null, manageSlotsHref: null },
+    { showSlots: null, manageSlotsHref: null, compactBelow: 'md' },
 );
 
 const timezone = defineModel<string>('timezone', { required: true });
@@ -34,7 +35,7 @@ const emit = defineEmits<{
     'update:showSlots': [value: boolean];
 }>();
 
-const compact = useBelowBreakpoint('md');
+const compact = useBelowBreakpoint(props.compactBelow);
 
 const hasSlotOptions = (): boolean =>
     props.showSlots !== null || props.manageSlotsHref !== null;

@@ -153,7 +153,7 @@ test('the calendar honours the channels filter and the display time zone', funct
         'week' => $weekStart->format('Y-m-d'),
         'channels' => [$x->id],
         'tz' => 'Asia/Tokyo',
-    ]));
+    ]))->resize(1600, 900);
     waitForCalendarTestId($page, "calendar-post-{$xPost->id}");
 
     $page->assertMissing("@calendar-post-{$linkedinPost->id}")
@@ -204,7 +204,7 @@ test('the status filter narrows the calendar to one kind of post', function () {
 
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]));
+    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $weekStart->format('Y-m-d')]))->resize(1600, 900);
     waitForCalendarTestId($page, "calendar-post-{$scheduled->id}");
     $page->assertSeeIn('@calendar-status-filter', 'All posts')
         ->click('@calendar-status-filter');

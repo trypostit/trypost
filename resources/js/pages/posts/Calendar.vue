@@ -586,10 +586,18 @@ const goToDay = (key: string): void => {
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
                     />
+                    <div class="shrink-0 max-md:hidden">
+                        <LabelFilter
+                            v-model="selectedLabelIds"
+                            v-model:untagged="selectedUntagged"
+                            :labels="labels"
+                        />
+                    </div>
                     <PublishFilterMenu
                         v-model:status="selectedStatus"
                         :timezone="timezone"
                         test-id="calendar"
+                        compact-below="2xl"
                         :timezones="timezones"
                         :show-slots="showSlots"
                         :manage-slots-href="
@@ -599,15 +607,7 @@ const goToDay = (key: string): void => {
                         "
                         @update:timezone="setTimezone"
                         @update:show-slots="toggleSlots"
-                    >
-                        <template #desktop-filters>
-                            <LabelFilter
-                                v-model="selectedLabelIds"
-                                v-model:untagged="selectedUntagged"
-                                :labels="labels"
-                            />
-                        </template>
-                    </PublishFilterMenu>
+                    />
                     <AppHeaderActions>
                         <ScheduleViewSwitch
                             active-view="calendar"
