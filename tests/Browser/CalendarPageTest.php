@@ -77,7 +77,7 @@ function calendarChipSlot(mixed $page, Post $post): ?string
     return $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]')?.closest('[data-testid^=\"calendar-slot-\"]')?.dataset.testid ?? null");
 }
 
-test('the week grid places posts in their hour row, side by side when they share it', function () {
+test('the week grid places posts in their hour row, stacked as compact rows when they share it', function () {
     [$user, $linkedin, $x] = calendarPageSetup();
     $weekStart = now('UTC')->startOfWeek()->addWeek();
     $day = $weekStart->copy()->addDays(2);
@@ -105,17 +105,17 @@ test('the week grid places posts in their hour row, side by side when they share
             const second = box('{$second->id}');
 
             return {
-                sameRow: Math.abs(first.top - second.top) < 1,
-                sideBySide: second.left >= first.right,
+                stacked: second.top >= first.bottom && Math.abs(first.left - second.left) < 1,
+                sameWidth: Math.abs(first.width - second.width) < 1,
                 hourOffset: Math.round(slot.top - midnight.top),
-                inSlot: first.top >= slot.top && first.bottom <= slot.bottom,
+                inSlot: first.top >= slot.top && second.bottom <= slot.bottom,
             };
         })()
     JS);
 
     expect($layout)->toBe([
-        'sameRow' => true,
-        'sideBySide' => true,
+        'stacked' => true,
+        'sameWidth' => true,
         'hourOffset' => 14 * 106,
         'inSlot' => true,
     ]);
