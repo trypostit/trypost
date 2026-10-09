@@ -147,21 +147,16 @@ const currentKey = computed(() =>
     current.value.id === props.post.id ? props.testKey : current.value.id,
 );
 
-const targets = computed(() =>
+const channel = computed(() =>
     current.value.platform
-        ? [
-              {
-                  id: current.value.id,
-                  platform: current.value.platform,
-                  social_account: current.value.social_account,
-                  platform_url: current.value.platform_url ?? null,
-                  meta: current.value.meta ?? {},
-              },
-          ]
-        : [],
+        ? {
+              platform: current.value.platform,
+              social_account: current.value.social_account,
+          }
+        : null,
 );
 
-const permalink = computed(() => targets.value[0]?.platform_url ?? null);
+const permalink = computed(() => current.value.platform_url ?? null);
 
 const metricsDetail = computed(() => {
     const detail = current.value.metrics ?? null;
@@ -220,10 +215,8 @@ watch(
 );
 
 const threadReplies = computed((): ThreadReply[] => {
-    const target = targets.value[0];
-
-    return target && THREAD_PLATFORMS.includes(target.platform)
-        ? threadRepliesOf(target.meta).filter(
+    return channel.value && THREAD_PLATFORMS.includes(channel.value.platform)
+        ? threadRepliesOf(current.value.meta ?? {}).filter(
               (reply) => reply.text.trim() !== '' || reply.media.length > 0,
           )
         : [];
@@ -232,7 +225,7 @@ const threadReplies = computed((): ThreadReply[] => {
 const showsThread = computed(
     () =>
         threadReplies.value.length > 0 &&
-        Boolean(targets.value[0]?.social_account),
+        Boolean(channel.value?.social_account),
 );
 
 const lightboxOpen = ref(false);
@@ -421,20 +414,19 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     </DialogHeader>
 
                     <section
-                        v-for="target in showsThread ? [] : targets"
-                        :key="target.id"
+                        v-if="!showsThread && channel"
                         class="flex items-center gap-3"
-                        :data-testid="`post-details-target-${target.id}`"
+                        :data-testid="`post-details-target-${current.id}`"
                     >
                         <ChannelAvatar
-                            :status="target.social_account?.status"
-                            :account-id="target.social_account?.id"
-                            :platform="target.platform"
-                            :src="target.social_account?.avatar_url"
-                            :verified="target.social_account?.verified_badge"
+                            :status="channel.social_account?.status"
+                            :account-id="channel.social_account?.id"
+                            :platform="channel.platform"
+                            :src="channel.social_account?.avatar_url"
+                            :verified="channel.social_account?.verified_badge"
                             :name="
-                                target.social_account?.display_label ??
-                                getPlatformLabel(target.platform)
+                                channel.social_account?.display_label ??
+                                getPlatformLabel(channel.platform)
                             "
                             :size="40"
                         />
@@ -442,21 +434,21 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             <span
                                 class="truncate text-sm font-emphasis text-foreground"
                                 >{{
-                                    target.social_account?.display_label ??
-                                    getPlatformLabel(target.platform)
+                                    channel.social_account?.display_label ??
+                                    getPlatformLabel(channel.platform)
                                 }}</span
                             >
                             <span
-                                v-if="target.social_account?.handle_label"
+                                v-if="channel.social_account?.handle_label"
                                 class="truncate text-xs text-muted-foreground"
-                                >{{ target.social_account.handle_label }}</span
+                                >{{ channel.social_account.handle_label }}</span
                             >
                         </span>
                     </section>
 
                     <ThreadView
-                        v-if="showsThread && targets[0]?.social_account"
-                        :account="targets[0].social_account"
+                        v-if="showsThread && channel?.social_account"
+                        :account="channel.social_account"
                         :posts="[{ text: content, media }, ...threadReplies]"
                         :test-key="currentKey"
                         @open-media="openMediaPreview"
@@ -504,7 +496,7 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     <PostMetricsBand
                         v-if="metricsDetail"
                         :detail="metricsDetail"
-                        :channel-id="targets[0]?.social_account?.id ?? null"
+                        :channel-id="channel?.social_account?.id ?? null"
                         class="-mx-6 px-6"
                         :metrics-test-id="`post-details-metrics-${currentKey}`"
                         :insights-test-id="`post-details-insights-${currentKey}`"
@@ -524,7 +516,7 @@ const siblingMoment = (sibling: PostCard): string | null => {
                             <TooltipProvider
                                 v-if="
                                     current.origin === PostOrigin.Network &&
-                                    targets[0]
+                                    channel
                                 "
                                 :delay-duration="200"
                             >
@@ -536,18 +528,18 @@ const siblingMoment = (sibling: PostCard): string | null => {
                                         >
                                             {{ $t('posts.publish.published_via') }}
                                             <PlatformBrandIcon
-                                                :platform="targets[0].platform"
+                                                :platform="channel.platform"
                                                 :data-testid="`post-details-published-via-icon-${currentKey}`"
                                             />
-                                            <template v-if="targets[0].platform !== Platform.X">
-                                                {{ getPlatformLabel(targets[0].platform) }}
+                                            <template v-if="channel.platform !== Platform.X">
+                                                {{ getPlatformLabel(channel.platform) }}
                                             </template>
                                         </span>
                                     </TooltipTrigger>
                                     <TooltipContent :data-testid="`post-details-published-via-tooltip-${currentKey}`">
                                         {{
                                             $t('posts.publish.published_directly_from', {
-                                                network: getPlatformLabel(targets[0].platform),
+                                                network: getPlatformLabel(channel.platform),
                                             })
                                         }}
                                     </TooltipContent>

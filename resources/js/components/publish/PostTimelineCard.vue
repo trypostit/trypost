@@ -132,15 +132,7 @@ const highlightNoteId = computed(
     () => (page.props.highlightNoteId as string | null | undefined) ?? null,
 );
 
-const primaryTarget = computed(() =>
-    props.post.platform
-        ? {
-              platform: props.post.platform,
-              content_type: props.post.content_type ?? null,
-              platform_url: props.post.platform_url ?? null,
-          }
-        : null,
-);
+const platform = computed(() => props.post.platform ?? null);
 const account = computed(() => props.post.social_account ?? null);
 const recurrenceTimezone = computed(
     () => account.value?.timezone ?? timezone.value,
@@ -242,15 +234,12 @@ const CONTENT_TYPE_ICONS: Record<string, Component> = {
 };
 
 const contentTypeIcon = computed(() =>
-    CONTENT_TYPE_ICONS[primaryTarget.value?.content_type ?? ''] ?? null,
+    CONTENT_TYPE_ICONS[props.post.content_type ?? ''] ?? null,
 );
 
 const contentTypeKey = computed(() =>
-    primaryTarget.value
-        ? getContentTypeBadgeKey(
-              primaryTarget.value.platform,
-              primaryTarget.value.content_type ?? null,
-          )
+    platform.value
+        ? getContentTypeBadgeKey(platform.value, props.post.content_type ?? null)
         : null,
 );
 
@@ -258,7 +247,7 @@ const canQueue = computed(
     () => account.value?.has_posting_schedule === true,
 );
 
-const permalink = computed(() => primaryTarget.value?.platform_url ?? null);
+const permalink = computed(() => props.post.platform_url ?? null);
 
 const metricsDetail = computed(() => {
     const detail = props.post.metrics ?? null;
@@ -548,9 +537,9 @@ defineExpose({ openDetails });
                         aria-hidden="true"
                     />
                     {{
-                        primaryTarget
+                        platform
                             ? $t('posts.publish.publishing_on', {
-                                  network: getPlatformLabel(primaryTarget.platform),
+                                  network: getPlatformLabel(platform),
                               })
                             : $t('posts.publish.publishing_badge')
                     }}
@@ -571,13 +560,13 @@ defineExpose({ openDetails });
                         <ChannelAvatar
                             :status="account?.status"
                             :account-id="account?.id"
-                            v-if="primaryTarget"
-                            :platform="primaryTarget.platform"
+                            v-if="platform"
+                            :platform="platform"
                             :src="account?.avatar_url"
                             :verified="account?.verified_badge"
                             :name="
                                 account?.display_label ??
-                                getPlatformLabel(primaryTarget.platform)
+                                getPlatformLabel(platform)
                             "
                             ring="card"
                             @dragstart="draggable ? $event.preventDefault() : undefined"
@@ -588,7 +577,7 @@ defineExpose({ openDetails });
                             >
                                 {{
                                     account?.display_label ??
-                                    getPlatformLabel(primaryTarget?.platform ?? '')
+                                    getPlatformLabel(platform ?? '')
                                 }}
                             </p>
                             <p
@@ -730,7 +719,7 @@ defineExpose({ openDetails });
                     :class="{ 'max-sm:hidden': post.origin === PostOrigin.Network }"
                 >
                     <TooltipProvider
-                        v-if="post.origin === PostOrigin.Network && primaryTarget"
+                        v-if="post.origin === PostOrigin.Network && platform"
                         :delay-duration="200"
                     >
                         <Tooltip>
@@ -741,18 +730,18 @@ defineExpose({ openDetails });
                                 >
                                     {{ $t('posts.publish.published_via') }}
                                     <PlatformBrandIcon
-                                        :platform="primaryTarget.platform"
+                                        :platform="platform"
                                         :data-testid="`post-published-via-icon-${testKey}`"
                                     />
-                                    <template v-if="primaryTarget.platform !== Platform.X">
-                                        {{ getPlatformLabel(primaryTarget.platform) }}
+                                    <template v-if="platform !== Platform.X">
+                                        {{ getPlatformLabel(platform) }}
                                     </template>
                                 </span>
                             </TooltipTrigger>
                             <TooltipContent :data-testid="`post-published-via-tooltip-${testKey}`">
                                 {{
                                     $t('posts.publish.published_directly_from', {
-                                        network: getPlatformLabel(primaryTarget.platform),
+                                        network: getPlatformLabel(platform),
                                     })
                                 }}
                             </TooltipContent>
@@ -831,7 +820,7 @@ defineExpose({ openDetails });
                             </Tooltip>
                         </TooltipProvider>
                     </template>
-                    <Tooltip v-if="permalink && primaryTarget">
+                    <Tooltip v-if="permalink && platform">
                         <TooltipTrigger as-child>
                             <Button
                                 as="a"
@@ -851,7 +840,7 @@ defineExpose({ openDetails });
                             {{
                                 $t('posts.publish.actions.open_on_network', {
                                     network: getPlatformLabel(
-                                        primaryTarget.platform,
+                                        platform,
                                     ),
                                 })
                             }}

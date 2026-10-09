@@ -35,30 +35,30 @@ const CATEGORIES = [
 
 const status = computed(() => getPostStatusConfig(props.post.status));
 
-const failures = computed(() =>
-    [props.post]
-        .filter(
-            (post) =>
-                post.platform !== null &&
-                (post.publish_status === PublishStatus.Failed ||
-                    post.publish_status === PublishStatus.Rejected),
-        )
-        .map((post) => {
-            const category = post.failure?.category ?? '';
-            const at = post.failure?.failed_at ?? props.attemptedAt;
+const failure = computed(() => {
+    const post = props.post;
 
-            return {
-                id: post.id,
-                platform: post.platform ?? '',
-                account: post.social_account?.display_label ?? null,
-                reasonKey: CATEGORIES.includes(category)
-                    ? `posts.publish.failure.categories.${category}`
-                    : 'posts.publish.failure.generic',
-                details: post.error_message?.trim() || null,
-                at: at ? date.formatDateTimeInTimezone(at, props.timezone) : null,
-            };
-        }),
-);
+    if (
+        !post.platform ||
+        (post.publish_status !== PublishStatus.Failed &&
+            post.publish_status !== PublishStatus.Rejected)
+    ) {
+        return null;
+    }
+
+    const category = post.failure?.category ?? '';
+    const at = post.failure?.failed_at ?? props.attemptedAt;
+
+    return {
+        platform: post.platform,
+        account: post.social_account?.display_label ?? null,
+        reasonKey: CATEGORIES.includes(category)
+            ? `posts.publish.failure.categories.${category}`
+            : 'posts.publish.failure.generic',
+        details: post.error_message?.trim() || null,
+        at: at ? date.formatDateTimeInTimezone(at, props.timezone) : null,
+    };
+});
 </script>
 
 <template>
@@ -88,17 +88,13 @@ const failures = computed(() =>
                 {{ $t('posts.publish.failure.title') }}
             </p>
             <p
-                v-if="failures.length === 0"
+                v-if="!failure"
                 class="text-sm text-foreground"
                 :data-testid="`post-failure-reason-${testKey}`"
             >
                 {{ $t('posts.publish.failure.generic') }}
             </p>
-            <div
-                v-for="failure in failures"
-                :key="failure.id"
-                class="flex flex-col gap-2"
-            >
+            <div v-else class="flex flex-col gap-2">
                 <p
                     class="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground"
                 >

@@ -38,7 +38,7 @@ class PostRequestRules
      */
     public static function store(Workspace $workspace, array $input): array
     {
-        $account = self::selectedAccounts($workspace, $input);
+        $accounts = self::selectedAccounts($workspace, $input);
 
         return [
             'content' => [
@@ -48,9 +48,9 @@ class PostRequestRules
                 Rule::when(
                     in_array(data_get($input, 'status'), [Status::Scheduled->value, Status::Publishing->value], true),
                     [new ContentFitsPlatformLimits(
-                        $account,
-                        $account->map(fn (): array => (array) data_get($input, 'meta', []))->all(),
-                        $account->map(fn (): mixed => data_get($input, 'content_type'))->all(),
+                        $accounts,
+                        $accounts->map(fn (): array => (array) data_get($input, 'meta', []))->all(),
+                        $accounts->map(fn (): mixed => data_get($input, 'content_type'))->all(),
                     )],
                 ),
             ],

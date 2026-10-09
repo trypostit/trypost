@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
@@ -38,7 +40,7 @@ return new class extends Migration
      */
     public function up(): void
     {
-        $unresolved = DB::table('post_platforms')->where(fn ($query) => $query->where('enabled', false)->orWhereNull('social_account_id'))->count();
+        $unresolved = DB::table('post_platforms')->where(fn (Builder $query) => $query->where('enabled', false)->orWhereNull('social_account_id'))->count();
 
         if ($unresolved > 0) {
             throw new RuntimeException("{$unresolved} destinations are switched off or lost their channel; roll back and run the migrations again from 2026_10_08_222940.");
@@ -77,7 +79,7 @@ return new class extends Migration
                 'posts.published_at as p_published_at',
                 ...array_map(fn (string $column): string => "post_platforms.{$column} as pp_{$column}", self::TARGET_COLUMNS),
             ])
-            ->chunkById(500, function ($targets): void {
+            ->chunkById(500, function (Collection $targets): void {
                 DB::transaction(function () use ($targets): void {
                     foreach ($targets as $target) {
                         DB::table('posts')->where('id', $target->pp_post_id)->update([
@@ -96,7 +98,7 @@ return new class extends Migration
         DB::table('analytics_publications')
             ->whereNotNull('post_platform_id')
             ->select(['id', 'post_platform_id'])
-            ->chunkById(500, function ($publications): void {
+            ->chunkById(500, function (Collection $publications): void {
                 DB::transaction(function () use ($publications): void {
                     $postIds = DB::table('post_platforms')
                         ->whereIn('id', $publications->pluck('post_platform_id'))
@@ -132,7 +134,7 @@ return new class extends Migration
                 ...array_map(fn (string $column): string => "post_platforms.{$column} as pp_{$column}", self::TARGET_COLUMNS),
                 ...array_map(fn (string $column): string => "posts.{$column} as p_{$column}", self::TARGET_COLUMNS),
             ])
-            ->chunkById(500, function ($rows) use ($scalarColumns): void {
+            ->chunkById(500, function (Collection $rows) use ($scalarColumns): void {
                 foreach ($rows as $row) {
                     $mismatch = $row->pp_status !== $row->p_publish_status
                         || collect($scalarColumns)->contains(fn (string $column): bool => ! $this->sameScalar($row->{"pp_{$column}"}, $row->{"p_{$column}"}))
@@ -192,7 +194,7 @@ return new class extends Migration
     {
         DB::table('webhooks')
             ->select(['id', 'events'])
-            ->chunkById(500, function ($webhooks): void {
+            ->chunkById(500, function (Collection $webhooks): void {
                 foreach ($webhooks as $webhook) {
                     $events = json_decode((string) $webhook->events, true);
 

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\PublishStatus;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,7 @@ return new class extends Migration
     {
         Schema::table('posts', function (Blueprint $table): void {
             $table->uuid('social_account_id')->nullable();
-            $table->string('publish_status')->default('pending');
+            $table->string('publish_status')->default(PublishStatus::DEFAULT->value);
             $table->string('platform')->nullable();
             $table->string('content_type')->nullable();
             $table->string('platform_name')->nullable();

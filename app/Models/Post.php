@@ -410,29 +410,32 @@ class Post extends Model
     /**
      * Display name, falling back to the snapshot when the account was deleted.
      */
-    public function getDisplayNameAttribute(): ?string
+    protected function displayName(): Attribute
     {
-        return $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform?->label();
+        return Attribute::make(
+            get: fn (): ?string => $this->socialAccount?->accountDisplayName() ?? $this->platform_name ?? $this->platform?->label(),
+        );
     }
 
     /**
      * Username, falling back to the snapshot when the account was deleted.
      */
-    public function getDisplayUsernameAttribute(): ?string
+    protected function displayUsername(): Attribute
     {
-        return $this->socialAccount?->username ?? $this->platform_username;
+        return Attribute::make(
+            get: fn (): ?string => $this->socialAccount?->username ?? $this->platform_username,
+        );
     }
 
     /**
      * Avatar URL, falling back to the snapshot when the account was deleted.
      */
-    public function getDisplayAvatarAttribute(): ?string
+    protected function displayAvatar(): Attribute
     {
-        if ($this->socialAccount?->avatar_url) {
-            return $this->socialAccount->avatar_url;
-        }
-
-        return $this->platform_avatar ? Storage::url($this->platform_avatar) : null;
+        return Attribute::make(
+            get: fn (): ?string => $this->socialAccount?->avatar_url
+                ?: ($this->platform_avatar ? Storage::url($this->platform_avatar) : null),
+        );
     }
 
     /**

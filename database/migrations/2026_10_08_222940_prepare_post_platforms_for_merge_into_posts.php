@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -49,7 +50,7 @@ return new class extends Migration
             ->where('status', 'partially_published')
             ->whereIn('id', $this->postsWithTargets(exactly: 1))
             ->select('id')
-            ->chunkById(500, function ($posts): void {
+            ->chunkById(500, function (Collection $posts): void {
                 foreach ($posts as $post) {
                     $target = DB::table('post_platforms')->where('post_id', $post->id)->first(['status', 'published_at']);
 

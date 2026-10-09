@@ -50,7 +50,7 @@ class HostInlineMedia
 
         foreach (data_get($data, 'destinations', []) as $index => $destination) {
             if (is_array(data_get($destination, 'meta'))) {
-                $data['destinations'][$index]['meta'] = self::threadReplies($workspace, $destination['meta'], "destinations.{$index}.meta", $fetched);
+                $data['destinations'][$index]['meta'] = self::threadReplies($workspace, data_get($destination, 'meta'), "destinations.{$index}.meta", $fetched);
             }
         }
 
@@ -77,7 +77,7 @@ class HostInlineMedia
         }
 
         if (is_array(data_get($data, 'meta'))) {
-            $data['meta'] = self::threadReplies($workspace, $data['meta'], 'meta', $fetched);
+            $data['meta'] = self::threadReplies($workspace, data_get($data, 'meta'), 'meta', $fetched);
         }
 
         return $data;

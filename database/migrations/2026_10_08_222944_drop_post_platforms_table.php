@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -12,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         $unmirrored = DB::table('post_platforms')
-            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))
+            ->whereNotExists(fn (Builder $query) => $query->select(DB::raw(1))
                 ->from('posts')
                 ->whereColumn('posts.id', 'post_platforms.post_id')
                 ->whereColumn('posts.platform', 'post_platforms.platform')

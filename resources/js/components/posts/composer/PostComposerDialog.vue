@@ -814,11 +814,13 @@ const mediaErrorKeys = computed(() => {
     };
     for (const [key, message] of Object.entries(errors.value)) {
         const shared = /^media\.(\d+)(\.|$)/.exec(key);
-        if (shared) {
+        if (shared && !props.initialPost) {
             record('', submitted.shared, Number(shared[1]), message);
             continue;
         }
-        const match = /^destinations\.(\d+)\.media\.(\d+)(\.|$)/.exec(key);
+        const match = shared
+            ? ['', '0', shared[1]]
+            : /^destinations\.(\d+)\.media\.(\d+)(\.|$)/.exec(key);
         const destination = match
             ? submitted.destinations[Number(match[1])]
             : undefined;

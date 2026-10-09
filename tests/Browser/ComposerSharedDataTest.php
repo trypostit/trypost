@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -224,4 +225,39 @@ test('editing a tiktok post keeps its stored interaction flags', function () {
     waitForComposerSharedDataCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
 
     expect(data_get($post->fresh()->meta, 'allow_comments'))->toBeTrue();
+});
+
+test('editing a post shows a server media error on the item it belongs to', function () {
+    [$user, $workspace] = composerSharedDataSetup();
+    $linkedin = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
+    $post = Post::factory()->forAccount($linkedin, ContentType::LinkedInPost)->draft()->create(['user_id' => $user->id, 'content' => 'Two images']);
+    $media = collect(['kept.png', 'gone.png'])->map(fn (string $name): Media => Media::factory()->create([
+        'workspace_id' => $workspace->id,
+        'post_id' => $post->id,
+        'mediable_type' => null,
+        'mediable_id' => null,
+        'collection' => Media::COLLECTION_MEDIA,
+        'original_filename' => $name,
+        'mime_type' => 'image/png',
+    ]));
+    $post->update(['media' => $media->map(fn (Media $item): array => [
+        'id' => $item->id,
+        'path' => $item->path,
+        'url' => $item->url,
+        'type' => 'image',
+        'mime_type' => 'image/png',
+        'original_filename' => $item->original_filename,
+        'meta' => ['width' => 1200, 'height' => 1200],
+    ])->all()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['edit' => $post->id]));
+    waitForComposerSharedDataCondition($page, "document.querySelectorAll('[data-testid\$=\"-media-item\"]').length === 2");
+    $media->last()->delete();
+
+    $page->click('@composer-save-draft');
+    waitForComposerSharedDataCondition($page, "document.querySelector('[data-testid\$=\"-media-error-1\"]') !== null");
+
+    expect($page->script("document.querySelector('[data-testid\$=\"-media-error-0\"]')"))->toBeNull();
+    $page->assertNoJavaScriptErrors();
 });
