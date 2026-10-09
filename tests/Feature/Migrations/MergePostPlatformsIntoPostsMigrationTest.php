@@ -54,6 +54,10 @@ beforeEach(function () {
         });
     }
 
+    if (! DB::getPdo()->inTransaction()) {
+        DB::getPdo()->beginTransaction();
+    }
+
     $this->target = function (Post $post, array $attributes = []): string {
         $id = (string) Str::uuid7();
 
@@ -286,4 +290,18 @@ test('drop refuses destinations that were not copied, then drops the table', fun
 
     expect(Schema::hasTable('post_platforms'))->toBeFalse()
         ->and(Schema::hasColumn('analytics_publications', 'post_platform_id'))->toBeFalse();
+});
+
+test('prepare changes nothing when its guard stops', function () {
+    $account = SocialAccount::factory()->create();
+    $blocked = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Scheduled]);
+    ($this->target)($blocked, ['social_account_id' => $account->id]);
+    ($this->target)($blocked, ['social_account_id' => $account->id]);
+    $orphan = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Failed]);
+    $disabled = ($this->target)($blocked, ['social_account_id' => $account->id, 'enabled' => false]);
+
+    expect(fn () => $this->prepare->up())->toThrow(RuntimeException::class);
+
+    expect($orphan->fresh()->status)->toBe(PostStatus::Failed)
+        ->and(DB::table('post_platforms')->where('id', $disabled)->exists())->toBeTrue();
 });

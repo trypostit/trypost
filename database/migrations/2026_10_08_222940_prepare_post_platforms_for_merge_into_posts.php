@@ -24,14 +24,16 @@ return new class extends Migration
      */
     public function up(): void
     {
-        DB::table('post_platforms')
-            ->where('enabled', false)
-            ->where('status', '!=', 'published')
-            ->delete();
+        DB::transaction(function (): void {
+            DB::table('post_platforms')
+                ->where('enabled', false)
+                ->where('status', '!=', 'published')
+                ->delete();
 
-        $this->settlePartiallyPublishedPosts();
-        $this->turnPostsWithoutDestinationIntoDrafts();
-        $this->assertEveryPostHasOneDestination();
+            $this->settlePartiallyPublishedPosts();
+            $this->turnPostsWithoutDestinationIntoDrafts();
+            $this->assertEveryPostHasOneDestination();
+        });
     }
 
     private function settlePartiallyPublishedPosts(): void
