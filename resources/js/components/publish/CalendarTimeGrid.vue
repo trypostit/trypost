@@ -233,7 +233,7 @@ watch(
                         v-if="canCreatePost && !isPastSlot(column.key, hour)"
                         type="button"
                         :aria-label="$t('calendar.new_post')"
-                        class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
+                        class="flex size-7 shrink-0 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:bg-primary-selected hover:text-primary-text focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
                         :data-testid="`calendar-add-${column.key}-${hourLabel(hour)}`"
                         @click="compose(column.key, hour)"
                     >
