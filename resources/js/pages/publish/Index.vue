@@ -718,7 +718,7 @@ const initialPost = computed<ComposerInitialPost | null>(() => {
 
 const recoveryDraft = computed<ComposerInitialDraft | null>(() => {
     const post = props.editPost;
-    if (!post || post.platform) return null;
+    if (!post || post.social_account_id) return null;
 
     return {
         content: post.content ?? '',

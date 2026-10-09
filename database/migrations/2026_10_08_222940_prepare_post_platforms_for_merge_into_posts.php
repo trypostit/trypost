@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Actions\Media\DeleteOwnedMedia;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 return new class extends Migration
 {
@@ -15,6 +15,8 @@ return new class extends Migration
      * are resolved here; anything that still needs a person stops the
      * upgrade before a single column is added.
      *
+     * - A destination whose account is gone is dropped: its channel no longer
+     *   exists, and disconnecting a channel deletes its posts.
      * - A disabled destination that never published is dropped: the column
      *   goes away and a backfill must never promote it to the post's channel.
      * - A post left without any destination becomes a draft (its content is
@@ -27,6 +29,8 @@ return new class extends Migration
     public function up(): void
     {
         DB::transaction(function (): void {
+            DB::table('post_platforms')->whereNull('social_account_id')->delete();
+
             DB::table('post_platforms')
                 ->where('enabled', false)
                 ->where('status', '!=', 'published')
@@ -96,9 +100,31 @@ return new class extends Migration
             ->pluck('id')
             ->all();
 
-        foreach (array_chunk($postIds, DeleteOwnedMedia::CHUNK) as $chunk) {
-            DeleteOwnedMedia::forPosts($chunk);
+        $paths = [];
+
+        foreach (array_chunk($postIds, 500) as $chunk) {
+            array_push($paths, ...DB::table('medias')->whereIn('post_id', $chunk)->pluck('path')->all());
+            DB::table('medias')->whereIn('post_id', $chunk)->delete();
             DB::table('posts')->whereIn('id', $chunk)->delete();
+        }
+
+        DB::afterCommit(fn () => $this->deleteUnreferencedFiles(array_values(array_unique(array_filter($paths)))));
+    }
+
+    /**
+     * Files are removed only after the deletion commits, and only when no
+     * other media row still points at them.
+     *
+     * @param  list<string>  $paths
+     */
+    private function deleteUnreferencedFiles(array $paths): void
+    {
+        foreach (array_chunk($paths, 500) as $chunk) {
+            $referenced = DB::table('medias')->whereIn('path', $chunk)->distinct()->pluck('path')->all();
+
+            foreach (array_diff($chunk, $referenced) as $path) {
+                rescue(fn (): bool => Storage::delete($path), report: false);
+            }
         }
     }
 

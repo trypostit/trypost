@@ -17,7 +17,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('List Discord text/announcement channels the bot can post to for a connected Discord server. Use the returned channel id as platforms[].meta.channel_id when creating or updating a Discord post (required to publish).')]
+#[Description('List Discord text/announcement channels the bot can post to for a connected Discord server. Use the returned channel id as meta.channel_id (destinations[].meta.channel_id in create-posts-tool) when creating or updating a Discord post (required to publish).')]
 class ListDiscordChannelsTool extends Tool
 {
     use AuthorizesMcpTool;

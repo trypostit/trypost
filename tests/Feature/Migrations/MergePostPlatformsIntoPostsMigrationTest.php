@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
-use App\Jobs\Media\DeleteMediaFiles;
 use App\Models\AnalyticsPublication;
 use App\Models\Media;
 use App\Models\Post;
@@ -13,8 +12,8 @@ use App\Models\Webhook;
 use App\Models\Workspace;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -312,20 +311,59 @@ test('prepare changes nothing when its guard stops', function () {
         ->and(DB::table('post_platforms')->where('id', $disabled)->exists())->toBeTrue();
 });
 
-test('prepare deletes published posts left without a destination, with their media', function () {
-    Queue::fake();
+test('prepare deletes published posts left without a destination, with their media files after commit', function () {
+    Storage::fake();
     $account = SocialAccount::factory()->create();
     $orphan = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
     $media = Media::factory()->create(['workspace_id' => $account->workspace_id, 'post_id' => $orphan->id, 'mediable_type' => null, 'mediable_id' => null, 'collection' => Media::COLLECTION_MEDIA]);
-    $disabledOnly = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
-    ($this->target)($disabledOnly, ['social_account_id' => $account->id, 'enabled' => false]);
+    Storage::put($media->path, 'image');
     $kept = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
     ($this->target)($kept, ['social_account_id' => $account->id, 'status' => 'published']);
+    $shared = Media::factory()->create(['workspace_id' => $account->workspace_id, 'post_id' => $orphan->id, 'mediable_type' => null, 'mediable_id' => null, 'collection' => Media::COLLECTION_MEDIA]);
+    Media::factory()->create(['workspace_id' => $account->workspace_id, 'post_id' => $kept->id, 'path' => $shared->path, 'mediable_type' => null, 'mediable_id' => null, 'collection' => Media::COLLECTION_MEDIA]);
+    Storage::put($shared->path, 'image');
+    $disabledOnly = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published, 'published_at' => now()]);
+    ($this->target)($disabledOnly, ['social_account_id' => $account->id, 'enabled' => false]);
 
     $this->prepare->up();
 
     expect(Post::query()->whereKey([$orphan->id, $disabledOnly->id])->exists())->toBeFalse()
-        ->and(Media::query()->whereKey($media->id)->exists())->toBeFalse()
+        ->and(Media::query()->whereKey([$media->id, $shared->id])->exists())->toBeFalse()
         ->and($kept->fresh())->not->toBeNull();
-    Queue::assertPushed(DeleteMediaFiles::class, fn (DeleteMediaFiles $job): bool => in_array($media->path, $job->paths, true));
+    Storage::assertMissing($media->path);
+    Storage::assertExists($shared->path);
+});
+
+test('prepare drops destinations whose account is gone, as disconnecting a channel does', function () {
+    $workspace = Workspace::factory()->create();
+    $published = Post::factory()->create(['workspace_id' => $workspace->id, 'status' => PostStatus::Published, 'published_at' => now()]);
+    ($this->target)($published, ['social_account_id' => null, 'status' => 'published']);
+    $scheduled = Post::factory()->create(['workspace_id' => $workspace->id, 'status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()]);
+    ($this->target)($scheduled, ['social_account_id' => null]);
+
+    $this->prepare->up();
+
+    expect(Post::query()->whereKey($published->id)->exists())->toBeFalse()
+        ->and($scheduled->fresh()->status)->toBe(PostStatus::Draft)
+        ->and(DB::table('post_platforms')->where('post_id', $scheduled->id)->exists())->toBeFalse();
+});
+
+test('backfill refuses a destination that is switched off', function () {
+    $account = SocialAccount::factory()->create();
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id]);
+    ($this->target)($post, ['social_account_id' => $account->id, 'enabled' => false]);
+
+    $this->backfill->up();
+})->throws(RuntimeException::class, 'switched off or lost their channel');
+
+test('drop refuses analytics publications that were not linked to their post', function () {
+    $account = SocialAccount::factory()->create();
+    $post = Post::factory()->create(['workspace_id' => $account->workspace_id, 'status' => PostStatus::Published]);
+    $target = ($this->target)($post, ['social_account_id' => $account->id, 'status' => 'published']);
+    $this->backfill->up();
+    $publication = AnalyticsPublication::factory()->create(['workspace_id' => $account->workspace_id, 'social_account_id' => $account->id]);
+    DB::table('analytics_publications')->where('id', $publication->id)->update(['post_platform_id' => $target, 'post_id' => null]);
+
+    expect(fn () => $this->drop->up())->toThrow(RuntimeException::class, 'were not linked to their posts')
+        ->and(Schema::hasTable('post_platforms'))->toBeTrue();
 });

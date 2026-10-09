@@ -624,6 +624,7 @@ test('a google business post waiting for review says google is reviewing it', fu
     waitForPublishQueueTestId($page, "post-google-review-{$inReview->id}");
 
     $page->assertSeeIn("@post-google-review-{$inReview->id}", __('posts.publish.in_google_review'))
+        ->assertNotPresent("@post-publishing-progress-{$inReview->id}")
         ->assertDontSeeIn("@post-publishing-{$inReview->id}", __('posts.publish.publishing_on', ['network' => $channel->platform->label()]))
         ->assertNoJavaScriptErrors();
 });

@@ -571,6 +571,25 @@ test('saving a zero-target legacy draft creates independent posts and removes th
         ->and(Post::where('workspace_id', $this->workspace->id)->where('content', 'Recovered caption')->count())->toBe(2);
 });
 
+test('a draft whose channel is gone opens in the composer and is recovered onto a new channel', function () {
+    $orphaned = Post::factory()->forAccount($this->socialAccount)->create(['user_id' => $this->user->id, 'status' => PostStatus::Draft, 'content' => 'Lost channel']);
+    $orphaned->forceFill(['social_account_id' => null])->save();
+
+    $this->actingAs($this->user)->get(route('app.posts.edit', $orphaned))
+        ->assertRedirect(route('app.posts.index', ['edit' => $orphaned->id]));
+
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'recover_post_id' => $orphaned->id,
+        'status' => 'draft',
+        'content' => 'Lost channel',
+        'media' => [],
+        'destinations' => [['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value, 'meta' => []]],
+    ])->assertSessionHasNoErrors();
+
+    expect(Post::find($orphaned->id))->toBeNull()
+        ->and(Post::where('workspace_id', $this->workspace->id)->where('content', 'Lost channel')->sole()->social_account_id)->toBe($this->socialAccount->id);
+});
+
 test('store post rejects invalid schedule format', function () {
     $this->actingAs($this->user)
         ->post(route('app.posts.store'), ['status' => 'scheduled', 'scheduled_at' => 'not-a-date', 'destinations' => [[
@@ -614,11 +633,12 @@ test('edit post opens its account in the composer', function () {
         );
 });
 
-test('edit does not open the composer for a post whose channel is gone', function () {
+test('edit does not open the composer for a scheduled post whose channel is gone', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
-        'status' => PostStatus::Draft,
+        'status' => PostStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
         'platform' => Platform::LinkedIn,
         'content_type' => ContentType::LinkedInPost,
     ]);

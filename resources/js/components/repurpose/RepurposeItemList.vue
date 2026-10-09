@@ -34,7 +34,11 @@ const marks: Record<RepurposeItemStatusValue, { icon: Component; class: string }
 const detail = (item: RepurposeItem): string | null => item.error ?? null;
 
 const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
-    post.platform ? post.publish_status : null;
+    post.platform
+        ? post.publish_status === PublishStatus.Rejected
+            ? PublishStatus.Failed
+            : post.publish_status
+        : null;
 </script>
 
 <template>
@@ -119,7 +123,11 @@ const postState = (post: RepurposeItemPost): PublishStatusValue | null =>
                                     : 'bg-foreground/10 text-foreground/60',
                             ]"
                         >
-                            {{ $t(`posts.status.${postState(post)}`) }}
+                            {{
+                                postState(post) === PublishStatus.PendingReview
+                                    ? $t('posts.publish.in_google_review')
+                                    : $t(`posts.status.${postState(post)}`)
+                            }}
                         </span>
 
                         <IconChevronRight class="size-3.5 text-muted-foreground transition-colors group-hover/post:text-foreground" />

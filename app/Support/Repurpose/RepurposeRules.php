@@ -66,7 +66,7 @@ class RepurposeRules
                 'required',
                 'string',
                 Rule::enum(ContentType::class),
-                new ContentTypeMatchesPlatform,
+                new ContentTypeMatchesPlatform($workspaceId),
                 fn (string $attribute, mixed $value, callable $fail) => ContentType::tryFrom((string) $value)?->supportsVideo() === false
                     ? $fail(__('repurposes.errors.destination_needs_video'))
                     : null,

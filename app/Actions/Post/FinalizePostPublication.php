@@ -34,9 +34,13 @@ class FinalizePostPublication
                 return null;
             }
 
-            if (! $post->hasDestination()) {
+            if (! $post->hasChannel() && ! $post->publish_status->isFinished()) {
                 if ($post->status !== PostStatus::Publishing) {
                     return null;
+                }
+
+                if ($post->hasDestination()) {
+                    $post->markPublicationFailed(__('posts.errors.choose_channel'));
                 }
 
                 $post->markAsFailed();

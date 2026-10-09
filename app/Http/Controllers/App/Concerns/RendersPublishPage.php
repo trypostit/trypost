@@ -111,10 +111,10 @@ trait RendersPublishPage
 
     private function canOpenComposer(Post $post): bool
     {
-        if (! $post->hasDestination()) {
+        if (! $post->hasChannel()) {
             return $post->status === PostStatus::Draft;
         }
 
-        return $post->hasChannel();
+        return true;
     }
 }

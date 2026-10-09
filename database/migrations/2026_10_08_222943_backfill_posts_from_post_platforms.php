@@ -38,6 +38,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        $unresolved = DB::table('post_platforms')->where(fn ($query) => $query->where('enabled', false)->orWhereNull('social_account_id'))->count();
+
+        if ($unresolved > 0) {
+            throw new RuntimeException("{$unresolved} destinations are switched off or lost their channel; roll back and run the migrations again from 2026_10_08_222940.");
+        }
+
         $this->clearCopiesOfVanishedTargets();
         $this->copyTargets();
         $this->linkAnalyticsPublications();

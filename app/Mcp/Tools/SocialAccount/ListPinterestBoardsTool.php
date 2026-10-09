@@ -18,7 +18,7 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 
-#[Description('List Pinterest boards for a connected Pinterest account. Use the returned board id as platforms[].meta.board_id when creating or updating a Pinterest post (required to publish).')]
+#[Description('List Pinterest boards for a connected Pinterest account. Use the returned board id as meta.board_id (destinations[].meta.board_id in create-posts-tool) when creating or updating a Pinterest post (required to publish).')]
 class ListPinterestBoardsTool extends Tool
 {
     use AuthorizesMcpTool;

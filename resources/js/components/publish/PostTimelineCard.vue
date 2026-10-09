@@ -507,6 +507,7 @@ defineExpose({ openDetails });
                 :data-testid="`post-publishing-${testKey}`"
             >
                 <span
+                    v-if="!isInGoogleReview"
                     class="absolute inset-x-0 -bottom-px h-0.5 overflow-hidden"
                     aria-hidden="true"
                     :data-testid="`post-publishing-progress-${testKey}`"

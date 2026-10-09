@@ -19,6 +19,12 @@ return new class extends Migration
             throw new RuntimeException("{$unmirrored} destinations were not copied to their posts; post_platforms was kept.");
         }
 
+        $unlinked = DB::table('analytics_publications')->whereNotNull('post_platform_id')->whereNull('post_id')->count();
+
+        if ($unlinked > 0) {
+            throw new RuntimeException("{$unlinked} analytics publications were not linked to their posts; post_platforms was kept.");
+        }
+
         Schema::table('analytics_publications', function (Blueprint $table): void {
             $table->dropForeign(['post_platform_id']);
             $table->dropUnique(['post_platform_id']);

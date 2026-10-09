@@ -23,9 +23,11 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
 
     /**
      * `$accountAttribute` names the field holding the account id; without it
-     * the rule reads the sibling `social_account_id` of the content type.
+     * the rule reads the sibling `social_account_id` of the content type. An
+     * account outside `$workspaceId` is left to the `exists` rule, so its
+     * network is never revealed.
      */
-    public function __construct(private ?string $accountAttribute = null) {}
+    public function __construct(private ?string $workspaceId, private ?string $accountAttribute = null) {}
 
     /**
      * @param  array<string, mixed>  $data
@@ -46,7 +48,7 @@ class ContentTypeMatchesPlatform implements DataAwareRule, ValidationRule
         }
 
         $contentType = ContentType::tryFrom((string) $value);
-        $account = SocialAccount::find($accountId);
+        $account = SocialAccount::query()->where('workspace_id', $this->workspaceId)->find($accountId);
 
         if (! $contentType || ! $account) {
             return;

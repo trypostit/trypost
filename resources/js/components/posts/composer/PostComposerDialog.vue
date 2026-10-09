@@ -1187,7 +1187,7 @@ const activeRemaining = (group: NetworkGroup): number | null => {
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
     for (const account of group.accounts) {
-        const prefix = props.postId
+        const prefix = props.initialPost
             ? 'meta.thread_replies'
             : `destinations.${selectedAccounts.value.indexOf(account)}.meta.thread_replies`;
         for (const [key, message] of Object.entries(errors.value)) {

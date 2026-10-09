@@ -119,8 +119,7 @@ test('clicking a sent card opens nothing and the menu opens the post details', f
     waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
 
     expect($page->script('location.href'))->toBe($before);
-    $page->assertPresent("@post-details-status-{$post->id}")
-        ->assertNotPresent('[data-testid^="post-details-target-status-"]');
+    $page->assertPresent("@post-details-status-{$post->id}");
     $page->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post')
         ->assertNoJavaScriptErrors();
 });
@@ -137,6 +136,19 @@ test('the post details deep link opens the dialog on the sent tab', function () 
         ->assertSeeIn("@post-details-status-{$post->id}", __('posts.status.published'))
         ->assertNoJavaScriptErrors();
     expect($page->script('new URLSearchParams(location.search).get("post")'))->toBe($post->id);
+});
+
+test('the post details of a google business post in review say google is reviewing it', function () {
+    [$user, $account] = postDetailsDialogSetup();
+    $channel = SocialAccount::factory()->googleBusiness()->create(['workspace_id' => $account->workspace_id, 'timezone' => 'UTC']);
+    $post = Post::factory()->forAccount($channel)->pendingReview()->create(['content' => 'Waiting for Google', 'scheduled_at' => now()->subMinute()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['post' => $post->id]));
+    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
+
+    $page->assertSeeIn("@post-details-status-{$post->id}", __('posts.publish.in_google_review'))
+        ->assertNoJavaScriptErrors();
 });
 
 test('the details media sits below the text in a single scrollable row', function (int $images, bool $overflows) {

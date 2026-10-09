@@ -8,13 +8,15 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Rules\ContentTypeMatchesPlatform;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 function runMatchesPlatformRule(string $contentType, ?string $accountId, array $extraData = []): array
 {
     $errors = [];
-    $rule = (new ContentTypeMatchesPlatform)->setData(array_merge([
+    $workspaceId = $accountId !== null && Str::isUuid($accountId) ? SocialAccount::query()->find($accountId)?->workspace_id : null;
+    $rule = (new ContentTypeMatchesPlatform($workspaceId))->setData(array_merge([
         'destinations' => [
             ['social_account_id' => $accountId, 'content_type' => $contentType],
         ],
@@ -91,7 +93,7 @@ test('reads a top-level account attribute when one is named', function () {
     $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
     $errors = [];
 
-    (new ContentTypeMatchesPlatform('social_account_id'))
+    (new ContentTypeMatchesPlatform($linkedin->workspace_id, 'social_account_id'))
         ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
         ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
             $errors[] = $message;
@@ -99,4 +101,17 @@ test('reads a top-level account attribute when one is named', function () {
 
     expect($errors)->toHaveCount(1)
         ->and($errors[0])->toContain('not compatible');
+});
+
+test('says nothing about an account from another workspace', function () {
+    $linkedin = SocialAccount::factory()->create(['platform' => Platform::LinkedIn]);
+    $errors = [];
+
+    (new ContentTypeMatchesPlatform(Workspace::factory()->create()->id, 'social_account_id'))
+        ->setData(['social_account_id' => $linkedin->id, 'content_type' => ContentType::XPost->value])
+        ->validate('content_type', ContentType::XPost->value, function (string $message) use (&$errors): void {
+            $errors[] = $message;
+        });
+
+    expect($errors)->toBe([]);
 });

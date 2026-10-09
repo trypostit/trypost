@@ -9,13 +9,13 @@ paths:
 # Post
 
 ## FinalizePostPublication is the only post settler
-handle() takes the Post. Every path that can finish the post's publication must call it: PublishToSocialPlatform, ReconcileGoogleBusinessPost, RecoverStuckPosts, PublishPost (also for a post without a channel) and PublishPost::failed, and AbandonGoogleBusinessReview. It settles from `posts.publish_status` (published → Published; failed/rejected → Failed); a post without a destination is a no-op unless it is Publishing, which becomes Failed so it does not sit non-editable forever. Do not mark the post Published / Failed by hand outside Finalize. Finalize keeps the publish time the publisher wrote (`markAsPublished()` only fills `published_at` when it is empty).
+handle() takes the Post. Every path that can finish the post's publication must call it: PublishToSocialPlatform, ReconcileGoogleBusinessPost, RecoverStuckPosts, PublishPost (also for a post without a channel) and PublishPost::failed. It settles from `posts.publish_status` (published → Published; failed/rejected → Failed); a post without a channel whose publication is not finished is a no-op unless it is Publishing, which becomes Failed (with `posts.errors.choose_channel` when it still has a destination snapshot) so it does not sit non-editable forever. Do not mark the post Published / Failed by hand outside Finalize. Finalize keeps the publish time the publisher wrote (`markAsPublished()` only fills `published_at` when it is empty).
 
 ## Finalize is idempotent once the post is settled
 handle() lockForUpdates the post and returns without notifying when status is already Published or Failed (Status::isSettled()). RecoverStuckPosts and ReconcileGoogleBusinessPost can both finish the post at the 24h ceiling; the second call must not send a second email. Dispatch SendNotification only after the transaction commits.
 
-## Abandoning a Google Business review goes through AbandonGoogleBusinessReview
-Abandoning a GBP pending_review (disconnect, recover sweep) goes through AbandonGoogleBusinessReview, which rejects the publication and lets Finalize settle the post.
+## Google Business reviews end through reconcile or the 24h ceiling
+A GBP pending_review ends when ReconcileGoogleBusinessPost settles it or when RecoverStuckPosts::failExpiredReview rejects it at the 24h ceiling (prunes the JPEG, then Finalize). Disconnecting a channel deletes its posts, so no review is left without an account.
 
 ## One destination per post, stored on the post
 A post has at most one destination, stored on the post itself (`posts.social_account_id`, `platform`, `content_type`, `meta`, and the publication fields). Create through CreatePosts/CreateChannelPost; never reintroduce a targets table or grouped writes. Editing uses UpdatePost and may change content type within the same account, never the social account. A legacy draft without a channel (platform null) stays editable as a draft (content, media, labels) and is turned into a channel post only through RecoverEmptyDraft; scheduling or publishing it fails with posts.errors.choose_channel.

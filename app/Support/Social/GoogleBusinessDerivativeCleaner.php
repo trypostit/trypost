@@ -20,7 +20,9 @@ class GoogleBusinessDerivativeCleaner
      */
     public static function pathFor(Post $post): string
     {
-        return self::DIRECTORY.'/'.($post->legacy_target_id ?? $post->id).'.jpg';
+        $fileName = $post->legacy_target_id ?? $post->id;
+
+        return self::DIRECTORY."/{$fileName}.jpg";
     }
 
     public function cleanup(Post $post): void

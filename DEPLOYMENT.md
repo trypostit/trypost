@@ -30,10 +30,11 @@ deixa de existir, pode sobrar para o código novo.
    php artisan migrate --force
    ```
    As quatro migrations novas (`2026_10_08_2229*`) devem terminar sem erro. A
-   primeira resolve sozinha os restos do split do 2.0: apaga os destinos
-   desligados que nunca publicaram, transforma em rascunho os posts não
+   primeira resolve sozinha os restos do split do 2.0: apaga os destinos cuja
+   conta sumiu e os destinos desligados que nunca publicaram, transforma em rascunho os posts não
    publicados sem canal, apaga (com a mídia, sem webhook) os posts publicados sem
-   canal e resolve os `partially_published` com um destino só. Ela **para**, sem
+   canal (os arquivos só depois do commit, e só os que nenhuma outra mídia usa)
+   e resolve os `partially_published` com um destino só. Ela **para**, sem
    mudar nada, se ainda houver: post com mais de um destino, destino desligado
    que publicou, `partially_published` com destino em andamento ou destino de
    outro workspace. A mensagem diz quantos de cada.
@@ -77,6 +78,13 @@ deixa de existir, pode sobrar para o código novo.
    novo até o Redis não ter nada em `queues:*:delayed` nem `queues:*:reserved`.
    Confirme que não sobrou comando agendado rodando:
    `ps -ef | grep "[a]rtisan" | grep -v horizon`.
+   E que nenhum post ficou publicando sem job (deve dar 0; o que sobrar o
+   `RecoverStuckPosts` falharia depois de 1 h):
+   ```sql
+   select count(*) from post_platforms
+   where status in ('publishing', 'retrying') and retry_at is null
+     and updated_at > now() - interval '1 hour';
+   ```
 3. Deploy pelo Forge, com o build **antes** do `migrate`, para um build quebrado
    falhar antes de qualquer escrita:
    `composer install` → `artisan optimize` → `npm ci && npm run build` →

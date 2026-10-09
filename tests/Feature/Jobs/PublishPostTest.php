@@ -80,6 +80,20 @@ test('publish post sends nothing to a network for a post without a channel', fun
     Queue::assertNotPushed(PublishToSocialPlatform::class);
 });
 
+test('publish post fails a post whose channel is gone right away', function () {
+    Queue::fake();
+    $post = Post::factory()->forAccount($this->socialAccount)->scheduled()->create(['user_id' => $this->user->id]);
+    $post->forceFill(['social_account_id' => null])->save();
+
+    (new PublishPost($post->fresh()))->handle();
+
+    expect($post->fresh())
+        ->status->toBe(PostStatus::Failed)
+        ->publish_status->toBe(PublishStatus::Failed)
+        ->error_message->toBe(__('posts.errors.choose_channel'));
+    Queue::assertNotPushed(PublishToSocialPlatform::class);
+});
+
 test('publish post failed leaves the post open while the publication is still unfinished', function () {
     Queue::fake();
 

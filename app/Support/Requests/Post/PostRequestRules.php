@@ -67,7 +67,7 @@ class PostRequestRules
                 'nullable',
                 'string',
                 Rule::in(array_column(ContentType::cases(), 'value')),
-                new ContentTypeMatchesPlatform('social_account_id'),
+                new ContentTypeMatchesPlatform($workspace->id, 'social_account_id'),
             ],
             ...PostPlatformMetaRules::rules(),
             'scheduled_at' => ['nullable', 'date', 'after:now', 'before:2038-01-19'],
