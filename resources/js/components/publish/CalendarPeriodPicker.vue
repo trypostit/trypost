@@ -191,7 +191,7 @@ defineExpose({ missingTitleWidth });
             {{ $t('calendar.today') }}
         </Button>
         <nav
-            class="inline-flex h-9 shrink-0 items-center gap-1 rounded-lg border border-border-strong bg-card p-[3px]"
+            class="inline-flex h-8 shrink-0 items-center gap-1 rounded-lg border border-border-strong bg-card p-[3px]"
             :aria-label="$t('calendar.title')"
         >
             <Link
@@ -202,7 +202,7 @@ defineExpose({ missingTitleWidth });
                 preserve-state
                 preserve-scroll
                 :aria-current="view === option ? 'page' : undefined"
-                class="inline-flex h-7 items-center rounded-md px-3 text-sm font-medium transition-control"
+                class="inline-flex h-6 items-center rounded-md border border-transparent px-2 text-sm font-medium transition-control"
                 :class="
                     view === option
                         ? 'bg-primary-selected text-primary-text'
