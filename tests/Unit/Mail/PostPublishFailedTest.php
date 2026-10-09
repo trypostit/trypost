@@ -45,3 +45,12 @@ test('failed email shows the account and the reason when google rejects a post i
     $mail->assertSeeInHtml('Acme Bakery');
     $mail->assertSeeInHtml('Google rejected this post in review.');
 });
+
+test('failed email shows no channel for a post without one', function () {
+    $post = Post::factory()->failed()->create(['error_message' => 'No channel to publish to.']);
+
+    $mail = new PostPublishFailed($post);
+
+    $mail->assertDontSeeInHtml('images/accounts/', false);
+    $mail->assertDontSeeInHtml('No channel to publish to.');
+});

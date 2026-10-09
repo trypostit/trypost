@@ -31,7 +31,6 @@ class PostPublishFailed extends Mailable implements ShouldQueue
     public function content(): Content
     {
         $this->post->loadMissing('socialAccount');
-        $failed = $this->post->publish_status->isFailure() && $this->post->hasDestination();
 
         return new Content(
             view: 'mail.post-publish-failed',
@@ -39,7 +38,7 @@ class PostPublishFailed extends Mailable implements ShouldQueue
                 'title' => __('mail.post_publish_failed.title'),
                 'previewText' => __('mail.post_publish_failed.preview'),
                 'workspaceName' => $this->post->workspace->name,
-                'publication' => $failed ? [
+                'publication' => $this->post->hasDestination() ? [
                     'accountName' => $this->post->display_name,
                     'platform' => $this->post->platform,
                     'error' => $this->post->error_message,
