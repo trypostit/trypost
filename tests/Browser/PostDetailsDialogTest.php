@@ -97,7 +97,7 @@ function postDetailsDialogPost(SocialAccount $account, int $images = 0, array $m
     return $post;
 }
 
-test('clicking a sent card opens nothing and the menu opens the post details', function () {
+test('clicking a sent card opens the post details, and so does the menu', function () {
     [$user, $account] = postDetailsDialogSetup();
     $post = postDetailsDialogPost($account);
     $this->actingAs($user);
@@ -107,21 +107,20 @@ test('clicking a sent card opens nothing and the menu opens the post details', f
     $before = $page->script('location.href');
 
     $page->click("@post-open-{$post->id}");
-    $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
+    waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
 
-    expect($page->script('location.href'))->toBe($before)
-        ->and($page->script("document.querySelector('[data-testid=\"post-open-{$post->id}\"]').tagName"))->toBe('DIV');
-    $page->assertNotPresent("@post-details-{$post->id}");
+    expect($page->script('location.href'))->toBe($before);
+    $page->assertPresent("@post-details-status-{$post->id}")
+        ->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post');
 
+    $page->keys("@post-details-{$post->id}", 'Escape');
+    waitForPostDetailsDialogCondition($page, "!document.querySelector('[data-testid=\"post-details-{$post->id}\"]')");
     $page->click("@post-card-menu-{$post->id}");
     waitForPostDetailsDialogTestId($page, "post-details-open-{$post->id}");
     $page->click("@post-details-open-{$post->id}");
     waitForPostDetailsDialogTestId($page, "post-details-{$post->id}");
 
-    expect($page->script('location.href'))->toBe($before);
-    $page->assertPresent("@post-details-status-{$post->id}");
-    $page->assertSeeIn("@post-details-text-{$post->id}", 'Details dialog post')
-        ->assertNoJavaScriptErrors();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('the post details deep link opens the dialog on the sent tab', function () {
