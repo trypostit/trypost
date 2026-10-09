@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router, usePage } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import {
     IconArrowsMaximize,
     IconCircleDashedPlus,
@@ -306,11 +306,6 @@ const openDetails = (): void => {
     detailsOpen.value = true;
 };
 
-const openDetailsFromCard = (): void => {
-    if (!isEditable.value) {
-        openDetails();
-    }
-};
 
 const recurrenceOpen = ref(false);
 
@@ -319,6 +314,16 @@ const recurrencePost = ref<PostCard>(props.post);
 
 const edit = (post: PostCard = props.post): void => {
     router.visit(editUrl(post));
+};
+
+const open = (): void => {
+    if (isEditable.value) {
+        edit();
+
+        return;
+    }
+
+    openDetails();
 };
 
 const runPostAction = (action: PostCardMenuAction, post: PostCard): void => {
@@ -555,13 +560,11 @@ defineExpose({ openDetails });
                 class="relative flex gap-4 p-4 md:gap-6"
                 :class="{ 'opacity-70': isPublishing && !popover }"
             >
-                <component
-                    :is="isEditable ? Link : 'div'"
-                    :href="isEditable ? editUrl(post) : undefined"
+                <div
                     :draggable="draggable ? 'false' : undefined"
                     class="flex min-w-0 flex-1 cursor-pointer flex-col gap-4 outline-none after:absolute after:inset-0 focus-visible:after:outline-2 focus-visible:after:outline-offset-[-2px] focus-visible:after:outline-ring"
                     :data-testid="`post-open-${testKey}`"
-                    @click="openDetailsFromCard"
+                    @click="open"
                 >
                     <div class="flex items-center gap-3">
                         <ChannelAvatar
@@ -618,7 +621,7 @@ defineExpose({ openDetails });
                     >
                         {{ preview || $t('calendar.no_content') }}
                     </p>
-                </component>
+                </div>
                 <div
                     v-if="thumbnails.length"
                     class="relative z-10 grid w-24 shrink-0 content-start gap-2"
