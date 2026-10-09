@@ -65,9 +65,9 @@ class SyncOwnedMedia
         $workspace = $owner->workspace;
         $items = self::withoutRepeats(array_values($items));
         $replies = $locked instanceof Post ? ThreadReplies::of($locked->meta) : [];
-        $replyItems = self::replyMedia($replies);
-        $ids = self::column([...$items, ...$replyItems], 'id');
-        $uploadTokens = self::column([...$items, ...$replyItems], 'upload_token');
+        $submitted = [...$items, ...self::replyMedia($replies)];
+        $ids = self::column($submitted, 'id');
+        $uploadTokens = self::column($submitted, 'upload_token');
         self::lockRows($workspace->id, $ownerColumn, $owner->getKey(), $ids, $uploadTokens);
 
         $rows = ResolveWorkspaceMedia::execute($workspace, $ids, lockForUpdate: true);
@@ -114,15 +114,13 @@ class SyncOwnedMedia
         };
 
         $final = $sync($items, $errorKey);
-        $replyErrorKey = Str::beforeLast($errorKey, 'media');
-        $replies = array_map(
-            fn (array $reply, int $index): array => [
+        $replyErrorKey = Str::replaceLast('media', 'meta.thread_replies', $errorKey);
+        $replies = collect($replies)
+            ->map(fn (array $reply, int $index): array => [
                 ...$reply,
-                'media' => $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}meta.thread_replies.{$index}.media"),
-            ],
-            $replies,
-            array_keys($replies),
-        );
+                'media' => $sync(self::withoutRepeats($reply['media']), "{$replyErrorKey}.{$index}.media"),
+            ])
+            ->all();
         $kept = self::column([...$final, ...self::replyMedia($replies)], 'id');
 
         DeleteOwnedMedia::forRows($owner->ownedMedia()->whereNotIn('id', $kept)->pluck('id')->all());

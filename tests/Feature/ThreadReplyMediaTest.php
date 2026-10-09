@@ -86,6 +86,23 @@ test('a reply takes the media rules of a post on its network', function () {
     }
 });
 
+test('editing a reply with a media that no longer exists fails on that reply item', function () {
+    $post = threadReplyMediaPost($this, ['Two']);
+    $image = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
+    $item = MediaItem::fromMedia($image)->toArray();
+    $image->delete();
+
+    try {
+        UpdatePost::execute($this->workspace, $post->fresh(), [
+            'status' => 'draft',
+            'meta' => ['thread_replies' => [['text' => 'Two', 'media' => [$item]]]],
+        ], $this->user);
+        $this->fail('A reply media that was deleted should not save.');
+    } catch (ValidationException $e) {
+        expect($e->errors())->toHaveKey('meta.thread_replies.0.media.0');
+    }
+});
+
 test('removing a reply media deletes its row and appending to the root keeps the reply media', function () {
     $replyImage = Media::factory()->stored()->temporaryUpload($this->workspace)->create();
     $post = threadReplyMediaPost($this, [['text' => 'Two', 'media' => [MediaItem::fromMedia($replyImage)->toArray()]]]);
