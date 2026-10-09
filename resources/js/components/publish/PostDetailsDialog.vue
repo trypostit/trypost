@@ -264,16 +264,16 @@ const siblingMoment = (sibling: PostCard): string | null => {
 <template>
     <Dialog v-model:open="open">
         <DialogContent
-            class="gap-0 p-0"
+            class="gap-0 p-0 sm:overflow-hidden"
             :class="
                 isGrouped && !railCollapsed ? 'sm:max-w-4xl' : 'sm:max-w-xl'
             "
             :data-testid="`post-details-${testKey}`"
         >
-            <div class="flex min-h-0 min-w-0 flex-col sm:flex-row">
+            <div class="flex min-h-0 min-w-0 flex-col sm:max-h-[85dvh] sm:flex-row">
                 <aside
                     v-if="showRail && !railCollapsed"
-                    class="flex shrink-0 flex-col gap-2 border-b border-border p-4 sm:w-64 sm:border-e sm:border-b-0"
+                    class="flex shrink-0 flex-col gap-2 border-b border-border p-4 sm:w-64 sm:overflow-y-auto sm:border-e sm:border-b-0"
                     :data-testid="`post-details-rail-${testKey}`"
                 >
                     <div class="flex items-center justify-between gap-2">
@@ -352,7 +352,10 @@ const siblingMoment = (sibling: PostCard): string | null => {
                     <Skeleton class="h-10 w-full" />
                 </div>
 
-                <div class="flex min-w-0 flex-1 flex-col gap-4 px-6 pt-6 pb-4">
+                <div
+                    class="flex min-w-0 flex-1 flex-col gap-4 px-6 pt-6 pb-4 sm:overflow-y-auto"
+                    :data-testid="`post-details-body-${testKey}`"
+                >
                     <DialogHeader class="pe-8">
                         <div class="flex items-center gap-2">
                             <Button

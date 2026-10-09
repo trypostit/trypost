@@ -124,3 +124,24 @@ test('post details of a post created alone has no rail', function () {
         ->assertMissing("@post-details-rail-expand-{$post->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('the channels rail stays in place while only the post details scroll', function () {
+    [$user, $posts] = detailsGroupSetup(3);
+    [$first] = $posts->all();
+    $first->update(['content' => collect(range(1, 80))->map(fn (int $line): string => "<p>Line {$line} of a long post</p>")->implode('')]);
+    $this->actingAs($user);
+    $page = visit(route('app.posts.index'));
+    $page->resize(1440, 900);
+    openDetailsFromCard($page, $first->id);
+    waitForDetailsGroupTestId($page, "post-details-rail-{$first->id}");
+
+    waitForDetailsGroupTestId($page, "post-details-see-more-{$first->id}");
+    $page->click("@post-details-see-more-{$first->id}");
+    $railTop = $page->script("document.querySelector('[data-testid=\"post-details-rail-{$first->id}\"]').getBoundingClientRect().top");
+    $page->script("document.querySelector('[data-testid=\"post-details-body-{$first->id}\"]').scrollTop = 100000");
+
+    expect($page->script("document.querySelector('[data-testid=\"post-details-body-{$first->id}\"]').scrollTop"))->toBeGreaterThan(0)
+        ->and($page->script("document.querySelector('[data-testid=\"post-details-{$first->id}\"]').scrollTop"))->toBe(0)
+        ->and($page->script("document.querySelector('[data-testid=\"post-details-rail-{$first->id}\"]').getBoundingClientRect().top"))->toBe($railTop);
+    $page->assertNoJavaScriptErrors();
+});
