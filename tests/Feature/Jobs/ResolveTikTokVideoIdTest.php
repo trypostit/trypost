@@ -83,6 +83,27 @@ test('a post TikTok has not reported yet keeps its publish id and records the ch
     Http::assertSentCount(1);
 });
 
+test('a video held by another post records the check so the sweep waits before asking again', function () {
+    $post = awaitingTikTokPost(['published_at' => now()->subMinutes(30)]);
+    app(SyncTryPostPublication::class)->handle($post);
+    app(SyncTryPostPublication::class)->handle(awaitingTikTokPost(['platform_post_id' => '7694860629638940686']));
+
+    Http::fake([$this->statusUrl => Http::response([
+        'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7694860629638940686']],
+        'error' => ['code' => 'ok'],
+    ])]);
+
+    expect(fn () => resolveTikTokVideoId($post))->toThrow(LogicException::class);
+
+    expect($post->fresh())
+        ->platform_post_id->toBe('v_pub_url~v2-1.pending')
+        ->last_reconciled_at->not->toBeNull();
+
+    $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
+
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
+});
+
 test('posts that cannot get a video id are never sent to TikTok', function (array $attributes) {
     Http::fake();
 

@@ -1448,7 +1448,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
             ->push([
                 'data' => [
                     'status' => 'PUBLISH_COMPLETE',
-                    'publicaly_available_post_id' => ['video_123'],
+                    'publicaly_available_post_id' => ['7000000000000000123'],
                 ],
             ]),
         '*' => Http::response('fake-image-content', 200),
@@ -1459,7 +1459,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
     $platform->refresh();
 
     expect($platform->publish_status)->toBe(PlatformStatus::Published)
-        ->and($platform->platform_post_id)->toBe('video_123')
+        ->and($platform->platform_post_id)->toBe('7000000000000000123')
         ->and($platform->error_context)->toBeNull()
         ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty()
         ->and(Http::recorded(fn ($request) => str_contains($request->url(), '/post/publish/content/init/')))

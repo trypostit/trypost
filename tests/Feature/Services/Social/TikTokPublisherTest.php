@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Media\MediaOptimizer;
 use App\Services\Social\TikTokPublisher;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
@@ -312,7 +313,7 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
             ->push([
                 'data' => [
                     'status' => 'PUBLISH_COMPLETE',
-                    'publicaly_available_post_id' => ['video_123'],
+                    'publicaly_available_post_id' => ['7000000000000000123'],
                 ],
             ]),
         '*' => Http::response('fake-image-content', 200),
@@ -334,7 +335,7 @@ test('tiktok publisher keeps photo derivatives when status fetch reports an expi
 
     $result = $this->publisher->publish($this->post->fresh());
 
-    expect($result['id'])->toBe('video_123');
+    expect($result['id'])->toBe('7000000000000000123');
 
     foreach ($paths as $path) {
         Storage::assertMissing($path);
@@ -396,7 +397,7 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
         $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
-                'publicaly_available_post_id' => ['video_123'],
+                'publicaly_available_post_id' => ['7000000000000000123'],
             ],
         ]),
     ]);
@@ -404,8 +405,8 @@ test('tiktok publisher resumes an existing publish without creating a duplicate'
     $result = $this->publisher->publish($this->post->fresh());
 
     expect($result)->toBe([
-        'id' => 'video_123',
-        'url' => 'https://www.tiktok.com/@tiktoker/video/video_123',
+        'id' => '7000000000000000123',
+        'url' => 'https://www.tiktok.com/@tiktoker/video/7000000000000000123',
     ]);
 
     Http::assertSentCount(1);
@@ -463,7 +464,7 @@ test('tiktok publisher keeps photo derivatives while pending and prunes them on 
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::sequence()
             ->push(['data' => ['status' => 'PROCESSING_DOWNLOAD']])
-            ->push(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['video_123']]]),
+            ->push(['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7000000000000000123']]]),
     ]);
 
     expect(fn () => $this->publisher->publish($this->post->fresh()))
@@ -475,7 +476,7 @@ test('tiktok publisher keeps photo derivatives while pending and prunes them on 
 
     $result = $this->publisher->publish($this->post->fresh());
 
-    expect($result['id'])->toBe('video_123');
+    expect($result['id'])->toBe('7000000000000000123');
     Storage::assertMissing($derivativePath);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
@@ -1553,7 +1554,18 @@ test('tiktok publisher reads the public video id TikTok reports for a publish id
     'still in moderation' => [['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []]], 200, null],
     'status fetch rejected' => [['error' => ['code' => 'access_token_invalid']], 401, null],
     'status fetch unavailable' => [['error' => ['code' => 'internal_error']], 503, null],
+    'not a video id' => [['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['v_pub_url~v2-1.pending']]], 200, null],
 ]);
+
+test('tiktok publisher does not read the video id when TikTok cannot be reached', function () {
+    $this->post->forceFill(['platform_post_id' => 'v_pub_url~v2-1.pending'])->save();
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => fn () => throw new ConnectionException('Connection timed out'),
+    ]);
+
+    expect($this->publisher->publicVideoId($this->post))->toBeNull();
+});
 
 test('tiktok publisher does not read the video id when the token refresh is rejected', function () {
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);

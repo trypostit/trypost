@@ -340,9 +340,6 @@ class Post extends Model
     }
 
     /**
-     * Posts the network confirmed as published.
-     */
-    /**
      * Posts TryPost published to TikTok.
      */
     public function scopePublishedToTikTok(Builder $query): Builder
@@ -352,6 +349,9 @@ class Post extends Model
             ->publicationPublished();
     }
 
+    /**
+     * Posts the network confirmed as published.
+     */
     public function scopePublicationPublished(Builder $query): Builder
     {
         return $query->where('posts.publish_status', PublishStatus::Published);

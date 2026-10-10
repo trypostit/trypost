@@ -19,6 +19,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -117,10 +118,14 @@ class TikTokPublisher
 
         $this->accessToken = $account->access_token;
 
-        $response = $this->getHttpClient()
-            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
-                'publish_id' => $post->platform_post_id,
-            ]);
+        try {
+            $response = $this->getHttpClient()
+                ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                    'publish_id' => $post->platform_post_id,
+                ]);
+        } catch (ConnectionException) {
+            return null;
+        }
 
         return $response->successful() ? $this->videoIdFrom((array) $response->json('data', [])) : null;
     }
@@ -527,7 +532,9 @@ class TikTokPublisher
      */
     private function videoIdFrom(array $statusData): ?string
     {
-        return transform(data_get($statusData, 'publicaly_available_post_id.0'), fn (mixed $id): string => (string) $id);
+        $videoId = (string) data_get($statusData, 'publicaly_available_post_id.0');
+
+        return ctype_digit($videoId) ? $videoId : null;
     }
 
     public static function postUrl(SocialAccount $account, ?string $postId = null): ?string

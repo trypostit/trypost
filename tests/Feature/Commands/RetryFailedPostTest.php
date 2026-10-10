@@ -304,7 +304,7 @@ test('a TikTok retry with a publish_id resumes instead of calling init', functio
         $api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
-                'publicaly_available_post_id' => ['video_123'],
+                'publicaly_available_post_id' => ['7000000000000000123'],
             ],
         ]),
     ]);
@@ -312,7 +312,7 @@ test('a TikTok retry with a publish_id resumes instead of calling init', functio
     (new PublishToSocialPlatform($failedTikTok->fresh()))->handle();
 
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Published)
-        ->and($failedTikTok->fresh()->platform_post_id)->toBe('video_123');
+        ->and($failedTikTok->fresh()->platform_post_id)->toBe('7000000000000000123');
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/init/'));
 });
@@ -491,7 +491,7 @@ test('a TikTok retry after a remote FAILED starts a new publish', function () {
         $api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
                 'status' => 'PUBLISH_COMPLETE',
-                'publicaly_available_post_id' => ['video_456'],
+                'publicaly_available_post_id' => ['7000000000000000456'],
             ],
         ]),
     ]);
@@ -499,7 +499,7 @@ test('a TikTok retry after a remote FAILED starts a new publish', function () {
     (new PublishToSocialPlatform($failedTikTok->fresh()))->handle();
 
     expect($failedTikTok->fresh()->publish_status)->toBe(PlatformStatus::Published)
-        ->and($failedTikTok->fresh()->platform_post_id)->toBe('video_456');
+        ->and($failedTikTok->fresh()->platform_post_id)->toBe('7000000000000000456');
 
     Http::assertSent(fn ($request) => str_contains($request->url(), '/init/'));
 });

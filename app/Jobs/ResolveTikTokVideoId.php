@@ -45,13 +45,10 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
         }
 
         $videoId = $publisher->publicVideoId($this->post);
+        $this->post->writePublication(['last_reconciled_at' => now()]);
 
-        if (blank($videoId)) {
-            $this->post->writePublication(['last_reconciled_at' => now()]);
-
-            return;
+        if (filled($videoId)) {
+            $assignVideoId->handle($this->post, $videoId);
         }
-
-        $assignVideoId->handle($this->post, $videoId);
     }
 }
