@@ -286,3 +286,29 @@ test('mastodon tracks a status, never a reply, so a thread is its root', functio
 
     expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['thread-root']);
 });
+
+test('bluesky stops at the cutoff even when the older records are replies', function () {
+    $pds = 'https://pds.example';
+    $root = ['uri' => 'at://did:plc:alice/app.bsky.feed.post/root', 'cid' => 'cid-root'];
+    Http::fake([
+        "{$pds}/xrpc/com.atproto.repo.listRecords*" => Http::response([
+            'records' => [[
+                'uri' => 'at://did:plc:alice/app.bsky.feed.post/old-reply',
+                'cid' => 'cid-old-reply',
+                'value' => ['$type' => 'app.bsky.feed.post', 'text' => 'old reply', 'createdAt' => '2025-01-01T12:00:00Z', 'reply' => ['root' => $root, 'parent' => $root]],
+            ]],
+            'cursor' => 'repo-next',
+        ]),
+        config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+    ]);
+    $account = SocialAccount::factory()->bluesky()->create([
+        'platform_user_id' => 'did:plc:alice',
+        'meta' => ['service' => $pds],
+    ]);
+
+    $page = app(BlueskyPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-09-01', 'UTC'));
+
+    expect($page->publications)->toBe([])
+        ->and($page->nextCursor)->toBeNull()
+        ->and($page->providerExhausted)->toBeTrue();
+});

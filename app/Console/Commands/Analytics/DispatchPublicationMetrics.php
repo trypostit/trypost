@@ -41,7 +41,7 @@ class DispatchPublicationMetrics extends Command
                     ->where('social_account_id', $account->id)
                     ->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES))
                     ->where(fn (Builder $query): Builder => $query
-                        ->where(fn (Builder $due) => $this->due($due, $account->platform, $now, $windowStart))
+                        ->where(fn (Builder $due): Builder => $this->whereDueForRead($due, $account->platform, $now, $windowStart))
                         ->orWhereDoesntHave('dailySnapshots'))
                     ->where(function ($query) use ($now): void {
                         $query->where('content_type', '!=', PublicationContentType::Story)
@@ -61,9 +61,9 @@ class DispatchPublicationMetrics extends Command
     /**
      * Posts the daily run reads again: every day of the window, or only the scheduled ages on X.
      */
-    private function due(Builder $query, Platform $platform, CarbonImmutable $now, CarbonImmutable $windowStart): void
+    private function whereDueForRead(Builder $query, Platform $platform, CarbonImmutable $now, CarbonImmutable $windowStart): Builder
     {
-        $query->when(
+        return $query->when(
             SyncCadence::metricsDays($platform),
             fn (Builder $scheduled, array $ages): Builder => collect($ages)->reduce(
                 fn (Builder $scheduled, int $age): Builder => $scheduled->orWhereBetween('provider_published_at', [
