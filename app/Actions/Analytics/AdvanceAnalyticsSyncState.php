@@ -17,7 +17,8 @@ use Illuminate\Support\Facades\DB;
 
 class AdvanceAnalyticsSyncState
 {
-    private const X_TIMELINE_LIMIT = 3200;
+    /** X serves only the 800 most recent posts of a timeline read with exclude=replies. */
+    private const X_TIMELINE_LIMIT = 800;
 
     public function __construct(
         private readonly UpsertAnalyticsPublication $publications,
@@ -174,7 +175,7 @@ class AdvanceAnalyticsSyncState
                 'last_success_at' => CarbonImmutable::now('UTC'),
                 'last_error_category' => match (true) {
                     $hadProviderLimit => 'provider_limited',
-                    $xTimelineLimited => 'x_timeline_3200',
+                    $xTimelineLimited => 'x_timeline_limit',
                     default => $page->partialReason,
                 },
             ]);
