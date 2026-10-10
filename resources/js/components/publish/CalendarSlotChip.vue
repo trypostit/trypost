@@ -18,7 +18,7 @@ const props = withDefaults(
         layout?: 'chip' | 'agenda';
         compact?: boolean;
     }>(),
-    { layout: 'chip', compact: false },
+    { layout: 'chip' },
 );
 
 const time = computed(() =>
