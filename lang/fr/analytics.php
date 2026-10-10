@@ -399,8 +399,7 @@ return [
         'sync' => [
             'button' => 'État de la synchro',
             'title' => 'Comment les Insights sont mis à jour',
-            'new_posts' => 'Les nouveaux posts sont récupérés :interval sur chaque canal, et :x_interval sur X.',
-            'every_hours' => '{1} toutes les heures|[2,*] toutes les :count heures',
+            'new_posts' => 'Les nouveaux posts sont récupérés chaque jour.',
             'metrics' => 'Les métriques sont actualisées jusqu\'à :days jours après la publication.',
             'followers' => 'Le nombre d\'abonnés est enregistré une fois par jour.',
             'last_sync' => 'Dernière synchro :time',

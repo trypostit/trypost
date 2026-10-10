@@ -399,8 +399,7 @@ return [
         'sync' => [
             'button' => 'Sync status',
             'title' => 'How Insights stay updated',
-            'new_posts' => 'New posts are picked up :interval on each channel, and :x_interval on X.',
-            'every_hours' => '{1} every hour|[2,*] every :count hours',
+            'new_posts' => 'New posts are picked up daily.',
             'metrics' => 'Post metrics refresh for up to :days days after publishing.',
             'followers' => 'Follower counts are saved once a day.',
             'last_sync' => 'Last synced :time',

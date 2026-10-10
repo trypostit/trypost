@@ -399,8 +399,7 @@ return [
         'sync' => [
             'button' => 'Synchronisatiestatus',
             'title' => 'Zo blijven Insights actueel',
-            'new_posts' => 'Nieuwe berichten worden :interval per kanaal opgehaald, en :x_interval op X.',
-            'every_hours' => '{1} elk uur|[2,*] elke :count uur',
+            'new_posts' => 'Nieuwe berichten worden dagelijks opgehaald.',
             'metrics' => 'Statistieken worden tot :days dagen na het plaatsen vernieuwd.',
             'followers' => 'Het aantal volgers wordt eenmaal per dag opgeslagen.',
             'last_sync' => 'Laatst gesynchroniseerd :time',

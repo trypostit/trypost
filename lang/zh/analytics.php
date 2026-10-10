@@ -399,8 +399,7 @@ return [
         'sync' => [
             'button' => '同步状态',
             'title' => 'Insights 如何保持更新',
-            'new_posts' => '每个频道:interval获取一次新帖子，X 为:x_interval一次。',
-            'every_hours' => '{1} 每小时|[2,*] 每 :count 小时',
+            'new_posts' => '新帖子每天同步一次。',
             'metrics' => '帖子指标在发布后最多 :days 天内持续刷新。',
             'followers' => '粉丝数每天保存一次。',
             'last_sync' => '上次同步 :time',
