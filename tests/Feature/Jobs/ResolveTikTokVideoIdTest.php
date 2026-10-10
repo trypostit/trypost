@@ -143,7 +143,7 @@ test('a post deleted before its check runs drops the job without failing it', fu
     Http::assertNothingSent();
 });
 
-test('the sweep asks for a new post on every run, then hourly, then daily, for a month', function (int $publishedMinutesAgo, ?int $checkedMinutesAgo, bool $dispatched) {
+test('the sweep asks again for a new post on every run, then hourly, then daily, for a month', function (int $publishedMinutesAgo, ?int $checkedMinutesAgo, bool $dispatched) {
     $post = awaitingTikTokPost(['published_at' => now()->subMinutes($publishedMinutesAgo)]);
     $post->forceFill([
         'last_reconciled_at' => transform($checkedMinutesAgo, fn (int $minutes): CarbonImmutable => now()->subMinutes($minutes)),
@@ -156,8 +156,8 @@ test('the sweep asks for a new post on every run, then hourly, then daily, for a
         : Queue::assertNotPushed(ResolveTikTokVideoId::class);
 })->with([
     'never checked' => [2, null, true],
-    'new, checked 3 minutes ago' => [30, 3, false],
-    'new, checked 5 minutes ago' => [30, 5, true],
+    'new, checked 9 minutes ago' => [30, 9, false],
+    'new, checked 10 minutes ago' => [30, 10, true],
     'first day, checked 30 minutes ago' => [120, 30, false],
     'first day, checked an hour ago' => [120, 60, true],
     'older, checked 2 hours ago' => [3 * 1440, 120, false],
@@ -196,14 +196,14 @@ test('the sweep skips posts whose channel is not connected', function (Status $s
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 })->with([Status::Disconnected, Status::TokenExpired]);
 
-test('the sweep runs every minute on one server', function () {
+test('the sweep runs every fifteen minutes on one server', function () {
     $event = collect(app(Schedule::class)->events())
         ->sole(fn (Event $event): bool => str_contains((string) $event->command, 'social:resolve-tiktok-video-ids'));
 
-    foreach (['12:00', '12:01', '12:07', '23:59'] as $time) {
+    foreach (['12:00' => true, '12:15' => true, '12:45' => true, '12:01' => false, '12:14' => false] as $time => $due) {
         $this->travelTo(CarbonImmutable::parse("2026-10-10 {$time}:00", 'UTC'));
 
-        expect($event->isDue(app()))->toBeTrue("due at {$time}");
+        expect($event->isDue(app()))->toBe($due, "at {$time}");
     }
 
     expect($event->onOneServer)->toBeTrue()

@@ -19,6 +19,12 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
+    /**
+     * TikTok moderation usually ends within a minute of the publish, so the
+     * publish job asks once after that; the sweep covers slower reviews.
+     */
+    public const int FIRST_CHECK_AFTER_SECONDS = 60;
+
     public bool $deleteWhenMissingModels = true;
 
     /** Must exceed HasSocialHttpClient's 120s HTTP timeout so a slow request cannot kill the worker. */

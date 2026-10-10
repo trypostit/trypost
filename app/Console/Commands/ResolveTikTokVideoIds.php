@@ -21,7 +21,7 @@ class ResolveTikTokVideoIds extends Command
      */
     private const int RESOLVE_WITHIN_DAYS = 30;
 
-    private const int RECHECK_NEW_POST_AFTER_MINUTES = 5;
+    private const int RECHECK_NEW_POST_AFTER_MINUTES = 10;
 
     private const int RECHECK_FIRST_DAY_AFTER_MINUTES = 60;
 
@@ -42,10 +42,10 @@ class ResolveTikTokVideoIds extends Command
     }
 
     /**
-     * Runs every minute and only queries the database: a post is sent to
-     * TikTok on the first run after it publishes, as moderation usually ends
-     * within a minute, then every five minutes through its first hour, hourly
-     * through its first day and daily after that.
+     * The publish job already asks a minute after the publish, so this sweep
+     * (every fifteen minutes) only catches slower reviews: on every run
+     * through a post's first hour, hourly through its first day and daily
+     * after that.
      */
     private function isDue(Post $post): bool
     {
