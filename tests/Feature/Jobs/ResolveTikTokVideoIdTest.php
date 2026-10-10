@@ -14,6 +14,8 @@ use App\Jobs\ResolveTikTokVideoId;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Console\Scheduling\Event;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -193,3 +195,22 @@ test('the sweep skips posts whose channel is not connected', function (Status $s
 
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 })->with([Status::Disconnected, Status::TokenExpired]);
+
+test('the sweep runs every minute on one server', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->sole(fn (Event $event): bool => str_contains((string) $event->command, 'social:resolve-tiktok-video-ids'));
+
+    expect($event->expression)->toBe('* * * * *')
+        ->and($event->onOneServer)->toBeTrue()
+        ->and($event->withoutOverlapping)->toBeTrue();
+});
+
+test('a sweep with no post waiting for its video id sends nothing to TikTok', function () {
+    awaitingTikTokPost(['platform_post_id' => '7694860629638940686']);
+    Http::fake();
+
+    $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
+
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
+    Http::assertNothingSent();
+});

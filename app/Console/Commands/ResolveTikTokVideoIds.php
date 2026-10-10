@@ -42,8 +42,10 @@ class ResolveTikTokVideoIds extends Command
     }
 
     /**
-     * Moderation usually ends within a minute, so a new post is checked on
-     * every run, then hourly through its first day, then daily.
+     * Runs every minute and only queries the database: a post is sent to
+     * TikTok on the first run after it publishes, as moderation usually ends
+     * within a minute, then every five minutes through its first hour, hourly
+     * through its first day and daily after that.
      */
     private function isDue(Post $post): bool
     {
