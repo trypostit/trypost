@@ -9,6 +9,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\TikTok\PrivacyLevel;
+use App\Jobs\Media\DeleteMediaFiles;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\AnalyticsPublication;
 use App\Models\Media;
@@ -164,7 +165,7 @@ test('a dry run lists the repairs without writing them', function () {
     $chain = claimedTikTokVideoChain();
 
     $this->artisan('tiktok:repair-video-ids', ['--dry-run' => true])
-        ->expectsOutputToContain('1 post(s) would get their own video back; 1 post(s) would ask TikTok for their video id.')
+        ->expectsOutputToContain('1 post(s) would get their own video back; 0 post(s) would lose a video another post owns; 1 imported copy(ies) would be deleted; 1 post(s) would ask TikTok for their video id.')
         ->assertSuccessful();
 
     expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000001')
@@ -237,3 +238,95 @@ test('posts are left alone when their own video is unknown, ambiguous or claimed
     'two videos in its window' => ['ambiguous'],
     'another post claims the same video' => ['claimed'],
 ]);
+
+/**
+ * Three posts of one channel hold video 7000000000000000041, created at
+ * 10:00:00 on 2026-10-08: the one published 30 seconds later, one published
+ * an hour before the video existed, and an imported copy.
+ *
+ * @return array{owner: Post, earlier: Post, copy: Post, video: AnalyticsPublication}
+ */
+function sharedTikTokVideo(bool $publicationOnEarlierPost = false): array
+{
+    $owner = repairTikTokPost('7000000000000000041', '2026-10-08 10:00:30');
+    $earlier = repairTikTokPost('7000000000000000041', '2026-10-08 09:00:30');
+    $copy = Post::factory()->forAccount(test()->account, ContentType::TikTokVideo)->imported()->create([
+        'platform_post_id' => '7000000000000000041',
+        'published_at' => '2026-10-08 10:00:00',
+    ]);
+    $video = repairTikTokVideo('7000000000000000041', '2026-10-08 10:00:00', $publicationOnEarlierPost ? $earlier : $owner);
+
+    return compact('owner', 'earlier', 'copy', 'video');
+}
+
+test('a video several posts hold stays with the post published right after it was created', function (bool $publicationOnEarlierPost) {
+    $shared = sharedTikTokVideo($publicationOnEarlierPost);
+    $media = Media::factory()->ownedByPost($shared['copy'])->create();
+
+    $this->artisan('tiktok:repair-video-ids')
+        ->expectsOutputToContain('0 post(s) got their own video back; 1 post(s) lost a video another post owns; 1 imported copy(ies) deleted;')
+        ->assertSuccessful();
+
+    expect($shared['owner']->fresh()->platform_post_id)->toBe('7000000000000000041')
+        ->and($shared['video']->fresh())
+        ->post_id->toBe($shared['owner']->id)
+        ->origin->toBe(PublicationOrigin::TryPost)
+        ->and($shared['earlier']->fresh())
+        ->platform_post_id->toBeNull()
+        ->platform_url->toBe('https://www.tiktok.com/@tiktoker')
+        ->and(Post::query()->whereKey($shared['copy']->id)->exists())->toBeFalse()
+        ->and(Media::query()->whereKey($media->id)->exists())->toBeFalse();
+    Queue::assertNotPushed(ResolveTikTokVideoId::class, fn (ResolveTikTokVideoId $job): bool => $job->post->is($shared['earlier']));
+})->with([
+    'publication on the owner' => [false],
+    'publication on a post that does not own it' => [true],
+]);
+
+test('a video several posts hold is left alone without exactly one post published right after it', function (string $case) {
+    $shared = sharedTikTokVideo();
+
+    match ($case) {
+        'two posts right after' => repairTikTokPost('7000000000000000041', '2026-10-08 10:01:00'),
+        'none right after' => $shared['owner']->forceFill(['published_at' => '2026-10-08 10:30:00'])->save(),
+        'owner holds another publication' => $shared['video']->update(['post_id' => $shared['earlier']->id])
+            && repairTikTokVideo('v_pub_url~v2-1.owner', '2026-10-08 10:00:30', $shared['owner']),
+    };
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($shared['earlier']->fresh()->platform_post_id)->toBe('7000000000000000041')
+        ->and(Post::query()->whereKey($shared['copy']->id)->exists())->toBeTrue();
+})->with([
+    'two posts right after' => ['two posts right after'],
+    'none right after' => ['none right after'],
+    'owner holds another publication' => ['owner holds another publication'],
+]);
+
+test('a dry run rolls both repairs back and only queues media file deletions for after a commit that never comes', function () {
+    $chain = claimedTikTokVideoChain();
+    $shared = sharedTikTokVideo();
+    $media = Media::factory()->ownedByPost($shared['copy'])->create();
+
+    $this->artisan('tiktok:repair-video-ids', ['--dry-run' => true])
+        ->expectsOutputToContain('1 post(s) would get their own video back; 1 post(s) would lose a video another post owns; 2 imported copy(ies) would be deleted;')
+        ->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000001')
+        ->and($shared['earlier']->fresh()->platform_post_id)->toBe('7000000000000000041')
+        ->and(Post::query()->whereKey([$chain['imported']->id, $shared['copy']->id])->count())->toBe(2)
+        ->and(Media::query()->whereKey($media->id)->exists())->toBeTrue();
+    Queue::assertPushed(DeleteMediaFiles::class, fn (DeleteMediaFiles $job): bool => $job->afterCommit === true);
+});
+
+test('an imported copy left behind when a post gets its own video back is deleted in the same run', function () {
+    $chain = claimedTikTokVideoChain();
+    $orphan = Post::factory()->forAccount($this->account, ContentType::TikTokVideo)->imported()->create([
+        'platform_post_id' => '7000000000000000002',
+        'published_at' => '2026-10-09 10:00:00',
+    ]);
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000002')
+        ->and(Post::query()->whereKey($orphan->id)->exists())->toBeFalse();
+});

@@ -6,6 +6,7 @@ namespace App\Console\Commands\Scripts;
 
 use App\Actions\Media\DeleteOwnedMedia;
 use App\Enums\Analytics\PublicationOrigin;
+use App\Enums\Post\Origin;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\AnalyticsPublication;
@@ -17,9 +18,10 @@ use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Throwable;
 
-#[Signature('tiktok:repair-video-ids {--dry-run : List the repairs without writing them}')]
-#[Description('Give TikTok posts back the videos a caption match handed to the post published after them')]
+#[Signature('tiktok:repair-video-ids {--dry-run : Run the repairs and roll them back, listing what would change}')]
+#[Description('Give TikTok posts back the videos a caption match handed to other posts, and settle videos several posts hold')]
 class RepairTikTokVideoIdsCommand extends Command
 {
     /** TikTok creates the video about half a minute before the publish completes. */
@@ -30,7 +32,21 @@ class RepairTikTokVideoIdsCommand extends Command
 
     public function handle(): int
     {
-        $repairs = $this->repairs();
+        $dryRun = (bool) $this->option('dry-run');
+
+        DB::beginTransaction();
+
+        try {
+            $repairs = $this->repairs();
+            $deletedWithRepairs = $this->applyRepairs($repairs);
+            $settled = $this->settleSharedVideos();
+        } catch (Throwable $exception) {
+            DB::rollBack();
+
+            throw $exception;
+        }
+
+        $dryRun ? DB::rollBack() : DB::commit();
 
         $this->table(
             ['Post', 'Published at', 'Held video', 'Own video'],
@@ -42,6 +58,16 @@ class RepairTikTokVideoIdsCommand extends Command
             ])->all(),
         );
 
+        $this->table(
+            ['Video', 'Kept by', 'Released posts', 'Deleted imported copies'],
+            $settled->map(fn (array $video): array => [
+                data_get($video, 'video.remote_id'),
+                data_get($video, 'owner.id'),
+                data_get($video, 'released')->pluck('id')->implode(', ') ?: '-',
+                data_get($video, 'copies')->pluck('id')->implode(', ') ?: '-',
+            ])->all(),
+        );
+
         $awaiting = Post::query()
             ->publishedToTikTok()
             ->whereHas('socialAccount', fn (Builder $query): Builder => $query->connected())
@@ -49,24 +75,18 @@ class RepairTikTokVideoIdsCommand extends Command
             ->filter(fn (Post $post): bool => $post->awaitsTikTokVideoId())
             ->collect();
 
-        if ($this->option('dry-run')) {
-            $this->info("{$repairs->count()} post(s) would get their own video back; {$awaiting->count()} post(s) would ask TikTok for their video id.");
+        $released = $settled->sum(fn (array $video): int => data_get($video, 'released')->count());
+        $copies = $deletedWithRepairs + $settled->sum(fn (array $video): int => data_get($video, 'copies')->count());
+
+        if ($dryRun) {
+            $this->info("{$repairs->count()} post(s) would get their own video back; {$released} post(s) would lose a video another post owns; {$copies} imported copy(ies) would be deleted; {$awaiting->count()} post(s) would ask TikTok for their video id.");
 
             return self::SUCCESS;
         }
 
-        DB::transaction(function () use ($repairs): void {
-            $repairs->each(fn (array $repair) => data_get($repair, 'held')->update([
-                'post_id' => null,
-                'origin' => PublicationOrigin::External,
-            ]));
-
-            $repairs->each(fn (array $repair) => $this->giveBack(data_get($repair, 'post'), data_get($repair, 'own')->fresh()));
-        });
-
         $awaiting->each(fn (Post $post) => ResolveTikTokVideoId::dispatch($post));
 
-        $this->info("{$repairs->count()} post(s) got their own video back; {$awaiting->count()} post(s) are asking TikTok for their video id.");
+        $this->info("{$repairs->count()} post(s) got their own video back; {$released} post(s) lost a video another post owns; {$copies} imported copy(ies) deleted; {$awaiting->count()} post(s) are asking TikTok for their video id.");
 
         return self::SUCCESS;
     }
@@ -103,6 +123,20 @@ class RepairTikTokVideoIdsCommand extends Command
         } while ($repairs->count() !== $before);
 
         return $repairs;
+    }
+
+    /**
+     * @param  Collection<int, array{post: Post, held: AnalyticsPublication, own: AnalyticsPublication}>  $repairs
+     * @return int imported copies deleted
+     */
+    private function applyRepairs(Collection $repairs): int
+    {
+        $repairs->each(fn (array $repair) => data_get($repair, 'held')->update([
+            'post_id' => null,
+            'origin' => PublicationOrigin::External,
+        ]));
+
+        return $repairs->filter(fn (array $repair): bool => $this->giveBack(data_get($repair, 'post'), data_get($repair, 'own')->fresh()))->count();
     }
 
     /**
@@ -155,7 +189,10 @@ class RepairTikTokVideoIdsCommand extends Command
         return $candidates->count() === 1 && ctype_digit($candidates->sole()->remote_id) ? $candidates->sole() : null;
     }
 
-    private function giveBack(Post $post, AnalyticsPublication $own): void
+    /**
+     * @return bool whether an imported copy of the video was deleted
+     */
+    private function giveBack(Post $post, AnalyticsPublication $own): bool
     {
         $imported = filled($own->post_id) ? Post::query()->imported()->whereKey($own->post_id)->first() : null;
 
@@ -172,5 +209,84 @@ class RepairTikTokVideoIdsCommand extends Command
                 ?? TikTokPublisher::postUrl($post->socialAccount, $own->remote_id)
                 ?? $post->platform_url,
         ]);
+
+        return filled($imported);
+    }
+
+    /**
+     * Every video id more than one post of a channel holds. The TryPost post
+     * published right after the video was created keeps it; the other TryPost
+     * posts lose it and point at the profile again, and the imported copies
+     * are deleted. A video without exactly one such post is left alone.
+     *
+     * @return Collection<int, array{video: AnalyticsPublication, owner: Post, released: Collection<int, Post>, copies: Collection<int, Post>}>
+     */
+    private function settleSharedVideos(): Collection
+    {
+        return Post::query()
+            ->where('platform', Platform::TikTok)
+            ->has('socialAccount')
+            ->whereNotNull('platform_post_id')
+            ->with('socialAccount')
+            ->lazyById()
+            ->filter(fn (Post $post): bool => ctype_digit((string) $post->platform_post_id))
+            ->groupBy(fn (Post $post): string => "{$post->social_account_id}:{$post->platform_post_id}")
+            ->filter(fn (Collection $posts): bool => $posts->count() > 1)
+            ->map(fn (Collection $posts): ?array => $this->settle($posts))
+            ->filter()
+            ->values()
+            ->collect();
+    }
+
+    /**
+     * @param  Collection<int, Post>  $posts
+     * @return array{video: AnalyticsPublication, owner: Post, released: Collection<int, Post>, copies: Collection<int, Post>}|null
+     */
+    private function settle(Collection $posts): ?array
+    {
+        $sample = $posts->first();
+        $video = AnalyticsPublication::query()
+            ->where('workspace_id', $sample->workspace_id)
+            ->where('social_account_id', $sample->social_account_id)
+            ->where('network', Platform::TikTok->network())
+            ->where('remote_id', $sample->platform_post_id)
+            ->first();
+
+        if (blank($video)) {
+            return null;
+        }
+
+        $createdAt = $video->provider_published_at;
+        $owners = $posts->filter(fn (Post $post): bool => $post->origin === Origin::TryPost
+            && filled($post->published_at)
+            && $post->published_at->betweenIncluded($createdAt, $createdAt->addMinutes(self::CREATE_TO_PUBLISH_MINUTES)));
+
+        if ($owners->count() !== 1) {
+            return null;
+        }
+
+        $owner = $owners->sole();
+
+        if ($video->post_id !== $owner->id && AnalyticsPublication::query()->where('post_id', $owner->id)->exists()) {
+            return null;
+        }
+
+        $others = $posts->reject(fn (Post $post): bool => $post->is($owner))->values();
+        $released = $others->filter(fn (Post $post): bool => $post->origin === Origin::TryPost)->values();
+        $copies = $others->filter(fn (Post $post): bool => $post->origin === Origin::Network)->values();
+
+        $video->update(['post_id' => $owner->id, 'origin' => PublicationOrigin::TryPost]);
+
+        $released->each(fn (Post $post) => $post->writePublication([
+            'platform_post_id' => null,
+            'platform_url' => TikTokPublisher::postUrl($post->socialAccount) ?? $post->platform_url,
+        ]));
+
+        if ($copies->isNotEmpty()) {
+            DeleteOwnedMedia::forPosts($copies->pluck('id')->all());
+            Post::query()->whereKey($copies->pluck('id')->all())->delete();
+        }
+
+        return ['video' => $video, 'owner' => $owner, 'released' => $released, 'copies' => $copies];
     }
 }
