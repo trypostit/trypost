@@ -570,6 +570,7 @@ test('the three days view shows three columns, and only the phone picker offers 
         ->toBe(collect(range(0, 2))->map(fn (int $offset): string => "calendar-column-{$day->copy()->addDays($offset)->format('Y-m-d')}")->all());
 
     $page->assertPresent("@calendar-post-{$post->id}")
+        ->assertSeeIn("@calendar-post-{$post->id}", '9:00')
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
 
     $page->resize(1280, 900);
