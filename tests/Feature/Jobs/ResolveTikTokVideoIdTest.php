@@ -22,7 +22,6 @@ use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
-use PDOException;
 
 beforeEach(function () {
     Queue::fake();
