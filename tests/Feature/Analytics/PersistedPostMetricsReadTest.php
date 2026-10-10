@@ -221,3 +221,38 @@ test('post metrics leave the engagement rate out when the network reports no exp
 
     expect(app(ReadPublicationAnalytics::class)->latestFor($post)['metrics'])->not->toHaveKey('engagement_rate');
 });
+
+test('tiktok post metrics return the saved video url and observation without a provider call', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $videoId = '7685359243088103444';
+    $account = SocialAccount::factory()->tiktok()->create(['username' => 'tiktoker']);
+    $post = Post::factory()->forAccount($account)->published()->create([
+        'platform_post_id' => $videoId,
+        'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'post_id' => $post->id,
+        'network' => Platform::TikTok->network(),
+        'platform' => Platform::TikTok,
+        'remote_id' => $videoId,
+        'content_type' => PublicationContentType::Video,
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create([
+        'publication_id' => $publication->id,
+        'views_count' => 5,
+        'metrics' => ['views' => ['value' => 5, 'unit' => 'count', 'availability' => 'available']],
+    ]);
+    Http::fake();
+
+    $analytics = app(ReadPublicationAnalytics::class)->forPost($post->fresh());
+
+    expect($analytics)->toMatchArray([
+        'platform_post_id' => $videoId,
+        'platform_url' => "https://www.tiktok.com/@tiktoker/video/{$videoId}",
+    ])->and($analytics['metrics']['metrics']['views']['value'])->toBe(5);
+
+    Http::assertNothingSent();
+});

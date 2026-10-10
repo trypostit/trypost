@@ -435,6 +435,28 @@ test('a trypost target whose id the network already confirmed is never relinked 
         ->and($tryPost->fresh()->platform_post_id)->toBe('media-0');
 });
 
+test('a tiktok post whose video id TikTok already reported is never moved to a native video with the same caption', function () {
+    $account = SocialAccount::factory()->tiktok()->create();
+    $tryPost = sentByTryPost($account, '7300000000000000001', 'Same caption', now()->subHour()->toImmutable());
+    externalPublication($account, [
+        'remote_id' => '7300000000000000001',
+        'post_id' => $tryPost->id,
+        'origin' => PublicationOrigin::TryPost,
+        'provider_synced_at' => null,
+    ]);
+    externalPublication($account, [
+        'remote_id' => '7300000000000000002',
+        'excerpt' => 'Same caption',
+        'content_type' => PublicationContentType::Video,
+        'provider_published_at' => now()->subHour(),
+    ]);
+
+    ImportExternalPosts::execute($account);
+
+    expect($tryPost->fresh()->platform_post_id)->toBe('7300000000000000001')
+        ->and(Post::query()->imported()->sole()->platform_post_id)->toBe('7300000000000000002');
+});
+
 test('two trypost posts matching the same publication link neither and import nothing this run', function () {
     Log::spy();
     $account = SocialAccount::factory()->instagram()->create();

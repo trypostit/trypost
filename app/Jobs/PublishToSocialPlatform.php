@@ -215,6 +215,12 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             LocalPostState::Recurring,
             null => $this->post->markPublicationPublished($platformPostId, $platformUrl),
         };
+
+        if ($this->post->awaitsTikTokVideoId()) {
+            ResolveTikTokVideoId::dispatch($this->post)
+                ->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS))
+                ->afterCommit();
+        }
     }
 
     private function refreshAccountToken(): void

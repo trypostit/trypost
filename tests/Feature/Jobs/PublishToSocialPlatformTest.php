@@ -22,6 +22,7 @@ use App\Exceptions\Social\SocialPublishException;
 use App\Exceptions\Social\YouTubePublishException;
 use App\Exceptions\TokenExpiredException;
 use App\Jobs\PublishToSocialPlatform;
+use App\Jobs\ResolveTikTokVideoId;
 use App\Jobs\SendNotification;
 use App\Mail\AccountDisconnected;
 use App\Mail\PostPublished;
@@ -37,6 +38,7 @@ use App\Services\Social\FacebookPublisher;
 use App\Services\Social\LinkedInPagePublisher;
 use App\Services\Social\LinkedInPublisher;
 use App\Services\Social\PinterestPublisher;
+use App\Services\Social\TikTokPublisher;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\Carbon;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -1448,7 +1450,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
             ->push([
                 'data' => [
                     'status' => 'PUBLISH_COMPLETE',
-                    'publicaly_available_post_id' => ['video_123'],
+                    'publicaly_available_post_id' => ['7000000000000000123'],
                 ],
             ]),
         '*' => Http::response('fake-image-content', 200),
@@ -1459,7 +1461,7 @@ test('tiktok photo publish resumes after a status-fetch token expiry without a s
     $platform->refresh();
 
     expect($platform->publish_status)->toBe(PlatformStatus::Published)
-        ->and($platform->platform_post_id)->toBe('video_123')
+        ->and($platform->platform_post_id)->toBe('7000000000000000123')
         ->and($platform->error_context)->toBeNull()
         ->and(Storage::allFiles('social-tiktok-photos'))->toBeEmpty()
         ->and(Http::recorded(fn ($request) => str_contains($request->url(), '/post/publish/content/init/')))
@@ -2346,4 +2348,67 @@ test('a thread that stops on any error says how much of it is live', function ()
             'total' => 3,
             'error' => 'An unexpected error occurred while publishing. Please try again.',
         ]));
+});
+
+test('a tiktok post published before TikTok reports its video id asks again a minute later', function (string $platformPostId, PrivacyLevel $privacy, bool $asks) {
+    Event::fake();
+    Mail::fake();
+    Queue::fake([ResolveTikTokVideoId::class]);
+    $this->freezeTime();
+
+    $account = SocialAccount::factory()->tiktok()->create([
+        'workspace_id' => $this->workspace->id,
+        'username' => 'tiktoker',
+        'token_expires_at' => now()->addDay(),
+    ]);
+    $this->post->update([
+        'media' => [[
+            'id' => 'photo',
+            'path' => 'media/2026-01/photo.jpg',
+            'url' => 'https://example.com/media/2026-01/photo.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'photo.jpg',
+            'meta' => ['width' => 1080, 'height' => 1080],
+        ]],
+    ]);
+    $post = publishJobRetarget($this->post, $account, [
+        'content_type' => ContentType::TikTokPhoto,
+        'publish_status' => PlatformStatus::Pending,
+        'meta' => ['privacy_level' => $privacy->value],
+    ]);
+
+    $publisher = Mockery::mock(TikTokPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn(['id' => $platformPostId, 'url' => 'https://www.tiktok.com/@tiktoker']);
+    $this->app->instance(TikTokPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($post))->handle();
+
+    expect($post->fresh()->publish_status)->toBe(PlatformStatus::Published);
+
+    $asks
+        ? Queue::assertPushedOn(Platform::TikTok->queue(), ResolveTikTokVideoId::class, fn (ResolveTikTokVideoId $job): bool => $job->post->is($post)
+            && $job->delay->equalTo(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS)))
+        : Queue::assertNotPushed(ResolveTikTokVideoId::class);
+})->with([
+    'no video id yet' => ['p_pub_url~v2.pending', PrivacyLevel::PublicToEveryone, true],
+    'video id already reported' => ['7694860629638940686', PrivacyLevel::PublicToEveryone, false],
+    'private post' => ['p_pub_url~v2.private', PrivacyLevel::SelfOnly, false],
+    'followers only post' => ['p_pub_url~v2.followers', PrivacyLevel::FollowerOfCreator, false],
+]);
+
+test('a post on another network never asks TikTok for a video id', function () {
+    Event::fake();
+    Queue::fake([ResolveTikTokVideoId::class]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn([
+        'id' => 'urn:li:share:7000000000000000001',
+        'url' => 'https://linkedin.com/post/1',
+    ]);
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });

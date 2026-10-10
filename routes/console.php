@@ -15,6 +15,7 @@ use App\Console\Commands\ReconcileGoogleBusinessPosts;
 use App\Console\Commands\RecoverStuckPosts;
 use App\Console\Commands\RefreshExpiringTokens;
 use App\Console\Commands\Repurpose\PollRepurposes;
+use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
@@ -27,6 +28,7 @@ Schedule::command(CheckUpcomingPostConnections::class)->everyFifteenMinutes()->w
 Schedule::command(RefreshExpiringTokens::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(RecoverStuckPosts::class)->everyThirtyMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(ReconcileGoogleBusinessPosts::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(ResolveTikTokVideoIds::class)->everyFifteenMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneWebhookLogs::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverlapping()->onOneServer();
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();

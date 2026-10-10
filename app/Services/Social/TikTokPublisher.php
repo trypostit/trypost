@@ -11,6 +11,7 @@ use App\Enums\TikTok\PublishStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\TikTokPublishException;
+use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
@@ -18,6 +19,7 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
@@ -92,6 +94,40 @@ class TikTokPublisher
             userMessage: 'TikTok only supports video or image content.',
             category: ErrorCategory::MediaFormat,
         );
+    }
+
+    /**
+     * The public video id TikTok reports for a published post's `publish_id`.
+     * TikTok sends it only once the post clears moderation, which can take hours.
+     */
+    public function publicVideoId(Post $post): ?string
+    {
+        $account = $post->socialAccount;
+
+        if (blank($account) || blank($post->platform_post_id)) {
+            return null;
+        }
+
+        try {
+            if ($account->needsProactiveTokenRefresh()) {
+                app(ConnectionVerifier::class)->refreshToken($account);
+            }
+        } catch (TokenExpiredException|PlatformUnavailableException) {
+            return null;
+        }
+
+        $this->accessToken = $account->access_token;
+
+        try {
+            $response = $this->getHttpClient()
+                ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                    'publish_id' => $post->platform_post_id,
+                ]);
+        } catch (ConnectionException) {
+            return null;
+        }
+
+        return $response->successful() ? $this->videoIdFrom((array) $response->json('data', [])) : null;
     }
 
     private function getHttpClient(): PendingRequest
@@ -483,19 +519,25 @@ class TikTokPublisher
     private function completePublish(Post $post, string $publishId): array
     {
         $statusData = $this->waitForPublishStatus($publishId);
-        $postId = (string) data_get($statusData, 'publicaly_available_post_id.0');
-
-        if (blank($postId)) {
-            $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($post);
-        }
+        $postId = $this->videoIdFrom($statusData);
 
         return [
             'id' => $postId ?? $publishId,
-            'url' => $this->buildTikTokUrl($post->socialAccount, $postId),
+            'url' => self::postUrl($post->socialAccount, $postId),
         ];
     }
 
-    private function buildTikTokUrl(SocialAccount $account, ?string $postId = null): ?string
+    /**
+     * @param  array<string, mixed>  $statusData
+     */
+    private function videoIdFrom(array $statusData): ?string
+    {
+        $videoId = (string) data_get($statusData, 'publicaly_available_post_id.0');
+
+        return ctype_digit($videoId) ? $videoId : null;
+    }
+
+    public static function postUrl(SocialAccount $account, ?string $postId = null): ?string
     {
         $username = $account->username;
 

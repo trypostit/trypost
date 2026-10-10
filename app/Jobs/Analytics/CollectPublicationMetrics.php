@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Jobs\Analytics;
 
-use App\Actions\Analytics\UpsertAnalyticsPublication;
 use App\Actions\Analytics\WritePublicationDailySnapshot;
+use App\Actions\Post\AssignTikTokVideoId;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\SocialAccount\Platform;
@@ -82,7 +82,7 @@ class CollectPublicationMetrics implements ShouldQueue
 
     public function handle(
         PublicationMetricsCollectorFactory $collectors,
-        UpsertAnalyticsPublication $publications,
+        AssignTikTokVideoId $assignVideoId,
         WritePublicationDailySnapshot $writer,
         AnalyticsJobLog $log,
     ): void {
@@ -113,9 +113,10 @@ class CollectPublicationMetrics implements ShouldQueue
             $collector = $collectors->for($publication->platform);
 
             if ($collector instanceof TikTokPublicationMetricsCollector
-                && $publication->post_id
-                && ! ctype_digit($publication->remote_id)) {
-                $publications->reconcileRemoteId($publication, $collector->publicVideoId($publication));
+                && ! ctype_digit($publication->remote_id)
+                && filled($publication->post)) {
+                $assignVideoId->handle($publication->post, $collector->publicVideoId($publication));
+                $publication->refresh()->setRelation('socialAccount', $channel);
             }
 
             $observation = $collector->collect($publication, $date);

@@ -16,6 +16,7 @@ use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\TikTok\PrivacyLevel;
 use App\Observers\PostObserver;
 use App\Support\Media\MediaCopyBatch;
 use Carbon\CarbonInterface;
@@ -339,6 +340,16 @@ class Post extends Model
     }
 
     /**
+     * Posts TryPost published to TikTok.
+     */
+    public function scopePublishedToTikTok(Builder $query): Builder
+    {
+        return $query->createdInTryPost()
+            ->where('posts.platform', Platform::TikTok)
+            ->publicationPublished();
+    }
+
+    /**
      * Posts the network confirmed as published.
      */
     public function scopePublicationPublished(Builder $query): Builder
@@ -405,6 +416,21 @@ class Post extends Model
     public function hasChannel(): bool
     {
         return filled($this->social_account_id);
+    }
+
+    /**
+     * A TikTok post TryPost published to everyone that still carries the
+     * Content Posting `publish_id`: TikTok reports the video id only after
+     * moderation, and only for a post public to everyone.
+     */
+    public function awaitsTikTokVideoId(): bool
+    {
+        return $this->platform === Platform::TikTok
+            && $this->origin === Origin::TryPost
+            && $this->publish_status === PublishStatus::Published
+            && filled($this->platform_post_id)
+            && ! ctype_digit($this->platform_post_id)
+            && PrivacyLevel::tryFrom((string) data_get($this->meta, 'privacy_level')) === PrivacyLevel::PublicToEveryone;
     }
 
     /**

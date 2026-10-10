@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
+use App\Actions\Analytics\SyncTryPostPublication;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationAvailability;
@@ -101,8 +102,57 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
 
     expect($publication->fresh()->remote_id)->toBe('123456789')
         ->and($post->fresh()->platform_post_id)->toBe('123456789')
+        ->and($post->fresh()->platform_url)->toBe("https://www.tiktok.com/@{$account->username}/video/123456789")
         ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
     Http::assertSentCount(2);
+});
+
+test('TikTok metric job collects a publication without a post without assigning it the video id', function () {
+    $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($date);
+    $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'network' => Platform::TikTok->network(),
+        'platform' => Platform::TikTok,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => 'v_pub_abc',
+        'origin' => PublicationOrigin::External,
+        'provider_published_at' => $date->subDay(),
+    ]);
+    Http::fake(['*' => Http::sequence()
+        ->push(['data' => ['publicaly_available_post_id' => ['123456789']]])
+        ->push(['error' => ['code' => 'ok'], 'data' => ['videos' => [[
+            'id' => '123456789', 'view_count' => 12, 'like_count' => 1,
+        ]]]])]);
+
+    app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']);
+
+    expect($publication->fresh()->remote_id)->toBe('v_pub_abc')
+        ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
+});
+
+test('TikTok metric job refuses a video id another TryPost post holds', function () {
+    $date = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($date);
+    $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+    $post = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
+        'platform_post_id' => 'v_pub_abc',
+    ]);
+    $holder = Post::factory()->forAccount($account, ContentType::TikTokVideo)->published()->create([
+        'platform_post_id' => '123456789',
+    ]);
+    $publication = app(SyncTryPostPublication::class)->handle($post);
+    app(SyncTryPostPublication::class)->handle($holder);
+    $publication->update(['provider_published_at' => $date->subDay()]);
+    Http::fake(['*' => Http::response(['data' => ['publicaly_available_post_id' => ['123456789']]])]);
+
+    expect(fn () => app()->call([(new CollectPublicationMetrics($publication->id, $date->toDateString())), 'handle']))
+        ->toThrow(LogicException::class);
+
+    expect($post->fresh()->platform_post_id)->toBe('v_pub_abc');
 });
 
 test('regular collection respects the X and non-X refresh windows', function (Platform $platform, int $age, bool $eligible) {
