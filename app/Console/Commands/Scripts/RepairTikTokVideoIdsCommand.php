@@ -230,29 +230,52 @@ class RepairTikTokVideoIdsCommand extends Command
      */
     private function settleSharedVideos(): Collection
     {
-        return Post::query()
-            ->where('platform', Platform::TikTok)
-            ->where(fn (Builder $query): Builder => $query->imported()
-                ->orWhere(fn (Builder $published): Builder => $published->createdInTryPost()->publicationPublished()))
-            ->has('socialAccount')
-            ->whereNotNull('platform_post_id')
-            ->with('socialAccount')
+        return $this->sharedVideoPosts()
+            ->select(['id', 'social_account_id', 'platform_post_id'])
             ->lazyById()
             ->filter(fn (Post $post): bool => ctype_digit((string) $post->platform_post_id))
             ->groupBy(fn (Post $post): string => "{$post->social_account_id}:{$post->platform_post_id}")
             ->filter(fn (Collection $posts): bool => $posts->count() > 1)
-            ->map(fn (Collection $posts): ?array => $this->settle($posts))
+            ->map(fn (Collection $posts): ?array => $this->settle(data_get($posts->first(), 'social_account_id'), data_get($posts->first(), 'platform_post_id')))
             ->filter()
             ->values()
             ->collect();
     }
 
     /**
-     * @param  Collection<int, Post>  $posts
+     * Published TryPost posts and imported posts on TikTok channels that still
+     * exist, carrying a video id.
+     *
+     * @return Builder<Post>
+     */
+    private function sharedVideoPosts(): Builder
+    {
+        return Post::query()
+            ->where('platform', Platform::TikTok)
+            ->where(fn (Builder $query): Builder => $query->imported()
+                ->orWhere(fn (Builder $published): Builder => $published->createdInTryPost()->publicationPublished()))
+            ->has('socialAccount')
+            ->whereNotNull('platform_post_id');
+    }
+
+    /**
+     * Reads the posts holding the video again, since settling an earlier video
+     * can hand one of them its own video back.
+     *
      * @return array{video: AnalyticsPublication, owner: Post, returned: Collection<int, Post>, released: Collection<int, Post>, copies: int}|null
      */
-    private function settle(Collection $posts): ?array
+    private function settle(string $socialAccountId, string $videoId): ?array
     {
+        $posts = $this->sharedVideoPosts()
+            ->where('social_account_id', $socialAccountId)
+            ->where('platform_post_id', $videoId)
+            ->with('socialAccount')
+            ->get();
+
+        if ($posts->count() < 2) {
+            return null;
+        }
+
         $sample = $posts->first();
         $videos = AnalyticsPublication::query()
             ->where('workspace_id', $sample->workspace_id)

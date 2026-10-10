@@ -408,3 +408,20 @@ test('a failure rolls every repair back', function () {
     expect($chain['firstVideo']->fresh()->post_id)->toBe($chain['second']->id)
         ->and(Post::query()->whereKey($chain['imported']->id)->exists())->toBeTrue();
 });
+
+test('a video handed back while settling an earlier shared video is settled with its current holders', function () {
+    $shared = sharedTikTokVideo();
+    $ownCopy = Post::factory()->forAccount($this->account, ContentType::TikTokVideo)->imported()->create([
+        'platform_post_id' => '7000000000000000043',
+        'published_at' => '2026-10-05 09:00:00',
+    ]);
+    $ownVideo = repairTikTokVideo('7000000000000000043', '2026-10-05 09:00:00', $ownCopy);
+    $later = repairTikTokPost('7000000000000000043', '2026-10-05 12:01:00');
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($shared['earlier']->fresh()->platform_post_id)->toBe('7000000000000000043')
+        ->and($ownVideo->fresh()->post_id)->toBe($shared['earlier']->id)
+        ->and($later->fresh()->platform_post_id)->toBeNull()
+        ->and(Post::query()->where('platform_post_id', '7000000000000000043')->count())->toBe(1);
+});
