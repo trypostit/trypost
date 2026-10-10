@@ -48,7 +48,7 @@ function repairTikTokVideo(string $remoteId, string $createdAt, ?Post $post = nu
         'permalink' => "https://www.tiktok.com/@tiktoker/video/{$remoteId}",
         'provider_published_at' => $createdAt,
         'post_id' => $post?->id,
-        'origin' => $post === null || $post->origin === Origin::Network ? PublicationOrigin::External : PublicationOrigin::TryPost,
+        'origin' => blank($post) || $post->origin === Origin::Network ? PublicationOrigin::External : PublicationOrigin::TryPost,
     ]);
 }
 
@@ -90,6 +90,17 @@ test('a post gets its own video back and the video it took is freed for the post
         ->and($chain['first']->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.first');
 
     Queue::assertPushed(ResolveTikTokVideoId::class, fn (ResolveTikTokVideoId $job): bool => $job->post->is($chain['first']));
+});
+
+test('a second run finds nothing left to repair', function () {
+    $chain = claimedTikTokVideoChain();
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+    $this->artisan('tiktok:repair-video-ids', ['--dry-run' => true])
+        ->expectsOutputToContain('0 post(s) would get their own video back')
+        ->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000002');
 });
 
 test('a post whose publish only finished long after TikTok created its video keeps that video', function () {

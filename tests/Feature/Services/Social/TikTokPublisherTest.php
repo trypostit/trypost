@@ -1535,3 +1535,35 @@ test('tiktok video sends the chosen cover frame as video_cover_timestamp_ms', fu
     'offset of 1.5 s' => [1500],
     'no offset' => [null],
 ]);
+
+test('tiktok publisher reads the public video id TikTok reports for a publish id', function (array $statusResponse, int $httpStatus, ?string $expectedVideoId) {
+    $this->post->forceFill(['platform_post_id' => 'v_pub_url~v2-1.pending'])->save();
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response($statusResponse, $httpStatus),
+    ]);
+
+    expect($this->publisher->publicVideoId($this->post))->toBe($expectedVideoId);
+
+    Http::assertSent(fn ($request) => $request['publish_id'] === 'v_pub_url~v2-1.pending');
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
+})->with([
+    'reported as a string' => [['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7694860629638940686']]], 200, '7694860629638940686'],
+    'reported as an integer' => [['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => [7694860629638940686]]], 200, '7694860629638940686'],
+    'still in moderation' => [['data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []]], 200, null],
+    'status fetch rejected' => [['error' => ['code' => 'access_token_invalid']], 401, null],
+    'status fetch unavailable' => [['error' => ['code' => 'internal_error']], 503, null],
+]);
+
+test('tiktok publisher does not read the video id when the token refresh is rejected', function () {
+    $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
+    $this->post->forceFill(['platform_post_id' => 'v_pub_url~v2-1.pending'])->save();
+
+    Http::fake([
+        $this->api.'/oauth/token/' => Http::response(['error' => 'invalid_grant'], 400),
+    ]);
+
+    expect($this->publisher->publicVideoId($this->post->fresh()))->toBeNull();
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/status/fetch/'));
+});

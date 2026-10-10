@@ -43,9 +43,7 @@ class RepairTikTokVideoIdsCommand extends Command
         );
 
         $awaiting = Post::query()
-            ->createdInTryPost()
-            ->where('platform', Platform::TikTok)
-            ->publicationPublished()
+            ->publishedToTikTok()
             ->lazyById()
             ->filter(fn (Post $post): bool => $post->awaitsTikTokVideoId())
             ->collect();
@@ -83,7 +81,7 @@ class RepairTikTokVideoIdsCommand extends Command
     {
         $repairs = AnalyticsPublication::query()
             ->where('network', Platform::TikTok->network())
-            ->whereHas('post', fn (Builder $query): Builder => $query->createdInTryPost())
+            ->whereHas('post', fn (Builder $query): Builder => $query->publishedToTikTok()->whereNotNull('published_at'))
             ->with('post')
             ->lazyById()
             ->filter(fn (AnalyticsPublication $held): bool => ctype_digit($held->remote_id)

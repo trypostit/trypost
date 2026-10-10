@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Analytics\SyncTryPostPublication;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\ResolveTikTokVideoId;
@@ -110,7 +111,7 @@ test('a post deleted before its check runs drops the job without failing it', fu
 test('the sweep asks for a new post on every run, then hourly, then daily, for a month', function (int $publishedMinutesAgo, ?int $checkedMinutesAgo, bool $dispatched) {
     $post = awaitingTikTokPost(['published_at' => now()->subMinutes($publishedMinutesAgo)]);
     $post->forceFill([
-        'last_reconciled_at' => $checkedMinutesAgo === null ? null : now()->subMinutes($checkedMinutesAgo),
+        'last_reconciled_at' => transform($checkedMinutesAgo, fn (int $minutes): CarbonImmutable => now()->subMinutes($minutes)),
     ])->save();
 
     $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
@@ -138,4 +139,7 @@ test('the sweep skips posts that already have their video id or never get one', 
 })->with([
     'resolved' => [['platform_post_id' => '7694860629638940686']],
     'self only' => [['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]],
+    'imported' => [['origin' => Origin::Network]],
+    'publish failed' => [['publish_status' => PublishStatus::Failed]],
+    'publish retrying' => [['publish_status' => PublishStatus::Retrying]],
 ]);

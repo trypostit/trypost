@@ -6,7 +6,7 @@ namespace App\Jobs;
 
 use App\Actions\Post\AssignTikTokVideoId;
 use App\Models\Post;
-use App\Services\Social\TikTokAnalytics;
+use App\Services\Social\TikTokPublisher;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
@@ -36,7 +36,7 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
         return $this->post->id;
     }
 
-    public function handle(TikTokAnalytics $tiktok, AssignTikTokVideoId $assignVideoId): void
+    public function handle(TikTokPublisher $publisher, AssignTikTokVideoId $assignVideoId): void
     {
         $this->post->refresh();
 
@@ -44,7 +44,7 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
             return;
         }
 
-        $videoId = $tiktok->publicVideoId($this->post);
+        $videoId = $publisher->publicVideoId($this->post);
 
         if (blank($videoId)) {
             $this->post->writePublication(['last_reconciled_at' => now()]);

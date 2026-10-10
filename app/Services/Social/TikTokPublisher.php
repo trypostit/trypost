@@ -11,6 +11,7 @@ use App\Enums\TikTok\PublishStatus;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\TikTokPublishException;
+use App\Exceptions\TokenExpiredException;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Media\MediaOptimizer;
@@ -92,6 +93,36 @@ class TikTokPublisher
             userMessage: 'TikTok only supports video or image content.',
             category: ErrorCategory::MediaFormat,
         );
+    }
+
+    /**
+     * The public video id TikTok reports for a published post's `publish_id`.
+     * TikTok sends it only once the post clears moderation, which can take hours.
+     */
+    public function publicVideoId(Post $post): ?string
+    {
+        $account = $post->socialAccount;
+
+        if (blank($account) || blank($post->platform_post_id)) {
+            return null;
+        }
+
+        try {
+            if ($account->needsProactiveTokenRefresh()) {
+                app(ConnectionVerifier::class)->refreshToken($account);
+            }
+        } catch (TokenExpiredException|PlatformUnavailableException) {
+            return null;
+        }
+
+        $this->accessToken = $account->access_token;
+
+        $response = $this->getHttpClient()
+            ->post("{$this->baseUrl}/post/publish/status/fetch/", [
+                'publish_id' => $post->platform_post_id,
+            ]);
+
+        return $response->successful() ? $this->videoIdFrom((array) $response->json('data', [])) : null;
     }
 
     private function getHttpClient(): PendingRequest
@@ -483,12 +514,20 @@ class TikTokPublisher
     private function completePublish(Post $post, string $publishId): array
     {
         $statusData = $this->waitForPublishStatus($publishId);
-        $postId = transform(data_get($statusData, 'publicaly_available_post_id.0'), fn (mixed $id): string => (string) $id);
+        $postId = $this->videoIdFrom($statusData);
 
         return [
             'id' => $postId ?? $publishId,
             'url' => self::postUrl($post->socialAccount, $postId),
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $statusData
+     */
+    private function videoIdFrom(array $statusData): ?string
+    {
+        return transform(data_get($statusData, 'publicaly_available_post_id.0'), fn (mixed $id): string => (string) $id);
     }
 
     public static function postUrl(SocialAccount $account, ?string $postId = null): ?string
