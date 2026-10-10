@@ -401,7 +401,7 @@ return [
             'title' => 'Zo blijven Insights actueel',
             'new_posts' => 'Nieuwe berichten worden :interval per kanaal opgehaald, en :x_interval op X.',
             'every_hours' => '{1} elk uur|[2,*] elke :count uur',
-            'metrics' => 'Statistieken worden dagelijks vernieuwd voor berichten van de afgelopen :days dagen. Op X wordt elk bericht gelezen zodra het gevonden is en daarna op dag :x_days.',
+            'metrics' => 'Statistieken worden tot :days dagen na het plaatsen vernieuwd.',
             'followers' => 'Het aantal volgers wordt eenmaal per dag opgeslagen.',
             'last_sync' => 'Laatst gesynchroniseerd :time',
             'never' => 'Nog niet gesynchroniseerd',
