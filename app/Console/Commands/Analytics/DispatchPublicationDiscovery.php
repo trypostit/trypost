@@ -31,9 +31,13 @@ class DispatchPublicationDiscovery extends Command
             ->includedInAnalytics()
             ->when($only !== [], fn (Builder $query): Builder => $query->whereIn('platform', $only))
             ->when($except !== [], fn (Builder $query): Builder => $query->whereNotIn('platform', $except))
-            ->with('analyticsSyncStates')
+            ->with(['analyticsSyncStates', 'workspace.account.subscriptions'])
             ->lazyById(100)
             ->each(function (SocialAccount $account) use ($staleBefore): void {
+                if (! $account->hasAppAccess()) {
+                    return;
+                }
+
                 $backfill = $account->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
 

@@ -401,7 +401,7 @@ return [
             'title' => 'Cómo se actualizan los Insights',
             'new_posts' => 'Las publicaciones nuevas se buscan :interval en cada canal, y :x_interval en X.',
             'every_hours' => '{1} cada hora|[2,*] cada :count horas',
-            'metrics' => 'Las métricas se actualizan una vez al día para publicaciones de los últimos :days días (:x_days en X).',
+            'metrics' => 'Las métricas se actualizan una vez al día para publicaciones de los últimos :days días. En X, cada publicación se lee al detectarla y luego los días :x_days.',
             'followers' => 'El número de seguidores se guarda una vez al día.',
             'last_sync' => 'Última sincronización :time',
             'never' => 'Aún sin sincronizar',

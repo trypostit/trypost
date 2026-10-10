@@ -401,7 +401,7 @@ return [
             'title' => 'Comment les Insights sont mis à jour',
             'new_posts' => 'Les nouveaux posts sont récupérés :interval sur chaque canal, et :x_interval sur X.',
             'every_hours' => '{1} toutes les heures|[2,*] toutes les :count heures',
-            'metrics' => 'Les métriques sont actualisées une fois par jour pour les posts des :days derniers jours (:x_days sur X).',
+            'metrics' => 'Les métriques sont actualisées une fois par jour pour les posts des :days derniers jours. Sur X, chaque post est lu quand il est repéré, puis aux jours :x_days.',
             'followers' => 'Le nombre d\'abonnés est enregistré une fois par jour.',
             'last_sync' => 'Dernière synchro :time',
             'never' => 'Pas encore synchronisé',

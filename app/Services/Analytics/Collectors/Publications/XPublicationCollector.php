@@ -25,6 +25,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             config('trypost.platforms.x.api')."/users/{$account->platform_user_id}/tweets",
             [
                 'max_results' => self::PAGE_SIZE,
+                'start_time' => $cutoff->utc()->format('Y-m-d\TH:i:s\Z'),
                 'pagination_token' => $cursor,
                 'exclude' => 'retweets,replies',
                 'tweet.fields' => 'created_at,attachments,note_tweet',

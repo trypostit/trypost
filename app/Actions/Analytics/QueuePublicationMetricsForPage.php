@@ -13,6 +13,7 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Support\Analytics\SyncCadence;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Eloquent\Builder;
 
 class QueuePublicationMetricsForPage
 {
@@ -28,6 +29,7 @@ class QueuePublicationMetricsForPage
             ->available()
             ->where('social_account_id', $account->id)
             ->whereIn('remote_id', $providerIds)
+            ->when($account->platform === Platform::X, fn (Builder $query): Builder => $query->whereDoesntHave('dailySnapshots'))
             ->each(function (AnalyticsPublication $publication): void {
                 $this->queue($publication);
             });
@@ -58,10 +60,26 @@ class QueuePublicationMetricsForPage
             return;
         }
 
+        $readAt = $this->firstReadAt($publication, $now);
+
         CollectPublicationMetrics::dispatch(
             $publication->id,
-            $now->toDateString(),
+            $readAt->toDateString(),
             ! $recent,
-        )->afterCommit();
+        )->delay($readAt->greaterThan($now) ? $readAt : null)->afterCommit();
+    }
+
+    /**
+     * A fresh X post has nothing to measure yet, and X bills the read.
+     */
+    private function firstReadAt(AnalyticsPublication $publication, CarbonImmutable $now): CarbonImmutable
+    {
+        if ($publication->platform !== Platform::X) {
+            return $now;
+        }
+
+        $readAt = $publication->provider_published_at->toImmutable()->addMinutes(SyncCadence::X_FIRST_READ_DELAY_MINUTES);
+
+        return $readAt->greaterThan($now) ? $readAt : $now;
     }
 }

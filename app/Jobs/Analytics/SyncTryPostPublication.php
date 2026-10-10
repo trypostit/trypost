@@ -33,6 +33,9 @@ class SyncTryPostPublication implements ShouldQueue
         }
 
         $publication = $sync->fromIdentity($this->identity, $post);
-        $metrics->queue($publication);
+
+        if ($post->socialAccount?->hasAppAccess()) {
+            $metrics->queue($publication);
+        }
     }
 }

@@ -382,3 +382,32 @@ test('youtube resolves the uploads playlist once and reuses it on every later di
     Http::assertSentCount(4);
     expect(collect(Http::recorded())->filter(fn (array $pair): bool => str_contains($pair[0]->url(), '/channels'))->count())->toBe(1);
 });
+
+test('x asks the timeline only for posts since the cutoff', function () {
+    Http::fake(['*' => Http::response(['data' => [], 'meta' => []])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    app(XPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2026-10-09 18:00:00', 'UTC'),
+    );
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), "/users/{$account->platform_user_id}/tweets")
+        && $request['start_time'] === '2026-10-09T18:00:00Z');
+});
+
+test('an x page with nothing since the cutoff ends the sync', function () {
+    Http::fake(['*' => Http::response(['meta' => ['result_count' => 0]])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    $page = app(XPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2026-10-09 18:00:00', 'UTC'),
+    );
+
+    expect($page->publications)->toBe([])
+        ->and($page->nextCursor)->toBeNull()
+        ->and($page->providerExhausted)->toBeTrue();
+});

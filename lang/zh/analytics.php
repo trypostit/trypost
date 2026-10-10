@@ -401,7 +401,7 @@ return [
             'title' => 'Insights 如何保持更新',
             'new_posts' => '每个频道:interval获取一次新帖子，X 为:x_interval一次。',
             'every_hours' => '{1} 每小时|[2,*] 每 :count 小时',
-            'metrics' => '帖子指标每天刷新一次，覆盖最近 :days 天的帖子（X 为 :x_days 天）。',
+            'metrics' => '帖子指标每天刷新一次，覆盖最近 :days 天的帖子。X 帖子在被发现时读取一次，之后在第 :x_days 天读取。',
             'followers' => '粉丝数每天保存一次。',
             'last_sync' => '上次同步 :time',
             'never' => '尚未同步',

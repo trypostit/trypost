@@ -103,7 +103,7 @@ const lastSyncedAt = computed<string | null>(() =>
                     <span>{{
                         $t('analytics.insights.sync.metrics', {
                             days: String(cadence.metrics_days),
-                            x_days: String(cadence.x_metrics_days),
+                            x_days: cadence.x_metrics_days.join(', '),
                         })
                     }}</span>
                 </li>

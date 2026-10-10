@@ -22,9 +22,10 @@ class DispatchAccountDailyAnalytics extends Command
 
         SocialAccount::query()
             ->connected()
+            ->with('workspace.account.subscriptions')
             ->lazyById(200)
             ->each(function (SocialAccount $account) use ($collectors, $date): void {
-                if ($collectors->supports($account->platform)) {
+                if ($account->hasAppAccess() && $collectors->supports($account->platform)) {
                     CollectAccountDailySnapshot::dispatch($account->id, $date);
                 }
             });

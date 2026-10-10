@@ -401,7 +401,7 @@ return [
             'title' => 'Insights 업데이트 방식',
             'new_posts' => '새 게시물은 채널마다 :interval, X는 :x_interval 가져옵니다.',
             'every_hours' => '{1} 1시간마다|[2,*] :count시간마다',
-            'metrics' => '게시물 지표는 최근 :days일 게시물에 대해 하루 한 번 갱신됩니다(X는 :x_days일).',
+            'metrics' => '게시물 지표는 최근 :days일 게시물에 대해 하루 한 번 갱신됩니다. X 게시물은 발견 시 한 번, 이후 :x_days일째에 읽습니다.',
             'followers' => '팔로워 수는 하루 한 번 저장됩니다.',
             'last_sync' => '마지막 동기화 :time',
             'never' => '아직 동기화되지 않음',

@@ -246,7 +246,7 @@ test('the insights page shares the sync cadence and the extended performance met
             ->component('insights/Index')
             ->where('sync', SyncCadence::toArray())
             ->where('sync.metrics_days', 30)
-            ->where('sync.x_metrics_days', 20)
+            ->where('sync.x_metrics_days', [2, 3, 7, 14, 28])
             ->where('report.performance.0.username', 'bravo')
             ->where('report.performance.0.clicks.value', 7)
             ->where('report.performance.0.impressions.value', 200)
@@ -263,7 +263,7 @@ test('the sync cadence follows the discovery settings the scheduler uses', funct
         'discovery_hours' => 6,
         'x_discovery_hours' => 24,
         'metrics_days' => 30,
-        'x_metrics_days' => 20,
+        'x_metrics_days' => [2, 3, 7, 14, 28],
     ]);
 });
 
