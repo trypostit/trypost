@@ -419,9 +419,9 @@ class Post extends Model
     }
 
     /**
-     * A public TikTok post TryPost published that still carries the Content
-     * Posting `publish_id`: TikTok reports the video id only after moderation,
-     * and never for a private post.
+     * A TikTok post TryPost published to everyone that still carries the
+     * Content Posting `publish_id`: TikTok reports the video id only after
+     * moderation, and only for a post public to everyone.
      */
     public function awaitsTikTokVideoId(): bool
     {
@@ -430,7 +430,7 @@ class Post extends Model
             && $this->publish_status === PublishStatus::Published
             && filled($this->platform_post_id)
             && ! ctype_digit($this->platform_post_id)
-            && PrivacyLevel::tryFrom((string) data_get($this->meta, 'privacy_level')) !== PrivacyLevel::SelfOnly;
+            && PrivacyLevel::tryFrom((string) data_get($this->meta, 'privacy_level')) === PrivacyLevel::PublicToEveryone;
     }
 
     /**

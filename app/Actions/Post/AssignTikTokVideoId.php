@@ -26,18 +26,29 @@ class AssignTikTokVideoId
     public function handle(Post $post, string $videoId): void
     {
         DB::transaction(function () use ($post, $videoId): void {
-            $account = $post->socialAccount;
-            $publication = $post->analyticsPublication()->first()
-                ?? (filled($account) ? $this->syncPublication->handle($post) : null);
+            $locked = Post::query()->lockForUpdate()->find($post->id);
+
+            if (blank($locked)) {
+                return;
+            }
+
+            $account = $locked->socialAccount;
+            $previousUrl = $locked->platform_url;
+            $videoUrl = filled($account) ? TikTokPublisher::postUrl($account, $videoId) : null;
+            $publication = $locked->analyticsPublication()->first()
+                ?? (filled($account) ? $this->syncPublication->handle($locked) : null);
 
             if (filled($publication)) {
                 $this->publications->reconcileRemoteId($publication, $videoId);
+
+                if (filled($videoUrl) && (blank($publication->permalink) || $publication->permalink === $previousUrl)) {
+                    $publication->update(['permalink' => $videoUrl]);
+                }
             }
 
-            $post->writePublication([
+            $locked->writePublication([
                 'platform_post_id' => $videoId,
-                'platform_url' => (filled($account) ? TikTokPublisher::postUrl($account, $videoId) : null)
-                    ?? $post->platform_url,
+                'platform_url' => $videoUrl ?? $previousUrl,
             ]);
         });
     }

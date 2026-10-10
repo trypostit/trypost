@@ -2393,6 +2393,7 @@ test('a tiktok post published before TikTok reports its video id asks again a mi
     'no video id yet' => ['p_pub_url~v2.pending', PrivacyLevel::PublicToEveryone, true],
     'video id already reported' => ['7694860629638940686', PrivacyLevel::PublicToEveryone, false],
     'private post' => ['p_pub_url~v2.private', PrivacyLevel::SelfOnly, false],
+    'followers only post' => ['p_pub_url~v2.followers', PrivacyLevel::FollowerOfCreator, false],
 ]);
 
 test('a post on another network never asks TikTok for a video id', function () {

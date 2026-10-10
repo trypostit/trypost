@@ -37,7 +37,17 @@ test('a post without an analytics publication gets the video id, its url and a p
         ->platform_url->toBe('https://www.tiktok.com/@tiktoker/video/7694860629638940686')
         ->and(AnalyticsPublication::query()->where('post_id', $post->id)->sole())
         ->remote_id->toBe('7694860629638940686')
-        ->origin->toBe(PublicationOrigin::TryPost);
+        ->origin->toBe(PublicationOrigin::TryPost)
+        ->permalink->toBe('https://www.tiktok.com/@tiktoker/video/7694860629638940686');
+});
+
+test('a post deleted before its video id is assigned is left as it is', function () {
+    $post = tiktokPostAwaitingVideo(SocialAccount::factory()->tiktok()->create(['username' => 'tiktoker']));
+    Post::query()->whereKey($post->id)->delete();
+
+    app(AssignTikTokVideoId::class)->handle($post, '7694860629638940686');
+
+    expect(AnalyticsPublication::query()->exists())->toBeFalse();
 });
 
 test('a post without an analytics publication takes its video back from the copy the importer made', function () {
@@ -47,7 +57,7 @@ test('a post without an analytics publication takes its video back from the copy
         providerPostId: '7694860629638940686',
         publishedAt: now()->subDays(2)->toImmutable(),
         contentType: PublicationContentType::Video,
-        permalink: 'https://www.tiktok.com/@tiktoker/video/7694860629638940686',
+        permalink: 'https://www.tiktok.com/@tiktoker/video/7694860629638940686?share=1',
     ));
     ImportExternalPosts::execute($account);
     $imported = Post::query()->imported()->sole();
@@ -58,6 +68,7 @@ test('a post without an analytics publication takes its video back from the copy
         ->and(AnalyticsPublication::query()->sole())
         ->post_id->toBe($post->id)
         ->remote_id->toBe('7694860629638940686')
+        ->permalink->toBe('https://www.tiktok.com/@tiktoker/video/7694860629638940686?share=1')
         ->and(AnalyticsPublication::query()->whereKey($video->id)->exists())->toBeFalse();
 });
 

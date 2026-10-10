@@ -114,7 +114,7 @@ class CollectPublicationMetrics implements ShouldQueue
 
             if ($collector instanceof TikTokPublicationMetricsCollector
                 && ! ctype_digit($publication->remote_id)
-                && $publication->post) {
+                && filled($publication->post)) {
                 $assignVideoId->handle($publication->post, $collector->publicVideoId($publication));
                 $publication->refresh()->setRelation('socialAccount', $channel);
             }

@@ -255,6 +255,7 @@ class ImportExternalPosts
                     ->whereColumn('analytics_publications.remote_id', 'posts.platform_post_id')))
             ->with('analyticsPublication')
             ->get()
+            ->reject(fn (Post $target): bool => $account->platform === Platform::TikTok && ctype_digit((string) $target->platform_post_id))
             ->filter(fn (Post $target): bool => self::sameText(
                 $target->content_type->isCaptionless() ? '' : (string) $target->content,
                 $text,

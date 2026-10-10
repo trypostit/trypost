@@ -116,6 +116,8 @@ test('posts that cannot get a video id are never sent to TikTok', function (arra
     Http::assertNothingSent();
 })->with([
     'self only' => [['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]],
+    'followers only' => [['meta' => ['privacy_level' => PrivacyLevel::FollowerOfCreator->value]]],
+    'friends only' => [['meta' => ['privacy_level' => PrivacyLevel::MutualFollowFriends->value]]],
     'already resolved' => [['platform_post_id' => '7694860629638940686']],
     'imported' => [['origin' => Origin::Network]],
 ]);
@@ -174,6 +176,7 @@ test('the sweep skips posts that already have their video id or never get one', 
 })->with([
     'resolved' => [['platform_post_id' => '7694860629638940686']],
     'self only' => [['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]],
+    'followers only' => [['meta' => ['privacy_level' => PrivacyLevel::FollowerOfCreator->value]]],
     'imported' => [['origin' => Origin::Network]],
     'publish failed' => [['publish_status' => PublishStatus::Failed]],
     'publish retrying' => [['publish_status' => PublishStatus::Retrying]],
