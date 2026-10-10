@@ -308,7 +308,7 @@ test('analytics jobs are rate limited per account with a shared guard only where
     'instagram is limited per token' => [Platform::Instagram, null],
     'facebook is limited per page token' => [Platform::Facebook, null],
     'x shares the app limit' => [Platform::X, 'x:app'],
-    'youtube shares the project quota' => [Platform::YouTube, 'youtube:project'],
+    'youtube is limited only per channel' => [Platform::YouTube, null],
     'tiktok shares the app limit' => [Platform::TikTok, 'tiktok:app'],
 ]);
 
