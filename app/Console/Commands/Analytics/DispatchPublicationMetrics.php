@@ -39,24 +39,9 @@ class DispatchPublicationMetrics extends Command
                 AnalyticsPublication::query()
                     ->available()
                     ->where('social_account_id', $account->id)
-                    ->where(function (Builder $query) use ($account, $days, $now): void {
-                        $ages = SyncCadence::metricsDays($account->platform);
-
-                        $query->where(fn (Builder $window): Builder => $ages === null
-                            ? $window->where('provider_published_at', '>=', $now->subDays($days)->startOfDay())
-                            : $window->where(function (Builder $scheduled) use ($ages, $now): void {
-                                foreach ($ages as $age) {
-                                    $scheduled->orWhereBetween('provider_published_at', [
-                                        $now->subDays($age)->startOfDay(),
-                                        $now->subDays($age)->endOfDay(),
-                                    ]);
-                                }
-                            }))
-                            ->orWhere(fn (Builder $unmeasured): Builder => $unmeasured
-                                ->whereDoesntHave('dailySnapshots')
-                                ->when($account->platform === Platform::X, fn (Builder $settled): Builder => $settled
-                                    ->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::X_FIRST_READ_DELAY_MINUTES))));
-                    })
+                    ->where(fn (Builder $query): Builder => $query
+                        ->where(fn (Builder $due) => $this->due($due, $account->platform, $now))
+                        ->orWhere(fn (Builder $unmeasured) => $this->unmeasured($unmeasured, $account->platform, $now)))
                     ->where(function ($query) use ($now): void {
                         $query->where('content_type', '!=', PublicationContentType::Story)
                             ->orWhere('provider_published_at', '>=', $now->subDay());
@@ -70,5 +55,38 @@ class DispatchPublicationMetrics extends Command
             });
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Posts the daily run reads again: every day of the window, or only the scheduled ages on X.
+     */
+    private function due(Builder $query, Platform $platform, CarbonImmutable $now): void
+    {
+        $ages = SyncCadence::metricsDays($platform);
+
+        if ($ages === null) {
+            $query->where('provider_published_at', '>=', $now->subDays(SyncCadence::metricsWindowDays($platform))->startOfDay());
+
+            return;
+        }
+
+        foreach ($ages as $age) {
+            $query->orWhereBetween('provider_published_at', [
+                $now->subDays($age)->startOfDay(),
+                $now->subDays($age)->endOfDay(),
+            ]);
+        }
+    }
+
+    /**
+     * Posts never measured; a fresh X post is left to its own first read an hour after publishing.
+     */
+    private function unmeasured(Builder $query, Platform $platform, CarbonImmutable $now): void
+    {
+        $query->whereDoesntHave('dailySnapshots');
+
+        if ($platform === Platform::X) {
+            $query->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::X_FIRST_READ_DELAY_MINUTES));
+        }
     }
 }

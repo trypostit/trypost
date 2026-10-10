@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Analytics\SyncCollector;
@@ -121,6 +122,19 @@ test('a published post is linked to insights but measured only with app access',
 
     expect(AnalyticsPublication::query()->where('post_id', $post->id)->exists())->toBeTrue();
     Bus::assertDispatchedTimes(CollectPublicationMetrics::class, $reads);
+})->with([
+    'with app access' => [true, 1],
+    'without app access' => [false, 0],
+]);
+
+test('a reconnected channel is collected only with app access', function (bool $subscribed, int $jobs) {
+    $account = analyticsAccount($subscribed);
+    Bus::fake([CollectAccountDailySnapshot::class, BootstrapAccountAnalytics::class]);
+
+    app(DispatchAccountAnalytics::class)->handle($account);
+
+    Bus::assertDispatchedTimes(CollectAccountDailySnapshot::class, $jobs);
+    Bus::assertDispatchedTimes(BootstrapAccountAnalytics::class, $jobs);
 })->with([
     'with app access' => [true, 1],
     'without app access' => [false, 0],

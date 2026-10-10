@@ -23,7 +23,7 @@ class DispatchAccountAnalytics
                 ->includedInAnalytics()
                 ->find($socialAccount->id);
 
-            if (! $currentAccount) {
+            if (! $currentAccount?->hasAppAccess()) {
                 return;
             }
 
