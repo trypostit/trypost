@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\Post;
 use Illuminate\Console\Command;
@@ -31,6 +32,7 @@ class ResolveTikTokVideoIds extends Command
     {
         Post::query()
             ->publishedToTikTok()
+            ->where('meta->privacy_level', PrivacyLevel::PublicToEveryone->value)
             ->whereHas('socialAccount', fn (Builder $query): Builder => $query->connected())
             ->where('published_at', '>=', now()->subDays(self::RESOLVE_WITHIN_DAYS))
             ->select(['id', 'platform', 'origin', 'publish_status', 'platform_post_id', 'meta', 'published_at', 'last_reconciled_at'])

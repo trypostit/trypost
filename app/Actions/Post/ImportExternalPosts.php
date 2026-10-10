@@ -184,7 +184,8 @@ class ImportExternalPosts
      * from this channel with the same text near the same time is that
      * publication: it takes over the remote id instead of a duplicate import.
      * Multiple candidates, captionless Instagram posts and Instagram publishes
-     * still in progress wait without claiming a remote id.
+     * still in progress wait without claiming a remote id. A TikTok post whose
+     * numeric video id TikTok already reported is never a candidate.
      */
     private static function claimedBySentPost(SocialAccount $account, AnalyticsPublication $publication): bool
     {

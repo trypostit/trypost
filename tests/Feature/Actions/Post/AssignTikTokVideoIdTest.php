@@ -120,3 +120,13 @@ test('a post whose channel is gone keeps its url and still moves its publication
         ->platform_url->toBe('https://www.tiktok.com/@tiktoker')
         ->and($publication->fresh()->remote_id)->toBe('7694860629638940686');
 });
+
+test('a publication without a link gets the video link', function () {
+    $post = tiktokPostAwaitingVideo(SocialAccount::factory()->tiktok()->create(['username' => 'tiktoker']));
+    $publication = app(SyncTryPostPublication::class)->handle($post);
+    $publication->update(['permalink' => null]);
+
+    app(AssignTikTokVideoId::class)->handle($post, '7694860629638940686');
+
+    expect($publication->fresh()->permalink)->toBe('https://www.tiktok.com/@tiktoker/video/7694860629638940686');
+});

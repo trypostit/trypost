@@ -18,6 +18,7 @@ use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -87,7 +88,8 @@ test('a post TikTok has not reported yet keeps its publish id and records the ch
     Http::assertSentCount(1);
 });
 
-test('a video held by another post records the check so the sweep waits before asking again', function () {
+test('a video held by another post is logged once a day, records the check and leaves the post as it is', function () {
+    Log::spy();
     $post = awaitingTikTokPost(['published_at' => now()->subMinutes(30)]);
     app(SyncTryPostPublication::class)->handle($post);
     app(SyncTryPostPublication::class)->handle(awaitingTikTokPost(['platform_post_id' => '7694860629638940686']));
@@ -97,7 +99,12 @@ test('a video held by another post records the check so the sweep waits before a
         'error' => ['code' => 'ok'],
     ])]);
 
-    expect(fn () => resolveTikTokVideoId($post))->toThrow(LogicException::class);
+    resolveTikTokVideoId($post);
+    resolveTikTokVideoId($post);
+
+    Log::shouldHaveReceived('warning')
+        ->with('TikTok reported a video another TryPost post holds; not assigned.', Mockery::type('array'))
+        ->once();
 
     expect($post->fresh())
         ->platform_post_id->toBe('v_pub_url~v2-1.pending')
@@ -181,6 +188,15 @@ test('the sweep skips posts that already have their video id or never get one', 
     'publish failed' => [['publish_status' => PublishStatus::Failed]],
     'publish retrying' => [['publish_status' => PublishStatus::Retrying]],
 ]);
+
+test('a post is checked once while its check is already queued', function () {
+    $post = awaitingTikTokPost();
+
+    ResolveTikTokVideoId::dispatch($post)->delay(now()->addSeconds(ResolveTikTokVideoId::FIRST_CHECK_AFTER_SECONDS));
+    $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
+
+    Queue::assertPushed(ResolveTikTokVideoId::class, 1);
+});
 
 test('the sweep queues the check on the TikTok queue', function () {
     awaitingTikTokPost();

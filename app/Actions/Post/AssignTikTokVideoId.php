@@ -18,6 +18,12 @@ use Illuminate\Support\Facades\DB;
  */
 class AssignTikTokVideoId
 {
+    /**
+     * The importer locks the publication before the post, this action the post
+     * before the publication; a rare deadlock between them is retried.
+     */
+    private const int DEADLOCK_ATTEMPTS = 3;
+
     public function __construct(
         private readonly SyncTryPostPublication $syncPublication,
         private readonly UpsertAnalyticsPublication $publications,
@@ -50,6 +56,6 @@ class AssignTikTokVideoId
                 'platform_post_id' => $videoId,
                 'platform_url' => $videoUrl ?? $previousUrl,
             ]);
-        });
+        }, self::DEADLOCK_ATTEMPTS);
     }
 }
