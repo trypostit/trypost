@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
+use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
@@ -16,6 +17,7 @@ use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
@@ -241,20 +243,20 @@ test('posts are left alone when their own video is unknown, ambiguous or claimed
 
 /**
  * Three posts of one channel hold video 7000000000000000041, created at
- * 10:00:00 on 2026-10-08: the one published 30 seconds later, one published
+ * 10:00:00 on 2026-10-05: the one published 30 seconds later, one published
  * an hour before the video existed, and an imported copy.
  *
  * @return array{owner: Post, earlier: Post, copy: Post, video: AnalyticsPublication}
  */
 function sharedTikTokVideo(bool $publicationOnEarlierPost = false): array
 {
-    $owner = repairTikTokPost('7000000000000000041', '2026-10-08 10:00:30');
-    $earlier = repairTikTokPost('7000000000000000041', '2026-10-08 09:00:30');
+    $owner = repairTikTokPost('7000000000000000041', '2026-10-05 10:00:30');
+    $earlier = repairTikTokPost('7000000000000000041', '2026-10-05 09:00:30');
     $copy = Post::factory()->forAccount(test()->account, ContentType::TikTokVideo)->imported()->create([
         'platform_post_id' => '7000000000000000041',
-        'published_at' => '2026-10-08 10:00:00',
+        'published_at' => '2026-10-05 10:00:00',
     ]);
-    $video = repairTikTokVideo('7000000000000000041', '2026-10-08 10:00:00', $publicationOnEarlierPost ? $earlier : $owner);
+    $video = repairTikTokVideo('7000000000000000041', '2026-10-05 10:00:00', $publicationOnEarlierPost ? $earlier : $owner);
 
     return compact('owner', 'earlier', 'copy', 'video');
 }
@@ -276,7 +278,6 @@ test('a video several posts hold stays with the post published right after it wa
         ->platform_url->toBe('https://www.tiktok.com/@tiktoker')
         ->and(Post::query()->whereKey($shared['copy']->id)->exists())->toBeFalse()
         ->and(Media::query()->whereKey($media->id)->exists())->toBeFalse();
-    Queue::assertNotPushed(ResolveTikTokVideoId::class, fn (ResolveTikTokVideoId $job): bool => $job->post->is($shared['earlier']));
 })->with([
     'publication on the owner' => [false],
     'publication on a post that does not own it' => [true],
@@ -286,10 +287,10 @@ test('a video several posts hold is left alone without exactly one post publishe
     $shared = sharedTikTokVideo();
 
     match ($case) {
-        'two posts right after' => repairTikTokPost('7000000000000000041', '2026-10-08 10:01:00'),
-        'none right after' => $shared['owner']->forceFill(['published_at' => '2026-10-08 10:30:00'])->save(),
+        'two posts right after' => repairTikTokPost('7000000000000000041', '2026-10-05 10:01:00'),
+        'none right after' => $shared['owner']->forceFill(['published_at' => '2026-10-05 10:30:00'])->save(),
         'owner holds another publication' => $shared['video']->update(['post_id' => $shared['earlier']->id])
-            && repairTikTokVideo('v_pub_url~v2-1.owner', '2026-10-08 10:00:30', $shared['owner']),
+            && repairTikTokVideo('v_pub_url~v2-1.owner', '2026-10-05 08:00:00', $shared['owner']),
     };
 
     $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
@@ -329,4 +330,81 @@ test('an imported copy left behind when a post gets its own video back is delete
 
     expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000002')
         ->and(Post::query()->whereKey($orphan->id)->exists())->toBeFalse();
+});
+
+test('a native video is never deleted when the post holding its id had another video created in its window', function () {
+    $native = Post::factory()->forAccount($this->account, ContentType::TikTokVideo)->imported()->create([
+        'platform_post_id' => '7000000000000000051',
+        'published_at' => '2026-10-05 10:00:00',
+    ]);
+    $nativeVideo = repairTikTokVideo('7000000000000000051', '2026-10-05 10:00:00', $native);
+    $post = repairTikTokPost('7000000000000000051', '2026-10-05 10:01:00');
+    repairTikTokVideo('7000000000000000052', '2026-10-05 10:00:40');
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect(Post::query()->whereKey($native->id)->exists())->toBeTrue()
+        ->and($nativeVideo->fresh()->post_id)->toBe($native->id)
+        ->and($post->fresh()->platform_post_id)->toBe('7000000000000000051');
+});
+
+test('a post that loses a video another post owns gets its own video back when there is one', function () {
+    $shared = sharedTikTokVideo();
+    $ownCopy = Post::factory()->forAccount($this->account, ContentType::TikTokVideo)->imported()->create([
+        'platform_post_id' => '7000000000000000042',
+        'published_at' => '2026-10-05 09:00:00',
+    ]);
+    $ownVideo = repairTikTokVideo('7000000000000000042', '2026-10-05 09:00:00', $ownCopy);
+
+    $this->artisan('tiktok:repair-video-ids')
+        ->expectsOutputToContain('1 post(s) got their own video back; 0 post(s) lost a video another post owns; 2 imported copy(ies) deleted;')
+        ->assertSuccessful();
+
+    expect($shared['earlier']->fresh()->platform_post_id)->toBe('7000000000000000042')
+        ->and($ownVideo->fresh()->post_id)->toBe($shared['earlier']->id)
+        ->and(Post::query()->whereKey($ownCopy->id)->exists())->toBeFalse()
+        ->and($shared['owner']->fresh()->platform_post_id)->toBe('7000000000000000041');
+});
+
+test('a shared video is left alone when the posts are not published, have no publication or sit on other channels', function (string $case) {
+    $posts = match ($case) {
+        'a failed post' => [
+            repairTikTokPost('7000000000000000061', '2026-10-05 10:00:30'),
+            tap(repairTikTokPost('7000000000000000061', '2026-10-05 09:00:30'), fn (Post $post) => $post->forceFill(['publish_status' => PublishStatus::Failed])->save()),
+        ],
+        'no publication' => [
+            repairTikTokPost('7000000000000000061', '2026-10-05 10:00:30'),
+            repairTikTokPost('7000000000000000061', '2026-10-05 09:00:30'),
+        ],
+        'another channel' => [
+            repairTikTokPost('7000000000000000061', '2026-10-05 10:00:30'),
+            Post::factory()->forAccount(SocialAccount::factory()->tiktok()->create(), ContentType::TikTokVideo)->published()->create([
+                'platform_post_id' => '7000000000000000061',
+                'published_at' => '2026-10-05 09:00:30',
+            ]),
+        ],
+    };
+
+    if ($case !== 'no publication') {
+        repairTikTokVideo('7000000000000000061', '2026-10-05 10:00:00', $posts[0]);
+    }
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect(Post::query()->whereKey(array_map(fn (Post $post): string => $post->id, $posts))->pluck('platform_post_id')->unique()->all())
+        ->toBe(['7000000000000000061']);
+})->with([
+    'a failed post' => ['a failed post'],
+    'no publication' => ['no publication'],
+    'another channel' => ['another channel'],
+]);
+
+test('a failure rolls every repair back', function () {
+    $chain = claimedTikTokVideoChain();
+    Post::updating(fn () => throw new RuntimeException('Write failed'));
+
+    expect(fn () => Artisan::call('tiktok:repair-video-ids'))->toThrow(RuntimeException::class, 'Write failed');
+
+    expect($chain['firstVideo']->fresh()->post_id)->toBe($chain['second']->id)
+        ->and(Post::query()->whereKey($chain['imported']->id)->exists())->toBeTrue();
 });
