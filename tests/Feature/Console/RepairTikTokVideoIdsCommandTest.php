@@ -211,16 +211,16 @@ test('a post is left alone when the post holding its own video cannot be repaire
         ->and($correct->fresh()->platform_post_id)->toBe('7000000000000000023');
 });
 
-test('posts are left alone when their own video is ambiguous or claimed by another post', function (bool $twoVideosInWindow) {
+test('posts are left alone when their own video is unknown, ambiguous or claimed by another post', function (string $case) {
     $previous = repairTikTokPost('v_pub_url~v2-1.previous', '2026-10-07 10:00:30');
     repairTikTokVideo('v_pub_url~v2-1.previous', '2026-10-07 10:00:30', $previous);
     $post = repairTikTokPost('7000000000000000031', '2026-10-08 10:00:30');
     $held = repairTikTokVideo('7000000000000000031', '2026-10-07 10:00:00', $post);
-    $video = repairTikTokVideo('7000000000000000032', '2026-10-08 10:00:20');
+    $video = repairTikTokVideo('7000000000000000032', $case === 'unknown' ? '2026-10-08 09:50:00' : '2026-10-08 10:00:20');
 
-    if ($twoVideosInWindow) {
+    if ($case === 'ambiguous') {
         repairTikTokVideo('7000000000000000033', '2026-10-08 09:59:40');
-    } else {
+    } elseif ($case === 'claimed') {
         $other = repairTikTokPost('v_pub_url~v2-1.other', '2026-10-07 12:00:30');
         repairTikTokVideo('v_pub_url~v2-1.other', '2026-10-07 12:00:30', $other);
         $sibling = repairTikTokPost('7000000000000000034', '2026-10-08 10:01:00');
@@ -233,6 +233,7 @@ test('posts are left alone when their own video is ambiguous or claimed by anoth
         ->and($held->fresh()->post_id)->toBe($post->id)
         ->and($video->fresh()->post_id)->toBeNull();
 })->with([
-    'two videos in its window' => [true],
-    'another post claims the same video' => [false],
+    'no video in its window' => ['unknown'],
+    'two videos in its window' => ['ambiguous'],
+    'another post claims the same video' => ['claimed'],
 ]);

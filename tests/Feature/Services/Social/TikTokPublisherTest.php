@@ -1567,18 +1567,21 @@ test('tiktok publisher does not read the video id when TikTok cannot be reached'
     expect($this->publisher->publicVideoId($this->post))->toBeNull();
 });
 
-test('tiktok publisher does not read the video id when the token refresh is rejected', function () {
+test('tiktok publisher does not read the video id when the token refresh fails', function (array $refreshResponse, int $httpStatus) {
     $this->socialAccount->update(['token_expires_at' => now()->subHour()]);
     $this->post->forceFill(['platform_post_id' => 'v_pub_url~v2-1.pending'])->save();
 
     Http::fake([
-        $this->api.'/oauth/token/' => Http::response(['error' => 'invalid_grant'], 400),
+        $this->api.'/oauth/token/' => Http::response($refreshResponse, $httpStatus),
     ]);
 
     expect($this->publisher->publicVideoId($this->post->fresh()))->toBeNull();
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/status/fetch/'));
-});
+})->with([
+    'refresh rejected' => [['error' => 'invalid_grant'], 400],
+    'TikTok unavailable' => [['error' => 'server_error'], 503],
+]);
 
 test('tiktok publisher does not ask for a video id without a channel or a publish id', function (bool $withChannel) {
     $post = $withChannel
@@ -1593,3 +1596,24 @@ test('tiktok publisher does not ask for a video id without a channel or a publis
     'no publish id' => [true],
     'no channel' => [false],
 ]);
+
+test('tiktok publisher reads the video id with the token it just refreshed', function () {
+    $this->socialAccount->update(['token_expires_at' => now()->subHour(), 'access_token' => 'old-token']);
+    $this->post->forceFill(['platform_post_id' => 'v_pub_url~v2-1.pending'])->save();
+
+    Http::fake([
+        $this->api.'/oauth/token/' => Http::response([
+            'access_token' => 'new-token',
+            'refresh_token' => 'new-refresh-token',
+            'expires_in' => 86400,
+        ]),
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7694860629638940686']],
+        ]),
+    ]);
+
+    expect($this->publisher->publicVideoId($this->post->fresh()))->toBe('7694860629638940686');
+
+    Http::assertSent(fn ($request) => str_contains($request->url(), '/post/publish/status/fetch/')
+        && $request->hasHeader('Authorization', 'Bearer new-token'));
+});
