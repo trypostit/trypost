@@ -70,18 +70,18 @@ class CollectAccountDailySnapshot implements ShouldQueue
             return;
         }
 
-        $account = SocialAccount::query()
+        $channel = SocialAccount::query()
             ->connected()
             ->find($this->socialAccountId);
 
-        if (! $account
-            || ! $collectors->supports($account->platform)) {
+        if (! $channel?->workspace->account->hasAppAccess()
+            || ! $collectors->supports($channel->platform)) {
             return;
         }
 
         $alreadyCollected = AnalyticsAccountDailySnapshot::query()
-            ->where('workspace_id', $account->workspace_id)
-            ->where('social_account_key', $accountKeys->for($account))
+            ->where('workspace_id', $channel->workspace_id)
+            ->where('social_account_key', $accountKeys->for($channel))
             ->where('date', $this->observationDate)
             ->where('provenance', ObservationProvenance::Actual)
             ->exists();
@@ -91,28 +91,28 @@ class CollectAccountDailySnapshot implements ShouldQueue
         }
 
         try {
-            $observation = $collectors->for($account->platform)->collect(
-                $account,
+            $observation = $collectors->for($channel->platform)->collect(
+                $channel,
                 CarbonImmutable::parse($this->observationDate, 'UTC'),
             );
-            $writer->handle($account, $observation);
-            $log->record($account, 'followers', $this->observationDate, $this->attempts(), 'actual');
+            $writer->handle($channel, $observation);
+            $log->record($channel, 'followers', $this->observationDate, $this->attempts(), 'actual');
         } catch (AnalyticsCollectionException $exception) {
             if (in_array($exception->category, ['authentication', 'permission'], true)) {
-                $log->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
+                $log->record($channel, 'followers', $this->observationDate, $this->attempts(), $exception->category);
 
                 return;
             }
 
             if (! in_array($exception->category, ['transient', 'rate_limited'], true)) {
-                $log->record($account, 'followers', $this->observationDate, $this->attempts(), $exception->category);
+                $log->record($channel, 'followers', $this->observationDate, $this->attempts(), $exception->category);
 
                 return;
             }
 
-            $this->retryTransient($account, $exception->category, $exception->retryAt, $log);
+            $this->retryTransient($channel, $exception->category, $exception->retryAt, $log);
         } catch (ConnectionException) {
-            $this->retryTransient($account, 'transient', null, $log);
+            $this->retryTransient($channel, 'transient', null, $log);
         }
     }
 

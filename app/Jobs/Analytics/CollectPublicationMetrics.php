@@ -96,16 +96,18 @@ class CollectPublicationMetrics implements ShouldQueue
         }
 
         $publication = AnalyticsPublication::query()->available()->find($this->publicationId);
-        $account = $publication ? SocialAccount::query()
+        $channel = $publication ? SocialAccount::query()
             ->connected()
             ->includedInAnalytics()
             ->find($publication->social_account_id) : null;
 
-        if (! $publication || ! $account || ! $this->eligible($publication, $account, $date)) {
+        if (! $publication
+            || ! $channel?->workspace->account->hasAppAccess()
+            || ! $this->eligible($publication, $channel, $date)) {
             return;
         }
 
-        $publication->setRelation('socialAccount', $account);
+        $publication->setRelation('socialAccount', $channel);
 
         try {
             $collector = $collectors->for($publication->platform);
@@ -118,17 +120,17 @@ class CollectPublicationMetrics implements ShouldQueue
 
             $observation = $collector->collect($publication, $date);
             $writer->handle($publication, $observation);
-            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
+            $log->record($channel, 'publication_metrics', $this->observationDate, $this->attempts(), 'actual');
 
             if ($publication->metric_failures > 0) {
                 $publication->forceFill(['metric_failures' => 0])->save();
             }
         } catch (AnalyticsCollectionException $exception) {
-            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
+            $log->record($channel, 'publication_metrics', $this->observationDate, $this->attempts(), $exception->category);
             $this->recordTerminalFailure($publication, $exception);
             $this->retry($publication, $date, $exception->category, $exception->retryAt, $log);
         } catch (ConnectionException) {
-            $log->record($account, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
+            $log->record($channel, 'publication_metrics', $this->observationDate, $this->attempts(), 'transient');
             $this->retry($publication, $date, 'transient', null, $log);
         }
     }

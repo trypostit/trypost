@@ -29,19 +29,19 @@ class DispatchPublicationMetrics extends Command
             ->includedInAnalytics()
             ->with('workspace.account.subscriptions')
             ->lazyById(100)
-            ->each(function (SocialAccount $account) use ($now): void {
-                if (! $account->workspace->account->hasAppAccess()) {
+            ->each(function (SocialAccount $channel) use ($now): void {
+                if (! $channel->workspace->account->hasAppAccess()) {
                     return;
                 }
 
-                $windowStart = SyncCadence::metricsWindowStart($account->platform, $now);
+                $windowStart = SyncCadence::metricsWindowStart($channel->platform, $now);
 
                 AnalyticsPublication::query()
                     ->available()
-                    ->where('social_account_id', $account->id)
+                    ->where('social_account_id', $channel->id)
                     ->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES))
                     ->where(fn (Builder $query): Builder => $query
-                        ->where(fn (Builder $due): Builder => $this->whereDueForRead($due, $account->platform, $now, $windowStart))
+                        ->where(fn (Builder $due): Builder => $this->whereDueForRead($due, $channel->platform, $now, $windowStart))
                         ->orWhereDoesntHave('dailySnapshots'))
                     ->where(function ($query) use ($now): void {
                         $query->where('content_type', '!=', PublicationContentType::Story)

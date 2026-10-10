@@ -282,6 +282,22 @@ test('x backfill counts the replies the collector skipped toward the timeline ca
         ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(800);
 });
 
+test('x backfill detects the timeline cap on a last page of skipped replies only', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 798],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([], null, true, providerRowCount: 2));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and($state->fresh()->last_error_category)->toBe('x_timeline_limit');
+});
+
 test('x backfill below the timeline cap completes when the provider exhausts its history', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);

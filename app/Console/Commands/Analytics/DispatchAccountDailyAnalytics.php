@@ -24,9 +24,9 @@ class DispatchAccountDailyAnalytics extends Command
             ->connected()
             ->with('workspace.account.subscriptions')
             ->lazyById(200)
-            ->each(function (SocialAccount $account) use ($collectors, $date): void {
-                if ($account->workspace->account->hasAppAccess() && $collectors->supports($account->platform)) {
-                    CollectAccountDailySnapshot::dispatch($account->id, $date);
+            ->each(function (SocialAccount $channel) use ($collectors, $date): void {
+                if ($channel->workspace->account->hasAppAccess() && $collectors->supports($channel->platform)) {
+                    CollectAccountDailySnapshot::dispatch($channel->id, $date);
                 }
             });
 

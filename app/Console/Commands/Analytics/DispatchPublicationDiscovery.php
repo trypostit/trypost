@@ -33,23 +33,23 @@ class DispatchPublicationDiscovery extends Command
             ->when($except !== [], fn (Builder $query): Builder => $query->whereNotIn('platform', $except))
             ->with(['analyticsSyncStates', 'workspace.account.subscriptions'])
             ->lazyById(100)
-            ->each(function (SocialAccount $account) use ($staleBefore): void {
-                if (! $account->workspace->account->hasAppAccess()) {
+            ->each(function (SocialAccount $channel) use ($staleBefore): void {
+                if (! $channel->workspace->account->hasAppAccess()) {
                     return;
                 }
 
-                $backfill = $account->analyticsSyncStates
+                $backfill = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
 
                 if (! $backfill) {
-                    BootstrapAccountAnalytics::dispatch($account->id);
+                    BootstrapAccountAnalytics::dispatch($channel->id);
 
                     return;
                 }
 
                 if ($backfill->status === SyncStatus::Failed) {
                     if ($backfill->last_error_category === 'queue_failed') {
-                        BootstrapAccountAnalytics::dispatch($account->id);
+                        BootstrapAccountAnalytics::dispatch($channel->id);
                     }
 
                     return;
@@ -60,16 +60,16 @@ class DispatchPublicationDiscovery extends Command
                     && $backfill->updated_at?->lessThan($staleBefore);
 
                 if ($staleBackfill) {
-                    BootstrapAccountAnalytics::dispatch($account->id);
+                    BootstrapAccountAnalytics::dispatch($channel->id);
 
                     return;
                 }
 
-                $discovery = $account->analyticsSyncStates
+                $discovery = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationDiscovery);
 
                 if ($backfill->isTerminal() && $discovery) {
-                    DiscoverAccountPublications::dispatch($account->id, $discovery->id);
+                    DiscoverAccountPublications::dispatch($channel->id, $discovery->id);
                 }
             });
 

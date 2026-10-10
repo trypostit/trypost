@@ -138,9 +138,6 @@ class AdvanceAnalyticsSyncState
             $xTimelineLimited = $isXBackfill
                 && $page->providerExhausted
                 && ! $reachedTarget
-                && $state->target_since
-                && $oldest
-                && $oldest->greaterThan($state->target_since)
                 && $seenCount >= self::X_TIMELINE_LIMIT;
             $hadProviderLimit = $page->providerLimited || data_get($checkpoint, 'had_provider_limit');
             $finished = $page->providerExhausted || $reachedTarget;

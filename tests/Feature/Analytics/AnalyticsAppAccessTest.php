@@ -9,18 +9,22 @@ use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Jobs\Analytics\BackfillAccountPublications;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\CollectPublicationMetrics;
 use App\Jobs\Analytics\DiscoverAccountPublications;
+use App\Jobs\Analytics\FinalizeAccountDailySnapshot;
 use App\Jobs\Analytics\SyncTryPostPublication;
 use App\Models\Account;
+use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -159,3 +163,50 @@ test('a reconnected channel is collected only with app access', function (bool $
     'with app access' => [true, 1],
     'without app access' => [false, 0],
 ]);
+
+test('queued analytics work stops calling the network once the account loses access', function () {
+    CarbonImmutable::setTestNow('2026-10-10 12:00:00 UTC');
+    $account = analyticsAccount(false);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'platform' => Platform::X,
+        'network' => Platform::X->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'provider_published_at' => CarbonImmutable::now('UTC')->subDays(2),
+    ]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'collector' => SyncCollector::PublicationBackfill,
+        'status' => SyncStatus::Pending,
+        'checkpoint' => ['cursor' => null, 'revision' => 0],
+    ]);
+    Http::fake();
+    Bus::fake();
+
+    app()->call([new CollectPublicationMetrics($publication->id, '2026-10-10'), 'handle']);
+    app()->call([new CollectAccountDailySnapshot($account->id, '2026-10-10'), 'handle']);
+    app()->call([new BackfillAccountPublications($account->id, $backfill->id), 'handle']);
+
+    Http::assertNothingSent();
+    expect($publication->dailySnapshots()->exists())->toBeFalse();
+});
+
+test('follower history is not carried forward for an account without access', function () {
+    $account = analyticsAccount(false);
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'network' => $account->platform->network(),
+        'platform' => $account->platform,
+        'platform_user_id' => $account->platform_user_id,
+        'date' => '2026-10-09',
+        'followers_count' => 100,
+    ]);
+
+    app()->call([new FinalizeAccountDailySnapshot($account->id, '2026-10-10'), 'handle']);
+
+    expect(AnalyticsAccountDailySnapshot::query()->where('social_account_id', $account->id)->whereDate('date', '2026-10-10')->exists())->toBeFalse();
+});
