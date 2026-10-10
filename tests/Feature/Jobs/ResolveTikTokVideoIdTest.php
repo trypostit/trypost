@@ -7,6 +7,7 @@ use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\ResolveTikTokVideoId;
@@ -175,6 +176,14 @@ test('the sweep skips posts that already have their video id or never get one', 
     'publish failed' => [['publish_status' => PublishStatus::Failed]],
     'publish retrying' => [['publish_status' => PublishStatus::Retrying]],
 ]);
+
+test('the sweep queues the check on the TikTok queue', function () {
+    awaitingTikTokPost();
+
+    $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
+
+    Queue::assertPushedOn(Platform::TikTok->queue(), ResolveTikTokVideoId::class);
+});
 
 test('the sweep skips posts whose channel is not connected', function (Status $status) {
     awaitingTikTokPost();

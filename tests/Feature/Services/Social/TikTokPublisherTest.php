@@ -1579,3 +1579,17 @@ test('tiktok publisher does not read the video id when the token refresh is reje
 
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/post/publish/status/fetch/'));
 });
+
+test('tiktok publisher does not ask for a video id without a channel or a publish id', function (bool $withChannel) {
+    $post = $withChannel
+        ? tap($this->post, fn (Post $post) => $post->forceFill(['platform_post_id' => null])->save())
+        : Post::factory()->create(['platform_post_id' => 'v_pub_url~v2-1.pending']);
+    Http::fake();
+
+    expect($this->publisher->publicVideoId($post))->toBeNull();
+
+    Http::assertNothingSent();
+})->with([
+    'no publish id' => [true],
+    'no channel' => [false],
+]);

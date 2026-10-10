@@ -7,9 +7,11 @@ use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\SocialAccount\Status;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\AnalyticsPublication;
+use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
@@ -101,6 +103,40 @@ test('a second run finds nothing left to repair', function () {
         ->assertSuccessful();
 
     expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000002');
+});
+
+test('the copy the importer made of a post own video goes with its media', function () {
+    $chain = claimedTikTokVideoChain();
+    $media = Media::factory()->ownedByPost($chain['imported'])->create();
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect(Media::query()->whereKey($media->id)->exists())->toBeFalse();
+});
+
+test('a post gets a video url built from its channel when the video has no permalink', function (?string $username, string $expectedUrl) {
+    $chain = claimedTikTokVideoChain();
+    $chain['secondVideo']->update(['permalink' => null]);
+    $this->account->update(['username' => $username]);
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_url)->toBe($expectedUrl);
+})->with([
+    'with a username' => ['tiktoker', 'https://www.tiktok.com/@tiktoker/video/7000000000000000002'],
+    'without a username' => [null, 'https://www.tiktok.com/@tiktoker'],
+]);
+
+test('posts on a channel that is not connected are not sent to TikTok', function () {
+    $chain = claimedTikTokVideoChain();
+    $this->account->update(['status' => Status::Disconnected]);
+
+    $this->artisan('tiktok:repair-video-ids')
+        ->expectsOutputToContain('0 post(s) are asking TikTok for their video id.')
+        ->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000002');
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
 
 test('a post whose publish only finished long after TikTok created its video keeps that video', function () {
