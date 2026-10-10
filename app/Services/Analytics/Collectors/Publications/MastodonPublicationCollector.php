@@ -27,6 +27,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
             [
                 'limit' => self::PAGE_SIZE,
                 'exclude_reblogs' => true,
+                'exclude_replies' => true,
                 'max_id' => $cursor,
             ],
             authenticated: $hasPrivateHistoryScope,
@@ -46,6 +47,10 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
                 $crossedCutoff = true;
 
                 break;
+            }
+
+            if (filled(data_get($row, 'in_reply_to_id'))) {
+                continue;
             }
 
             $attachments = (array) data_get($row, 'media_attachments', []);

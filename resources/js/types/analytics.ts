@@ -75,10 +75,7 @@ export type PerformanceRow = AccountIdentityData &
     Record<PerformanceMetric, Comparison>;
 
 export interface InsightsSyncCadence {
-    discovery_hours: number;
-    x_discovery_hours: number;
     metrics_days: number;
-    x_metrics_days: number;
 }
 
 export interface CoverageRow {

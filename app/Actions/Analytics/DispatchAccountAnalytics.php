@@ -18,23 +18,23 @@ class DispatchAccountAnalytics
     public function handle(SocialAccount $socialAccount): void
     {
         try {
-            $currentAccount = SocialAccount::query()
+            $connectedChannel = SocialAccount::query()
                 ->connected()
                 ->includedInAnalytics()
                 ->find($socialAccount->id);
 
-            if (! $currentAccount) {
+            if (! $connectedChannel?->workspace->account->hasAppAccess()) {
                 return;
             }
 
-            if ($this->collectors->supports($currentAccount->platform)) {
+            if ($this->collectors->supports($connectedChannel->platform)) {
                 CollectAccountDailySnapshot::dispatch(
-                    $currentAccount->id,
+                    $connectedChannel->id,
                     CarbonImmutable::now('UTC')->toDateString(),
                 )->afterCommit();
             }
 
-            BootstrapAccountAnalytics::dispatch($currentAccount->id, true)->afterCommit();
+            BootstrapAccountAnalytics::dispatch($connectedChannel->id, true)->afterCommit();
         } catch (Throwable $exception) {
             report($exception);
         }

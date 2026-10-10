@@ -53,7 +53,7 @@ test('every analytics enum value has a display translation', function (string $l
     }
 
     expect(Arr::get($analytics, 'title'))->toBeString()->not->toBeEmpty();
-    foreach (['insights.export.button', 'insights.sync.title', 'insights.sync.every_hours', 'insights.columns', 'insights.channels_shown'] as $key) {
+    foreach (['insights.export.button', 'insights.sync.title', 'insights.sync.new_posts', 'insights.columns', 'insights.channels_shown'] as $key) {
         expect(Arr::get($analytics, $key))->toBeString()->not->toBeEmpty("{$locale} is missing {$key}");
     }
 })->with(Locale::values());

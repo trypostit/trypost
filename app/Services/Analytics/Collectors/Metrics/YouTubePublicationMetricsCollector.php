@@ -86,7 +86,7 @@ class YouTubePublicationMetricsCollector extends AbstractPublicationMetricsColle
             ->where('platform', Platform::YouTube)
             ->whereKeyNot($publication->id)
             ->where(fn (Builder $query) => $query
-                ->where('provider_published_at', '>=', $date->subDays(SyncCadence::metricsWindowDays(Platform::YouTube))->startOfDay())
+                ->where('provider_published_at', '>=', SyncCadence::metricsWindowStart(Platform::YouTube, $date))
                 ->orWhereDoesntHave('dailySnapshots'))
             ->whereDoesntHave('dailySnapshots', fn (Builder $query) => $query->where('date', $date->toDateString()))
             ->latest('provider_published_at')

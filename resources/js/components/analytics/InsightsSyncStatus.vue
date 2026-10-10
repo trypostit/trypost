@@ -80,20 +80,7 @@ const lastSyncedAt = computed<string | null>(() =>
                         class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                         aria-hidden="true"
                     />
-                    <span>{{
-                        $t('analytics.insights.sync.new_posts', {
-                            interval: $tChoice(
-                                'analytics.insights.sync.every_hours',
-                                cadence.discovery_hours,
-                                { count: String(cadence.discovery_hours) },
-                            ),
-                            x_interval: $tChoice(
-                                'analytics.insights.sync.every_hours',
-                                cadence.x_discovery_hours,
-                                { count: String(cadence.x_discovery_hours) },
-                            ),
-                        })
-                    }}</span>
+                    <span>{{ $t('analytics.insights.sync.new_posts') }}</span>
                 </li>
                 <li class="flex gap-2.5" data-testid="insights-sync-metrics">
                     <IconCalendarStats
@@ -103,7 +90,6 @@ const lastSyncedAt = computed<string | null>(() =>
                     <span>{{
                         $t('analytics.insights.sync.metrics', {
                             days: String(cadence.metrics_days),
-                            x_days: String(cadence.x_metrics_days),
                         })
                     }}</span>
                 </li>

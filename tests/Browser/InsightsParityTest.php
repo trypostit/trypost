@@ -139,9 +139,8 @@ test('the header offers CSV and Markdown exports of the filtered page and explai
     waitForInsightsParityTestId($page, 'insights-sync-popover');
 
     $page->assertSeeIn('@insights-sync-popover', 'How Insights stay updated')
-        ->assertSeeIn('@insights-sync-new-posts', 'every 3 hours')
-        ->assertSeeIn('@insights-sync-new-posts', 'every 24 hours on X')
-        ->assertSeeIn('@insights-sync-metrics', 'last 30 days (20 on X)')
+        ->assertSeeIn('@insights-sync-new-posts', 'New posts are picked up daily.')
+        ->assertSeeIn('@insights-sync-metrics', 'up to 30 days after publishing')
         ->assertSeeIn('@insights-sync-last', 'Last synced 2 hours ago')
         ->assertNoJavaScriptErrors();
 });

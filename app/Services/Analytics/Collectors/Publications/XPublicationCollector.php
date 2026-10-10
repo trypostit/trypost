@@ -25,9 +25,10 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             config('trypost.platforms.x.api')."/users/{$account->platform_user_id}/tweets",
             [
                 'max_results' => self::PAGE_SIZE,
+                'start_time' => $cutoff->toIso8601ZuluString(),
                 'pagination_token' => $cursor,
                 'exclude' => 'retweets,replies',
-                'tweet.fields' => 'created_at,attachments,note_tweet',
+                'tweet.fields' => 'created_at,attachments,note_tweet,referenced_tweets',
                 'expansions' => 'attachments.media_keys',
                 'media.fields' => 'media_key,type,preview_image_url,url,variants',
             ],
@@ -35,10 +36,19 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
         $crossedCutoff = false;
+        $walkedRows = 0;
         $providerLimited = false;
 
         foreach ((array) $response->json('data', []) as $row) {
             $publishedAt = $this->publishedAt(data_get($row, 'created_at'));
+
+            if ($publishedAt?->lessThan($cutoff)) {
+                $crossedCutoff = true;
+
+                break;
+            }
+
+            $walkedRows++;
 
             if (! $publishedAt) {
                 $providerLimited = true;
@@ -46,10 +56,8 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 continue;
             }
 
-            if ($publishedAt->lessThan($cutoff)) {
-                $crossedCutoff = true;
-
-                break;
+            if (collect((array) data_get($row, 'referenced_tweets', []))->contains('type', 'replied_to')) {
+                continue;
             }
 
             $attachedMedia = collect((array) data_get($row, 'attachments.media_keys', []))
@@ -85,7 +93,13 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         $nextCursor = data_get($response->json(), 'meta.next_token');
         $hasNext = is_string($nextCursor) && $nextCursor !== '' && ! $crossedCutoff;
 
-        return new PublicationPage($publications, $hasNext ? $nextCursor : null, ! $hasNext, $providerLimited);
+        return new PublicationPage(
+            $publications,
+            $hasNext ? $nextCursor : null,
+            ! $hasNext,
+            $providerLimited,
+            providerRowCount: $walkedRows,
+        );
     }
 
     /** @param list<mixed> $types */

@@ -8,6 +8,7 @@ final readonly class PublicationPage
 {
     /**
      * @param  list<DiscoveredPublication>  $publications
+     * @param  int|null  $providerRowCount  Rows the network returned, including the replies left out of $publications; a provider cap counts these.
      */
     public function __construct(
         public array $publications,
@@ -16,6 +17,7 @@ final readonly class PublicationPage
         public bool $providerLimited = false,
         public ?string $partialReason = null,
         public bool $canStopAtTarget = true,
+        public ?int $providerRowCount = null,
     ) {}
 
     /**

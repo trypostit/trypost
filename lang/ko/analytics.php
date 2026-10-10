@@ -399,9 +399,8 @@ return [
         'sync' => [
             'button' => '동기화 상태',
             'title' => 'Insights 업데이트 방식',
-            'new_posts' => '새 게시물은 채널마다 :interval, X는 :x_interval 가져옵니다.',
-            'every_hours' => '{1} 1시간마다|[2,*] :count시간마다',
-            'metrics' => '게시물 지표는 최근 :days일 게시물에 대해 하루 한 번 갱신됩니다(X는 :x_days일).',
+            'new_posts' => '새 게시물은 매일 가져옵니다.',
+            'metrics' => '게시물 지표는 게시 후 최대 :days일 동안 갱신됩니다.',
             'followers' => '팔로워 수는 하루 한 번 저장됩니다.',
             'last_sync' => '마지막 동기화 :time',
             'never' => '아직 동기화되지 않음',

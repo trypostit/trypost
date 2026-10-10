@@ -246,7 +246,6 @@ test('the insights page shares the sync cadence and the extended performance met
             ->component('insights/Index')
             ->where('sync', SyncCadence::toArray())
             ->where('sync.metrics_days', 30)
-            ->where('sync.x_metrics_days', 20)
             ->where('report.performance.0.username', 'bravo')
             ->where('report.performance.0.clicks.value', 7)
             ->where('report.performance.0.impressions.value', 200)
@@ -255,16 +254,9 @@ test('the insights page shares the sync cadence and the extended performance met
             ->etc());
 });
 
-test('the sync cadence follows the discovery settings the scheduler uses', function () {
-    config()->set('trypost.analytics.discovery_interval_hours', 6);
-    config()->set('trypost.analytics.x_discovery_interval_hours', 48);
-
-    expect(SyncCadence::toArray())->toBe([
-        'discovery_hours' => 6,
-        'x_discovery_hours' => 24,
-        'metrics_days' => 30,
-        'x_metrics_days' => 20,
-    ]);
+test('the sync cadence shares the metrics window and x closes it on its last read', function () {
+    expect(SyncCadence::toArray())->toBe(['metrics_days' => 30])
+        ->and(SyncCadence::metricsWindowDays(Platform::X))->toBe(max(SyncCadence::X_METRICS_DAYS));
 });
 
 test('the export of a workspace without connected channels has no past analytics', function () {

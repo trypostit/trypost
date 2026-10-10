@@ -399,9 +399,8 @@ return [
         'sync' => [
             'button' => 'Stato sincronizzazione',
             'title' => 'Come si aggiornano gli Insights',
-            'new_posts' => 'I nuovi post vengono recuperati :interval su ogni canale, e :x_interval su X.',
-            'every_hours' => '{1} ogni ora|[2,*] ogni :count ore',
-            'metrics' => 'Le metriche si aggiornano una volta al giorno per i post degli ultimi :days giorni (:x_days su X).',
+            'new_posts' => 'I nuovi post vengono aggiornati ogni giorno.',
+            'metrics' => 'Le metriche si aggiornano fino a :days giorni dopo la pubblicazione.',
             'followers' => 'Il numero di follower viene salvato una volta al giorno.',
             'last_sync' => 'Ultima sincronizzazione :time',
             'never' => 'Non ancora sincronizzato',

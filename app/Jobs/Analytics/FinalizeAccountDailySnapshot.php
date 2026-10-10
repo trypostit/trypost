@@ -50,20 +50,20 @@ class FinalizeAccountDailySnapshot implements ShouldQueue
         WriteAccountDailySnapshot $writer,
         AnalyticsJobLog $log,
     ): void {
-        $account = SocialAccount::query()
+        $channel = SocialAccount::query()
             ->connected()
             ->includedInAnalytics()
             ->find($this->socialAccountId);
 
-        if (! $account) {
+        if (! $channel?->workspace->account->hasAppAccess()) {
             return;
         }
 
         $date = CarbonImmutable::parse($this->observationDate, 'UTC');
         $hasActual = AnalyticsAccountDailySnapshot::query()
-            ->where('workspace_id', $account->workspace_id)
+            ->where('workspace_id', $channel->workspace_id)
             ->where('date', $this->observationDate)
-            ->where('social_account_key', $accountKeys->for($account))
+            ->where('social_account_key', $accountKeys->for($channel))
             ->where('provenance', ObservationProvenance::Actual)
             ->exists();
 
@@ -72,21 +72,21 @@ class FinalizeAccountDailySnapshot implements ShouldQueue
         }
 
         $previous = AnalyticsAccountDailySnapshot::query()
-            ->where('workspace_id', $account->workspace_id)
-            ->where('network', $account->platform->network())
-            ->where('platform_user_id', $account->platform_user_id)
+            ->where('workspace_id', $channel->workspace_id)
+            ->where('network', $channel->platform->network())
+            ->where('platform_user_id', $channel->platform_user_id)
             ->where('date', '<', $this->observationDate)
             ->whereNotNull('followers_count')
             ->latest('date')
             ->first();
 
         if (! $previous) {
-            $log->record($account, 'followers', $this->observationDate, $this->attempts(), 'unavailable_no_history');
+            $log->record($channel, 'followers', $this->observationDate, $this->attempts(), 'unavailable_no_history');
 
             return;
         }
 
-        $writer->handle($account, new AccountDailyObservation(
+        $writer->handle($channel, new AccountDailyObservation(
             date: $date,
             followers: $previous->followers_count,
             provenance: ObservationProvenance::CarriedForward,
@@ -95,6 +95,6 @@ class FinalizeAccountDailySnapshot implements ShouldQueue
             collectedAt: CarbonImmutable::now('UTC'),
             metrics: $previous->metrics ?? [],
         ));
-        $log->record($account, 'followers', $this->observationDate, $this->attempts(), 'carried_forward');
+        $log->record($channel, 'followers', $this->observationDate, $this->attempts(), 'carried_forward');
     }
 }

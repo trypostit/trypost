@@ -401,9 +401,8 @@ return [
         'sync' => [
             'button' => 'Sync-Status',
             'title' => 'So bleiben Insights aktuell',
-            'new_posts' => 'Neue Beiträge werden auf jedem Kanal :interval abgerufen, auf X :x_interval.',
-            'every_hours' => '{1} stündlich|[2,*] alle :count Stunden',
-            'metrics' => 'Beitragsmetriken werden einmal täglich für Beiträge der letzten :days Tage aktualisiert (:x_days bei X).',
+            'new_posts' => 'Neue Beiträge werden täglich erfasst.',
+            'metrics' => 'Beitragsmetriken werden bis zu :days Tage nach dem Posten aktualisiert.',
             'followers' => 'Follower-Zahlen werden einmal täglich gespeichert.',
             'last_sync' => 'Zuletzt synchronisiert :time',
             'never' => 'Noch nicht synchronisiert',

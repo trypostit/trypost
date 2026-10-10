@@ -401,9 +401,8 @@ return [
         'sync' => [
             'button' => 'Senkronizasyon durumu',
             'title' => 'Insights nasıl güncel kalır',
-            'new_posts' => 'Yeni gönderiler her kanalda :interval, X\'te ise :x_interval alınır.',
-            'every_hours' => '{1} her saat|[2,*] her :count saatte bir',
-            'metrics' => 'Gönderi metrikleri son :days günün gönderileri için günde bir kez yenilenir (X\'te :x_days).',
+            'new_posts' => 'Yeni gönderiler her gün alınır.',
+            'metrics' => 'Gönderi metrikleri paylaşımdan sonra :days güne kadar yenilenir.',
             'followers' => 'Takipçi sayıları günde bir kez kaydedilir.',
             'last_sync' => 'Son senkronizasyon :time',
             'never' => 'Henüz senkronize edilmedi',

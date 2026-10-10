@@ -31,38 +31,45 @@ class DispatchPublicationDiscovery extends Command
             ->includedInAnalytics()
             ->when($only !== [], fn (Builder $query): Builder => $query->whereIn('platform', $only))
             ->when($except !== [], fn (Builder $query): Builder => $query->whereNotIn('platform', $except))
-            ->with('analyticsSyncStates')
+            ->with(['analyticsSyncStates', 'workspace.account.subscriptions'])
             ->lazyById(100)
-            ->each(function (SocialAccount $account) use ($staleBefore): void {
-                $backfill = $account->analyticsSyncStates
+            ->each(function (SocialAccount $channel) use ($staleBefore): void {
+                if (! $channel->workspace->account->hasAppAccess()) {
+                    return;
+                }
+
+                $backfill = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
 
-                if ($backfill?->status === SyncStatus::Failed) {
+                if (! $backfill) {
+                    BootstrapAccountAnalytics::dispatch($channel->id);
+
+                    return;
+                }
+
+                if ($backfill->status === SyncStatus::Failed) {
                     if ($backfill->last_error_category === 'queue_failed') {
-                        BootstrapAccountAnalytics::dispatch($account->id);
+                        BootstrapAccountAnalytics::dispatch($channel->id);
                     }
 
                     return;
                 }
 
-                $staleBackfill = $backfill
-                    && ($backfill->status === SyncStatus::Pending
-                        || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
+                $staleBackfill = ($backfill->status === SyncStatus::Pending
+                    || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
                     && $backfill->updated_at?->lessThan($staleBefore);
 
                 if ($staleBackfill) {
-                    BootstrapAccountAnalytics::dispatch($account->id);
+                    BootstrapAccountAnalytics::dispatch($channel->id);
 
                     return;
                 }
 
-                $backfillIsTerminal = $account->analyticsSyncStates
-                    ->contains(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill && $state->isTerminal());
-                $discovery = $account->analyticsSyncStates
+                $discovery = $channel->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationDiscovery);
 
-                if ($backfillIsTerminal && $discovery) {
-                    DiscoverAccountPublications::dispatch($account->id, $discovery->id);
+                if ($backfill->isTerminal() && $discovery) {
+                    DiscoverAccountPublications::dispatch($channel->id, $discovery->id);
                 }
             });
 

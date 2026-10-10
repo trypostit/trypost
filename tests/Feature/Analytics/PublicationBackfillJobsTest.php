@@ -139,7 +139,7 @@ test('daily discovery does not retry a backfill rejected for missing permission'
     Bus::assertNotDispatched(DiscoverAccountPublications::class);
 });
 
-test('daily discovery recovers stale bootstraps without starting the manual rollout or interrupting delayed retries', function () {
+test('daily discovery recovers stale bootstraps, bootstraps channels never bootstrapped and leaves delayed retries alone', function () {
     $stalePending = SocialAccount::factory()->instagram()->create();
     $staleRunning = SocialAccount::factory()->instagram()->create();
     $recentPending = SocialAccount::factory()->instagram()->create();
@@ -176,7 +176,7 @@ test('daily discovery recovers stale bootstraps without starting the manual roll
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
 
     expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())
-        ->toBe(collect([$stalePending->id, $staleRunning->id])->sort()->values()->all());
+        ->toBe(collect([$stalePending->id, $staleRunning->id, $awaitingRollout->id])->sort()->values()->all());
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $readyForDiscovery->id);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 1);
     Bus::assertNotDispatched(BackfillAccountPublications::class);
@@ -244,24 +244,58 @@ test('re-authorizing the same account starts incremental discovery without resta
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->syncStateId === $discovery->id);
 });
 
-test('x backfill reports provider limited when the 3200 post timeline ends before the target', function () {
+test('x backfill reports provider limited when the 800 post timeline without replies ends before the target', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
-        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 3199],
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 799],
         'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
     ]);
     bindPublicationPage(new PublicationPage([
-        new DiscoveredPublication('x-3200', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
+        new DiscoveredPublication('x-800', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
     ], null, true));
 
     app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
 
     expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
-        ->and($state->fresh()->last_error_category)->toBe('x_timeline_3200')
-        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => null, 'seen_count' => 3200]);
+        ->and($state->fresh()->last_error_category)->toBe('x_timeline_limit')
+        ->and($state->fresh()->checkpoint)->toMatchArray(['cursor' => null, 'seen_count' => 800]);
     Bus::assertNotDispatched(BackfillAccountPublications::class);
+});
+
+test('x backfill counts the replies the collector skipped toward the timeline cap', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 798],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([
+        new DiscoveredPublication('x-root', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
+    ], null, true, providerRowCount: 2));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(800);
+});
+
+test('x backfill detects the timeline cap on a last page of skipped replies only', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 798],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([], null, true, providerRowCount: 2));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and($state->fresh()->last_error_category)->toBe('x_timeline_limit');
 });
 
 test('x backfill below the timeline cap completes when the provider exhausts its history', function () {
@@ -288,7 +322,7 @@ test('restarting a terminal x backfill resets its timeline count', function () {
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
         'status' => SyncStatus::ProviderLimited,
-        'checkpoint' => ['cursor' => null, 'revision' => 4, 'seen_count' => 3200],
+        'checkpoint' => ['cursor' => null, 'revision' => 4, 'seen_count' => 800],
     ]);
 
     $started = app(AdvanceAnalyticsSyncState::class)->begin($state->id, restartTerminal: true);

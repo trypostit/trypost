@@ -3,6 +3,8 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\QueuePublicationMetricsForPage;
+use App\Dto\Analytics\DiscoveredPublication;
+use App\Dto\Analytics\PublicationPage;
 use App\Enums\Analytics\PublicationAvailability;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
@@ -19,6 +21,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
+use App\Support\Analytics\SyncCadence;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
@@ -41,6 +44,15 @@ function metricJobPublication(Platform $platform, CarbonImmutable $publishedAt):
         'platform_user_id' => $account->platform_user_id,
         'provider_published_at' => $publishedAt,
     ]);
+}
+
+function discoveredFor(AnalyticsPublication $publication): DiscoveredPublication
+{
+    return new DiscoveredPublication(
+        providerPostId: $publication->remote_id,
+        publishedAt: $publication->provider_published_at->toImmutable(),
+        contentType: PublicationContentType::Text,
+    );
 }
 
 test('metric job writes a daily snapshot once and never calls providers for excluded networks', function () {
@@ -106,8 +118,8 @@ test('regular collection respects the X and non-X refresh windows', function (Pl
     expect(AnalyticsPublicationDailySnapshot::query()->where('publication_id', $publication->id)->exists())
         ->toBe($eligible, "{$platform->value} at {$age} days");
 })->with([
-    [Platform::X, 20, true],
-    [Platform::X, 21, false],
+    [Platform::X, 28, true],
+    [Platform::X, 29, false],
     [Platform::Mastodon, 30, true],
     [Platform::Mastodon, 31, false],
 ]);
@@ -364,3 +376,116 @@ test('a malformed reading of a recent publication is not counted against it', fu
     expect($publication->fresh()->metric_failures)->toBe(0)
         ->and($publication->fresh()->availability)->toBe(PublicationAvailability::Available);
 });
+
+test('the daily run reads x posts only on the scheduled ages', function () {
+    $now = CarbonImmutable::parse('2026-10-10 03:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+    $read = [];
+
+    foreach ([1, 2, 3, 4, 5, 6, 7, 8, 13, 14, 15, 20, 27, 28, 29] as $age) {
+        $publication = metricJobPublication(Platform::X, $now->subDays($age)->setTime(15, 0));
+        AnalyticsPublicationDailySnapshot::factory()->create([
+            'publication_id' => $publication->id,
+            'date' => $now->subDays($age)->toDateString(),
+        ]);
+
+        if (in_array($age, SyncCadence::X_METRICS_DAYS, true)) {
+            $read[] = $publication->id;
+        }
+    }
+
+    Bus::fake([CollectPublicationMetrics::class]);
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    expect(Bus::dispatched(CollectPublicationMetrics::class)->pluck('publicationId')->sort()->values()->all())
+        ->toBe(collect($read)->sort()->values()->all());
+});
+
+test('other networks keep the daily thirty day window', function () {
+    $now = CarbonImmutable::parse('2026-10-10 03:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+
+    foreach ([1, 4, 29, 30] as $age) {
+        $publication = metricJobPublication(Platform::Instagram, $now->subDays($age)->setTime(15, 0));
+        AnalyticsPublicationDailySnapshot::factory()->create([
+            'publication_id' => $publication->id,
+            'date' => $now->subDays($age)->toDateString(),
+        ]);
+    }
+
+    Bus::fake([CollectPublicationMetrics::class]);
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 4);
+});
+
+test('a published post is first read an hour after publishing on every network', function (Platform $platform) {
+    $now = CarbonImmutable::parse('2026-10-10 12:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+    $publication = metricJobPublication($platform, $now);
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    app(QueuePublicationMetricsForPage::class)->queue($publication);
+
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id
+        && $job->observationDate === '2026-10-10'
+        && CarbonImmutable::parse($job->delay)->equalTo($now->addHour()));
+})->with([Platform::X, Platform::Instagram, Platform::Mastodon]);
+
+test('a late post is first read under the next utc date', function () {
+    $now = CarbonImmutable::parse('2026-10-10 23:30:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+    $publication = metricJobPublication(Platform::X, $now);
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    app(QueuePublicationMetricsForPage::class)->queue($publication);
+
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->observationDate === '2026-10-11');
+});
+
+test('a post found more than an hour after publishing is read right away', function () {
+    CarbonImmutable::setTestNow('2026-10-10 12:00:00 UTC');
+    $publication = metricJobPublication(Platform::Instagram, CarbonImmutable::now('UTC')->subHours(3));
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    app(QueuePublicationMetricsForPage::class)->queue($publication);
+
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => CarbonImmutable::parse($job->delay)->equalTo(CarbonImmutable::now('UTC')));
+});
+
+test('discovery reads only posts that were never measured', function (Platform $platform) {
+    CarbonImmutable::setTestNow('2026-10-10 00:00:00 UTC');
+    $measured = metricJobPublication($platform, CarbonImmutable::now('UTC')->subHours(5));
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $measured->id, 'date' => '2026-10-09']);
+    $native = AnalyticsPublication::factory()->create([
+        'workspace_id' => $measured->workspace_id,
+        'social_account_id' => $measured->social_account_id,
+        'social_account_key' => $measured->social_account_key,
+        'platform' => $platform,
+        'network' => $platform->network(),
+        'platform_user_id' => $measured->platform_user_id,
+        'provider_published_at' => CarbonImmutable::now('UTC')->subHours(3),
+    ]);
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    app(QueuePublicationMetricsForPage::class)->handle($measured->socialAccount, new PublicationPage([
+        discoveredFor($measured),
+        discoveredFor($native),
+    ], null, true));
+
+    Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 1);
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $native->id);
+})->with([Platform::X, Platform::Instagram]);
+
+test('the daily run leaves a fresh post to its first read an hour after publishing', function (Platform $platform) {
+    $now = CarbonImmutable::parse('2026-10-10 03:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
+    $fresh = metricJobPublication($platform, $now->subMinutes(30));
+    $settled = metricJobPublication($platform, $now->subMinutes(90));
+    Bus::fake([CollectPublicationMetrics::class]);
+
+    $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
+
+    Bus::assertNotDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $fresh->id);
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
+})->with([Platform::X, Platform::Instagram]);

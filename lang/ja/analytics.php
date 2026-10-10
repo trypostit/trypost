@@ -399,9 +399,8 @@ return [
         'sync' => [
             'button' => '同期状況',
             'title' => 'Insights の更新タイミング',
-            'new_posts' => '新しい投稿は各チャンネルで:interval、X では:x_interval取得します。',
-            'every_hours' => '{1} 1時間ごと|[2,*] :count時間ごと',
-            'metrics' => '投稿の指標は、過去:days日間（X は:x_days日間）の投稿を対象に1日1回更新されます。',
+            'new_posts' => '新しい投稿は毎日取り込まれます。',
+            'metrics' => '投稿の指標は公開後最大:days日間更新されます。',
             'followers' => 'フォロワー数は1日1回保存されます。',
             'last_sync' => '最終同期 :time',
             'never' => 'まだ同期されていません',

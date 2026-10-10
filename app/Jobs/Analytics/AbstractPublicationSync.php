@@ -79,19 +79,19 @@ abstract class AbstractPublicationSync implements ShouldQueue
         QueuePublicationMetricsForPage $metrics,
         AnalyticsJobLog $log,
     ): void {
-        $account = SocialAccount::query()
+        $channel = SocialAccount::query()
             ->connected()
             ->includedInAnalytics()
             ->find($this->socialAccountId);
 
-        if (! $account || ! $this->mayStart($account)) {
+        if (! $channel?->workspace->account->hasAppAccess() || ! $this->mayStart($channel)) {
             return;
         }
 
         $capture = $sync->begin(
             $this->syncStateId,
             restartTerminal: $this->restartTerminal(),
-            socialAccountId: $account->id,
+            socialAccountId: $channel->id,
         );
 
         if (! $capture) {
@@ -100,36 +100,36 @@ abstract class AbstractPublicationSync implements ShouldQueue
 
         $collector = $this->collector()->value;
         $cursorLabel = $capture['cursor'] === null ? 'cursor:start' : 'cursor:'.hash('sha256', $capture['cursor']);
-        $log->record($account, $collector, $cursorLabel, $this->attempts(), 'started');
+        $log->record($channel, $collector, $cursorLabel, $this->attempts(), 'started');
 
         try {
-            $page = $collectors->for($account)->page($account, $capture['cursor'], $capture['cutoff']);
-            $result = $sync->handle($this->syncStateId, $capture['revision'], $account, $page);
+            $page = $collectors->for($channel)->page($channel, $capture['cursor'], $capture['cutoff']);
+            $result = $sync->handle($this->syncStateId, $capture['revision'], $channel, $page);
         } catch (AnalyticsCollectionException $exception) {
             if ($exception->category === 'invalid_cursor') {
-                $log->record($account, $collector, $cursorLabel, $this->attempts(), $exception->category);
-                $this->handleInvalidCursor($sync, $account, $capture['revision']);
+                $log->record($channel, $collector, $cursorLabel, $this->attempts(), $exception->category);
+                $this->handleInvalidCursor($sync, $channel, $capture['revision']);
 
                 return;
             }
 
-            $this->recordFailure($sync, $log, $account, $capture['revision'], $cursorLabel, $exception->category, $exception->retryAt);
+            $this->recordFailure($sync, $log, $channel, $capture['revision'], $cursorLabel, $exception->category, $exception->retryAt);
 
             return;
         } catch (ConnectionException) {
-            $this->recordFailure($sync, $log, $account, $capture['revision'], $cursorLabel, 'transient', null);
+            $this->recordFailure($sync, $log, $channel, $capture['revision'], $cursorLabel, 'transient', null);
 
             return;
         }
 
-        $log->record($account, $collector, $cursorLabel, $this->attempts(), $result['terminal'] ? 'completed' : 'page_advanced');
-        foreach (rescue(fn (): array => ImportExternalPosts::execute($account), []) as $postId) {
+        $log->record($channel, $collector, $cursorLabel, $this->attempts(), $result['terminal'] ? 'completed' : 'page_advanced');
+        foreach (rescue(fn (): array => ImportExternalPosts::execute($channel), []) as $postId) {
             ImportExternalPostMedia::dispatch($postId);
         }
-        $metrics->handle($account, $page);
+        $metrics->handle($channel, $page);
 
         if ($result['advanced'] && ! $result['terminal']) {
-            static::dispatch($account->id, $this->syncStateId)->afterCommit();
+            static::dispatch($channel->id, $this->syncStateId)->afterCommit();
         }
     }
 
