@@ -35,6 +35,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         );
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
+        $crossedCutoff = false;
         $providerLimited = false;
 
         foreach ((array) $response->json('data', []) as $row) {
@@ -44,6 +45,12 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 $providerLimited = true;
 
                 continue;
+            }
+
+            if ($publishedAt->lessThan($cutoff)) {
+                $crossedCutoff = true;
+
+                break;
             }
 
             $attachedMedia = collect((array) data_get($row, 'attachments.media_keys', []))
@@ -77,7 +84,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         }
 
         $nextCursor = data_get($response->json(), 'meta.next_token');
-        $hasNext = is_string($nextCursor) && $nextCursor !== '';
+        $hasNext = is_string($nextCursor) && $nextCursor !== '' && ! $crossedCutoff;
 
         return new PublicationPage($publications, $hasNext ? $nextCursor : null, ! $hasNext, $providerLimited);
     }
