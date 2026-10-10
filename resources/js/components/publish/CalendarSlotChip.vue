@@ -16,6 +16,7 @@ const props = withDefaults(
         timezone: string;
         canCreatePost: boolean;
         layout?: 'chip' | 'agenda';
+        compact?: boolean;
     }>(),
     { layout: 'chip' },
 );
@@ -80,7 +81,12 @@ const newPost = (): void => {
         v-else
         :is="canCreatePost ? 'button' : 'div'"
         :type="canCreatePost ? 'button' : undefined"
-        class="group/slot flex h-7 w-full min-w-0 shrink-0 items-center gap-1.5 rounded-lg border border-dashed border-border-strong px-1.5 text-xs font-medium text-muted-foreground transition-control enabled:hover:bg-secondary enabled:hover:text-foreground enabled:focus-visible:bg-secondary enabled:focus-visible:text-foreground"
+        class="group/slot flex shrink-0 items-center rounded-lg border border-dashed border-border-strong text-xs font-medium text-muted-foreground transition-control enabled:hover:bg-secondary enabled:hover:text-foreground enabled:focus-visible:bg-secondary enabled:focus-visible:text-foreground"
+        :class="
+            compact
+                ? 'size-7 justify-center'
+                : 'h-7 w-full min-w-0 gap-1.5 px-1.5'
+        "
         :title="channel?.display_label"
         :aria-label="
             channel
@@ -97,22 +103,24 @@ const newPost = (): void => {
         <PlatformBrandIcon
             v-if="channel"
             :platform="channel.platform"
-            class="shrink-0"
+            :class="compact ? 'size-3.5' : 'shrink-0'"
             :data-testid="`calendar-posting-slot-icon-${testKey}`"
         />
-        <span
-            :class="[
-                'truncate',
-                canCreatePost
-                    ? 'group-hover/slot:hidden group-focus-visible/slot:hidden'
-                    : '',
-            ]"
-            >{{ time }}</span
-        >
-        <span
-            v-if="canCreatePost"
-            class="hidden truncate group-hover/slot:inline group-focus-visible/slot:inline"
-            >{{ $t('posts.publish.add_post_in_slot') }}</span
-        >
+        <template v-if="!compact">
+            <span
+                :class="[
+                    'truncate',
+                    canCreatePost
+                        ? 'group-hover/slot:hidden group-focus-visible/slot:hidden'
+                        : '',
+                ]"
+                >{{ time }}</span
+            >
+            <span
+                v-if="canCreatePost"
+                class="hidden truncate group-hover/slot:inline group-focus-visible/slot:inline"
+                >{{ $t('posts.publish.add_post_in_slot') }}</span
+            >
+        </template>
     </component>
 </template>

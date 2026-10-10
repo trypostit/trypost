@@ -27,6 +27,7 @@ const props = withDefaults(
         post: CalendarPost;
         timezone: string;
         layout?: 'month' | 'week';
+        compact?: boolean;
     }>(),
     { layout: 'month' },
 );
@@ -137,72 +138,84 @@ const scheduleMode = computed(() =>
                 class="flex min-w-0 shrink-0 gap-1.5 rounded-lg border border-border-strong bg-card text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary"
                 :class="[
                     STATUS_CLASSES[post.status] ?? '',
-                    layout === 'week'
-                        ? 'items-start p-1.5'
-                        : 'h-7 items-center px-1',
+                    compact
+                        ? 'size-7 items-center justify-center'
+                        : layout === 'week'
+                          ? 'items-start p-1.5'
+                          : 'h-7 items-center px-1',
                 ]"
                 :aria-label="`${channels} · ${time} · ${text || $t('calendar.no_content')}`"
                 :data-testid="`calendar-post-${post.id}`"
             >
-                <span class="flex min-w-0 flex-1 flex-col gap-1">
-                    <span class="flex min-w-0 items-center gap-1">
-                        <PlatformBrandIcon
-                            v-if="post.platform"
-                            :platform="post.platform"
-                            class="size-4 shrink-0"
-                        />
+                <template v-if="compact">
+                    <PlatformBrandIcon
+                        v-if="post.platform"
+                        :platform="post.platform"
+                        colored
+                        class="size-4 shrink-0"
+                    />
+                </template>
+                <template v-else>
+                    <span class="flex min-w-0 flex-1 flex-col gap-1">
+                        <span class="flex min-w-0 items-center gap-1">
+                            <PlatformBrandIcon
+                                v-if="post.platform"
+                                :platform="post.platform"
+                                class="size-4 shrink-0"
+                            />
+                            <span
+                                class="truncate text-xs font-medium text-muted-foreground"
+                                >{{ time }}</span
+                            >
+                            <IconRepeat
+                                v-if="scheduleMode && post.recurrence_frequency"
+                                class="size-3 shrink-0 text-muted-foreground"
+                                :aria-label="$t('posts.recurrence.marker')"
+                                :data-testid="`calendar-post-recurring-${post.id}`"
+                            />
+                            <PostScheduleModeBadge
+                                v-else-if="scheduleMode"
+                                :post-id="post.id"
+                                :mode="scheduleMode"
+                                compact
+                                plain
+                            />
+                        </span>
                         <span
-                            class="truncate text-xs font-medium text-muted-foreground"
-                            >{{ time }}</span
+                            v-if="layout === 'week'"
+                            class="line-clamp-2 text-xs break-words text-foreground"
+                            :class="{ 'text-muted-foreground': !text }"
+                            :data-testid="`calendar-post-text-${post.id}`"
+                            >{{ text || $t('calendar.no_content') }}</span
                         >
-                        <IconRepeat
-                            v-if="scheduleMode && post.recurrence_frequency"
-                            class="size-3 shrink-0 text-muted-foreground"
-                            :aria-label="$t('posts.recurrence.marker')"
-                            :data-testid="`calendar-post-recurring-${post.id}`"
-                        />
-                        <PostScheduleModeBadge
-                            v-else-if="scheduleMode"
-                            :post-id="post.id"
-                            :mode="scheduleMode"
-                            compact
-                            plain
-                        />
                     </span>
                     <span
-                        v-if="layout === 'week'"
-                        class="line-clamp-2 text-xs break-words text-foreground"
-                        :class="{ 'text-muted-foreground': !text }"
-                        :data-testid="`calendar-post-text-${post.id}`"
-                        >{{ text || $t('calendar.no_content') }}</span
+                        v-if="thumbnail"
+                        class="relative shrink-0 overflow-hidden rounded bg-secondary"
+                        :class="layout === 'week' ? 'size-9' : 'size-5'"
                     >
-                </span>
-                <span
-                    v-if="thumbnail"
-                    class="relative shrink-0 overflow-hidden rounded bg-secondary"
-                    :class="layout === 'week' ? 'size-9' : 'size-5'"
-                >
-                    <img
-                        v-if="isImage(thumbnail)"
-                        :src="thumbnail.url"
-                        alt=""
-                        loading="lazy"
-                        class="size-full object-cover"
-                    />
-                    <template v-else>
-                        <video
-                            :src="videoFrameUrl(thumbnail)"
+                        <img
+                            v-if="isImage(thumbnail)"
+                            :src="thumbnail.url"
+                            alt=""
+                            loading="lazy"
                             class="size-full object-cover"
-                            muted
-                            playsinline
-                            preload="metadata"
                         />
-                        <IconPlayerPlayFilled
-                            aria-hidden="true"
-                            class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
-                        />
-                    </template>
-                </span>
+                        <template v-else>
+                            <video
+                                :src="videoFrameUrl(thumbnail)"
+                                class="size-full object-cover"
+                                muted
+                                playsinline
+                                preload="metadata"
+                            />
+                            <IconPlayerPlayFilled
+                                aria-hidden="true"
+                                class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
+                            />
+                        </template>
+                    </span>
+                </template>
             </button>
         </PopoverTrigger>
         <PopoverContent

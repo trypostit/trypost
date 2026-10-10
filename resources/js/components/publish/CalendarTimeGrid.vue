@@ -71,6 +71,19 @@ const isStacked = (
     hour: number,
 ): boolean => (column.byHour.get(hour)?.length ?? 0) > 1;
 
+const iconOnly = computed(() => compact.value && props.days.length === 7);
+
+const chipClass = (
+    column: { byHour: Map<number, CalendarItem[]> },
+    hour: number,
+): string => {
+    if (iconOnly.value) {
+        return '';
+    }
+
+    return isStacked(column, hour) ? 'w-full shrink-0' : 'flex-1';
+};
+
 const visibleItems = (
     key: string,
     hour: number,
@@ -201,11 +214,8 @@ watch(
                                         ? 'month'
                                         : 'week'
                                 "
-                                :class="
-                                    isStacked(column, hour)
-                                        ? 'w-full shrink-0'
-                                        : 'flex-1'
-                                "
+                                :compact="iconOnly"
+                                :class="chipClass(column, hour)"
                             />
                             <CalendarSlotChip
                                 v-else-if="item.slot"
@@ -213,11 +223,8 @@ watch(
                                 :channel="channels[item.slot.channel_id] ?? null"
                                 :timezone="timezone"
                                 :can-create-post="canCreatePost"
-                                :class="
-                                    isStacked(column, hour)
-                                        ? 'w-full shrink-0'
-                                        : 'flex-1'
-                                "
+                                :compact="iconOnly"
+                                :class="chipClass(column, hour)"
                             />
                         </template>
                         <button
