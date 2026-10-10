@@ -429,3 +429,21 @@ test('x tracks a post, never a reply, so a thread is its root', function () {
         ->and($page->providerRowCount)->toBe(3);
     Http::assertSent(fn (Request $request): bool => str_contains((string) $request['tweet.fields'], 'referenced_tweets'));
 });
+
+test('x counts toward the timeline cap only the rows it walked before the cutoff', function () {
+    Http::fake(['*' => Http::response([
+        'data' => [
+            ['id' => 'inside', 'text' => 'inside', 'created_at' => '2026-10-09T12:00:00.000Z'],
+            ['id' => 'outside', 'text' => 'outside', 'created_at' => '2026-09-01T12:00:00.000Z'],
+            ['id' => 'older', 'text' => 'older', 'created_at' => '2026-08-01T12:00:00.000Z'],
+        ],
+        'meta' => ['result_count' => 3, 'next_token' => 'more'],
+    ])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    $page = app(XPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-10-01', 'UTC'));
+
+    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['inside'])
+        ->and($page->providerRowCount)->toBe(1)
+        ->and($page->nextCursor)->toBeNull();
+});

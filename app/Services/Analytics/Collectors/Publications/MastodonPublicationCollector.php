@@ -27,6 +27,7 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
             [
                 'limit' => self::PAGE_SIZE,
                 'exclude_reblogs' => true,
+                'exclude_replies' => true,
                 'max_id' => $cursor,
             ],
             authenticated: $hasPrivateHistoryScope,

@@ -36,21 +36,24 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         $media = collect((array) $response->json('includes.media', []))->keyBy('media_key');
         $publications = [];
         $crossedCutoff = false;
+        $walkedRows = 0;
         $providerLimited = false;
 
         foreach ((array) $response->json('data', []) as $row) {
             $publishedAt = $this->publishedAt(data_get($row, 'created_at'));
 
+            if ($publishedAt?->lessThan($cutoff)) {
+                $crossedCutoff = true;
+
+                break;
+            }
+
+            $walkedRows++;
+
             if (! $publishedAt) {
                 $providerLimited = true;
 
                 continue;
-            }
-
-            if ($publishedAt->lessThan($cutoff)) {
-                $crossedCutoff = true;
-
-                break;
             }
 
             if (collect((array) data_get($row, 'referenced_tweets', []))->contains('type', 'replied_to')) {
@@ -95,7 +98,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
             $hasNext ? $nextCursor : null,
             ! $hasNext,
             $providerLimited,
-            providerRowCount: count((array) $response->json('data', [])),
+            providerRowCount: $walkedRows,
         );
     }
 

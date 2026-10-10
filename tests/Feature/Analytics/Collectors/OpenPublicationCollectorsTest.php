@@ -189,6 +189,7 @@ test('mastodon pages account statuses with authenticated private history', funct
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/api/v1/accounts/42/statuses')
         && $request['limit'] === 40
         && $request['exclude_reblogs'] === true
+        && $request['exclude_replies'] === true
         && $request['max_id'] === 'status-3'
         && $request->hasHeader('Authorization', 'Bearer '.$account->access_token));
 });
