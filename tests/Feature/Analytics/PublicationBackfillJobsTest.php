@@ -139,7 +139,7 @@ test('daily discovery does not retry a backfill rejected for missing permission'
     Bus::assertNotDispatched(DiscoverAccountPublications::class);
 });
 
-test('daily discovery recovers stale bootstraps without starting the manual rollout or interrupting delayed retries', function () {
+test('daily discovery recovers stale bootstraps, bootstraps channels never bootstrapped and leaves delayed retries alone', function () {
     $stalePending = SocialAccount::factory()->instagram()->create();
     $staleRunning = SocialAccount::factory()->instagram()->create();
     $recentPending = SocialAccount::factory()->instagram()->create();
@@ -176,7 +176,7 @@ test('daily discovery recovers stale bootstraps without starting the manual roll
     $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
 
     expect(Bus::dispatched(BootstrapAccountAnalytics::class)->pluck('socialAccountId')->sort()->values()->all())
-        ->toBe(collect([$stalePending->id, $staleRunning->id])->sort()->values()->all());
+        ->toBe(collect([$stalePending->id, $staleRunning->id, $awaitingRollout->id])->sort()->values()->all());
     Bus::assertDispatched(DiscoverAccountPublications::class, fn ($job): bool => $job->socialAccountId === $readyForDiscovery->id);
     Bus::assertDispatchedTimes(DiscoverAccountPublications::class, 1);
     Bus::assertNotDispatched(BackfillAccountPublications::class);

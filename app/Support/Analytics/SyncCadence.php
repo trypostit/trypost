@@ -21,7 +21,10 @@ class SyncCadence
      */
     public const array X_METRICS_DAYS = [2, 3, 7, 14, 28];
 
-    public const int X_FIRST_READ_DELAY_MINUTES = 60;
+    /**
+     * A post just published has nothing to measure yet, so its first read waits this long.
+     */
+    public const int FIRST_READ_DELAY_MINUTES = 60;
 
     public static function metricsWindowDays(Platform $platform): int
     {

@@ -406,14 +406,6 @@ class SocialAccount extends Model
     }
 
     /**
-     * Analytics only runs for channels whose TryPost account may use the app.
-     */
-    public function hasAppAccess(): bool
-    {
-        return (bool) $this->workspace?->account?->hasAppAccess();
-    }
-
-    /**
      * The first requirement the stored grant does not meet, each requirement
      * being a scope or a list of alternative scopes. An account with no stored
      * grant (a network without scopes, or a row stored before grants were

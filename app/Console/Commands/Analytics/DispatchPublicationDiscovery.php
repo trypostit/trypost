@@ -34,14 +34,20 @@ class DispatchPublicationDiscovery extends Command
             ->with(['analyticsSyncStates', 'workspace.account.subscriptions'])
             ->lazyById(100)
             ->each(function (SocialAccount $account) use ($staleBefore): void {
-                if (! $account->hasAppAccess()) {
+                if (! $account->workspace->account->hasAppAccess()) {
                     return;
                 }
 
                 $backfill = $account->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill);
 
-                if ($backfill?->status === SyncStatus::Failed) {
+                if (! $backfill) {
+                    BootstrapAccountAnalytics::dispatch($account->id);
+
+                    return;
+                }
+
+                if ($backfill->status === SyncStatus::Failed) {
                     if ($backfill->last_error_category === 'queue_failed') {
                         BootstrapAccountAnalytics::dispatch($account->id);
                     }
@@ -49,9 +55,8 @@ class DispatchPublicationDiscovery extends Command
                     return;
                 }
 
-                $staleBackfill = $backfill
-                    && ($backfill->status === SyncStatus::Pending
-                        || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
+                $staleBackfill = ($backfill->status === SyncStatus::Pending
+                    || ($backfill->status === SyncStatus::Running && $backfill->last_error_category === null))
                     && $backfill->updated_at?->lessThan($staleBefore);
 
                 if ($staleBackfill) {
@@ -60,12 +65,10 @@ class DispatchPublicationDiscovery extends Command
                     return;
                 }
 
-                $backfillIsTerminal = $account->analyticsSyncStates
-                    ->contains(fn ($state): bool => $state->collector === SyncCollector::PublicationBackfill && $state->isTerminal());
                 $discovery = $account->analyticsSyncStates
                     ->first(fn ($state): bool => $state->collector === SyncCollector::PublicationDiscovery);
 
-                if ($backfillIsTerminal && $discovery) {
+                if ($backfill->isTerminal() && $discovery) {
                     DiscoverAccountPublications::dispatch($account->id, $discovery->id);
                 }
             });

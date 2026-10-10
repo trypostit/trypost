@@ -89,7 +89,7 @@ test('publication discovery skips accounts without app access', function () {
 });
 
 test('a canceled subscription still in its paid period keeps analytics', function () {
-    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $account = analyticsAccount(false);
     $account->workspace->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_grace',
@@ -97,15 +97,35 @@ test('a canceled subscription still in its paid period keeps analytics', functio
         'stripe_price' => 'price_123',
         'ends_at' => now()->addDays(5),
     ]);
+    Bus::fake([CollectAccountDailySnapshot::class]);
 
-    expect($account->fresh()->hasAppAccess())->toBeTrue();
+    $this->artisan('analytics:dispatch-account-daily')->assertSuccessful();
+
+    Bus::assertDispatched(CollectAccountDailySnapshot::class, fn (CollectAccountDailySnapshot $job): bool => $job->socialAccountId === $account->id);
 });
 
 test('self-hosted installs collect analytics without a subscription', function () {
     config(['trypost.self_hosted' => true]);
+    $account = analyticsAccount(false);
+    Bus::fake([CollectAccountDailySnapshot::class]);
 
-    expect(analyticsAccount(false)->hasAppAccess())->toBeTrue();
+    $this->artisan('analytics:dispatch-account-daily')->assertSuccessful();
+
+    Bus::assertDispatched(CollectAccountDailySnapshot::class, fn (CollectAccountDailySnapshot $job): bool => $job->socialAccountId === $account->id);
 });
+
+test('discovery bootstraps a paying channel that was never bootstrapped', function (bool $subscribed, int $bootstraps) {
+    $account = analyticsAccount($subscribed);
+    AnalyticsSyncState::query()->where('social_account_id', $account->id)->delete();
+    Bus::fake([BootstrapAccountAnalytics::class, DiscoverAccountPublications::class]);
+
+    $this->artisan('analytics:dispatch-publication-discovery')->assertSuccessful();
+
+    Bus::assertDispatchedTimes(BootstrapAccountAnalytics::class, $bootstraps);
+})->with([
+    'with app access' => [true, 1],
+    'without app access' => [false, 0],
+]);
 
 test('a published post is linked to insights but measured only with app access', function (bool $subscribed, int $reads) {
     $account = analyticsAccount($subscribed);

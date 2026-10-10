@@ -30,7 +30,7 @@ class DispatchPublicationMetrics extends Command
             ->with('workspace.account.subscriptions')
             ->lazyById(100)
             ->each(function (SocialAccount $account) use ($now): void {
-                if (! $account->hasAppAccess()) {
+                if (! $account->workspace->account->hasAppAccess()) {
                     return;
                 }
 
@@ -39,9 +39,10 @@ class DispatchPublicationMetrics extends Command
                 AnalyticsPublication::query()
                     ->available()
                     ->where('social_account_id', $account->id)
+                    ->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES))
                     ->where(fn (Builder $query): Builder => $query
                         ->where(fn (Builder $due) => $this->due($due, $account->platform, $now))
-                        ->orWhere(fn (Builder $unmeasured) => $this->unmeasured($unmeasured, $account->platform, $now)))
+                        ->orWhereDoesntHave('dailySnapshots'))
                     ->where(function ($query) use ($now): void {
                         $query->where('content_type', '!=', PublicationContentType::Story)
                             ->orWhere('provider_published_at', '>=', $now->subDay());
@@ -75,18 +76,6 @@ class DispatchPublicationMetrics extends Command
                 $now->subDays($age)->startOfDay(),
                 $now->subDays($age)->endOfDay(),
             ]);
-        }
-    }
-
-    /**
-     * Posts never measured; a fresh X post is left to its own first read an hour after publishing.
-     */
-    private function unmeasured(Builder $query, Platform $platform, CarbonImmutable $now): void
-    {
-        $query->whereDoesntHave('dailySnapshots');
-
-        if ($platform === Platform::X) {
-            $query->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::X_FIRST_READ_DELAY_MINUTES));
         }
     }
 }

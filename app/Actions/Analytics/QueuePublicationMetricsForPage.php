@@ -69,16 +69,9 @@ class QueuePublicationMetricsForPage
         )->delay($readAt->greaterThan($now) ? $readAt : null)->afterCommit();
     }
 
-    /**
-     * A fresh X post has nothing to measure yet, and X bills the read.
-     */
     private function firstReadAt(AnalyticsPublication $publication, CarbonImmutable $now): CarbonImmutable
     {
-        if ($publication->platform !== Platform::X) {
-            return $now;
-        }
-
-        $readAt = $publication->provider_published_at->toImmutable()->addMinutes(SyncCadence::X_FIRST_READ_DELAY_MINUTES);
+        $readAt = $publication->provider_published_at->toImmutable()->addMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES);
 
         return $readAt->greaterThan($now) ? $readAt : $now;
     }

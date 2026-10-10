@@ -419,10 +419,10 @@ test('other networks keep the daily thirty day window', function () {
     Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 4);
 });
 
-test('a tryPost x post is first read an hour after publishing', function () {
+test('a published post is first read an hour after publishing on every network', function (Platform $platform) {
     $now = CarbonImmutable::parse('2026-10-10 12:00:00', 'UTC');
     CarbonImmutable::setTestNow($now);
-    $publication = metricJobPublication(Platform::X, $now);
+    $publication = metricJobPublication($platform, $now);
     Bus::fake([CollectPublicationMetrics::class]);
 
     app(QueuePublicationMetricsForPage::class)->queue($publication);
@@ -430,9 +430,9 @@ test('a tryPost x post is first read an hour after publishing', function () {
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $publication->id
         && $job->observationDate === '2026-10-10'
         && CarbonImmutable::parse($job->delay)->equalTo($now->addHour()));
-});
+})->with([Platform::X, Platform::Instagram, Platform::Mastodon]);
 
-test('a late x post is first read under the next utc date', function () {
+test('a late post is first read under the next utc date', function () {
     $now = CarbonImmutable::parse('2026-10-10 23:30:00', 'UTC');
     CarbonImmutable::setTestNow($now);
     $publication = metricJobPublication(Platform::X, $now);
@@ -443,9 +443,9 @@ test('a late x post is first read under the next utc date', function () {
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->observationDate === '2026-10-11');
 });
 
-test('other networks are still read right after publishing', function () {
+test('a post found more than an hour after publishing is read right away', function () {
     CarbonImmutable::setTestNow('2026-10-10 12:00:00 UTC');
-    $publication = metricJobPublication(Platform::Instagram, CarbonImmutable::now('UTC'));
+    $publication = metricJobPublication(Platform::Instagram, CarbonImmutable::now('UTC')->subHours(3));
     Bus::fake([CollectPublicationMetrics::class]);
 
     app(QueuePublicationMetricsForPage::class)->queue($publication);
@@ -477,15 +477,15 @@ test('x discovery reads only posts that were never measured', function () {
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $native->id);
 });
 
-test('the daily run leaves a fresh x post to its first read an hour after publishing', function () {
+test('the daily run leaves a fresh post to its first read an hour after publishing', function (Platform $platform) {
     $now = CarbonImmutable::parse('2026-10-10 03:00:00', 'UTC');
     CarbonImmutable::setTestNow($now);
-    $fresh = metricJobPublication(Platform::X, $now->subMinutes(30));
-    $settled = metricJobPublication(Platform::X, $now->subMinutes(90));
+    $fresh = metricJobPublication($platform, $now->subMinutes(30));
+    $settled = metricJobPublication($platform, $now->subMinutes(90));
     Bus::fake([CollectPublicationMetrics::class]);
 
     $this->artisan('analytics:dispatch-publication-metrics')->assertSuccessful();
 
     Bus::assertNotDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $fresh->id);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $settled->id);
-});
+})->with([Platform::X, Platform::Instagram]);
