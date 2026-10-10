@@ -264,6 +264,24 @@ test('x backfill reports provider limited when the 800 post timeline without rep
     Bus::assertNotDispatched(BackfillAccountPublications::class);
 });
 
+test('x backfill counts the replies the collector skipped toward the timeline cap', function () {
+    Bus::fake();
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+    $state = AnalyticsSyncState::factory()->create([
+        'social_account_id' => $account->id,
+        'checkpoint' => ['cursor' => 'last-page', 'revision' => 4, 'seen_count' => 798],
+        'target_since' => CarbonImmutable::parse('2025-09-23', 'UTC'),
+    ]);
+    bindPublicationPage(new PublicationPage([
+        new DiscoveredPublication('x-root', CarbonImmutable::parse('2026-01-01', 'UTC'), PublicationContentType::Text),
+    ], null, true, providerRowCount: 2));
+
+    app()->call([new BackfillAccountPublications($account->id, $state->id), 'handle']);
+
+    expect($state->fresh()->status)->toBe(SyncStatus::ProviderLimited)
+        ->and(data_get($state->fresh()->checkpoint, 'seen_count'))->toBe(800);
+});
+
 test('x backfill below the timeline cap completes when the provider exhausts its history', function () {
     Bus::fake();
     $account = SocialAccount::factory()->create(['platform' => Platform::X]);

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Analytics;
 
 use App\Enums\SocialAccount\Platform;
+use Carbon\CarbonImmutable;
 
 /**
  * How often Insights data is refreshed.
@@ -29,6 +30,14 @@ class SyncCadence
     public static function metricsWindowDays(Platform $platform): int
     {
         return $platform === Platform::X ? max(self::X_METRICS_DAYS) : self::METRICS_WINDOW_DAYS;
+    }
+
+    /**
+     * The oldest publish time still inside the platform's metrics window on that day.
+     */
+    public static function metricsWindowStart(Platform $platform, CarbonImmutable $on): CarbonImmutable
+    {
+        return $on->subDays(self::metricsWindowDays($platform))->startOfDay();
     }
 
     /**

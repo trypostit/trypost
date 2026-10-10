@@ -425,6 +425,7 @@ test('x tracks a post, never a reply, so a thread is its root', function () {
 
     $page = app(XPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-10-01', 'UTC'));
 
-    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['quote', 'thread-root']);
+    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['quote', 'thread-root'])
+        ->and($page->providerRowCount)->toBe(3);
     Http::assertSent(fn (Request $request): bool => str_contains((string) $request['tweet.fields'], 'referenced_tweets'));
 });

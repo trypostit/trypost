@@ -34,14 +34,14 @@ class DispatchPublicationMetrics extends Command
                     return;
                 }
 
-                $days = SyncCadence::metricsWindowDays($account->platform);
+                $windowStart = SyncCadence::metricsWindowStart($account->platform, $now);
 
                 AnalyticsPublication::query()
                     ->available()
                     ->where('social_account_id', $account->id)
                     ->where('provider_published_at', '<=', $now->subMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES))
                     ->where(fn (Builder $query): Builder => $query
-                        ->where(fn (Builder $due) => $this->due($due, $account->platform, $now))
+                        ->where(fn (Builder $due) => $this->due($due, $account->platform, $now, $windowStart))
                         ->orWhereDoesntHave('dailySnapshots'))
                     ->where(function ($query) use ($now): void {
                         $query->where('content_type', '!=', PublicationContentType::Story)
@@ -51,7 +51,7 @@ class DispatchPublicationMetrics extends Command
                     ->each(fn (AnalyticsPublication $publication) => CollectPublicationMetrics::dispatch(
                         $publication->id,
                         $now->toDateString(),
-                        $publication->provider_published_at->lessThan($now->subDays($days)->startOfDay()),
+                        $publication->provider_published_at->lessThan($windowStart),
                     ));
             });
 
@@ -61,7 +61,7 @@ class DispatchPublicationMetrics extends Command
     /**
      * Posts the daily run reads again: every day of the window, or only the scheduled ages on X.
      */
-    private function due(Builder $query, Platform $platform, CarbonImmutable $now): void
+    private function due(Builder $query, Platform $platform, CarbonImmutable $now, CarbonImmutable $windowStart): void
     {
         $query->when(
             SyncCadence::metricsDays($platform),
@@ -72,7 +72,7 @@ class DispatchPublicationMetrics extends Command
                 ]),
                 $scheduled,
             ),
-            fn (Builder $daily): Builder => $daily->where('provider_published_at', '>=', $now->subDays(SyncCadence::metricsWindowDays($platform))->startOfDay()),
+            fn (Builder $daily): Builder => $daily->where('provider_published_at', '>=', $windowStart),
         );
     }
 }

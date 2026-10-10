@@ -90,7 +90,13 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
         $nextCursor = data_get($response->json(), 'meta.next_token');
         $hasNext = is_string($nextCursor) && $nextCursor !== '' && ! $crossedCutoff;
 
-        return new PublicationPage($publications, $hasNext ? $nextCursor : null, ! $hasNext, $providerLimited);
+        return new PublicationPage(
+            $publications,
+            $hasNext ? $nextCursor : null,
+            ! $hasNext,
+            $providerLimited,
+            providerRowCount: count((array) $response->json('data', [])),
+        );
     }
 
     /** @param list<mixed> $types */

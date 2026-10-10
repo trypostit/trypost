@@ -36,7 +36,8 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
             ],
             authenticated: false,
         );
-        $records = collect((array) $response->json('records', []));
+        $records = collect((array) $response->json('records', []))
+            ->reject(fn (mixed $record): bool => filled(data_get($record, 'value.reply')));
         $hydrated = $this->hydrate($account, $records->pluck('uri')->filter()->values());
         $publications = [];
         $crossedCutoff = false;
@@ -52,10 +53,6 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
                 $crossedCutoff = true;
 
                 break;
-            }
-
-            if (filled(data_get($record, 'value.reply'))) {
-                continue;
             }
 
             $uri = (string) data_get($record, 'uri');

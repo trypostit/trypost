@@ -61,8 +61,7 @@ class QueuePublicationMetricsForPage
             return;
         }
 
-        $windowStart = $now->subDays(SyncCadence::metricsWindowDays($publication->platform))->startOfDay();
-        $baseline = $publication->provider_published_at->lessThan($windowStart);
+        $baseline = $publication->provider_published_at->lessThan(SyncCadence::metricsWindowStart($publication->platform, $now));
         $readAt = $publication->provider_published_at->toImmutable()
             ->addMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES)
             ->max($now);

@@ -134,7 +134,7 @@ class AdvanceAnalyticsSyncState
                 && $oldest->lessThanOrEqualTo($state->target_since);
             $isXBackfill = $state->collector === SyncCollector::PublicationBackfill
                 && $account->platform === Platform::X;
-            $seenCount = (int) data_get($checkpoint, 'seen_count', 0) + count($page->publications);
+            $seenCount = (int) data_get($checkpoint, 'seen_count', 0) + ($page->providerRowCount ?? count($page->publications));
             $xTimelineLimited = $isXBackfill
                 && $page->providerExhausted
                 && ! $reachedTarget

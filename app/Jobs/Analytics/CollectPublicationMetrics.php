@@ -170,12 +170,9 @@ class CollectPublicationMetrics implements ShouldQueue
             return false;
         }
 
-        if (! $this->baseline && ! $isStory) {
-            $ageLimit = SyncCadence::metricsWindowDays($publication->platform);
-
-            if ($publication->provider_published_at->lessThan($date->subDays($ageLimit)->startOfDay())) {
-                return false;
-            }
+        if (! $this->baseline && ! $isStory
+            && $publication->provider_published_at->lessThan(SyncCadence::metricsWindowStart($publication->platform, $date))) {
+            return false;
         }
 
         return $this->refreshSameDay || ! AnalyticsPublicationDailySnapshot::query()

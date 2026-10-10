@@ -267,6 +267,8 @@ test('bluesky tracks a post, never a reply, so a thread is its root', function (
     $page = app(BlueskyPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-09-01', 'UTC'));
 
     expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['thread-root']);
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), 'getPosts')
+        && str_contains(urldecode($request->url()), 'thread-reply'));
 });
 
 test('mastodon tracks a status, never a reply, so a thread is its root', function () {
