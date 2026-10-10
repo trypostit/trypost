@@ -2,6 +2,7 @@
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
     IconChevronDown,
+    IconChevronUp,
     IconLayoutSidebarRightCollapse,
     IconLayoutSidebarRightExpand,
     IconPlus,
@@ -711,7 +712,7 @@ const goToDay = (key: string): void => {
                             <div
                                 v-for="(week, weekIndex) in calendarWeeks"
                                 :key="weekIndex"
-                                class="grid min-h-24 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
+                                class="grid min-h-40 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
                                 :class="{ 'border-t': weekIndex > 0 }"
                             >
                                 <div
@@ -769,6 +770,7 @@ const goToDay = (key: string): void => {
                                                 v-if="item.post"
                                                 :post="item.post"
                                                 :timezone="timezone"
+                                                :compact="!isDesktop"
                                             />
                                             <CalendarSlotChip
                                                 v-else-if="item.slot"
@@ -780,6 +782,7 @@ const goToDay = (key: string): void => {
                                                 "
                                                 :timezone="timezone"
                                                 :can-create-post="canCreatePost"
+                                                :compact="!isDesktop"
                                             />
                                         </template>
                                     </div>
@@ -789,13 +792,50 @@ const goToDay = (key: string): void => {
                                                 itemsFor(day).length > MONTH_CHIPS
                                             "
                                             type="button"
-                                            class="inline-flex h-6 shrink-0 items-center gap-1 self-end rounded-md px-2 text-xs font-medium text-foreground transition-control hover:bg-accent"
+                                            class="inline-flex shrink-0 items-center gap-1 rounded-md text-xs font-medium text-foreground transition-control hover:bg-accent"
+                                            :class="
+                                                isDesktop
+                                                    ? 'h-6 self-end px-2'
+                                                    : 'h-7 min-w-7 justify-center self-start px-1'
+                                            "
                                             :aria-expanded="
                                                 expandedDays.includes(dayKey(day))
+                                            "
+                                            :aria-label="
+                                                isDesktop
+                                                    ? undefined
+                                                    : expandedDays.includes(
+                                                            dayKey(day),
+                                                        )
+                                                      ? $t('calendar.less')
+                                                      : $t('calendar.more', {
+                                                            count: String(
+                                                                itemsFor(day)
+                                                                    .length -
+                                                                    MONTH_CHIPS,
+                                                            ),
+                                                        })
                                             "
                                             :data-testid="`calendar-more-${dayKey(day)}`"
                                             @click="toggleDay(dayKey(day))"
                                         >
+                                            <template v-if="!isDesktop">
+                                                <IconChevronUp
+                                                    v-if="
+                                                        expandedDays.includes(
+                                                            dayKey(day),
+                                                        )
+                                                    "
+                                                    class="size-3.5"
+                                                />
+                                                <template v-else>
+                                                    +{{
+                                                        itemsFor(day).length -
+                                                        MONTH_CHIPS
+                                                    }}
+                                                </template>
+                                            </template>
+                                            <template v-else>
                                             <IconChevronDown
                                                 class="size-3.5 transition-transform"
                                                 :class="{
@@ -818,6 +858,7 @@ const goToDay = (key: string): void => {
                                                           ),
                                                       })
                                             }}
+                                            </template>
                                         </button>
                                 </div>
                             </div>

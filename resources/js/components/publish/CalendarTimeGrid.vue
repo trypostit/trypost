@@ -201,10 +201,13 @@ watch(
                                         ? 'month'
                                         : 'week'
                                 "
+                                :compact="compact"
                                 :class="
-                                    isStacked(column, hour)
-                                        ? 'w-full shrink-0'
-                                        : 'flex-1'
+                                    compact
+                                        ? ''
+                                        : isStacked(column, hour)
+                                          ? 'w-full shrink-0'
+                                          : 'flex-1'
                                 "
                             />
                             <CalendarSlotChip
@@ -213,10 +216,13 @@ watch(
                                 :channel="channels[item.slot.channel_id] ?? null"
                                 :timezone="timezone"
                                 :can-create-post="canCreatePost"
+                                :compact="compact"
                                 :class="
-                                    isStacked(column, hour)
-                                        ? 'w-full shrink-0'
-                                        : 'flex-1'
+                                    compact
+                                        ? ''
+                                        : isStacked(column, hour)
+                                          ? 'w-full shrink-0'
+                                          : 'flex-1'
                                 "
                             />
                         </template>

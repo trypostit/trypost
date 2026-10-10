@@ -27,8 +27,9 @@ const props = withDefaults(
         post: CalendarPost;
         timezone: string;
         layout?: 'month' | 'week';
+        compact?: boolean;
     }>(),
-    { layout: 'month' },
+    { layout: 'month', compact: false },
 );
 
 
@@ -137,14 +138,22 @@ const scheduleMode = computed(() =>
                 class="flex min-w-0 shrink-0 gap-1.5 rounded-lg border border-border-strong bg-card text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary"
                 :class="[
                     STATUS_CLASSES[post.status] ?? '',
-                    layout === 'week'
-                        ? 'items-start p-1.5'
-                        : 'h-7 items-center px-1',
+                    compact
+                        ? 'size-7 items-center justify-center'
+                        : layout === 'week'
+                          ? 'items-start p-1.5'
+                          : 'h-7 items-center px-1',
                 ]"
                 :aria-label="`${channels} · ${time} · ${text || $t('calendar.no_content')}`"
                 :data-testid="`calendar-post-${post.id}`"
             >
-                <span class="flex min-w-0 flex-1 flex-col gap-1">
+                <PlatformBrandIcon
+                    v-if="compact && post.platform"
+                    :platform="post.platform"
+                    colored
+                    class="size-4 shrink-0"
+                />
+                <span v-if="!compact" class="flex min-w-0 flex-1 flex-col gap-1">
                     <span class="flex min-w-0 items-center gap-1">
                         <PlatformBrandIcon
                             v-if="post.platform"
@@ -178,7 +187,7 @@ const scheduleMode = computed(() =>
                     >
                 </span>
                 <span
-                    v-if="thumbnail"
+                    v-if="thumbnail && !compact"
                     class="relative shrink-0 overflow-hidden rounded bg-secondary"
                     :class="layout === 'week' ? 'size-9' : 'size-5'"
                 >

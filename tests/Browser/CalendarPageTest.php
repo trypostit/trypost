@@ -551,6 +551,7 @@ test('on a phone the week shows its seven days in columns with their posts', fun
 
     $page->assertPresent("@calendar-post-{$first->id}")
         ->assertPresent("@calendar-post-{$second->id}")
+        ->assertScript("(() => { const box = document.querySelector('[data-testid=\"calendar-post-{$first->id}\"]').getBoundingClientRect(); return box.width === box.height; })()", true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
 });
@@ -586,7 +587,7 @@ test('the three days view shows three columns, and only the phone picker offers 
     $page->assertMissing("@calendar-post-{$post->id}")->assertNoJavaScriptErrors();
 });
 
-test('on a phone the month shows its weeks in columns with the posts of each day', function () {
+test('on a phone the month shows its weeks in columns with the posts of each day as icon tiles', function () {
     [$user, $linkedin, $x] = calendarPageSetup();
     $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(12);
     $dayKey = $day->format('Y-m-d');
@@ -599,9 +600,15 @@ test('on a phone the month shows its weeks in columns with the posts of each day
 
     $page->assertPresent("@calendar-day-{$dayKey}")
         ->assertPresent("@calendar-post-{$posts[0]->id}")
-        ->assertPresent("@calendar-more-{$dayKey}")
+        ->assertSeeIn("@calendar-more-{$dayKey}", '+2')
+        ->assertDontSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 2]))
+        ->assertScript("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$posts[0]->id}\"]'); const box = chip.getBoundingClientRect(); return box.width === box.height && chip.innerText.trim() === '' && !chip.querySelector('img, video'); })()", true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
+
+    $page->click("@calendar-more-{$dayKey}");
+    waitForCalendarTestId($page, "calendar-post-{$posts[4]->id}");
+    $page->assertAttribute("@calendar-more-{$dayKey}", 'aria-label', __('calendar.less'));
 });
 
 test('on a phone, tapping a post in the month opens its details directly', function () {

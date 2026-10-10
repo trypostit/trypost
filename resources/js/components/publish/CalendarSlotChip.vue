@@ -16,8 +16,9 @@ const props = withDefaults(
         timezone: string;
         canCreatePost: boolean;
         layout?: 'chip' | 'agenda';
+        compact?: boolean;
     }>(),
-    { layout: 'chip' },
+    { layout: 'chip', compact: false },
 );
 
 const time = computed(() =>
@@ -75,6 +76,30 @@ const newPost = (): void => {
             <IconPlus class="size-3.5" aria-hidden="true" />
             {{ $t('posts.publish.add_post_in_slot') }}
         </span>
+    </component>
+    <component
+        :is="canCreatePost ? 'button' : 'div'"
+        v-else-if="compact"
+        :type="canCreatePost ? 'button' : undefined"
+        class="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-muted-foreground transition-control enabled:hover:bg-secondary enabled:focus-visible:bg-secondary"
+        :aria-label="
+            channel
+                ? $t('posts.publish.slot_aria', {
+                      channel: channel.display_label,
+                      network: getPlatformLabel(channel.platform),
+                      time,
+                  })
+                : undefined
+        "
+        :data-testid="`calendar-posting-slot-${testKey}`"
+        @click="canCreatePost ? newPost() : undefined"
+    >
+        <PlatformBrandIcon
+            v-if="channel"
+            :platform="channel.platform"
+            class="size-3.5"
+            :data-testid="`calendar-posting-slot-icon-${testKey}`"
+        />
     </component>
     <component
         v-else
