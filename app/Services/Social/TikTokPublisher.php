@@ -483,8 +483,7 @@ class TikTokPublisher
     private function completePublish(Post $post, string $publishId): array
     {
         $statusData = $this->waitForPublishStatus($publishId);
-        $postId = (string) data_get($statusData, 'publicaly_available_post_id.0');
-        $postId = blank($postId) ? null : $postId;
+        $postId = transform(data_get($statusData, 'publicaly_available_post_id.0'), fn (mixed $id): string => (string) $id);
 
         return [
             'id' => $postId ?? $publishId,

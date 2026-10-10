@@ -19,6 +19,8 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
 
+    public bool $deleteWhenMissingModels = true;
+
     /** Must exceed HasSocialHttpClient's 120s HTTP timeout so a slow request cannot kill the worker. */
     public int $timeout = 180;
 
@@ -44,7 +46,7 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
 
         $videoId = $tiktok->publicVideoId($this->post);
 
-        if ($videoId === null) {
+        if (blank($videoId)) {
             $this->post->writePublication(['last_reconciled_at' => now()]);
 
             return;

@@ -101,6 +101,7 @@ test('TikTok metric job reconciles a public video id before persisting metrics',
 
     expect($publication->fresh()->remote_id)->toBe('123456789')
         ->and($post->fresh()->platform_post_id)->toBe('123456789')
+        ->and($post->fresh()->platform_url)->toBe("https://www.tiktok.com/@{$account->username}/video/123456789")
         ->and($publication->dailySnapshots()->first()->views_count)->toBe(12);
     Http::assertSentCount(2);
 });

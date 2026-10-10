@@ -94,16 +94,37 @@ class RepairTikTokVideoIdsCommand extends Command
                 'held' => $held,
                 'own' => $this->ownVideo($held),
             ])
-            ->filter(fn (array $repair): bool => $repair['own'] !== null)
+            ->filter(fn (array $repair): bool => filled($repair['own']))
             ->values()
             ->collect();
 
+        do {
+            $before = $repairs->count();
+            $repairs = $this->withFreeOwnVideo($repairs);
+        } while ($repairs->count() !== $before);
+
+        return $repairs;
+    }
+
+    /**
+     * Keeps a repair only when its own video is claimed by no other repair and
+     * is free once the repairs run: unlinked, imported, or held by a post that
+     * is itself repaired. Dropping one repair can strand another, so the caller
+     * repeats this until nothing changes.
+     *
+     * @param  Collection<int, array{post: Post, held: AnalyticsPublication, own: AnalyticsPublication}>  $repairs
+     * @return Collection<int, array{post: Post, held: AnalyticsPublication, own: AnalyticsPublication}>
+     */
+    private function withFreeOwnVideo(Collection $repairs): Collection
+    {
         $repairedPostIds = $repairs->map(fn (array $repair): string => $repair['post']->id);
+        $claims = $repairs->countBy(fn (array $repair): string => $repair['own']->id);
 
         return $repairs
-            ->filter(fn (array $repair): bool => $repair['own']->post_id === null
-                || $repairedPostIds->contains($repair['own']->post_id)
-                || Post::query()->imported()->whereKey($repair['own']->post_id)->exists())
+            ->filter(fn (array $repair): bool => $claims->get($repair['own']->id) === 1
+                && (blank($repair['own']->post_id)
+                    || $repairedPostIds->contains($repair['own']->post_id)
+                    || Post::query()->imported()->whereKey($repair['own']->post_id)->exists()))
             ->values();
     }
 
@@ -137,9 +158,9 @@ class RepairTikTokVideoIdsCommand extends Command
 
     private function giveBack(Post $post, AnalyticsPublication $own): void
     {
-        $imported = $own->post_id === null ? null : Post::query()->imported()->whereKey($own->post_id)->first();
+        $imported = filled($own->post_id) ? Post::query()->imported()->whereKey($own->post_id)->first() : null;
 
-        if ($imported !== null) {
+        if (filled($imported)) {
             DeleteOwnedMedia::forPosts([$imported->id]);
             Post::withoutEvents(fn (): ?bool => $imported->delete());
         }
@@ -149,7 +170,8 @@ class RepairTikTokVideoIdsCommand extends Command
         $post->writePublication([
             'platform_post_id' => $own->remote_id,
             'platform_url' => $own->permalink
-                ?? ($post->socialAccount ? TikTokPublisher::postUrl($post->socialAccount, $own->remote_id) : $post->platform_url),
+                ?? ($post->socialAccount ? TikTokPublisher::postUrl($post->socialAccount, $own->remote_id) : null)
+                ?? $post->platform_url,
         ]);
     }
 }

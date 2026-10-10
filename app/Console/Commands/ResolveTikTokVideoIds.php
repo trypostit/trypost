@@ -28,6 +28,7 @@ class ResolveTikTokVideoIds extends Command
             ->where('platform', Platform::TikTok)
             ->publicationPublished()
             ->where('published_at', '>=', now()->subDays(self::RESOLVE_WITHIN_DAYS))
+            ->select(['id', 'platform', 'origin', 'publish_status', 'platform_post_id', 'meta', 'published_at', 'last_reconciled_at'])
             ->lazyById()
             ->filter(fn (Post $post): bool => $post->awaitsTikTokVideoId() && $this->isDue($post))
             ->each(fn (Post $post) => ResolveTikTokVideoId::dispatch($post));
@@ -41,7 +42,7 @@ class ResolveTikTokVideoIds extends Command
      */
     private function isDue(Post $post): bool
     {
-        if ($post->last_reconciled_at === null) {
+        if (blank($post->last_reconciled_at)) {
             return true;
         }
 

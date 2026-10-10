@@ -11,6 +11,7 @@ use App\Jobs\ResolveTikTokVideoId;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
+use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 
@@ -92,6 +93,19 @@ test('posts that cannot get a video id are never sent to TikTok', function (arra
     'already resolved' => [['platform_post_id' => '7694860629638940686']],
     'imported' => [['origin' => Origin::Network]],
 ]);
+
+test('a post deleted before its check runs drops the job without failing it', function () {
+    $post = awaitingTikTokPost();
+    $job = new ResolveTikTokVideoId($post);
+    $post->delete();
+    Http::fake();
+
+    $queue = new SyncQueue;
+    $queue->setContainer(app());
+    $queue->push($job);
+
+    Http::assertNothingSent();
+});
 
 test('the sweep asks for a new post on every run, then hourly, then daily, for a month', function (int $publishedMinutesAgo, ?int $checkedMinutesAgo, bool $dispatched) {
     $post = awaitingTikTokPost(['published_at' => now()->subMinutes($publishedMinutesAgo)]);

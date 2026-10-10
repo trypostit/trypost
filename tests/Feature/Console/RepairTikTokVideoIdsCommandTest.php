@@ -115,3 +115,66 @@ test('a dry run lists the repairs without writing them', function () {
 
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
+
+test('a run of posts that each took the previous post video all get their own back', function () {
+    $first = repairTikTokPost('v_pub_url~v2-1.first', '2026-10-07 10:00:30');
+    repairTikTokVideo('v_pub_url~v2-1.first', '2026-10-07 10:00:30', $first);
+    $second = repairTikTokPost('7000000000000000011', '2026-10-08 10:00:30');
+    $firstVideo = repairTikTokVideo('7000000000000000011', '2026-10-07 10:00:00', $second);
+    $third = repairTikTokPost('7000000000000000012', '2026-10-09 10:00:30');
+    $secondVideo = repairTikTokVideo('7000000000000000012', '2026-10-08 10:00:00', $third);
+    $thirdVideo = repairTikTokVideo('7000000000000000013', '2026-10-09 10:00:00');
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($second->fresh()->platform_post_id)->toBe('7000000000000000012')
+        ->and($third->fresh()->platform_post_id)->toBe('7000000000000000013')
+        ->and($secondVideo->fresh()->post_id)->toBe($second->id)
+        ->and($thirdVideo->fresh()->post_id)->toBe($third->id)
+        ->and($firstVideo->fresh()->post_id)->toBeNull();
+
+    Queue::assertPushed(ResolveTikTokVideoId::class, fn (ResolveTikTokVideoId $job): bool => $job->post->is($first));
+});
+
+test('a post is left alone when the post holding its own video cannot be repaired', function () {
+    $first = repairTikTokPost('v_pub_url~v2-1.first', '2026-10-07 10:00:30');
+    repairTikTokVideo('v_pub_url~v2-1.first', '2026-10-07 10:00:30', $first);
+    $second = repairTikTokPost('7000000000000000021', '2026-10-08 10:00:30');
+    repairTikTokVideo('7000000000000000021', '2026-10-07 10:00:00', $second);
+    $third = repairTikTokPost('7000000000000000022', '2026-10-09 10:00:30');
+    repairTikTokVideo('7000000000000000022', '2026-10-08 10:00:00', $third);
+    $correct = repairTikTokPost('7000000000000000023', '2026-10-09 10:00:35');
+    repairTikTokVideo('7000000000000000023', '2026-10-09 10:00:00', $correct);
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($second->fresh()->platform_post_id)->toBe('7000000000000000021')
+        ->and($third->fresh()->platform_post_id)->toBe('7000000000000000022')
+        ->and($correct->fresh()->platform_post_id)->toBe('7000000000000000023');
+});
+
+test('posts are left alone when their own video is ambiguous or claimed by another post', function (bool $twoVideosInWindow) {
+    $previous = repairTikTokPost('v_pub_url~v2-1.previous', '2026-10-07 10:00:30');
+    repairTikTokVideo('v_pub_url~v2-1.previous', '2026-10-07 10:00:30', $previous);
+    $post = repairTikTokPost('7000000000000000031', '2026-10-08 10:00:30');
+    $held = repairTikTokVideo('7000000000000000031', '2026-10-07 10:00:00', $post);
+    $video = repairTikTokVideo('7000000000000000032', '2026-10-08 10:00:20');
+
+    if ($twoVideosInWindow) {
+        repairTikTokVideo('7000000000000000033', '2026-10-08 09:59:40');
+    } else {
+        $other = repairTikTokPost('v_pub_url~v2-1.other', '2026-10-07 12:00:30');
+        repairTikTokVideo('v_pub_url~v2-1.other', '2026-10-07 12:00:30', $other);
+        $sibling = repairTikTokPost('7000000000000000034', '2026-10-08 10:01:00');
+        repairTikTokVideo('7000000000000000034', '2026-10-07 12:00:00', $sibling);
+    }
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($post->fresh()->platform_post_id)->toBe('7000000000000000031')
+        ->and($held->fresh()->post_id)->toBe($post->id)
+        ->and($video->fresh()->post_id)->toBeNull();
+})->with([
+    'two videos in its window' => [true],
+    'another post claims the same video' => [false],
+]);

@@ -129,7 +129,7 @@ class TikTokAnalytics
 
         $videoId = $this->publicVideoIdFromStatus($stored);
 
-        if ($videoId !== null) {
+        if (filled($videoId)) {
             app(AssignTikTokVideoId::class)->handle($post, $videoId);
         }
 

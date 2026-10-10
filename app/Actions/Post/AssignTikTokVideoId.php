@@ -22,15 +22,14 @@ class AssignTikTokVideoId
         DB::transaction(function () use ($post, $videoId): void {
             $publication = $post->analyticsPublication()->first();
 
-            if ($publication !== null) {
+            if (filled($publication)) {
                 $this->publications->reconcileRemoteId($publication, $videoId);
             }
 
             $post->writePublication([
                 'platform_post_id' => $videoId,
-                'platform_url' => $post->socialAccount
-                    ? TikTokPublisher::postUrl($post->socialAccount, $videoId)
-                    : $post->platform_url,
+                'platform_url' => ($post->socialAccount ? TikTokPublisher::postUrl($post->socialAccount, $videoId) : null)
+                    ?? $post->platform_url,
             ]);
         });
     }
