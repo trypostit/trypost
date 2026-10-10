@@ -200,8 +200,13 @@ test('the sweep runs every minute on one server', function () {
     $event = collect(app(Schedule::class)->events())
         ->sole(fn (Event $event): bool => str_contains((string) $event->command, 'social:resolve-tiktok-video-ids'));
 
-    expect($event->expression)->toBe('* * * * *')
-        ->and($event->onOneServer)->toBeTrue()
+    foreach (['12:00', '12:01', '12:07', '23:59'] as $time) {
+        $this->travelTo(CarbonImmutable::parse("2026-10-10 {$time}:00", 'UTC'));
+
+        expect($event->isDue(app()))->toBeTrue("due at {$time}");
+    }
+
+    expect($event->onOneServer)->toBeTrue()
         ->and($event->withoutOverlapping)->toBeTrue();
 });
 

@@ -82,7 +82,7 @@ class RepairTikTokVideoIdsCommand extends Command
     {
         $repairs = AnalyticsPublication::query()
             ->where('network', Platform::TikTok->network())
-            ->whereHas('post', fn (Builder $query): Builder => $query->publishedToTikTok()->whereNotNull('published_at'))
+            ->whereHas('post', fn (Builder $query): Builder => $query->publishedToTikTok()->whereNotNull('published_at')->has('socialAccount'))
             ->with('post.socialAccount')
             ->lazyById()
             ->filter(fn (AnalyticsPublication $held): bool => ctype_digit($held->remote_id)
@@ -169,7 +169,7 @@ class RepairTikTokVideoIdsCommand extends Command
         $post->writePublication([
             'platform_post_id' => $own->remote_id,
             'platform_url' => $own->permalink
-                ?? ($post->socialAccount ? TikTokPublisher::postUrl($post->socialAccount, $own->remote_id) : null)
+                ?? TikTokPublisher::postUrl($post->socialAccount, $own->remote_id)
                 ?? $post->platform_url,
         ]);
     }

@@ -95,3 +95,17 @@ test('a video held by another TryPost post is refused and nothing is written', f
     expect($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.pending')
         ->and($publication->fresh()->remote_id)->toBe('v_pub_url~v2-1.pending');
 });
+
+test('a post whose channel is gone keeps its url and still moves its publication', function () {
+    $account = SocialAccount::factory()->tiktok()->create(['username' => 'tiktoker']);
+    $post = tiktokPostAwaitingVideo($account);
+    $publication = app(SyncTryPostPublication::class)->handle($post);
+    $post->forceFill(['social_account_id' => null])->save();
+
+    app(AssignTikTokVideoId::class)->handle($post->fresh(), '7694860629638940686');
+
+    expect($post->fresh())
+        ->platform_post_id->toBe('7694860629638940686')
+        ->platform_url->toBe('https://www.tiktok.com/@tiktoker')
+        ->and($publication->fresh()->remote_id)->toBe('7694860629638940686');
+});

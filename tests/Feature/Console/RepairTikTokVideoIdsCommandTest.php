@@ -139,6 +139,17 @@ test('posts on a channel that is not connected are not sent to TikTok', function
     Queue::assertNotPushed(ResolveTikTokVideoId::class);
 });
 
+test('posts whose channel is gone are left alone', function () {
+    $chain = claimedTikTokVideoChain();
+    $chain['secondVideo']->update(['permalink' => null]);
+    Post::query()->whereKey([$chain['first']->id, $chain['second']->id])->update(['social_account_id' => null]);
+
+    $this->artisan('tiktok:repair-video-ids')->assertSuccessful();
+
+    expect($chain['second']->fresh()->platform_post_id)->toBe('7000000000000000001')
+        ->and($chain['firstVideo']->fresh()->post_id)->toBe($chain['second']->id);
+});
+
 test('a post whose publish only finished long after TikTok created its video keeps that video', function () {
     $slow = repairTikTokPost('7000000000000000003', '2026-10-09 14:40:00');
     $video = repairTikTokVideo('7000000000000000003', '2026-10-09 14:00:00', $slow);
