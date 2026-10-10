@@ -54,6 +54,10 @@ class BlueskyPublicationCollector extends AbstractPublicationHistoryCollector
                 break;
             }
 
+            if (filled(data_get($record, 'value.reply'))) {
+                continue;
+            }
+
             $uri = (string) data_get($record, 'uri');
             $postId = basename($uri);
             $view = $hydrated->get($uri);

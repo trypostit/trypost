@@ -239,3 +239,48 @@ test('publication collector factory supports open networks', function (Platform 
     [Platform::Bluesky, BlueskyPublicationCollector::class],
     [Platform::Mastodon, MastodonPublicationCollector::class],
 ]);
+
+test('bluesky tracks a post, never a reply, so a thread is its root', function () {
+    $pds = 'https://pds.example';
+    $record = fn (string $id, ?array $reply = null): array => [
+        'uri' => "at://did:plc:alice/app.bsky.feed.post/{$id}",
+        'cid' => "cid-{$id}",
+        'value' => array_filter([
+            '$type' => 'app.bsky.feed.post',
+            'text' => $id,
+            'createdAt' => '2026-09-22T12:00:00Z',
+            'reply' => $reply,
+        ]),
+    ];
+    $root = ['uri' => 'at://did:plc:alice/app.bsky.feed.post/thread-root', 'cid' => 'cid-thread-root'];
+    Http::fake([
+        "{$pds}/xrpc/com.atproto.repo.listRecords*" => Http::response([
+            'records' => [$record('thread-reply', ['root' => $root, 'parent' => $root]), $record('thread-root')],
+        ]),
+        config('trypost.platforms.bluesky.public_appview').'/xrpc/app.bsky.feed.getPosts*' => Http::response(['posts' => []]),
+    ]);
+    $account = SocialAccount::factory()->bluesky()->create([
+        'platform_user_id' => 'did:plc:alice',
+        'meta' => ['service' => $pds],
+    ]);
+
+    $page = app(BlueskyPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-09-01', 'UTC'));
+
+    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['thread-root']);
+});
+
+test('mastodon tracks a status, never a reply, so a thread is its root', function () {
+    Http::fake(['*' => Http::response([
+        ['id' => 'thread-reply', 'created_at' => '2026-09-20T12:01:00Z', 'content' => '<p>2/2</p>', 'in_reply_to_id' => 'thread-root', 'media_attachments' => []],
+        ['id' => 'thread-root', 'created_at' => '2026-09-20T12:00:00Z', 'content' => '<p>1/2</p>', 'in_reply_to_id' => null, 'media_attachments' => []],
+    ])]);
+    $account = SocialAccount::factory()->mastodon()->create([
+        'platform_user_id' => '42',
+        'scopes' => ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'],
+        'meta' => ['instance' => 'https://mastodon.example'],
+    ]);
+
+    $page = app(MastodonPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-01-01', 'UTC'));
+
+    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['thread-root']);
+});

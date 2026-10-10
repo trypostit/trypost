@@ -48,6 +48,10 @@ class MastodonPublicationCollector extends AbstractPublicationHistoryCollector
                 break;
             }
 
+            if (filled(data_get($row, 'in_reply_to_id'))) {
+                continue;
+            }
+
             $attachments = (array) data_get($row, 'media_attachments', []);
             $thumbnail = data_get($attachments, '0.preview_url') ?: data_get($attachments, '0.url');
 

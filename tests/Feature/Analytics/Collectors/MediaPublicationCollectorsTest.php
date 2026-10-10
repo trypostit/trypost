@@ -55,7 +55,7 @@ test('x reads one owned timeline page with only discovery fields', function () {
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), "/users/{$account->platform_user_id}/tweets")
         && $request['pagination_token'] === 'x-cursor'
         && $request['exclude'] === 'retweets,replies'
-        && $request['tweet.fields'] === 'created_at,attachments,note_tweet'
+        && $request['tweet.fields'] === 'created_at,attachments,note_tweet,referenced_tweets'
         && $request['media.fields'] === 'media_key,type,preview_image_url,url,variants'
         && ! str_contains((string) $request['tweet.fields'], 'public_metrics'));
 });
@@ -410,4 +410,21 @@ test('an x page with nothing since the cutoff ends the sync', function () {
     expect($page->publications)->toBe([])
         ->and($page->nextCursor)->toBeNull()
         ->and($page->providerExhausted)->toBeTrue();
+});
+
+test('x tracks a post, never a reply, so a thread is its root', function () {
+    Http::fake(['*' => Http::response([
+        'data' => [
+            ['id' => 'thread-reply', 'text' => '2/2', 'created_at' => '2026-10-09T12:01:00.000Z', 'referenced_tweets' => [['type' => 'replied_to', 'id' => 'thread-root']]],
+            ['id' => 'quote', 'text' => 'quoting', 'created_at' => '2026-10-09T12:00:30.000Z', 'referenced_tweets' => [['type' => 'quoted', 'id' => 'someone']]],
+            ['id' => 'thread-root', 'text' => '1/2', 'created_at' => '2026-10-09T12:00:00.000Z'],
+        ],
+        'meta' => ['result_count' => 3],
+    ])]);
+    $account = SocialAccount::factory()->create(['platform' => Platform::X]);
+
+    $page = app(XPublicationCollector::class)->page($account, null, CarbonImmutable::parse('2026-10-01', 'UTC'));
+
+    expect(collect($page->publications)->pluck('providerPostId')->all())->toBe(['quote', 'thread-root']);
+    Http::assertSent(fn (Request $request): bool => str_contains((string) $request['tweet.fields'], 'referenced_tweets'));
 });

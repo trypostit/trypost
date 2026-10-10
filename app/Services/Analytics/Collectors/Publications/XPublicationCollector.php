@@ -28,7 +28,7 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 'start_time' => $cutoff->toIso8601ZuluString(),
                 'pagination_token' => $cursor,
                 'exclude' => 'retweets,replies',
-                'tweet.fields' => 'created_at,attachments,note_tweet',
+                'tweet.fields' => 'created_at,attachments,note_tweet,referenced_tweets',
                 'expansions' => 'attachments.media_keys',
                 'media.fields' => 'media_key,type,preview_image_url,url,variants',
             ],
@@ -51,6 +51,10 @@ class XPublicationCollector extends AbstractPublicationHistoryCollector
                 $crossedCutoff = true;
 
                 break;
+            }
+
+            if (collect((array) data_get($row, 'referenced_tweets', []))->contains('type', 'replied_to')) {
+                continue;
             }
 
             $attachedMedia = collect((array) data_get($row, 'attachments.media_keys', []))
