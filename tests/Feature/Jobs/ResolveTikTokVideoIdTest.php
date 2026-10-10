@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\SyncTryPostPublication;
+use App\Actions\Post\AssignTikTokVideoId;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
@@ -16,10 +17,12 @@ use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Queue\SyncQueue;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
+use PDOException;
 
 beforeEach(function () {
     Queue::fake();
@@ -138,6 +141,24 @@ test('a post on a channel that is not connected is never sent to TikTok', functi
 
     Http::assertNothingSent();
 })->with([Status::Disconnected, Status::TokenExpired]);
+
+test('a video discovered at the same moment leaves the post for the next check', function () {
+    $post = awaitingTikTokPost();
+    $assignVideoId = Mockery::mock(AssignTikTokVideoId::class);
+    $assignVideoId->shouldReceive('handle')->once()->andThrow(new UniqueConstraintViolationException('pgsql', 'insert', [], new PDOException('duplicate key value')));
+    $this->app->instance(AssignTikTokVideoId::class, $assignVideoId);
+
+    Http::fake([$this->statusUrl => Http::response([
+        'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => ['7694860629638940686']],
+        'error' => ['code' => 'ok'],
+    ])]);
+
+    resolveTikTokVideoId($post);
+
+    expect($post->fresh())
+        ->platform_post_id->toBe('v_pub_url~v2-1.pending')
+        ->last_reconciled_at->not->toBeNull();
+});
 
 test('a post deleted before its check runs drops the job without failing it', function () {
     $post = awaitingTikTokPost();

@@ -9,6 +9,7 @@ use App\Models\Post;
 use App\Services\Social\TikTokPublisher;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -62,6 +63,8 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
 
         try {
             $assignVideoId->handle($this->post, $videoId);
+        } catch (UniqueConstraintViolationException) {
+            return;
         } catch (LogicException) {
             if (Cache::add("tiktok-video-id:held-by-another-post:{$this->post->id}", true, now()->addDay())) {
                 Log::warning('TikTok reported a video another TryPost post holds; not assigned.', [
