@@ -35,10 +35,10 @@ class RepairTikTokVideoIdsCommand extends Command
         $this->table(
             ['Post', 'Published at', 'Held video', 'Own video'],
             $repairs->map(fn (array $repair): array => [
-                $repair['post']->id,
-                $repair['post']->published_at->toDateTimeString(),
-                $repair['held']->remote_id,
-                $repair['own']->remote_id,
+                data_get($repair, 'post.id'),
+                data_get($repair, 'post.published_at')->toDateTimeString(),
+                data_get($repair, 'held.remote_id'),
+                data_get($repair, 'own.remote_id'),
             ])->all(),
         );
 
@@ -55,12 +55,12 @@ class RepairTikTokVideoIdsCommand extends Command
         }
 
         DB::transaction(function () use ($repairs): void {
-            $repairs->each(fn (array $repair) => $repair['held']->forceFill([
+            $repairs->each(fn (array $repair) => data_get($repair, 'held')->update([
                 'post_id' => null,
                 'origin' => PublicationOrigin::External,
-            ])->save());
+            ]));
 
-            $repairs->each(fn (array $repair) => $this->giveBack($repair['post'], $repair['own']->fresh()));
+            $repairs->each(fn (array $repair) => $this->giveBack(data_get($repair, 'post'), data_get($repair, 'own')->fresh()));
         });
 
         $awaiting->each(fn (Post $post) => ResolveTikTokVideoId::dispatch($post));
@@ -92,7 +92,7 @@ class RepairTikTokVideoIdsCommand extends Command
                 'held' => $held,
                 'own' => $this->ownVideo($held),
             ])
-            ->filter(fn (array $repair): bool => filled($repair['own']))
+            ->filter(fn (array $repair): bool => filled(data_get($repair, 'own')))
             ->values()
             ->collect();
 
@@ -115,14 +115,14 @@ class RepairTikTokVideoIdsCommand extends Command
      */
     private function withFreeOwnVideo(Collection $repairs): Collection
     {
-        $repairedPostIds = $repairs->map(fn (array $repair): string => $repair['post']->id);
-        $claims = $repairs->countBy(fn (array $repair): string => $repair['own']->id);
+        $repairedPostIds = $repairs->map(fn (array $repair): string => data_get($repair, 'post.id'));
+        $claims = $repairs->countBy(fn (array $repair): string => data_get($repair, 'own.id'));
 
         return $repairs
-            ->filter(fn (array $repair): bool => $claims->get($repair['own']->id) === 1
-                && (blank($repair['own']->post_id)
-                    || $repairedPostIds->contains($repair['own']->post_id)
-                    || Post::query()->imported()->whereKey($repair['own']->post_id)->exists()))
+            ->filter(fn (array $repair): bool => $claims->get(data_get($repair, 'own.id')) === 1
+                && (blank(data_get($repair, 'own.post_id'))
+                    || $repairedPostIds->contains(data_get($repair, 'own.post_id'))
+                    || Post::query()->imported()->whereKey(data_get($repair, 'own.post_id'))->exists()))
             ->values();
     }
 
@@ -163,7 +163,7 @@ class RepairTikTokVideoIdsCommand extends Command
             Post::withoutEvents(fn (): ?bool => $imported->delete());
         }
 
-        $own->forceFill(['post_id' => $post->id, 'origin' => PublicationOrigin::TryPost])->save();
+        $own->update(['post_id' => $post->id, 'origin' => PublicationOrigin::TryPost]);
 
         $post->writePublication([
             'platform_post_id' => $own->remote_id,

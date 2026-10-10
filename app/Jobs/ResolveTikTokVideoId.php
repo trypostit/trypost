@@ -40,7 +40,7 @@ class ResolveTikTokVideoId implements ShouldBeUnique, ShouldQueue
     {
         $this->post->refresh();
 
-        if (! $this->post->awaitsTikTokVideoId()) {
+        if (! $this->post->awaitsTikTokVideoId() || ! $this->post->socialAccount()->connected()->exists()) {
             return;
         }
 

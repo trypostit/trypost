@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\Post;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder;
 
 class ResolveTikTokVideoIds extends Command
 {
@@ -30,6 +31,7 @@ class ResolveTikTokVideoIds extends Command
     {
         Post::query()
             ->publishedToTikTok()
+            ->whereHas('socialAccount', fn (Builder $query): Builder => $query->connected())
             ->where('published_at', '>=', now()->subDays(self::RESOLVE_WITHIN_DAYS))
             ->select(['id', 'platform', 'origin', 'publish_status', 'platform_post_id', 'meta', 'published_at', 'last_reconciled_at'])
             ->lazyById()

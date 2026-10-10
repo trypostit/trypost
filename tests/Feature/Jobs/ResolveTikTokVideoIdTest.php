@@ -7,6 +7,7 @@ use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Enums\Post\Origin;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
+use App\Enums\SocialAccount\Status;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\ResolveTikTokVideoId;
 use App\Models\Post;
@@ -116,6 +117,16 @@ test('posts that cannot get a video id are never sent to TikTok', function (arra
     'imported' => [['origin' => Origin::Network]],
 ]);
 
+test('a post on a channel that is not connected is never sent to TikTok', function (Status $status) {
+    $post = awaitingTikTokPost();
+    $this->account->update(['status' => $status]);
+    Http::fake();
+
+    resolveTikTokVideoId($post);
+
+    Http::assertNothingSent();
+})->with([Status::Disconnected, Status::TokenExpired]);
+
 test('a post deleted before its check runs drops the job without failing it', function () {
     $post = awaitingTikTokPost();
     $job = new ResolveTikTokVideoId($post);
@@ -164,3 +175,12 @@ test('the sweep skips posts that already have their video id or never get one', 
     'publish failed' => [['publish_status' => PublishStatus::Failed]],
     'publish retrying' => [['publish_status' => PublishStatus::Retrying]],
 ]);
+
+test('the sweep skips posts whose channel is not connected', function (Status $status) {
+    awaitingTikTokPost();
+    $this->account->update(['status' => $status]);
+
+    $this->artisan(ResolveTikTokVideoIds::class)->assertSuccessful();
+
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
+})->with([Status::Disconnected, Status::TokenExpired]);
