@@ -63,19 +63,16 @@ class DispatchPublicationMetrics extends Command
      */
     private function due(Builder $query, Platform $platform, CarbonImmutable $now): void
     {
-        $ages = SyncCadence::metricsDays($platform);
-
-        if ($ages === null) {
-            $query->where('provider_published_at', '>=', $now->subDays(SyncCadence::metricsWindowDays($platform))->startOfDay());
-
-            return;
-        }
-
-        foreach ($ages as $age) {
-            $query->orWhereBetween('provider_published_at', [
-                $now->subDays($age)->startOfDay(),
-                $now->subDays($age)->endOfDay(),
-            ]);
-        }
+        $query->when(
+            SyncCadence::metricsDays($platform),
+            fn (Builder $scheduled, array $ages): Builder => collect($ages)->reduce(
+                fn (Builder $scheduled, int $age): Builder => $scheduled->orWhereBetween('provider_published_at', [
+                    $now->subDays($age)->startOfDay(),
+                    $now->subDays($age)->endOfDay(),
+                ]),
+                $scheduled,
+            ),
+            fn (Builder $daily): Builder => $daily->where('provider_published_at', '>=', $now->subDays(SyncCadence::metricsWindowDays($platform))->startOfDay()),
+        );
     }
 }

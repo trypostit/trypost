@@ -450,19 +450,19 @@ test('a post found more than an hour after publishing is read right away', funct
 
     app(QueuePublicationMetricsForPage::class)->queue($publication);
 
-    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->delay === null);
+    Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => CarbonImmutable::parse($job->delay)->equalTo(CarbonImmutable::now('UTC')));
 });
 
-test('x discovery reads only posts that were never measured', function () {
+test('discovery reads only posts that were never measured', function (Platform $platform) {
     CarbonImmutable::setTestNow('2026-10-10 00:00:00 UTC');
-    $measured = metricJobPublication(Platform::X, CarbonImmutable::now('UTC')->subHours(5));
+    $measured = metricJobPublication($platform, CarbonImmutable::now('UTC')->subHours(5));
     AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $measured->id, 'date' => '2026-10-09']);
     $native = AnalyticsPublication::factory()->create([
         'workspace_id' => $measured->workspace_id,
         'social_account_id' => $measured->social_account_id,
         'social_account_key' => $measured->social_account_key,
-        'platform' => Platform::X,
-        'network' => Platform::X->network(),
+        'platform' => $platform,
+        'network' => $platform->network(),
         'platform_user_id' => $measured->platform_user_id,
         'provider_published_at' => CarbonImmutable::now('UTC')->subHours(3),
     ]);
@@ -475,7 +475,7 @@ test('x discovery reads only posts that were never measured', function () {
 
     Bus::assertDispatchedTimes(CollectPublicationMetrics::class, 1);
     Bus::assertDispatched(CollectPublicationMetrics::class, fn (CollectPublicationMetrics $job): bool => $job->publicationId === $native->id);
-});
+})->with([Platform::X, Platform::Instagram]);
 
 test('the daily run leaves a fresh post to its first read an hour after publishing', function (Platform $platform) {
     $now = CarbonImmutable::parse('2026-10-10 03:00:00', 'UTC');

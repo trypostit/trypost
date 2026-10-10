@@ -13,13 +13,13 @@ use App\Models\AnalyticsPublication;
 use App\Models\SocialAccount;
 use App\Support\Analytics\SyncCadence;
 use Carbon\CarbonImmutable;
-use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Arr;
 
 class QueuePublicationMetricsForPage
 {
     public function handle(SocialAccount $account, PublicationPage $page): void
     {
-        $providerIds = array_map(fn ($item): string => $item->providerPostId, $page->publications);
+        $providerIds = Arr::pluck($page->publications, 'providerPostId');
 
         if ($providerIds === []) {
             return;
@@ -29,15 +29,23 @@ class QueuePublicationMetricsForPage
             ->available()
             ->where('social_account_id', $account->id)
             ->whereIn('remote_id', $providerIds)
-            ->when($account->platform === Platform::X, fn (Builder $query): Builder => $query->whereDoesntHave('dailySnapshots'))
-            ->each(function (AnalyticsPublication $publication): void {
-                $this->queue($publication);
-            });
+            ->whereDoesntHave('dailySnapshots')
+            ->each($this->dispatchFirstRead(...));
     }
 
+    /**
+     * Queues the first read of a publication that has not been measured yet.
+     */
     public function queue(AnalyticsPublication $publication): void
     {
-        if (! in_array($publication->platform->value, Platform::analyticsValues(), true)) {
+        if (! $publication->dailySnapshots()->exists()) {
+            $this->dispatchFirstRead($publication);
+        }
+    }
+
+    private function dispatchFirstRead(AnalyticsPublication $publication): void
+    {
+        if (! $publication->platform->isIncludedInAnalytics()) {
             return;
         }
 
@@ -53,26 +61,14 @@ class QueuePublicationMetricsForPage
             return;
         }
 
-        $days = SyncCadence::metricsWindowDays($publication->platform);
-        $recent = $publication->provider_published_at->greaterThanOrEqualTo($now->subDays($days)->startOfDay());
+        $windowStart = $now->subDays(SyncCadence::metricsWindowDays($publication->platform))->startOfDay();
+        $baseline = $publication->provider_published_at->lessThan($windowStart);
+        $readAt = $publication->provider_published_at->toImmutable()
+            ->addMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES)
+            ->max($now);
 
-        if (! $recent && $publication->dailySnapshots()->exists()) {
-            return;
-        }
-
-        $readAt = $this->firstReadAt($publication, $now);
-
-        CollectPublicationMetrics::dispatch(
-            $publication->id,
-            $readAt->toDateString(),
-            ! $recent,
-        )->delay($readAt->greaterThan($now) ? $readAt : null)->afterCommit();
-    }
-
-    private function firstReadAt(AnalyticsPublication $publication, CarbonImmutable $now): CarbonImmutable
-    {
-        $readAt = $publication->provider_published_at->toImmutable()->addMinutes(SyncCadence::FIRST_READ_DELAY_MINUTES);
-
-        return $readAt->greaterThan($now) ? $readAt : $now;
+        CollectPublicationMetrics::dispatch($publication->id, $readAt->toDateString(), $baseline)
+            ->delay($readAt)
+            ->afterCommit();
     }
 }
