@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
-use App\Enums\SocialAccount\Platform;
-use App\Enums\TikTok\PrivacyLevel;
+use App\Actions\Post\AssignTikTokVideoId;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Str;
 use Throwable;
 
 class TikTokAnalytics
@@ -20,12 +18,6 @@ class TikTokAnalytics
     use HasSocialHttpClient;
 
     private const string VIDEO_METRIC_FIELDS = 'id,like_count,comment_count,share_count,view_count';
-
-    private const string VIDEO_LIST_FIELDS = 'id,title,create_time';
-
-    private const int VIDEO_LIST_PAGE_SIZE = 20;
-
-    private const int VIDEO_LIST_MAX_PAGES = 5;
 
     /**
      * @var array<string, string>
@@ -111,23 +103,20 @@ class TikTokAnalytics
     }
 
     /**
-     * Public posts often stay on a Content Posting `publish_id` because TikTok
-     * omits `publicaly_available_post_id` even after PUBLISH_COMPLETE. The video
-     * still shows up on `video/list` with the caption we sent — match that so
-     * the show-page link stops pointing at the profile. SELF_ONLY posts never
-     * appear on the list, so they are not looked up.
+     * The public video id TikTok reports for the post's `publish_id`. TikTok
+     * sends it only once the post clears moderation, which can take hours.
      */
-    public function findVideoIdByCaption(Post $post): ?string
+    public function publicVideoId(Post $post): ?string
     {
         $account = $post->socialAccount;
 
-        if (! $account) {
+        if (! $account || blank($post->platform_post_id)) {
             return null;
         }
 
         $this->prepareAccessToken($account);
 
-        return $this->matchVideoFromRecentList($post);
+        return $this->publicVideoIdFromStatus((string) $post->platform_post_id);
     }
 
     private function videoIdFor(Post $post): ?string
@@ -138,20 +127,11 @@ class TikTokAnalytics
             return $stored;
         }
 
-        $videoId = $this->publicVideoIdFromStatus($stored) ?? $this->matchVideoFromRecentList($post);
+        $videoId = $this->publicVideoIdFromStatus($stored);
 
-        if ($videoId === null) {
-            return null;
+        if ($videoId !== null) {
+            app(AssignTikTokVideoId::class)->handle($post, $videoId);
         }
-
-        $username = $post->socialAccount?->username;
-
-        $post->writePublication([
-            'platform_post_id' => $videoId,
-            'platform_url' => filled($username)
-                ? "https://www.tiktok.com/@{$username}/video/{$videoId}"
-                : $post->platform_url,
-        ]);
 
         return $videoId;
     }
@@ -174,93 +154,11 @@ class TikTokAnalytics
         return $this->digitsOrNull($response->json('data.publicaly_available_post_id.0'));
     }
 
-    /**
-     * `video/list` is sorted by `create_time` desc, so scanning stops at the
-     * first video older than the publish — anything past it cannot be ours, and
-     * an older repost with the same caption must never be claimed. Allow one
-     * day because our `published_at` can lag TikTok's `create_time` during review.
-     */
-    private function matchVideoFromRecentList(Post $post): ?string
-    {
-        if (PrivacyLevel::tryFrom((string) data_get($post->meta, 'privacy_level')) === PrivacyLevel::SelfOnly) {
-            return null;
-        }
-
-        $caption = $this->normalizeCaption((string) $post->content);
-
-        if ($caption === '') {
-            return null;
-        }
-
-        $notBefore = ($post->published_at ?? now())->copy()->utc()->subDay()->getTimestamp();
-        $cursor = null;
-
-        for ($page = 0; $page < self::VIDEO_LIST_MAX_PAGES; $page++) {
-            $payload = ['max_count' => self::VIDEO_LIST_PAGE_SIZE];
-
-            if (filled($cursor)) {
-                $payload['cursor'] = $cursor;
-            }
-
-            $response = $this->getHttpClient()
-                ->post("{$this->baseUrl}/video/list/?fields=".self::VIDEO_LIST_FIELDS, $payload);
-
-            if ($response->failed()) {
-                Log::warning('TikTok video list match failed', [
-                    'body' => $this->redactResponseBody($response->body()),
-                ]);
-
-                return null;
-            }
-
-            $data = $response->json('data', []);
-
-            foreach (data_get($data, 'videos', []) as $video) {
-                if ((int) data_get($video, 'create_time', 0) < $notBefore) {
-                    return null;
-                }
-
-                $videoId = $this->digitsOrNull(data_get($video, 'id'));
-                $title = $this->normalizeCaption((string) data_get($video, 'title', ''));
-
-                if ($videoId !== null && $this->captionsMatch($caption, $title)) {
-                    return $videoId;
-                }
-            }
-
-            $cursor = data_get($data, 'cursor');
-
-            if (! data_get($data, 'has_more') || blank($cursor)) {
-                return null;
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * `video/list` titles may be a truncated form of the caption we posted, so a
-     * prefix match in either direction counts. An empty title never matches:
-     * `str_starts_with($x, '')` is true and would claim any untitled video.
-     */
-    private function captionsMatch(string $posted, string $title): bool
-    {
-        return $title !== ''
-            && (str_starts_with($posted, $title) || str_starts_with($title, $posted));
-    }
-
     private function digitsOrNull(mixed $value): ?string
     {
         $value = is_scalar($value) ? (string) $value : '';
 
         return ctype_digit($value) ? $value : null;
-    }
-
-    private function normalizeCaption(string $text): string
-    {
-        return (string) Str::of(app(ContentSanitizer::class)->displayText($text, Platform::TikTok))
-            ->squish()
-            ->lower();
     }
 
     private function prepareAccessToken(SocialAccount $account): void

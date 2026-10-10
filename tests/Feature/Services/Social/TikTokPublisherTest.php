@@ -104,7 +104,7 @@ test('tiktok publisher keeps the public post id returned as an integer or string
     'string id' => '7694308097568836885',
 ]);
 
-test('tiktok publisher persists the public video url when status omits the post id', function (array $statusData) {
+test('tiktok publisher keeps the publish id and the profile url while TikTok has not reported the video id', function (array $statusData) {
     $this->post->update([
         'content' => 'Construam produtos globais e faturem em dólar.',
         'media' => [[
@@ -127,23 +127,14 @@ test('tiktok publisher persists the public video url when status omits the post 
                 ...$statusData,
             ],
         ], 200),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => '7682891910226234644',
-                    'title' => 'Construam produtos globais e faturem em dólar.',
-                    'create_time' => now()->getTimestamp(),
-                ]],
-                'has_more' => false,
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
     ]);
 
     $result = $this->publisher->publish($this->post);
 
-    expect($result['id'])->toBe('7682891910226234644')
-        ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker/video/7682891910226234644');
+    expect($result['id'])->toBe('v_pub_url~v2-1.missing-id')
+        ->and($result['url'])->toBe('https://www.tiktok.com/@tiktoker');
+
+    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
 })->with([
     'empty list' => [['publicaly_available_post_id' => []]],
     'missing field' => [[]],
@@ -791,7 +782,6 @@ test('tiktok publisher publishes with user-selected privacy level even when crea
         return data_get($body, 'post_info.privacy_level') === PrivacyLevel::SelfOnly->value;
     });
 
-    // A private post never shows up on video/list, so no caption lookup is attempted.
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
 });
 
@@ -861,10 +851,6 @@ test('tiktok publisher sends meta settings in video publish request', function (
         $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => ['videos' => [], 'has_more' => false],
-            'error' => ['code' => 'ok'],
-        ]),
     ]);
 
     $this->publisher->publish($this->post);
@@ -1011,10 +997,6 @@ test('tiktok publisher uses default settings when only privacy_level is set', fu
         $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => ['status' => 'PUBLISH_COMPLETE'],
         ], 200),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => ['videos' => [], 'has_more' => false],
-            'error' => ['code' => 'ok'],
-        ]),
     ]);
 
     $this->publisher->publish($this->post);

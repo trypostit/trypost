@@ -484,18 +484,15 @@ class TikTokPublisher
     {
         $statusData = $this->waitForPublishStatus($publishId);
         $postId = (string) data_get($statusData, 'publicaly_available_post_id.0');
-
-        if (blank($postId)) {
-            $postId = app(TikTokAnalytics::class)->findVideoIdByCaption($post);
-        }
+        $postId = blank($postId) ? null : $postId;
 
         return [
             'id' => $postId ?? $publishId,
-            'url' => $this->buildTikTokUrl($post->socialAccount, $postId),
+            'url' => self::postUrl($post->socialAccount, $postId),
         ];
     }
 
-    private function buildTikTokUrl(SocialAccount $account, ?string $postId = null): ?string
+    public static function postUrl(SocialAccount $account, ?string $postId = null): ?string
     {
         $username = $account->username;
 

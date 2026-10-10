@@ -22,4 +22,5 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Enums/SocialAccount/Platform.php | .ai/rules/social-account.md |
 | app/Services/Social/GoogleBusinessPublisher.php, app/Support/Social/GoogleBusinessDerivativeCleaner.php, app/Actions/Post/DeletePost.php, app/Actions/Post/UpdatePost.php, app/Actions/Workspace/PurgeWorkspace.php, app/Http/Controllers/Auth/SocialController.php, app/Support/Social/ThreadProgress.php, app/Support/ThreadReplies.php, app/Services/Social/Concerns/PublishesThreads.php, app/Services/Social/FacebookPublisher.php, app/Services/Social/InstagramPublisher.php | .ai/rules/social.md |
 | app/Support/PostPlatformMetaRules.php | .ai/rules/support.md |
+| app/Services/Social/TikTok*.php, app/Actions/Post/AssignTikTokVideoId.php, app/Jobs/ResolveTikTokVideoId.php, app/Console/Commands/ResolveTikTokVideoIds.php | .ai/rules/tiktok.md |
 | app/Mcp/Tools/** | .ai/rules/tools.md |

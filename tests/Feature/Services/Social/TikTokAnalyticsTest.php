@@ -12,7 +12,6 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Social\TikTokAnalytics;
-use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Http;
 
 beforeEach(function () {
@@ -124,9 +123,7 @@ test('tiktok analytics resolves a publish id then persists the public video id',
         && data_get($request->data(), 'filters.video_ids') === [$videoId]);
 });
 
-test('tiktok analytics reports missing_post_id when neither status nor the video list resolve the publish id', function () {
-    $this->post->update(['content' => 'Still in review']);
-
+test('tiktok analytics reports missing_post_id while TikTok has not reported the video id, without guessing one', function () {
     Http::fake([
         $this->api.'/post/publish/status/fetch/' => Http::response([
             'data' => [
@@ -135,175 +132,17 @@ test('tiktok analytics reports missing_post_id when neither status nor the video
             ],
             'error' => ['code' => 'ok'],
         ]),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => ['videos' => [], 'has_more' => false],
-            'error' => ['code' => 'ok'],
-        ]),
     ]);
 
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics(
-        tiktokPost('v_pub_url~v2-1.still-in-review')
-    );
-
-    expect($metrics)->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
-
-    Http::assertSentCount(2);
-    Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/query/'));
-});
-
-test('tiktok analytics never matches an untitled video from the list', function () {
-    $this->post->update(['content' => 'A caption that no listed video carries']);
-
-    Http::fake([
-        $this->api.'/post/publish/status/fetch/' => Http::response([
-            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
-            'error' => ['code' => 'ok'],
-        ]),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => [
-                'videos' => [['id' => '7000000000000000001', 'title' => '']],
-                'has_more' => false,
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    $post = tiktokPost('v_pub_url~v2-1.untitled');
+    $post = tiktokPost('v_pub_url~v2-1.still-in-review');
 
     expect((new TikTokAnalytics)->fetchPostMetrics($post))
         ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
-        ->and($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.untitled');
-});
-
-test('tiktok analytics does not scan the video list for a self only post', function () {
-    $this->post->update(['content' => 'Private caption']);
-
-    Http::fake([
-        $this->api.'/post/publish/status/fetch/' => Http::response([
-            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    $post = tiktokPost('v_pub_url~v2-1.private');
-    $post->update(['meta' => ['privacy_level' => PrivacyLevel::SelfOnly->value]]);
-
-    expect((new TikTokAnalytics)->fetchPostMetrics($post))
-        ->toBe(['unsupported' => true, 'reason' => 'missing_post_id']);
+        ->and($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.still-in-review');
 
     Http::assertSentCount(1);
     Http::assertNotSent(fn ($request) => str_contains($request->url(), '/video/list/'));
 });
-
-test('tiktok analytics matches a publish id to the public video by caption', function () {
-    $this->post->update([
-        'content' => 'Eu bato nessa tecla há 7 anos: construam produtos globais.',
-    ]);
-
-    $videoId = '7682891910226234644';
-    $post = tiktokPost('v_pub_url~v2-1.7682889326782842900');
-
-    Http::fake([
-        $this->api.'/post/publish/status/fetch/' => Http::response([
-            'data' => [
-                'status' => 'PUBLISH_COMPLETE',
-                'publicaly_available_post_id' => [],
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => $videoId,
-                    'title' => 'Eu bato nessa tecla há 7 anos: construam produtos globais.',
-                    'create_time' => now()->getTimestamp(),
-                ]],
-                'has_more' => false,
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-        $this->api.'/video/query/*' => Http::response(tiktokVideoQueryResponse($videoId, [
-            'view_count' => 661,
-            'like_count' => 13,
-            'comment_count' => 2,
-            'share_count' => 1,
-        ])),
-    ]);
-
-    $metrics = (new TikTokAnalytics)->fetchPostMetrics($post);
-
-    expect($metrics)->toBe([
-        ['label' => __('analytics.metrics.views'), 'value' => 661],
-        ['label' => __('analytics.metrics.likes'), 'value' => 13],
-        ['label' => __('analytics.metrics.comments'), 'value' => 2],
-        ['label' => __('analytics.metrics.shares'), 'value' => 1],
-    ]);
-
-    $post->refresh();
-
-    expect($post->platform_post_id)->toBe($videoId)
-        ->and($post->platform_url)->toBe("https://www.tiktok.com/@tiktoker/video/{$videoId}");
-});
-
-test('tiktok analytics stops scanning at videos older than the publish instead of claiming a same-caption repost', function () {
-    $this->post->update(['content' => 'Same caption, posted twice']);
-
-    Http::fake([
-        $this->api.'/post/publish/status/fetch/' => Http::response([
-            'data' => ['status' => 'PUBLISH_COMPLETE', 'publicaly_available_post_id' => []],
-            'error' => ['code' => 'ok'],
-        ]),
-        $this->api.'/video/list/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => '7000000000000000002',
-                    'title' => 'Same caption, posted twice',
-                    'create_time' => now()->subDays(3)->getTimestamp(),
-                ]],
-                'has_more' => true,
-                'cursor' => now()->subDays(3)->getTimestampMs(),
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    $post = tiktokPost('v_pub_url~v2-1.repost');
-    $post->update(['published_at' => now()]);
-
-    expect((new TikTokAnalytics)->fetchPostMetrics($post))
-        ->toBe(['unsupported' => true, 'reason' => 'missing_post_id'])
-        ->and($post->fresh()->platform_post_id)->toBe('v_pub_url~v2-1.repost');
-
-    Http::assertSentCount(2);
-});
-
-test('tiktok video matching keeps the one-day cutoff inclusive without changing the published timestamp', function (int $secondsBeforeCutoff, ?string $expectedVideoId) {
-    $this->post->update(['content' => 'Boundary caption']);
-    $publishedAt = CarbonImmutable::parse('2026-09-23 12:00:00', 'UTC');
-    $videoId = '7000000000000000003';
-    $post = tiktokPost('v_pub_url~v2-1.boundary');
-    $post->update(['published_at' => $publishedAt]);
-
-    Http::fake([
-        $this->api.'/video/list/*' => Http::response([
-            'data' => [
-                'videos' => [[
-                    'id' => $videoId,
-                    'title' => 'Boundary caption',
-                    'create_time' => $publishedAt->subDay()->subSeconds($secondsBeforeCutoff)->getTimestamp(),
-                ]],
-                'has_more' => false,
-            ],
-            'error' => ['code' => 'ok'],
-        ]),
-    ]);
-
-    expect((new TikTokAnalytics)->findVideoIdByCaption($post))->toBe($expectedVideoId)
-        ->and($post->published_at->toDateTimeString())->toBe('2026-09-23 12:00:00');
-})->with([
-    'at cutoff' => [0, '7000000000000000003'],
-    'before cutoff' => [1, null],
-]);
 
 test('tiktok post metrics facade returns the saved video url and metrics without provider reads', function () {
     $videoId = '7685359243088103444';
