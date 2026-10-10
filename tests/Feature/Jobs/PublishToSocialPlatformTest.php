@@ -2394,3 +2394,20 @@ test('a tiktok post published before TikTok reports its video id asks again a mi
     'video id already reported' => ['7694860629638940686', PrivacyLevel::PublicToEveryone, false],
     'private post' => ['p_pub_url~v2.private', PrivacyLevel::SelfOnly, false],
 ]);
+
+test('a post on another network never asks TikTok for a video id', function () {
+    Event::fake();
+    Queue::fake([ResolveTikTokVideoId::class]);
+
+    $publisher = Mockery::mock(LinkedInPublisher::class);
+    $publisher->shouldReceive('publish')->once()->andReturn([
+        'id' => 'urn:li:share:7000000000000000001',
+        'url' => 'https://linkedin.com/post/1',
+    ]);
+    $this->app->instance(LinkedInPublisher::class, $publisher);
+
+    (new PublishToSocialPlatform($this->post))->handle();
+
+    expect($this->post->fresh()->publish_status)->toBe(PlatformStatus::Published);
+    Queue::assertNotPushed(ResolveTikTokVideoId::class);
+});
