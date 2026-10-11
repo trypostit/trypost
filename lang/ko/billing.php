@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => '월간 결제',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -33,9 +32,6 @@ return [
         'select' => ':plan 선택',
         'upgrade' => ':plan(으)로 업그레이드',
         'downgrade' => ':plan(으)로 다운그레이드',
-        'start_first_month' => ':price에 시작하기',
-        'per_first_month' => '/첫 달',
-        'then_monthly' => '이후 :price/월',
         'billed_yearly_total' => '연간 결제 · :price (2개월 무료)',
         'socials_tagline' => '크리에이터와 소규모 브랜드에 적합.',
         'workspaces_tagline' => '에이전시와 대규모 비즈니스에 적합.',

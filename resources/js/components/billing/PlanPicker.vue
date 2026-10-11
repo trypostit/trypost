@@ -29,18 +29,12 @@ const props = withDefaults(
         currentInterval?: BillingInterval | null;
         disabledPlanIds?: string[];
         processing?: boolean;
-        allowYearly?: boolean;
-        offerFirstMonth?: boolean;
-        sharedFeaturesOnMobile?: boolean;
     }>(),
     {
         currentPlanId: null,
         currentInterval: null,
         disabledPlanIds: () => [],
         processing: false,
-        allowYearly: true,
-        offerFirstMonth: false,
-        sharedFeaturesOnMobile: false,
     },
 );
 
@@ -80,13 +74,6 @@ const isDisabled = (plan: PlanOption): boolean =>
 
 const isFeatured = (plan: PlanOption): boolean => plan.slug === 'workspaces';
 
-const firstMonthPrice = (): string =>
-    trans('billing.subscribe.prices.first_month');
-
-const showsFirstMonthOffer = computed(
-    (): boolean => props.offerFirstMonth && props.interval === 'monthly',
-);
-
 const billingNote = (plan: PlanOption): string =>
     props.interval === 'yearly'
         ? trans('billing.plans.billed_yearly_total', {
@@ -95,12 +82,6 @@ const billingNote = (plan: PlanOption): string =>
         : trans('billing.subscribe.billed_monthly');
 
 const selectLabel = (plan: PlanOption): string => {
-    if (props.offerFirstMonth) {
-        return trans('billing.plans.start_first_month', {
-            price: firstMonthPrice(),
-        });
-    }
-
     if (isCurrentSelection(plan)) {
         return trans('billing.plans.current');
     }
@@ -130,10 +111,7 @@ const workspaceLabel = (plan: PlanOption): string =>
 
 <template>
     <div class="@container space-y-6">
-        <div
-            v-if="allowYearly"
-            class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4"
-        >
+        <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-x-4">
             <div
                 class="col-start-2 inline-flex gap-1 justify-self-center rounded-lg border border-border-strong bg-card p-[3px]"
             >
@@ -191,31 +169,7 @@ const workspaceLabel = (plan: PlanOption): string =>
                     </p>
                 </div>
 
-                <div v-if="showsFirstMonthOffer" class="flex flex-col gap-1">
-                    <p class="flex items-baseline gap-2">
-                        <span
-                            class="text-2xl leading-9 font-strong tabular-nums"
-                            :data-testid="`plan-price-first-month-${plan.slug}`"
-                            >{{ firstMonthPrice() }}</span
-                        >
-                        <span
-                            class="text-base text-foreground"
-                            :data-testid="`plan-price-suffix-${plan.slug}`"
-                            >{{ $t('billing.plans.per_first_month') }}</span
-                        >
-                    </p>
-                    <p
-                        class="text-sm text-muted-foreground"
-                        :data-testid="`plan-price-note-${plan.slug}`"
-                    >
-                        {{
-                            $t('billing.plans.then_monthly', {
-                                price: price(plan),
-                            })
-                        }}
-                    </p>
-                </div>
-                <div v-else class="flex flex-col gap-1">
+                <div class="flex flex-col gap-1">
                     <p class="flex items-baseline gap-2">
                         <span
                             class="text-2xl leading-9 font-strong tabular-nums"
@@ -289,18 +243,9 @@ const workspaceLabel = (plan: PlanOption): string =>
 
                 <PlanFeatureList
                     :scope="plan.slug"
-                    :class="[
-                        'flex-1 border-t border-border pt-4',
-                        sharedFeaturesOnMobile && 'max-sm:hidden',
-                    ]"
+                    class="flex-1 border-t border-border pt-4"
                 />
             </article>
         </div>
-
-        <PlanFeatureList
-            v-if="sharedFeaturesOnMobile"
-            scope="all"
-            class="rounded-xl border border-border bg-card p-5 sm:hidden"
-        />
     </div>
 </template>

@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Ежемесячная оплата',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -33,9 +32,6 @@ return [
         'select' => 'Выбрать :plan',
         'upgrade' => 'Перейти на :plan',
         'downgrade' => 'Понизить до :plan',
-        'start_first_month' => 'Начать за :price',
-        'per_first_month' => '/первый месяц',
-        'then_monthly' => 'Затем :price/мес.',
         'billed_yearly_total' => 'Оплата раз в год · :price (2 месяца бесплатно)',
         'socials_tagline' => 'Для авторов и небольших брендов.',
         'workspaces_tagline' => 'Для агентств и крупного бизнеса.',

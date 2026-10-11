@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Μηνιαία χρέωση',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -33,9 +32,6 @@ return [
         'select' => 'Επιλέξτε :plan',
         'upgrade' => 'Αναβάθμιση σε :plan',
         'downgrade' => 'Υποβάθμιση σε :plan',
-        'start_first_month' => 'Ξεκίνα με :price',
-        'per_first_month' => '/πρώτος μήνας',
-        'then_monthly' => 'Μετά :price/μήνα',
         'billed_yearly_total' => 'Ετήσια χρέωση · :price (2 μήνες δωρεάν)',
         'socials_tagline' => 'Ιδανικό για creators και μικρά brands.',
         'workspaces_tagline' => 'Ιδανικό για agencies και μεγαλύτερες επιχειρήσεις.',

@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Billed monthly',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -33,9 +32,6 @@ return [
         'select' => 'Choose :plan',
         'upgrade' => 'Upgrade to :plan',
         'downgrade' => 'Downgrade to :plan',
-        'start_first_month' => 'Start for :price',
-        'per_first_month' => '/first month',
-        'then_monthly' => 'Then :price/month',
         'billed_yearly_total' => 'Billed annually · :price (2 months free)',
         'socials_tagline' => 'Best for creators and small brands.',
         'workspaces_tagline' => 'Best for agencies and larger businesses.',

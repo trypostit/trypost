@@ -16,7 +16,6 @@ return [
         'persona' => 'Senin hakkında',
         'goals' => 'Hedeflerin',
         'software' => 'Mevcut araç',
-        'plan' => 'Plan',
     ],
     'personas' => [
         'creator' => 'İçerik üreticisi',
@@ -45,6 +44,4 @@ return [
         'none' => 'Henüz bir araç kullanmıyorum',
         'other' => 'Diğer',
     ],
-    'plan_title' => 'Planını seç',
-    'plan_description' => 'İki planın özellikleri aynı. Fark, workspace sayısında; planı istediğiniz zaman değiştirebilirsiniz.',
 ];

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
-use App\Enums\User\PreviousSoftware;
-use App\Enums\User\ReferralSource;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -148,45 +146,4 @@ test('the welcome header fits a phone and the continue button stays on screen', 
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ], 'welcome-software-continue', 'welcome-software-', true],
-    'plan' => ['app.welcome.plan', [
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-        'previous_software' => PreviousSoftware::Buffer->value,
-        'referral_source' => ReferralSource::ProductHunt->value,
-    ], null, null, true],
 ]);
-
-test('the plan step lists the features once on a phone and per plan on desktop', function () {
-    config(['trypost.self_hosted' => false]);
-
-    $this->actingAs(welcomeMobileOwner([
-        'persona' => Persona::Agency->value,
-        'goals' => [Goal::SaveTime->value],
-        'previous_software' => PreviousSoftware::Buffer->value,
-        'referral_source' => ReferralSource::ProductHunt->value,
-    ]));
-
-    $countLists = <<<'JS'
-        [...document.querySelectorAll('[data-testid^="plan-feature-list-"]')]
-            .filter((element) => element.getClientRects().length > 0)
-            .map((element) => element.dataset.testid)
-    JS;
-
-    $page = visit(route('app.welcome.plan'))->resize(390, 844);
-    waitForWelcomeMobileTestId($page, 'plan-feature-list-all');
-
-    expect($page->script($countLists))->toBe(['plan-feature-list-all']);
-
-    $page->assertVisible('@plan-select-socials')
-        ->assertVisible('@plan-highlight-workspaces')
-        ->assertNoJavaScriptErrors();
-
-    $page->resize(1280, 900);
-    waitForWelcomeMobileTestId($page, 'plan-feature-list-socials');
-
-    expect($page->script($countLists))->toBe(['plan-feature-list-socials', 'plan-feature-list-workspaces']);
-
-    $page->assertVisible('@theme-toggle')
-        ->assertMissing('@theme-toggle-cycle')
-        ->assertNoJavaScriptErrors();
-});

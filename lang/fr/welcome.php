@@ -16,7 +16,6 @@ return [
         'persona' => 'À propos de vous',
         'goals' => 'Vos objectifs',
         'software' => 'Outil actuel',
-        'plan' => 'Forfait',
     ],
     'personas' => [
         'creator' => 'Créateur de contenu',
@@ -45,6 +44,4 @@ return [
         'none' => 'Je n\'en utilise pas encore',
         'other' => 'Autre',
     ],
-    'plan_title' => 'Choisissez votre forfait',
-    'plan_description' => 'Les deux formules ont les mêmes fonctionnalités. Seul le nombre de workspaces change, et vous pouvez changer de formule quand vous voulez.',
 ];

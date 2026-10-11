@@ -16,7 +16,6 @@ return [
         'persona' => 'Über dich',
         'goals' => 'Deine Ziele',
         'software' => 'Aktuelles Tool',
-        'plan' => 'Tarif',
     ],
     'personas' => [
         'creator' => 'Content Creator',
@@ -45,6 +44,4 @@ return [
         'none' => 'Ich nutze noch keins',
         'other' => 'Anderes',
     ],
-    'plan_title' => 'Wähle deinen Tarif',
-    'plan_description' => 'Beide Pläne haben dieselben Funktionen. Der Unterschied ist die Anzahl der Workspaces, und du kannst jederzeit wechseln.',
 ];

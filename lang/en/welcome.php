@@ -16,7 +16,6 @@ return [
         'persona' => 'About you',
         'goals' => 'Your goals',
         'software' => 'Current tool',
-        'plan' => 'Plan',
     ],
     'personas' => [
         'creator' => 'Content creator',
@@ -45,6 +44,4 @@ return [
         'none' => 'I don\'t use one yet',
         'other' => 'Other',
     ],
-    'plan_title' => 'Choose your plan',
-    'plan_description' => 'Both plans have the same features. The difference is how many workspaces you get, and you can switch plans whenever you like.',
 ];

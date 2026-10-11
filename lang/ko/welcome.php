@@ -16,7 +16,6 @@ return [
         'persona' => '나에 대해',
         'goals' => '목표',
         'software' => '현재 도구',
-        'plan' => '요금제',
     ],
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
@@ -45,6 +44,4 @@ return [
         'none' => '아직 사용하지 않아요',
         'other' => '기타',
     ],
-    'plan_title' => '요금제 선택',
-    'plan_description' => '두 플랜의 기능은 같습니다. 차이는 워크스페이스 수이고, 플랜은 언제든 바꿀 수 있습니다.',
 ];

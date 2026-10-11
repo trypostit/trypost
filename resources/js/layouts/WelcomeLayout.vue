@@ -12,7 +12,6 @@ import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import {
     goals as goalsRoute,
     persona as personaRoute,
-    plan as planRoute,
     software as softwareRoute,
 } from '@/routes/app/welcome';
 import type { Language, SharedData, WelcomeStep } from '@/types';
@@ -59,7 +58,6 @@ const steps = [
     { key: 'persona', route: personaRoute() },
     { key: 'goals', route: goalsRoute() },
     { key: 'software', route: softwareRoute() },
-    { key: 'plan', route: planRoute() },
 ] as const;
 
 const currentIndex = computed(() =>

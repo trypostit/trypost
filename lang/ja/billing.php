@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => '月払い',
         'prices' => [
-            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -33,9 +32,6 @@ return [
         'select' => ':plan を選ぶ',
         'upgrade' => ':plan にアップグレード',
         'downgrade' => ':plan にダウングレード',
-        'start_first_month' => ':priceで始める',
-        'per_first_month' => '/初月',
-        'then_monthly' => 'その後は:price/月',
         'billed_yearly_total' => '年払い · :price（2か月分無料）',
         'socials_tagline' => 'クリエイターや小規模ブランド向け。',
         'workspaces_tagline' => '代理店や大規模ビジネス向け。',

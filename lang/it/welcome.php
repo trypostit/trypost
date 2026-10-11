@@ -16,7 +16,6 @@ return [
         'persona' => 'Su di te',
         'goals' => 'I tuoi obiettivi',
         'software' => 'Strumento attuale',
-        'plan' => 'Piano',
     ],
     'personas' => [
         'creator' => 'Creatore di contenuti',
@@ -45,6 +44,4 @@ return [
         'none' => 'Non ne uso ancora nessuno',
         'other' => 'Altro',
     ],
-    'plan_title' => 'Scegli il tuo piano',
-    'plan_description' => 'I due piani hanno le stesse funzionalità. Cambia solo il numero di workspace, e puoi cambiare piano quando vuoi.',
 ];

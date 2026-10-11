@@ -105,7 +105,6 @@ test('auth and welcome pages do not overflow horizontally on a phone', function 
 
     $welcomePages = [
         'welcome software' => route('app.welcome.software'),
-        'welcome plan' => route('app.welcome.plan'),
     ];
 
     foreach ($welcomePages as $label => $url) {

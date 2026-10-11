@@ -88,11 +88,9 @@ Route::middleware(['auth'])->group(function () {
     Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
     Route::get('welcome/software', [WelcomeController::class, 'software'])->name('app.welcome.software');
-    Route::post('welcome/software', [WelcomeController::class, 'storeSoftware'])->name('app.welcome.software.store');
-    Route::get('welcome/plan', [WelcomeController::class, 'plan'])->name('app.welcome.plan');
-    Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
+    Route::post('welcome/software', [WelcomeController::class, 'storeSoftware'])
         ->middleware('throttle:6,1')
-        ->name('app.welcome.plan.store');
+        ->name('app.welcome.software.store');
     Route::post('referral-source', [ReferralSourceController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('app.referral-source.store');
