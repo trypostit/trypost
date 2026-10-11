@@ -112,7 +112,10 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         return Inertia::render('welcome/Software', [
-            'software' => array_map(fn (PreviousSoftware $software): string => $software->value, PreviousSoftware::cases()),
+            'software' => array_map(fn (PreviousSoftware $software): array => [
+                'value' => $software->value,
+                'name' => $software->brandName(),
+            ], PreviousSoftware::cases()),
             'selected' => $user->previous_software?->value,
         ]);
     }

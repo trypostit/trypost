@@ -9,7 +9,7 @@ import { softwareArt, welcomeOptionArt } from '@/lib/welcomeOptions';
 import { store } from '@/routes/app/welcome/software';
 
 const props = defineProps<{
-    software: string[];
+    software: { value: string; name: string | null }[];
     selected?: string | null;
 }>();
 
@@ -38,12 +38,12 @@ const submit = (): void => {
         <div class="grid gap-2 sm:grid-cols-2">
             <WelcomeChoiceCard
                 v-for="option in software"
-                :key="option"
-                :label="$t(`welcome.software.${option}`)"
-                :art="welcomeOptionArt(softwareArt, option)"
-                :selected="form.previous_software === option"
-                :testid="`welcome-software-${option}`"
-                @select="select(option)"
+                :key="option.value"
+                :label="option.name ?? $t(`welcome.software.${option.value}`)"
+                :art="welcomeOptionArt(softwareArt, option.value)"
+                :selected="form.previous_software === option.value"
+                :testid="`welcome-software-${option.value}`"
+                @select="select(option.value)"
             />
         </div>
 

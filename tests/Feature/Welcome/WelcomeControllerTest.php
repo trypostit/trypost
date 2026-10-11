@@ -129,6 +129,8 @@ test('software renders after goals are selected', function () {
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Software', false)
             ->has('software', count(PreviousSoftware::cases()))
+            ->where('software.0', ['value' => 'buffer', 'name' => 'Buffer'])
+            ->where('software.10', ['value' => 'none', 'name' => null])
             ->where('selected', null)
         );
 });
