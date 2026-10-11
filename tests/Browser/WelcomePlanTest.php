@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -35,6 +36,7 @@ function welcomeOwnerOnPlanStep(): User
     $user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
         'referral_source' => ReferralSource::ProductHunt->value,
     ]);
 

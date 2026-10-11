@@ -48,6 +48,21 @@ export const goalArt: Record<string, WelcomeOptionArt> = {
     other: FALLBACK,
 };
 
+export const softwareArt: Record<string, WelcomeOptionArt> = {
+    buffer: emoji('B', 'slate'),
+    hootsuite: emoji('H', 'amber'),
+    later: emoji('L', 'violet'),
+    metricool: emoji('M', 'sky'),
+    typefully: emoji('T', 'teal'),
+    hypefury: emoji('H', 'orange'),
+    publer: emoji('P', 'sky'),
+    postiz: emoji('P', 'violet'),
+    sprout_social: emoji('S', 'emerald'),
+    socialbee: emoji('S', 'amber'),
+    none: emoji('🌱', 'emerald'),
+    other: FALLBACK,
+};
+
 export const welcomeOptionArt = (
     options: Record<string, WelcomeOptionArt>,
     value: string,

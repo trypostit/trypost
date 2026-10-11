@@ -10,9 +10,11 @@ use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePlanRequest;
+use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
@@ -98,12 +100,50 @@ class WelcomeController extends Controller
             $user->account,
         );
 
+        return redirect()->route('app.welcome.software');
+    }
+
+    public function software(Request $request): InertiaResponse|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+
+        return Inertia::render('welcome/Software', [
+            'software' => array_map(fn (PreviousSoftware $software): string => $software->value, PreviousSoftware::cases()),
+            'selected' => $user->previous_software?->value,
+        ]);
+    }
+
+    public function storeSoftware(StoreWelcomeSoftwareRequest $request, PostHogService $postHog): RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+        $previousSoftware = (string) $request->validated('previous_software');
+
+        $user->update(['previous_software' => $previousSoftware]);
+
+        $postHog->identify($user->id, [
+            'previous_software' => $previousSoftware,
+        ]);
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::Software->value,
+            ['previous_software' => $previousSoftware],
+            $user->account,
+        );
+
         return redirect()->route('app.welcome.plan');
     }
 
     public function plan(Request $request): InertiaResponse|RedirectResponse
     {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
             return $redirect;
         }
 
@@ -119,7 +159,7 @@ class WelcomeController extends Controller
         StartSubscriptionCheckout $checkout,
         PostHogService $postHog,
     ): Response|RedirectResponse {
-        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
             return $redirect;
         }
 
@@ -165,6 +205,7 @@ class WelcomeController extends Controller
     private function redirectIfStepIncomplete(
         Request $request,
         bool $requireGoals = false,
+        bool $requireSoftware = false,
     ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -178,6 +219,10 @@ class WelcomeController extends Controller
 
         if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
             return redirect()->route('app.welcome.goals');
+        }
+
+        if ($requireSoftware && ! $user->previous_software) {
+            return redirect()->route('app.welcome.software');
         }
 
         return null;

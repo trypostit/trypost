@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -143,9 +144,14 @@ test('the welcome header fits a phone and the continue button stays on screen', 
 })->with([
     'persona' => ['app.welcome.persona', [], 'welcome-persona-continue', 'welcome-persona-', false],
     'goals' => ['app.welcome.goals', ['persona' => Persona::Agency->value], 'welcome-goals-continue', 'welcome-goal-', true],
+    'software' => ['app.welcome.software', [
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+    ], 'welcome-software-continue', 'welcome-software-', true],
     'plan' => ['app.welcome.plan', [
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
         'referral_source' => ReferralSource::ProductHunt->value,
     ], null, null, true],
 ]);
@@ -156,6 +162,7 @@ test('the plan step lists the features once on a phone and per plan on desktop',
     $this->actingAs(welcomeMobileOwner([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
         'referral_source' => ReferralSource::ProductHunt->value,
     ]));
 

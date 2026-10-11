@@ -7,6 +7,7 @@ use App\Enums\Plan\Slug;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
@@ -94,7 +95,7 @@ test('goals requires at least one valid goal', function (array $goals, string $e
     'invalid' => [['not-a-goal'], 'goals.0'],
 ]);
 
-test('goals store saves choices mirrors them to PostHog and advances to plan', function () {
+test('goals store saves choices mirrors them to PostHog and advances to software', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     $this->user->update(['persona' => Persona::Creator->value]);
@@ -103,7 +104,7 @@ test('goals store saves choices mirrors them to PostHog and advances to plan', f
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.goals.store'), ['goals' => $goals])
-        ->assertRedirect(route('app.welcome.plan'));
+        ->assertRedirect(route('app.welcome.software'));
 
     expect($this->user->fresh()->goals)->toBe($goals);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
@@ -111,11 +112,71 @@ test('goals store saves choices mirrors them to PostHog and advances to plan', f
         && data_get($event->payload, 'properties.goals') === $goals);
 });
 
+test('software redirects to goals until a goal is selected', function () {
+    $this->user->update(['persona' => Persona::Agency->value]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.software'))
+        ->assertRedirect(route('app.welcome.goals'));
+});
+
+test('software renders after goals are selected', function () {
+    completeWelcomeThroughGoals($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.software'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Software', false)
+            ->has('software', count(PreviousSoftware::cases()))
+            ->where('selected', null)
+        );
+});
+
+test('software requires a valid selection', function (array $payload) {
+    completeWelcomeThroughGoals($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.software.store'), $payload)
+        ->assertSessionHasErrors('previous_software');
+
+    expect($this->user->fresh()->previous_software)->toBeNull();
+})->with([
+    'missing' => [[]],
+    'invalid' => [['previous_software' => 'not-a-tool']],
+]);
+
+test('software store saves the selection mirrors it to PostHog and advances to plan', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    completeWelcomeThroughGoals($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.software.store'), ['previous_software' => PreviousSoftware::Metricool->value])
+        ->assertRedirect(route('app.welcome.plan'));
+
+    expect($this->user->fresh()->previous_software)->toBe(PreviousSoftware::Metricool);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'identify'
+        && data_get($event->payload, 'properties.previous_software') === PreviousSoftware::Metricool->value);
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === WelcomeEvent::Software->value
+        && data_get($event->payload, 'properties.previous_software') === PreviousSoftware::Metricool->value);
+});
+
+test('plan redirects to software until a previous software is selected', function () {
+    completeWelcomeThroughGoals($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertRedirect(route('app.welcome.software'));
+});
+
 test('completed welcome steps remain reachable when going back', function () {
     attachCurrentWorkspace($this->user);
     $this->user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
     ]);
 
     $this->actingAs($this->user->fresh())
@@ -129,12 +190,17 @@ test('completed welcome steps remain reachable when going back', function () {
         ->assertInertia(fn ($page) => $page->component('welcome/Goals', false));
 
     $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.software'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/Software', false)->where('selected', PreviousSoftware::Buffer->value));
+
+    $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('welcome/Plan', false));
 });
 
-test('welcome funnel captures goals before checkout.started', function () {
+test('welcome funnel captures every step before checkout.started', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     $workspace = attachCurrentWorkspace($this->user);
@@ -156,6 +222,10 @@ test('welcome funnel captures goals before checkout.started', function () {
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.goals.store'), ['goals' => [Goal::SaveTime->value]])
+        ->assertRedirect(route('app.welcome.software'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.software.store'), ['previous_software' => PreviousSoftware::None->value])
         ->assertRedirect(route('app.welcome.plan'));
 
     $this->actingAs($this->user->fresh())
@@ -205,6 +275,8 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
     'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
     'goals' => ['app.welcome.goals', 'get'],
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'software' => ['app.welcome.software', 'get'],
+    'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
     'plan' => ['app.welcome.plan', 'get'],
     'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
@@ -243,6 +315,8 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
     'goals' => ['app.welcome.goals', 'get'],
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'software' => ['app.welcome.software', 'get'],
+    'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
     'plan' => ['app.welcome.plan', 'get'],
     'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);
@@ -300,6 +374,8 @@ test('members without app access are held on the subscription required screen', 
     'persona store' => ['app.welcome.persona.store', 'post', ['persona' => Persona::Agency->value]],
     'goals' => ['app.welcome.goals', 'get'],
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
+    'software' => ['app.welcome.software', 'get'],
+    'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
     'plan' => ['app.welcome.plan', 'get'],
     'plan store' => ['app.welcome.plan.store', 'post', ['interval' => 'monthly']],
 ]);

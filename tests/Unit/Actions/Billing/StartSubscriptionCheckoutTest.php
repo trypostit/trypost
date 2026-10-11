@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Models\Account;
 use App\Models\Plan;
@@ -83,6 +84,7 @@ test('redirect applies checkout configuration and attribution metadata before op
         'epik' => 'dj0yepik',
         'persona' => Persona::Agency,
         'goals' => ['grow_audience', 'save_time'],
+        'previous_software' => PreviousSoftware::Metricool,
         'referral_source' => ReferralSource::ProductHunt,
     ]);
     $account->refresh();
@@ -106,6 +108,7 @@ test('redirect applies checkout configuration and attribution metadata before op
             'epik' => 'dj0yepik',
             'persona' => 'agency',
             'goals' => 'grow_audience,save_time',
+            'previous_software' => 'metricool',
             'referral_source' => 'product_hunt',
         ])
         ->andReturnSelf();

@@ -9,6 +9,7 @@ use App\Enums\Notification\Type as NotificationType;
 use App\Enums\User\DefaultPostAction;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Enums\User\Theme;
 use App\Enums\User\TimeFormat;
@@ -61,6 +62,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'registration_ip',
         'persona',
         'goals',
+        'previous_software',
         'referral_source',
         'locale',
         'timezone',
@@ -131,6 +133,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'two_factor_confirmed_at' => 'datetime',
             'persona' => Persona::class,
             'goals' => 'array',
+            'previous_software' => PreviousSoftware::class,
             'referral_source' => ReferralSource::class,
             'locale' => Locale::class,
             'theme' => Theme::class,

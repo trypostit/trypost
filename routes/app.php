@@ -87,6 +87,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/persona', [WelcomeController::class, 'storePersona'])->name('app.welcome.persona.store');
     Route::get('welcome/goals', [WelcomeController::class, 'goals'])->name('app.welcome.goals');
     Route::post('welcome/goals', [WelcomeController::class, 'storeGoals'])->name('app.welcome.goals.store');
+    Route::get('welcome/software', [WelcomeController::class, 'software'])->name('app.welcome.software');
+    Route::post('welcome/software', [WelcomeController::class, 'storeSoftware'])->name('app.welcome.software.store');
     Route::get('welcome/plan', [WelcomeController::class, 'plan'])->name('app.welcome.plan');
     Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
         ->middleware('throttle:6,1')

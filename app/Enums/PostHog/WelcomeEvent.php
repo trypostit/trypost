@@ -8,6 +8,7 @@ enum WelcomeEvent: string
 {
     case Persona = 'welcome.persona';
     case Goals = 'welcome.goals';
+    case Software = 'welcome.software';
     case Referral = 'welcome.referral';
 
     /**
@@ -20,6 +21,7 @@ enum WelcomeEvent: string
         return [
             self::Persona->value,
             self::Goals->value,
+            self::Software->value,
             CheckoutEvent::Started->value,
         ];
     }

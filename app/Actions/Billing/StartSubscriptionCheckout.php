@@ -67,6 +67,7 @@ class StartSubscriptionCheckout
             'epik' => $owner?->epik,
             'persona' => $owner?->persona?->value,
             'goals' => implode(',', $owner?->goals ?? []),
+            'previous_software' => $owner?->previous_software?->value,
             'referral_source' => $owner?->referral_source?->value,
             ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => $firstMonthCouponId,
         ], filled(...));

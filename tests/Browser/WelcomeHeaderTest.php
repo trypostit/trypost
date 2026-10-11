@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\Theme;
 use App\Models\User;
 use App\Models\Workspace;
@@ -33,6 +34,7 @@ function welcomeHeaderOwner(): User
     $user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
     ]);
 
     $workspace = Workspace::factory()->create([
@@ -45,7 +47,7 @@ function welcomeHeaderOwner(): User
     return $user->fresh();
 }
 
-test('the plan step goes back to goals, the step right before it', function () {
+test('the plan step goes back to software, the step right before it', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeHeaderOwner());
@@ -55,9 +57,9 @@ test('the plan step goes back to goals, the step right before it', function () {
 
     $page->assertMissing('@welcome-step-connect')
         ->click('@welcome-back');
-    waitForWelcomeTestId($page, 'welcome-goals-continue');
+    waitForWelcomeTestId($page, 'welcome-software-continue');
 
-    $page->assertRoute('app.welcome.goals')
+    $page->assertRoute('app.welcome.software')
         ->assertNoJavaScriptErrors();
 });
 

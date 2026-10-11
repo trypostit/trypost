@@ -54,6 +54,7 @@ class UserFactory extends Factory
             'utm_content' => null,
             'registration_ip' => null,
             'persona' => null,
+            'previous_software' => null,
             'referral_source' => ReferralSource::Google,
             'locale' => Locale::DEFAULT,
             'timezone' => Timezone::DEFAULT,

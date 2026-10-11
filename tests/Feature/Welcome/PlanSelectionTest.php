@@ -7,6 +7,7 @@ use App\Enums\Plan\Slug;
 use App\Enums\User\Goal;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -23,6 +24,7 @@ beforeEach(function () {
     $this->user = User::factory()->create([
         'persona' => Persona::Creator,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer,
         'referral_source' => ReferralSource::Google,
     ]);
 

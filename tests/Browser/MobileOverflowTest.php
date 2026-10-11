@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Models\Post;
 use App\Models\User;
@@ -91,6 +92,7 @@ test('auth and welcome pages do not overflow horizontally on a phone', function 
     $user->update([
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
         'referral_source' => ReferralSource::ProductHunt->value,
     ]);
     $workspace = Workspace::factory()->create([
@@ -102,6 +104,7 @@ test('auth and welcome pages do not overflow horizontally on a phone', function 
     $this->actingAs($user->fresh());
 
     $welcomePages = [
+        'welcome software' => route('app.welcome.software'),
         'welcome plan' => route('app.welcome.plan'),
     ];
 
