@@ -155,7 +155,7 @@ test('the workspaces plan can store another workspace', function () use ($onPlan
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.workspace.channels'));
+        ->assertRedirect(route('app.posts.index'));
 
     expect($user->account->workspaces()->count())->toBe(2);
 });
@@ -169,7 +169,7 @@ test('storing a workspace checks the cap under a lock on the account row', funct
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
-        ->assertRedirect(route('app.workspace.channels'));
+        ->assertRedirect(route('app.posts.index'));
 
     $lock = collect($statements)->search(fn (string $sql): bool => str_contains($sql, 'accounts') && str_contains($sql, 'for update'));
     $insert = collect($statements)->search(fn (string $sql): bool => str_starts_with($sql, 'insert into') && str_contains($sql, 'workspaces'));

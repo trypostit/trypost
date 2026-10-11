@@ -93,7 +93,7 @@ class WorkspaceController extends Controller
             return $redirect;
         }
 
-        return redirect()->route('app.workspace.channels')
+        return redirect()->route('app.posts.index')
             ->with('success', __('workspaces.create.success'));
     }
 

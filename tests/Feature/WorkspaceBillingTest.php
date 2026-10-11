@@ -146,6 +146,6 @@ test('store creates an additional workspace with no count limit', function () {
         'name' => 'Second workspace',
     ]);
 
-    $response->assertRedirect(route('app.workspace.channels'));
+    $response->assertRedirect(route('app.posts.index'));
     expect($this->account->workspaces()->count())->toBe(2);
 });

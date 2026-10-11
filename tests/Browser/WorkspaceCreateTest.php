@@ -33,7 +33,7 @@ test('a workspace is created from its name alone', function () {
 
     $page->fill('@workspaces-create-name', 'Second')
         ->click('@workspaces-create-submit')
-        ->assertPathIs(parse_url(route('app.workspace.channels'), PHP_URL_PATH))
+        ->assertPathIs(parse_url(route('app.posts.index'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
 
     expect(Workspace::where('name', 'Second')->exists())->toBeTrue();

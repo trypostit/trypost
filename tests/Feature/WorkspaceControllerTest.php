@@ -87,7 +87,7 @@ test('store workspace creates first workspace', function () {
         'name' => 'New Workspace',
     ]);
 
-    $response->assertRedirect(route('app.workspace.channels'));
+    $response->assertRedirect(route('app.posts.index'));
 
     $this->assertDatabaseHas('workspaces', [
         'name' => 'New Workspace',
@@ -102,7 +102,7 @@ test('store workspace creates second workspace in self-hosted mode', function ()
         'name' => 'Second Workspace',
     ]);
 
-    $response->assertRedirect(route('app.workspace.channels'));
+    $response->assertRedirect(route('app.posts.index'));
 
     $this->assertDatabaseHas('workspaces', [
         'name' => 'Second Workspace',
@@ -594,7 +594,7 @@ test('store persists the name and redirects to channels', function () {
         'name' => 'Acme Inc',
     ]);
 
-    $response->assertRedirect(route('app.workspace.channels'));
+    $response->assertRedirect(route('app.posts.index'));
 
     expect(Workspace::where('name', 'Acme Inc')->sole()->name)->toBe('Acme Inc');
 });
@@ -612,7 +612,7 @@ test('store ignores retired brand fields', function () {
         'name' => 'Acme',
         'brand_description' => 'x',
         'content_language' => 'fr',
-    ])->assertRedirect(route('app.workspace.channels'));
+    ])->assertRedirect(route('app.posts.index'));
 
     expect(Workspace::where('name', 'Acme')->exists())->toBeTrue();
 });
@@ -637,7 +637,7 @@ test('store redirects additional workspace to /accounts', function () {
         'name' => 'Second Workspace',
     ]);
 
-    $response->assertRedirect(route('app.workspace.channels'));
+    $response->assertRedirect(route('app.posts.index'));
     expect(Workspace::where('account_id', $account->id)->count())->toBe(2);
 });
 
