@@ -147,7 +147,6 @@ return [
     'welcome.goals.save_time' => 35,
     'welcome.goals.stay_on_brand' => 31,
     'welcome.goals.use_mcp' => 36,
-    'welcome.mcp.copy' => 10,
     'welcome.mcp.connect_with' => 16,
     'welcome.personas.agency' => 10,
     'welcome.personas.creator' => 23,

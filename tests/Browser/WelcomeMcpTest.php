@@ -111,9 +111,9 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->and($page->script('document.activeElement.dataset.testid'))->toBe('welcome-mcp-dialog')
         ->and($page->script('getComputedStyle(document.activeElement).outlineStyle'))->toBe('none');
 
-    $page->assertSeeIn('@welcome-mcp-copy-name', 'Copy')
-        ->assertSeeIn('@welcome-mcp-copy-url', 'Copy')
-        ->click('@welcome-mcp-copy-name');
+    $page->assertSeeIn('@welcome-mcp-name-copy', 'Copy')
+        ->assertSeeIn('@welcome-mcp-url-copy', 'Copy')
+        ->click('@welcome-mcp-name-copy');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {
@@ -123,10 +123,10 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         })();
     JS);
 
-    $page->assertSeeIn('@welcome-mcp-copy-name', 'Copied')
-        ->assertDontSeeIn('@welcome-mcp-copy-url', 'Copied');
+    $page->assertSeeIn('@welcome-mcp-name-copy', 'Copied')
+        ->assertDontSeeIn('@welcome-mcp-url-copy', 'Copied');
 
-    $page->click('@welcome-mcp-copy-url');
+    $page->click('@welcome-mcp-url-copy');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {

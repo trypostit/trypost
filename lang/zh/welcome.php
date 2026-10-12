@@ -54,7 +54,6 @@ return [
         'description' => '一分钟完成连接，直接在 Claude 或 ChatGPT 中使用 TryPost。',
         'connect_with' => '连接 :client',
         'composer' => '有问题，尽管问',
-        'copy' => '复制',
         'dialog_title' => '将 TryPost 连接到 :client',
         'dialog_description' => '大约一分钟即可完成。连接成功后此页面会自动更新。',
         'open' => '打开 :client',

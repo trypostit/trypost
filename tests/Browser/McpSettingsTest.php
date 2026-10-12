@@ -58,3 +58,51 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
 
     expect(AccessToken::query()->where('client_id', $clientId)->where('revoked', false)->exists())->toBeFalse();
 });
+
+test('the MCP settings offer Claude, ChatGPT and other apps, with an illustrated empty state', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.mcp.index'));
+    waitForMcpSettingsTestId($page, 'mcp-primary-client-claude');
+
+    $page->assertVisible('@mcp-connected-empty')
+        ->assertVisible('@mcp-empty-illustration')
+        ->assertSeeIn('@mcp-connected-empty', __('mcp.connected_empty_title'))
+        ->assertScript('document.querySelectorAll("[data-testid=mcp-connected-empty] button, [data-testid=mcp-connected-empty] a").length', 0)
+        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt'])
+        ->assertVisible('@mcp-other-apps');
+
+    $page->click('@mcp-connect-claude');
+    waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
+
+    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to Claude')
+        ->assertSeeIn('@welcome-mcp-url', route('mcp.trypost'))
+        ->keys('@welcome-mcp-dialog', 'Escape');
+
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
+    $page->click('@mcp-other-apps');
+    waitForMcpSettingsTestId($page, 'mcp-other-config');
+
+    $page->assertSeeIn('@mcp-other-name', 'TryPost')
+        ->assertSeeIn('@mcp-other-url', route('mcp.trypost'))
+        ->assertSeeIn('@mcp-other-config', '"mcpServers"')
+        ->assertSeeIn('@mcp-other-config', route('mcp.trypost'))
+        ->assertNoJavaScriptErrors();
+});

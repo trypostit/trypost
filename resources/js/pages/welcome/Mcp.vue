@@ -21,9 +21,9 @@ import {
     type Component,
 } from 'vue';
 
+import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
-import McpConnectDialog from '@/components/welcome/mcp/McpConnectDialog.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';

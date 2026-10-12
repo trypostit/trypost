@@ -54,7 +54,6 @@ return [
         'description' => 'Подключите за минуту и пользуйтесь TryPost прямо из Claude или ChatGPT.',
         'connect_with' => 'Подключить :client',
         'composer' => 'Спросите что угодно',
-        'copy' => 'Копировать',
         'dialog_title' => 'Подключите TryPost к :client',
         'dialog_description' => 'Это займёт около минуты. Страница обновится, как только вы подключитесь.',
         'open' => 'Открыть :client',

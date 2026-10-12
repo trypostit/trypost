@@ -54,7 +54,6 @@ return [
         'description' => 'Połącz w minutę i korzystaj z TryPost prosto z Claude lub ChatGPT.',
         'connect_with' => 'Połącz z :client',
         'composer' => 'Zapytaj o cokolwiek',
-        'copy' => 'Kopiuj',
         'dialog_title' => 'Połącz TryPost z :client',
         'dialog_description' => 'Zajmuje około minuty. Ta strona odświeży się, gdy tylko się połączysz.',
         'open' => 'Otwórz :client',

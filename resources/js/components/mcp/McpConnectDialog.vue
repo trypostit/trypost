@@ -1,11 +1,8 @@
 <script setup lang="ts">
-import {
-    IconArrowUpRight,
-    IconCheck,
-    IconCopy,
-} from '@tabler/icons-vue';
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { IconArrowUpRight } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
+import McpCopyField from '@/components/mcp/McpCopyField.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -17,7 +14,6 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 import type { McpClient } from '@/lib/mcpClients';
-import { copyToClipboard } from '@/lib/utils';
 
 const props = defineProps<{
     client: McpClient;
@@ -42,40 +38,6 @@ const focusDialogFrame = (event: Event): void => {
     (event.target as HTMLElement | null)?.focus({ preventScroll: true });
 };
 
-type CopiedField = 'name' | 'url';
-
-const copiedField = ref<CopiedField | null>(null);
-let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const copyField = async (field: CopiedField, value: string): Promise<void> => {
-    const didCopy = await copyToClipboard(value, undefined, {
-        showSuccessToast: false,
-    });
-
-    if (!didCopy) {
-        return;
-    }
-
-    copiedField.value = field;
-
-    if (copiedTimeout) {
-        clearTimeout(copiedTimeout);
-    }
-
-    copiedTimeout = setTimeout(() => {
-        copiedField.value = null;
-    }, 2000);
-};
-
-const copyName = (name: string): Promise<void> => copyField('name', name);
-
-const copyUrl = (): Promise<void> => copyField('url', props.mcpUrl);
-
-onBeforeUnmount(() => {
-    if (copiedTimeout) {
-        clearTimeout(copiedTimeout);
-    }
-});
 </script>
 
 <template>
@@ -145,63 +107,17 @@ onBeforeUnmount(() => {
                     </span>
                 </div>
                 <div class="flex flex-col gap-3 p-4">
-                    <div class="flex flex-col gap-1.5">
-                        <span class="text-xs font-medium text-muted-foreground">
-                            {{ $t('mcp.name_label') }}
-                        </span>
-                        <div
-                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-card ps-3 pe-1"
-                        >
-                            <span
-                                class="min-w-0 flex-1 truncate text-sm text-foreground"
-                                data-testid="welcome-mcp-name"
-                            >{{ $t('mcp.connector_name') }}</span>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                class="h-7 shrink-0"
-                                data-testid="welcome-mcp-copy-name"
-                                @click="copyName($t('mcp.connector_name'))"
-                            >
-                                <IconCheck
-                                    v-if="copiedField === 'name'"
-                                    class="size-3.5 text-green-500"
-                                />
-                                <IconCopy v-else class="size-3.5" />
-                                {{ copiedField === 'name' ? $t('mcp.copied') : $t('welcome.mcp.copy') }}
-                            </Button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-1.5">
-                        <span class="text-xs font-medium text-muted-foreground">
-                            {{ $t('mcp.url_label') }}
-                        </span>
-                        <div
-                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-card ps-3 pe-1"
-                        >
-                            <span
-                                dir="ltr"
-                                class="min-w-0 flex-1 truncate text-sm text-foreground"
-                                data-testid="welcome-mcp-url"
-                            >{{ mcpUrl }}</span>
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                size="sm"
-                                class="h-7 shrink-0"
-                                data-testid="welcome-mcp-copy-url"
-                                @click="copyUrl"
-                            >
-                                <IconCheck
-                                    v-if="copiedField === 'url'"
-                                    class="size-3.5 text-green-500"
-                                />
-                                <IconCopy v-else class="size-3.5" />
-                                {{ copiedField === 'url' ? $t('mcp.copied') : $t('welcome.mcp.copy') }}
-                            </Button>
-                        </div>
-                    </div>
+                    <McpCopyField
+                        :label="$t('mcp.name_label')"
+                        :value="$t('mcp.connector_name')"
+                        testid="welcome-mcp-name"
+                    />
+                    <McpCopyField
+                        :label="$t('mcp.url_label')"
+                        :value="mcpUrl"
+                        testid="welcome-mcp-url"
+                        ltr
+                    />
                 </div>
             </div>
 
