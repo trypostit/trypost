@@ -40,6 +40,8 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     $page = visit(route('app.mcp.index'));
     waitForMcpSettingsTestId($page, "mcp-connected-menu-{$clientId}");
 
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true');
+
     $page->click("@mcp-connected-menu-{$clientId}");
     waitForMcpSettingsTestId($page, "mcp-disconnect-{$clientId}");
 
@@ -59,7 +61,7 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     expect(AccessToken::query()->where('client_id', $clientId)->where('revoked', false)->exists())->toBeFalse();
 });
 
-test('the MCP settings offer Claude, ChatGPT and other apps, with an illustrated empty state', function () {
+test('the MCP settings open on the connect tab when nothing is connected and keep an illustrated empty state on the other', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -74,12 +76,18 @@ test('the MCP settings offer Claude, ChatGPT and other apps, with an illustrated
     $page = visit(route('app.mcp.index'));
     waitForMcpSettingsTestId($page, 'mcp-primary-client-claude');
 
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
+        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt'])
+        ->assertVisible('@mcp-other-apps')
+        ->click('@mcp-tab-connected');
+    waitForMcpSettingsTestId($page, 'mcp-connected-empty');
+
     $page->assertVisible('@mcp-connected-empty')
         ->assertVisible('@mcp-empty-illustration')
         ->assertSeeIn('@mcp-connected-empty', __('mcp.connected_empty_title'))
         ->assertScript('document.querySelectorAll("[data-testid=mcp-connected-empty] button, [data-testid=mcp-connected-empty] a").length', 0)
-        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt'])
-        ->assertVisible('@mcp-other-apps');
+        ->click('@mcp-tab-connect');
+    waitForMcpSettingsTestId($page, 'mcp-connect-claude');
 
     $page->click('@mcp-connect-claude');
     waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
@@ -104,5 +112,43 @@ test('the MCP settings offer Claude, ChatGPT and other apps, with an illustrated
         ->assertSeeIn('@mcp-other-url', route('mcp.trypost'))
         ->assertSeeIn('@mcp-other-config', '"mcpServers"')
         ->assertSeeIn('@mcp-other-config', route('mcp.trypost'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a new connection closes the connect dialog and shows the connected tab', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.mcp.index'));
+    waitForMcpSettingsTestId($page, 'mcp-connect-chatgpt');
+
+    $page->click('@mcp-connect-chatgpt');
+    waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
+
+    $clientId = mcpOauthClient('ChatGPT');
+    mcpAccessToken($user, $clientId, $workspace);
+
+    $state = $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                const row = document.querySelector('[data-testid="mcp-connected-client-{$clientId}"]');
+                if (row && row.getBoundingClientRect().height > 0 && !document.querySelector('[data-testid="welcome-mcp-dialog"]')) return 'shown';
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return 'missing';
+        })()
+    JS);
+
+    expect($state)->toBe('shown');
+
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true')
         ->assertNoJavaScriptErrors();
 });

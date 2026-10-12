@@ -16,7 +16,6 @@ import McpCopyField from '@/components/mcp/McpCopyField.vue';
 import McpEmptyIllustration from '@/components/mcp/McpEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsRow from '@/components/settings/SettingsRow.vue';
-import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -29,6 +28,7 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { mcpClients, type McpClient } from '@/lib/mcpClients';
@@ -68,16 +68,26 @@ const connectWith = (client: McpClient): void => {
     dialogOpen.value = true;
 };
 
+type McpTab = 'connected' | 'connect';
+
+const tab = ref<McpTab>(
+    props.connectedClients.length > 0 ? 'connected' : 'connect',
+);
+
 const connectedCount = computed((): number => props.connectedClients.length);
 
-/** The poll notices the new connection while the user is in the other tab. */
-const closeDialogOnConnection = (count: number, previous: number): void => {
+/**
+ * The poll notices the new connection while the user is in the other browser
+ * tab: close the steps and show it in the connected list.
+ */
+const showNewConnection = (count: number, previous: number): void => {
     if (count > previous) {
         dialogOpen.value = false;
+        tab.value = 'connected';
     }
 };
 
-watch(connectedCount, closeDialogOnConnection);
+watch(connectedCount, showNewConnection);
 
 const otherAppsOpen = ref(false);
 
@@ -96,11 +106,23 @@ const configSnippet = (connectorName: string): string =>
         :title="$t('mcp.title')"
         :description="$t('mcp.subtitle')"
     >
-        <div class="flex flex-col gap-10">
-            <SettingsSection
-                :title="$t('mcp.connected_title')"
-                :description="$t('mcp.connected_description')"
-            >
+        <Tabs v-model="tab" class="flex flex-col gap-6">
+            <TabsList variant="line">
+                <TabsTrigger value="connected" data-testid="mcp-tab-connected">
+                    {{ $t('mcp.tabs.connected') }}
+                </TabsTrigger>
+                <TabsTrigger value="connect" data-testid="mcp-tab-connect">
+                    {{ $t('mcp.tabs.connect') }}
+                </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="connected" class="flex flex-col gap-4">
+                <p
+                    v-if="connectedClients.length > 0"
+                    class="text-sm text-muted-foreground"
+                >
+                    {{ $t('mcp.connected_description') }}
+                </p>
                 <ul
                     v-if="connectedClients.length > 0"
                     class="flex flex-col gap-2"
@@ -168,9 +190,9 @@ const configSnippet = (connectorName: string): string =>
                         <McpEmptyIllustration />
                     </template>
                 </EmptyState>
-            </SettingsSection>
+            </TabsContent>
 
-            <SettingsSection :title="$t('mcp.assistants_title')">
+            <TabsContent value="connect" class="flex flex-col gap-10">
                 <ul class="flex flex-col gap-2">
                     <SettingsListRow
                         v-for="client in mcpClients"
@@ -275,9 +297,8 @@ const configSnippet = (connectorName: string): string =>
                         </CollapsibleContent>
                     </Collapsible>
                 </ul>
-            </SettingsSection>
 
-            <SettingsRow
+                <SettingsRow
                 :title="$t('mcp.documentation_title')"
                 :description="$t('mcp.documentation_description')"
             >
@@ -286,7 +307,8 @@ const configSnippet = (connectorName: string): string =>
                     {{ $t('mcp.view_docs') }}
                 </Button>
             </SettingsRow>
-        </div>
+            </TabsContent>
+        </Tabs>
 
         <McpConnectDialog
             v-model:open="dialogOpen"
