@@ -39,11 +39,12 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'));
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-benefits');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-steps');
 
     $page->assertSee('Post and analyze right from Claude and ChatGPT')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')
+        ->assertVisible('@welcome-mcp-steps')
         ->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
         ->click('@welcome-mcp-benefit-analytics');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-chat-analytics');
@@ -99,7 +100,7 @@ test('the MCP step fits a phone without scrolling and hides the chat example the
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'))->resize(390, 844);
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-benefits');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-steps');
 
     $layout = $page->script(<<<'JS'
         ({

@@ -1,13 +1,16 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
+    IconArrowUp,
     IconBulb,
     IconCalendarPlus,
     IconChartLine,
+    IconCheck,
     IconCircleCheck,
     IconCircleCheckFilled,
     IconCopy,
     IconListDetails,
+    IconPlus,
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 
@@ -59,6 +62,14 @@ const connectedClient = computed(
 );
 
 const copied = ref(false);
+const copiedOnce = ref(false);
+
+const stepBadgeClass = (done: boolean): string[] => [
+    'inline-flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold tabular-nums',
+    done
+        ? 'bg-green-500 text-white'
+        : 'bg-card text-primary-text',
+];
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const copyPrompt = async (): Promise<void> => {
@@ -71,6 +82,7 @@ const copyPrompt = async (): Promise<void> => {
     }
 
     copied.value = true;
+    copiedOnce.value = true;
 
     if (copiedTimeout) {
         clearTimeout(copiedTimeout);
@@ -100,158 +112,202 @@ const goToSchedule = (): void => {
         :description="$t('welcome.mcp.description')"
     >
         <article
-            class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
-            @mouseenter="pauseBenefits"
-            @mouseleave="resumeBenefits"
+            class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[3fr_2fr]"
         >
-            <ul
-                class="flex flex-col gap-1 rounded-xl border border-border bg-card p-2 sm:rounded-e-none sm:border-e-0"
-                data-testid="welcome-mcp-benefits"
+            <section
+                class="flex flex-col gap-4 rounded-s-xl border border-border bg-card p-4 max-sm:hidden sm:border-e-0"
+                @mouseenter="pauseBenefits"
+                @mouseleave="resumeBenefits"
             >
-                <li v-for="(benefit, index) in benefits" :key="benefit.key">
+                <div
+                    class="inline-flex gap-1 self-start rounded-lg border border-border-strong bg-card p-[3px]"
+                    role="tablist"
+                    :aria-label="$t('welcome.mcp.title')"
+                >
                     <button
+                        v-for="(benefit, index) in benefits"
+                        :key="benefit.key"
                         type="button"
-                        :aria-pressed="index === activeBenefit"
+                        role="tab"
+                        :aria-selected="index === activeBenefit"
                         :class="[
-                            'flex w-full cursor-pointer items-start gap-3 rounded-lg p-3 text-start transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                            'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                             index === activeBenefit
-                                ? 'bg-primary-subtle dark:bg-primary-selected'
-                                : 'hover:bg-muted',
+                                ? 'bg-primary-selected text-primary-text'
+                                : 'text-muted-foreground hover:text-foreground',
                         ]"
                         :data-testid="`welcome-mcp-benefit-${benefit.key}`"
                         @click="selectBenefit(index)"
                     >
-                        <span
-                            class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg bg-card text-primary-text shadow-xs"
-                            aria-hidden="true"
-                        >
-                            <component :is="benefit.icon" class="size-4" />
-                        </span>
-                        <span class="flex min-w-0 flex-col gap-0.5">
-                            <span class="text-sm font-medium text-foreground">
-                                {{
-                                    $t(`welcome.mcp.benefits.${benefit.key}.title`)
-                                }}
-                            </span>
-                            <span class="text-xs text-muted-foreground">
-                                {{
-                                    $t(`welcome.mcp.benefits.${benefit.key}.hint`)
-                                }}
-                            </span>
-                        </span>
+                        <component :is="benefit.icon" class="size-4" />
+                        {{ $t(`welcome.mcp.benefits.${benefit.key}.tab`) }}
                     </button>
-                </li>
-            </ul>
+                </div>
 
-            <div
-                class="grid bg-primary-subtle p-5 max-sm:hidden sm:p-6 dark:bg-primary-selected"
-                aria-hidden="true"
-            >
-                <Transition
-                    mode="out-in"
-                    enter-active-class="transition-opacity duration-300"
-                    leave-active-class="transition-opacity duration-300"
-                    enter-from-class="opacity-0"
-                    leave-to-class="opacity-0"
+                <div
+                    class="flex flex-1 flex-col rounded-lg border border-border bg-muted"
+                    aria-hidden="true"
                 >
-                    <div
-                        :key="activeKey"
-                        class="flex flex-col justify-center gap-3"
-                        :data-testid="`welcome-mcp-chat-${activeKey}`"
-                    >
-                        <p
-                            class="ms-10 self-end rounded-2xl rounded-ee-sm bg-card px-4 py-3 text-sm text-foreground shadow-xs"
+                    <div class="grid flex-1 p-4">
+                        <Transition
+                            mode="out-in"
+                            enter-active-class="transition-opacity duration-300"
+                            leave-active-class="transition-opacity duration-300"
+                            enter-from-class="opacity-0"
+                            leave-to-class="opacity-0"
                         >
-                            {{ $t(`welcome.mcp.benefits.${activeKey}.ask`) }}
-                        </p>
-                        <div
-                            class="me-10 flex flex-col gap-2 self-start rounded-2xl rounded-es-sm bg-primary-strong px-4 py-3 text-sm text-primary-strong-foreground shadow-xs dark:bg-card dark:text-foreground"
-                        >
-                            <span
-                                class="flex items-center gap-1.5 text-xs font-medium opacity-90"
+                            <div
+                                :key="activeKey"
+                                class="flex flex-col gap-4"
+                                :data-testid="`welcome-mcp-chat-${activeKey}`"
                             >
-                                <AppLogo variant="mark" class="text-[14px]" />
-                                TryPost
-                            </span>
-                            <p>
-                                {{
-                                    $t(`welcome.mcp.benefits.${activeKey}.reply`)
-                                }}
-                            </p>
+                                <p
+                                    class="ms-12 self-end rounded-2xl rounded-ee-sm bg-card px-3.5 py-2.5 text-sm text-foreground shadow-xs"
+                                >
+                                    {{
+                                        $t(`welcome.mcp.benefits.${activeKey}.ask`)
+                                    }}
+                                </p>
+                                <div class="flex flex-col gap-2 pe-6">
+                                    <span
+                                        class="inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground"
+                                    >
+                                        <AppLogo
+                                            variant="mark"
+                                            class="text-[12px]"
+                                        />
+                                        TryPost
+                                        <IconCheck
+                                            class="size-3.5 text-green-500"
+                                        />
+                                    </span>
+                                    <p class="text-sm text-foreground">
+                                        {{
+                                            $t(
+                                                `welcome.mcp.benefits.${activeKey}.reply`,
+                                            )
+                                        }}
+                                    </p>
+                                </div>
+                            </div>
+                        </Transition>
+                    </div>
+                    <div
+                        class="m-2 mt-0 flex h-9 items-center justify-between rounded-lg border border-border bg-card px-3 text-muted-foreground"
+                    >
+                        <IconPlus class="size-4" />
+                        <span
+                            class="inline-flex size-6 items-center justify-center rounded-md bg-foreground text-background"
+                        >
+                            <IconArrowUp class="size-3.5" />
+                        </span>
+                    </div>
+                </div>
+            </section>
+
+            <ol
+                class="flex flex-col gap-5 rounded-xl bg-primary-subtle p-5 sm:rounded-s-none sm:p-6 dark:bg-primary-selected"
+                data-testid="welcome-mcp-steps"
+            >
+                <li class="flex items-start gap-3">
+                    <span :class="stepBadgeClass(copiedOnce)">
+                        <IconCheck v-if="copiedOnce" class="size-3.5" />
+                        <template v-else>1</template>
+                    </span>
+                    <div class="flex min-w-0 flex-col gap-1.5">
+                        <span class="text-sm font-medium text-foreground">
+                            {{ $t('welcome.mcp.step_copy') }}
+                        </span>
+                        <Popover>
+                            <PopoverTrigger as-child>
+                                <button
+                                    type="button"
+                                    class="cursor-pointer self-start text-sm text-primary-text underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                                    data-testid="welcome-mcp-view-prompt"
+                                >
+                                    {{ $t('welcome.mcp.view_prompt') }}
+                                </button>
+                            </PopoverTrigger>
+                            <PopoverContent
+                                side="top"
+                                class="w-96 max-w-[calc(100vw-2rem)] p-0"
+                            >
+                                <pre
+                                    dir="ltr"
+                                    class="max-h-72 overflow-y-auto p-4 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground"
+                                    data-testid="welcome-mcp-prompt"
+                                    >{{ prompt }}</pre
+                                >
+                            </PopoverContent>
+                        </Popover>
+                    </div>
+                </li>
+
+                <li class="flex items-start gap-3">
+                    <span :class="stepBadgeClass(false)">2</span>
+                    <div class="flex min-w-0 flex-col gap-2">
+                        <span class="text-sm font-medium text-foreground">
+                            {{ $t('welcome.mcp.step_paste') }}
+                        </span>
+                        <div class="flex flex-wrap gap-2">
+                            <Button
+                                v-for="client in mcpClients"
+                                :key="client.id"
+                                as="a"
+                                :href="client.settingsUrl"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                variant="outline"
+                                size="sm"
+                                class="bg-card"
+                                :data-testid="`welcome-mcp-open-${client.id}`"
+                            >
+                                <img
+                                    :src="client.logo"
+                                    alt=""
+                                    :class="['size-4', client.logoClass]"
+                                />
+                                {{ client.label }}
+                            </Button>
                         </div>
                     </div>
-                </Transition>
-            </div>
+                </li>
+
+                <li class="flex items-start gap-3">
+                    <span :class="stepBadgeClass(connectedClient !== null)">
+                        <IconCheck v-if="connectedClient" class="size-3.5" />
+                        <template v-else>3</template>
+                    </span>
+                    <div class="flex min-w-0 flex-col gap-1.5">
+                        <span class="text-sm font-medium text-foreground">
+                            {{ $t('welcome.mcp.step_login') }}
+                        </span>
+                        <p
+                            class="flex items-center gap-1.5 text-sm"
+                            data-testid="welcome-mcp-status"
+                            aria-live="polite"
+                        >
+                            <template v-if="connectedClient">
+                                <IconCircleCheckFilled
+                                    class="size-4 shrink-0 text-green-500"
+                                />
+                                <span class="font-medium text-foreground">{{
+                                    $t('welcome.mcp.connected', {
+                                        client: connectedClient.name,
+                                    })
+                                }}</span>
+                            </template>
+                            <template v-else>
+                                <Spinner class="size-3.5 shrink-0 text-primary-text" />
+                                <span class="text-muted-foreground">{{
+                                    $t('welcome.mcp.waiting')
+                                }}</span>
+                            </template>
+                        </p>
+                    </div>
+                </li>
+            </ol>
         </article>
-
-        <div class="mt-4 flex flex-col items-center gap-3">
-            <div class="flex flex-wrap items-center justify-center gap-1">
-                <Button
-                    v-for="client in mcpClients"
-                    :key="client.id"
-                    as="a"
-                    :href="client.settingsUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    variant="ghost"
-                    size="sm"
-                    :data-testid="`welcome-mcp-open-${client.id}`"
-                >
-                    <img
-                        :src="client.logo"
-                        alt=""
-                        :class="['size-4', client.logoClass]"
-                    />
-                    {{ $t('welcome.mcp.open', { client: client.label }) }}
-                </Button>
-                <Popover>
-                    <PopoverTrigger as-child>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            data-testid="welcome-mcp-view-prompt"
-                        >
-                            {{ $t('welcome.mcp.view_prompt') }}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                        side="top"
-                        class="w-96 max-w-[calc(100vw-2rem)] p-0"
-                    >
-                        <pre
-                            dir="ltr"
-                            class="max-h-72 overflow-y-auto p-4 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground"
-                            data-testid="welcome-mcp-prompt"
-                            >{{ prompt }}</pre
-                        >
-                    </PopoverContent>
-                </Popover>
-            </div>
-
-            <p
-                class="flex items-center gap-2 text-sm"
-                data-testid="welcome-mcp-status"
-                aria-live="polite"
-            >
-                <template v-if="connectedClient">
-                    <IconCircleCheckFilled
-                        class="size-4 shrink-0 text-green-500"
-                    />
-                    <span class="font-medium text-foreground">{{
-                        $t('welcome.mcp.connected', {
-                            client: connectedClient.name,
-                        })
-                    }}</span>
-                </template>
-                <template v-else>
-                    <Spinner class="shrink-0 text-primary-text" />
-                    <span class="text-muted-foreground">{{
-                        $t('welcome.mcp.waiting')
-                    }}</span>
-                </template>
-            </p>
-        </div>
 
         <template #actions>
             <WelcomeContinueButton
