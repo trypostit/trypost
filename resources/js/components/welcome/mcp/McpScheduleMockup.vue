@@ -9,6 +9,9 @@ import type { SharedData } from '@/types';
 
 const slideCount = 4;
 
+/** The reply schedules the carousel on both networks: one post each. */
+const platforms = ['instagram', 'linkedin'] as const;
+
 const owner = usePage<SharedData>().props.auth.user;
 const ownerPhoto = owner.has_photo ? owner.photo_url : null;
 </script>
@@ -17,44 +20,42 @@ const ownerPhoto = owner.has_photo ? owner.photo_url : null;
     <div
         class="grid gap-y-2 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-4"
     >
-        <time class="text-sm font-medium text-foreground sm:pt-4">
+        <time class="text-sm font-medium text-foreground sm:pt-3">
             {{ date.formatClockTime('10:00') }}
         </time>
-        <article class="rounded-xl border border-border-strong bg-card">
-            <div class="flex flex-col gap-4 p-4 sm:flex-row">
-                <div class="flex min-w-0 flex-1 flex-col gap-3">
-                    <div class="flex items-center gap-3">
-                        <ChannelAvatar
-                            platform="instagram"
-                            :name="owner.name"
+        <div class="flex flex-col gap-2">
+            <article
+                v-for="platform in platforms"
+                :key="platform"
+                class="flex items-center gap-3 rounded-xl border border-border-strong bg-card p-3"
+                :data-testid="`welcome-mcp-schedule-post-${platform}`"
+            >
+                <ChannelAvatar
+                    :platform="platform"
+                    :name="owner.name"
                     :src="ownerPhoto"
-                            :size="32"
-                            ring="card"
-                        />
-                        <span class="truncate text-sm font-emphasis">{{
-                            owner.name
-                        }}</span>
-                    </div>
-                    <div class="flex flex-col gap-2">
-                        <span class="h-2 w-full rounded-full bg-muted" />
-                        <span class="h-2 w-5/6 rounded-full bg-muted" />
-                        <span class="h-2 w-2/3 rounded-full bg-muted" />
-                    </div>
-                    <Badge class="h-6 gap-1 self-start px-2 [&>svg]:size-4">
+                    :size="32"
+                    ring="card"
+                />
+                <div class="flex min-w-0 flex-1 flex-col items-start gap-1.5">
+                    <span class="max-w-full truncate text-sm font-emphasis">{{
+                        owner.name
+                    }}</span>
+                    <Badge class="h-6 gap-1 px-2 [&>svg]:size-4">
                         <IconClock />
                         {{ $t('posts.status.scheduled') }}
                     </Badge>
                 </div>
-                <div class="grid shrink-0 grid-cols-4 content-start gap-1.5 sm:w-28 sm:grid-cols-2">
+                <div class="flex shrink-0 gap-1">
                     <span
                         v-for="slide in slideCount"
                         :key="slide"
-                        class="flex aspect-square items-center justify-center rounded-md border border-border-strong bg-secondary"
+                        class="flex size-9 items-center justify-center rounded-md border border-border-strong bg-secondary max-sm:[&:nth-child(n+3)]:hidden"
                     >
                         <IconPhoto class="size-4 text-muted-foreground" />
                     </span>
                 </div>
-            </div>
-        </article>
+            </article>
+        </div>
     </div>
 </template>

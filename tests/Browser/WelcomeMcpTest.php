@@ -80,6 +80,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     $page->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
         ->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-schedule]").innerText.split("\\n").includes("Scheduled")', true)
+        ->assertScript('[...document.querySelectorAll("[data-testid=welcome-mcp-chat-schedule] [data-testid^=welcome-mcp-schedule-post-]")].map((post) => post.dataset.testid)', ['welcome-mcp-schedule-post-instagram', 'welcome-mcp-schedule-post-linkedin'])
         ->click('@welcome-mcp-benefit-analytics');
     waitForWelcomeMcpChat($page, 'analytics');
 
