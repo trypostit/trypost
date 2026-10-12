@@ -47,8 +47,25 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
         ->assertVisible('@welcome-mcp-open-claude')
         ->assertVisible('@welcome-mcp-open-chatgpt')
         ->assertSeeIn('@welcome-mcp-status', 'Waiting for your AI to connect')
-        ->assertMissing('@welcome-mcp-continue')
-        ->click('@welcome-mcp-skip');
+        ->assertMissing('@welcome-mcp-continue');
+
+    $page->script('window.__copied = []; navigator.clipboard.writeText = async (text) => { window.__copied.push(text); }; true;');
+    $page->click('@welcome-mcp-copy');
+
+    $copy = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                const label = document.querySelector('[data-testid="welcome-mcp-copy"]').textContent.trim();
+                if (label !== 'Copy prompt') return { label, toasts: document.querySelectorAll('[data-sonner-toast]').length };
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
+
+    expect($copy)->toBe(['label' => 'Copied', 'toasts' => 0])
+        ->and($page->script('window.__copied[0].includes('.json_encode(route('mcp.trypost')).')'))->toBeTrue();
+
+    $page->click('@welcome-mcp-skip');
 
     $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
     $page->script(<<<JS

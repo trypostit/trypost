@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
-import { IconCircleCheckFilled, IconCopy } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
-import { computed } from 'vue';
+import {
+    IconCircleCheck,
+    IconCircleCheckFilled,
+    IconCopy,
+} from '@tabler/icons-vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -30,9 +33,34 @@ const connectedClient = computed(
 
 const steps = ['step_copy', 'step_paste', 'step_login'] as const;
 
-const copyPrompt = (): void => {
-    copyToClipboard(props.prompt, trans('mcp.copied'));
+const copied = ref(false);
+let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
+
+const copyPrompt = async (): Promise<void> => {
+    const didCopy = await copyToClipboard(props.prompt, undefined, {
+        showSuccessToast: false,
+    });
+
+    if (!didCopy) {
+        return;
+    }
+
+    copied.value = true;
+
+    if (copiedTimeout) {
+        clearTimeout(copiedTimeout);
+    }
+
+    copiedTimeout = setTimeout(() => {
+        copied.value = false;
+    }, 2000);
 };
+
+onBeforeUnmount(() => {
+    if (copiedTimeout) {
+        clearTimeout(copiedTimeout);
+    }
+});
 
 const goToSchedule = (): void => {
     router.visit(postsIndex.url());
@@ -152,8 +180,14 @@ const goToSchedule = (): void => {
                     data-testid="welcome-mcp-copy"
                     @click="copyPrompt"
                 >
-                    <IconCopy class="size-4" />
-                    {{ $t('welcome.mcp.copy_prompt') }}
+                    <template v-if="copied">
+                        <IconCircleCheck class="size-4" />
+                        {{ $t('common.actions.copied') }}
+                    </template>
+                    <template v-else>
+                        <IconCopy class="size-4" />
+                        {{ $t('welcome.mcp.copy_prompt') }}
+                    </template>
                 </Button>
                 <Link
                     :href="postsIndex.url()"
