@@ -70,7 +70,7 @@ onBeforeUnmount(() => {
 <template>
     <Dialog v-model:open="open">
         <DialogContent class="sm:max-w-xl" data-testid="welcome-mcp-dialog">
-            <DialogHeader class="flex-row items-center gap-4 pe-8 text-start">
+            <DialogHeader class="flex-row items-start gap-4 pe-8 text-start">
                 <span
                     class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card"
                     aria-hidden="true"
@@ -108,67 +108,65 @@ onBeforeUnmount(() => {
                 </li>
             </ol>
 
-            <div class="rounded-xl bg-accent p-4">
+            <div
+                class="overflow-hidden rounded-xl border border-border-strong bg-card"
+            >
                 <div
-                    class="overflow-hidden rounded-xl border border-border-strong bg-card"
+                    class="relative flex h-8 items-center gap-1.5 border-b border-border bg-muted px-3"
+                    aria-hidden="true"
                 >
-                    <div
-                        class="relative flex h-8 items-center gap-1.5 border-b border-border bg-muted px-3"
-                        aria-hidden="true"
+                    <span class="size-2.5 rounded-full bg-[#ff5f57]" />
+                    <span class="size-2.5 rounded-full bg-[#febc2e]" />
+                    <span class="size-2.5 rounded-full bg-[#28c840]" />
+                    <span
+                        class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                        <span class="size-2.5 rounded-full bg-[#ff5f57]" />
-                        <span class="size-2.5 rounded-full bg-[#febc2e]" />
-                        <span class="size-2.5 rounded-full bg-[#28c840]" />
+                        <img
+                            :src="client.logo"
+                            alt=""
+                            :class="['size-3.5', client.logoClass]"
+                        />
+                        {{ client.label }}
+                    </span>
+                </div>
+                <div class="flex flex-col gap-3 p-4">
+                    <div class="flex flex-col gap-1.5" aria-hidden="true">
+                        <span class="text-xs font-medium text-muted-foreground">
+                            {{ $t('mcp.name_label') }}
+                        </span>
                         <span
-                            class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
+                            class="flex h-9 items-center rounded-md border border-input bg-card px-3 text-sm text-foreground"
                         >
-                            <img
-                                :src="client.logo"
-                                alt=""
-                                :class="['size-3.5', client.logoClass]"
-                            />
-                            {{ client.label }}
+                            {{ $t('mcp.connector_name') }}
                         </span>
                     </div>
-                    <div class="flex flex-col gap-3 p-4">
-                        <div class="flex flex-col gap-1.5" aria-hidden="true">
-                            <span class="text-xs font-medium text-muted-foreground">
-                                {{ $t('mcp.name_label') }}
-                            </span>
-                            <span
-                                class="flex h-9 items-center rounded-md border border-input bg-card px-3 text-sm text-foreground"
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-xs font-medium text-muted-foreground">
+                            {{ $t('mcp.url_label') }}
+                        </span>
+                        <div
+                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-primary-strong bg-card ps-3 pe-1 ring-3 ring-primary-strong/15"
+                        >
+                            <code
+                                dir="ltr"
+                                class="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
+                                data-testid="welcome-mcp-url"
+                            >{{ mcpUrl }}</code>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                class="h-7 shrink-0"
+                                data-testid="welcome-mcp-copy-url"
+                                @click="copyUrl"
                             >
-                                {{ $t('mcp.connector_name') }}
-                            </span>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <span class="text-xs font-medium text-muted-foreground">
-                                {{ $t('mcp.url_label') }}
-                            </span>
-                            <div
-                                class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-primary-strong bg-card ps-3 pe-1 ring-3 ring-primary-strong/15"
-                            >
-                                <code
-                                    dir="ltr"
-                                    class="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
-                                    data-testid="welcome-mcp-url"
-                                >{{ mcpUrl }}</code>
-                                <Button
-                                    type="button"
-                                    variant="secondary"
-                                    size="sm"
-                                    class="h-7 shrink-0"
-                                    data-testid="welcome-mcp-copy-url"
-                                    @click="copyUrl"
-                                >
-                                    <IconCheck
-                                        v-if="copied"
-                                        class="size-3.5 text-green-500"
-                                    />
-                                    <IconCopy v-else class="size-3.5" />
-                                    {{ copied ? $t('mcp.copied') : $t('mcp.copy') }}
-                                </Button>
-                            </div>
+                                <IconCheck
+                                    v-if="copied"
+                                    class="size-3.5 text-green-500"
+                                />
+                                <IconCopy v-else class="size-3.5" />
+                                {{ copied ? $t('mcp.copied') : $t('mcp.copy') }}
+                            </Button>
                         </div>
                     </div>
                 </div>
