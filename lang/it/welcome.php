@@ -45,5 +45,5 @@ return [
         'none' => 'Non ne uso ancora nessuno',
         'other' => 'Altro',
     ],
-    'plan_title' => 'Scegli il tuo piano',
+    'plan_title' => 'Inizia il tuo primo mese',
 ];

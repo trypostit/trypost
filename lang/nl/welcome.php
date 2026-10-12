@@ -45,5 +45,5 @@ return [
         'none' => 'Ik gebruik er nog geen',
         'other' => 'Andere',
     ],
-    'plan_title' => 'Kies je abonnement',
+    'plan_title' => 'Begin je eerste maand',
 ];

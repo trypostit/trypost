@@ -45,5 +45,5 @@ return [
         'none' => 'I don\'t use one yet',
         'other' => 'Other',
     ],
-    'plan_title' => 'Choose your plan',
+    'plan_title' => 'Start your first month',
 ];

@@ -45,5 +45,5 @@ return [
         'none' => 'Henüz bir araç kullanmıyorum',
         'other' => 'Diğer',
     ],
-    'plan_title' => 'Planını seç',
+    'plan_title' => 'İlk ayına başla',
 ];

@@ -45,5 +45,5 @@ return [
         'none' => '아직 사용하지 않아요',
         'other' => '기타',
     ],
-    'plan_title' => '요금제 선택',
+    'plan_title' => '첫 달을 시작하세요',
 ];

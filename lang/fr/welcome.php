@@ -45,5 +45,5 @@ return [
         'none' => 'Je n\'en utilise pas encore',
         'other' => 'Autre',
     ],
-    'plan_title' => 'Choisissez votre forfait',
+    'plan_title' => 'Commencez votre premier mois',
 ];

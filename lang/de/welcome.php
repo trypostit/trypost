@@ -45,5 +45,5 @@ return [
         'none' => 'Ich nutze noch keins',
         'other' => 'Anderes',
     ],
-    'plan_title' => 'Wähle deinen Tarif',
+    'plan_title' => 'Starte deinen ersten Monat',
 ];
