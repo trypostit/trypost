@@ -17,6 +17,7 @@ import {
     type Component,
 } from 'vue';
 
+import AppLogo from '@/components/AppLogo.vue';
 import { Button } from '@/components/ui/button';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
 import McpConnectDialog from '@/components/welcome/mcp/McpConnectDialog.vue';
@@ -156,12 +157,31 @@ const goToSchedule = (): void => {
     >
         <article class="text-start">
             <div
-                class="grid overflow-hidden rounded-xl border border-border bg-card lg:grid-cols-[18rem_minmax(0,1fr)]"
+                class="flex flex-col overflow-hidden rounded-xl border border-border-strong bg-card"
+                data-testid="welcome-mcp-window"
                 @mouseenter="pauseBenefits"
                 @mouseleave="resumeBenefits"
             >
                 <div
-                    class="flex flex-col gap-1 p-2 max-md:hidden"
+                    class="relative flex h-9 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3.5"
+                    aria-hidden="true"
+                >
+                    <span class="size-3 rounded-full bg-[#ff5f57]" />
+                    <span class="size-3 rounded-full bg-[#febc2e]" />
+                    <span class="size-3 rounded-full bg-[#28c840]" />
+                    <span
+                        class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
+                    >
+                        <AppLogo variant="mark" class="text-sm" />
+                        TryPost
+                    </span>
+                </div>
+
+                <div
+                    class="grid flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]"
+                >
+                <div
+                    class="flex flex-col gap-1 border-border bg-muted/40 p-2 max-md:hidden max-lg:border-b lg:border-e"
                     role="tablist"
                     aria-orientation="vertical"
                     :aria-label="$t('welcome.mcp.title')"
@@ -206,7 +226,7 @@ const goToSchedule = (): void => {
 
                 <div
                     ref="pills"
-                    class="flex gap-2 overflow-x-auto p-3 md:hidden"
+                    class="flex gap-2 overflow-x-auto border-b border-border bg-muted/40 p-3 md:hidden"
                     role="tablist"
                     :aria-label="$t('welcome.mcp.title')"
                 >
@@ -230,43 +250,28 @@ const goToSchedule = (): void => {
                     </button>
                 </div>
 
-                <div
-                    class="flex border-t border-border bg-accent p-3 sm:p-4 lg:border-t-0 lg:border-s"
-                    aria-hidden="true"
-                >
-                    <div
-                        class="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-strong bg-card"
+                <div class="grid p-4 sm:p-5" aria-hidden="true">
+                    <McpChatExample
+                        v-for="benefit in benefits"
+                        :key="benefit.key"
+                        :benefit="benefit.key"
+                        class="invisible [grid-area:1/1]"
+                    />
+                    <Transition
+                        mode="out-in"
+                        enter-active-class="transition-opacity duration-300"
+                        leave-active-class="transition-opacity duration-300"
+                        enter-from-class="opacity-0"
+                        leave-to-class="opacity-0"
                     >
-                        <div
-                            class="flex h-8 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3"
-                        >
-                            <span class="size-2.5 rounded-full bg-[#ff5f57]" />
-                            <span class="size-2.5 rounded-full bg-[#febc2e]" />
-                            <span class="size-2.5 rounded-full bg-[#28c840]" />
-                        </div>
-                        <div class="grid flex-1 p-3 sm:p-4">
-                            <McpChatExample
-                                v-for="benefit in benefits"
-                                :key="benefit.key"
-                                :benefit="benefit.key"
-                                class="invisible [grid-area:1/1]"
-                            />
-                            <Transition
-                                mode="out-in"
-                                enter-active-class="transition-opacity duration-300"
-                                leave-active-class="transition-opacity duration-300"
-                                enter-from-class="opacity-0"
-                                leave-to-class="opacity-0"
-                            >
-                                <McpChatExample
-                                    :key="activeKey"
-                                    :benefit="activeKey"
-                                    class="[grid-area:1/1]"
-                                    :data-testid="`welcome-mcp-chat-${activeKey}`"
-                                />
-                            </Transition>
-                        </div>
-                    </div>
+                        <McpChatExample
+                            :key="activeKey"
+                            :benefit="activeKey"
+                            class="[grid-area:1/1]"
+                            :data-testid="`welcome-mcp-chat-${activeKey}`"
+                        />
+                    </Transition>
+                </div>
                 </div>
             </div>
         </article>
@@ -300,6 +305,7 @@ const goToSchedule = (): void => {
                         type="button"
                         size="lg"
                         variant="secondary"
+                        class="max-sm:w-full"
                         :data-testid="`welcome-mcp-connect-${client.id}`"
                         @click="connectWith(client)"
                     >
