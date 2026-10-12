@@ -61,7 +61,7 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     expect(AccessToken::query()->where('client_id', $clientId)->where('revoked', false)->exists())->toBeFalse();
 });
 
-test('the MCP settings open on the connect tab when nothing is connected and keep an illustrated empty state on the other', function () {
+test('the MCP settings open on the connected tab, whose empty state leads to the connect tab', function () {
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -74,19 +74,17 @@ test('the MCP settings open on the connect tab when nothing is connected and kee
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.mcp.index'));
-    waitForMcpSettingsTestId($page, 'mcp-primary-client-claude');
-
-    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
-        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other'])
-        ->click('@mcp-tab-connected');
     waitForMcpSettingsTestId($page, 'mcp-connected-empty');
 
-    $page->assertVisible('@mcp-connected-empty')
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true')
         ->assertVisible('@mcp-empty-illustration')
         ->assertSeeIn('@mcp-connected-empty', __('mcp.connected_empty_title'))
-        ->assertScript('document.querySelectorAll("[data-testid=mcp-connected-empty] button, [data-testid=mcp-connected-empty] a").length', 0)
-        ->click('@mcp-tab-connect');
+        ->assertSeeIn('@mcp-connected-empty-connect', __('mcp.tabs.connect'))
+        ->click('@mcp-connected-empty-connect');
     waitForMcpSettingsTestId($page, 'mcp-connect-claude');
+
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
+        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other']);
 
     $page->click('@mcp-connect-claude');
     waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
@@ -129,6 +127,9 @@ test('a new connection closes the connect dialog and shows the connected tab', f
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.mcp.index'));
+    waitForMcpSettingsTestId($page, 'mcp-connected-empty-connect');
+
+    $page->click('@mcp-connected-empty-connect');
     waitForMcpSettingsTestId($page, 'mcp-connect-chatgpt');
 
     $page->click('@mcp-connect-chatgpt');

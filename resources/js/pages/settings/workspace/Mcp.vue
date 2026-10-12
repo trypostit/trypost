@@ -4,6 +4,7 @@ import {
     IconDotsVertical,
     IconExternalLink,
     IconPlugConnected,
+    IconPlus,
     IconTrash,
 } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
@@ -65,9 +66,11 @@ const connectWith = (client: McpClient): void => {
 
 type McpTab = 'connected' | 'connect';
 
-const tab = ref<McpTab>(
-    props.connectedClients.length > 0 ? 'connected' : 'connect',
-);
+const tab = ref<McpTab>('connected');
+
+const showConnectTab = (): void => {
+    tab.value = 'connect';
+};
 
 const connectedCount = computed((): number => props.connectedClients.length);
 
@@ -175,6 +178,16 @@ watch(connectedCount, showNewConnection);
                 >
                     <template #illustration>
                         <McpEmptyIllustration />
+                    </template>
+                    <template #action>
+                        <Button
+                            type="button"
+                            data-testid="mcp-connected-empty-connect"
+                            @click="showConnectTab"
+                        >
+                            <IconPlus class="size-4" />
+                            {{ $t('mcp.tabs.connect') }}
+                        </Button>
                     </template>
                 </EmptyState>
             </TabsContent>
