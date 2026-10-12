@@ -42,7 +42,7 @@ return [
     'billing.plans.features.analytics' => 25,
     'billing.plans.features.calendar' => 24,
     'billing.plans.features.mcp' => 46,
-    'billing.plans.features.networks_all' => 36,
+    'billing.plans.features.networks_all' => 39,
     'billing.plans.features.repurpose' => 40,
     'billing.plans.features.team' => 32,
     'billing.plans.start_first_month' => 18,

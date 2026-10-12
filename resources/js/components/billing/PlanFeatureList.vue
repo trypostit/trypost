@@ -111,19 +111,25 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                         :label="$t('billing.plans.features.networks_all_tooltip')"
                         :testid="`plan-networks-info-${scope}`"
                         :spacious="spacious"
-                        content-class="max-w-none space-y-2"
+                        content-class="w-80 max-w-none space-y-3 p-4"
                     >
-                        <p class="font-medium">
+                        <p class="font-medium text-foreground">
                             {{ $t('billing.plans.features.networks_all_tooltip') }}
                         </p>
-                        <div
-                            class="grid grid-cols-4 gap-1"
+                        <ul
+                            class="grid grid-cols-2 gap-x-4 gap-y-2.5"
                             :data-testid="`plan-networks-${scope}`"
                         >
-                            <span
-                                v-for="network in PLAN_NETWORKS"
+                            <li
+                                v-for="(network, index) in PLAN_NETWORKS"
                                 :key="network"
-                                class="flex w-16 flex-col items-center gap-1.5 rounded-md bg-muted px-1.5 py-2"
+                                :class="[
+                                    'flex min-w-0 items-center gap-2 text-sm text-foreground',
+                                    index === PLAN_NETWORKS.length - 1 &&
+                                    PLAN_NETWORKS.length % 2 === 1
+                                        ? 'col-span-2'
+                                        : '',
+                                ]"
                             >
                                 <PlatformLogo
                                     :platform="network"
@@ -131,13 +137,11 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                                     plain
                                     :title="null"
                                 />
-                                <span
-                                    class="max-w-full truncate text-[10px] leading-none font-medium text-muted-foreground"
-                                >
+                                <span class="truncate">
                                     {{ getPlatformLabel(network) }}
                                 </span>
-                            </span>
-                        </div>
+                            </li>
+                        </ul>
                     </PlanFeatureInfo>
                 </span>
             </li>
