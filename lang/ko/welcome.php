@@ -51,15 +51,11 @@ return [
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
     'mcp' => [
         'title' => 'Claude와 ChatGPT에서 바로 게시하고 분석하세요',
-        'description' => '프롬프트를 복사해 AI에 붙여넣고 로그인하세요. 1분이면 됩니다.',
+        'description' => 'Claude나 ChatGPT를 열고 준비된 메시지를 보낸 뒤 로그인하세요. 1분이면 됩니다.',
         'copy_prompt' => '프롬프트 복사',
         'open' => ':client 열기',
         'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',
-        'step_copy' => '프롬프트 복사',
-        'step_paste' => 'AI에 붙여넣기',
-        'step_login' => '요청하면 TryPost에 로그인',
-        'view_prompt' => '프롬프트 보기',
         'benefits' => [
             'schedule' => [
                 'title' => '채팅으로 만들고 예약',

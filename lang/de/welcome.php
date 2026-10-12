@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'mcp' => [
         'title' => 'Poste und analysiere direkt aus Claude und ChatGPT',
-        'description' => 'Kopiere den Prompt, füge ihn in deine KI ein und melde dich an. Dauert eine Minute.',
+        'description' => 'Öffne Claude oder ChatGPT, sende die fertige Nachricht und melde dich an. Dauert eine Minute.',
         'copy_prompt' => 'Prompt kopieren',
         'open' => ':client öffnen',
         'waiting' => 'Warte auf die Verbindung deiner KI…',
         'connected' => ':client ist verbunden',
-        'step_copy' => 'Kopiere den Prompt',
-        'step_paste' => 'Füge ihn in deine KI ein',
-        'step_login' => 'Melde dich bei TryPost an, wenn sie fragt',
-        'view_prompt' => 'Prompt ansehen',
         'benefits' => [
             'schedule' => [
                 'title' => 'Erstellen und planen im Chat',

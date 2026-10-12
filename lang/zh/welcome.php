@@ -51,15 +51,11 @@ return [
     'plan_terms' => '之后 :price/月，随时取消。',
     'mcp' => [
         'title' => '直接在 Claude 和 ChatGPT 中发帖和分析',
-        'description' => '复制提示词，粘贴到你的 AI 并登录，一分钟搞定。',
+        'description' => '打开 Claude 或 ChatGPT，发送准备好的消息并登录，一分钟搞定。',
         'copy_prompt' => '复制提示词',
         'open' => '打开 :client',
         'waiting' => '正在等待你的 AI 连接…',
         'connected' => ':client 已连接',
-        'step_copy' => '复制提示词',
-        'step_paste' => '粘贴到你的 AI',
-        'step_login' => '按提示登录 TryPost',
-        'view_prompt' => '查看提示词',
         'benefits' => [
             'schedule' => [
                 'title' => '在聊天中创建并排期',

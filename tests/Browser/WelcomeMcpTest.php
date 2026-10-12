@@ -52,14 +52,13 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-steps');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-open-claude');
 
     expect($page->script('document.documentElement.scrollHeight > window.innerHeight'))->toBeFalse();
 
     $page->assertSee('Post and analyze right from Claude and ChatGPT')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')
-        ->assertVisible('@welcome-mcp-steps')
         ->click('@welcome-mcp-benefit-schedule');
     waitForWelcomeMcpChat($page, 'schedule');
 
@@ -79,17 +78,17 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
         ->click('@welcome-mcp-benefit-ideas');
     waitForWelcomeMcpChat($page, 'ideas');
 
-    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2)
-        ->click('@welcome-mcp-view-prompt');
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-prompt');
+    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2);
 
-    $page->assertSeeIn('@welcome-mcp-prompt', route('mcp.trypost'))
-        ->assertVisible('@welcome-mcp-copy')
-        ->assertVisible('@welcome-mcp-open-claude')
-        ->assertVisible('@welcome-mcp-open-chatgpt')
-        ->assertAttribute('@welcome-mcp-open-claude', 'href', 'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours')
-        ->assertAttribute('@welcome-mcp-open-chatgpt', 'href', 'https://chatgpt.com/plugins')
-        ->assertSeeIn('@welcome-mcp-status', 'Waiting for your AI to connect')
+    $claudeHref = $page->script('document.querySelector("[data-testid=welcome-mcp-open-claude]").getAttribute("href")');
+    $chatgptHref = $page->script('document.querySelector("[data-testid=welcome-mcp-open-chatgpt]").getAttribute("href")');
+
+    expect($claudeHref)->toStartWith('https://claude.ai/new?q=')
+        ->and(urldecode(parse_url($claudeHref, PHP_URL_QUERY)))->toContain(route('mcp.trypost'))
+        ->and($chatgptHref)->toStartWith('https://chatgpt.com/?q=')
+        ->and(urldecode(parse_url($chatgptHref, PHP_URL_QUERY)))->toContain(route('mcp.trypost'));
+
+    $page->assertMissing('@welcome-mcp-status')
         ->assertMissing('@welcome-mcp-continue');
 
     $page->script('window.__copied = []; navigator.clipboard.writeText = async (text) => { window.__copied.push(text); }; true;');
@@ -107,6 +106,8 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
 
     expect($copy)->toBe(['label' => 'Copied', 'toasts' => 0])
         ->and($page->script('window.__copied[0].includes('.json_encode(route('mcp.trypost')).')'))->toBeTrue();
+
+    $page->assertSeeIn('@welcome-mcp-status', 'Waiting for your AI to connect');
 
     $page->click('@welcome-mcp-skip');
 
@@ -130,7 +131,7 @@ test('the MCP step fits a phone without scrolling and hides the chat example the
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'))->resize(390, 844);
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-steps');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-open-claude');
 
     $layout = $page->script(<<<'JS'
         ({

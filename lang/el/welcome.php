@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'Μετά :price/μήνα. Ακύρωση οποτεδήποτε.',
     'mcp' => [
         'title' => 'Δημοσιεύστε και αναλύστε απευθείας από Claude και ChatGPT',
-        'description' => 'Αντιγράψτε το prompt, επικολλήστε το στο AI σας και συνδεθείτε. Χρειάζεται ένα λεπτό.',
+        'description' => 'Ανοίξτε το Claude ή το ChatGPT, στείλτε το έτοιμο μήνυμα και συνδεθείτε. Χρειάζεται ένα λεπτό.',
         'copy_prompt' => 'Αντιγραφή prompt',
         'open' => 'Άνοιγμα :client',
         'waiting' => 'Αναμονή για σύνδεση του AI σας…',
         'connected' => 'Το :client συνδέθηκε',
-        'step_copy' => 'Αντιγράψτε το prompt',
-        'step_paste' => 'Επικολλήστε το στο AI σας',
-        'step_login' => 'Συνδεθείτε στο TryPost όταν σας ζητηθεί',
-        'view_prompt' => 'Προβολή prompt',
         'benefits' => [
             'schedule' => [
                 'title' => 'Δημιουργία και προγραμματισμός από το chat',

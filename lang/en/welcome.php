@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'Then :price/month. Cancel anytime.',
     'mcp' => [
         'title' => 'Post and analyze right from Claude and ChatGPT',
-        'description' => 'Copy the prompt, paste it into your AI and log in. It takes a minute.',
+        'description' => 'Open it in Claude or ChatGPT, send the ready-made message and log in. It takes a minute.',
         'copy_prompt' => 'Copy prompt',
         'open' => 'Open :client',
         'waiting' => 'Waiting for your AI to connect…',
         'connected' => ':client is connected',
-        'step_copy' => 'Copy the prompt',
-        'step_paste' => 'Paste it into your AI',
-        'step_login' => 'Log in to TryPost when it asks',
-        'view_prompt' => 'View prompt',
         'benefits' => [
             'schedule' => [
                 'title' => 'Create and schedule from chat',

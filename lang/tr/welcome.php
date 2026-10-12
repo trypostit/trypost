@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
     'mcp' => [
         'title' => 'Claude ve ChatGPT’den doğrudan paylaş ve analiz et',
-        'description' => 'İstemi kopyala, yapay zekâna yapıştır ve giriş yap. Bir dakika sürer.',
+        'description' => 'Claude veya ChatGPT’yi aç, hazır mesajı gönder ve giriş yap. Bir dakika sürer.',
         'copy_prompt' => 'İstemi kopyala',
         'open' => ':client uygulamasını aç',
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',
-        'step_copy' => 'İstemi kopyala',
-        'step_paste' => 'Yapay zekâna yapıştır',
-        'step_login' => 'İstediğinde TryPost\'a giriş yap',
-        'view_prompt' => 'İstemi gör',
         'benefits' => [
             'schedule' => [
                 'title' => 'Sohbetten oluştur ve planla',

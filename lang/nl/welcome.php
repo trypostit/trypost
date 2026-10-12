@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'mcp' => [
         'title' => 'Post en analyseer direct vanuit Claude en ChatGPT',
-        'description' => 'Kopieer de prompt, plak hem in je AI en log in. Het duurt een minuut.',
+        'description' => 'Open Claude of ChatGPT, verstuur het kant-en-klare bericht en log in. Het duurt een minuut.',
         'copy_prompt' => 'Prompt kopiëren',
         'open' => ':client openen',
         'waiting' => 'Wachten tot je AI verbindt…',
         'connected' => ':client is gekoppeld',
-        'step_copy' => 'Kopieer de prompt',
-        'step_paste' => 'Plak hem in je AI',
-        'step_login' => 'Log in bij TryPost als daarom wordt gevraagd',
-        'view_prompt' => 'Prompt bekijken',
         'benefits' => [
             'schedule' => [
                 'title' => 'Maak en plan vanuit de chat',

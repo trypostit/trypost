@@ -51,15 +51,11 @@ return [
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
     'mcp' => [
         'title' => 'ClaudeとChatGPTから直接投稿・分析',
-        'description' => 'プロンプトをコピーしてAIに貼り付け、ログインするだけ。1分で完了します。',
+        'description' => 'ClaudeかChatGPTを開いて、用意されたメッセージを送信し、ログインするだけ。1分で完了します。',
         'copy_prompt' => 'プロンプトをコピー',
         'open' => ':clientを開く',
         'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',
-        'step_copy' => 'プロンプトをコピー',
-        'step_paste' => 'AIに貼り付け',
-        'step_login' => '求められたらTryPostにログイン',
-        'view_prompt' => 'プロンプトを見る',
         'benefits' => [
             'schedule' => [
                 'title' => 'チャットで作成・予約',
