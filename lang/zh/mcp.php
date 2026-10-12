@@ -17,8 +17,6 @@ return [
     'connect_hint' => '大约一分钟即可连接。',
     'connect_other' => '连接',
     'other_dialog_title' => '将 TryPost 连接到其他应用',
-    'help' => '连接遇到问题？',
-    'help_link' => '查看分步指南',
     'other_hint' => '任何支持 MCP 的应用。',
     'connected_description' => '你已登录的助手。可以断开不再使用的连接。',
     'connected_empty_title' => '暂无已连接的应用',

@@ -17,8 +17,6 @@ return [
     'connect_hint' => 'Connects in about a minute.',
     'connect_other' => 'Connect',
     'other_dialog_title' => 'Connect TryPost to another app',
-    'help' => 'Trouble connecting?',
-    'help_link' => 'See the step-by-step guide',
     'other_hint' => 'Any app that supports MCP.',
     'connected_description' => 'Assistants you\'ve signed in with. You can disconnect any you no longer use.',
     'connected_empty_title' => 'No connected apps',

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { IconExternalLink } from '@tabler/icons-vue';
+
 import SettingsSidebar from '@/components/settings/SettingsSidebar.vue';
 import AppSidebarLayout from '@/layouts/app/AppSidebarLayout.vue';
 
@@ -7,6 +9,8 @@ type Props = {
     centered?: boolean;
     title?: string;
     description?: string;
+    /** Docs page linked as "Learn more" at the end of the description. */
+    learnMoreUrl?: string;
 };
 
 withDefaults(defineProps<Props>(), {
@@ -14,6 +18,7 @@ withDefaults(defineProps<Props>(), {
     centered: false,
     title: undefined,
     description: undefined,
+    learnMoreUrl: undefined,
 });
 </script>
 
@@ -58,6 +63,17 @@ withDefaults(defineProps<Props>(), {
                         data-testid="settings-page-description"
                     >
                         {{ description }}
+                        <a
+                            v-if="learnMoreUrl"
+                            :href="learnMoreUrl"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            class="inline-flex items-center gap-1 text-primary-text underline underline-offset-2 hover:text-primary-text-hover"
+                            data-testid="settings-page-learn-more"
+                        >
+                            {{ $t('common.learn_more') }}
+                            <IconExternalLink class="size-3.5" />
+                        </a>
                     </p>
                 </div>
                 <div

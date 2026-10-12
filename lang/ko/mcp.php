@@ -17,8 +17,6 @@ return [
     'connect_hint' => '1분 정도면 연결돼요.',
     'connect_other' => '연결',
     'other_dialog_title' => 'TryPost를 다른 앱에 연결',
-    'help' => '연결이 어려우신가요?',
-    'help_link' => '단계별 가이드 보기',
     'other_hint' => 'MCP를 지원하는 모든 앱.',
     'connected_description' => '로그인한 어시스턴트입니다. 더 이상 쓰지 않는 연결은 해제할 수 있습니다.',
     'connected_empty_title' => '연결된 앱이 없습니다',

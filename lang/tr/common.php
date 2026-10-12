@@ -59,6 +59,7 @@ return [
     'clear' => 'Temizle',
     'close' => 'Kapat',
     'more' => 'Daha fazla',
+    'learn_more' => 'Daha fazla bilgi',
     'play' => 'Oynat',
     'loading' => 'Yükleniyor...',
     'loading_more' => 'Daha fazla yükleniyor...',

@@ -86,8 +86,8 @@ test('the MCP settings open on the connected tab, whose empty state leads to the
 
     $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
         ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other'])
-        ->assertSeeIn('@mcp-help', __('mcp.help'))
-        ->assertScript('document.querySelector("[data-testid=mcp-help-link]").getAttribute("href")', 'https://docs.trypost.it/ai/introduction');
+        ->assertSeeIn('@settings-page-learn-more', __('common.learn_more'))
+        ->assertScript('document.querySelector("[data-testid=settings-page-learn-more]").getAttribute("href")', 'https://docs.trypost.it/ai/introduction');
 
     $page->click('@mcp-connect-claude');
     waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');

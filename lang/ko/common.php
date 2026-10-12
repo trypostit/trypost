@@ -59,6 +59,7 @@ return [
     'clear' => '지우기',
     'close' => '닫기',
     'more' => '더보기',
+    'learn_more' => '자세히 알아보기',
     'play' => '재생',
     'loading' => '불러오는 중...',
     'loading_more' => '더 불러오는 중...',

@@ -59,6 +59,7 @@ return [
     'clear' => 'Clear',
     'close' => 'Close',
     'more' => 'More',
+    'learn_more' => 'Learn more',
     'play' => 'Play',
     'loading' => 'Loading...',
     'loading_more' => 'Loading more...',

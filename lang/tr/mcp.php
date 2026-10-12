@@ -17,8 +17,6 @@ return [
     'connect_hint' => 'Yaklaşık bir dakikada bağlanır.',
     'connect_other' => 'Bağla',
     'other_dialog_title' => 'TryPost\'u başka bir uygulamaya bağla',
-    'help' => 'Bağlanırken sorun mu var?',
-    'help_link' => 'Adım adım rehbere bak',
     'other_hint' => 'MCP destekleyen her uygulama.',
     'connected_description' => 'Giriş yaptığınız asistanlar. Artık kullanmadıklarınızın bağlantısını kesebilirsiniz.',
     'connected_empty_title' => 'Bağlı uygulama yok',

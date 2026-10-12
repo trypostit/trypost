@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
 import {
-    IconArrowUpRight,
     IconDotsVertical,
     IconPlugConnected,
     IconPlus,
@@ -106,6 +105,7 @@ watch(connectedCount, showNewConnection);
     <SettingsLayout
         :title="$t('mcp.title')"
         :description="$t('mcp.subtitle')"
+        :learn-more-url="docsUrl"
     >
         <Tabs v-model="tab" class="flex flex-col gap-6">
             <TabsList variant="line">
@@ -264,22 +264,6 @@ watch(connectedCount, showNewConnection);
 
                 </ul>
 
-                <p
-                    class="text-sm text-muted-foreground"
-                    data-testid="mcp-help"
-                >
-                    {{ $t('mcp.help') }}
-                    <a
-                        :href="docsUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        class="inline-flex items-center gap-0.5 text-primary-text underline underline-offset-2 hover:text-primary-text-hover"
-                        data-testid="mcp-help-link"
-                    >
-                        {{ $t('mcp.help_link') }}
-                        <IconArrowUpRight class="size-3.5 rtl:-scale-x-100" />
-                    </a>
-                </p>
             </TabsContent>
         </Tabs>
 

@@ -59,6 +59,7 @@ return [
     'clear' => '清除',
     'close' => '关闭',
     'more' => '更多',
+    'learn_more' => '了解更多',
     'play' => '播放',
     'loading' => '加载中…',
     'loading_more' => '加载更多…',

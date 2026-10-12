@@ -17,8 +17,6 @@ return [
     'connect_hint' => 'Conecta em cerca de um minuto.',
     'connect_other' => 'Conectar',
     'other_dialog_title' => 'Conecte o TryPost a outro app',
-    'help' => 'Dúvidas para conectar?',
-    'help_link' => 'Veja o passo a passo',
     'other_hint' => 'Qualquer app compatível com MCP.',
     'connected_description' => 'Assistentes que você conectou. Desconecte os que não quiser mais usar.',
     'connected_empty_title' => 'Nenhum app conectado',

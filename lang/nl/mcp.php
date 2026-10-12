@@ -17,8 +17,6 @@ return [
     'connect_hint' => 'Gekoppeld in ongeveer een minuut.',
     'connect_other' => 'Koppelen',
     'other_dialog_title' => 'Koppel TryPost aan een andere app',
-    'help' => 'Lukt het koppelen niet?',
-    'help_link' => 'Bekijk de stapsgewijze handleiding',
     'other_hint' => 'Elke app die MCP ondersteunt.',
     'connected_description' => 'Assistenten waarmee je bent ingelogd. Koppel apps los die je niet meer gebruikt.',
     'connected_empty_title' => 'Geen gekoppelde apps',

@@ -17,8 +17,6 @@ return [
     'connect_hint' => 'Połączenie zajmuje około minuty.',
     'connect_other' => 'Połącz',
     'other_dialog_title' => 'Połącz TryPost z inną aplikacją',
-    'help' => 'Problem z połączeniem?',
-    'help_link' => 'Zobacz instrukcję krok po kroku',
     'other_hint' => 'Każda aplikacja obsługująca MCP.',
     'connected_description' => 'Asystenci, z którymi się zalogowałeś. Możesz rozłączyć te, których już nie używasz.',
     'connected_empty_title' => 'Brak połączonych aplikacji',

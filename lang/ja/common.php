@@ -59,6 +59,7 @@ return [
     'clear' => 'クリア',
     'close' => '閉じる',
     'more' => 'その他',
+    'learn_more' => '詳細を見る',
     'play' => '再生',
     'loading' => '読み込み中...',
     'loading_more' => 'さらに読み込み中...',

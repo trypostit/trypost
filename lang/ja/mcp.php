@@ -17,8 +17,6 @@ return [
     'connect_hint' => '1分ほどで接続できます。',
     'connect_other' => '接続',
     'other_dialog_title' => 'TryPostを他のアプリに接続',
-    'help' => '接続でお困りですか？',
-    'help_link' => '手順ガイドを見る',
     'other_hint' => 'MCP対応のあらゆるアプリ。',
     'connected_description' => 'サインインしたアシスタントです。不要な接続は切断できます。',
     'connected_empty_title' => '接続済みのアプリはありません',

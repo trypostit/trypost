@@ -59,6 +59,7 @@ return [
     'clear' => 'Wyczyść',
     'close' => 'Zamknij',
     'more' => 'Więcej',
+    'learn_more' => 'Dowiedz się więcej',
     'play' => 'Odtwórz',
     'loading' => 'Wczytywanie...',
     'loading_more' => 'Wczytywanie kolejnych...',
