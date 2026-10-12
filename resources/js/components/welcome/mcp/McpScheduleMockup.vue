@@ -37,11 +37,11 @@ const ownerPhoto = owner.has_photo ? owner.photo_url : null;
                     :size="32"
                     ring="card"
                 />
-                <div class="flex min-w-0 flex-1 flex-col items-start gap-1.5">
-                    <span class="max-w-full truncate text-sm font-emphasis">{{
+                <div class="flex min-w-0 flex-1 items-center gap-2">
+                    <span class="truncate text-sm font-emphasis">{{
                         owner.name
                     }}</span>
-                    <Badge class="h-6 gap-1 px-2 [&>svg]:size-4">
+                    <Badge class="h-6 shrink-0 gap-1 px-2 [&>svg]:size-4">
                         <IconClock />
                         {{ $t('posts.status.scheduled') }}
                     </Badge>
