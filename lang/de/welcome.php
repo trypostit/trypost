@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'im ersten Monat',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'mcp' => [
-        'title' => 'Poste und analysiere direkt aus Claude und ChatGPT',
-        'description' => 'Öffne Claude oder ChatGPT, sende die fertige Nachricht und melde dich an. Dauert eine Minute.',
+        'title' => 'Poste und analysiere direkt aus deiner KI',
+        'description' => 'Öffne deine KI, sende die fertige Nachricht und melde dich an. Dauert eine Minute.',
         'copy_prompt' => 'Prompt kopieren',
         'open' => 'In :client öffnen',
         'waiting' => 'Warte auf die Verbindung deiner KI…',

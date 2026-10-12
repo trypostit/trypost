@@ -50,8 +50,8 @@ return [
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
     'mcp' => [
-        'title' => 'ClaudeとChatGPTから直接投稿・分析',
-        'description' => 'ClaudeかChatGPTを開いて、用意されたメッセージを送信し、ログインするだけ。1分で完了します。',
+        'title' => 'AIから直接投稿・分析',
+        'description' => 'AIを開いて、用意されたメッセージを送信し、ログインするだけ。1分で完了します。',
         'copy_prompt' => 'プロンプトをコピー',
         'open' => ':clientで開く',
         'waiting' => 'AIの接続を待っています…',

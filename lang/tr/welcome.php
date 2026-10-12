@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
     'mcp' => [
-        'title' => 'Claude ve ChatGPT’den doğrudan paylaş ve analiz et',
-        'description' => 'Claude veya ChatGPT’yi aç, hazır mesajı gönder ve giriş yap. Bir dakika sürer.',
+        'title' => 'Yapay zekândan doğrudan paylaş ve analiz et',
+        'description' => 'Yapay zekânı aç, hazır mesajı gönder ve giriş yap. Bir dakika sürer.',
         'copy_prompt' => 'İstemi kopyala',
         'open' => ':client ile aç',
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',

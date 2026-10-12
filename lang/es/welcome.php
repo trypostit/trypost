@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'el primer mes',
     'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
     'mcp' => [
-        'title' => 'Publica y analiza directo desde Claude y ChatGPT',
-        'description' => 'Ábrelo en Claude o ChatGPT, envía el mensaje listo e inicia sesión. Lleva un minuto.',
+        'title' => 'Publica y analiza directo desde tu IA',
+        'description' => 'Ábrelo en tu IA, envía el mensaje listo e inicia sesión. Lleva un minuto.',
         'copy_prompt' => 'Copiar prompt',
         'open' => 'Abrir en :client',
         'waiting' => 'Esperando a que tu IA se conecte…',

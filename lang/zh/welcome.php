@@ -50,8 +50,8 @@ return [
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
     'mcp' => [
-        'title' => '直接在 Claude 和 ChatGPT 中发帖和分析',
-        'description' => '打开 Claude 或 ChatGPT，发送准备好的消息并登录，一分钟搞定。',
+        'title' => '直接在你的 AI 中发帖和分析',
+        'description' => '打开你的 AI，发送准备好的消息并登录，一分钟搞定。',
         'copy_prompt' => '复制提示词',
         'open' => '在 :client 中打开',
         'waiting' => '正在等待你的 AI 连接…',

@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'mcp' => [
-        'title' => 'Post en analyseer direct vanuit Claude en ChatGPT',
-        'description' => 'Open Claude of ChatGPT, verstuur het kant-en-klare bericht en log in. Het duurt een minuut.',
+        'title' => 'Post en analyseer direct vanuit je AI',
+        'description' => 'Open je AI, verstuur het kant-en-klare bericht en log in. Het duurt een minuut.',
         'copy_prompt' => 'Prompt kopiëren',
         'open' => 'Openen in :client',
         'waiting' => 'Wachten tot je AI verbindt…',

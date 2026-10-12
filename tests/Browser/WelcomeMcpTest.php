@@ -59,7 +59,7 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
 
     expect($page->script('document.documentElement.scrollHeight > window.innerHeight'))->toBeFalse();
 
-    $page->assertSee('Post and analyze right from Claude and ChatGPT')
+    $page->assertSee('Post and analyze right from your AI')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')
         ->click('@welcome-mcp-benefit-schedule');
