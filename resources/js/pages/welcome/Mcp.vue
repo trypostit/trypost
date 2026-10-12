@@ -10,6 +10,7 @@ import {
 import {
     computed,
     nextTick,
+    onBeforeUnmount,
     ref,
     useTemplateRef,
     watch,
@@ -24,6 +25,7 @@ import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { mcpClients, type McpClient } from '@/lib/mcpClients';
 import { index as postsIndex } from '@/routes/app/posts';
+import { fireConfetti } from '@/utils/confetti';
 
 interface ConnectedClient {
     client_id: string;
@@ -80,6 +82,63 @@ const connectWith = (client: McpClient): void => {
     activeClient.value = client;
     sheetOpen.value = true;
 };
+
+const connectedStatus = useTemplateRef<HTMLElement>('connectedStatus');
+let stopConfetti = (): void => {};
+
+/**
+ * The poll notices the connection while the user is still in the other tab:
+ * close the steps and celebrate on the page's own connected state.
+ */
+const celebrateConnection = async (
+    client: ConnectedClient | null,
+    previous: ConnectedClient | null,
+): Promise<void> => {
+    if (!client || previous) {
+        return;
+    }
+
+    sheetOpen.value = false;
+    await nextTick();
+
+    const cannon = (x: number, angle: number): (() => void) =>
+        fireConfetti({
+            origin: { x, y: 1 },
+            angle,
+            spread: 55,
+            particleCount: 160,
+            startVelocity: 48,
+            duration: 4200,
+        });
+
+    const stops = [
+        fireConfetti({
+            origin: connectedStatus.value ?? { x: 0.5, y: 0.8 },
+            particleCount: 200,
+            spread: 120,
+            startVelocity: 26,
+            duration: 3600,
+        }),
+        cannon(0, 60),
+        cannon(1, 120),
+    ];
+    const timeouts = [250, 500].map((delay) =>
+        setTimeout(() => {
+            stops.push(cannon(0, 65), cannon(1, 115));
+        }, delay),
+    );
+
+    stopConfetti = () => {
+        timeouts.forEach(clearTimeout);
+        stops.forEach((stop) => stop());
+    };
+};
+
+watch(connectedClient, celebrateConnection);
+
+onBeforeUnmount(() => {
+    stopConfetti();
+});
 
 const goToSchedule = (): void => {
     router.visit(postsIndex.url());
@@ -214,23 +273,24 @@ const goToSchedule = (): void => {
 
         <template #actions>
             <template v-if="connectedClient">
-                <p
-                    class="flex items-center gap-1.5 text-sm"
-                    data-testid="welcome-mcp-status"
-                    aria-live="polite"
-                >
-                    <IconCircleCheckFilled class="size-4 shrink-0 text-green-500" />
-                    <span class="font-medium text-foreground">{{
-                        $t('welcome.mcp.connected', {
-                            client: connectedClient.name,
-                        })
-                    }}</span>
-                </p>
                 <WelcomeContinueButton
                     :disabled="false"
                     testid="welcome-mcp-continue"
                     @continue="goToSchedule"
                 />
+                <p
+                    ref="connectedStatus"
+                    class="flex items-center gap-1.5 text-sm font-medium text-foreground"
+                    data-testid="welcome-mcp-status"
+                    aria-live="polite"
+                >
+                    <IconCircleCheckFilled class="size-4 shrink-0 text-green-500" />
+                    {{
+                        $t('welcome.mcp.connected', {
+                            client: connectedClient.name,
+                        })
+                    }}
+                </p>
             </template>
             <template v-else>
                 <div class="flex flex-wrap justify-center gap-2">
@@ -269,8 +329,6 @@ const goToSchedule = (): void => {
             v-model:open="sheetOpen"
             :client="activeClient"
             :mcp-url="mcpUrl"
-            :connected-name="connectedClient?.name ?? null"
-            @continue="goToSchedule"
         />
     </WelcomeLayout>
 </template>

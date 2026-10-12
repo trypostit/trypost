@@ -9,8 +9,10 @@ export interface ConfettiOptions {
     /** Where the burst starts: a viewport point, or the center of an element. */
     origin?: ConfettiPoint | HTMLElement;
     particleCount?: number;
-    /** Angle of the burst in degrees, centered on straight up. 360 is a full ring. */
+    /** Angle of the burst in degrees, centered on `angle`. 360 is a full ring. */
     spread?: number;
+    /** Direction of the burst in degrees: 90 is straight up, 45 up and right, 135 up and left. */
+    angle?: number;
     /** Initial speed in CSS pixels per frame. */
     startVelocity?: number;
     /** CSS colors. Defaults to the brand tokens of the current theme. */
@@ -229,12 +231,13 @@ const createParticles = (
     origin: { x: number; y: number },
     count: number,
     spread: number,
+    direction: number,
     velocity: number,
     colors: string[],
 ): Particle[] =>
     Array.from({ length: count }, () => {
         const angle =
-            ((-90 + random(-spread / 2, spread / 2)) * Math.PI) / 180;
+            ((-direction + random(-spread / 2, spread / 2)) * Math.PI) / 180;
         const speed = velocity * random(0.45, 1);
 
         return {
@@ -268,6 +271,7 @@ export const fireConfetti = (options: ConfettiOptions = {}): (() => void) => {
             resolveOrigin(options.origin),
             options.particleCount ?? 40,
             options.spread ?? 360,
+            options.angle ?? 90,
             options.startVelocity ?? 9,
             options.colors?.length ? options.colors : themeColors(),
         ),

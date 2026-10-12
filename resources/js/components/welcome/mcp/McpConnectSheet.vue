@@ -2,7 +2,6 @@
 import {
     IconArrowUpRight,
     IconCheck,
-    IconCircleCheckFilled,
     IconCopy,
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref } from 'vue';
@@ -23,11 +22,6 @@ import { copyToClipboard } from '@/lib/utils';
 const props = defineProps<{
     client: McpClient;
     mcpUrl: string;
-    connectedName: string | null;
-}>();
-
-const emit = defineEmits<{
-    (event: 'continue'): void;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
@@ -72,10 +66,6 @@ const copyUrl = async (): Promise<void> => {
     copiedTimeout = setTimeout(() => {
         copied.value = false;
     }, 2000);
-};
-
-const continueToSchedule = (): void => {
-    emit('continue');
 };
 
 onBeforeUnmount(() => {
@@ -226,43 +216,24 @@ onBeforeUnmount(() => {
                 class="flex flex-col-reverse gap-3 border-t border-border bg-card px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
                 aria-live="polite"
             >
-                <template v-if="connectedName">
-                    <p
-                        class="flex items-center gap-1.5 text-sm font-medium text-foreground"
-                        data-testid="welcome-mcp-sheet-connected"
-                    >
-                        <IconCircleCheckFilled class="size-4 shrink-0 text-green-500" />
-                        {{ $t('welcome.mcp.connected', { client: connectedName }) }}
-                    </p>
-                    <Button
-                        type="button"
-                        size="lg"
-                        data-testid="welcome-mcp-sheet-continue"
-                        @click="continueToSchedule"
-                    >
-                        {{ $t('welcome.continue') }}
-                    </Button>
-                </template>
-                <template v-else>
-                    <p
-                        class="flex items-center justify-center gap-1.5 text-sm text-muted-foreground"
-                        data-testid="welcome-mcp-sheet-waiting"
-                    >
-                        <Spinner class="size-3.5 shrink-0 text-primary-text" />
-                        {{ $t('welcome.mcp.waiting') }}
-                    </p>
-                    <Button
-                        as="a"
-                        :href="client.settingsUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        size="lg"
-                        data-testid="welcome-mcp-open"
-                    >
-                        {{ $t('welcome.mcp.open', { client: client.label }) }}
-                        <IconArrowUpRight class="size-4 rtl:-scale-x-100" />
-                    </Button>
-                </template>
+                <p
+                    class="flex items-center justify-center gap-1.5 text-sm text-muted-foreground"
+                    data-testid="welcome-mcp-sheet-waiting"
+                >
+                    <Spinner class="size-3.5 shrink-0 text-primary-text" />
+                    {{ $t('welcome.mcp.waiting') }}
+                </p>
+                <Button
+                    as="a"
+                    :href="client.settingsUrl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="lg"
+                    data-testid="welcome-mcp-open"
+                >
+                    {{ $t('welcome.mcp.open', { client: client.label }) }}
+                    <IconArrowUpRight class="size-4 rtl:-scale-x-100" />
+                </Button>
             </div>
         </SheetContent>
     </Sheet>

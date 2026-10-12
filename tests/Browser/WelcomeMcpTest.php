@@ -286,3 +286,41 @@ test('hovering a month of the follower example shows each network that month', f
         ->assertSeeIn('@welcome-mcp-followers-tooltip', '1,340')
         ->assertNoJavaScriptErrors();
 });
+
+test('once the AI connects the sheet closes, confetti flies and the page offers to continue', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $owner = welcomeMcpSubscriber();
+    $this->actingAs($owner);
+
+    $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-connect-claude');
+
+    $page->click('@welcome-mcp-connect-claude');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-sheet-waiting');
+
+    mcpAccessToken($owner, mcpOauthClient('Claude'), $owner->currentWorkspace);
+
+    $celebration = $page->script(<<<'JS'
+        (async () => {
+            let confetti = false;
+            for (let i = 0; i < 120; i++) {
+                confetti ||= document.querySelector('[data-testid="confetti-canvas"]') !== null;
+                if (confetti && document.querySelector('[data-testid="welcome-mcp-status"]') && !document.querySelector('[data-testid="welcome-mcp-sheet"]')) {
+                    return 'celebrated';
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return { confetti };
+        })()
+    JS);
+
+    expect($celebration)->toBe('celebrated');
+
+    $page->assertSeeIn('@welcome-mcp-status', 'Claude is connected')
+        ->assertVisible('@welcome-mcp-continue')
+        ->assertMissing('@welcome-mcp-connect-claude')
+        ->assertMissing('@welcome-mcp-skip')
+        ->assertScript('document.querySelector("[data-testid=welcome-mcp-continue]").getBoundingClientRect().top < document.querySelector("[data-testid=welcome-mcp-status]").getBoundingClientRect().top', true)
+        ->assertNoJavaScriptErrors();
+});
