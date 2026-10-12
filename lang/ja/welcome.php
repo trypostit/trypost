@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
     'mcp' => [
         'title' => 'AIとの会話でSNSを運用',
-        'description' => 'ClaudeやChatGPTを接続して、投稿・レポート・アイデアを頼みましょう。',
+        'description' => 'AIがTryPostで投稿の作成・予約・分析を行います。話しかけるだけです。',
         'connect_with' => ':clientと接続',
         'connect_ai' => 'AIを接続',
         'pick_ai' => 'どのAIを使っていますか？',

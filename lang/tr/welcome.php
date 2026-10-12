@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
     'mcp' => [
         'title' => 'Sosyal medyanı sohbetle yönet',
-        'description' => 'Claude veya ChatGPT’yi bir dakikada bağla; gönderi, rapor ve fikir iste.',
+        'description' => 'Yapay zekân TryPost’ta gönderi oluşturur, planlar ve analiz eder.',
         'connect_with' => ':client ile bağlan',
         'connect_ai' => 'Yapay zekânı bağla',
         'pick_ai' => 'Hangi yapay zekâyı kullanıyorsun?',

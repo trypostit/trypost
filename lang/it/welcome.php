@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
     'mcp' => [
         'title' => 'Gestisci i social dalla chat',
-        'description' => 'Collega Claude o ChatGPT in un minuto e chiedi post, report e idee.',
+        'description' => 'La tua IA crea, programma e analizza i tuoi post su TryPost, solo chattando.',
         'connect_with' => 'Collega :client',
         'connect_ai' => 'Collega la tua IA',
         'pick_ai' => 'Quale IA usi?',

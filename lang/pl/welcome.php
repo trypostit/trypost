@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',
-        'description' => 'Połącz Claude lub ChatGPT w minutę i proś o posty, raporty i pomysły.',
+        'description' => 'Twoja AI tworzy, planuje i analizuje posty w TryPost – wystarczy rozmowa.',
         'connect_with' => 'Połącz z :client',
         'connect_ai' => 'Połącz swoją AI',
         'pick_ai' => 'Z jakiej AI korzystasz?',

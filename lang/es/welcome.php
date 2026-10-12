@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
     'mcp' => [
         'title' => 'Gestiona tus redes desde el chat',
-        'description' => 'Conecta Claude o ChatGPT y pide posts, informes e ideas.',
+        'description' => 'Tu IA crea, programa y analiza tus posts en TryPost, solo conversando.',
         'connect_with' => 'Conectar con :client',
         'connect_ai' => 'Conectar tu IA',
         'pick_ai' => '¿Qué IA usas?',

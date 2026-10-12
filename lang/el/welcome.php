@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Μετά :price/μήνα. Ακύρωση οποτεδήποτε.',
     'mcp' => [
         'title' => 'Διαχειριστείτε τα social μέσω chat',
-        'description' => 'Συνδέστε Claude ή ChatGPT και ζητήστε posts, αναφορές και ιδέες.',
+        'description' => 'Η AI σας φτιάχνει, προγραμματίζει και αναλύει posts στο TryPost.',
         'connect_with' => 'Σύνδεση με :client',
         'connect_ai' => 'Συνδέστε την AI σας',
         'pick_ai' => 'Ποια AI χρησιμοποιείτε;',

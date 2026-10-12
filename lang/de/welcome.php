@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'mcp' => [
         'title' => 'Social Media per Chat steuern',
-        'description' => 'Verbinde Claude oder ChatGPT und frag nach Posts, Berichten und Ideen.',
+        'description' => 'Deine KI erstellt, plant und analysiert deine Posts in TryPost – per Chat.',
         'connect_with' => 'Mit :client verbinden',
         'connect_ai' => 'Deine KI verbinden',
         'pick_ai' => 'Welche KI nutzt du?',
