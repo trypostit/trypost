@@ -47,7 +47,7 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows the Socials table with the first-month offer', function () {
+test('the plan step shows the offer, what is included and the G2 reviews', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
@@ -55,17 +55,42 @@ test('the plan step shows the Socials table with the first-month offer', functio
     $page = visit(route('app.welcome.plan'));
 
     waitForWelcomePlanTestId($page, 'plan-card-socials');
-    waitForWelcomePlanTestId($page, 'plan-networks-info-socials');
+    waitForWelcomePlanTestId($page, 'welcome-plan-reviews');
     waitForWelcomePlanTestId($page, 'welcome-plan-continue');
 
     $page->assertRoute('app.welcome.plan')
+        ->assertSee('Activate your account')
+        ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
         ->assertSeeIn('@plan-price-first-month-socials', '$1')
         ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
-        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
         ->assertSeeIn('@plan-highlight-socials', 'One workspace')
         ->assertVisible('@plan-networks-info-socials')
-        ->assertSeeIn('@welcome-plan-continue', 'Start for $1')
+        ->assertSeeIn('@welcome-plan-reviews', '5/5 on G2')
+        ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertSeeIn('@welcome-plan-secure-checkout', 'Secure checkout with Stripe')
         ->assertVisible('@welcome-step-plan')
         ->assertNoJavaScriptErrors();
+
+    $reviews = $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="welcome-plan-reviews"] figure:not([aria-hidden="true"])')].length
+    JS);
+
+    expect($reviews)->toBe(5);
+});
+
+test('One workspace is the last item of what is included', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomePlanTestId($page, 'plan-highlight-socials');
+
+    $last = $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="plan-feature-list-socials"] li')].at(-1)?.dataset.testid
+    JS);
+
+    expect($last)->toBe('plan-highlight-socials');
 });

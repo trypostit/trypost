@@ -45,7 +45,9 @@ return [
         'none' => 'まだ使っていない',
         'other' => 'その他',
     ],
-    'plan_title' => '最初の1か月を始めましょう',
+    'plan_title' => 'アカウントを有効にしましょう',
+    'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
+    'plan_secure_checkout' => 'Stripeによる安全な決済',
 ];

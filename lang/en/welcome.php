@@ -45,7 +45,9 @@ return [
         'none' => 'I don\'t use one yet',
         'other' => 'Other',
     ],
-    'plan_title' => 'Start your first month',
+    'plan_title' => 'Activate your account',
+    'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
+    'plan_secure_checkout' => 'Secure checkout with Stripe',
 ];

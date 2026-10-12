@@ -88,8 +88,6 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
         </p>
 
         <ul class="flex flex-col gap-1">
-            <slot name="before" />
-
             <li
                 class="flex items-start gap-2 text-sm leading-5 text-foreground"
             >
@@ -217,6 +215,8 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                     </TooltipProvider>
                 </span>
             </li>
+
+            <slot name="after" />
         </ul>
     </div>
 </template>

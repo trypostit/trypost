@@ -45,7 +45,9 @@ return [
         'none' => 'Ik gebruik er nog geen',
         'other' => 'Andere',
     ],
-    'plan_title' => 'Begin je eerste maand',
+    'plan_title' => 'Activeer je account',
+    'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
+    'plan_secure_checkout' => 'Veilig betalen via Stripe',
 ];

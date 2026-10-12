@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
-import { IconCircleCheck, IconStarFilled } from '@tabler/icons-vue';
+import { IconCircleCheck } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import AppLogo from '@/components/AppLogo.vue';
 import LanguageSelect from '@/components/LanguageSelect.vue';
+import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
+import ReviewCard from '@/components/reviews/ReviewCard.vue';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useGuestLocale } from '@/composables/useGuestLocale';
+import { REVIEWS } from '@/lib/reviews';
 import type { Auth } from '@/types';
 
 const widthClass = {
@@ -36,35 +39,7 @@ const page = usePage();
 const isGuest = computed(() => !(page.props.auth as Auth).user);
 const { locale, languages } = useGuestLocale();
 
-const g2ReviewsUrl = 'https://www.g2.com/products/trypost/reviews';
-
-const reviews = [
-    {
-        key: 'paulo_dantas',
-        name: 'Paulo Dantas',
-        photo: '/images/reviews/paulo-dantas.jpg',
-    },
-    {
-        key: 'diego',
-        name: 'Diego Sampaio',
-        photo: '/images/reviews/diego-sampaio.jpg',
-    },
-    {
-        key: 'luiz',
-        name: 'Luiz Mazini',
-        photo: '/images/reviews/luiz-mazini.jpg',
-    },
-    {
-        key: 'pedro',
-        name: 'Pedro Campos',
-        photo: '/images/reviews/pedro-campos.jpg',
-    },
-    {
-        key: 'paulo_castellano',
-        name: 'Paulo Castellano',
-        photo: '/images/reviews/paulo-castellano.jpg',
-    },
-].map((review, index) => ({
+const reviews = REVIEWS.map((review, index) => ({
     ...review,
     rotation: index % 2 === 0 ? '-rotate-1' : 'rotate-1',
 }));
@@ -171,68 +146,19 @@ const loopedReviews = [
                         class="marquee mx-auto flex w-full max-w-md flex-col gap-4 text-start"
                         data-testid="auth-reviews"
                     >
-                        <figure
+                        <ReviewCard
                             v-for="(review, index) in loopedReviews"
                             :key="`${review.key}-${index}`"
-                            class="shrink-0 rounded-xl border border-border bg-card p-5"
+                            :review="review"
                             :class="review.rotation"
                             :aria-hidden="review.duplicate"
-                        >
-                            <div class="flex gap-0.5">
-                                <IconStarFilled
-                                    v-for="star in 5"
-                                    :key="star"
-                                    class="size-3.5 text-amber-500"
-                                />
-                            </div>
-
-                            <blockquote
-                                class="mt-3 text-sm text-foreground"
-                            >
-                                “{{ $t(`auth.reviews.${review.key}.quote`) }}”
-                            </blockquote>
-
-                            <figcaption class="mt-4 flex items-center gap-3">
-                                <img
-                                    :src="review.photo"
-                                    :alt="review.name"
-                                    width="96"
-                                    height="96"
-                                    loading="lazy"
-                                    class="size-10 shrink-0 rounded-lg object-cover"
-                                />
-                                <span class="min-w-0">
-                                    <span
-                                        class="block truncate text-sm leading-tight font-emphasis text-foreground"
-                                        >{{ review.name }}</span
-                                    >
-                                    <span
-                                        class="mt-1 block truncate text-sm text-muted-foreground"
-                                        >{{
-                                            $t(`auth.reviews.${review.key}.role`)
-                                        }}</span
-                                    >
-                                </span>
-                            </figcaption>
-                        </figure>
+                        />
                     </div>
                 </div>
-                <a
-                    :href="g2ReviewsUrl"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    class="motion-auth-fade my-6 inline-flex shrink-0 items-center gap-2 rounded-full border border-border bg-card px-3.5 py-1.5 text-sm font-medium text-foreground shadow-xs transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                <G2ReviewsLink
+                    class="motion-auth-fade my-6"
                     data-testid="auth-reviews-g2-link"
-                >
-                    <span class="flex gap-0.5">
-                        <IconStarFilled
-                            v-for="star in 5"
-                            :key="star"
-                            class="size-3.5 text-amber-500"
-                        />
-                    </span>
-                    {{ $t('auth.reviews.eyebrow') }}
-                </a>
+                />
             </div>
         </div>
     </div>

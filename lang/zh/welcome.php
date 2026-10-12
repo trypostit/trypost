@@ -45,7 +45,9 @@ return [
         'none' => '还没有使用任何工具',
         'other' => '其他',
     ],
-    'plan_title' => '开始你的第一个月',
+    'plan_title' => '激活你的账户',
+    'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
+    'plan_secure_checkout' => '通过 Stripe 安全支付',
 ];

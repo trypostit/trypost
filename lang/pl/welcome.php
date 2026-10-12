@@ -45,7 +45,9 @@ return [
         'none' => 'Jeszcze żadnego nie używam',
         'other' => 'Inne',
     ],
-    'plan_title' => 'Zacznij pierwszy miesiąc',
+    'plan_title' => 'Aktywuj swoje konto',
+    'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_first_month' => 'za pierwszy miesiąc',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
+    'plan_secure_checkout' => 'Bezpieczna płatność przez Stripe',
 ];

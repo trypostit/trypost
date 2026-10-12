@@ -45,7 +45,9 @@ return [
         'none' => 'Henüz bir araç kullanmıyorum',
         'other' => 'Diğer',
     ],
-    'plan_title' => 'İlk ayına başla',
+    'plan_title' => 'Hesabını etkinleştir',
+    'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
+    'plan_secure_checkout' => 'Stripe ile güvenli ödeme',
 ];
