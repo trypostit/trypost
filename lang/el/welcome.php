@@ -83,7 +83,7 @@ return [
             'schedule' => [
                 'title' => 'Δημιουργία και προγραμματισμός από το chat',
                 'hint' => 'Carousel, threads και βίντεο',
-                'ask' => 'Κάνε την καλύτερη ιδέα carousel και προγραμμάτισέ το για Τρίτη σε Instagram και LinkedIn.',
+                'ask' => 'Πάρε την καλύτερη ιδέα από τον πίνακά μου, κάν’ την carousel και προγραμμάτισέ το για Τρίτη σε Instagram και LinkedIn.',
                 'reply' => 'Έγινε. Το carousel προγραμματίστηκε για την Τρίτη στις 10:00 σε Instagram και LinkedIn.',
             ],
             'analytics' => [

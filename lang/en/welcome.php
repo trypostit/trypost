@@ -83,7 +83,7 @@ return [
             'schedule' => [
                 'title' => 'Create and schedule from chat',
                 'hint' => 'Carousels, threads and videos',
-                'ask' => 'Turn the best idea into a carousel and schedule it for Tuesday on Instagram and LinkedIn.',
+                'ask' => 'Take the best idea from my board, turn it into a carousel and schedule it for Tuesday on Instagram and LinkedIn.',
                 'reply' => 'Done. Your carousel is scheduled for Tuesday at 10 AM on Instagram and LinkedIn.',
             ],
             'analytics' => [

@@ -83,7 +83,7 @@ return [
             'schedule' => [
                 'title' => 'Créez et planifiez depuis le chat',
                 'hint' => 'Carrousels, threads et vidéos',
-                'ask' => 'Transforme la meilleure idée en carrousel et planifie-le pour mardi sur Instagram et LinkedIn.',
+                'ask' => 'Prends la meilleure idée de mon tableau, fais-en un carrousel et planifie-le pour mardi sur Instagram et LinkedIn.',
                 'reply' => 'C’est fait. Votre carrousel est planifié mardi à 10 h sur Instagram et LinkedIn.',
             ],
             'analytics' => [
