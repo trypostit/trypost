@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
     'mcp' => [
-        'title' => 'Post and analyze right from your AI',
-        'description' => 'Connect in a minute and use TryPost right from Claude or ChatGPT.',
+        'title' => 'Run your social media from a chat',
+        'description' => 'Connect Claude or ChatGPT and ask for posts, reports and ideas.',
         'connect_with' => 'Connect with :client',
         'connect_other' => 'Connect another app',
         'composer' => 'Ask anything',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Organize your ideas',
                 'hint' => 'From brainstorm to content plan',
-                'ask' => 'Save these ideas to my ideas board.',
-                'reply' => 'I saved 8 ideas to the backlog column of your board.',
+                'ask' => 'Give me 8 post ideas for our launch and save them to my board.',
+                'reply' => 'I saved 8 ideas to your board, ready to become posts.',
             ],
         ],
         'skip' => 'Skip for now',

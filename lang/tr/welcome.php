@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
     'mcp' => [
-        'title' => 'Yapay zekândan doğrudan paylaş ve analiz et',
-        'description' => 'Bir dakikada bağla, TryPost’u doğrudan Claude veya ChatGPT’den kullan.',
+        'title' => 'Sosyal medyanı sohbetle yönet',
+        'description' => 'Claude veya ChatGPT’yi bir dakikada bağla; gönderi, rapor ve fikir iste.',
         'connect_with' => ':client ile bağlan',
         'connect_other' => 'Başka uygulama bağla',
         'composer' => 'Bir şey sor',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Fikirlerini düzenle',
                 'hint' => 'Beyin fırtınasından içerik planına',
-                'ask' => 'Bu fikirleri fikir panoma kaydet.',
-                'reply' => 'Panondaki bekleyenler sütununa 8 fikir kaydettim.',
+                'ask' => 'Lansmanımız için 8 gönderi fikri ver ve panoma kaydet.',
+                'reply' => '8 fikri panona kaydettim, gönderiye dönüşmeye hazır.',
             ],
         ],
         'skip' => 'Şimdilik atla',

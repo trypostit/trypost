@@ -71,7 +71,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     expect($page->script('document.documentElement.scrollHeight > window.innerHeight'))->toBeFalse();
 
-    $page->assertSee('Post and analyze right from your AI')
+    $page->assertSee('Run your social media from a chat')
         ->assertSeeIn('@welcome-mcp-composer', 'Ask anything')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')

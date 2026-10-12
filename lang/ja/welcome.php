@@ -50,8 +50,8 @@ return [
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
     'mcp' => [
-        'title' => 'AIから直接投稿・分析',
-        'description' => '1分で接続して、ClaudeやChatGPTから直接TryPostを使いましょう。',
+        'title' => 'AIとの会話でSNSを運用',
+        'description' => 'ClaudeやChatGPTを接続して、投稿・レポート・アイデアを頼みましょう。',
         'connect_with' => ':clientと接続',
         'connect_other' => '他のアプリを接続',
         'composer' => '何でも聞いてください',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'アイデアを整理',
                 'hint' => 'ブレストからコンテンツ計画へ',
-                'ask' => 'これらのアイデアをアイデアボードに保存して。',
-                'reply' => 'ボードのバックログ列に8件のアイデアを保存しました。',
+                'ask' => 'ローンチ用の投稿アイデアを8つ出して、ボードに保存して。',
+                'reply' => '8つのアイデアをボードに保存しました。すぐ投稿にできます。',
             ],
         ],
         'skip' => '今はスキップ',

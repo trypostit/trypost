@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'mcp' => [
-        'title' => 'Post en analyseer direct vanuit je AI',
-        'description' => 'Koppel het in een minuut en gebruik TryPost direct vanuit Claude of ChatGPT.',
+        'title' => 'Beheer je socials via chat',
+        'description' => 'Koppel Claude of ChatGPT en vraag om posts, rapporten en ideeën.',
         'connect_with' => 'Koppelen met :client',
         'connect_other' => 'Andere app koppelen',
         'composer' => 'Vraag maar raak',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Organiseer je ideeën',
                 'hint' => 'Van brainstorm naar contentplan',
-                'ask' => 'Sla deze ideeën op in mijn ideeënbord.',
-                'reply' => 'Ik heb 8 ideeën opgeslagen in de backlogkolom van je bord.',
+                'ask' => 'Geef me 8 postideeën voor onze lancering en zet ze op mijn bord.',
+                'reply' => 'Ik heb 8 ideeën op je bord gezet, klaar om posts te worden.',
             ],
         ],
         'skip' => 'Nu overslaan',

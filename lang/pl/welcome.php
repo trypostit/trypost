@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'za pierwszy miesiąc',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
     'mcp' => [
-        'title' => 'Publikuj i analizuj prosto ze swojej AI',
-        'description' => 'Połącz w minutę i korzystaj z TryPost prosto z Claude lub ChatGPT.',
+        'title' => 'Zarządzaj social mediami w czacie',
+        'description' => 'Połącz Claude lub ChatGPT w minutę i proś o posty, raporty i pomysły.',
         'connect_with' => 'Połącz z :client',
         'connect_other' => 'Połącz inną aplikację',
         'composer' => 'Zapytaj o cokolwiek',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Uporządkuj pomysły',
                 'hint' => 'Od burzy mózgów do planu treści',
-                'ask' => 'Zapisz te pomysły na mojej tablicy pomysłów.',
-                'reply' => 'Zapisałem 8 pomysłów w kolumnie backlog na Twojej tablicy.',
+                'ask' => 'Daj mi 8 pomysłów na posty o naszej premierze i zapisz je na mojej tablicy.',
+                'reply' => 'Zapisałem 8 pomysłów na twojej tablicy, gotowych do zamiany w posty.',
             ],
         ],
         'skip' => 'Pomiń na razie',

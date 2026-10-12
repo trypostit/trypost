@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'no primeiro mês',
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser.',
     'mcp' => [
-        'title' => 'Poste e analise direto da sua IA',
-        'description' => 'Conecte em 1 minuto e use o TryPost direto do Claude ou do ChatGPT.',
+        'title' => 'Gerencie suas redes pelo chat',
+        'description' => 'Conecte em 1 minuto e peça posts, relatórios e ideias à sua IA.',
         'connect_with' => 'Conectar com :client',
         'connect_other' => 'Conectar outro app',
         'composer' => 'Pergunte qualquer coisa',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Organize suas ideias',
                 'hint' => 'Do brainstorm para a pauta',
-                'ask' => 'Salve essas ideias no meu quadro de ideias.',
-                'reply' => 'Salvei 8 ideias na coluna de backlog do seu quadro.',
+                'ask' => 'Me dê 8 ideias de posts para o nosso lançamento e salve no meu quadro.',
+                'reply' => 'Salvei 8 ideias no seu quadro, prontas para virar post.',
             ],
         ],
         'skip' => 'Pular por agora',

@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'im ersten Monat',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'mcp' => [
-        'title' => 'Poste und analysiere direkt aus deiner KI',
-        'description' => 'In einer Minute verbunden: nutze TryPost direkt aus Claude oder ChatGPT.',
+        'title' => 'Social Media per Chat steuern',
+        'description' => 'Verbinde Claude oder ChatGPT und frag nach Posts, Berichten und Ideen.',
         'connect_with' => 'Mit :client verbinden',
         'connect_other' => 'Andere App verbinden',
         'composer' => 'Frag mich alles',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Ordne deine Ideen',
                 'hint' => 'Vom Brainstorming zum Redaktionsplan',
-                'ask' => 'Speichere diese Ideen in meinem Ideen-Board.',
-                'reply' => 'Ich habe 8 Ideen in der Backlog-Spalte deines Boards gespeichert.',
+                'ask' => 'Gib mir 8 Post-Ideen für unseren Launch und speichere sie auf meinem Board.',
+                'reply' => 'Ich habe 8 Ideen auf deinem Board gespeichert, bereit für neue Posts.',
             ],
         ],
         'skip' => 'Jetzt überspringen',

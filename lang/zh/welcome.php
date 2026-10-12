@@ -50,8 +50,8 @@ return [
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
     'mcp' => [
-        'title' => '直接在你的 AI 中发帖和分析',
-        'description' => '一分钟完成连接，直接在 Claude 或 ChatGPT 中使用 TryPost。',
+        'title' => '和 AI 聊天，轻松管理社交媒体',
+        'description' => '一分钟连接 Claude 或 ChatGPT，然后让它帮你写帖子、出报告、想点子。',
         'connect_with' => '连接 :client',
         'connect_other' => '连接其他应用',
         'composer' => '有问题，尽管问',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => '整理你的想法',
                 'hint' => '从头脑风暴到内容计划',
-                'ask' => '把这些想法保存到我的想法看板。',
-                'reply' => '我把 8 个想法保存到了你看板的待办列。',
+                'ask' => '为我们的发布会想 8 个帖子点子，并保存到我的看板。',
+                'reply' => '我已把 8 个点子存到你的看板，随时可以变成帖子。',
             ],
         ],
         'skip' => '暂时跳过',

@@ -50,8 +50,8 @@ return [
     'plan_first_month' => '첫 달 요금',
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
     'mcp' => [
-        'title' => 'AI에서 바로 게시하고 분석하세요',
-        'description' => '1분이면 연결하고 Claude나 ChatGPT에서 바로 TryPost를 사용하세요.',
+        'title' => 'AI와 대화하며 SNS를 관리하세요',
+        'description' => 'Claude나 ChatGPT를 1분 만에 연결하고 게시물, 리포트, 아이디어를 요청하세요.',
         'connect_with' => ':client 연결',
         'connect_other' => '다른 앱 연결',
         'composer' => '무엇이든 물어보세요',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => '아이디어 정리',
                 'hint' => '브레인스토밍에서 콘텐츠 계획으로',
-                'ask' => '이 아이디어들을 내 아이디어 보드에 저장해 줘.',
-                'reply' => '보드의 백로그 열에 아이디어 8개를 저장했어요.',
+                'ask' => '출시용 게시물 아이디어 8개를 주고 내 보드에 저장해 줘.',
+                'reply' => '아이디어 8개를 보드에 저장했어요. 바로 게시물로 만들 수 있어요.',
             ],
         ],
         'skip' => '지금은 건너뛰기',

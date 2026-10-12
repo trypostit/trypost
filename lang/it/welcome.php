@@ -50,8 +50,8 @@ return [
     'plan_first_month' => 'per il primo mese',
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
     'mcp' => [
-        'title' => 'Pubblica e analizza direttamente dalla tua IA',
-        'description' => 'Collegalo in un minuto e usa TryPost direttamente da Claude o ChatGPT.',
+        'title' => 'Gestisci i social dalla chat',
+        'description' => 'Collega Claude o ChatGPT in un minuto e chiedi post, report e idee.',
         'connect_with' => 'Collega :client',
         'connect_other' => 'Collega un\'altra app',
         'composer' => 'Chiedi qualsiasi cosa',
@@ -99,8 +99,8 @@ return [
             'ideas' => [
                 'title' => 'Organizza le tue idee',
                 'hint' => 'Dal brainstorming al piano editoriale',
-                'ask' => 'Salva queste idee nella mia bacheca delle idee.',
-                'reply' => 'Ho salvato 8 idee nella colonna backlog della tua bacheca.',
+                'ask' => 'Dammi 8 idee di post per il nostro lancio e salvale nella mia bacheca.',
+                'reply' => 'Ho salvato 8 idee nella tua bacheca, pronte a diventare post.',
             ],
         ],
         'skip' => 'Salta per ora',
