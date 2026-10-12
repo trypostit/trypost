@@ -54,7 +54,7 @@ return [
             'mcp' => 'TryPost’u Claude veya ChatGPT’den kullan',
             'mcp_tooltip' => 'Claude, ChatGPT veya başka bir yapay zekâ bağla. Gönderi oluşturmasını ve planlamasını, sıranı doldurmasını, fikirleri düzenlemesini ve büyümeni göstermesini iste.',
             'repurpose' => 'Otomatik video yeniden paylaşımı',
-            'repurpose_tooltip' => 'Bir Instagram veya Facebook hesabı seç. Orada paylaştığın her yeni Reel veya video, TryPost’u açmadan diğer ağlarına kendiliğinden gider.',
+            'repurpose_tooltip' => 'Videoların bir ağdan diğerlerine kendiliğinden yeniden paylaşılır. Instagram’da mı paylaştın? Otomatik olarak TikTok, YouTube ve Facebook’a gider.',
             'analytics' => 'Gelişmiş analiz',
             'analytics_tooltip' => 'Tüm ağlarını birlikte gör, örneğin toplam takipçini, ya da ağa ve gönderiye göre filtrele. Görüntülenme, erişim, beğeni, yorum ve dahası; neyin işe yaradığını bil.',
             'team' => 'Sınırsız ekip üyesi',

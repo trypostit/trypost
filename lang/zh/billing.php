@@ -52,7 +52,7 @@ return [
             'mcp' => '在 Claude 或 ChatGPT 中使用 TryPost',
             'mcp_tooltip' => '连接 Claude、ChatGPT 或其他 AI。让它创建和排期帖子、填充队列、整理点子，并展示你的增长。',
             'repurpose' => '视频自动转发',
-            'repurpose_tooltip' => '选择一个 Instagram 或 Facebook 账号。你在那里发布的每条新 Reel 或视频都会自动发到其他平台，无需打开 TryPost。',
+            'repurpose_tooltip' => '你的视频会自动从一个平台转发到其他平台。发到 Instagram？它会自动同步到 TikTok、YouTube 和 Facebook。',
             'analytics' => '高级数据分析',
             'analytics_tooltip' => '把所有平台合起来看，比如粉丝总数，也可以按平台和帖子筛选。观看、覆盖、点赞、评论等数据，帮你知道什么最有效。',
             'team' => '不限团队成员',

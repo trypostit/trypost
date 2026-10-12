@@ -52,7 +52,7 @@ return [
             'mcp' => 'Gebruik TryPost vanuit Claude of ChatGPT',
             'mcp_tooltip' => 'Koppel Claude, ChatGPT of een andere AI. Laat hem posts maken en plannen, je wachtrij vullen, ideeën ordenen en je groei tonen.',
             'repurpose' => 'Automatisch video\'s herposten',
-            'repurpose_tooltip' => 'Kies een Instagram- of Facebook-account. Elke nieuwe Reel of video die je daar plaatst, gaat vanzelf naar je andere netwerken, zonder TryPost te openen.',
+            'repurpose_tooltip' => 'Je video’s worden vanzelf van het ene netwerk naar de andere gedeeld. Op Instagram gezet? Hij gaat automatisch naar TikTok, YouTube en Facebook.',
             'analytics' => 'Geavanceerde statistieken',
             'analytics_tooltip' => 'Zie al je netwerken samen, zoals je totale volgers, of filter per netwerk en per post. Weergaven, bereik, likes, reacties en meer, zodat je weet wat werkt.',
             'team' => 'Onbeperkt teamleden',
