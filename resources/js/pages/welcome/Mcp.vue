@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
+    IconArrowUpRight,
     IconBulb,
     IconCalendarPlus,
     IconCircleCheck,
@@ -230,6 +231,9 @@ const goToSchedule = (): void => {
 :class="['size-4', client.logoClass]"
                         />
                         {{ $t('welcome.mcp.open', { client: client.label }) }}
+                        <IconArrowUpRight
+                            class="size-4 text-muted-foreground rtl:-scale-x-100"
+                        />
                     </Button>
                 </div>
                 <div
