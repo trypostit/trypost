@@ -125,7 +125,7 @@ const submit = (): void => {
                         <IconStarFilled
                             v-for="star in 5"
                             :key="star"
-                            class="size-3.5 text-amber-500"
+                            class="size-3.5 text-amber-500 dark:text-yellow-400"
                         />
                     </span>
 
