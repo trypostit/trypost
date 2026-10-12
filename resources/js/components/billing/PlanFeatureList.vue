@@ -28,9 +28,13 @@ interface PlanFeature {
     hasTooltip: boolean;
 }
 
-defineProps<{
-    scope: string;
-}>();
+withDefaults(
+    defineProps<{
+        scope: string;
+        spacious?: boolean;
+    }>(),
+    { spacious: false },
+);
 
 const PLAN_NETWORKS = [
     Platform.Instagram,
@@ -87,12 +91,18 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             {{ $t('billing.plans.everything_included') }}
         </p>
 
-        <ul class="flex flex-col gap-1">
+        <ul :class="['flex flex-col', spacious ? 'gap-2.5' : 'gap-1']">
             <li
-                class="flex items-start gap-2 text-sm leading-5 text-foreground"
+                :class="[
+                    'flex items-start gap-2 text-foreground',
+                    spacious ? 'text-base leading-6' : 'text-sm leading-5',
+                ]"
             >
                 <IconWorld
-                    class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                    :class="[
+                        'size-4 shrink-0 text-muted-foreground',
+                        spacious ? 'mt-1' : 'mt-0.5',
+                    ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
                     <span
@@ -106,7 +116,10 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                    :class="[
+                                        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
+                                        spacious ? 'mt-1' : 'mt-0.5',
+                                    ]"
                                     :aria-label="
                                         $t(
                                             'billing.plans.features.networks_all_tooltip',
@@ -166,11 +179,17 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             <li
                 v-for="feature in sharedFeatures"
                 :key="feature.key"
-                class="flex items-start gap-2 text-sm leading-5 text-foreground"
+                :class="[
+                    'flex items-start gap-2 text-foreground',
+                    spacious ? 'text-base leading-6' : 'text-sm leading-5',
+                ]"
             >
                 <component
                     :is="feature.icon"
-                    class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                    :class="[
+                        'size-4 shrink-0 text-muted-foreground',
+                        spacious ? 'mt-1' : 'mt-0.5',
+                    ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
                     <span
@@ -187,7 +206,10 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                    :class="[
+                                        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
+                                        spacious ? 'mt-1' : 'mt-0.5',
+                                    ]"
                                     :aria-label="
                                         $t(
                                             `billing.plans.features.${feature.key}_tooltip`,

@@ -86,7 +86,7 @@ const submit = (): void => {
         <article
             v-for="plan in plans"
             :key="plan.id"
-            class="grid overflow-hidden rounded-xl border border-border bg-card text-start sm:grid-cols-[2fr_3fr]"
+            class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
             :data-testid="`plan-card-${plan.slug}`"
         >
             <div
@@ -107,7 +107,9 @@ const submit = (): void => {
                             :aria-pressed="index === activeReview"
                             :class="[
                                 'relative cursor-pointer rounded-full transition-transform duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
-                                index === activeReview ? 'z-10 scale-110' : 'hover:z-10',
+                                index === activeReview
+                                    ? 'z-10 scale-115 shadow-md'
+                                    : 'hover:z-10',
                             ]"
                             :data-testid="`welcome-plan-reviewer-${review.key}`"
                             @click="selectReview(index)"
@@ -118,10 +120,7 @@ const submit = (): void => {
                                 width="72"
                                 height="72"
                                 :class="[
-                                    'size-9 rounded-full border-2 object-cover transition-[border-color] duration-300',
-                                    index === activeReview
-                                        ? 'border-primary-strong'
-                                        : 'border-card',
+                                    'size-9 rounded-full border-2 border-card object-cover',
                                 ]"
                             />
                         </button>
@@ -168,15 +167,16 @@ const submit = (): void => {
 
             <PlanFeatureList
                 :scope="plan.slug"
-                class="p-5 sm:p-6"
+                spacious
+                class="rounded-b-xl border border-border bg-card p-5 max-sm:border-t-0 sm:rounded-e-xl sm:rounded-es-none sm:border-s-0 sm:p-6"
             >
                 <template #after>
                     <li
-                        class="flex items-start gap-2 text-sm leading-5 text-foreground"
+                        class="flex items-start gap-2 text-base leading-6 text-foreground"
                         :data-testid="`plan-highlight-${plan.slug}`"
                     >
                         <IconBuilding
-                            class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                            class="mt-1 size-4 shrink-0 text-muted-foreground"
                         />
                         <span class="inline-flex items-start gap-1.5">
                             {{ $t('billing.plans.workspaces_one') }}
@@ -185,7 +185,7 @@ const submit = (): void => {
                                     <TooltipTrigger as-child>
                                         <button
                                             type="button"
-                                            class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                            class="mt-1 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
                                             :aria-label="
                                                 $t(
                                                     'billing.plans.workspaces_tooltip',
