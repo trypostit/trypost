@@ -40,17 +40,8 @@ const submit = (): void => {
             :data-testid="`plan-card-${plan.slug}`"
         >
             <div
-                class="flex flex-col justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
+                class="flex flex-col justify-center bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
             >
-                <div class="flex flex-col gap-1">
-                    <h3 class="text-lg leading-tight font-medium">
-                        {{ plan.name }}
-                    </h3>
-                    <p class="text-sm text-muted-foreground">
-                        {{ $t(`billing.plans.${plan.slug}_tagline`) }}
-                    </p>
-                </div>
-
                 <div class="flex flex-col gap-1">
                     <p class="flex items-baseline gap-2">
                         <span
