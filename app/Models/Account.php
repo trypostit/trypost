@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Models\Traits\BillsOwnerAsStripeCustomer;
 use App\Models\Traits\HasUsage;
-use App\Support\AttributionKeys;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
@@ -13,21 +13,13 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Str;
-use Laravel\Cashier\Billable;
 
 class Account extends Model
 {
     /** @use HasFactory<AccountFactory> */
-    use Billable, HasFactory, HasUsage, HasUuids;
+    use BillsOwnerAsStripeCustomer, HasFactory, HasUsage, HasUuids;
 
     public const SUBSCRIPTION_NAME = 'default';
-
-    /**
-     * Stripe metadata values are capped at 500 characters and rejected if longer:
-     * https://docs.stripe.com/api/metadata
-     */
-    private const STRIPE_METADATA_MAX_LENGTH = 500;
 
     public static function postsCountCacheKey(string $accountId): string
     {
@@ -188,41 +180,5 @@ class Account extends Model
             'exp_month' => $card->exp_month,
             'exp_year' => $card->exp_year,
         ];
-    }
-
-    public function stripeEmail(): string
-    {
-        return $this->owner?->email ?? '';
-    }
-
-    public function stripeName(): string
-    {
-        return $this->owner?->name ?? '';
-    }
-
-    /**
-     * The owner's attribution and Welcome answers, kept on the Stripe customer
-     * so they survive an abandoned Checkout.
-     *
-     * @return array<string, string>
-     */
-    public function stripeMetadata(): array
-    {
-        $owner = $this->owner;
-
-        $metadata = array_filter([
-            ...collect(AttributionKeys::all())
-                ->mapWithKeys(fn (string $key): array => [$key => $owner?->{$key}])
-                ->all(),
-            'persona' => $owner?->persona?->value,
-            'goals' => implode(',', $owner?->goals ?? []),
-            'previous_software' => $owner?->previous_software?->value,
-            'referral_source' => $owner?->referral_source?->value,
-        ], filled(...));
-
-        return array_map(
-            fn (string $value): string => Str::limit($value, self::STRIPE_METADATA_MAX_LENGTH, ''),
-            $metadata,
-        );
     }
 }
