@@ -58,7 +58,7 @@ const {
     select: selectBenefit,
     pause: pauseBenefits,
     resume: resumeBenefits,
-} = useAutoRotate(benefits.length, 6000);
+} = useAutoRotate(benefits.length, 8000);
 
 const activeKey = computed((): string => benefits[activeBenefit.value].key);
 
