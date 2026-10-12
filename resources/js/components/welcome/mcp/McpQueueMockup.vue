@@ -10,6 +10,7 @@ import type { SharedData } from '@/types';
 const posts = [
     { time: '09:00', platform: 'linkedin' },
     { time: '12:30', platform: 'instagram' },
+    { time: '15:00', platform: 'facebook' },
 ];
 
 const owner = usePage<SharedData>().props.auth.user;
