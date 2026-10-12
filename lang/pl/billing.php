@@ -52,7 +52,7 @@ return [
             'mcp' => 'Korzystaj z TryPost w Claude lub ChatGPT',
             'mcp_tooltip' => 'Połącz Claude, ChatGPT lub inną AI. Poproś o tworzenie i planowanie postów, wypełnianie kolejki, porządkowanie pomysłów i pokazanie wzrostu.',
             'repurpose' => 'Automatyczne ponowne publikowanie filmów',
-            'repurpose_tooltip' => 'Twoje filmy same publikują się ponownie z jednej sieci w pozostałych. Wrzuciłeś na Instagram? Trafi automatycznie na TikTok, YouTube i Facebook.',
+            'repurpose_tooltip' => 'Opublikuj film w jednej sieci, a TryPost przeniesie go do pozostałych. Wrzuciłeś na Instagram? Pojawi się na TikToku, YouTube i Facebooku, bez żadnej pracy.',
             'analytics' => 'Zaawansowana analityka',
             'analytics_tooltip' => 'Zobacz wszystkie sieci razem, np. łączną liczbę obserwujących, albo filtruj po sieci i poście. Wyświetlenia, zasięg, polubienia, komentarze i więcej – wiesz, co działa.',
             'team' => 'Nielimitowani członkowie zespołu',

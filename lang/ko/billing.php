@@ -52,7 +52,7 @@ return [
             'mcp' => 'Claude나 ChatGPT에서 TryPost 사용',
             'mcp_tooltip' => 'Claude, ChatGPT 또는 다른 AI를 연결하세요. 게시물 작성과 예약, 대기열 채우기, 아이디어 정리, 성장 확인을 요청할 수 있어요.',
             'repurpose' => '동영상 자동 재게시',
-            'repurpose_tooltip' => '동영상이 한 네트워크에서 다른 네트워크로 자동 재게시돼요. Instagram에 올렸나요? TikTok, YouTube, Facebook에도 자동으로 올라가요.',
+            'repurpose_tooltip' => '한 네트워크에 동영상을 올리면 TryPost가 다른 곳에도 올려 줘요. Instagram에 올렸나요? 아무것도 하지 않아도 TikTok, YouTube, Facebook에 나타나요.',
             'analytics' => '고급 분석',
             'analytics_tooltip' => '총 팔로워 수처럼 모든 네트워크를 한눈에 보거나, 네트워크별·게시물별로 필터링하세요. 조회수, 도달, 좋아요, 댓글 등으로 무엇이 효과적인지 알 수 있어요.',
             'team' => '팀원 무제한',
