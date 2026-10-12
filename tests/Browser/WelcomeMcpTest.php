@@ -147,6 +147,9 @@ test('the MCP step fits a phone without scrolling and hides the chat example the
 
     expect($layout)->toBe(['scrolls' => false, 'chatVisible' => false]);
 
+    expect($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-open-], [data-testid=welcome-mcp-copy]")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1)
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open-claude]").getAttribute("aria-label")'))->toBe('Open in Claude');
+
     $page->assertVisible('@welcome-mcp-copy')
         ->assertNoJavaScriptErrors();
 });

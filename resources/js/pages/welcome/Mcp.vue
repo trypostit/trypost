@@ -171,7 +171,7 @@ const goToSchedule = (): void => {
                                 }}
                             </span>
                             <span
-                                class="text-xs text-muted-foreground max-sm:hidden"
+                                class="text-xs text-muted-foreground"
                             >
                                 {{
                                     $t(`welcome.mcp.benefits.${benefit.key}.hint`)
@@ -182,7 +182,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="hidden border-s border-border bg-accent p-4 lg:flex"
+                    class="hidden border-t border-border bg-accent p-4 md:flex lg:border-t-0 lg:border-s"
                     aria-hidden="true"
                 >
                     <div
@@ -262,6 +262,11 @@ const goToSchedule = (): void => {
                         rel="noopener noreferrer"
                         size="lg"
                         variant="secondary"
+                        class="max-lg:w-10 max-lg:px-0"
+                        :aria-label="
+                            $t('welcome.mcp.open', { client: app.label })
+                        "
+                        :title="$t('welcome.mcp.open', { client: app.label })"
                         :data-testid="`welcome-mcp-open-${app.id}`"
                         @click="startConnecting"
                     >
@@ -270,9 +275,11 @@ const goToSchedule = (): void => {
                             alt=""
                             :class="['size-4', app.logoClass]"
                         />
-                        {{ $t('welcome.mcp.open', { client: app.label }) }}
+                        <span class="max-lg:hidden">
+                            {{ $t('welcome.mcp.open', { client: app.label }) }}
+                        </span>
                         <IconArrowUpRight
-                            class="size-4 text-muted-foreground rtl:-scale-x-100"
+                            class="size-4 text-muted-foreground max-lg:hidden rtl:-scale-x-100"
                         />
                     </Button>
                     <Button
