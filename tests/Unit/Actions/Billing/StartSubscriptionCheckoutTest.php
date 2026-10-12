@@ -106,26 +106,25 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')
-        ->once()
-        ->with(Mockery::on(fn (array $options): bool => $options['metadata'] === [
-            'utm_source' => 'google',
-            'utm_medium' => 'cpc',
-            'utm_campaign' => 'launch',
-            'utm_term' => 'social scheduler',
-            'utm_content' => 'headline-b',
-            'gclid' => 'Cj0KCQgclid',
-            'fbclid' => 'IwAR0fbclid',
-            'li_fat_id' => '9f2li-fat-id',
-            'ttclid' => 'E.C.Pttclid',
-            'rdt_cid' => 'rdt-cid-value',
-            'epik' => 'dj0yepik',
-            'persona' => 'agency',
-            'goals' => 'grow_audience,save_time',
-            'previous_software' => 'metricool',
-            'referral_source' => 'product_hunt',
-        ]))
-        ->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+
+    expect($account->stripeMetadata())->toBe([
+        'utm_source' => 'google',
+        'utm_medium' => 'cpc',
+        'utm_campaign' => 'launch',
+        'utm_term' => 'social scheduler',
+        'utm_content' => 'headline-b',
+        'gclid' => 'Cj0KCQgclid',
+        'fbclid' => 'IwAR0fbclid',
+        'li_fat_id' => '9f2li-fat-id',
+        'ttclid' => 'E.C.Pttclid',
+        'rdt_cid' => 'rdt-cid-value',
+        'epik' => 'dj0yepik',
+        'persona' => 'agency',
+        'goals' => 'grow_audience,save_time',
+        'previous_software' => 'metricool',
+        'referral_source' => 'product_hunt',
+    ]);
     $accountMock->shouldReceive('newSubscription')
         ->once()
         ->with(Account::SUBSCRIPTION_NAME, 'price_monthly_test')
@@ -168,10 +167,9 @@ test('redirect sends no metadata for an account whose owner left every field emp
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')
-        ->once()
-        ->with(Mockery::on(fn (array $options): bool => $options['metadata'] === []))
-        ->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+
+    expect($account->stripeMetadata())->toBe([]);
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', $cancelUrl);
@@ -199,10 +197,9 @@ test('redirect cuts an oversized click id to the stripe metadata limit', functio
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')
-        ->once()
-        ->with(Mockery::on(fn (array $options): bool => $options['metadata'] === ['fbclid' => str_repeat('a', 500)]))
-        ->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+
+    expect($account->stripeMetadata())->toBe(['fbclid' => str_repeat('a', 500)]);
     $accountMock->shouldReceive('newSubscription')->once()->andReturn(checkoutCustomerBuilder());
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome'));
@@ -246,7 +243,7 @@ test('redirect applies the plan first-month coupon on a monthly price', function
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 
     app(StartSubscriptionCheckout::class)->redirect(
@@ -286,7 +283,7 @@ test('redirect skips the first-month coupon on a yearly price', function () {
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 
     app(StartSubscriptionCheckout::class)->redirect(
@@ -323,7 +320,7 @@ test('redirect clears a leftover plan_id before opening checkout', function () {
 
     /** @var Account&MockInterface $accountMock */
     $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('updateOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
     $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome.software'));

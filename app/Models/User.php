@@ -17,6 +17,7 @@ use App\Enums\User\WeekStart;
 use App\Models\Traits\HasAccount;
 use App\Models\Traits\HasMedia;
 use App\Models\Traits\HasWorkspace;
+use App\Support\AttributionKeys;
 use Database\Factories\UserFactory;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Contracts\Translation\HasLocalePreference;
@@ -35,6 +36,36 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
 {
     /** @use HasFactory<UserFactory> */
     use HasAccount, HasApiTokens, HasFactory, HasMedia, HasUuids, HasWorkspace, RoutesNotifications;
+
+    /**
+     * Owner attributes the account's Stripe customer is built from
+     * (Account::stripeName(), stripeEmail() and stripeMetadata()).
+     */
+    public const array STRIPE_CUSTOMER_ATTRIBUTES = [
+        'name',
+        'email',
+        'persona',
+        'goals',
+        'previous_software',
+        'referral_source',
+        ...AttributionKeys::UTM,
+        ...AttributionKeys::CLICK_ID,
+    ];
+
+    protected static function booted(): void
+    {
+        static::updated(function (User $user): void {
+            if (! $user->wasChanged(self::STRIPE_CUSTOMER_ATTRIBUTES) || ! $user->isAccountOwner()) {
+                return;
+            }
+
+            $account = $user->account;
+
+            if ($account?->hasStripeId()) {
+                dispatch(fn () => $account->syncStripeCustomerDetails());
+            }
+        });
+    }
 
     /**
      * @var list<string>

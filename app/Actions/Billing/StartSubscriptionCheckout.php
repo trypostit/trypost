@@ -20,11 +20,7 @@ class StartSubscriptionCheckout
             $account->update(['plan_id' => null]);
         }
 
-        $account->updateOrCreateStripeCustomer([
-            'email' => $account->stripeEmail(),
-            'name' => $account->stripeName(),
-            'metadata' => $account->stripeMetadata(),
-        ]);
+        $account->syncOrCreateStripeCustomer();
 
         $monthlyPlan = $this->monthlyPlan($plan, $priceId);
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId);
