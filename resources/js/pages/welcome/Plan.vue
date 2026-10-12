@@ -121,11 +121,15 @@ const submit = (): void => {
                         </button>
                     </div>
 
-                    <span class="flex gap-0.5 sm:hidden">
+                    <span
+                        class="flex gap-0.5 sm:hidden"
+                        role="img"
+                        :aria-label="$t('auth.reviews.eyebrow')"
+                    >
                         <IconStarFilled
                             v-for="star in 5"
                             :key="star"
-                            class="size-3.5 text-amber-500 dark:text-yellow-400"
+                            class="size-3.5 text-rating"
                         />
                     </span>
 
@@ -197,6 +201,7 @@ const submit = (): void => {
 
         <template #actions>
             <WelcomeContinueButton
+                :processing="form.processing"
                 :disabled="form.processing"
                 :label="
                     $t('billing.plans.start_first_month', {

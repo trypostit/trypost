@@ -36,3 +36,34 @@ test('once the subscription and plan are ready the processing page sends the use
     $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
 });
+
+test('while checkout settles the processing page uses the neutral auth layout, not the welcome one', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.billing.processing'));
+    $page->script(<<<'JS'
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.querySelector('[data-testid="billing-processing"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
+    $page->assertSee('Processing your subscription')
+        ->assertVisible('@billing-processing')
+        ->assertVisible('@auth-logo')
+        ->assertMissing('@welcome-back')
+        ->assertMissing('@welcome-step-plan')
+        ->assertNoJavaScriptErrors();
+});

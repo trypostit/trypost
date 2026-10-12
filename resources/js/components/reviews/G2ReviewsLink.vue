@@ -15,7 +15,7 @@ import { G2_REVIEWS_URL } from '@/lib/reviews';
             <IconStarFilled
                 v-for="star in 5"
                 :key="star"
-                class="size-3.5 text-amber-500"
+                class="size-3.5 text-rating"
             />
         </span>
         {{ $t('auth.reviews.eyebrow') }}

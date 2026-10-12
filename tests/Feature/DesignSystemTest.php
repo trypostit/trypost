@@ -33,7 +33,10 @@ test('the shared tokens match the design system', function () {
         ->toContain("'Outfit', ui-sans-serif")
         ->toContain('--font-heading: var(--font-heading);')
         ->toContain('--radius: 0.5rem;')
-        ->toContain('--text-sm: 14px;');
+        ->toContain('--text-sm: 14px;')
+        ->toContain('--rating: #b45309;')
+        ->toContain('--rating: #facc15;')
+        ->toContain('--color-rating: var(--rating);');
 
     expect($styles)->not->toContain('#fa5d19');
 
@@ -52,7 +55,8 @@ test('the shared tokens match the design system', function () {
         ->not->toContain('success');
 
     expect($buttons)
-        ->toContain('bg-primary text-primary-foreground hover:bg-primary-hover')
+        ->toContain('bg-primary-strong text-primary-strong-foreground hover:bg-primary-text-hover')
+        ->toContain('dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary-hover')
         ->toContain('bg-critical text-foreground hover:bg-critical-hover')
         ->toContain('"default": "h-8 px-3"')
         ->toContain('"lg": "h-10 gap-2 px-4"');

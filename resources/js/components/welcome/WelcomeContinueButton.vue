@@ -2,11 +2,13 @@
 import { IconArrowRight } from '@tabler/icons-vue';
 
 import { Button } from '@/components/ui/button';
+import { Spinner } from '@/components/ui/spinner';
 
 defineProps<{
     disabled: boolean;
     testid: string;
     label?: string;
+    processing?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -28,6 +30,7 @@ const proceed = (): void => {
         @click="proceed"
     >
         {{ label ?? $t('welcome.continue') }}
-        <IconArrowRight class="size-4 rtl:rotate-180" />
+        <Spinner v-if="processing" />
+        <IconArrowRight v-else class="size-4 rtl:rotate-180" />
     </Button>
 </template>

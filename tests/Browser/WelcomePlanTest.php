@@ -189,3 +189,30 @@ test('the feature info opens on a tap or click', function (int $width, int $heig
     'desktop' => [1440, 900],
     'phone' => [390, 844],
 ]);
+
+test('the activate button shows a spinner while checkout opens', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+
+    $page->script(<<<'JS'
+        XMLHttpRequest.prototype.send = function () {};
+    JS);
+    $page->click('@welcome-plan-continue');
+
+    $state = $page->script(<<<'JS'
+        (async () => {
+            const button = document.querySelector('[data-testid="welcome-plan-continue"]');
+            for (let i = 0; i < 50; i++) {
+                if (button.querySelector('[role="status"]')) return { spinner: true, disabled: button.disabled };
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return { spinner: false, disabled: button.disabled };
+        })()
+    JS);
+
+    expect($state)->toBe(['spinner' => true, 'disabled' => true]);
+});

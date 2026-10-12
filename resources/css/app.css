@@ -51,6 +51,7 @@
     --ring: #7c3aed;
     --primary-text: #6d28d9;
     --primary-text-hover: #5b21b6;
+    --rating: #b45309;
     --chart-1: #4c1d95;
     --chart-2: #6d28d9;
     --chart-3: #7c3aed;
@@ -144,6 +145,7 @@
     --ring: #a78bfa;
     --primary-text: #c4b5fd;
     --primary-text-hover: #ddd6fe;
+    --rating: #facc15;
     --chart-1: #ddd6fe;
     --chart-2: #c4b5fd;
     --chart-3: #a78bfa;
@@ -218,6 +220,7 @@
     --color-primary-selected: var(--primary-selected);
     --color-primary-text: var(--primary-text);
     --color-primary-text-hover: var(--primary-text-hover);
+    --color-rating: var(--rating);
     --color-secondary: var(--secondary);
     --color-secondary-foreground: var(--secondary-foreground);
     --color-muted: var(--muted);

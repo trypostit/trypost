@@ -58,6 +58,7 @@ const submit = (): void => {
 
         <template #actions>
             <WelcomeContinueButton
+                :processing="form.processing"
                 :disabled="form.goals.length === 0 || form.processing"
                 testid="welcome-goals-continue"
                 @continue="submit"

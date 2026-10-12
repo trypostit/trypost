@@ -10,11 +10,15 @@ defineProps<{
 
 <template>
     <figure class="shrink-0 rounded-xl border border-border bg-card p-5">
-        <div class="flex gap-0.5">
+        <div
+            class="flex gap-0.5"
+            role="img"
+            :aria-label="$t('auth.reviews.eyebrow')"
+        >
             <IconStarFilled
                 v-for="star in 5"
                 :key="star"
-                class="size-3.5 text-amber-500"
+                class="size-3.5 text-rating"
             />
         </div>
 
