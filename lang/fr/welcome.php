@@ -53,6 +53,7 @@ return [
         'title' => 'Publiez et analysez depuis votre IA',
         'description' => 'Connectez-le en une minute et utilisez TryPost depuis Claude ou ChatGPT.',
         'connect_with' => 'Connecter :client',
+        'composer' => 'Posez votre question',
         'copy' => 'Copier',
         'dialog_title' => 'Connectez TryPost à :client',
         'dialog_description' => 'Cela prend une minute. Cette page se met à jour dès que vous êtes connecté.',

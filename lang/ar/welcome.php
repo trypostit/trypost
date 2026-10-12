@@ -53,6 +53,7 @@ return [
         'title' => 'انشر وحلّل مباشرةً من الذكاء الاصطناعي لديك',
         'description' => 'اربطه في دقيقة واستخدم TryPost مباشرةً من Claude أو ChatGPT.',
         'connect_with' => 'الربط مع :client',
+        'composer' => 'اسأل عن أي شيء',
         'copy' => 'نسخ',
         'dialog_title' => 'اربط TryPost بـ :client',
         'dialog_description' => 'يستغرق الأمر دقيقة تقريبًا. ستتحدّث هذه الصفحة فور اتصالك.',

@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
+    IconArrowUp,
     IconBulb,
     IconCalendarPlus,
     IconCircleCheckFilled,
     IconListDetails,
+    IconMicrophone,
+    IconPlus,
     IconTrendingUp,
 } from '@tabler/icons-vue';
 import {
@@ -243,27 +246,50 @@ const goToSchedule = (): void => {
                     </button>
                 </div>
 
-                <div class="grid p-4 sm:p-5" aria-hidden="true">
-                    <McpChatExample
-                        v-for="benefit in benefits"
-                        :key="benefit.key"
-                        :benefit="benefit.key"
-                        class="invisible [grid-area:1/1]"
-                    />
-                    <Transition
-                        mode="out-in"
-                        enter-active-class="transition-opacity duration-300"
-                        leave-active-class="transition-opacity duration-300"
-                        enter-from-class="opacity-0"
-                        leave-to-class="opacity-0"
-                    >
+                <div class="flex flex-col" aria-hidden="true">
+                    <div class="grid flex-1 px-4 pt-4 pb-3">
                         <McpChatExample
-                            :key="activeKey"
-                            :benefit="activeKey"
-                            class="[grid-area:1/1]"
-                            :data-testid="`welcome-mcp-chat-${activeKey}`"
+                            v-for="benefit in benefits"
+                            :key="benefit.key"
+                            :benefit="benefit.key"
+                            class="invisible [grid-area:1/1]"
                         />
-                    </Transition>
+                        <Transition
+                            mode="out-in"
+                            enter-active-class="transition-opacity duration-300"
+                            leave-active-class="transition-opacity duration-300"
+                            enter-from-class="opacity-0"
+                            leave-to-class="opacity-0"
+                        >
+                            <McpChatExample
+                                :key="activeKey"
+                                :benefit="activeKey"
+                                class="[grid-area:1/1]"
+                                :data-testid="`welcome-mcp-chat-${activeKey}`"
+                            />
+                        </Transition>
+                    </div>
+                    <div class="px-4 pb-4">
+                        <div
+                            class="flex h-10 items-center gap-2.5 rounded-xl border border-input bg-card ps-3 pe-1.5 shadow-xs"
+                            data-testid="welcome-mcp-composer"
+                        >
+                            <IconPlus class="size-4 shrink-0 text-muted-foreground" />
+                            <span
+                                class="min-w-0 flex-1 truncate text-sm text-muted-foreground"
+                            >
+                                {{ $t('welcome.mcp.composer') }}
+                            </span>
+                            <IconMicrophone
+                                class="size-4 shrink-0 text-muted-foreground"
+                            />
+                            <span
+                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-foreground text-background"
+                            >
+                                <IconArrowUp class="size-4" />
+                            </span>
+                        </div>
+                    </div>
                 </div>
                 </div>
             </div>

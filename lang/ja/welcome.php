@@ -53,6 +53,7 @@ return [
         'title' => 'AIから直接投稿・分析',
         'description' => '1分で接続して、ClaudeやChatGPTから直接TryPostを使いましょう。',
         'connect_with' => ':clientと接続',
+        'composer' => '何でも聞いてください',
         'copy' => 'コピー',
         'dialog_title' => 'TryPostを:clientに接続',
         'dialog_description' => '1分ほどで完了します。接続するとこのページが自動で更新されます。',

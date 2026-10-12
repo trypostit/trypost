@@ -53,6 +53,7 @@ return [
         'title' => 'Post en analyseer direct vanuit je AI',
         'description' => 'Koppel het in een minuut en gebruik TryPost direct vanuit Claude of ChatGPT.',
         'connect_with' => 'Koppelen met :client',
+        'composer' => 'Vraag maar raak',
         'copy' => 'Kopiëren',
         'dialog_title' => 'Koppel TryPost aan :client',
         'dialog_description' => 'Duurt ongeveer een minuut. Deze pagina werkt bij zodra je gekoppeld bent.',
