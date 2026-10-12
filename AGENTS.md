@@ -225,8 +225,8 @@ In dialogs and slide-overs with Cancel and a primary action, render **Cancel fir
 
 Critical means losing it breaks something outside the item itself or cannot be rebuilt by the user in a minute. Only these ask the user to type:
 
-- **The resource's name or identity:** deleting a workspace (its name), removing a member or invitation (their email) and removing an MCP client (its name).
-- **A fixed keyword:** deleting or regenerating an API key (`REGENERATE` for the latter), because integrations stop working at once, and disconnecting a channel (`DISCONNECT`), because its queue and automations stop.
+- **The resource's name or identity:** deleting a workspace (its name) and removing a member or invitation (their email).
+- **A fixed keyword:** deleting or regenerating an API key (`REGENERATE` for the latter), because integrations stop working at once, and disconnecting a channel or an MCP app (`disconnect`), because its queue and automations, or the AI integration, stop.
 
 Do not add typing to a new dialog unless it meets that bar; when in doubt, ask.
 
@@ -237,6 +237,7 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 - Resolve it with `$t` in the template, not `trans()` in script (see `.ai/rules/js.md`).
 - Regenerating an API key uses its own keyword, `settings.api_keys.regenerate_modal.keyword` (`REGENERATE`, `REGENERAR`, …), under the same rules.
 - **Exception — disconnecting a channel** (`DisconnectChannelDialog`, user decision October 2026): its keyword, `channels.disconnect_modal.keyword`, is translated and **lowercase** (`disconnect`, `desconectar`, …), shown as the input placeholder and in the copyable keyword line `Type [disconnect ⧉] to confirm.` (same markup as `ConfirmDeleteModal`), and still compared case-sensitively after trimming (`DISCONNECT` must not confirm). The dialog ends its description with a bold `This cannot be undone.` and offers **Refresh connection** before disconnecting. Do not carry either into the other dialogs.
+- **Disconnecting an MCP app** (`settings/workspace/Mcp.vue`, owner decision October 2026) asks for the same `channels.disconnect_modal.keyword`, not the app's name, so the word matches the channel dialog in every locale (compared case-sensitively after trimming). It keeps the plain `ConfirmDeleteModal` without the refresh option or the bold line.
 
 ## Translated copy must fit its UI slot
 

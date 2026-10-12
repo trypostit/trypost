@@ -46,10 +46,10 @@ usePoll(1000, {
     only: ['connectedClients'],
 });
 
-const confirmDisconnect = (client: ConnectedClient): void => {
+const confirmDisconnect = (client: ConnectedClient, keyword: string): void => {
     deleteModal.value?.open({
         url: mcpDisconnect.url({ client: client.client_id }),
-        confirmText: client.name,
+        confirmText: keyword,
     });
 };
 </script>
@@ -117,7 +117,12 @@ const confirmDisconnect = (client: ConnectedClient): void => {
                                     <DropdownMenuItem
                                         variant="destructive"
                                         :data-testid="`mcp-disconnect-${client.client_id}`"
-                                        @click="confirmDisconnect(client)"
+                                        @click="
+                                            confirmDisconnect(
+                                                client,
+                                                $t('channels.disconnect_modal.keyword'),
+                                            )
+                                        "
                                     >
                                         <IconTrash class="size-4" />
                                         {{ $t('mcp.disconnect') }}
