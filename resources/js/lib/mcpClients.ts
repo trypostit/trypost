@@ -23,7 +23,7 @@ export const mcpClients: McpClient[] = [
     {
         id: 'claude',
         label: 'Claude',
-        logo: '/images/ai/claude.svg',
+        logo: '/images/ai/claude-color.svg',
         monoLogo: '/images/ai/claude-mono.svg',
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
