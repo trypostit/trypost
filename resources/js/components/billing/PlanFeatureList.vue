@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import {
+    IconBulb,
     IconCalendarEvent,
     IconRefresh,
     IconRobot,
@@ -48,9 +49,10 @@ const PLAN_NETWORKS = [
 
 const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
     { key: 'accounts_unlimited', icon: IconShare },
+    { key: 'ideas', icon: IconBulb },
+    { key: 'ai', icon: IconSparkles },
     { key: 'calendar', icon: IconCalendarEvent },
     { key: 'analytics', icon: IconTrendingUp },
-    { key: 'ai', icon: IconSparkles },
     { key: 'mcp', icon: IconRobot },
     { key: 'repurpose', icon: IconRefresh },
     { key: 'team', icon: IconUsers },
@@ -61,6 +63,7 @@ const FEATURES_WITH_TOOLTIP = new Set([
     'ai',
     'analytics',
     'calendar',
+    'ideas',
     'mcp',
     'repurpose',
     'team',

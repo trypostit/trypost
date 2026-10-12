@@ -41,6 +41,7 @@ return [
     'billing.plans.features.ai' => 30,
     'billing.plans.features.analytics' => 25,
     'billing.plans.features.calendar' => 24,
+    'billing.plans.features.ideas' => 28,
     'billing.plans.features.mcp' => 46,
     'billing.plans.features.networks_all' => 39,
     'billing.plans.features.repurpose' => 40,
