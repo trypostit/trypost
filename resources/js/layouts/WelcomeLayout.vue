@@ -151,7 +151,7 @@ const previousStep = computed(() =>
 
         <main
             :class="[
-                'flex flex-1 flex-col px-4 py-12 sm:px-8 lg:px-12',
+                'flex flex-1 flex-col px-4 pt-6 pb-12 sm:px-8 sm:pt-12 lg:px-12',
                 $slots.actions &&
                     'max-sm:pb-[calc(7rem+env(safe-area-inset-bottom))]',
             ]"
@@ -173,7 +173,8 @@ const previousStep = computed(() =>
                     />
                     <h1
                         v-if="title"
-                        class="motion-auth-reveal mx-auto max-w-xl font-heading text-[28px] leading-9 font-medium text-balance text-foreground sm:text-[32px] sm:leading-10"
+                        class="motion-auth-reveal mx-auto max-w-xl font-heading text-[22px] leading-7 font-medium text-balance text-foreground sm:text-[32px] sm:leading-10"
+                        data-testid="welcome-title"
                     >
                         {{ title }}
                     </h1>

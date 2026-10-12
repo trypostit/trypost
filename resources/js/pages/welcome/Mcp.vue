@@ -365,24 +365,30 @@ const goToSchedule = (): void => {
                         }}
                     </Button>
                 </div>
-                <Button
-                    type="button"
-                    size="lg"
-                    class="w-full sm:hidden"
-                    data-testid="welcome-mcp-connect-ai"
-                    @click="openAiPicker"
-                >
-                    <IconSparkles class="size-4" />
-                    {{ $t('welcome.mcp.connect_ai') }}
-                </Button>
-                <Link
-                    :href="postsIndex.url()"
-                    class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-control hover:text-foreground sm:hidden"
-                    data-testid="welcome-mcp-skip-link"
-                >
-                    {{ $t('welcome.mcp.skip') }}
-                    <IconArrowRight class="size-3.5 rtl:rotate-180" />
-                </Link>
+                <div class="grid w-full grid-cols-2 gap-2 sm:hidden">
+                    <Button
+                        type="button"
+                        size="lg"
+                        data-testid="welcome-mcp-connect-ai"
+                        @click="openAiPicker"
+                    >
+                        <IconSparkles class="size-4" />
+                        {{ $t('welcome.mcp.connect_ai') }}
+                    </Button>
+                    <Button
+                        as-child
+                        variant="secondary"
+                        size="lg"
+                    >
+                        <Link
+                            :href="postsIndex.url()"
+                            data-testid="welcome-mcp-skip-link"
+                        >
+                            {{ $t('welcome.mcp.skip') }}
+                            <IconArrowRight class="size-4 rtl:rotate-180" />
+                        </Link>
+                    </Button>
+                </div>
                 <Button
                     as-child
                     variant="secondary"

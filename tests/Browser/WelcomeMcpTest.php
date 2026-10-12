@@ -242,14 +242,17 @@ test('on a phone the MCP step keeps the example and connects through an AI picke
             window.scrollTo(0, document.documentElement.scrollHeight);
             await new Promise((resolve) => setTimeout(resolve, 300));
             const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+            const skip = rect('welcome-mcp-skip-link');
+            const connect = rect('welcome-mcp-connect-ai');
             return {
                 compact: rect('welcome-actions').height < 120,
                 composerAboveFooter: rect('welcome-mcp-composer').bottom <= rect('welcome-actions').top,
+                connectBeforeSkip: Math.round(skip.top) === Math.round(connect.top) && connect.left < skip.left,
             };
         })()
     JS);
 
-    expect($footer)->toBe(['compact' => true, 'composerAboveFooter' => true]);
+    expect($footer)->toBe(['compact' => true, 'composerAboveFooter' => true, 'connectBeforeSkip' => true]);
 
     $page->assertSeeIn('@welcome-mcp-connect-ai', 'Connect your AI')
         ->assertVisible('@welcome-mcp-skip-link')
