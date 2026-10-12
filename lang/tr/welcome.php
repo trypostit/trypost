@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Sohbetten oluştur ve planla',
                 'hint' => 'Karuseller, gönderi dizileri ve videolar',
-                'ask' => 'Panomdaki sıradaki fikri al, karusele dönüştür ve salı için Instagram ile LinkedIn’de planla.',
-                'reply' => 'Tamam. Karusel salı saat 10:00’da Instagram ve LinkedIn için planlandı.',
+                'ask' => 'Panomdaki sıradaki fikri al, karusele dönüştür ve salı :time için Instagram ile LinkedIn’de planla.',
+                'reply' => 'Tamam. Karuselin Instagram ve LinkedIn’de planlandı.',
             ],
             'analytics' => [
                 'title' => 'Büyümeni takip et',

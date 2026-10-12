@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Crea e programma dalla chat',
                 'hint' => 'Caroselli, thread e video',
-                'ask' => 'Prendi la prossima idea dalla mia bacheca, trasformala in un carosello e programmalo per martedì su Instagram e LinkedIn.',
-                'reply' => 'Fatto. Il carosello è programmato per martedì alle 10 su Instagram e LinkedIn.',
+                'ask' => 'Prendi la prossima idea dalla mia bacheca, trasformala in un carosello e programmalo per martedì alle :time su Instagram e LinkedIn.',
+                'reply' => 'Fatto. Il tuo carosello è programmato su Instagram e LinkedIn.',
             ],
             'analytics' => [
                 'title' => 'Segui la tua crescita',

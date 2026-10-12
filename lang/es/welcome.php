@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Crea y programa desde el chat',
                 'hint' => 'Carruseles, hilos y videos',
-                'ask' => 'Toma la siguiente idea de mi tablero, conviértela en un carrusel y prográmalo para el martes en Instagram y LinkedIn.',
-                'reply' => 'Listo. Programé el carrusel para el martes a las 10:00 en Instagram y LinkedIn.',
+                'ask' => 'Toma la siguiente idea de mi tablero, conviértela en un carrusel y prográmalo para el martes a las :time en Instagram y LinkedIn.',
+                'reply' => 'Listo. Tu carrusel está programado en Instagram y LinkedIn.',
             ],
             'analytics' => [
                 'title' => 'Sigue tu crecimiento',

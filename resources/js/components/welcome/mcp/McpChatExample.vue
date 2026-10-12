@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { IconCheck } from '@tabler/icons-vue';
-import type { Component } from 'vue';
+import { computed, type Component } from 'vue';
 
 import AppLogo from '@/components/AppLogo.vue';
 import McpFollowersMockup from '@/components/welcome/mcp/McpFollowersMockup.vue';
 import McpIdeasMockup from '@/components/welcome/mcp/McpIdeasMockup.vue';
 import McpQueueMockup from '@/components/welcome/mcp/McpQueueMockup.vue';
 import McpScheduleMockup from '@/components/welcome/mcp/McpScheduleMockup.vue';
+import date from '@/date';
 
 defineProps<{
     benefit: string;
@@ -18,6 +19,9 @@ const mockups: Record<string, Component> = {
     queue: McpQueueMockup,
     ideas: McpIdeasMockup,
 };
+
+/** The schedule example's time, in the user's clock format like its card. */
+const scheduledTime = computed((): string => date.formatClockTime('10:00'));
 </script>
 
 <template>
@@ -25,7 +29,7 @@ const mockups: Record<string, Component> = {
         <p
             class="ms-12 self-end rounded-2xl rounded-ee-sm bg-muted px-3.5 py-2.5 text-sm text-foreground"
         >
-            {{ $t(`welcome.mcp.benefits.${benefit}.ask`) }}
+            {{ $t(`welcome.mcp.benefits.${benefit}.ask`, { time: scheduledTime }) }}
         </p>
         <div class="flex flex-col gap-2">
             <span
@@ -36,7 +40,7 @@ const mockups: Record<string, Component> = {
                 <IconCheck class="size-3.5 text-green-500" />
             </span>
             <p class="text-sm text-foreground">
-                {{ $t(`welcome.mcp.benefits.${benefit}.reply`) }}
+                {{ $t(`welcome.mcp.benefits.${benefit}.reply`, { time: scheduledTime }) }}
             </p>
             <component :is="mockups[benefit]" class="mt-1" />
         </div>

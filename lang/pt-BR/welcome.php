@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Crie e agende pelo chat',
                 'hint' => 'Carrosséis, threads e vídeos',
-                'ask' => 'Pegue a próxima ideia do meu quadro, transforme num carrossel e agende para terça no Instagram e no LinkedIn.',
-                'reply' => 'Pronto. Agendei o carrossel para terça, 10h, no Instagram e no LinkedIn.',
+                'ask' => 'Pegue a próxima ideia do meu quadro, transforme num carrossel e agende para terça às :time no Instagram e no LinkedIn.',
+                'reply' => 'Pronto. O carrossel está agendado no Instagram e no LinkedIn.',
             ],
             'analytics' => [
                 'title' => 'Acompanhe seu crescimento',

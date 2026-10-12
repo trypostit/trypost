@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Maak en plan vanuit de chat',
                 'hint' => 'Carrousels, threads en video’s',
-                'ask' => 'Pak het volgende idee van mijn bord, maak er een carrousel van en plan hem voor dinsdag op Instagram en LinkedIn.',
-                'reply' => 'Klaar. Je carrousel staat dinsdag om 10:00 ingepland op Instagram en LinkedIn.',
+                'ask' => 'Pak het volgende idee van mijn bord, maak er een carrousel van en plan hem voor dinsdag om :time op Instagram en LinkedIn.',
+                'reply' => 'Klaar. Je carrousel staat gepland op Instagram en LinkedIn.',
             ],
             'analytics' => [
                 'title' => 'Volg je groei',

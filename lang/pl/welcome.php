@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Twórz i planuj z czatu',
                 'hint' => 'Karuzele, wątki i filmy',
-                'ask' => 'Weź następny pomysł z mojej tablicy, zrób z niego karuzelę i zaplanuj na wtorek na Instagramie i LinkedIn.',
-                'reply' => 'Gotowe. Karuzela jest zaplanowana na wtorek, 10:00, na Instagramie i LinkedInie.',
+                'ask' => 'Weź następny pomysł z mojej tablicy, zrób z niego karuzelę i zaplanuj na wtorek na :time na Instagramie i LinkedIn.',
+                'reply' => 'Gotowe. Twoja karuzela jest zaplanowana na Instagramie i LinkedIn.',
             ],
             'analytics' => [
                 'title' => 'Śledź swój wzrost',

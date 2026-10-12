@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'チャットで作成・予約',
                 'hint' => 'カルーセル、スレッド、動画',
-                'ask' => 'ボードの次のアイデアをカルーセルにして、火曜日にInstagramとLinkedInで予約して。',
-                'reply' => '完了しました。カルーセルを火曜日10時にInstagramとLinkedInで予約しました。',
+                'ask' => 'ボードの次のアイデアをカルーセルにして、火曜日の:timeにInstagramとLinkedInで予約して。',
+                'reply' => '完了。カルーセルをInstagramとLinkedInで予約しました。',
             ],
             'analytics' => [
                 'title' => '成長を追いかける',

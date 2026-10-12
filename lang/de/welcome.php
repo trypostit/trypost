@@ -83,8 +83,8 @@ return [
             'schedule' => [
                 'title' => 'Erstellen und planen im Chat',
                 'hint' => 'Karussells, Threads und Videos',
-                'ask' => 'Nimm die nächste Idee vom Board, mach ein Karussell daraus und plane es für Dienstag auf Instagram und LinkedIn.',
-                'reply' => 'Erledigt. Dein Karussell ist für Dienstag, 10 Uhr, auf Instagram und LinkedIn geplant.',
+                'ask' => 'Nimm die nächste Idee vom Board, mach ein Karussell daraus und plane es für Dienstag, :time, auf Instagram und LinkedIn.',
+                'reply' => 'Erledigt. Dein Karussell ist auf Instagram und LinkedIn geplant.',
             ],
             'analytics' => [
                 'title' => 'Verfolge dein Wachstum',
