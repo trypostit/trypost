@@ -88,7 +88,10 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     expect($claudeHref)->toStartWith('https://claude.ai/new?q=')
         ->and(urldecode(parse_url($claudeHref, PHP_URL_QUERY)))->toContain(route('mcp.trypost'))
         ->and($chatgptHref)->toStartWith('https://chatgpt.com/?q=')
-        ->and(urldecode(parse_url($chatgptHref, PHP_URL_QUERY)))->toContain(route('mcp.trypost'));
+        ->and(urldecode(parse_url($chatgptHref, PHP_URL_QUERY)))->toContain(route('mcp.trypost'))
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open-perplexity]").getAttribute("href")'))->toStartWith('https://www.perplexity.ai/?q=')
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open-grok]").getAttribute("href")'))->toStartWith('https://grok.com/?q=')
+        ->and($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-open-], [data-testid=welcome-mcp-copy]")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1);
 
     $page->assertMissing('@welcome-mcp-status')
         ->assertMissing('@welcome-mcp-continue');

@@ -53,7 +53,7 @@ return [
         'title' => 'Post and analyze right from Claude and ChatGPT',
         'description' => 'Open it in Claude or ChatGPT, send the ready-made message and log in. It takes a minute.',
         'copy_prompt' => 'Copy prompt',
-        'open' => 'Open :client',
+        'open' => 'Open in :client',
         'waiting' => 'Waiting for your AI to connect…',
         'connected' => ':client is connected',
         'benefits' => [

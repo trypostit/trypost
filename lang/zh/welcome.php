@@ -53,7 +53,7 @@ return [
         'title' => '直接在 Claude 和 ChatGPT 中发帖和分析',
         'description' => '打开 Claude 或 ChatGPT，发送准备好的消息并登录，一分钟搞定。',
         'copy_prompt' => '复制提示词',
-        'open' => '打开 :client',
+        'open' => '在 :client 中打开',
         'waiting' => '正在等待你的 AI 连接…',
         'connected' => ':client 已连接',
         'benefits' => [

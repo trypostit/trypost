@@ -53,7 +53,7 @@ return [
         'title' => 'Claude와 ChatGPT에서 바로 게시하고 분석하세요',
         'description' => 'Claude나 ChatGPT를 열고 준비된 메시지를 보낸 뒤 로그인하세요. 1분이면 됩니다.',
         'copy_prompt' => '프롬프트 복사',
-        'open' => ':client 열기',
+        'open' => ':client에서 열기',
         'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',
         'benefits' => [

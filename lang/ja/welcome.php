@@ -53,7 +53,7 @@ return [
         'title' => 'ClaudeとChatGPTから直接投稿・分析',
         'description' => 'ClaudeかChatGPTを開いて、用意されたメッセージを送信し、ログインするだけ。1分で完了します。',
         'copy_prompt' => 'プロンプトをコピー',
-        'open' => ':clientを開く',
+        'open' => ':clientで開く',
         'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',
         'benefits' => [

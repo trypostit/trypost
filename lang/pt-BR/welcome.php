@@ -53,7 +53,7 @@ return [
         'title' => 'Poste e analise direto do Claude e do ChatGPT',
         'description' => 'Abra no Claude ou no ChatGPT, envie a mensagem pronta e faça login. Leva 1 minuto.',
         'copy_prompt' => 'Copiar prompt',
-        'open' => 'Abrir :client',
+        'open' => 'Abrir no :client',
         'waiting' => 'Aguardando sua IA conectar…',
         'connected' => ':client está conectado',
         'benefits' => [

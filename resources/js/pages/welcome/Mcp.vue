@@ -50,6 +50,33 @@ const {
 
 const activeKey = computed((): string => benefits[activeBenefit.value].key);
 
+/** Chat apps that open a new conversation with the setup prompt filled in. */
+const chatApps: {
+    id: string;
+    label: string;
+    logo: string;
+    logoClass?: string;
+    promptUrl: (prompt: string) => string;
+}[] = [
+    ...mcpClients,
+    {
+        id: 'perplexity',
+        label: 'Perplexity',
+        logo: '/images/ai/perplexity.svg',
+        logoClass: 'dark:invert',
+        promptUrl: (prompt) =>
+            `https://www.perplexity.ai/?q=${encodeURIComponent(prompt)}`,
+    },
+    {
+        id: 'grok',
+        label: 'Grok',
+        logo: '/images/ai/grok.svg',
+        logoClass: 'dark:invert',
+        promptUrl: (prompt) =>
+            `https://grok.com/?q=${encodeURIComponent(prompt)}`,
+    },
+];
+
 const connectedClient = computed(
     (): ConnectedClient | null => props.connectedClients[0] ?? null,
 );
@@ -102,6 +129,7 @@ const goToSchedule = (): void => {
         :title="$t('welcome.mcp.title')"
         :description="$t('welcome.mcp.description')"
         size="5xl"
+        actions-size="5xl"
     >
         <article class="text-start">
             <div
@@ -212,36 +240,33 @@ const goToSchedule = (): void => {
                     <Spinner class="size-3.5 shrink-0 text-primary-text" />
                     {{ $t('welcome.mcp.waiting') }}
                 </p>
-                <div class="grid w-full grid-cols-2 gap-2">
+                <div class="flex flex-wrap justify-center gap-2">
                     <Button
-                        v-for="client in mcpClients"
-                        :key="client.id"
+                        v-for="app in chatApps"
+                        :key="app.id"
                         as="a"
-                        :href="client.promptUrl(prompt)"
+                        :href="app.promptUrl(prompt)"
                         target="_blank"
                         rel="noopener noreferrer"
                         size="lg"
                         variant="secondary"
-                        :data-testid="`welcome-mcp-open-${client.id}`"
+                        :data-testid="`welcome-mcp-open-${app.id}`"
                         @click="startConnecting"
                     >
                         <img
-                            :src="client.logo"
+                            :src="app.logo"
                             alt=""
-:class="['size-4', client.logoClass]"
+                            :class="['size-4', app.logoClass]"
                         />
-                        {{ $t('welcome.mcp.open', { client: client.label }) }}
+                        {{ $t('welcome.mcp.open', { client: app.label }) }}
                         <IconArrowUpRight
                             class="size-4 text-muted-foreground rtl:-scale-x-100"
                         />
                     </Button>
-                </div>
-                <div
-                    class="flex items-center justify-center gap-4 text-sm font-medium text-muted-foreground"
-                >
-                    <button
+                    <Button
                         type="button"
-                        class="inline-flex cursor-pointer items-center gap-1.5 transition-control hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                        size="lg"
+                        variant="secondary"
                         data-testid="welcome-mcp-copy"
                         @click="copyPrompt"
                     >
@@ -253,16 +278,15 @@ const goToSchedule = (): void => {
                             <IconCopy class="size-4" />
                             {{ $t('welcome.mcp.copy_prompt') }}
                         </template>
-                    </button>
-                    <span aria-hidden="true" class="h-4 w-px bg-border-strong" />
-                    <Link
-                        :href="postsIndex.url()"
-                        class="transition-control hover:text-foreground"
-                        data-testid="welcome-mcp-skip"
-                    >
-                        {{ $t('welcome.mcp.skip') }}
-                    </Link>
+                    </Button>
                 </div>
+                <Link
+                    :href="postsIndex.url()"
+                    class="text-sm font-medium text-muted-foreground transition-control hover:text-foreground"
+                    data-testid="welcome-mcp-skip"
+                >
+                    {{ $t('welcome.mcp.skip') }}
+                </Link>
             </template>
         </template>
     </WelcomeLayout>

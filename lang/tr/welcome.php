@@ -53,7 +53,7 @@ return [
         'title' => 'Claude ve ChatGPT’den doğrudan paylaş ve analiz et',
         'description' => 'Claude veya ChatGPT’yi aç, hazır mesajı gönder ve giriş yap. Bir dakika sürer.',
         'copy_prompt' => 'İstemi kopyala',
-        'open' => ':client uygulamasını aç',
+        'open' => ':client ile aç',
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',
         'benefits' => [

@@ -53,7 +53,7 @@ return [
         'title' => 'انشر وحلّل مباشرةً من Claude وChatGPT',
         'description' => 'افتح Claude أو ChatGPT، وأرسل الرسالة الجاهزة ثم سجّل الدخول. يستغرق الأمر دقيقة.',
         'copy_prompt' => 'نسخ التعليمات',
-        'open' => 'فتح :client',
+        'open' => 'افتح في :client',
         'waiting' => 'بانتظار اتصال الذكاء الاصطناعي…',
         'connected' => 'تم ربط :client',
         'benefits' => [

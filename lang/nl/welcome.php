@@ -53,7 +53,7 @@ return [
         'title' => 'Post en analyseer direct vanuit Claude en ChatGPT',
         'description' => 'Open Claude of ChatGPT, verstuur het kant-en-klare bericht en log in. Het duurt een minuut.',
         'copy_prompt' => 'Prompt kopiëren',
-        'open' => ':client openen',
+        'open' => 'Openen in :client',
         'waiting' => 'Wachten tot je AI verbindt…',
         'connected' => ':client is gekoppeld',
         'benefits' => [

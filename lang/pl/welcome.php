@@ -53,7 +53,7 @@ return [
         'title' => 'Publikuj i analizuj prosto z Claude i ChatGPT',
         'description' => 'Otwórz Claude lub ChatGPT, wyślij gotową wiadomość i zaloguj się. To zajmie minutę.',
         'copy_prompt' => 'Kopiuj prompt',
-        'open' => 'Otwórz :client',
+        'open' => 'Otwórz w :client',
         'waiting' => 'Czekamy na połączenie Twojej AI…',
         'connected' => ':client jest połączony',
         'benefits' => [

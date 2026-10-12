@@ -18,6 +18,7 @@ import {
 import type { Language, SharedData, WelcomeStep } from '@/types';
 
 const maxWidthClass = {
+    sm: 'max-w-sm',
     lg: 'max-w-lg',
     '3xl': 'max-w-3xl',
     '4xl': 'max-w-4xl',
@@ -32,12 +33,14 @@ const props = withDefaults(
         description?: string;
         step?: WelcomeStep;
         size?: MaxWidthSize;
+        actionsSize?: MaxWidthSize;
     }>(),
     {
         title: undefined,
         description: undefined,
         step: undefined,
         size: '3xl',
+        actionsSize: 'sm',
     },
 );
 
@@ -188,7 +191,10 @@ const previousStep = computed(() =>
 
                 <div
                     v-if="$slots.actions"
-                    class="flex w-full max-w-sm flex-col items-center gap-3 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-10 max-sm:max-w-none max-sm:border-t max-sm:border-border max-sm:bg-card max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+                    :class="[
+                        'flex w-full flex-col items-center gap-3 max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-10 max-sm:max-w-none max-sm:border-t max-sm:border-border max-sm:bg-card max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]',
+                        maxWidthClass[actionsSize],
+                    ]"
                     data-testid="welcome-actions"
                 >
                     <slot name="actions" />
