@@ -201,8 +201,14 @@ const goToSchedule = (): void => {
                         @click="selectBenefit(index)"
                     >
                         <span
-                            class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-primary-text"
+                            :class="[
+                                'inline-flex size-8 shrink-0 items-center justify-center rounded-lg border transition-control',
+                                index === activeBenefit
+                                    ? 'border-transparent bg-primary-strong text-primary-strong-foreground dark:bg-primary dark:text-primary-foreground'
+                                    : 'border-border bg-card text-primary-text',
+                            ]"
                             aria-hidden="true"
+                            :data-testid="`welcome-mcp-benefit-icon-${benefit.key}`"
                         >
                             <component :is="benefit.icon" class="size-4" />
                         </span>

@@ -83,6 +83,8 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->click('@welcome-mcp-benefit-analytics');
     waitForWelcomeMcpChat($page, 'analytics');
 
+    $page->assertScript('getComputedStyle(document.querySelector("[data-testid=welcome-mcp-benefit-icon-analytics]")).backgroundColor !== getComputedStyle(document.querySelector("[data-testid=welcome-mcp-benefit-icon-queue]")).backgroundColor', true);
+
     $page->assertSeeIn('@welcome-mcp-chat-analytics', 'How are my followers growing')
         ->assertSeeIn('@welcome-mcp-chat-analytics', 'Total Followers')
         ->click('@welcome-mcp-benefit-queue');
