@@ -72,7 +72,7 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertNoJavaScriptErrors();
 
     $reviews = $page->script(<<<'JS'
-        document.querySelectorAll('[data-testid="welcome-plan-reviews"] img').length
+        document.querySelectorAll('[data-testid^="welcome-plan-reviewer-"]').length
     JS);
 
     expect($reviews)->toBe(5);
@@ -118,4 +118,20 @@ test('the review quotes rotate on their own', function () {
     JS);
 
     expect($next)->toBe('welcome-plan-review-diego');
+});
+
+test('clicking a reviewer photo shows their quote', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomePlanTestId($page, 'welcome-plan-reviewer-pedro');
+
+    $page->click('@welcome-plan-reviewer-pedro');
+    waitForWelcomePlanTestId($page, 'welcome-plan-review-pedro');
+
+    $page->assertVisible('@welcome-plan-review-pedro')
+        ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
+        ->assertNoJavaScriptErrors();
 });

@@ -40,6 +40,10 @@ const { pause, resume } = useIntervalFn(showNextReview, REVIEW_INTERVAL_MS, {
     immediate: false,
 });
 
+const selectReview = (index: number): void => {
+    activeReview.value = index;
+};
+
 const pauseReviews = (): void => {
     pause();
 };
@@ -95,20 +99,32 @@ const submit = (): void => {
                     @mouseleave="resumeReviews"
                 >
                     <div class="flex -space-x-2 rtl:space-x-reverse">
+                        <button
+                            v-for="(review, index) in REVIEWS"
+                            :key="review.key"
+                            type="button"
+                            :aria-label="review.name"
+                            :aria-pressed="index === activeReview"
+                            :class="[
+                                'relative cursor-pointer rounded-full transition-transform duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                index === activeReview ? 'z-10 scale-110' : 'hover:z-10',
+                            ]"
+                            :data-testid="`welcome-plan-reviewer-${review.key}`"
+                            @click="selectReview(index)"
+                        >
                             <img
-                                v-for="(review, index) in REVIEWS"
-                                :key="review.key"
                                 :src="review.photo"
-                                :alt="review.name"
+                                alt=""
                                 width="72"
                                 height="72"
                                 :class="[
-                                    'relative size-9 rounded-full border-2 object-cover transition-[border-color,transform] duration-300',
+                                    'size-9 rounded-full border-2 object-cover transition-[border-color] duration-300',
                                     index === activeReview
-                                        ? 'z-10 scale-110 border-primary-strong'
+                                        ? 'border-primary-strong'
                                         : 'border-card',
                                 ]"
                             />
+                        </button>
                     </div>
 
                     <div class="grid">
