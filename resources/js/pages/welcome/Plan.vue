@@ -4,13 +4,12 @@ import {
     IconBuilding,
     IconStarFilled,
 } from '@tabler/icons-vue';
-import { useIntervalFn, useMediaQuery } from '@vueuse/core';
-import { ref, watch } from 'vue';
 
 import PlanFeatureInfo from '@/components/billing/PlanFeatureInfo.vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
+import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { REVIEWS } from '@/lib/reviews';
 import { store } from '@/routes/app/welcome/plan';
@@ -22,44 +21,12 @@ defineProps<{
 
 const form = useForm({});
 
-const REVIEW_INTERVAL_MS = 6000;
-
-const activeReview = ref(0);
-const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
-
-const showNextReview = (): void => {
-    activeReview.value = (activeReview.value + 1) % REVIEWS.length;
-};
-
-const { pause, resume } = useIntervalFn(showNextReview, REVIEW_INTERVAL_MS, {
-    immediate: false,
-});
-
-const selectReview = (index: number): void => {
-    activeReview.value = index;
-};
-
-const pauseReviews = (): void => {
-    pause();
-};
-
-const resumeReviews = (): void => {
-    if (!prefersReducedMotion.value) {
-        resume();
-    }
-};
-
-watch(
-    prefersReducedMotion,
-    (reduced) => {
-        if (reduced) {
-            pause();
-        } else {
-            resume();
-        }
-    },
-    { immediate: true },
-);
+const {
+    active: activeReview,
+    select: selectReview,
+    pause: pauseReviews,
+    resume: resumeReviews,
+} = useAutoRotate(REVIEWS.length, 6000);
 
 const submit = (): void => {
     if (form.processing) {

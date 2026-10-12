@@ -39,10 +39,20 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'));
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-benefits');
+
+    $page->assertSee('Post and analyze right from Claude and ChatGPT')
+        ->assertVisible('@welcome-mcp-benefit-schedule')
+        ->assertVisible('@welcome-mcp-benefit-ideas')
+        ->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
+        ->click('@welcome-mcp-benefit-analytics');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-chat-analytics');
+
+    $page->assertSeeIn('@welcome-mcp-chat-analytics', 'What worked best last month?')
+        ->click('@welcome-mcp-view-prompt');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-prompt');
 
-    $page->assertSee('Connect TryPost to your AI')
-        ->assertSeeIn('@welcome-mcp-prompt', route('mcp.trypost'))
+    $page->assertSeeIn('@welcome-mcp-prompt', route('mcp.trypost'))
         ->assertVisible('@welcome-mcp-copy')
         ->assertVisible('@welcome-mcp-open-claude')
         ->assertVisible('@welcome-mcp-open-chatgpt')
@@ -80,5 +90,26 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     JS);
 
     $page->assertPathIs($schedulePath)
+        ->assertNoJavaScriptErrors();
+});
+
+test('the MCP step fits a phone without scrolling and hides the chat example there', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeMcpSubscriber());
+
+    $page = visit(route('app.welcome.mcp'))->resize(390, 844);
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-benefits');
+
+    $layout = $page->script(<<<'JS'
+        ({
+            scrolls: document.documentElement.scrollHeight > window.innerHeight,
+            chatVisible: document.querySelector('[data-testid^="welcome-mcp-chat-"]')?.getClientRects().length > 0,
+        })
+    JS);
+
+    expect($layout)->toBe(['scrolls' => false, 'chatVisible' => false]);
+
+    $page->assertVisible('@welcome-mcp-copy')
         ->assertNoJavaScriptErrors();
 });
