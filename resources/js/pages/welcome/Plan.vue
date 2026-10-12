@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconBuilding } from '@tabler/icons-vue';
+import { IconBuilding, IconInfoCircle } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { store } from '@/routes/app/welcome/plan';
@@ -30,7 +36,7 @@ const submit = (): void => {
         <article
             v-for="plan in plans"
             :key="plan.id"
-            class="grid gap-6 rounded-xl border border-border bg-card p-5 text-start sm:grid-cols-2 sm:gap-8 sm:p-6"
+            class="grid gap-6 rounded-xl border border-border bg-card p-5 text-start sm:grid-cols-[2fr_3fr] sm:gap-8 sm:p-6"
             :data-testid="`plan-card-${plan.slug}`"
         >
             <div class="flex flex-col gap-4">
@@ -71,26 +77,55 @@ const submit = (): void => {
                         }}
                     </p>
                 </div>
-
-                <div
-                    class="flex items-center gap-3 rounded-lg bg-muted px-3 py-2"
-                    :data-testid="`plan-highlight-${plan.slug}`"
-                >
-                    <span
-                        class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card"
-                    >
-                        <IconBuilding class="size-4" />
-                    </span>
-                    <p class="text-sm font-medium text-foreground">
-                        {{ $t('billing.plans.workspaces_one') }}
-                    </p>
-                </div>
             </div>
 
             <PlanFeatureList
                 :scope="plan.slug"
                 class="max-sm:border-t max-sm:border-border max-sm:pt-6 sm:border-s sm:border-border sm:ps-8"
-            />
+            >
+                <template #before>
+                    <li
+                        class="flex items-start gap-2 text-sm leading-5 text-foreground"
+                        :data-testid="`plan-highlight-${plan.slug}`"
+                    >
+                        <IconBuilding
+                            class="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                        />
+                        <span class="inline-flex items-start gap-1.5">
+                            {{ $t('billing.plans.workspaces_one') }}
+                            <TooltipProvider :delay-duration="200">
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <button
+                                            type="button"
+                                            class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                            :aria-label="
+                                                $t(
+                                                    'billing.plans.workspaces_tooltip',
+                                                )
+                                            "
+                                            :data-testid="`plan-workspaces-info-${plan.slug}`"
+                                        >
+                                            <IconInfoCircle class="size-4" />
+                                        </button>
+                                    </TooltipTrigger>
+                                    <TooltipContent
+                                        side="top"
+                                        :side-offset="8"
+                                        class="max-w-56 text-start"
+                                    >
+                                        {{
+                                            $t(
+                                                'billing.plans.workspaces_tooltip',
+                                            )
+                                        }}
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </span>
+                    </li>
+                </template>
+            </PlanFeatureList>
         </article>
 
         <template #actions>

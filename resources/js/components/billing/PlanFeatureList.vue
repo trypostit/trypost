@@ -88,13 +88,15 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
         </p>
 
         <ul class="flex flex-col gap-1">
+            <slot name="before" />
+
             <li
-                class="flex items-center gap-2 text-sm text-foreground"
+                class="flex items-start gap-2 text-sm leading-5 text-foreground"
             >
                 <IconWorld
-                    class="size-4 shrink-0 text-muted-foreground"
+                    class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                 />
-                <span class="inline-flex items-center gap-1.5">
+                <span class="inline-flex items-start gap-1.5">
                     <span
                         :data-testid="`plan-feature-label-${scope}-networks_all`"
                         >{{
@@ -106,7 +108,7 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                    class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
                                     :aria-label="
                                         $t(
                                             'billing.plans.features.networks_all_tooltip',
@@ -166,13 +168,13 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             <li
                 v-for="feature in sharedFeatures"
                 :key="feature.key"
-                class="flex items-center gap-2 text-sm text-foreground"
+                class="flex items-start gap-2 text-sm leading-5 text-foreground"
             >
                 <component
                     :is="feature.icon"
-                    class="size-4 shrink-0 text-muted-foreground"
+                    class="mt-0.5 size-4 shrink-0 text-muted-foreground"
                 />
-                <span class="inline-flex items-center gap-1.5">
+                <span class="inline-flex items-start gap-1.5">
                     <span
                         :data-testid="`plan-feature-label-${scope}-${feature.key}`"
                         >{{
@@ -187,7 +189,7 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             <TooltipTrigger as-child>
                                 <button
                                     type="button"
-                                    class="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                    class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
                                     :aria-label="
                                         $t(
                                             `billing.plans.features.${feature.key}_tooltip`,
