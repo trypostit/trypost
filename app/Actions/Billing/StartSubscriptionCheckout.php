@@ -7,18 +7,11 @@ namespace App\Actions\Billing;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
 class StartSubscriptionCheckout
 {
-    /**
-     * Stripe metadata values are capped at 500 characters and rejected if longer:
-     * https://docs.stripe.com/api/metadata
-     */
-    private const STRIPE_METADATA_MAX_LENGTH = 500;
-
     public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null): Response
     {
         // A leftover Workspaces row (unpaid/canceled without `deleted`) would
@@ -27,16 +20,19 @@ class StartSubscriptionCheckout
             $account->update(['plan_id' => null]);
         }
 
-        $account->createOrGetStripeCustomer([
+        $account->updateOrCreateStripeCustomer([
             'email' => $account->stripeEmail(),
             'name' => $account->stripeName(),
+            'metadata' => $account->stripeMetadata(),
         ]);
 
         $monthlyPlan = $this->monthlyPlan($plan, $priceId);
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId);
 
         ConfigureSubscriptionCheckout::apply($subscription, $account, $monthlyPlan);
-        $subscription->withMetadata($this->subscriptionMetadata($account, $subscription->couponId));
+        $subscription->withMetadata(array_filter([
+            ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => $subscription->couponId,
+        ], filled(...)));
 
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
@@ -44,38 +40,6 @@ class StartSubscriptionCheckout
         ]);
 
         return Inertia::location($session->url);
-    }
-
-    /**
-     * @return array<string, string>
-     */
-    private function subscriptionMetadata(Account $account, ?string $firstMonthCouponId): array
-    {
-        $owner = $account->owner;
-
-        $metadata = array_filter([
-            'utm_source' => $owner?->utm_source,
-            'utm_medium' => $owner?->utm_medium,
-            'utm_campaign' => $owner?->utm_campaign,
-            'utm_term' => $owner?->utm_term,
-            'utm_content' => $owner?->utm_content,
-            'gclid' => $owner?->gclid,
-            'fbclid' => $owner?->fbclid,
-            'li_fat_id' => $owner?->li_fat_id,
-            'ttclid' => $owner?->ttclid,
-            'rdt_cid' => $owner?->rdt_cid,
-            'epik' => $owner?->epik,
-            'persona' => $owner?->persona?->value,
-            'goals' => implode(',', $owner?->goals ?? []),
-            'previous_software' => $owner?->previous_software?->value,
-            'referral_source' => $owner?->referral_source?->value,
-            ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => $firstMonthCouponId,
-        ], filled(...));
-
-        return array_map(
-            fn (string $value): string => Str::limit($value, self::STRIPE_METADATA_MAX_LENGTH, ''),
-            $metadata,
-        );
     }
 
     private function monthlyPlan(?Plan $plan, string $priceId): ?Plan

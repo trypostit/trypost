@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\ReferralSource;
+use App\Jobs\Billing\SyncStripeCustomerMetadata;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\User;
 use App\Models\Workspace;
@@ -46,7 +47,7 @@ test('the question is not shared once answered, on self-hosted or before app acc
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
 ]);
 
-test('answering stores the source, mirrors it to PostHog and goes back', function () {
+test('answering stores the source, mirrors it to PostHog and Stripe and goes back', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
 
@@ -59,6 +60,7 @@ test('answering stores the source, mirrors it to PostHog and goes back', functio
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::Referral->value
         && data_get($event->payload, 'properties.referral_source') === ReferralSource::ProductHunt->value);
+    Bus::assertDispatched(SyncStripeCustomerMetadata::class, fn (SyncStripeCustomerMetadata $job): bool => $job->accountId === $this->user->account_id);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
@@ -66,9 +68,13 @@ test('answering stores the source, mirrors it to PostHog and goes back', functio
 });
 
 test('answering requires a valid source', function (array $payload) {
+    Bus::fake();
+
     $this->actingAs($this->user->fresh())
         ->post(route('app.referral-source.store'), $payload)
         ->assertSessionHasErrors('referral_source');
+
+    Bus::assertNotDispatched(SyncStripeCustomerMetadata::class);
 
     expect($this->user->fresh()->referral_source)->toBeNull();
 })->with([
