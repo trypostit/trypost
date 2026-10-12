@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Vul je wachtrij',
                 'hint' => 'Op je beste tijden',
-                'ask' => 'Pak een paar ideeën van mijn bord, maak er posts van en plan ze in mijn volgende vrije tijden.',
-                'reply' => 'Klaar. Ik heb 7 ideeën van je bord omgezet in posts en ingepland in je vrije tijden, tot vrijdag.',
+                'ask' => 'Pak mijn klare concepten en zet ze in mijn wachtrij, op mijn volgende vrije tijden.',
+                'reply' => 'Klaar. Je 3 concepten staan in je wachtrij, op de vrije tijden van morgen.',
             ],
             'ideas' => [
                 'title' => 'Organiseer je ideeën',

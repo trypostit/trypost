@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Riempi la coda',
                 'hint' => 'Nei tuoi orari migliori',
-                'ask' => 'Prendi alcune idee dalla mia bacheca, trasformale in post e programmale nei miei prossimi orari liberi.',
-                'reply' => 'Fatto. Ho trasformato 7 idee della tua bacheca in post e li ho programmati nei prossimi orari liberi, fino a venerdì.',
+                'ask' => 'Prendi le mie bozze pronte e mettile in coda, nei miei prossimi orari liberi.',
+                'reply' => 'Fatto. Le tue 3 bozze sono in coda, nei prossimi orari liberi di domani.',
             ],
             'ideas' => [
                 'title' => 'Organizza le tue idee',

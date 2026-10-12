@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Llena tu cola',
                 'hint' => 'En tus mejores horarios',
-                'ask' => 'Toma algunas ideas de mi tablero, conviértelas en posts y prográmalas en mis próximos horarios libres.',
-                'reply' => 'Listo. Convertí 7 ideas de tu tablero en posts y los programé en tus próximos horarios libres, hasta el viernes.',
+                'ask' => 'Toma mis borradores listos y ponlos en mi cola, en mis próximos horarios libres.',
+                'reply' => 'Listo. Tus 3 borradores están en la cola, en los próximos horarios libres de mañana.',
             ],
             'ideas' => [
                 'title' => 'Organiza tus ideas',
