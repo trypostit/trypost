@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'يتم الربط في دقيقة تقريبًا.',
     'connect_other' => 'ربط',
     'other_dialog_title' => 'اربط TryPost بتطبيق آخر',
+    'help' => 'هل تواجه مشكلة في الربط؟',
+    'help_link' => 'اطّلع على الدليل خطوة بخطوة',
     'other_hint' => 'أي تطبيق يدعم MCP.',
     'connected_description' => 'المساعدون الذين سجّلت الدخول إليهم. يمكنك قطع اتصال ما لم تعد تستخدمه.',
     'connected_empty_title' => 'لا توجد تطبيقات متصلة',
@@ -28,9 +30,6 @@ return [
     'copied' => 'تم النسخ',
     'last_used' => 'آخر استخدام',
     'never' => 'أبدًا',
-    'documentation_title' => 'التوثيق',
-    'documentation_description' => 'أدلة الإعداد لكل عميل، والأدوات المتاحة، وحل المشكلات.',
-    'view_docs' => 'عرض التوثيق',
     'connector_name' => 'TryPost',
 
     'authorize' => [

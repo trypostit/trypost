@@ -17,6 +17,8 @@ return [
     'connect_hint' => '大约一分钟即可连接。',
     'connect_other' => '连接',
     'other_dialog_title' => '将 TryPost 连接到其他应用',
+    'help' => '连接遇到问题？',
+    'help_link' => '查看分步指南',
     'other_hint' => '任何支持 MCP 的应用。',
     'connected_description' => '你已登录的助手。可以断开不再使用的连接。',
     'connected_empty_title' => '暂无已连接的应用',
@@ -28,9 +30,6 @@ return [
     'copied' => '已复制',
     'last_used' => '最近使用',
     'never' => '从未',
-    'documentation_title' => '文档',
-    'documentation_description' => '各客户端设置指南、可用工具和问题排查。',
-    'view_docs' => '查看文档',
     'connector_name' => 'TryPost',
 
     'authorize' => [

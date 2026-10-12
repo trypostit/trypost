@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
 import {
+    IconArrowUpRight,
     IconDotsVertical,
-    IconExternalLink,
     IconPlugConnected,
     IconPlus,
     IconTrash,
@@ -14,7 +14,6 @@ import EmptyState from '@/components/EmptyState.vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import McpEmptyIllustration from '@/components/mcp/McpEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
-import SettingsRow from '@/components/settings/SettingsRow.vue';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
@@ -25,6 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { DOCS_URL } from '@/lib/docs';
 import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
@@ -40,7 +40,18 @@ const props = defineProps<{
     connectedClients: ConnectedClient[];
 }>();
 
-const docsUrl = 'https://docs.trypost.it/ai/introduction';
+const docsUrl = `${DOCS_URL}/ai/introduction`;
+
+/** Shows the Claude or ChatGPT mark when the connected app is one of them. */
+const connectedRows = computed(() =>
+    props.connectedClients.map((client) => ({
+        ...client,
+        app:
+            mcpClients.find((app) =>
+                client.name.toLowerCase().includes(app.label.toLowerCase()),
+            ) ?? null,
+    })),
+);
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 
 usePoll(1000, {
@@ -118,11 +129,23 @@ watch(connectedCount, showNewConnection);
                     class="flex flex-col gap-2"
                 >
                     <SettingsListRow
-                        v-for="client in connectedClients"
+                        v-for="client in connectedRows"
                         :key="client.client_id"
-                        :icon="IconPlugConnected"
+                        :icon="client.app ? undefined : IconPlugConnected"
                         :data-testid="`mcp-connected-client-${client.client_id}`"
                     >
+                        <template v-if="client.app" #media>
+                            <span
+                                class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
+                            >
+                                <img
+                                    :src="client.app.logo"
+                                    alt=""
+                                    :class="['size-5 object-contain', client.app.logoClass]"
+                                    :data-testid="`mcp-connected-logo-${client.app.id}`"
+                                />
+                            </span>
+                        </template>
                         <p
                             class="truncate text-sm leading-tight font-emphasis text-foreground"
                         >
@@ -192,7 +215,7 @@ watch(connectedCount, showNewConnection);
                 </EmptyState>
             </TabsContent>
 
-            <TabsContent value="connect" class="flex flex-col gap-10">
+            <TabsContent value="connect" class="flex flex-col gap-4">
                 <ul class="flex flex-col gap-2">
                     <SettingsListRow
                         v-for="client in connectableClients"
@@ -241,15 +264,22 @@ watch(connectedCount, showNewConnection);
 
                 </ul>
 
-                <SettingsRow
-                :title="$t('mcp.documentation_title')"
-                :description="$t('mcp.documentation_description')"
-            >
-                <Button as="a" variant="outline" target="_blank" :href="docsUrl">
-                    <IconExternalLink class="size-4" />
-                    {{ $t('mcp.view_docs') }}
-                </Button>
-            </SettingsRow>
+                <p
+                    class="text-sm text-muted-foreground"
+                    data-testid="mcp-help"
+                >
+                    {{ $t('mcp.help') }}
+                    <a
+                        :href="docsUrl"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="inline-flex items-center gap-0.5 text-primary-text underline underline-offset-2 hover:text-primary-text-hover"
+                        data-testid="mcp-help-link"
+                    >
+                        {{ $t('mcp.help_link') }}
+                        <IconArrowUpRight class="size-3.5 rtl:-scale-x-100" />
+                    </a>
+                </p>
             </TabsContent>
         </Tabs>
 

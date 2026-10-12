@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'Se conecta en un minuto.',
     'connect_other' => 'Conectar',
     'other_dialog_title' => 'Conecta TryPost a otra app',
+    'help' => '¿Dudas para conectar?',
+    'help_link' => 'Mira la guía paso a paso',
     'other_hint' => 'Cualquier app compatible con MCP.',
     'connected_description' => 'Asistentes con los que has iniciado sesión. Puedes desconectar los que ya no uses.',
     'connected_empty_title' => 'No hay apps conectadas',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Copiado',
     'last_used' => 'Último uso',
     'never' => 'Nunca',
-    'documentation_title' => 'Documentación',
-    'documentation_description' => 'Guías por cliente, tools disponibles y solución de problemas.',
-    'view_docs' => 'Ver documentación',
     'connector_name' => 'TryPost',
 
     'authorize' => [

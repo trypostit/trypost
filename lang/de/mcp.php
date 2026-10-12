@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'In etwa einer Minute verbunden.',
     'connect_other' => 'Verbinden',
     'other_dialog_title' => 'TryPost mit einer anderen App verbinden',
+    'help' => 'Probleme beim Verbinden?',
+    'help_link' => 'Zur Schritt-für-Schritt-Anleitung',
     'other_hint' => 'Jede App mit MCP-Unterstützung.',
     'connected_description' => 'Assistenten, mit denen du dich angemeldet hast. Trenne Verbindungen, die du nicht mehr brauchst.',
     'connected_empty_title' => 'Keine verbundenen Apps',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Kopiert',
     'last_used' => 'Zuletzt verwendet',
     'never' => 'Nie',
-    'documentation_title' => 'Dokumentation',
-    'documentation_description' => 'Einrichtungsguides pro Client, verfügbare Tools und Fehlerhilfe.',
-    'view_docs' => 'Dokumentation ansehen',
     'connector_name' => 'TryPost',
 
     'authorize' => [

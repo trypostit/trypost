@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'Gekoppeld in ongeveer een minuut.',
     'connect_other' => 'Koppelen',
     'other_dialog_title' => 'Koppel TryPost aan een andere app',
+    'help' => 'Lukt het koppelen niet?',
+    'help_link' => 'Bekijk de stapsgewijze handleiding',
     'other_hint' => 'Elke app die MCP ondersteunt.',
     'connected_description' => 'Assistenten waarmee je bent ingelogd. Koppel apps los die je niet meer gebruikt.',
     'connected_empty_title' => 'Geen gekoppelde apps',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Gekopieerd',
     'last_used' => 'Laatst gebruikt',
     'never' => 'Nooit',
-    'documentation_title' => 'Documentatie',
-    'documentation_description' => 'Handleidingen per client, beschikbare tools en probleemoplossing.',
-    'view_docs' => 'Documentatie bekijken',
     'connector_name' => 'TryPost',
 
     'authorize' => [

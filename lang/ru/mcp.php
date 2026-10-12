@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'Подключение займёт около минуты.',
     'connect_other' => 'Подключить',
     'other_dialog_title' => 'Подключите TryPost к другому приложению',
+    'help' => 'Не получается подключить?',
+    'help_link' => 'Смотрите пошаговую инструкцию',
     'other_hint' => 'Любое приложение с поддержкой MCP.',
     'connected_description' => 'Ассистенты, в которые вы вошли. Отключите те, которыми больше не пользуетесь.',
     'connected_empty_title' => 'Нет подключённых приложений',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Скопировано',
     'last_used' => 'Последнее использование',
     'never' => 'Никогда',
-    'documentation_title' => 'Документация',
-    'documentation_description' => 'Гайды по клиентам, доступные tools и решение проблем.',
-    'view_docs' => 'Открыть документацию',
     'connector_name' => 'TryPost',
 
     'authorize' => [

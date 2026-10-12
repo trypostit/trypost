@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'Συνδέεται σε περίπου ένα λεπτό.',
     'connect_other' => 'Σύνδεση',
     'other_dialog_title' => 'Συνδέστε το TryPost με άλλη εφαρμογή',
+    'help' => 'Πρόβλημα με τη σύνδεση;',
+    'help_link' => 'Δείτε τον οδηγό βήμα προς βήμα',
     'other_hint' => 'Οποιαδήποτε εφαρμογή υποστηρίζει MCP.',
     'connected_description' => 'Βοηθοί στους οποίους έχετε συνδεθεί. Μπορείτε να αποσυνδέσετε όσους δεν χρησιμοποιείτε πλέον.',
     'connected_empty_title' => 'Καμία συνδεδεμένη εφαρμογή',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Αντιγράφηκε',
     'last_used' => 'Τελευταία χρήση',
     'never' => 'Ποτέ',
-    'documentation_title' => 'Τεκμηρίωση',
-    'documentation_description' => 'Οδηγοί ανά client, διαθέσιμα tools και αντιμετώπιση προβλημάτων.',
-    'view_docs' => 'Δείτε την τεκμηρίωση',
     'connector_name' => 'TryPost',
 
     'authorize' => [

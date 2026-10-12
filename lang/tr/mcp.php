@@ -17,6 +17,8 @@ return [
     'connect_hint' => 'Yaklaşık bir dakikada bağlanır.',
     'connect_other' => 'Bağla',
     'other_dialog_title' => 'TryPost\'u başka bir uygulamaya bağla',
+    'help' => 'Bağlanırken sorun mu var?',
+    'help_link' => 'Adım adım rehbere bak',
     'other_hint' => 'MCP destekleyen her uygulama.',
     'connected_description' => 'Giriş yaptığınız asistanlar. Artık kullanmadıklarınızın bağlantısını kesebilirsiniz.',
     'connected_empty_title' => 'Bağlı uygulama yok',
@@ -28,9 +30,6 @@ return [
     'copied' => 'Kopyalandı',
     'last_used' => 'Son kullanım',
     'never' => 'Hiç',
-    'documentation_title' => 'Dokümantasyon',
-    'documentation_description' => 'İstemci kurulum rehberleri, kullanılabilir tools ve sorun giderme.',
-    'view_docs' => 'Dokümantasyonu görüntüle',
     'connector_name' => 'TryPost',
 
     'authorize' => [

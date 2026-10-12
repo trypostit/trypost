@@ -17,6 +17,8 @@ return [
     'connect_hint' => '1分ほどで接続できます。',
     'connect_other' => '接続',
     'other_dialog_title' => 'TryPostを他のアプリに接続',
+    'help' => '接続でお困りですか？',
+    'help_link' => '手順ガイドを見る',
     'other_hint' => 'MCP対応のあらゆるアプリ。',
     'connected_description' => 'サインインしたアシスタントです。不要な接続は切断できます。',
     'connected_empty_title' => '接続済みのアプリはありません',
@@ -28,9 +30,6 @@ return [
     'copied' => 'コピーしました',
     'last_used' => '最終使用',
     'never' => 'なし',
-    'documentation_title' => 'ドキュメント',
-    'documentation_description' => 'クライアント別のセットアップ、利用可能なツール、トラブルシューティング。',
-    'view_docs' => 'ドキュメントを見る',
     'connector_name' => 'TryPost',
 
     'authorize' => [

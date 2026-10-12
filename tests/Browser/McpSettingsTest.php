@@ -40,7 +40,8 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     $page = visit(route('app.mcp.index'));
     waitForMcpSettingsTestId($page, "mcp-connected-menu-{$clientId}");
 
-    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true');
+    $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true')
+        ->assertVisible("@mcp-connected-logo-claude");
 
     $page->click("@mcp-connected-menu-{$clientId}");
     waitForMcpSettingsTestId($page, "mcp-disconnect-{$clientId}");
@@ -84,7 +85,9 @@ test('the MCP settings open on the connected tab, whose empty state leads to the
     waitForMcpSettingsTestId($page, 'mcp-connect-claude');
 
     $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
-        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other']);
+        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other'])
+        ->assertSeeIn('@mcp-help', __('mcp.help'))
+        ->assertScript('document.querySelector("[data-testid=mcp-help-link]").getAttribute("href")', 'https://docs.trypost.it/ai/introduction');
 
     $page->click('@mcp-connect-claude');
     waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
