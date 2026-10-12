@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import {
     IconCalendarEvent,
-    IconChartBar,
     IconRefresh,
     IconRobot,
     IconShare,
     IconSparkles,
+    IconTrendingUp,
     IconUsers,
     IconWorld,
 } from '@tabler/icons-vue';
@@ -52,7 +52,7 @@ const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
     { key: 'ai', icon: IconSparkles },
     { key: 'mcp', icon: IconRobot },
     { key: 'repurpose', icon: IconRefresh },
-    { key: 'analytics', icon: IconChartBar },
+    { key: 'analytics', icon: IconTrendingUp },
     { key: 'team', icon: IconUsers },
 ];
 

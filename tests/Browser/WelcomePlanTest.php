@@ -75,7 +75,8 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         document.querySelectorAll('[data-testid^="welcome-plan-reviewer-"]').length
     JS);
 
-    expect($reviews)->toBe(5);
+    expect($reviews)->toBe(5)
+        ->and($page->script('document.querySelector("[data-testid=plan-feature-label-socials-analytics]").closest("li").querySelector("svg").classList.contains("tabler-icon-trending-up")'))->toBeTrue();
 });
 
 test('One workspace is the last item of what is included', function () {
