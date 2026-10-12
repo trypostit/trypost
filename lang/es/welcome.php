@@ -46,4 +46,6 @@ return [
         'other' => 'Otra',
     ],
     'plan_title' => 'Empieza tu primer mes',
+    'plan_offer' => 'Oferta de bienvenida',
+    'plan_cancel_anytime' => 'Cancela cuando quieras',
 ];

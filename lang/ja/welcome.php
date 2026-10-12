@@ -46,4 +46,6 @@ return [
         'other' => 'その他',
     ],
     'plan_title' => '最初の1か月を始めましょう',
+    'plan_offer' => 'ウェルカム特典',
+    'plan_cancel_anytime' => 'いつでも解約できます',
 ];

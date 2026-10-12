@@ -156,6 +156,8 @@ return [
     'welcome.personas.other' => 9,
     'welcome.personas.small_business' => 17,
     'welcome.personas.startup' => 10,
+    'welcome.plan_cancel_anytime' => 26,
+    'welcome.plan_offer' => 26,
     'welcome.software.none' => 28,
     'welcome.software.other' => 7,
 ];

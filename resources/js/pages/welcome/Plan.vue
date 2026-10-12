@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconBuilding, IconInfoCircle } from '@tabler/icons-vue';
+import { IconBuilding, IconCheck, IconInfoCircle } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
+import { Badge } from '@/components/ui/badge';
 import {
     Tooltip,
     TooltipContent,
@@ -40,10 +41,27 @@ const submit = (): void => {
             :data-testid="`plan-card-${plan.slug}`"
         >
             <div
-                class="flex flex-col justify-center bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
+                class="flex flex-col items-start justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
             >
+                <Badge
+                    variant="outline"
+                    class="border-primary-strong bg-card text-primary-text"
+                    data-testid="welcome-plan-offer"
+                >
+                    {{ $t('welcome.plan_offer') }}
+                </Badge>
+
                 <div class="flex flex-col gap-1">
-                    <p class="flex items-baseline gap-2">
+                    <p class="flex flex-wrap items-baseline gap-2">
+                        <s
+                            class="text-xl text-muted-foreground tabular-nums"
+                            :data-testid="`plan-price-regular-${plan.slug}`"
+                            >{{
+                                $t(
+                                    `billing.subscribe.prices.${plan.slug}.monthly`,
+                                )
+                            }}</s
+                        >
                         <span
                             class="text-4xl leading-none font-strong tabular-nums"
                             :data-testid="`plan-price-first-month-${plan.slug}`"
@@ -70,6 +88,14 @@ const submit = (): void => {
                         }}
                     </p>
                 </div>
+
+                <p
+                    class="flex items-center gap-2 text-sm text-foreground"
+                    data-testid="welcome-plan-cancel-anytime"
+                >
+                    <IconCheck class="size-4 shrink-0 text-primary-text" />
+                    {{ $t('welcome.plan_cancel_anytime') }}
+                </p>
             </div>
 
             <PlanFeatureList

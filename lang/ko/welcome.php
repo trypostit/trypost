@@ -46,4 +46,6 @@ return [
         'other' => '기타',
     ],
     'plan_title' => '첫 달을 시작하세요',
+    'plan_offer' => '웰컴 혜택',
+    'plan_cancel_anytime' => '언제든지 해지 가능',
 ];

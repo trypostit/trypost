@@ -60,7 +60,10 @@ test('the plan step shows the Socials table with the first-month offer', functio
 
     $page->assertRoute('app.welcome.plan')
         ->assertMissing('@plan-card-workspaces')
+        ->assertSeeIn('@welcome-plan-offer', 'Welcome offer')
+        ->assertSeeIn('@plan-price-regular-socials', '$19')
         ->assertSeeIn('@plan-price-first-month-socials', '$1')
+        ->assertSeeIn('@welcome-plan-cancel-anytime', 'Cancel anytime')
         ->assertSeeIn('@plan-price-suffix-socials', '/first month')
         ->assertSeeIn('@plan-price-note-socials', 'Then $19/month')
         ->assertSeeIn('@plan-highlight-socials', 'One workspace')

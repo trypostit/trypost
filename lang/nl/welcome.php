@@ -46,4 +46,6 @@ return [
         'other' => 'Andere',
     ],
     'plan_title' => 'Begin je eerste maand',
+    'plan_offer' => 'Welkomstaanbieding',
+    'plan_cancel_anytime' => 'Altijd opzegbaar',
 ];
