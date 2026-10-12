@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
+    'mcp' => [
+        'title' => 'Koppel TryPost aan je AI',
+        'description' => 'Plak deze prompt in Claude, ChatGPT of een andere AI. Die voegt TryPost toe en vraagt je in te loggen.',
+        'copy_prompt' => 'Prompt kopiëren',
+        'open' => ':client openen',
+        'waiting' => 'Wachten tot je AI verbindt…',
+        'connected' => ':client is gekoppeld',
+        'skip' => 'Nu overslaan',
+    ],
 ];

@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Collega i tuoi canali e programma il tuo primo post oggi.',
     'plan_first_month' => 'per il primo mese',
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
+    'mcp' => [
+        'title' => 'Collega TryPost alla tua IA',
+        'description' => 'Incolla questo prompt in Claude, ChatGPT o un’altra IA. Aggiunge TryPost e ti chiede di accedere.',
+        'copy_prompt' => 'Copia prompt',
+        'open' => 'Apri :client',
+        'waiting' => 'In attesa che la tua IA si colleghi…',
+        'connected' => ':client è collegato',
+        'skip' => 'Salta per ora',
+    ],
 ];

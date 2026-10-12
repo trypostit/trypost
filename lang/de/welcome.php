@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_first_month' => 'im ersten Monat',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
+    'mcp' => [
+        'title' => 'Verbinde TryPost mit deiner KI',
+        'description' => 'Füge diesen Prompt in Claude, ChatGPT oder eine andere KI ein. Sie fügt TryPost hinzu und bittet dich, dich anzumelden.',
+        'copy_prompt' => 'Prompt kopieren',
+        'open' => ':client öffnen',
+        'waiting' => 'Warte auf die Verbindung deiner KI…',
+        'connected' => ':client ist verbunden',
+        'skip' => 'Jetzt überspringen',
+    ],
 ];

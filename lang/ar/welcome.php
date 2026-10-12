@@ -49,4 +49,13 @@ return [
     'plan_description' => 'اربط حساباتك وجدول أول منشور لك اليوم.',
     'plan_first_month' => 'للشهر الأول',
     'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت.',
+    'mcp' => [
+        'title' => 'اربط TryPost بالذكاء الاصطناعي لديك',
+        'description' => 'الصق هذه التعليمات في Claude أو ChatGPT أو أي ذكاء اصطناعي آخر. سيضيف TryPost ويطلب منك تسجيل الدخول.',
+        'copy_prompt' => 'نسخ التعليمات',
+        'open' => 'فتح :client',
+        'waiting' => 'بانتظار اتصال الذكاء الاصطناعي…',
+        'connected' => 'تم ربط :client',
+        'skip' => 'تخطَّ الآن',
+    ],
 ];

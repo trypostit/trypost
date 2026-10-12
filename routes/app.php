@@ -93,6 +93,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('welcome/plan', [WelcomeController::class, 'storePlan'])
         ->middleware('throttle:6,1')
         ->name('app.welcome.plan.store');
+    Route::get('welcome/mcp', [WelcomeController::class, 'mcp'])->name('app.welcome.mcp');
     Route::post('referral-source', [ReferralSourceController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('app.referral-source.store');

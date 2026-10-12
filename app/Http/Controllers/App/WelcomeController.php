@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\AccessToken\ListConnectedMcpClients;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
@@ -27,6 +28,12 @@ use Throwable;
 
 class WelcomeController extends Controller
 {
+    /**
+     * Set when Welcome opens Stripe Checkout, so the processing page sends a new
+     * owner to the MCP step instead of straight into the app.
+     */
+    public const CHECKOUT_SESSION_KEY = 'welcome.checkout';
+
     public function persona(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
@@ -174,6 +181,8 @@ class WelcomeController extends Controller
 
         $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
 
+        $request->session()->put(self::CHECKOUT_SESSION_KEY, true);
+
         try {
             $postHog->capture(
                 $user->id,
@@ -186,6 +195,32 @@ class WelcomeController extends Controller
         }
 
         return $response;
+    }
+
+    public function mcp(Request $request): InertiaResponse|RedirectResponse
+    {
+        $user = $request->user();
+
+        if (! $user->account?->hasAppAccess()) {
+            return redirect()->route('app.welcome.persona');
+        }
+
+        $workspace = $user->currentWorkspace;
+
+        $this->authorize('view', $workspace);
+
+        $request->session()->forget(self::CHECKOUT_SESSION_KEY);
+
+        $mcpUrl = route('mcp.trypost');
+
+        return Inertia::render('welcome/Mcp', [
+            'mcpUrl' => $mcpUrl,
+            'prompt' => view('prompts.mcp.setup', [
+                'mcpUrl' => $mcpUrl,
+                'language' => $user->locale->promptLanguage(),
+            ])->render(),
+            'connectedClients' => ListConnectedMcpClients::forUser($user, $workspace),
+        ]);
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse

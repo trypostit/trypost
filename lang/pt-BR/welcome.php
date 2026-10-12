@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Conecte suas redes e agende seu primeiro post hoje.',
     'plan_first_month' => 'no primeiro mês',
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser.',
+    'mcp' => [
+        'title' => 'Conecte o TryPost à sua IA',
+        'description' => 'Cole este prompt no Claude, ChatGPT ou outra IA. Ela adiciona o TryPost e pede para você fazer login.',
+        'copy_prompt' => 'Copiar prompt',
+        'open' => 'Abrir :client',
+        'waiting' => 'Aguardando sua IA conectar…',
+        'connected' => ':client está conectado',
+        'skip' => 'Pular por agora',
+    ],
 ];

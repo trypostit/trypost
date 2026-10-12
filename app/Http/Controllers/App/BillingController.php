@@ -35,6 +35,9 @@ class BillingController extends Controller
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account->subscribed(Account::SUBSCRIPTION_NAME),
+            'nextUrl' => $request->session()->has(WelcomeController::CHECKOUT_SESSION_KEY)
+                ? route('app.welcome.mcp')
+                : route('app.posts.index'),
         ]);
     }
 

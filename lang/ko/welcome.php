@@ -49,4 +49,13 @@ return [
     'plan_description' => '채널을 연결하고 오늘 첫 게시물을 예약하세요.',
     'plan_first_month' => '첫 달 요금',
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
+    'mcp' => [
+        'title' => 'TryPost를 AI에 연결하세요',
+        'description' => '이 프롬프트를 Claude, ChatGPT 등 AI에 붙여넣으세요. TryPost를 추가하고 로그인을 요청합니다.',
+        'copy_prompt' => '프롬프트 복사',
+        'open' => ':client 열기',
+        'waiting' => 'AI 연결을 기다리는 중…',
+        'connected' => ':client 연결됨',
+        'skip' => '지금은 건너뛰기',
+    ],
 ];

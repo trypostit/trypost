@@ -49,4 +49,13 @@ return [
     'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
+    'mcp' => [
+        'title' => '将 TryPost 连接到你的 AI',
+        'description' => '把这段提示词粘贴到 Claude、ChatGPT 或其他 AI 中。它会添加 TryPost 并请你登录。',
+        'copy_prompt' => '复制提示词',
+        'open' => '打开 :client',
+        'waiting' => '正在等待你的 AI 连接…',
+        'connected' => ':client 已连接',
+        'skip' => '暂时跳过',
+    ],
 ];

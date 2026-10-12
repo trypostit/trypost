@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
+    'mcp' => [
+        'title' => 'Connect TryPost to your AI',
+        'description' => 'Paste this prompt into Claude, ChatGPT or another AI assistant. It adds TryPost and asks you to log in.',
+        'copy_prompt' => 'Copy prompt',
+        'open' => 'Open :client',
+        'waiting' => 'Waiting for your AI to connect…',
+        'connected' => ':client is connected',
+        'skip' => 'Skip for now',
+    ],
 ];

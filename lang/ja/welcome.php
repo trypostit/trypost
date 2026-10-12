@@ -49,4 +49,13 @@ return [
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
+    'mcp' => [
+        'title' => 'TryPostをAIにつなぐ',
+        'description' => 'このプロンプトをClaude、ChatGPTなどのAIに貼り付けてください。TryPostを追加し、ログインを求めます。',
+        'copy_prompt' => 'プロンプトをコピー',
+        'open' => ':clientを開く',
+        'waiting' => 'AIの接続を待っています…',
+        'connected' => ':clientに接続しました',
+        'skip' => '今はスキップ',
+    ],
 ];

@@ -49,4 +49,13 @@ return [
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
+    'mcp' => [
+        'title' => 'TryPost\'u yapay zekâna bağla',
+        'description' => 'Bu istemi Claude, ChatGPT veya başka bir yapay zekâya yapıştır. TryPost\'u ekler ve giriş yapmanı ister.',
+        'copy_prompt' => 'İstemi kopyala',
+        'open' => ':client uygulamasını aç',
+        'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
+        'connected' => ':client bağlandı',
+        'skip' => 'Şimdilik atla',
+    ],
 ];
