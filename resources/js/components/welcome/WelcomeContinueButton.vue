@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 defineProps<{
     disabled: boolean;
     testid: string;
+    label?: string;
 }>();
 
 const emit = defineEmits<{
@@ -26,7 +27,7 @@ const proceed = (): void => {
         :data-testid="testid"
         @click="proceed"
     >
-        {{ $t('welcome.continue') }}
+        {{ label ?? $t('welcome.continue') }}
         <IconArrowRight class="size-4 rtl:rotate-180" />
     </Button>
 </template>

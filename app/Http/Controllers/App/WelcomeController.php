@@ -151,7 +151,9 @@ class WelcomeController extends Controller
         }
 
         return Inertia::render('welcome/Plan', [
-            'plans' => PlanResource::collection([$this->socialsPlan()])->resolve(),
+            'plans' => PlanResource::collection(
+                Plan::active()->where('slug', Slug::Socials)->get(),
+            )->resolve(),
         ]);
     }
 
@@ -165,7 +167,7 @@ class WelcomeController extends Controller
         }
 
         $user = $request->user();
-        $plan = $this->socialsPlan();
+        $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
         $priceId = Interval::Monthly->priceIdFor($plan);
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
@@ -201,11 +203,6 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/SubscriptionRequired', [
             'ownerName' => $user->account?->owner?->name,
         ]);
-    }
-
-    private function socialsPlan(): Plan
-    {
-        return Plan::active()->where('slug', Slug::Socials)->firstOrFail();
     }
 
     private function redirectIfStepIncomplete(

@@ -151,5 +151,5 @@ test('the welcome header fits a phone and the continue button stays on screen', 
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
         'previous_software' => PreviousSoftware::Buffer->value,
-    ], null, null, true],
+    ], 'welcome-plan-continue', 'plan-card-', true],
 ]);

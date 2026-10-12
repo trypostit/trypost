@@ -47,7 +47,7 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows only Socials with the first-month offer and no yearly toggle', function () {
+test('the plan step shows the Socials table with the first-month offer', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
@@ -55,20 +55,17 @@ test('the plan step shows only Socials with the first-month offer and no yearly 
     $page = visit(route('app.welcome.plan'));
 
     waitForWelcomePlanTestId($page, 'plan-card-socials');
-    waitForWelcomePlanTestId($page, 'plan-price-first-month-socials');
-    waitForWelcomePlanTestId($page, 'welcome-language-trigger');
+    waitForWelcomePlanTestId($page, 'plan-networks-info-socials');
+    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
 
     $page->assertRoute('app.welcome.plan')
-        ->assertVisible('@plan-card-socials')
         ->assertMissing('@plan-card-workspaces')
-        ->assertMissing('@plan-price-socials')
         ->assertSeeIn('@plan-price-first-month-socials', '$1')
         ->assertSeeIn('@plan-price-suffix-socials', '/first month')
         ->assertSeeIn('@plan-price-note-socials', 'Then $19/month')
-        ->assertSeeIn('@plan-select-socials', 'Start for $1')
         ->assertSeeIn('@plan-highlight-socials', 'One workspace')
+        ->assertVisible('@plan-networks-info-socials')
+        ->assertSeeIn('@welcome-plan-continue', 'Start for $1')
         ->assertVisible('@welcome-step-plan')
-        ->assertMissing('@plan-interval-yearly')
-        ->assertMissing('@plan-interval-monthly')
         ->assertNoJavaScriptErrors();
 });
