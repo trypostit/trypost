@@ -144,6 +144,24 @@ test('clicking a reviewer photo shows their quote', function () {
     $page->assertVisible('@welcome-plan-review-pedro')
         ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors();
+
+    $opacities = $page->script(<<<'JS'
+        (async () => {
+            const opacityOf = (button) => Number(getComputedStyle(button).opacity);
+            for (let i = 0; i < 40; i++) {
+                const buttons = [...document.querySelectorAll('[data-testid^="welcome-plan-reviewer-"]')];
+                const active = buttons.filter((button) => button.getAttribute('aria-pressed') === 'true').map(opacityOf);
+                const inactive = buttons.filter((button) => button.getAttribute('aria-pressed') !== 'true').map(opacityOf);
+                if (active[0] === 1 && inactive.every((value) => value === 0.5)) {
+                    return { active, inactive: [...new Set(inactive)] };
+                }
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return 'not settled';
+        })()
+    JS);
+
+    expect($opacities)->toBe(['active' => [1], 'inactive' => [0.5]]);
 });
 
 test('the plan step fits a phone without scrolling and hides the quotes there', function () {

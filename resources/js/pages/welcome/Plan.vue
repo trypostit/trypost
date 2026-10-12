@@ -68,10 +68,10 @@ const submit = (): void => {
                             :aria-label="review.name"
                             :aria-pressed="index === activeReview"
                             :class="[
-                                'relative cursor-pointer rounded-full transition-transform duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
+                                'relative cursor-pointer rounded-full transition-[transform,opacity] duration-300 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring',
                                 index === activeReview
                                     ? 'z-10 scale-115 shadow-md'
-                                    : 'hover:z-10',
+                                    : 'opacity-50 hover:z-10 hover:opacity-100',
                             ]"
                             :data-testid="`welcome-plan-reviewer-${review.key}`"
                             @click="selectReview(index)"
@@ -81,9 +81,7 @@ const submit = (): void => {
                                 alt=""
                                 width="72"
                                 height="72"
-                                :class="[
-                                    'size-9 rounded-full border-2 border-card object-cover',
-                                ]"
+                                class="size-9 rounded-full border border-card object-cover"
                             />
                         </button>
                     </div>
