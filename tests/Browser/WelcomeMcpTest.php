@@ -246,13 +246,14 @@ test('on a phone the MCP step keeps the example and connects through an AI picke
             const connect = rect('welcome-mcp-connect-ai');
             return {
                 compact: rect('welcome-actions').height < 120,
-                composerAboveFooter: rect('welcome-mcp-composer').bottom <= rect('welcome-actions').top,
+                windowAboveFooter: rect('welcome-mcp-window').bottom <= rect('welcome-actions').top,
+                composerHidden: rect('welcome-mcp-composer').height === 0,
                 connectBeforeSkip: Math.round(skip.top) === Math.round(connect.top) && connect.left < skip.left,
             };
         })()
     JS);
 
-    expect($footer)->toBe(['compact' => true, 'composerAboveFooter' => true, 'connectBeforeSkip' => true]);
+    expect($footer)->toBe(['compact' => true, 'windowAboveFooter' => true, 'composerHidden' => true, 'connectBeforeSkip' => true]);
 
     $page->assertSeeIn('@welcome-mcp-connect-ai', 'Connect your AI')
         ->assertVisible('@welcome-mcp-skip-link')

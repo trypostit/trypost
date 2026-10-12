@@ -294,7 +294,7 @@ const goToSchedule = (): void => {
                             />
                         </Transition>
                     </div>
-                    <div class="px-4 pb-4">
+                    <div class="px-4 pb-4 max-sm:hidden">
                         <div
                             class="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card ps-3 pe-1.5"
                             data-testid="welcome-mcp-composer"
