@@ -231,7 +231,7 @@ const goToSchedule = (): void => {
 
                 <div
                     ref="pills"
-                    class="flex gap-2 overflow-x-auto border-b border-border bg-muted/40 p-3 md:hidden"
+                    class="flex gap-2 overflow-x-auto border-b border-border bg-muted/40 p-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:hidden rtl:[mask-image:linear-gradient(to_left,black_85%,transparent)]"
                     role="tablist"
                     :aria-label="$t('welcome.mcp.title')"
                 >
@@ -327,21 +327,26 @@ const goToSchedule = (): void => {
             </template>
             <template v-else>
                 <div
-                    class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"
+                    class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-row"
                 >
-                        <Button
-                            v-for="client in connectableClients"
-                            :key="client.id"
-                            type="button"
-                            size="lg"
-                            :data-testid="`welcome-mcp-connect-${client.id}`"
-                            @click="connectWith(client)"
-                        >
-                            <img
-                                :src="client.monoLogo"
-                                alt=""
-                                class="size-4 invert dark:invert-0"
-                            />
+                    <Button
+                        v-for="client in connectableClients"
+                        :key="client.id"
+                        type="button"
+                        size="lg"
+                        :class="client.labelKey ? 'max-sm:hidden' : ''"
+                        :data-testid="`welcome-mcp-connect-${client.id}`"
+                        @click="connectWith(client)"
+                    >
+                        <img
+                            :src="client.monoLogo"
+                            alt=""
+                            class="size-4 invert dark:invert-0"
+                        />
+                        <span v-if="!client.labelKey" class="sm:hidden">
+                            {{ client.label }}
+                        </span>
+                        <span :class="client.labelKey ? '' : 'max-sm:hidden'">
                             {{
                                 client.labelKey
                                     ? $t('welcome.mcp.connect_other')
@@ -349,22 +354,44 @@ const goToSchedule = (): void => {
                                           client: client.label,
                                       })
                             }}
-                        </Button>
-                </div>
-                    <Button
-                        as-child
-                        variant="secondary"
-                        size="lg"
-                        class="max-sm:w-full sm:fixed sm:end-8 sm:bottom-8 lg:end-12"
-                    >
-                        <Link
-                            :href="postsIndex.url()"
-                            data-testid="welcome-mcp-skip"
-                        >
-                            {{ $t('welcome.mcp.skip') }}
-                            <IconArrowRight class="size-4 rtl:rotate-180" />
-                        </Link>
+                        </span>
                     </Button>
+                </div>
+                <div
+                    class="flex items-center justify-center gap-3 text-sm font-medium text-muted-foreground sm:hidden"
+                >
+                    <button
+                        type="button"
+                        class="cursor-pointer transition-control hover:text-foreground"
+                        data-testid="welcome-mcp-connect-other-link"
+                        @click="connectWith(otherMcpClient)"
+                    >
+                        {{ $t('mcp.other_clients_title') }}
+                    </button>
+                    <span aria-hidden="true">·</span>
+                    <Link
+                        :href="postsIndex.url()"
+                        class="inline-flex items-center gap-1 transition-control hover:text-foreground"
+                        data-testid="welcome-mcp-skip-link"
+                    >
+                        {{ $t('welcome.mcp.skip') }}
+                        <IconArrowRight class="size-3.5 rtl:rotate-180" />
+                    </Link>
+                </div>
+                <Button
+                    as-child
+                    variant="secondary"
+                    size="lg"
+                    class="max-sm:hidden sm:fixed sm:end-8 sm:bottom-8 lg:end-12"
+                >
+                    <Link
+                        :href="postsIndex.url()"
+                        data-testid="welcome-mcp-skip"
+                    >
+                        {{ $t('welcome.mcp.skip') }}
+                        <IconArrowRight class="size-4 rtl:rotate-180" />
+                    </Link>
+                </Button>
             </template>
         </template>
 

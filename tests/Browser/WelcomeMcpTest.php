@@ -98,7 +98,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2);
 
     expect($page->script('document.querySelector("[data-testid=welcome-mcp-connect-claude]").getAttribute("href")'))->toBeNull()
-        ->and($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-connect-]")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1);
+        ->and($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-connect-]:not([data-testid$=-link])")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1);
 
     $page->assertSeeIn('@welcome-mcp-connect-claude', 'Connect with Claude')
         ->assertMissing('@welcome-mcp-copy')
@@ -219,7 +219,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->assertNoJavaScriptErrors();
 });
 
-test('on a phone the MCP step keeps the example and opens the steps full screen', function () {
+test('on a phone the MCP step keeps the example, uses a compact footer and opens the steps full screen', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMcpSubscriber());
@@ -237,7 +237,44 @@ test('on a phone the MCP step keeps the example and opens the steps full screen'
 
     expect($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
 
+    $footer = $page->script(<<<'JS'
+        (async () => {
+            window.scrollTo(0, document.documentElement.scrollHeight);
+            await new Promise((resolve) => setTimeout(resolve, 300));
+            const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
+            const claude = rect('welcome-mcp-connect-claude');
+            const chatgpt = rect('welcome-mcp-connect-chatgpt');
+            return {
+                compact: rect('welcome-actions').height < 120,
+                sideBySide: Math.round(claude.top) === Math.round(chatgpt.top),
+                composerAboveFooter: rect('welcome-mcp-composer').bottom <= rect('welcome-actions').top,
+            };
+        })()
+    JS);
+
+    expect($footer)->toBe(['compact' => true, 'sideBySide' => true, 'composerAboveFooter' => true]);
+
+    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-connect-claude]").innerText.trim()', 'Claude')
+        ->assertMissing('@welcome-mcp-connect-other')
+        ->assertMissing('@welcome-mcp-skip')
+        ->assertVisible('@welcome-mcp-skip-link')
+        ->assertSeeIn('@welcome-mcp-connect-other-link', 'Other apps');
+
     stubWelcomeMcpConnectTab($page);
+    $page->click('@welcome-mcp-connect-other-link');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-config');
+
+    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to another app')
+        ->keys('@welcome-mcp-dialog', 'Escape');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
     $page->click('@welcome-mcp-connect-claude');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-step-paste');
 
