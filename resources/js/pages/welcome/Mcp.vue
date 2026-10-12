@@ -28,6 +28,8 @@ const connectedClient = computed(
     (): ConnectedClient | null => props.connectedClients[0] ?? null,
 );
 
+const steps = ['step_copy', 'step_paste', 'step_login'] as const;
+
 const copyPrompt = (): void => {
     copyToClipboard(props.prompt, trans('mcp.copied'));
 };
@@ -44,20 +46,63 @@ const goToSchedule = (): void => {
         :title="$t('welcome.mcp.title')"
         :description="$t('welcome.mcp.description')"
     >
-        <div class="flex flex-col gap-4">
+        <article
+            class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
+        >
             <div
-                class="overflow-hidden rounded-xl border border-border bg-card"
+                class="flex flex-col justify-between gap-6 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
+            >
+                <ol class="flex flex-col gap-4">
+                    <li
+                        v-for="(step, index) in steps"
+                        :key="step"
+                        class="flex items-start gap-3 text-sm leading-6 font-medium text-foreground"
+                    >
+                        <span
+                            class="inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-card text-xs font-semibold text-primary-text tabular-nums"
+                            aria-hidden="true"
+                        >
+                            {{ index + 1 }}
+                        </span>
+                        {{ $t(`welcome.mcp.${step}`) }}
+                    </li>
+                </ol>
+
+                <p
+                    class="flex items-center gap-2 text-sm"
+                    data-testid="welcome-mcp-status"
+                    aria-live="polite"
+                >
+                    <template v-if="connectedClient">
+                        <IconCircleCheckFilled
+                            class="size-4 shrink-0 text-green-500"
+                        />
+                        <span class="font-medium text-foreground">{{
+                            $t('welcome.mcp.connected', {
+                                client: connectedClient.name,
+                            })
+                        }}</span>
+                    </template>
+                    <template v-else>
+                        <Spinner class="shrink-0 text-primary-text" />
+                        <span class="text-muted-foreground">{{
+                            $t('welcome.mcp.waiting')
+                        }}</span>
+                    </template>
+                </p>
+            </div>
+
+            <div
+                class="flex min-w-0 flex-col rounded-b-xl border border-border bg-card max-sm:border-t-0 sm:rounded-e-xl sm:rounded-es-none sm:border-s-0"
                 data-testid="welcome-mcp-prompt"
             >
-                <pre
-                    dir="ltr"
-                    class="max-h-64 overflow-y-auto p-4 font-mono text-xs leading-5 whitespace-pre-wrap text-foreground"
-                    >{{ prompt }}</pre
-                >
                 <div
-                    class="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted px-4 py-3"
+                    class="flex items-center justify-between gap-3 border-b border-border px-5 py-3 sm:px-6"
                 >
-                    <div class="flex flex-wrap gap-2">
+                    <span class="text-sm font-medium text-muted-foreground">
+                        {{ $t('welcome.mcp.prompt_label') }}
+                    </span>
+                    <div class="flex gap-1">
                         <Button
                             v-for="client in mcpClients"
                             :key="client.id"
@@ -65,7 +110,14 @@ const goToSchedule = (): void => {
                             :href="client.chatUrl"
                             target="_blank"
                             rel="noopener noreferrer"
-                            variant="outline"
+                            variant="ghost"
+                            size="sm"
+                            :aria-label="
+                                $t('welcome.mcp.open', { client: client.label })
+                            "
+                            :title="
+                                $t('welcome.mcp.open', { client: client.label })
+                            "
                             :data-testid="`welcome-mcp-open-${client.id}`"
                         >
                             <img
@@ -73,41 +125,17 @@ const goToSchedule = (): void => {
                                 alt=""
                                 :class="['size-4', client.logoClass]"
                             />
-                            {{ $t('welcome.mcp.open', { client: client.label }) }}
+                            {{ client.label }}
                         </Button>
                     </div>
-                    <Button
-                        type="button"
-                        data-testid="welcome-mcp-copy"
-                        @click="copyPrompt"
-                    >
-                        <IconCopy class="size-4" />
-                        {{ $t('welcome.mcp.copy_prompt') }}
-                    </Button>
                 </div>
+                <pre
+                    dir="ltr"
+                    class="max-h-48 overflow-y-auto px-5 py-4 font-mono text-xs leading-5 whitespace-pre-wrap text-muted-foreground [mask-image:linear-gradient(to_bottom,black_75%,transparent)] sm:max-h-56 sm:px-6"
+                    >{{ prompt }}</pre
+                >
             </div>
-
-            <p
-                class="flex items-center justify-center gap-2 text-sm"
-                data-testid="welcome-mcp-status"
-                aria-live="polite"
-            >
-                <template v-if="connectedClient">
-                    <IconCircleCheckFilled class="size-4 text-green-500" />
-                    <span class="font-medium text-foreground">{{
-                        $t('welcome.mcp.connected', {
-                            client: connectedClient.name,
-                        })
-                    }}</span>
-                </template>
-                <template v-else>
-                    <Spinner class="text-muted-foreground" />
-                    <span class="text-muted-foreground">{{
-                        $t('welcome.mcp.waiting')
-                    }}</span>
-                </template>
-            </p>
-        </div>
+        </article>
 
         <template #actions>
             <WelcomeContinueButton
@@ -116,14 +144,25 @@ const goToSchedule = (): void => {
                 testid="welcome-mcp-continue"
                 @continue="goToSchedule"
             />
-            <Link
-                v-else
-                :href="postsIndex.url()"
-                class="text-sm font-medium text-muted-foreground transition-control hover:text-foreground"
-                data-testid="welcome-mcp-skip"
-            >
-                {{ $t('welcome.mcp.skip') }}
-            </Link>
+            <template v-else>
+                <Button
+                    type="button"
+                    size="lg"
+                    class="w-full"
+                    data-testid="welcome-mcp-copy"
+                    @click="copyPrompt"
+                >
+                    <IconCopy class="size-4" />
+                    {{ $t('welcome.mcp.copy_prompt') }}
+                </Button>
+                <Link
+                    :href="postsIndex.url()"
+                    class="text-sm font-medium text-muted-foreground transition-control hover:text-foreground"
+                    data-testid="welcome-mcp-skip"
+                >
+                    {{ $t('welcome.mcp.skip') }}
+                </Link>
+            </template>
         </template>
     </WelcomeLayout>
 </template>

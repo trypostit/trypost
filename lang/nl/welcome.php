@@ -56,6 +56,10 @@ return [
         'open' => ':client openen',
         'waiting' => 'Wachten tot je AI verbindt…',
         'connected' => ':client is gekoppeld',
+        'step_copy' => 'Kopieer de prompt',
+        'step_paste' => 'Plak hem in je AI',
+        'step_login' => 'Log in bij TryPost als daarom wordt gevraagd',
+        'prompt_label' => 'Prompt',
         'skip' => 'Nu overslaan',
     ],
 ];

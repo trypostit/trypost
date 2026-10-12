@@ -56,6 +56,10 @@ return [
         'open' => ':clientを開く',
         'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',
+        'step_copy' => 'プロンプトをコピー',
+        'step_paste' => 'AIに貼り付け',
+        'step_login' => '求められたらTryPostにログイン',
+        'prompt_label' => 'プロンプト',
         'skip' => '今はスキップ',
     ],
 ];

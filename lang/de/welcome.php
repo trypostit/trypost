@@ -56,6 +56,10 @@ return [
         'open' => ':client öffnen',
         'waiting' => 'Warte auf die Verbindung deiner KI…',
         'connected' => ':client ist verbunden',
+        'step_copy' => 'Kopiere den Prompt',
+        'step_paste' => 'Füge ihn in deine KI ein',
+        'step_login' => 'Melde dich bei TryPost an, wenn sie fragt',
+        'prompt_label' => 'Prompt',
         'skip' => 'Jetzt überspringen',
     ],
 ];

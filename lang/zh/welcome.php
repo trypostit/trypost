@@ -56,6 +56,10 @@ return [
         'open' => '打开 :client',
         'waiting' => '正在等待你的 AI 连接…',
         'connected' => ':client 已连接',
+        'step_copy' => '复制提示词',
+        'step_paste' => '粘贴到你的 AI',
+        'step_login' => '按提示登录 TryPost',
+        'prompt_label' => '提示词',
         'skip' => '暂时跳过',
     ],
 ];

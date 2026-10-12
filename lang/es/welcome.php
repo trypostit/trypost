@@ -56,6 +56,10 @@ return [
         'open' => 'Abrir :client',
         'waiting' => 'Esperando a que tu IA se conecte…',
         'connected' => ':client está conectado',
+        'step_copy' => 'Copia el prompt',
+        'step_paste' => 'Pégalo en tu IA',
+        'step_login' => 'Inicia sesión en TryPost cuando te lo pida',
+        'prompt_label' => 'Prompt',
         'skip' => 'Omitir por ahora',
     ],
 ];

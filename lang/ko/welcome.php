@@ -56,6 +56,10 @@ return [
         'open' => ':client 열기',
         'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',
+        'step_copy' => '프롬프트 복사',
+        'step_paste' => 'AI에 붙여넣기',
+        'step_login' => '요청하면 TryPost에 로그인',
+        'prompt_label' => '프롬프트',
         'skip' => '지금은 건너뛰기',
     ],
 ];

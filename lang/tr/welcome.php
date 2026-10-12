@@ -56,6 +56,10 @@ return [
         'open' => ':client uygulamasını aç',
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',
+        'step_copy' => 'İstemi kopyala',
+        'step_paste' => 'Yapay zekâna yapıştır',
+        'step_login' => 'İstediğinde TryPost\'a giriş yap',
+        'prompt_label' => 'İstem',
         'skip' => 'Şimdilik atla',
     ],
 ];
