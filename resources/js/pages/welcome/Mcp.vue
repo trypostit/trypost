@@ -220,16 +220,14 @@ const goToSchedule = (): void => {
                         target="_blank"
                         rel="noopener noreferrer"
                         size="lg"
+                        variant="secondary"
                         :data-testid="`welcome-mcp-open-${client.id}`"
                         @click="startConnecting"
                     >
                         <img
                             :src="client.logo"
                             alt=""
-                            :class="[
-                                'size-4',
-                                client.id === 'chatgpt' && 'dark:invert',
-                            ]"
+:class="['size-4', client.logoClass]"
                         />
                         {{ $t('welcome.mcp.open', { client: client.label }) }}
                     </Button>

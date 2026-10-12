@@ -1,16 +1,16 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { IconClock, IconPhoto } from '@tabler/icons-vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import { Badge } from '@/components/ui/badge';
 import date from '@/date';
+import type { SharedData } from '@/types';
 
-const slides = [
-    'bg-violet-100 dark:bg-violet-400/15',
-    'bg-amber-100 dark:bg-amber-400/15',
-    'bg-sky-100 dark:bg-sky-400/15',
-    'bg-emerald-100 dark:bg-emerald-400/15',
-];
+const slideCount = 4;
+
+const owner = usePage<SharedData>().props.auth.user;
+const ownerPhoto = owner.has_photo ? owner.photo_url : null;
 </script>
 
 <template>
@@ -24,11 +24,14 @@ const slides = [
                     <div class="flex items-center gap-3">
                         <ChannelAvatar
                             platform="instagram"
-                            name="Acme"
+                            :name="owner.name"
+                    :src="ownerPhoto"
                             :size="32"
                             ring="card"
                         />
-                        <span class="truncate text-sm font-emphasis">Acme</span>
+                        <span class="truncate text-sm font-emphasis">{{
+                            owner.name
+                        }}</span>
                     </div>
                     <div class="flex flex-col gap-2">
                         <span class="h-2 w-full rounded-full bg-muted" />
@@ -42,20 +45,11 @@ const slides = [
                 </div>
                 <div class="grid w-28 shrink-0 grid-cols-2 content-start gap-1.5">
                     <span
-                        v-for="(slide, index) in slides"
+                        v-for="slide in slideCount"
                         :key="slide"
-                        :class="[
-                            'relative flex aspect-square items-center justify-center rounded-md border border-border-strong',
-                            slide,
-                        ]"
+                        class="flex aspect-square items-center justify-center rounded-md border border-border-strong bg-secondary"
                     >
                         <IconPhoto class="size-4 text-muted-foreground" />
-                        <span
-                            v-if="index === slides.length - 1"
-                            class="absolute end-1 bottom-1 flex size-5 items-center justify-center rounded-full bg-foreground/60 text-[10px] font-medium text-background"
-                        >
-                            +3
-                        </span>
                     </span>
                 </div>
             </div>

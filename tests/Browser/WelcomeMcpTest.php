@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Models\Media;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 function waitForWelcomeMcpTestId(mixed $page, string $testId): void
 {
@@ -63,7 +66,6 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     waitForWelcomeMcpChat($page, 'schedule');
 
     $page->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
-        ->assertSeeIn('@welcome-mcp-chat-schedule', '+3')
         ->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-schedule]").innerText.split("\\n").includes("Scheduled")', true)
         ->click('@welcome-mcp-benefit-analytics');
     waitForWelcomeMcpChat($page, 'analytics');
@@ -145,3 +147,51 @@ test('the MCP step fits a phone without scrolling and hides the chat example the
     $page->assertVisible('@welcome-mcp-copy')
         ->assertNoJavaScriptErrors();
 });
+
+test('the schedule and queue examples show the owner photo, or their initials without one', function (bool $withPhoto) {
+    config(['trypost.self_hosted' => false]);
+
+    $owner = welcomeMcpSubscriber();
+    $owner->update(['name' => 'Ada Lovelace']);
+
+    if ($withPhoto) {
+        $path = 'avatars/'.Str::uuid().'.png';
+        Storage::put($path, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='));
+        Media::factory()->avatar()->create([
+            'mediable_type' => $owner->getMorphClass(),
+            'mediable_id' => $owner->id,
+            'path' => $path,
+            'mime_type' => 'image/png',
+        ]);
+    }
+
+    $this->actingAs($owner->fresh());
+
+    $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-open-claude');
+
+    foreach (['schedule', 'queue'] as $benefit) {
+        $page->click("@welcome-mcp-benefit-{$benefit}");
+        waitForWelcomeMcpChat($page, $benefit);
+
+        $avatar = $page->script(<<<JS
+            (async () => {
+                const chat = document.querySelector('[data-testid="welcome-mcp-chat-{$benefit}"]');
+                for (let i = 0; i < 50; i++) {
+                    const image = chat.querySelector('img[src*="avatars/"]');
+                    if (image && image.complete) return 'photo';
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+                return chat.innerText.includes('AL') ? 'initials' : 'none';
+            })()
+        JS);
+
+        expect($avatar)->toBe($withPhoto ? 'photo' : 'initials');
+    }
+
+    $page->assertSeeIn('@welcome-mcp-chat-queue', 'Tomorrow')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'with a photo' => [true],
+    'without a photo' => [false],
+]);

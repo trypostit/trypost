@@ -1,14 +1,19 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { IconPlus } from '@tabler/icons-vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import date from '@/date';
+import type { SharedData } from '@/types';
 
 const posts = [
     { time: '09:00', platform: 'linkedin' },
     { time: '12:30', platform: 'instagram' },
 ];
+
+const owner = usePage<SharedData>().props.auth.user;
+const ownerPhoto = owner.has_photo ? owner.photo_url : null;
 </script>
 
 <template>
@@ -29,7 +34,8 @@ const posts = [
             >
                 <ChannelAvatar
                     :platform="post.platform"
-                    name="Acme"
+                    :name="owner.name"
+                    :src="ownerPhoto"
                     :size="28"
                     ring="card"
                 />
@@ -37,9 +43,6 @@ const posts = [
                     <span class="h-2 w-4/5 rounded-full bg-muted" />
                     <span class="h-2 w-1/2 rounded-full bg-muted" />
                 </div>
-                <span
-                    class="size-8 shrink-0 rounded-md border border-border-strong bg-secondary"
-                />
             </article>
         </div>
         <div class="grid grid-cols-[4.5rem_minmax(0,1fr)] items-center gap-x-4">
