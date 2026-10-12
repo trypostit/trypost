@@ -47,7 +47,7 @@ return [
             'accounts_unlimited_tooltip' => 'Verbinde so viele Konten, wie du willst, auch mehrere vom selben Netzwerk. Zum Beispiel drei Instagram-Konten.',
             'calendar' => 'Content-Kalender',
             'ideas' => 'Content-Planung',
-            'ideas_tooltip' => 'Sammle Ideen auf einem Board, ordne sie nach Phasen und mach aus jeder Idee einen Post, sobald sie fertig ist.',
+            'ideas_tooltip' => 'Halte deine Ideen fest, behalte sie an einem Ort im Blick und mach aus den besten Content, wann du willst.',
             'calendar_tooltip' => 'Sieh alle geplanten und veröffentlichten Posts an einem Ort, nach Monat oder Woche.',
             'ai' => 'KI-Schreibassistent',
             'ai_tooltip' => 'Schreibe und überarbeite deine Posts mit KI und passe den Ton an – in deiner Sprache.',

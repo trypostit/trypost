@@ -47,7 +47,7 @@ return [
             'accounts_unlimited_tooltip' => 'İstediğiniz kadar hesap bağlayın, aynı ağdan birkaç tane bile. Örneğin üç Instagram.',
             'calendar' => 'İçerik takvimi',
             'ideas' => 'İçerik planlama',
-            'ideas_tooltip' => 'Fikirleri bir panoda topla, aşamalara göre düzenle ve hazır olduğunda gönderiye dönüştür.',
+            'ideas_tooltip' => 'Fikirlerini not al, hepsini tek yerde düzenle ve en iyilerini istediğin zaman içeriğe dönüştür.',
             'calendar_tooltip' => 'Planlanan ve yayınlanan tüm gönderilerini tek yerde, aylık ya da haftalık gör.',
             'ai' => 'Yapay zekâ yazma asistanı',
             'ai_tooltip' => 'Gönderilerini yapay zekâyla yaz, yeniden yaz ve tonunu ayarla; kendi dilinde.',

@@ -45,7 +45,7 @@ return [
             'accounts_unlimited_tooltip' => 'Podłącz tyle kont, ile chcesz, także kilka z tej samej sieci. Na przykład trzy Instagramy.',
             'calendar' => 'Kalendarz treści',
             'ideas' => 'Planowanie treści',
-            'ideas_tooltip' => 'Zbieraj pomysły na tablicy, porządkuj je według etapów i zamieniaj w posty, gdy są gotowe.',
+            'ideas_tooltip' => 'Zapisuj pomysły, porządkuj je w jednym miejscu i zamieniaj najlepsze w treści, kiedy chcesz.',
             'calendar_tooltip' => 'Zobacz wszystkie zaplanowane i opublikowane posty w jednym miejscu, w widoku miesiąca lub tygodnia.',
             'ai' => 'Asystent AI do pisania',
             'ai_tooltip' => 'Pisz, przepisuj i dopasowuj ton postów z AI, w swoim języku.',

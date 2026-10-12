@@ -45,7 +45,7 @@ return [
             'accounts_unlimited_tooltip' => 'Koppel zoveel accounts als je wilt, ook meerdere van hetzelfde netwerk. Drie Instagrams, bijvoorbeeld.',
             'calendar' => 'Contentkalender',
             'ideas' => 'Contentplanning',
-            'ideas_tooltip' => 'Verzamel ideeën op een bord, orden ze per fase en maak van elk idee een post als het klaar is.',
+            'ideas_tooltip' => 'Noteer je ideeën, houd ze op één plek bij elkaar en maak van de beste content wanneer je wilt.',
             'calendar_tooltip' => 'Zie al je geplande en gepubliceerde posts op één plek, per maand of per week.',
             'ai' => 'AI-schrijfassistent',
             'ai_tooltip' => 'Schrijf en herschrijf je posts met AI en pas de toon aan, in jouw taal.',

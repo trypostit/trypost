@@ -45,7 +45,7 @@ return [
             'accounts_unlimited_tooltip' => 'Conecte quantas contas quiser, inclusive várias da mesma rede. Três Instagrams, por exemplo.',
             'calendar' => 'Calendário de conteúdo',
             'ideas' => 'Planejamento de conteúdo',
-            'ideas_tooltip' => 'Guarde ideias num quadro, organize por etapas e transforme qualquer ideia em post quando estiver pronta.',
+            'ideas_tooltip' => 'Anote suas ideias, organize tudo num só lugar e transforme as melhores em conteúdo quando quiser.',
             'calendar_tooltip' => 'Veja todos os posts agendados e publicados num só lugar, por mês ou por semana.',
             'ai' => 'Assistente de IA para escrever',
             'ai_tooltip' => 'Escreva, reescreva e ajuste o tom dos seus posts com a IA, no seu idioma.',

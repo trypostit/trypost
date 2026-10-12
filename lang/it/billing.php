@@ -45,7 +45,7 @@ return [
             'accounts_unlimited_tooltip' => 'Collega tutti gli account che vuoi, anche più di uno dello stesso social. Tre Instagram, per esempio.',
             'calendar' => 'Calendario dei contenuti',
             'ideas' => 'Pianificazione dei contenuti',
-            'ideas_tooltip' => 'Raccogli le idee in una bacheca, organizzale per fasi e trasforma ogni idea in post quando è pronta.',
+            'ideas_tooltip' => 'Annota le tue idee, organizzale in un unico posto e trasforma le migliori in contenuti quando vuoi.',
             'calendar_tooltip' => 'Vedi tutti i post programmati e pubblicati in un unico posto, per mese o per settimana.',
             'ai' => 'Assistente IA per scrivere',
             'ai_tooltip' => 'Scrivi, riscrivi e regola il tono dei tuoi post con l’IA, nella tua lingua.',

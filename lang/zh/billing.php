@@ -45,7 +45,7 @@ return [
             'accounts_unlimited_tooltip' => '想连接多少账号都可以，同一平台的多个账号也行。比如三个 Instagram。',
             'calendar' => '内容日历',
             'ideas' => '内容规划',
-            'ideas_tooltip' => '在看板上收集点子，按阶段整理，准备好后一键变成帖子。',
+            'ideas_tooltip' => '随手记下点子，集中整理，好点子随时变成内容。',
             'calendar_tooltip' => '在一个地方按月或按周查看所有已排期和已发布的帖子。',
             'ai' => 'AI 写作助手',
             'ai_tooltip' => '用 AI 撰写、改写帖子并调整语气，支持你的语言。',
