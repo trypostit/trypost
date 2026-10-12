@@ -13,9 +13,8 @@ const CLAUDE_ADD_CONNECTOR_URL =
     'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours';
 
 /**
- * First-class MCP clients surfaced on workspace MCP settings.
- * `settingsUrl` is the client's connector-management entry point (per the
- * official OpenAI/Anthropic docs), not a deep link into a specific form.
+ * First-class MCP clients surfaced on workspace MCP settings and the Welcome
+ * MCP step. `settingsUrl` is where the user adds a connector in that client.
  */
 export const mcpClients: McpClient[] = [
     {
