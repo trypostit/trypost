@@ -50,6 +50,8 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
     waitForWelcomeMcpTestId($page, 'welcome-mcp-chat-analytics');
 
     $page->assertSeeIn('@welcome-mcp-chat-analytics', 'What worked best last month?')
+        ->assertSeeIn('@welcome-mcp-chat-analytics', 'Impressions')
+        ->assertSeeIn('@welcome-mcp-chat-analytics', 'Eng. Rate')
         ->click('@welcome-mcp-view-prompt');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-prompt');
 

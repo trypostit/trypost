@@ -4,17 +4,16 @@ import {
     IconArrowUp,
     IconBulb,
     IconCalendarPlus,
-    IconChartLine,
     IconCheck,
     IconCircleCheck,
     IconCircleCheckFilled,
     IconCopy,
     IconListDetails,
     IconPlus,
+    IconTrendingUp,
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 
-import AppLogo from '@/components/AppLogo.vue';
 import { Button } from '@/components/ui/button';
 import {
     Popover,
@@ -22,6 +21,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
+import McpChatExample from '@/components/welcome/McpChatExample.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
@@ -43,7 +43,7 @@ usePoll(2000, { only: ['connectedClients'] });
 
 const benefits: { key: string; icon: Component }[] = [
     { key: 'schedule', icon: IconCalendarPlus },
-    { key: 'analytics', icon: IconChartLine },
+    { key: 'analytics', icon: IconTrendingUp },
     { key: 'queue', icon: IconListDetails },
     { key: 'ideas', icon: IconBulb },
 ];
@@ -149,6 +149,12 @@ const goToSchedule = (): void => {
                     aria-hidden="true"
                 >
                     <div class="grid flex-1 p-4">
+                        <McpChatExample
+                            v-for="benefit in benefits"
+                            :key="benefit.key"
+                            :benefit="benefit.key"
+                            class="invisible [grid-area:1/1]"
+                        />
                         <Transition
                             mode="out-in"
                             enter-active-class="transition-opacity duration-300"
@@ -156,40 +162,12 @@ const goToSchedule = (): void => {
                             enter-from-class="opacity-0"
                             leave-to-class="opacity-0"
                         >
-                            <div
+                            <McpChatExample
                                 :key="activeKey"
-                                class="flex flex-col gap-4"
+                                :benefit="activeKey"
+                                class="[grid-area:1/1]"
                                 :data-testid="`welcome-mcp-chat-${activeKey}`"
-                            >
-                                <p
-                                    class="ms-12 self-end rounded-2xl rounded-ee-sm bg-card px-3.5 py-2.5 text-sm text-foreground shadow-xs"
-                                >
-                                    {{
-                                        $t(`welcome.mcp.benefits.${activeKey}.ask`)
-                                    }}
-                                </p>
-                                <div class="flex flex-col gap-2 pe-6">
-                                    <span
-                                        class="inline-flex items-center gap-1.5 self-start rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground"
-                                    >
-                                        <AppLogo
-                                            variant="mark"
-                                            class="text-[12px]"
-                                        />
-                                        TryPost
-                                        <IconCheck
-                                            class="size-3.5 text-green-500"
-                                        />
-                                    </span>
-                                    <p class="text-sm text-foreground">
-                                        {{
-                                            $t(
-                                                `welcome.mcp.benefits.${activeKey}.reply`,
-                                            )
-                                        }}
-                                    </p>
-                                </div>
-                            </div>
+                            />
                         </Transition>
                     </div>
                     <div
