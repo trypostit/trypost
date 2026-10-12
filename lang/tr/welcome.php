@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Sıranı doldur',
                 'hint' => 'En iyi paylaşım saatlerinde',
-                'ask' => 'Diğer fikirlerden gönderiler oluştur ve sırama ekle.',
-                'reply' => 'Tamam. Fikirlerinden 7 gönderi oluşturup her boş saate bir tane olacak şekilde cumaya kadar sıraya ekledim.',
+                'ask' => 'Panomdan birkaç fikir al, gönderiye dönüştür ve bir sonraki boş saatlerime planla.',
+                'reply' => 'Tamam. Panondaki 7 fikri gönderiye dönüştürdüm ve cumaya kadar boş saatlerine planladım.',
             ],
             'ideas' => [
                 'title' => 'Fikirlerini düzenle',

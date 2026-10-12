@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Encha a fila',
                 'hint' => 'Nos seus melhores horários',
-                'ask' => 'Crie posts com as outras ideias e coloque na minha fila.',
-                'reply' => 'Feito. Criei 7 posts com as suas ideias e coloquei na fila, um por horário livre, até sexta.',
+                'ask' => 'Pegue algumas ideias do meu quadro, transforme em posts e agende nos meus próximos horários livres.',
+                'reply' => 'Feito. Transformei 7 ideias do seu quadro em posts e agendei nos seus próximos horários livres, até sexta.',
             ],
             'ideas' => [
                 'title' => 'Organize suas ideias',

@@ -18,7 +18,7 @@ const ownerPhoto = owner.has_photo ? owner.photo_url : null;
 </script>
 
 <template>
-    <section class="flex flex-col gap-3">
+    <section class="flex flex-col gap-2.5">
         <h3 class="text-sm font-emphasis text-foreground">
             {{ $t('posts.publish.tomorrow') }}
         </h3>

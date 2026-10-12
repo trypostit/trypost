@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Fülle deine Warteschlange',
                 'hint' => 'Zu deinen besten Zeiten',
-                'ask' => 'Erstelle Posts aus den anderen Ideen und pack sie in meine Warteschlange.',
-                'reply' => 'Erledigt. 7 Posts aus deinen Ideen stehen in der Warteschlange, bis Freitag.',
+                'ask' => 'Nimm ein paar Ideen von meinem Board, mach Posts daraus und plane sie in meine nächsten freien Slots.',
+                'reply' => 'Erledigt. 7 Ideen von deinem Board sind jetzt Posts in deinen freien Slots bis Freitag.',
             ],
             'ideas' => [
                 'title' => 'Ordne deine Ideen',

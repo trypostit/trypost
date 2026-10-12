@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Remplissez votre file',
                 'hint' => 'Aux meilleurs horaires',
-                'ask' => 'Crée des posts à partir des autres idées et ajoute-les à ma file.',
-                'reply' => 'C’est fait. J’ai créé 7 posts à partir de tes idées et je les ai mis en file, un par créneau libre, jusqu’à vendredi.',
+                'ask' => 'Prends quelques idées de mon tableau, transforme-les en posts et planifie-les sur mes prochains créneaux libres.',
+                'reply' => 'C’est fait. J’ai transformé 7 idées de ton tableau en posts, planifiés sur tes prochains créneaux libres jusqu’à vendredi.',
             ],
             'ideas' => [
                 'title' => 'Organisez vos idées',
