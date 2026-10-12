@@ -182,7 +182,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="hidden border-s border-border bg-muted p-5 lg:grid"
+                    class="hidden border-s border-border bg-primary-subtle p-5 lg:grid dark:bg-primary-selected"
                     aria-hidden="true"
                 >
                     <McpChatExample
