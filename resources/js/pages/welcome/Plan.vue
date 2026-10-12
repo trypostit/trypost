@@ -3,6 +3,7 @@ import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconBuilding,
     IconInfoCircle,
+    IconStarFilled,
 } from '@tabler/icons-vue';
 import { useIntervalFn, useMediaQuery } from '@vueuse/core';
 import { ref, watch } from 'vue';
@@ -90,10 +91,10 @@ const submit = (): void => {
             :data-testid="`plan-card-${plan.slug}`"
         >
             <div
-                class="flex flex-col items-start justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
+                class="flex flex-row-reverse items-center justify-between gap-4 bg-primary-subtle p-5 sm:flex-col sm:items-start sm:gap-8 sm:p-6 dark:bg-primary-selected"
             >
                 <div
-                    class="flex w-full flex-col gap-6"
+                    class="flex flex-col items-end gap-2 sm:w-full sm:items-stretch sm:gap-6"
                     data-testid="welcome-plan-reviews"
                     @mouseenter="pauseReviews"
                     @mouseleave="resumeReviews"
@@ -126,7 +127,15 @@ const submit = (): void => {
                         </button>
                     </div>
 
-                    <div class="grid">
+                    <span class="flex gap-0.5 sm:hidden">
+                        <IconStarFilled
+                            v-for="star in 5"
+                            :key="star"
+                            class="size-3.5 text-amber-500"
+                        />
+                    </span>
+
+                    <div class="grid max-sm:hidden">
                         <ReviewQuote
                             v-for="review in REVIEWS"
                             :key="review.key"
@@ -172,11 +181,11 @@ const submit = (): void => {
             >
                 <template #after>
                     <li
-                        class="flex items-start gap-2 text-base leading-6 text-foreground"
+                        class="flex items-start gap-2 text-sm leading-5 text-foreground sm:text-base sm:leading-6"
                         :data-testid="`plan-highlight-${plan.slug}`"
                     >
                         <IconBuilding
-                            class="mt-1 size-4 shrink-0 text-muted-foreground"
+                            class="mt-0.5 size-4 shrink-0 text-muted-foreground sm:mt-1"
                         />
                         <span class="inline-flex items-start gap-1.5">
                             {{ $t('billing.plans.workspaces_one') }}
@@ -185,7 +194,7 @@ const submit = (): void => {
                                     <TooltipTrigger as-child>
                                         <button
                                             type="button"
-                                            class="mt-1 inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
+                                            class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer sm:mt-1 items-center justify-center text-muted-foreground transition-control hover:text-foreground"
                                             :aria-label="
                                                 $t(
                                                     'billing.plans.workspaces_tooltip',

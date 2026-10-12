@@ -135,3 +135,24 @@ test('clicking a reviewer photo shows their quote', function () {
         ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors();
 });
+
+test('the plan step fits a phone without scrolling and hides the quotes there', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'))->resize(390, 844);
+    waitForWelcomePlanTestId($page, 'plan-card-socials');
+
+    $layout = $page->script(<<<'JS'
+        ({
+            scrolls: document.documentElement.scrollHeight > window.innerHeight,
+            quoteVisible: document.querySelector('[data-testid^="welcome-plan-review-"]:not([aria-hidden="true"])')?.getClientRects().length > 0,
+        })
+    JS);
+
+    expect($layout)->toBe(['scrolls' => false, 'quoteVisible' => false]);
+
+    $page->assertVisible('@welcome-plan-continue')
+        ->assertNoJavaScriptErrors();
+});

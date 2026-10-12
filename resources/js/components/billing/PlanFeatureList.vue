@@ -91,17 +91,19 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             {{ $t('billing.plans.everything_included') }}
         </p>
 
-        <ul :class="['flex flex-col', spacious ? 'gap-2.5' : 'gap-1']">
+        <ul :class="['flex flex-col', spacious ? 'gap-1 sm:gap-2.5' : 'gap-1']">
             <li
                 :class="[
                     'flex items-start gap-2 text-foreground',
-                    spacious ? 'text-base leading-6' : 'text-sm leading-5',
+                    spacious
+                        ? 'text-sm leading-5 sm:text-base sm:leading-6'
+                        : 'text-sm leading-5',
                 ]"
             >
                 <IconWorld
                     :class="[
                         'size-4 shrink-0 text-muted-foreground',
-                        spacious ? 'mt-1' : 'mt-0.5',
+                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
                     ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
@@ -118,7 +120,7 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                                     type="button"
                                     :class="[
                                         'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
-                                        spacious ? 'mt-1' : 'mt-0.5',
+                                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
                                     ]"
                                     :aria-label="
                                         $t(
@@ -181,14 +183,16 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                 :key="feature.key"
                 :class="[
                     'flex items-start gap-2 text-foreground',
-                    spacious ? 'text-base leading-6' : 'text-sm leading-5',
+                    spacious
+                        ? 'text-sm leading-5 sm:text-base sm:leading-6'
+                        : 'text-sm leading-5',
                 ]"
             >
                 <component
                     :is="feature.icon"
                     :class="[
                         'size-4 shrink-0 text-muted-foreground',
-                        spacious ? 'mt-1' : 'mt-0.5',
+                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
                     ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
@@ -208,7 +212,7 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                                     type="button"
                                     :class="[
                                         'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
-                                        spacious ? 'mt-1' : 'mt-0.5',
+                                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
                                     ]"
                                     :aria-label="
                                         $t(
