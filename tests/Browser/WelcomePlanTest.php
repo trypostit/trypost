@@ -156,3 +156,36 @@ test('the plan step fits a phone without scrolling and hides the quotes there', 
     $page->assertVisible('@welcome-plan-continue')
         ->assertNoJavaScriptErrors();
 });
+
+test('the feature info opens on a tap or click', function (int $width, int $height) {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'))->resize($width, $height);
+    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+
+    $page->click('@plan-feature-info-socials-team');
+    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+
+    $opened = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                const content = document.querySelector('[data-slot="popover-content"]');
+                if (content) return content.textContent.trim();
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
+
+    expect($opened)->toStartWith('Invite as many people as you want');
+
+    $page->click('@plan-networks-info-socials');
+    waitForWelcomePlanTestId($page, 'plan-networks-socials');
+
+    $page->assertVisible('@plan-networks-socials')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'desktop' => [1440, 900],
+    'phone' => [390, 844],
+]);

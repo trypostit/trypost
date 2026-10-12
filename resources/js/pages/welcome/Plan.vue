@@ -2,20 +2,14 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconBuilding,
-    IconInfoCircle,
     IconStarFilled,
 } from '@tabler/icons-vue';
 import { useIntervalFn, useMediaQuery } from '@vueuse/core';
 import { ref, watch } from 'vue';
 
+import PlanFeatureInfo from '@/components/billing/PlanFeatureInfo.vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { REVIEWS } from '@/lib/reviews';
@@ -189,35 +183,11 @@ const submit = (): void => {
                         />
                         <span class="inline-flex items-start gap-1.5">
                             {{ $t('billing.plans.workspaces_one') }}
-                            <TooltipProvider :delay-duration="200">
-                                <Tooltip>
-                                    <TooltipTrigger as-child>
-                                        <button
-                                            type="button"
-                                            class="mt-0.5 inline-flex size-4 shrink-0 cursor-pointer sm:mt-1 items-center justify-center text-muted-foreground transition-control hover:text-foreground"
-                                            :aria-label="
-                                                $t(
-                                                    'billing.plans.workspaces_tooltip',
-                                                )
-                                            "
-                                            :data-testid="`plan-workspaces-info-${plan.slug}`"
-                                        >
-                                            <IconInfoCircle class="size-4" />
-                                        </button>
-                                    </TooltipTrigger>
-                                    <TooltipContent
-                                        side="top"
-                                        :side-offset="8"
-                                        class="max-w-56 text-start"
-                                    >
-                                        {{
-                                            $t(
-                                                'billing.plans.workspaces_tooltip',
-                                            )
-                                        }}
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
+                            <PlanFeatureInfo
+                                :label="$t('billing.plans.workspaces_tooltip')"
+                                :testid="`plan-workspaces-info-${plan.slug}`"
+                                spacious
+                            />
                         </span>
                     </li>
                 </template>

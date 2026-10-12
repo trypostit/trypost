@@ -2,7 +2,6 @@
 import {
     IconCalendarEvent,
     IconChartBar,
-    IconInfoCircle,
     IconRefresh,
     IconRobot,
     IconShare,
@@ -12,13 +11,8 @@ import {
 } from '@tabler/icons-vue';
 import type { Component } from 'vue';
 
+import PlanFeatureInfo from '@/components/billing/PlanFeatureInfo.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { Platform } from '@/types/platform';
 
@@ -113,68 +107,38 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             $t('billing.plans.features.networks_all')
                         }}</span
                     >
-                    <TooltipProvider :delay-duration="200">
-                        <Tooltip>
-                            <TooltipTrigger as-child>
-                                <button
-                                    type="button"
-                                    :class="[
-                                        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
-                                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
-                                    ]"
-                                    :aria-label="
-                                        $t(
-                                            'billing.plans.features.networks_all_tooltip',
-                                        )
-                                    "
-                                    :data-testid="`plan-networks-info-${scope}`"
-                                >
-                                    <IconInfoCircle
-                                        class="size-4"
-                                    />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                                side="top"
-                                :side-offset="8"
-                                class="w-fit max-w-none space-y-2 p-3"
+                    <PlanFeatureInfo
+                        :label="$t('billing.plans.features.networks_all_tooltip')"
+                        :testid="`plan-networks-info-${scope}`"
+                        :spacious="spacious"
+                        content-class="max-w-none space-y-2"
+                    >
+                        <p class="font-medium">
+                            {{ $t('billing.plans.features.networks_all_tooltip') }}
+                        </p>
+                        <div
+                            class="grid grid-cols-4 gap-1"
+                            :data-testid="`plan-networks-${scope}`"
+                        >
+                            <span
+                                v-for="network in PLAN_NETWORKS"
+                                :key="network"
+                                class="flex w-16 flex-col items-center gap-1.5 rounded-md bg-muted px-1.5 py-2"
                             >
-                                <p class="font-medium">
-                                    {{
-                                        $t(
-                                            'billing.plans.features.networks_all_tooltip',
-                                        )
-                                    }}
-                                </p>
-                                <div
-                                    class="grid grid-cols-4 gap-1"
-                                    :data-testid="`plan-networks-${scope}`"
+                                <PlatformLogo
+                                    :platform="network"
+                                    size="xs"
+                                    plain
+                                    :title="null"
+                                />
+                                <span
+                                    class="max-w-full truncate text-[10px] leading-none font-medium text-muted-foreground"
                                 >
-                                    <span
-                                        v-for="network in PLAN_NETWORKS"
-                                        :key="network"
-                                        class="flex w-16 flex-col items-center gap-1.5 rounded-md bg-background/10 px-1.5 py-2"
-                                    >
-                                        <PlatformLogo
-                                            :platform="network"
-                                            size="xs"
-                                            plain
-                                            :title="null"
-                                        />
-                                        <span
-                                            class="max-w-full truncate text-[10px] leading-none font-medium text-background/80"
-                                        >
-                                            {{
-                                                getPlatformLabel(
-                                                    network,
-                                                )
-                                            }}
-                                        </span>
-                                    </span>
-                                </div>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                                    {{ getPlatformLabel(network) }}
+                                </span>
+                            </span>
+                        </div>
+                    </PlanFeatureInfo>
                 </span>
             </li>
 
@@ -202,43 +166,12 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                             $t(`billing.plans.features.${feature.key}`)
                         }}</span
                     >
-                    <TooltipProvider
+                    <PlanFeatureInfo
                         v-if="feature.hasTooltip"
-                        :delay-duration="200"
-                    >
-                        <Tooltip>
-                            <TooltipTrigger as-child>
-                                <button
-                                    type="button"
-                                    :class="[
-                                        'inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground',
-                                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
-                                    ]"
-                                    :aria-label="
-                                        $t(
-                                            `billing.plans.features.${feature.key}_tooltip`,
-                                        )
-                                    "
-                                    :data-testid="`plan-feature-info-${scope}-${feature.key}`"
-                                >
-                                    <IconInfoCircle
-                                        class="size-4"
-                                    />
-                                </button>
-                            </TooltipTrigger>
-                            <TooltipContent
-                                side="top"
-                                :side-offset="8"
-                                class="max-w-56 text-start"
-                            >
-                                {{
-                                    $t(
-                                        `billing.plans.features.${feature.key}_tooltip`,
-                                    )
-                                }}
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                        :label="$t(`billing.plans.features.${feature.key}_tooltip`)"
+                        :testid="`plan-feature-info-${scope}-${feature.key}`"
+                        :spacious="spacious"
+                    />
                 </span>
             </li>
 

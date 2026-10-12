@@ -1,17 +1,12 @@
 <script setup lang="ts">
-import { IconBuilding, IconInfoCircle } from '@tabler/icons-vue';
+import { IconBuilding } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
+import PlanFeatureInfo from '@/components/billing/PlanFeatureInfo.vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipProvider,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import {
     PLAN_CHANGE_LABELS,
     planChangeAction,
@@ -210,34 +205,13 @@ const workspaceLabel = (plan: PlanOption): string =>
                         <IconBuilding class="size-4" />
                     </span>
                     <p
-                        class="inline-flex items-center gap-1.5 text-sm font-medium text-foreground"
+                        class="inline-flex items-start gap-1.5 text-sm leading-5 font-medium text-foreground"
                     >
                         <span>{{ workspaceLabel(plan) }}</span>
-                        <TooltipProvider :delay-duration="200">
-                            <Tooltip>
-                                <TooltipTrigger as-child>
-                                    <button
-                                        type="button"
-                                        class="inline-flex size-4 shrink-0 cursor-pointer items-center justify-center text-muted-foreground transition-control hover:text-foreground"
-                                        :aria-label="
-                                            $t(
-                                                'billing.plans.workspaces_tooltip',
-                                            )
-                                        "
-                                        :data-testid="`plan-workspaces-info-${plan.slug}`"
-                                    >
-                                        <IconInfoCircle class="size-4" />
-                                    </button>
-                                </TooltipTrigger>
-                                <TooltipContent
-                                    side="top"
-                                    :side-offset="8"
-                                    class="max-w-64 text-start"
-                                >
-                                    {{ $t('billing.plans.workspaces_tooltip') }}
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        <PlanFeatureInfo
+                            :label="$t('billing.plans.workspaces_tooltip')"
+                            :testid="`plan-workspaces-info-${plan.slug}`"
+                        />
                     </p>
                 </div>
 
