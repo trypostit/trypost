@@ -147,11 +147,11 @@ onBeforeUnmount(() => {
                         <div
                             class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-primary-strong bg-card ps-3 pe-1 ring-3 ring-primary-strong/15"
                         >
-                            <code
+                            <span
                                 dir="ltr"
-                                class="min-w-0 flex-1 truncate font-mono text-xs text-foreground"
+                                class="min-w-0 flex-1 truncate text-sm text-foreground"
                                 data-testid="welcome-mcp-url"
-                            >{{ mcpUrl }}</code>
+                            >{{ mcpUrl }}</span>
                             <Button
                                 type="button"
                                 variant="secondary"
