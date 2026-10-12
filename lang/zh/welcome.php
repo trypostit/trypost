@@ -46,6 +46,6 @@ return [
         'other' => '其他',
     ],
     'plan_title' => '开始你的第一个月',
-    'plan_offer' => '新用户优惠',
-    'plan_cancel_anytime' => '随时取消',
+    'plan_first_month' => '首月价格',
+    'plan_terms' => '之后 :price/月，随时取消。',
 ];

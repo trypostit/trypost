@@ -34,8 +34,6 @@ return [
         'upgrade' => 'Upgrade naar :plan',
         'downgrade' => 'Downgrade naar :plan',
         'start_first_month' => 'Start voor :price',
-        'per_first_month' => '/eerste maand',
-        'then_monthly' => 'Daarna :price/maand',
         'billed_yearly_total' => 'Jaarlijks gefactureerd · :price (2 maanden gratis)',
         'socials_tagline' => 'Ideaal voor creators en kleine merken.',
         'workspaces_tagline' => 'Ideaal voor bureaus en grotere bedrijven.',

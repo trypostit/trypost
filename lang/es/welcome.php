@@ -46,6 +46,6 @@ return [
         'other' => 'Otra',
     ],
     'plan_title' => 'Empieza tu primer mes',
-    'plan_offer' => 'Oferta de bienvenida',
-    'plan_cancel_anytime' => 'Cancela cuando quieras',
+    'plan_first_month' => 'el primer mes',
+    'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
 ];

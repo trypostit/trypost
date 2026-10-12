@@ -34,8 +34,6 @@ return [
         'upgrade' => 'Upgrade to :plan',
         'downgrade' => 'Downgrade to :plan',
         'start_first_month' => 'Start for :price',
-        'per_first_month' => '/first month',
-        'then_monthly' => 'Then :price/month',
         'billed_yearly_total' => 'Billed annually · :price (2 months free)',
         'socials_tagline' => 'Best for creators and small brands.',
         'workspaces_tagline' => 'Best for agencies and larger businesses.',

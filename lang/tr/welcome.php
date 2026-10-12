@@ -46,6 +46,6 @@ return [
         'other' => 'Diğer',
     ],
     'plan_title' => 'İlk ayına başla',
-    'plan_offer' => 'Hoş geldin teklifi',
-    'plan_cancel_anytime' => 'İstediğin zaman iptal et',
+    'plan_first_month' => 'ilk ay için',
+    'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
 ];

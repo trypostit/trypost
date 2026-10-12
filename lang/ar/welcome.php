@@ -46,6 +46,6 @@ return [
         'other' => 'أخرى',
     ],
     'plan_title' => 'ابدأ شهرك الأول',
-    'plan_offer' => 'عرض الترحيب',
-    'plan_cancel_anytime' => 'ألغِ في أي وقت',
+    'plan_first_month' => 'للشهر الأول',
+    'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت.',
 ];

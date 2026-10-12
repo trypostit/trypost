@@ -46,6 +46,6 @@ return [
         'other' => 'Altro',
     ],
     'plan_title' => 'Inizia il tuo primo mese',
-    'plan_offer' => 'Offerta di benvenuto',
-    'plan_cancel_anytime' => 'Disdici quando vuoi',
+    'plan_first_month' => 'per il primo mese',
+    'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
 ];

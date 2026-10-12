@@ -34,8 +34,6 @@ return [
         'upgrade' => 'Mejorar a :plan',
         'downgrade' => 'Bajar a :plan',
         'start_first_month' => 'Empezar por :price',
-        'per_first_month' => '/primer mes',
-        'then_monthly' => 'Luego, :price/mes',
         'billed_yearly_total' => 'Facturación anual · :price (2 meses gratis)',
         'socials_tagline' => 'Ideal para creadores y marcas pequeñas.',
         'workspaces_tagline' => 'Ideal para agencias y negocios grandes.',

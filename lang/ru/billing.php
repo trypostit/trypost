@@ -34,8 +34,6 @@ return [
         'upgrade' => 'Перейти на :plan',
         'downgrade' => 'Понизить до :plan',
         'start_first_month' => 'Начать за :price',
-        'per_first_month' => '/первый месяц',
-        'then_monthly' => 'Затем :price/мес.',
         'billed_yearly_total' => 'Оплата раз в год · :price (2 месяца бесплатно)',
         'socials_tagline' => 'Для авторов и небольших брендов.',
         'workspaces_tagline' => 'Для агентств и крупного бизнеса.',

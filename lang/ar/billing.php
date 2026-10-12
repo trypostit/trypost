@@ -34,8 +34,6 @@ return [
         'upgrade' => 'الترقية إلى :plan',
         'downgrade' => 'الرجوع إلى :plan',
         'start_first_month' => 'ابدأ مقابل :price',
-        'per_first_month' => '/الشهر الأول',
-        'then_monthly' => 'ثم :price/شهر',
         'billed_yearly_total' => 'فوترة سنوية · :price (شهران مجانًا)',
         'socials_tagline' => 'مناسب لمنشئي المحتوى والعلامات الصغيرة.',
         'workspaces_tagline' => 'مناسب للوكالات والأعمال الكبيرة.',

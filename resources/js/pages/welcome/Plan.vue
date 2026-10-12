@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconBuilding, IconCheck, IconInfoCircle } from '@tabler/icons-vue';
+import { IconBuilding, IconInfoCircle } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
-import { Badge } from '@/components/ui/badge';
 import {
     Tooltip,
     TooltipContent,
@@ -43,58 +42,24 @@ const submit = (): void => {
             <div
                 class="flex flex-col items-start justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
             >
-                <Badge
-                    variant="outline"
-                    class="border-primary-strong bg-card text-primary-text"
-                    data-testid="welcome-plan-offer"
+                <span
+                    class="inline-flex size-10 items-center justify-center rounded-lg bg-card"
+                    aria-hidden="true"
                 >
-                    {{ $t('welcome.plan_offer') }}
-                </Badge>
+                    <span class="text-xl leading-none">🎁</span>
+                </span>
 
-                <div class="flex flex-col gap-1">
-                    <p class="flex flex-wrap items-baseline gap-2">
-                        <s
-                            class="text-xl text-muted-foreground tabular-nums"
-                            :data-testid="`plan-price-regular-${plan.slug}`"
-                            >{{
-                                $t(
-                                    `billing.subscribe.prices.${plan.slug}.monthly`,
-                                )
-                            }}</s
-                        >
-                        <span
-                            class="text-4xl leading-none font-strong tabular-nums"
-                            :data-testid="`plan-price-first-month-${plan.slug}`"
-                            >{{
-                                $t('billing.subscribe.prices.first_month')
-                            }}</span
-                        >
-                        <span
-                            class="text-base text-foreground"
-                            :data-testid="`plan-price-suffix-${plan.slug}`"
-                            >{{ $t('billing.plans.per_first_month') }}</span
-                        >
-                    </p>
-                    <p
-                        class="text-sm text-muted-foreground"
-                        :data-testid="`plan-price-note-${plan.slug}`"
+                <p class="flex flex-col gap-1">
+                    <span
+                        class="text-5xl leading-none font-strong tabular-nums"
+                        :data-testid="`plan-price-first-month-${plan.slug}`"
+                        >{{ $t('billing.subscribe.prices.first_month') }}</span
                     >
-                        {{
-                            $t('billing.plans.then_monthly', {
-                                price: $t(
-                                    `billing.subscribe.prices.${plan.slug}.monthly`,
-                                ),
-                            })
-                        }}
-                    </p>
-                </div>
-
-                <p
-                    class="flex items-center gap-2 text-sm text-foreground"
-                    data-testid="welcome-plan-cancel-anytime"
-                >
-                    <IconCheck class="size-4 shrink-0 text-primary-text" />
-                    {{ $t('welcome.plan_cancel_anytime') }}
+                    <span
+                        class="text-base text-foreground"
+                        :data-testid="`plan-price-suffix-${plan.slug}`"
+                        >{{ $t('welcome.plan_first_month') }}</span
+                    >
                 </p>
             </div>
 
@@ -158,6 +123,16 @@ const submit = (): void => {
                 testid="welcome-plan-continue"
                 @continue="submit"
             />
+            <p
+                class="text-center text-sm text-muted-foreground"
+                data-testid="welcome-plan-terms"
+            >
+                {{
+                    $t('welcome.plan_terms', {
+                        price: $t('billing.subscribe.prices.socials.monthly'),
+                    })
+                }}
+            </p>
         </template>
     </WelcomeLayout>
 </template>
