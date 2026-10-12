@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
+    IconArrowRight,
     IconArrowUp,
     IconBulb,
     IconCalendarPlus,
@@ -317,36 +318,43 @@ const goToSchedule = (): void => {
                 </p>
             </template>
             <template v-else>
-                <div class="flex flex-wrap justify-center gap-2">
-                    <Button
-                        v-for="client in mcpClients"
-                        :key="client.id"
-                        type="button"
-                        size="lg"
-                        variant="secondary"
-                        class="max-sm:w-full"
-                        :data-testid="`welcome-mcp-connect-${client.id}`"
-                        @click="connectWith(client)"
-                    >
-                        <img
-                            :src="client.logo"
-                            alt=""
-                            :class="['size-4', client.logoClass]"
-                        />
-                        {{
-                            $t('welcome.mcp.connect_with', {
-                                client: client.label,
-                            })
-                        }}
-                    </Button>
-                </div>
-                <Link
-                    :href="postsIndex.url()"
-                    class="text-sm font-medium text-muted-foreground transition-control hover:text-foreground"
-                    data-testid="welcome-mcp-skip"
+                <div
+                    class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"
                 >
-                    {{ $t('welcome.mcp.skip') }}
-                </Link>
+                        <Button
+                            v-for="client in mcpClients"
+                            :key="client.id"
+                            type="button"
+                            size="lg"
+                            :data-testid="`welcome-mcp-connect-${client.id}`"
+                            @click="connectWith(client)"
+                        >
+                            <img
+                                :src="client.logo"
+                                alt=""
+                                :class="['size-4', client.logoOnPrimaryClass]"
+                            />
+                            {{
+                                $t('welcome.mcp.connect_with', {
+                                    client: client.label,
+                                })
+                            }}
+                        </Button>
+                </div>
+                    <Button
+                        as-child
+                        variant="secondary"
+                        size="lg"
+                        class="max-sm:w-full sm:fixed sm:end-8 sm:bottom-8 lg:end-12"
+                    >
+                        <Link
+                            :href="postsIndex.url()"
+                            data-testid="welcome-mcp-skip"
+                        >
+                            {{ $t('welcome.mcp.skip') }}
+                            <IconArrowRight class="size-4 rtl:rotate-180" />
+                        </Link>
+                    </Button>
             </template>
         </template>
 

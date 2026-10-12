@@ -6,6 +6,8 @@ export interface McpClient {
     logo: string;
     settingsUrl: string;
     logoClass?: string;
+    /** Logo classes on a primary button (white in light mode, dark in dark mode). */
+    logoOnPrimaryClass?: string;
 }
 
 /** Opens Claude straight on the "Add custom connector" dialog. */
@@ -29,5 +31,6 @@ export const mcpClients: McpClient[] = [
         logo: '/images/ai/chatgpt-white.svg',
         settingsUrl: 'https://chatgpt.com/plugins',
         logoClass: 'invert dark:invert-0',
+        logoOnPrimaryClass: 'dark:invert',
     },
 ];
