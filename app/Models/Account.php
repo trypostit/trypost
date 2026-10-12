@@ -197,7 +197,7 @@ class Account extends Model
 
     public function stripeName(): string
     {
-        return $this->name;
+        return $this->owner?->name ?? '';
     }
 
     /**

@@ -107,8 +107,8 @@ test('stripe email returns account owner email', function () {
     expect($this->account->stripeEmail())->toBe($this->user->email);
 });
 
-test('stripe name returns account name', function () {
-    expect($this->account->stripeName())->toBe($this->account->name);
+test('stripe name returns account owner name', function () {
+    expect($this->account->stripeName())->toBe($this->user->name);
 });
 
 test('creating an additional workspace redirects to billing without an active subscription', function () {

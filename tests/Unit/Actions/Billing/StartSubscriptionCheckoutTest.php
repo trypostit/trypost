@@ -331,7 +331,7 @@ test('redirect clears a leftover plan_id before opening checkout', function () {
     expect($account->fresh()->plan_id)->toBeNull();
 });
 
-test('redirect creates a new stripe customer with the owner email, the account name and the metadata', function () {
+test('redirect creates a new stripe customer with the owner email, the owner name and the metadata', function () {
     config([
         'cashier.secret' => 'sk_test_fake',
         'trypost.billing.require_card_for_trial' => true,
@@ -344,6 +344,7 @@ test('redirect creates a new stripe customer with the owner email, the account n
     $account = Account::factory()->create(['name' => "Ada's Account"]);
     $owner = User::factory()->create([
         'account_id' => $account->id,
+        'name' => 'Ada Lovelace',
         'email' => 'ada@example.test',
         'utm_source' => 'google',
         'previous_software' => PreviousSoftware::Metricool,
@@ -363,7 +364,7 @@ test('redirect creates a new stripe customer with the owner email, the account n
         ->and($client->requests[0]['url'])->toEndWith('/v1/customers')
         ->and($client->requests[0]['params'])->toMatchArray([
             'email' => 'ada@example.test',
-            'name' => "Ada's Account",
+            'name' => 'Ada Lovelace',
             'metadata' => ['utm_source' => 'google', 'previous_software' => 'metricool'],
         ])
         ->and($account->fresh()->stripe_id)->toBe('cus_new');
@@ -382,6 +383,7 @@ test('redirect updates an existing stripe customer with the current details and 
     $account = Account::factory()->create(['name' => "Ada's Account", 'stripe_id' => 'cus_existing']);
     $owner = User::factory()->create([
         'account_id' => $account->id,
+        'name' => 'New Owner',
         'email' => 'new-owner@example.test',
         'persona' => Persona::Agency,
         'referral_source' => null,
@@ -400,7 +402,7 @@ test('redirect updates an existing stripe customer with the current details and 
         ->and($client->requests[0]['url'])->toEndWith('/v1/customers/cus_existing')
         ->and($client->requests[0]['params'])->toMatchArray([
             'email' => 'new-owner@example.test',
-            'name' => "Ada's Account",
+            'name' => 'New Owner',
             'metadata' => ['persona' => 'agency'],
         ])
         ->and($account->fresh()->stripe_id)->toBe('cus_existing');
