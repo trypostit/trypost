@@ -4,7 +4,8 @@ import {
     IconBuilding,
     IconGift,
     IconInfoCircle,
-    IconLock,
+    IconBrandStripeFilled,
+    IconLockSquareRoundedFilled,
 } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
@@ -166,8 +167,14 @@ const submit = (): void => {
                 class="flex items-center gap-1.5 text-xs text-muted-foreground"
                 data-testid="welcome-plan-secure-checkout"
             >
-                <IconLock class="size-3.5 shrink-0" />
+                <IconLockSquareRoundedFilled
+                    class="size-4 shrink-0 text-green-500"
+                />
                 {{ $t('welcome.plan_secure_checkout') }}
+                <IconBrandStripeFilled
+                    class="size-4 shrink-0 text-[#635bff]"
+                    aria-hidden="true"
+                />
             </p>
         </template>
     </WelcomeLayout>
