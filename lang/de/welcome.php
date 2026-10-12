@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'mcp' => [
         'title' => 'Poste und analysiere direkt aus deiner KI',
-        'description' => 'Öffne deine KI, sende die fertige Nachricht und melde dich an. Dauert eine Minute.',
-        'copy_prompt' => 'Prompt kopieren',
-        'open' => 'In :client öffnen',
+        'description' => 'In einer Minute verbunden: nutze TryPost direkt aus Claude oder ChatGPT.',
+        'connect_with' => 'Mit :client verbinden',
+        'sheet_title' => 'Verbinde TryPost mit :client',
+        'url_copied' => 'MCP-URL von TryPost kopiert',
+        'reopen' => ':client erneut öffnen',
+        'steps' => [
+            'claude' => [
+                'paste' => 'Füge die URL in das URL-Feld des Connectors ein',
+                'add' => 'Klicke auf Hinzufügen und dann auf Verbinden',
+                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
+            ],
+            'chatgpt' => [
+                'developer' => 'Aktiviere den Entwicklermodus in den ChatGPT-Einstellungen',
+                'create' => 'Erstelle eine App namens TryPost und füge die URL ein',
+                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
+            ],
+        ],
         'waiting' => 'Warte auf die Verbindung deiner KI…',
         'connected' => ':client ist verbunden',
         'benefits' => [

@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'Потім :price/міс. Скасування будь-коли.',
     'mcp' => [
         'title' => 'Публікуйте й аналізуйте просто зі свого ШІ',
-        'description' => 'Відкрийте свій ШІ, надішліть готове повідомлення та увійдіть. Це займе хвилину.',
-        'copy_prompt' => 'Скопіювати промпт',
-        'open' => 'Відкрити :client',
+        'description' => 'Підключіть за хвилину й користуйтеся TryPost просто з Claude або ChatGPT.',
+        'connect_with' => 'Підключити :client',
+        'sheet_title' => 'Підключіть TryPost до :client',
+        'url_copied' => 'URL MCP TryPost скопійовано',
+        'reopen' => 'Відкрити :client знову',
+        'steps' => [
+            'claude' => [
+                'paste' => 'Вставте URL у поле URL конектора',
+                'add' => 'Натисніть «Додати», потім «Підключити»',
+                'login' => 'Увійдіть у TryPost і виберіть workspace',
+            ],
+            'chatgpt' => [
+                'developer' => 'Увімкніть режим розробника в налаштуваннях ChatGPT',
+                'create' => 'Створіть застосунок TryPost і вставте URL',
+                'login' => 'Увійдіть у TryPost і виберіть workspace',
+            ],
+        ],
         'waiting' => 'Чекаємо на підключення вашого ШІ…',
         'connected' => ':client підключено',
         'benefits' => [

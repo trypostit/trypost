@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
     'mcp' => [
         'title' => 'Yapay zekândan doğrudan paylaş ve analiz et',
-        'description' => 'Yapay zekânı aç, hazır mesajı gönder ve giriş yap. Bir dakika sürer.',
-        'copy_prompt' => 'İstemi kopyala',
-        'open' => ':client ile aç',
+        'description' => 'Bir dakikada bağla, TryPost’u doğrudan Claude veya ChatGPT’den kullan.',
+        'connect_with' => ':client ile bağlan',
+        'sheet_title' => ':client ile TryPost’u bağla',
+        'url_copied' => 'TryPost MCP URL’si kopyalandı',
+        'reopen' => ':client uygulamasını yeniden aç',
+        'steps' => [
+            'claude' => [
+                'paste' => 'URL’yi bağlayıcının URL alanına yapıştır',
+                'add' => 'Ekle’ye, ardından Bağlan’a tıkla',
+                'login' => 'TryPost’a giriş yap ve workspace’i seç',
+            ],
+            'chatgpt' => [
+                'developer' => 'ChatGPT ayarlarında Geliştirici modunu aç',
+                'create' => 'TryPost adlı bir uygulama oluştur ve URL’yi yapıştır',
+                'login' => 'TryPost’a giriş yap ve workspace’i seç',
+            ],
+        ],
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',
         'benefits' => [

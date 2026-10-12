@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'mcp' => [
         'title' => 'Post en analyseer direct vanuit je AI',
-        'description' => 'Open je AI, verstuur het kant-en-klare bericht en log in. Het duurt een minuut.',
-        'copy_prompt' => 'Prompt kopiëren',
-        'open' => 'Openen in :client',
+        'description' => 'Koppel het in een minuut en gebruik TryPost direct vanuit Claude of ChatGPT.',
+        'connect_with' => 'Koppelen met :client',
+        'sheet_title' => 'Koppel TryPost aan :client',
+        'url_copied' => 'MCP-URL van TryPost gekopieerd',
+        'reopen' => ':client opnieuw openen',
+        'steps' => [
+            'claude' => [
+                'paste' => 'Plak de URL in het URL-veld van de connector',
+                'add' => 'Klik op Toevoegen en daarna op Verbinden',
+                'login' => 'Log in bij TryPost en kies de workspace',
+            ],
+            'chatgpt' => [
+                'developer' => 'Zet de ontwikkelaarsmodus aan in de instellingen van ChatGPT',
+                'create' => 'Maak een app met de naam TryPost en plak de URL',
+                'login' => 'Log in bij TryPost en kies de workspace',
+            ],
+        ],
         'waiting' => 'Wachten tot je AI verbindt…',
         'connected' => ':client is gekoppeld',
         'benefits' => [

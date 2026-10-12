@@ -201,14 +201,8 @@ class WelcomeController extends Controller
 
         $this->authorize('view', $workspace);
 
-        $mcpUrl = route('mcp.trypost');
-
         return Inertia::render('welcome/Mcp', [
-            'mcpUrl' => $mcpUrl,
-            'prompt' => view('prompts.mcp.setup', [
-                'mcpUrl' => $mcpUrl,
-                'language' => $user->locale->promptLanguage(),
-            ])->render(),
+            'mcpUrl' => route('mcp.trypost'),
             'connectedClients' => ListConnectedMcpClients::forUser($user, $workspace),
         ]);
     }

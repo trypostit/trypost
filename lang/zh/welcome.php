@@ -51,9 +51,23 @@ return [
     'plan_terms' => '之后 :price/月，随时取消。',
     'mcp' => [
         'title' => '直接在你的 AI 中发帖和分析',
-        'description' => '打开你的 AI，发送准备好的消息并登录，一分钟搞定。',
-        'copy_prompt' => '复制提示词',
-        'open' => '在 :client 中打开',
+        'description' => '一分钟完成连接，直接在 Claude 或 ChatGPT 中使用 TryPost。',
+        'connect_with' => '连接 :client',
+        'sheet_title' => '将 TryPost 连接到 :client',
+        'url_copied' => '已复制 TryPost 的 MCP URL',
+        'reopen' => '重新打开 :client',
+        'steps' => [
+            'claude' => [
+                'paste' => '将 URL 粘贴到连接器的 URL 字段',
+                'add' => '点击“添加”，然后点击“连接”',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
+            'chatgpt' => [
+                'developer' => '在 ChatGPT 设置中开启开发者模式',
+                'create' => '创建名为 TryPost 的应用并粘贴 URL',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
+        ],
         'waiting' => '正在等待你的 AI 连接…',
         'connected' => ':client 已连接',
         'benefits' => [

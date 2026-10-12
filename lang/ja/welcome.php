@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
     'mcp' => [
         'title' => 'AIから直接投稿・分析',
-        'description' => 'AIを開いて、用意されたメッセージを送信し、ログインするだけ。1分で完了します。',
-        'copy_prompt' => 'プロンプトをコピー',
-        'open' => ':clientで開く',
+        'description' => '1分で接続して、ClaudeやChatGPTから直接TryPostを使いましょう。',
+        'connect_with' => ':clientと接続',
+        'sheet_title' => 'TryPostを:clientに接続',
+        'url_copied' => 'TryPostのMCP URLをコピーしました',
+        'reopen' => ':clientをもう一度開く',
+        'steps' => [
+            'claude' => [
+                'paste' => 'コネクタのURL欄にURLを貼り付け',
+                'add' => '「追加」→「接続」をクリック',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
+            'chatgpt' => [
+                'developer' => 'ChatGPTの設定で開発者モードをオン',
+                'create' => '「TryPost」という名前でアプリを作成し、URLを貼り付け',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
+        ],
         'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',
         'benefits' => [

@@ -218,19 +218,18 @@ test('plan store sends the owner to Stripe checkout on the Socials monthly price
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
-test('the MCP step shows a copyable prompt with the server URL in the owner language', function () {
+test('the MCP step gives the TryPost MCP URL and the owner connections', function () {
     attachCurrentWorkspace($this->user);
     subscribeAccount($this->user->account);
-    $this->user->update(['locale' => Locale::PortugueseBrazil]);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.mcp'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Mcp', false)
+            ->where('mcpUrl', route('mcp.trypost'))
             ->where('connectedClients', [])
-            ->where('prompt', fn (string $prompt): bool => str_contains($prompt, route('mcp.trypost'))
-                && str_contains($prompt, Locale::PortugueseBrazil->promptLanguage()))
+            ->missing('prompt')
         );
 });
 

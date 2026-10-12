@@ -51,9 +51,23 @@ return [
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
     'mcp' => [
         'title' => 'AI에서 바로 게시하고 분석하세요',
-        'description' => 'AI를 열고 준비된 메시지를 보낸 뒤 로그인하세요. 1분이면 됩니다.',
-        'copy_prompt' => '프롬프트 복사',
-        'open' => ':client에서 열기',
+        'description' => '1분이면 연결하고 Claude나 ChatGPT에서 바로 TryPost를 사용하세요.',
+        'connect_with' => ':client 연결',
+        'sheet_title' => 'TryPost를 :client에 연결',
+        'url_copied' => 'TryPost MCP URL이 복사되었어요',
+        'reopen' => ':client 다시 열기',
+        'steps' => [
+            'claude' => [
+                'paste' => '커넥터의 URL 필드에 URL을 붙여넣기',
+                'add' => '추가를 누른 뒤 연결을 누르기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
+            'chatgpt' => [
+                'developer' => 'ChatGPT 설정에서 개발자 모드 켜기',
+                'create' => 'TryPost라는 앱을 만들고 URL 붙여넣기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
+        ],
         'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',
         'benefits' => [

@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت.',
     'mcp' => [
         'title' => 'انشر وحلّل مباشرةً من الذكاء الاصطناعي لديك',
-        'description' => 'افتح الذكاء الاصطناعي لديك، وأرسل الرسالة الجاهزة ثم سجّل الدخول. يستغرق الأمر دقيقة.',
-        'copy_prompt' => 'نسخ التعليمات',
-        'open' => 'افتح في :client',
+        'description' => 'اربطه في دقيقة واستخدم TryPost مباشرةً من Claude أو ChatGPT.',
+        'connect_with' => 'الربط مع :client',
+        'sheet_title' => 'اربط TryPost بـ :client',
+        'url_copied' => 'تم نسخ رابط MCP الخاص بـ TryPost',
+        'reopen' => 'افتح :client مرة أخرى',
+        'steps' => [
+            'claude' => [
+                'paste' => 'الصق الرابط في حقل رابط الموصل',
+                'add' => 'انقر على إضافة ثم على اتصال',
+                'login' => 'سجّل الدخول إلى TryPost واختر مساحة العمل',
+            ],
+            'chatgpt' => [
+                'developer' => 'فعّل وضع المطوّر في إعدادات ChatGPT',
+                'create' => 'أنشئ تطبيقًا باسم TryPost والصق الرابط',
+                'login' => 'سجّل الدخول إلى TryPost واختر مساحة العمل',
+            ],
+        ],
         'waiting' => 'بانتظار اتصال الذكاء الاصطناعي…',
         'connected' => 'تم ربط :client',
         'benefits' => [

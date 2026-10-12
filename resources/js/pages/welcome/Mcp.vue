@@ -4,16 +4,13 @@ import {
     IconArrowUpRight,
     IconBulb,
     IconCalendarPlus,
-    IconCircleCheck,
     IconCircleCheckFilled,
-    IconCopy,
     IconListDetails,
     IconTrendingUp,
 } from '@tabler/icons-vue';
 import {
     computed,
     nextTick,
-    onBeforeUnmount,
     ref,
     useTemplateRef,
     watch,
@@ -21,12 +18,12 @@ import {
 } from 'vue';
 
 import { Button } from '@/components/ui/button';
-import { Spinner } from '@/components/ui/spinner';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
+import McpConnectSheet from '@/components/welcome/mcp/McpConnectSheet.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-import { mcpClients } from '@/lib/mcpClients';
+import { mcpClients, type McpClient } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
 import { index as postsIndex } from '@/routes/app/posts';
 
@@ -36,7 +33,7 @@ interface ConnectedClient {
 }
 
 const props = defineProps<{
-    prompt: string;
+    mcpUrl: string;
     connectedClients: ConnectedClient[];
 }>();
 
@@ -79,41 +76,21 @@ const connectedClient = computed(
     (): ConnectedClient | null => props.connectedClients[0] ?? null,
 );
 
-const copied = ref(false);
-const started = ref(false);
+const activeClient = ref<McpClient>(mcpClients[0]);
+const sheetOpen = ref(false);
+const urlCopied = ref(false);
 
-const startConnecting = (): void => {
-    started.value = true;
-};
-
-let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
-
-const copyPrompt = async (): Promise<void> => {
-    const didCopy = await copyToClipboard(props.prompt, undefined, {
+/**
+ * The button's own link opens the client's connector page in a new tab; this
+ * copies TryPost's MCP URL for the paste and opens the steps beside it.
+ */
+const connectWith = async (client: McpClient): Promise<void> => {
+    activeClient.value = client;
+    sheetOpen.value = true;
+    urlCopied.value = await copyToClipboard(props.mcpUrl, undefined, {
         showSuccessToast: false,
     });
-
-    if (!didCopy) {
-        return;
-    }
-
-    copied.value = true;
-    startConnecting();
-
-    if (copiedTimeout) {
-        clearTimeout(copiedTimeout);
-    }
-
-    copiedTimeout = setTimeout(() => {
-        copied.value = false;
-    }, 2000);
 };
-
-onBeforeUnmount(() => {
-    if (copiedTimeout) {
-        clearTimeout(copiedTimeout);
-    }
-});
 
 const goToSchedule = (): void => {
     router.visit(postsIndex.url());
@@ -267,60 +244,32 @@ const goToSchedule = (): void => {
                 />
             </template>
             <template v-else>
-                <p
-                    v-if="started"
-                    class="flex items-center gap-1.5 text-sm text-muted-foreground"
-                    data-testid="welcome-mcp-status"
-                    aria-live="polite"
-                >
-                    <Spinner class="size-3.5 shrink-0 text-primary-text" />
-                    {{ $t('welcome.mcp.waiting') }}
-                </p>
                 <div class="flex flex-wrap justify-center gap-2">
                     <Button
-                        v-for="app in mcpClients"
-                        :key="app.id"
+                        v-for="client in mcpClients"
+                        :key="client.id"
                         as="a"
-                        :href="app.promptUrl(prompt)"
+                        :href="client.settingsUrl"
                         target="_blank"
                         rel="noopener noreferrer"
                         size="lg"
                         variant="secondary"
-                        class="max-lg:w-10 max-lg:px-0"
-                        :aria-label="
-                            $t('welcome.mcp.open', { client: app.label })
-                        "
-                        :title="$t('welcome.mcp.open', { client: app.label })"
-                        :data-testid="`welcome-mcp-open-${app.id}`"
-                        @click="startConnecting"
+                        :data-testid="`welcome-mcp-connect-${client.id}`"
+                        @click="connectWith(client)"
                     >
                         <img
-                            :src="app.logo"
+                            :src="client.logo"
                             alt=""
-                            :class="['size-4', app.logoClass]"
+                            :class="['size-4', client.logoClass]"
                         />
-                        <span class="max-lg:hidden">
-                            {{ $t('welcome.mcp.open', { client: app.label }) }}
-                        </span>
+                        {{
+                            $t('welcome.mcp.connect_with', {
+                                client: client.label,
+                            })
+                        }}
                         <IconArrowUpRight
-                            class="size-4 text-muted-foreground max-lg:hidden rtl:-scale-x-100"
+                            class="size-4 text-muted-foreground rtl:-scale-x-100"
                         />
-                    </Button>
-                    <Button
-                        type="button"
-                        size="lg"
-                        variant="secondary"
-                        data-testid="welcome-mcp-copy"
-                        @click="copyPrompt"
-                    >
-                        <template v-if="copied">
-                            <IconCircleCheck class="size-4 text-green-500" />
-                            {{ $t('common.actions.copied') }}
-                        </template>
-                        <template v-else>
-                            <IconCopy class="size-4" />
-                            {{ $t('welcome.mcp.copy_prompt') }}
-                        </template>
                     </Button>
                 </div>
                 <Link
@@ -332,5 +281,14 @@ const goToSchedule = (): void => {
                 </Link>
             </template>
         </template>
+
+        <McpConnectSheet
+            v-model:open="sheetOpen"
+            :client="activeClient"
+            :mcp-url="mcpUrl"
+            :url-copied="urlCopied"
+            :connected-name="connectedClient?.name ?? null"
+            @continue="goToSchedule"
+        />
     </WelcomeLayout>
 </template>

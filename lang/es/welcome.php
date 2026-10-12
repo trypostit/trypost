@@ -51,9 +51,23 @@ return [
     'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
     'mcp' => [
         'title' => 'Publica y analiza directo desde tu IA',
-        'description' => 'Ábrelo en tu IA, envía el mensaje listo e inicia sesión. Lleva un minuto.',
-        'copy_prompt' => 'Copiar prompt',
-        'open' => 'Abrir en :client',
+        'description' => 'Conéctalo en un minuto y usa TryPost directo desde Claude o ChatGPT.',
+        'connect_with' => 'Conectar con :client',
+        'sheet_title' => 'Conecta TryPost a :client',
+        'url_copied' => 'URL del MCP de TryPost copiada',
+        'reopen' => 'Abrir :client de nuevo',
+        'steps' => [
+            'claude' => [
+                'paste' => 'Pega la URL en el campo de URL del conector',
+                'add' => 'Haz clic en Añadir y luego en Conectar',
+                'login' => 'Inicia sesión en TryPost y elige el workspace',
+            ],
+            'chatgpt' => [
+                'developer' => 'Activa el modo desarrollador en la configuración de ChatGPT',
+                'create' => 'Crea una app llamada TryPost y pega la URL',
+                'login' => 'Inicia sesión en TryPost y elige el workspace',
+            ],
+        ],
         'waiting' => 'Esperando a que tu IA se conecte…',
         'connected' => ':client está conectado',
         'benefits' => [
