@@ -23,7 +23,7 @@ const mockups: Record<string, Component> = {
 <template>
     <div class="flex flex-col gap-4">
         <p
-            class="ms-12 self-end rounded-2xl rounded-ee-sm bg-card px-3.5 py-2.5 text-sm text-foreground shadow-xs"
+            class="ms-12 self-end rounded-2xl rounded-ee-sm bg-muted px-3.5 py-2.5 text-sm text-foreground"
         >
             {{ $t(`welcome.mcp.benefits.${benefit}.ask`) }}
         </p>

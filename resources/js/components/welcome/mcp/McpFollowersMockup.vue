@@ -149,7 +149,7 @@ const hideMonth = (): void => {
                 <svg
                     :viewBox="`0 0 ${WIDTH} ${HEIGHT}`"
                     preserveAspectRatio="none"
-                    class="h-32 w-full overflow-visible"
+                    class="h-28 w-full overflow-visible"
                 >
                     <path
                         :d="toArea(accounts[0].values)"

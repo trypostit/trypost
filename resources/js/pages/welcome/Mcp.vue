@@ -182,32 +182,44 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="hidden border-s border-border bg-primary-subtle p-5 lg:grid dark:bg-primary-selected"
+                    class="hidden border-s border-border bg-secondary p-4 lg:flex"
                     aria-hidden="true"
                 >
-                    <McpChatExample
-                        v-for="benefit in benefits"
-                        :key="benefit.key"
-                        :benefit="benefit.key"
-                        class="invisible [grid-area:1/1]"
-                    />
-                    <Transition
-                        mode="out-in"
-                        enter-active-class="transition-opacity duration-300"
-                        leave-active-class="transition-opacity duration-300"
-                        enter-from-class="opacity-0"
-                        leave-to-class="opacity-0"
+                    <div
+                        class="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-strong bg-card shadow-sm"
                     >
-                        <McpChatExample
-                            :key="activeKey"
-                            :benefit="activeKey"
-                            class="[grid-area:1/1]"
-                            :data-testid="`welcome-mcp-chat-${activeKey}`"
-                        />
-                    </Transition>
+                        <div
+                            class="flex h-8 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3"
+                        >
+                            <span class="size-2.5 rounded-full bg-[#ff5f57]" />
+                            <span class="size-2.5 rounded-full bg-[#febc2e]" />
+                            <span class="size-2.5 rounded-full bg-[#28c840]" />
+                        </div>
+                        <div class="grid flex-1 p-4">
+                            <McpChatExample
+                                v-for="benefit in benefits"
+                                :key="benefit.key"
+                                :benefit="benefit.key"
+                                class="invisible [grid-area:1/1]"
+                            />
+                            <Transition
+                                mode="out-in"
+                                enter-active-class="transition-opacity duration-300"
+                                leave-active-class="transition-opacity duration-300"
+                                enter-from-class="opacity-0"
+                                leave-to-class="opacity-0"
+                            >
+                                <McpChatExample
+                                    :key="activeKey"
+                                    :benefit="activeKey"
+                                    class="[grid-area:1/1]"
+                                    :data-testid="`welcome-mcp-chat-${activeKey}`"
+                                />
+                            </Transition>
+                        </div>
+                    </div>
                 </div>
             </div>
-
         </article>
 
         <template #actions>
