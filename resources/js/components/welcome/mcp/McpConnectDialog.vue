@@ -42,11 +42,13 @@ const focusDialogFrame = (event: Event): void => {
     (event.target as HTMLElement | null)?.focus({ preventScroll: true });
 };
 
-const copied = ref(false);
+type CopiedField = 'name' | 'url';
+
+const copiedField = ref<CopiedField | null>(null);
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
-const copyUrl = async (): Promise<void> => {
-    const didCopy = await copyToClipboard(props.mcpUrl, undefined, {
+const copyField = async (field: CopiedField, value: string): Promise<void> => {
+    const didCopy = await copyToClipboard(value, undefined, {
         showSuccessToast: false,
     });
 
@@ -54,16 +56,20 @@ const copyUrl = async (): Promise<void> => {
         return;
     }
 
-    copied.value = true;
+    copiedField.value = field;
 
     if (copiedTimeout) {
         clearTimeout(copiedTimeout);
     }
 
     copiedTimeout = setTimeout(() => {
-        copied.value = false;
+        copiedField.value = null;
     }, 2000);
 };
+
+const copyName = (name: string): Promise<void> => copyField('name', name);
+
+const copyUrl = (): Promise<void> => copyField('url', props.mcpUrl);
 
 onBeforeUnmount(() => {
     if (copiedTimeout) {
@@ -139,15 +145,33 @@ onBeforeUnmount(() => {
                     </span>
                 </div>
                 <div class="flex flex-col gap-3 p-4">
-                    <div class="flex flex-col gap-1.5" aria-hidden="true">
+                    <div class="flex flex-col gap-1.5">
                         <span class="text-xs font-medium text-muted-foreground">
                             {{ $t('mcp.name_label') }}
                         </span>
-                        <span
-                            class="flex h-9 items-center rounded-md border border-input bg-card px-3 text-sm text-foreground"
+                        <div
+                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-card ps-3 pe-1"
                         >
-                            {{ $t('mcp.connector_name') }}
-                        </span>
+                            <span
+                                class="min-w-0 flex-1 truncate text-sm text-foreground"
+                                data-testid="welcome-mcp-name"
+                            >{{ $t('mcp.connector_name') }}</span>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                class="h-7 shrink-0"
+                                data-testid="welcome-mcp-copy-name"
+                                @click="copyName($t('mcp.connector_name'))"
+                            >
+                                <IconCheck
+                                    v-if="copiedField === 'name'"
+                                    class="size-3.5 text-green-500"
+                                />
+                                <IconCopy v-else class="size-3.5" />
+                                {{ copiedField === 'name' ? $t('mcp.copied') : $t('welcome.mcp.copy') }}
+                            </Button>
+                        </div>
                     </div>
                     <div class="flex flex-col gap-1.5">
                         <span class="text-xs font-medium text-muted-foreground">
@@ -170,11 +194,11 @@ onBeforeUnmount(() => {
                                 @click="copyUrl"
                             >
                                 <IconCheck
-                                    v-if="copied"
+                                    v-if="copiedField === 'url'"
                                     class="size-3.5 text-green-500"
                                 />
                                 <IconCopy v-else class="size-3.5" />
-                                {{ copied ? $t('mcp.copied') : $t('mcp.copy') }}
+                                {{ copiedField === 'url' ? $t('mcp.copied') : $t('welcome.mcp.copy') }}
                             </Button>
                         </div>
                     </div>

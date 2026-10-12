@@ -53,6 +53,7 @@ return [
         'title' => 'Yapay zekândan doğrudan paylaş ve analiz et',
         'description' => 'Bir dakikada bağla, TryPost’u doğrudan Claude veya ChatGPT’den kullan.',
         'connect_with' => ':client ile bağlan',
+        'copy' => 'Kopyala',
         'dialog_title' => ':client ile TryPost’u bağla',
         'dialog_description' => 'Yaklaşık bir dakika sürer. Bağlandığınız anda bu sayfa güncellenir.',
         'open' => ':client uygulamasını aç',

@@ -53,6 +53,7 @@ return [
         'title' => 'Poste und analysiere direkt aus deiner KI',
         'description' => 'In einer Minute verbunden: nutze TryPost direkt aus Claude oder ChatGPT.',
         'connect_with' => 'Mit :client verbinden',
+        'copy' => 'Kopieren',
         'dialog_title' => 'Verbinde TryPost mit :client',
         'dialog_description' => 'Dauert etwa eine Minute. Diese Seite aktualisiert sich, sobald du verbunden bist.',
         'open' => ':client öffnen',

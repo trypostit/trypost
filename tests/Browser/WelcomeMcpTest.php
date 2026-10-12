@@ -110,11 +110,26 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->and($page->script('document.activeElement.dataset.testid'))->toBe('welcome-mcp-dialog')
         ->and($page->script('getComputedStyle(document.activeElement).outlineStyle'))->toBe('none');
 
-    $page->click('@welcome-mcp-copy-url');
+    $page->assertSeeIn('@welcome-mcp-copy-name', 'Copy')
+        ->assertSeeIn('@welcome-mcp-copy-url', 'Copy')
+        ->click('@welcome-mcp-copy-name');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {
                 if (window.__copied.length) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
+    $page->assertSeeIn('@welcome-mcp-copy-name', 'Copied')
+        ->assertDontSeeIn('@welcome-mcp-copy-url', 'Copied');
+
+    $page->click('@welcome-mcp-copy-url');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (window.__copied.length === 2) return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
@@ -128,7 +143,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->assertSeeIn('@welcome-mcp-dialog-waiting', 'Waiting for your AI to connect')
         ->assertScript('document.querySelectorAll("[data-sonner-toast]").length', 0);
 
-    expect($page->script('window.__copied'))->toBe([route('mcp.trypost')])
+    expect($page->script('window.__copied'))->toBe(['TryPost', route('mcp.trypost')])
         ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("href")'))->toStartWith('https://claude.ai/')
         ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("target")'))->toBe('_blank');
 
