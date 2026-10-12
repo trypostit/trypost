@@ -53,6 +53,8 @@ return [
         'title' => 'Beheer je socials via chat',
         'description' => 'Koppel Claude of ChatGPT en vraag om posts, rapporten en ideeën.',
         'connect_with' => 'Koppelen met :client',
+        'connect_ai' => 'Koppel je AI',
+        'pick_ai' => 'Welke AI gebruik je?',
         'connect_other' => 'Andere app koppelen',
         'composer' => 'Vraag maar raak',
         'dialog_title' => 'Koppel TryPost aan :client',

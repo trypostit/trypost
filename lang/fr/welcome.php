@@ -53,6 +53,8 @@ return [
         'title' => 'Gérez vos réseaux par chat',
         'description' => 'Connectez Claude ou ChatGPT et demandez posts, rapports et idées.',
         'connect_with' => 'Connecter :client',
+        'connect_ai' => 'Connecter votre IA',
+        'pick_ai' => 'Quelle IA utilisez-vous ?',
         'connect_other' => 'Connecter une autre app',
         'composer' => 'Posez votre question',
         'dialog_title' => 'Connectez TryPost à :client',

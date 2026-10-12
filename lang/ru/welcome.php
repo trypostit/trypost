@@ -53,6 +53,8 @@ return [
         'title' => 'Ведите соцсети прямо в чате',
         'description' => 'Подключите Claude или ChatGPT и просите посты, отчёты и идеи.',
         'connect_with' => 'Подключить :client',
+        'connect_ai' => 'Подключить ИИ',
+        'pick_ai' => 'Каким ИИ вы пользуетесь?',
         'connect_other' => 'Подключить другое приложение',
         'composer' => 'Спросите что угодно',
         'dialog_title' => 'Подключите TryPost к :client',

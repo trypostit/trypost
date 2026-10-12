@@ -53,6 +53,8 @@ return [
         'title' => 'أدِر حساباتك الاجتماعية من الدردشة',
         'description' => 'اربط Claude أو ChatGPT في دقيقة، ثم اطلب منشورات وتقارير وأفكارًا.',
         'connect_with' => 'الربط مع :client',
+        'connect_ai' => 'اربط ذكاءك الاصطناعي',
+        'pick_ai' => 'أي ذكاء اصطناعي تستخدم؟',
         'connect_other' => 'ربط تطبيق آخر',
         'composer' => 'اسأل عن أي شيء',
         'dialog_title' => 'اربط TryPost بـ :client',

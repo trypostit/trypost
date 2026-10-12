@@ -53,6 +53,8 @@ return [
         'title' => 'Sosyal medyanı sohbetle yönet',
         'description' => 'Claude veya ChatGPT’yi bir dakikada bağla; gönderi, rapor ve fikir iste.',
         'connect_with' => ':client ile bağlan',
+        'connect_ai' => 'Yapay zekânı bağla',
+        'pick_ai' => 'Hangi yapay zekâyı kullanıyorsun?',
         'connect_other' => 'Başka uygulama bağla',
         'composer' => 'Bir şey sor',
         'dialog_title' => ':client ile TryPost’u bağla',

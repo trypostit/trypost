@@ -5,10 +5,12 @@ import {
     IconArrowUp,
     IconBulb,
     IconCalendarPlus,
+    IconChevronRight,
     IconCircleCheckFilled,
     IconListDetails,
     IconMicrophone,
     IconPlus,
+    IconSparkles,
     IconTrendingUp,
 } from '@tabler/icons-vue';
 import {
@@ -21,6 +23,7 @@ import {
     type Component,
 } from 'vue';
 
+import BottomSheet from '@/components/BottomSheet.vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
 import { Button } from '@/components/ui/button';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
@@ -87,6 +90,19 @@ const dialogOpen = ref(false);
 const connectWith = (client: McpClient): void => {
     activeClient.value = client;
     dialogOpen.value = true;
+};
+
+const aiPickerOpen = ref(false);
+
+const openAiPicker = (): void => {
+    aiPickerOpen.value = true;
+};
+
+/** Phones pick the app in a sheet first; the steps open once it has closed. */
+const pickAi = async (client: McpClient): Promise<void> => {
+    aiPickerOpen.value = false;
+    await nextTick();
+    connectWith(client);
 };
 
 const connectedStatus = useTemplateRef<HTMLElement>('connectedStatus');
@@ -326,15 +342,12 @@ const goToSchedule = (): void => {
                 </p>
             </template>
             <template v-else>
-                <div
-                    class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-row"
-                >
+                <div class="flex gap-2 max-sm:hidden">
                     <Button
                         v-for="client in connectableClients"
                         :key="client.id"
                         type="button"
                         size="lg"
-                        :class="client.labelKey ? 'max-sm:hidden' : ''"
                         :data-testid="`welcome-mcp-connect-${client.id}`"
                         @click="connectWith(client)"
                     >
@@ -343,41 +356,33 @@ const goToSchedule = (): void => {
                             alt=""
                             class="size-4 invert dark:invert-0"
                         />
-                        <span v-if="!client.labelKey" class="sm:hidden">
-                            {{ client.label }}
-                        </span>
-                        <span :class="client.labelKey ? '' : 'max-sm:hidden'">
-                            {{
-                                client.labelKey
-                                    ? $t('welcome.mcp.connect_other')
-                                    : $t('welcome.mcp.connect_with', {
-                                          client: client.label,
-                                      })
-                            }}
-                        </span>
+                        {{
+                            client.labelKey
+                                ? $t('welcome.mcp.connect_other')
+                                : $t('welcome.mcp.connect_with', {
+                                      client: client.label,
+                                  })
+                        }}
                     </Button>
                 </div>
-                <div
-                    class="flex items-center justify-center gap-3 text-sm font-medium text-muted-foreground sm:hidden"
+                <Button
+                    type="button"
+                    size="lg"
+                    class="w-full sm:hidden"
+                    data-testid="welcome-mcp-connect-ai"
+                    @click="openAiPicker"
                 >
-                    <button
-                        type="button"
-                        class="cursor-pointer transition-control hover:text-foreground"
-                        data-testid="welcome-mcp-connect-other-link"
-                        @click="connectWith(otherMcpClient)"
-                    >
-                        {{ $t('mcp.other_clients_title') }}
-                    </button>
-                    <span aria-hidden="true">·</span>
-                    <Link
-                        :href="postsIndex.url()"
-                        class="inline-flex items-center gap-1 transition-control hover:text-foreground"
-                        data-testid="welcome-mcp-skip-link"
-                    >
-                        {{ $t('welcome.mcp.skip') }}
-                        <IconArrowRight class="size-3.5 rtl:rotate-180" />
-                    </Link>
-                </div>
+                    <IconSparkles class="size-4" />
+                    {{ $t('welcome.mcp.connect_ai') }}
+                </Button>
+                <Link
+                    :href="postsIndex.url()"
+                    class="inline-flex items-center gap-1 text-sm font-medium text-muted-foreground transition-control hover:text-foreground sm:hidden"
+                    data-testid="welcome-mcp-skip-link"
+                >
+                    {{ $t('welcome.mcp.skip') }}
+                    <IconArrowRight class="size-3.5 rtl:rotate-180" />
+                </Link>
                 <Button
                     as-child
                     variant="secondary"
@@ -394,6 +399,48 @@ const goToSchedule = (): void => {
                 </Button>
             </template>
         </template>
+
+        <BottomSheet
+            v-model:open="aiPickerOpen"
+            :title="$t('welcome.mcp.pick_ai')"
+            test-id="welcome-mcp-ai-picker"
+        >
+            <ul class="flex flex-col gap-2 px-4 pb-4">
+                <li v-for="client in connectableClients" :key="client.id">
+                    <button
+                        type="button"
+                        class="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-3 text-start transition-control hover:bg-muted"
+                        :data-testid="`welcome-mcp-pick-${client.id}`"
+                        @click="pickAi(client)"
+                    >
+                        <span
+                            class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
+                        >
+                            <img
+                                :src="client.logo"
+                                alt=""
+                                :class="['size-5 object-contain', client.logoClass]"
+                            />
+                        </span>
+                        <span class="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <span class="text-sm font-medium text-foreground">
+                                {{ client.labelKey ? $t(client.label) : client.label }}
+                            </span>
+                            <span class="text-sm text-muted-foreground">
+                                {{
+                                    client.labelKey
+                                        ? $t('mcp.other_hint')
+                                        : $t('mcp.connect_hint')
+                                }}
+                            </span>
+                        </span>
+                        <IconChevronRight
+                            class="size-4 shrink-0 text-muted-foreground rtl:rotate-180"
+                        />
+                    </button>
+                </li>
+            </ul>
+        </BottomSheet>
 
         <McpConnectDialog
             v-model:open="dialogOpen"

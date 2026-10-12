@@ -53,6 +53,8 @@ return [
         'title' => 'Gestisci i social dalla chat',
         'description' => 'Collega Claude o ChatGPT in un minuto e chiedi post, report e idee.',
         'connect_with' => 'Collega :client',
+        'connect_ai' => 'Collega la tua IA',
+        'pick_ai' => 'Quale IA usi?',
         'connect_other' => 'Collega un\'altra app',
         'composer' => 'Chiedi qualsiasi cosa',
         'dialog_title' => 'Collega TryPost a :client',

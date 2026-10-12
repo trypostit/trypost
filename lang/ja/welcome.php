@@ -53,6 +53,8 @@ return [
         'title' => 'AIとの会話でSNSを運用',
         'description' => 'ClaudeやChatGPTを接続して、投稿・レポート・アイデアを頼みましょう。',
         'connect_with' => ':clientと接続',
+        'connect_ai' => 'AIを接続',
+        'pick_ai' => 'どのAIを使っていますか？',
         'connect_other' => '他のアプリを接続',
         'composer' => '何でも聞いてください',
         'dialog_title' => 'TryPostを:clientに接続',

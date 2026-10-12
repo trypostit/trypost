@@ -53,6 +53,8 @@ return [
         'title' => 'Run your social media from a chat',
         'description' => 'Connect Claude or ChatGPT and ask for posts, reports and ideas.',
         'connect_with' => 'Connect with :client',
+        'connect_ai' => 'Connect your AI',
+        'pick_ai' => 'Which AI do you use?',
         'connect_other' => 'Connect another app',
         'composer' => 'Ask anything',
         'dialog_title' => 'Connect TryPost to :client',

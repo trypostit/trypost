@@ -53,6 +53,8 @@ return [
         'title' => 'Gerencie suas redes pelo chat',
         'description' => 'Conecte em 1 minuto e peça posts, relatórios e ideias à sua IA.',
         'connect_with' => 'Conectar com :client',
+        'connect_ai' => 'Conectar sua IA',
+        'pick_ai' => 'Qual IA você usa?',
         'connect_other' => 'Conectar outro app',
         'composer' => 'Pergunte qualquer coisa',
         'dialog_title' => 'Conecte o TryPost ao :client',

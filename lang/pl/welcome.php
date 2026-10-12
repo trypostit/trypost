@@ -53,6 +53,8 @@ return [
         'title' => 'Zarządzaj social mediami w czacie',
         'description' => 'Połącz Claude lub ChatGPT w minutę i proś o posty, raporty i pomysły.',
         'connect_with' => 'Połącz z :client',
+        'connect_ai' => 'Połącz swoją AI',
+        'pick_ai' => 'Z jakiej AI korzystasz?',
         'connect_other' => 'Połącz inną aplikację',
         'composer' => 'Zapytaj o cokolwiek',
         'dialog_title' => 'Połącz TryPost z :client',

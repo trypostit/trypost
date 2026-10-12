@@ -53,6 +53,8 @@ return [
         'title' => 'Social Media per Chat steuern',
         'description' => 'Verbinde Claude oder ChatGPT und frag nach Posts, Berichten und Ideen.',
         'connect_with' => 'Mit :client verbinden',
+        'connect_ai' => 'Deine KI verbinden',
+        'pick_ai' => 'Welche KI nutzt du?',
         'connect_other' => 'Andere App verbinden',
         'composer' => 'Frag mich alles',
         'dialog_title' => 'Verbinde TryPost mit :client',

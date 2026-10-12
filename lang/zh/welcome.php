@@ -53,6 +53,8 @@ return [
         'title' => '和 AI 聊天，轻松管理社交媒体',
         'description' => '一分钟连接 Claude 或 ChatGPT，然后让它帮你写帖子、出报告、想点子。',
         'connect_with' => '连接 :client',
+        'connect_ai' => '连接你的 AI',
+        'pick_ai' => '你用哪个 AI？',
         'connect_other' => '连接其他应用',
         'composer' => '有问题，尽管问',
         'dialog_title' => '将 TryPost 连接到 :client',

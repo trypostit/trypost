@@ -53,6 +53,8 @@ return [
         'title' => 'Ведіть соцмережі просто в чаті',
         'description' => 'Підключіть Claude або ChatGPT і просіть дописи, звіти та ідеї.',
         'connect_with' => 'Підключити :client',
+        'connect_ai' => 'Підключити ШІ',
+        'pick_ai' => 'Яким ШІ ви користуєтеся?',
         'connect_other' => 'Підключити інший застосунок',
         'composer' => 'Запитайте будь-що',
         'dialog_title' => 'Підключіть TryPost до :client',

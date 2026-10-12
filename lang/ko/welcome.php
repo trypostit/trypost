@@ -53,6 +53,8 @@ return [
         'title' => 'AI와 대화하며 SNS를 관리하세요',
         'description' => 'Claude나 ChatGPT를 1분 만에 연결하고 게시물, 리포트, 아이디어를 요청하세요.',
         'connect_with' => ':client 연결',
+        'connect_ai' => 'AI 연결하기',
+        'pick_ai' => '어떤 AI를 사용하세요?',
         'connect_other' => '다른 앱 연결',
         'composer' => '무엇이든 물어보세요',
         'dialog_title' => 'TryPost를 :client에 연결',
