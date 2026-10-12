@@ -27,7 +27,7 @@ import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-import { mcpClients, type McpClient } from '@/lib/mcpClients';
+import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
 import { index as postsIndex } from '@/routes/app/posts';
 import { fireConfetti } from '@/utils/confetti';
 
@@ -79,6 +79,8 @@ watch(activeBenefit, revealActivePill);
 const connectedClient = computed(
     (): ConnectedClient | null => props.connectedClients[0] ?? null,
 );
+
+const connectableClients: McpClient[] = [...mcpClients, otherMcpClient];
 
 const activeClient = ref<McpClient>(mcpClients[0]);
 const dialogOpen = ref(false);
@@ -322,7 +324,7 @@ const goToSchedule = (): void => {
                     class="flex w-full flex-col gap-2 sm:w-auto sm:flex-row"
                 >
                         <Button
-                            v-for="client in mcpClients"
+                            v-for="client in connectableClients"
                             :key="client.id"
                             type="button"
                             size="lg"
@@ -335,9 +337,11 @@ const goToSchedule = (): void => {
                                 class="size-4 invert dark:invert-0"
                             />
                             {{
-                                $t('welcome.mcp.connect_with', {
-                                    client: client.label,
-                                })
+                                client.labelKey
+                                    ? $t('welcome.mcp.connect_other')
+                                    : $t('welcome.mcp.connect_with', {
+                                          client: client.label,
+                                      })
                             }}
                         </Button>
                 </div>

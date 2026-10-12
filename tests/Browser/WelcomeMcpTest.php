@@ -183,6 +183,24 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         })();
     JS);
 
+    $page->assertSeeIn('@welcome-mcp-connect-other', 'Connect another app')
+        ->click('@welcome-mcp-connect-other');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-config');
+
+    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to another app')
+        ->assertVisible('@welcome-mcp-step-add')
+        ->assertSeeIn('@welcome-mcp-config', route('mcp.trypost'))
+        ->assertMissing('@welcome-mcp-open')
+        ->keys('@welcome-mcp-dialog', 'Escape');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+
     $page->click('@welcome-mcp-skip');
 
     $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);

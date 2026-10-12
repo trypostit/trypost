@@ -53,6 +53,7 @@ return [
         'title' => '直接在你的 AI 中发帖和分析',
         'description' => '一分钟完成连接，直接在 Claude 或 ChatGPT 中使用 TryPost。',
         'connect_with' => '连接 :client',
+        'connect_other' => '连接其他应用',
         'composer' => '有问题，尽管问',
         'dialog_title' => '将 TryPost 连接到 :client',
         'dialog_description' => '大约一分钟即可完成。连接成功后此页面会自动更新。',

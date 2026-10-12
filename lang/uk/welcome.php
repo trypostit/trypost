@@ -53,6 +53,7 @@ return [
         'title' => 'Публікуйте й аналізуйте просто зі свого ШІ',
         'description' => 'Підключіть за хвилину й користуйтеся TryPost просто з Claude або ChatGPT.',
         'connect_with' => 'Підключити :client',
+        'connect_other' => 'Підключити інший застосунок',
         'composer' => 'Запитайте будь-що',
         'dialog_title' => 'Підключіть TryPost до :client',
         'dialog_description' => 'Це займе близько хвилини. Сторінка оновиться, щойно ви підключитеся.',

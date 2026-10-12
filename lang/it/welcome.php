@@ -53,6 +53,7 @@ return [
         'title' => 'Pubblica e analizza direttamente dalla tua IA',
         'description' => 'Collegalo in un minuto e usa TryPost direttamente da Claude o ChatGPT.',
         'connect_with' => 'Collega :client',
+        'connect_other' => 'Collega un\'altra app',
         'composer' => 'Chiedi qualsiasi cosa',
         'dialog_title' => 'Collega TryPost a :client',
         'dialog_description' => 'Ci vuole un minuto. Questa pagina si aggiorna appena ti colleghi.',
