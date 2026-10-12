@@ -51,7 +51,7 @@ return [
             'mcp_tooltip' => 'Koppel Claude, ChatGPT of een andere AI. Laat hem posts maken en plannen, je wachtrij vullen, ideeën ordenen en je groei tonen.',
             'repurpose' => 'Je video\'s op al je netwerken',
             'repurpose_tooltip' => 'Kies een Instagram- of Facebook-account. Elke nieuwe Reel of video die je daar plaatst, gaat vanzelf naar je andere netwerken, zonder TryPost te openen.',
-            'analytics' => 'Zie wat je laat groeien',
+            'analytics' => 'Geavanceerde statistieken',
             'analytics_tooltip' => 'Zie of je groeit en welke posts het best werken, over al je accounts.',
             'team' => 'Onbeperkt teamleden',
             'team_tooltip' => 'Nodig zoveel mensen uit voor je team als je wilt, zonder extra kosten. Bepaal wat iedereen mag doen en keur posts goed voordat ze live gaan.',

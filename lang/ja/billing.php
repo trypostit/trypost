@@ -51,7 +51,7 @@ return [
             'mcp_tooltip' => 'Claude、ChatGPT、その他のAIを接続。投稿の作成と予約、キューの補充、アイデアの整理、成長の確認を頼めます。',
             'repurpose' => '動画をすべてのSNSに自動投稿',
             'repurpose_tooltip' => 'InstagramかFacebookのアカウントを選択。そこに投稿した新しいリールや動画は、TryPostを開かなくても他のSNSに自動で投稿されます。',
-            'analytics' => '成長につながる投稿がわかる',
+            'analytics' => '高度な分析',
             'analytics_tooltip' => '成長しているか、どの投稿が一番効果的かを、すべてのアカウントで確認できます。',
             'team' => 'チームメンバー無制限',
             'team_tooltip' => '追加料金なしで、チームに何人でも招待できます。各メンバーができることを設定し、公開前に投稿を承認できます。',

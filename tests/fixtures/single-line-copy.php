@@ -39,7 +39,7 @@ return [
     'auth.register.title' => 30,
     'billing.plans.features.accounts_unlimited' => 35,
     'billing.plans.features.ai' => 30,
-    'billing.plans.features.analytics' => 34,
+    'billing.plans.features.analytics' => 25,
     'billing.plans.features.calendar' => 24,
     'billing.plans.features.mcp' => 46,
     'billing.plans.features.networks_all' => 36,

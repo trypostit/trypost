@@ -53,7 +53,7 @@ return [
             'mcp_tooltip' => 'Verbinde Claude, ChatGPT oder eine andere KI. Lass sie Posts erstellen und planen, deine Warteschlange füllen, Ideen ordnen und dein Wachstum zeigen.',
             'repurpose' => 'Deine Videos auf allen Netzwerken',
             'repurpose_tooltip' => 'Wähle ein Instagram- oder Facebook-Konto. Jedes neue Reel oder Video, das du dort postest, geht von selbst auf deine anderen Netzwerke, ohne TryPost zu öffnen.',
-            'analytics' => 'Sieh, was dich wachsen lässt',
+            'analytics' => 'Erweiterte Analysen',
             'analytics_tooltip' => 'Sieh, ob du wächst und welche Posts am besten laufen – über alle Konten hinweg.',
             'team' => 'Unbegrenzt viele Teammitglieder',
             'team_tooltip' => 'Lade so viele Personen in dein Team ein, wie du willst, ohne Aufpreis. Lege fest, was jede Person darf, und gib Posts vor der Veröffentlichung frei.',

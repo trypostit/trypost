@@ -51,7 +51,7 @@ return [
             'mcp_tooltip' => 'Connectez Claude, ChatGPT ou une autre IA. Demandez-lui de créer et planifier des posts, remplir votre file, organiser vos idées et suivre votre croissance.',
             'repurpose' => 'Vos vidéos publiées sur tous vos réseaux',
             'repurpose_tooltip' => 'Choisissez un compte Instagram ou Facebook. Chaque nouveau Reel ou vidéo que vous y publiez part tout seul sur vos autres réseaux, sans ouvrir TryPost.',
-            'analytics' => 'Découvrez ce qui vous fait grandir',
+            'analytics' => 'Statistiques avancées',
             'analytics_tooltip' => 'Sachez si vous progressez et quels posts marchent le mieux, sur tous vos comptes.',
             'team' => 'Membres d’équipe illimités',
             'team_tooltip' => 'Invitez autant de personnes que vous voulez dans votre équipe, sans frais supplémentaires. Définissez ce que chacun peut faire et validez les posts avant publication.',

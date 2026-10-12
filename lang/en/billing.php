@@ -51,7 +51,7 @@ return [
             'mcp_tooltip' => 'Connect Claude, ChatGPT or another AI. Ask it to create and schedule posts, fill your queue, organize ideas and show how you\'re growing.',
             'repurpose' => 'Your videos shared to every network',
             'repurpose_tooltip' => 'Pick an Instagram or Facebook account. Every new Reel or video you post there goes to your other networks on its own, without opening TryPost.',
-            'analytics' => 'See what makes you grow',
+            'analytics' => 'Advanced analytics',
             'analytics_tooltip' => 'Know if you\'re growing and which posts work best, across all your accounts.',
             'team' => 'Unlimited team members',
             'team_tooltip' => 'Invite as many people as you want to your team, at no extra cost. Set what each person can do and approve posts before they go out.',

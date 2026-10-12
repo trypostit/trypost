@@ -51,7 +51,7 @@ return [
             'mcp_tooltip' => 'Połącz Claude, ChatGPT lub inną AI. Poproś o tworzenie i planowanie postów, wypełnianie kolejki, porządkowanie pomysłów i pokazanie wzrostu.',
             'repurpose' => 'Twoje filmy we wszystkich sieciach',
             'repurpose_tooltip' => 'Wybierz konto na Instagramie lub Facebooku. Każdy nowy Reel lub film, który tam opublikujesz, trafi sam do innych sieci, bez otwierania TryPost.',
-            'analytics' => 'Zobacz, co napędza twój wzrost',
+            'analytics' => 'Zaawansowana analityka',
             'analytics_tooltip' => 'Sprawdź, czy rośniesz i które posty działają najlepiej, na wszystkich kontach.',
             'team' => 'Nielimitowani członkowie zespołu',
             'team_tooltip' => 'Zaproś do zespołu tyle osób, ile chcesz, bez dodatkowych opłat. Ustal, co każda może robić, i zatwierdzaj posty przed publikacją.',

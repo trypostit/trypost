@@ -53,7 +53,7 @@ return [
             'mcp_tooltip' => 'Claude, ChatGPT veya başka bir yapay zekâ bağla. Gönderi oluşturmasını ve planlamasını, sıranı doldurmasını, fikirleri düzenlemesini ve büyümeni göstermesini iste.',
             'repurpose' => 'Videoların tüm ağlarda',
             'repurpose_tooltip' => 'Bir Instagram veya Facebook hesabı seç. Orada paylaştığın her yeni Reel veya video, TryPost’u açmadan diğer ağlarına kendiliğinden gider.',
-            'analytics' => 'Seni neyin büyüttüğünü gör',
+            'analytics' => 'Gelişmiş analiz',
             'analytics_tooltip' => 'Büyüyüp büyümediğini ve hangi gönderilerin en iyi sonuç verdiğini tüm hesaplarında gör.',
             'team' => 'Sınırsız ekip üyesi',
             'team_tooltip' => 'Ekibinize istediğiniz kadar kişi davet edin, ek ücret yok. Her kişinin ne yapabileceğini belirleyin ve gönderileri yayından önce onaylayın.',
