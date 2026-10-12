@@ -49,10 +49,10 @@ const PLAN_NETWORKS = [
 const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
     { key: 'accounts_unlimited', icon: IconShare },
     { key: 'calendar', icon: IconCalendarEvent },
+    { key: 'analytics', icon: IconTrendingUp },
     { key: 'ai', icon: IconSparkles },
     { key: 'mcp', icon: IconRobot },
     { key: 'repurpose', icon: IconRefresh },
-    { key: 'analytics', icon: IconTrendingUp },
     { key: 'team', icon: IconUsers },
 ];
 
