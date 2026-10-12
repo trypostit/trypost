@@ -3,12 +3,12 @@ import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconBuilding,
     IconInfoCircle,
-    IconStarFilled,
 } from '@tabler/icons-vue';
 import { useIntervalFn, useMediaQuery } from '@vueuse/core';
 import { ref, watch } from 'vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
+import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
 import {
     Tooltip,
     TooltipContent,
@@ -103,42 +103,36 @@ const submit = (): void => {
                                 width="72"
                                 height="72"
                                 :class="[
-                                    'size-9 rounded-full object-cover ring-2 ring-primary-subtle transition-opacity duration-500 dark:ring-primary-selected',
-                                    index === activeReview ? 'opacity-100' : 'opacity-50',
+                                    'relative size-9 rounded-full border-2 object-cover transition-[border-color,transform] duration-300',
+                                    index === activeReview
+                                        ? 'z-10 scale-110 border-primary-strong'
+                                        : 'border-card',
                                 ]"
                             />
                     </div>
 
                     <div class="grid">
-                        <figure
-                            v-for="(review, index) in REVIEWS"
+                        <ReviewQuote
+                            v-for="review in REVIEWS"
                             :key="review.key"
-                            :class="[
-                                'flex flex-col gap-2 transition-opacity duration-500 [grid-area:1/1]',
-                                index === activeReview ? 'opacity-100' : 'opacity-0',
-                            ]"
-                            :aria-hidden="index !== activeReview"
-                            :data-testid="`welcome-plan-review-${review.key}`"
+                            :review="review"
+                            class="invisible [grid-area:1/1]"
+                            aria-hidden="true"
+                        />
+                        <Transition
+                            mode="out-in"
+                            enter-active-class="transition-opacity duration-300"
+                            leave-active-class="transition-opacity duration-300"
+                            enter-from-class="opacity-0"
+                            leave-to-class="opacity-0"
                         >
-                            <span class="flex gap-0.5">
-                                <IconStarFilled
-                                    v-for="star in 5"
-                                    :key="star"
-                                    class="size-3.5 text-amber-500"
-                                />
-                            </span>
-                            <blockquote class="text-sm text-foreground">
-                                “{{ $t(`auth.reviews.${review.key}.quote`) }}”
-                            </blockquote>
-                            <figcaption class="text-xs text-muted-foreground">
-                                <span class="font-medium text-foreground">{{
-                                    review.name
-                                }}</span>
-                                <span class="block">{{
-                                    $t(`auth.reviews.${review.key}.role`)
-                                }}</span>
-                            </figcaption>
-                        </figure>
+                            <ReviewQuote
+                                :key="REVIEWS[activeReview].key"
+                                :review="REVIEWS[activeReview]"
+                                class="[grid-area:1/1]"
+                                :data-testid="`welcome-plan-review-${REVIEWS[activeReview].key}`"
+                            />
+                        </Transition>
                     </div>
                 </div>
 
