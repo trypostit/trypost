@@ -16,6 +16,7 @@ return [
         'persona' => 'À propos de vous',
         'goals' => 'Vos objectifs',
         'software' => 'Outil actuel',
+        'plan' => 'Forfait',
     ],
     'personas' => [
         'creator' => 'Créateur de contenu',
@@ -44,4 +45,5 @@ return [
         'none' => 'Je n\'en utilise pas encore',
         'other' => 'Autre',
     ],
+    'plan_title' => 'Choisissez votre forfait',
 ];

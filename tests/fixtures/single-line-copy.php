@@ -45,6 +45,7 @@ return [
     'billing.plans.features.networks_all' => 39,
     'billing.plans.features.repurpose' => 46,
     'billing.plans.features.team' => 31,
+    'billing.plans.start_first_month' => 17,
     'calendar.title' => 10,
     'channels.description' => 43,
     'channels.goal_dialog.description' => 57,

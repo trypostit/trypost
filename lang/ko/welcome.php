@@ -16,6 +16,7 @@ return [
         'persona' => '나에 대해',
         'goals' => '목표',
         'software' => '현재 도구',
+        'plan' => '요금제',
     ],
     'personas' => [
         'creator' => '콘텐츠 크리에이터',
@@ -44,4 +45,5 @@ return [
         'none' => '아직 사용하지 않아요',
         'other' => '기타',
     ],
+    'plan_title' => '요금제 선택',
 ];

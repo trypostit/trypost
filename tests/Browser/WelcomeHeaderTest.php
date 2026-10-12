@@ -55,11 +55,26 @@ test('the software step goes back to goals, the step right before it', function 
     $page = visit(route('app.welcome.software'));
     waitForWelcomeTestId($page, 'welcome-back');
 
-    $page->assertMissing('@welcome-step-plan')
+    $page->assertVisible('@welcome-step-plan')
         ->click('@welcome-back');
     waitForWelcomeTestId($page, 'welcome-goals-continue');
 
     $page->assertRoute('app.welcome.goals')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the plan step goes back to software, the step right before it', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeHeaderOwner());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomeTestId($page, 'welcome-back');
+
+    $page->click('@welcome-back');
+    waitForWelcomeTestId($page, 'welcome-software-continue');
+
+    $page->assertRoute('app.welcome.software')
         ->assertNoJavaScriptErrors();
 });
 

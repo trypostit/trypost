@@ -14,6 +14,7 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Aylık faturalandırılır',
         'prices' => [
+            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -34,6 +35,9 @@ return [
         'select' => ':plan seç',
         'upgrade' => ':plan’e yükselt',
         'downgrade' => ':plan’e düşür',
+        'start_first_month' => ':price ile başla',
+        'per_first_month' => '/ilk ay',
+        'then_monthly' => 'Sonra :price/ay',
         'billed_yearly_total' => 'Yıllık faturalandırılır · :price (2 ay bedava)',
         'socials_tagline' => 'İçerik üreticileri ve küçük markalar için.',
         'workspaces_tagline' => 'Ajanslar ve büyük işletmeler için.',

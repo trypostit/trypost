@@ -16,6 +16,7 @@ return [
         'persona' => 'Over jou',
         'goals' => 'Je doelen',
         'software' => 'Huidige tool',
+        'plan' => 'Abonnement',
     ],
     'personas' => [
         'creator' => 'Contentmaker',
@@ -44,4 +45,5 @@ return [
         'none' => 'Ik gebruik er nog geen',
         'other' => 'Andere',
     ],
+    'plan_title' => 'Kies je abonnement',
 ];

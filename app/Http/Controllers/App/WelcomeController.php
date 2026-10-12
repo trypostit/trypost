@@ -15,6 +15,7 @@ use App\Enums\User\PreviousSoftware;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
+use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
@@ -119,11 +120,8 @@ class WelcomeController extends Controller
         ]);
     }
 
-    public function storeSoftware(
-        StoreWelcomeSoftwareRequest $request,
-        StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
-    ): Response|RedirectResponse {
+    public function storeSoftware(StoreWelcomeSoftwareRequest $request, PostHogService $postHog): RedirectResponse
+    {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true)) {
             return $redirect;
         }
@@ -143,12 +141,36 @@ class WelcomeController extends Controller
             $user->account,
         );
 
-        $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+        return redirect()->route('app.welcome.plan');
+    }
+
+    public function plan(Request $request): InertiaResponse|RedirectResponse
+    {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
+            return $redirect;
+        }
+
+        return Inertia::render('welcome/Plan', [
+            'plans' => PlanResource::collection([$this->socialsPlan()])->resolve(),
+        ]);
+    }
+
+    public function storePlan(
+        Request $request,
+        StartSubscriptionCheckout $checkout,
+        PostHogService $postHog,
+    ): Response|RedirectResponse {
+        if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
+            return $redirect;
+        }
+
+        $user = $request->user();
+        $plan = $this->socialsPlan();
         $priceId = Interval::Monthly->priceIdFor($plan);
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.software'), $plan);
+        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
 
         try {
             $postHog->capture(
@@ -181,9 +203,15 @@ class WelcomeController extends Controller
         ]);
     }
 
+    private function socialsPlan(): Plan
+    {
+        return Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+    }
+
     private function redirectIfStepIncomplete(
         Request $request,
         bool $requireGoals = false,
+        bool $requireSoftware = false,
     ): ?RedirectResponse {
         if ($redirect = $this->redirectIfUnavailable($request)) {
             return $redirect;
@@ -197,6 +225,10 @@ class WelcomeController extends Controller
 
         if ($requireGoals && ! Goal::containsCurrent($user->goals)) {
             return redirect()->route('app.welcome.goals');
+        }
+
+        if ($requireSoftware && ! $user->previous_software) {
+            return redirect()->route('app.welcome.software');
         }
 
         return null;

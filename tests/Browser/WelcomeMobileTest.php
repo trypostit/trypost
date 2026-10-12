@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -146,4 +147,9 @@ test('the welcome header fits a phone and the continue button stays on screen', 
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ], 'welcome-software-continue', 'welcome-software-', true],
+    'plan' => ['app.welcome.plan', [
+        'persona' => Persona::Agency->value,
+        'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer->value,
+    ], null, null, true],
 ]);

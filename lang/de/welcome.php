@@ -16,6 +16,7 @@ return [
         'persona' => 'Über dich',
         'goals' => 'Deine Ziele',
         'software' => 'Aktuelles Tool',
+        'plan' => 'Tarif',
     ],
     'personas' => [
         'creator' => 'Content Creator',
@@ -44,4 +45,5 @@ return [
         'none' => 'Ich nutze noch keins',
         'other' => 'Anderes',
     ],
+    'plan_title' => 'Wähle deinen Tarif',
 ];

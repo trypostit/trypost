@@ -16,6 +16,7 @@ return [
         'persona' => 'Sobre ti',
         'goals' => 'Tus objetivos',
         'software' => 'Herramienta actual',
+        'plan' => 'Plan',
     ],
     'personas' => [
         'creator' => 'Creador de contenido',
@@ -44,4 +45,5 @@ return [
         'none' => 'Aún no uso ninguna',
         'other' => 'Otra',
     ],
+    'plan_title' => 'Elige tu plan',
 ];

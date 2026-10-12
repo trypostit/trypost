@@ -278,7 +278,7 @@ Standing constraints:
 - Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
 - Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
 - First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
-- Welcome checkout is the last Welcome step (`app.welcome.software.store`): it always opens Stripe Checkout on the **Socials monthly** price, with no plan picker. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
+- Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, with the first-month offer, and always opens Stripe Checkout on the **Socials monthly** price. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
@@ -309,8 +309,9 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   Billing keeps yearly and Workspaces for subscribers changing plan.
 - The legacy plan is archived: it never appears in the picker, so nobody can move
   back to it. Its `workspace_limit` is 1 because it costs less than Socials.
-- There is no plan choice in Welcome (removed October 2026): new owners always
-  start on Socials. `PlanPicker` drives upgrade/downgrade on the billing page
+- Welcome's plan step (`app.welcome.plan`, after the current-tool step) shows
+  only Socials (owner decision October 2026): new owners always start on
+  Socials. The same `PlanPicker` drives upgrade/downgrade on the billing page
   (`app.billing.change-plan`).
   A change is a `swap()` to another price id. `accounts.plan_id` is written by
   `changePlan` after a successful `swap()` only when the subscription is

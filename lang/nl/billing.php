@@ -12,6 +12,7 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Maandelijks gefactureerd',
         'prices' => [
+            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -32,6 +33,9 @@ return [
         'select' => 'Kies :plan',
         'upgrade' => 'Upgrade naar :plan',
         'downgrade' => 'Downgrade naar :plan',
+        'start_first_month' => 'Start voor :price',
+        'per_first_month' => '/eerste maand',
+        'then_monthly' => 'Daarna :price/maand',
         'billed_yearly_total' => 'Jaarlijks gefactureerd · :price (2 maanden gratis)',
         'socials_tagline' => 'Ideaal voor creators en kleine merken.',
         'workspaces_tagline' => 'Ideaal voor bureaus en grotere bedrijven.',

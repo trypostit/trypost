@@ -149,19 +149,15 @@ test('software requires a valid selection', function (array $payload) {
     'invalid' => [['previous_software' => 'not-a-tool']],
 ]);
 
-test('software store saves the selection and mirrors it to PostHog', function (PreviousSoftware $software) {
+test('software store saves the selection, mirrors it to PostHog and advances to plan', function (PreviousSoftware $software) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     completeWelcomeThroughGoals($this->user);
-    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_monthly_test']);
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
+    $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.software.store'), ['previous_software' => $software->value])
-        ->assertRedirect('https://checkout.stripe.test/session');
+        ->assertRedirect(route('app.welcome.plan'));
 
     expect($this->user->fresh()->previous_software)->toBe($software);
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'identify'
@@ -174,8 +170,34 @@ test('software store saves the selection and mirrors it to PostHog', function (P
     'no tool yet' => [PreviousSoftware::None],
 ]);
 
-test('software store sends the owner to Stripe checkout on the Socials monthly price', function () {
+test('plan redirects to software until a tool is selected', function () {
     completeWelcomeThroughGoals($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertRedirect(route('app.welcome.software'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect(route('app.welcome.software'));
+});
+
+test('plan lists only the Socials plan', function () {
+    completeWelcomeThroughSoftware($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('welcome/Plan', false)
+            ->has('plans', 1)
+            ->where('plans.0.slug', Slug::Socials->value)
+            ->where('plans.0.workspace_limit', 1)
+        );
+});
+
+test('plan store sends the owner to Stripe checkout on the Socials monthly price', function () {
+    completeWelcomeThroughSoftware($this->user);
     $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
     $socials->update([
         'stripe_monthly_price_id' => 'price_socials_monthly',
@@ -187,23 +209,23 @@ test('software store sends the owner to Stripe checkout on the Socials monthly p
         ->once()
         ->withArgs(fn ($account, $priceId, $cancelUrl, $plan): bool => $account->is($this->user->account)
             && $priceId === 'price_socials_monthly'
-            && $cancelUrl === route('app.welcome.software')
+            && $cancelUrl === route('app.welcome.plan')
             && $plan->is($socials))
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.software.store'), ['previous_software' => PreviousSoftware::Buffer->value])
+        ->post(route('app.welcome.plan.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
-test('software store fails loudly when the Socials price is not configured', function () {
-    completeWelcomeThroughGoals($this->user);
+test('plan store fails loudly when the Socials price is not configured', function () {
+    completeWelcomeThroughSoftware($this->user);
     Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => null]);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldNotReceive('redirect');
 
     $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.software.store'), ['previous_software' => PreviousSoftware::Buffer->value])
+        ->post(route('app.welcome.plan.store'))
         ->assertStatus(500);
 });
 
@@ -241,6 +263,11 @@ test('completed welcome steps remain reachable when going back', function () {
         ->get(route('app.welcome.software'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('welcome/Software', false)->where('selected', PreviousSoftware::Buffer->value));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/Plan', false));
 });
 
 test('welcome funnel captures every step before checkout.started', function () {
@@ -269,6 +296,10 @@ test('welcome funnel captures every step before checkout.started', function () {
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.software.store'), ['previous_software' => PreviousSoftware::None->value])
+        ->assertRedirect(route('app.welcome.plan'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
     $funnel = WelcomeEvent::funnel();
@@ -309,6 +340,8 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
     'software' => ['app.welcome.software', 'get'],
     'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post'],
 ]);
 
 test('welcome redirects generic-trial accounts with app access to calendar', function () {
@@ -343,6 +376,8 @@ test('welcome steps redirect to calendar in self hosted mode', function (string 
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
     'software' => ['app.welcome.software', 'get'],
     'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post'],
 ]);
 
 test('old onboarding routes are not registered', function (string $routeName) {
@@ -358,8 +393,6 @@ test('old onboarding routes are not registered', function (string $routeName) {
     'welcome connect' => 'app.welcome.connect',
     'welcome connect store' => 'app.welcome.connect.store',
     'welcome referral source' => 'app.welcome.referral-source',
-    'welcome plan' => 'app.welcome.plan',
-    'welcome plan store' => 'app.welcome.plan.store',
     'checkout' => 'app.onboarding.checkout',
 ]);
 
@@ -398,6 +431,8 @@ test('members without app access are held on the subscription required screen', 
     'goals store' => ['app.welcome.goals.store', 'post', ['goals' => [Goal::SaveTime->value]]],
     'software' => ['app.welcome.software', 'get'],
     'software store' => ['app.welcome.software.store', 'post', ['previous_software' => PreviousSoftware::Buffer->value]],
+    'plan' => ['app.welcome.plan', 'get'],
+    'plan store' => ['app.welcome.plan.store', 'post'],
 ]);
 
 test('subscription required screen renders for members without app access', function () {
@@ -460,6 +495,12 @@ function completeWelcomeThroughGoals(User $user): void
         'persona' => Persona::Agency->value,
         'goals' => [Goal::SaveTime->value],
     ]);
+}
+
+function completeWelcomeThroughSoftware(User $user): void
+{
+    completeWelcomeThroughGoals($user);
+    $user->update(['previous_software' => PreviousSoftware::Buffer->value]);
 }
 
 function attachCurrentWorkspace(User $user): Workspace

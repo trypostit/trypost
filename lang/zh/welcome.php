@@ -16,6 +16,7 @@ return [
         'persona' => '关于你',
         'goals' => '你的目标',
         'software' => '当前工具',
+        'plan' => '套餐',
     ],
     'personas' => [
         'creator' => '内容创作者',
@@ -44,4 +45,5 @@ return [
         'none' => '还没有使用任何工具',
         'other' => '其他',
     ],
+    'plan_title' => '选择你的套餐',
 ];

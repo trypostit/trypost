@@ -12,6 +12,7 @@ return [
     'subscribe' => [
         'billed_monthly' => 'فوترة شهرية',
         'prices' => [
+            'first_month' => '$1',
             'socials' => ['monthly' => '$19', 'yearly_per_month' => '$15.83', 'yearly' => '$190'],
             'workspaces' => ['monthly' => '$99', 'yearly_per_month' => '$82.50', 'yearly' => '$990'],
         ],
@@ -32,6 +33,9 @@ return [
         'select' => 'اختر :plan',
         'upgrade' => 'الترقية إلى :plan',
         'downgrade' => 'الرجوع إلى :plan',
+        'start_first_month' => 'ابدأ مقابل :price',
+        'per_first_month' => '/الشهر الأول',
+        'then_monthly' => 'ثم :price/شهر',
         'billed_yearly_total' => 'فوترة سنوية · :price (شهران مجانًا)',
         'socials_tagline' => 'مناسب لمنشئي المحتوى والعلامات الصغيرة.',
         'workspaces_tagline' => 'مناسب للوكالات والأعمال الكبيرة.',

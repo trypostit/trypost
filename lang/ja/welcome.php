@@ -16,6 +16,7 @@ return [
         'persona' => 'あなたについて',
         'goals' => '目標',
         'software' => '現在のツール',
+        'plan' => 'プラン',
     ],
     'personas' => [
         'creator' => 'コンテンツクリエイター',
@@ -44,4 +45,5 @@ return [
         'none' => 'まだ使っていない',
         'other' => 'その他',
     ],
+    'plan_title' => 'プランを選ぶ',
 ];
