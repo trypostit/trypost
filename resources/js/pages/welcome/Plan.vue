@@ -94,8 +94,7 @@ const submit = (): void => {
                     @mouseenter="pauseReviews"
                     @mouseleave="resumeReviews"
                 >
-                    <div class="flex items-center gap-3">
-                        <div class="flex -space-x-2 rtl:space-x-reverse">
+                    <div class="flex -space-x-2 rtl:space-x-reverse">
                             <img
                                 v-for="(review, index) in REVIEWS"
                                 :key="review.key"
@@ -108,19 +107,6 @@ const submit = (): void => {
                                     index === activeReview ? 'opacity-100' : 'opacity-50',
                                 ]"
                             />
-                        </div>
-                        <span class="flex flex-col gap-1">
-                            <span class="flex gap-0.5">
-                                <IconStarFilled
-                                    v-for="star in 5"
-                                    :key="star"
-                                    class="size-3.5 text-amber-500"
-                                />
-                            </span>
-                            <span class="text-sm font-medium text-foreground">
-                                {{ $t('auth.reviews.eyebrow') }}
-                            </span>
-                        </span>
                     </div>
 
                     <div class="grid">
@@ -134,6 +120,13 @@ const submit = (): void => {
                             :aria-hidden="index !== activeReview"
                             :data-testid="`welcome-plan-review-${review.key}`"
                         >
+                            <span class="flex gap-0.5">
+                                <IconStarFilled
+                                    v-for="star in 5"
+                                    :key="star"
+                                    class="size-3.5 text-amber-500"
+                                />
+                            </span>
                             <blockquote class="text-sm text-foreground">
                                 “{{ $t(`auth.reviews.${review.key}.quote`) }}”
                             </blockquote>

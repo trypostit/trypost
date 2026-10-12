@@ -66,7 +66,6 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
         ->assertSeeIn('@plan-highlight-socials', 'One workspace')
         ->assertVisible('@plan-networks-info-socials')
-        ->assertSeeIn('@welcome-plan-reviews', '5/5 on G2')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
         ->assertVisible('@welcome-step-plan')
