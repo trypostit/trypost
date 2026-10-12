@@ -19,6 +19,19 @@ function waitForWelcomeMcpTestId(mixed $page, string $testId): void
     JS);
 }
 
+function waitForWelcomeMcpChat(mixed $page, string $benefit): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                const chat = document.querySelector('[data-testid="welcome-mcp-chat-{$benefit}"]');
+                if (chat && getComputedStyle(chat).opacity === '1' && !chat.className.includes('-active')) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
 function welcomeMcpSubscriber(): User
 {
     $user = User::factory()->create();
@@ -38,20 +51,35 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
 
     $this->actingAs(welcomeMcpSubscriber());
 
-    $page = visit(route('app.welcome.mcp'));
+    $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
     waitForWelcomeMcpTestId($page, 'welcome-mcp-steps');
+
+    expect($page->script('document.documentElement.scrollHeight > window.innerHeight'))->toBeFalse();
 
     $page->assertSee('Post and analyze right from Claude and ChatGPT')
         ->assertVisible('@welcome-mcp-benefit-schedule')
         ->assertVisible('@welcome-mcp-benefit-ideas')
         ->assertVisible('@welcome-mcp-steps')
-        ->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
-        ->click('@welcome-mcp-benefit-analytics');
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-chat-analytics');
+        ->click('@welcome-mcp-benefit-schedule');
+    waitForWelcomeMcpChat($page, 'schedule');
 
-    $page->assertSeeIn('@welcome-mcp-chat-analytics', 'What worked best last month?')
-        ->assertSeeIn('@welcome-mcp-chat-analytics', 'Impressions')
-        ->assertSeeIn('@welcome-mcp-chat-analytics', 'Eng. Rate')
+    $page->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
+        ->assertSeeIn('@welcome-mcp-chat-schedule', '+3')
+        ->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-schedule]").innerText.split("\\n").includes("Scheduled")', true)
+        ->click('@welcome-mcp-benefit-analytics');
+    waitForWelcomeMcpChat($page, 'analytics');
+
+    $page->assertSeeIn('@welcome-mcp-chat-analytics', 'How are my followers growing')
+        ->assertSeeIn('@welcome-mcp-chat-analytics', 'Total Followers')
+        ->click('@welcome-mcp-benefit-queue');
+    waitForWelcomeMcpChat($page, 'queue');
+
+    $page->assertSeeIn('@welcome-mcp-chat-queue', 'Tomorrow')
+        ->assertSeeIn('@welcome-mcp-chat-queue', 'New')
+        ->click('@welcome-mcp-benefit-ideas');
+    waitForWelcomeMcpChat($page, 'ideas');
+
+    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2)
         ->click('@welcome-mcp-view-prompt');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-prompt');
 

@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'View prompt',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Schedule',
                 'title' => 'Create and schedule from chat',
                 'hint' => 'Carousels, threads and videos',
                 'ask' => 'Create a carousel about our sale and schedule it for Tuesday on Instagram and LinkedIn.',
                 'reply' => 'Done. Your carousel is scheduled for Tuesday at 10 AM on Instagram and LinkedIn.',
             ],
             'analytics' => [
-                'tab' => 'Analyze',
-                'title' => 'Learn from your numbers',
+                'title' => 'Track your growth',
                 'hint' => 'Every account in one report',
-                'ask' => 'What worked best last month? Plan next week based on it.',
-                'reply' => 'Your Tuesday and Thursday carousels drove the most engagement. I drafted 3 posts in that format.',
+                'ask' => 'How are my followers growing across all my networks?',
+                'reply' => 'You gained 1.2k followers this month. LinkedIn grew the fastest.',
             ],
             'queue' => [
-                'tab' => 'Queue',
                 'title' => 'Fill your queue',
                 'hint' => 'At your best posting times',
                 'ask' => 'Spread these 10 posts across my next free slots.',
                 'reply' => 'Done. All 10 posts are in your queue, one per free slot, through Friday.',
             ],
             'ideas' => [
-                'tab' => 'Ideas',
                 'title' => 'Organize your ideas',
                 'hint' => 'From brainstorm to content plan',
                 'ask' => 'Save these ideas to my ideas board.',

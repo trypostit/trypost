@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'İstemi gör',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Planla',
                 'title' => 'Sohbetten oluştur ve planla',
                 'hint' => 'Karuseller, gönderi dizileri ve videolar',
                 'ask' => 'Kampanyamız hakkında bir karusel oluştur ve salı günü Instagram ve LinkedIn için planla.',
                 'reply' => 'Tamam. Karusel salı saat 10:00’da Instagram ve LinkedIn için planlandı.',
             ],
             'analytics' => [
-                'tab' => 'Analiz',
-                'title' => 'Rakamlarından öğren',
+                'title' => 'Büyümeni takip et',
                 'hint' => 'Tüm hesapların tek raporda',
-                'ask' => 'Geçen ay en iyi ne işe yaradı? Gelecek haftayı buna göre planla.',
-                'reply' => 'En çok etkileşimi salı ve perşembe karuselleri aldı. Bu formatta 3 gönderi hazırladım.',
+                'ask' => 'Tüm ağlarımda takipçilerim nasıl artıyor?',
+                'reply' => 'Bu ay 1,2 bin takipçi kazandın. En hızlı LinkedIn büyüdü.',
             ],
             'queue' => [
-                'tab' => 'Sıra',
                 'title' => 'Sıranı doldur',
                 'hint' => 'En iyi paylaşım saatlerinde',
                 'ask' => 'Bu 10 gönderiyi sıradaki boş saatlerime dağıt.',
                 'reply' => 'Tamam. 10 gönderinin hepsi sırada, her boş saate bir tane, cumaya kadar.',
             ],
             'ideas' => [
-                'tab' => 'Fikirler',
                 'title' => 'Fikirlerini düzenle',
                 'hint' => 'Beyin fırtınasından içerik planına',
                 'ask' => 'Bu fikirleri fikir panoma kaydet.',

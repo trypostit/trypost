@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
-    IconArrowUp,
     IconBulb,
     IconCalendarPlus,
     IconCheck,
@@ -9,7 +8,6 @@ import {
     IconCircleCheckFilled,
     IconCopy,
     IconListDetails,
-    IconPlus,
     IconTrendingUp,
 } from '@tabler/icons-vue';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
@@ -21,7 +19,7 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { Spinner } from '@/components/ui/spinner';
-import McpChatExample from '@/components/welcome/McpChatExample.vue';
+import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
@@ -53,7 +51,7 @@ const {
     select: selectBenefit,
     pause: pauseBenefits,
     resume: resumeBenefits,
-} = useAutoRotate(benefits.length, 5000);
+} = useAutoRotate(benefits.length, 6000);
 
 const activeKey = computed((): string => benefits[activeBenefit.value].key);
 
@@ -110,18 +108,20 @@ const goToSchedule = (): void => {
     <WelcomeLayout
         :title="$t('welcome.mcp.title')"
         :description="$t('welcome.mcp.description')"
+        size="5xl"
     >
         <article
-            class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[3fr_2fr]"
+            class="grid gap-3 text-start sm:gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:gap-0"
         >
-            <section
-                class="flex flex-col gap-4 rounded-s-xl border border-border bg-card p-4 max-sm:hidden sm:border-e-0"
+            <div
+                class="grid overflow-hidden rounded-xl border border-border bg-card lg:grid-cols-[16rem_minmax(0,1fr)] lg:rounded-e-none lg:border-e-0"
                 @mouseenter="pauseBenefits"
                 @mouseleave="resumeBenefits"
             >
                 <div
-                    class="inline-flex gap-1 self-start rounded-lg border border-border-strong bg-card p-[3px]"
+                    class="flex flex-col gap-1 p-2"
                     role="tablist"
+                    aria-orientation="vertical"
                     :aria-label="$t('welcome.mcp.title')"
                 >
                     <button
@@ -131,60 +131,66 @@ const goToSchedule = (): void => {
                         role="tab"
                         :aria-selected="index === activeBenefit"
                         :class="[
-                            'inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-md px-2.5 text-sm font-medium transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                            'flex w-full cursor-pointer items-start gap-3 rounded-lg p-2.5 text-start sm:p-3 transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                             index === activeBenefit
-                                ? 'bg-primary-selected text-primary-text'
-                                : 'text-muted-foreground hover:text-foreground',
+                                ? 'bg-primary-subtle dark:bg-primary-selected'
+                                : 'hover:bg-muted',
                         ]"
                         :data-testid="`welcome-mcp-benefit-${benefit.key}`"
                         @click="selectBenefit(index)"
                     >
-                        <component :is="benefit.icon" class="size-4" />
-                        {{ $t(`welcome.mcp.benefits.${benefit.key}.tab`) }}
+                        <span
+                            class="inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-primary-text"
+                            aria-hidden="true"
+                        >
+                            <component :is="benefit.icon" class="size-4" />
+                        </span>
+                        <span class="flex min-w-0 flex-col gap-0.5">
+                            <span class="text-sm font-medium text-foreground">
+                                {{
+                                    $t(`welcome.mcp.benefits.${benefit.key}.title`)
+                                }}
+                            </span>
+                            <span
+                                class="text-xs text-muted-foreground max-sm:hidden"
+                            >
+                                {{
+                                    $t(`welcome.mcp.benefits.${benefit.key}.hint`)
+                                }}
+                            </span>
+                        </span>
                     </button>
                 </div>
 
                 <div
-                    class="flex flex-1 flex-col rounded-lg border border-border bg-muted"
+                    class="hidden border-s border-border bg-muted p-5 lg:grid"
                     aria-hidden="true"
                 >
-                    <div class="grid flex-1 p-4">
-                        <McpChatExample
-                            v-for="benefit in benefits"
-                            :key="benefit.key"
-                            :benefit="benefit.key"
-                            class="invisible [grid-area:1/1]"
-                        />
-                        <Transition
-                            mode="out-in"
-                            enter-active-class="transition-opacity duration-300"
-                            leave-active-class="transition-opacity duration-300"
-                            enter-from-class="opacity-0"
-                            leave-to-class="opacity-0"
-                        >
-                            <McpChatExample
-                                :key="activeKey"
-                                :benefit="activeKey"
-                                class="[grid-area:1/1]"
-                                :data-testid="`welcome-mcp-chat-${activeKey}`"
-                            />
-                        </Transition>
-                    </div>
-                    <div
-                        class="m-2 mt-0 flex h-9 items-center justify-between rounded-lg border border-border bg-card px-3 text-muted-foreground"
+                    <McpChatExample
+                        v-for="benefit in benefits"
+                        :key="benefit.key"
+                        :benefit="benefit.key"
+                        class="invisible [grid-area:1/1]"
+                    />
+                    <Transition
+                        mode="out-in"
+                        enter-active-class="transition-opacity duration-300"
+                        leave-active-class="transition-opacity duration-300"
+                        enter-from-class="opacity-0"
+                        leave-to-class="opacity-0"
                     >
-                        <IconPlus class="size-4" />
-                        <span
-                            class="inline-flex size-6 items-center justify-center rounded-md bg-foreground text-background"
-                        >
-                            <IconArrowUp class="size-3.5" />
-                        </span>
-                    </div>
+                        <McpChatExample
+                            :key="activeKey"
+                            :benefit="activeKey"
+                            class="[grid-area:1/1]"
+                            :data-testid="`welcome-mcp-chat-${activeKey}`"
+                        />
+                    </Transition>
                 </div>
-            </section>
+            </div>
 
             <ol
-                class="flex flex-col gap-5 rounded-xl bg-primary-subtle p-5 sm:rounded-s-none sm:p-6 dark:bg-primary-selected"
+                class="flex flex-col gap-4 rounded-xl bg-primary-subtle p-4 sm:gap-5 sm:p-5 lg:rounded-s-none lg:p-6 dark:bg-primary-selected"
                 data-testid="welcome-mcp-steps"
             >
                 <li class="flex items-start gap-3">

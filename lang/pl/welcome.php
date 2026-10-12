@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'Zobacz prompt',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Planuj',
                 'title' => 'Twórz i planuj z czatu',
                 'hint' => 'Karuzele, wątki i filmy',
                 'ask' => 'Stwórz karuzelę o naszej promocji i zaplanuj ją na wtorek na Instagramie i LinkedInie.',
                 'reply' => 'Gotowe. Karuzela jest zaplanowana na wtorek, 10:00, na Instagramie i LinkedInie.',
             ],
             'analytics' => [
-                'tab' => 'Analizuj',
-                'title' => 'Ucz się na swoich wynikach',
+                'title' => 'Śledź swój wzrost',
                 'hint' => 'Wszystkie konta w jednym raporcie',
-                'ask' => 'Co działało najlepiej w zeszłym miesiącu? Zaplanuj na tej podstawie przyszły tydzień.',
-                'reply' => 'Najwięcej zaangażowania miały karuzele we wtorki i czwartki. Przygotowałem 3 posty w tym formacie.',
+                'ask' => 'Jak rosną moi obserwujący we wszystkich sieciach?',
+                'reply' => 'W tym miesiącu zyskałeś 1,2 tys. obserwujących. Najszybciej rósł LinkedIn.',
             ],
             'queue' => [
-                'tab' => 'Kolejka',
                 'title' => 'Wypełnij kolejkę',
                 'hint' => 'W Twoich najlepszych godzinach',
                 'ask' => 'Rozłóż te 10 postów na moje najbliższe wolne terminy.',
                 'reply' => 'Gotowe. Wszystkie 10 postów jest w kolejce, po jednym na wolny termin, do piątku.',
             ],
             'ideas' => [
-                'tab' => 'Pomysły',
                 'title' => 'Uporządkuj pomysły',
                 'hint' => 'Od burzy mózgów do planu treści',
                 'ask' => 'Zapisz te pomysły na mojej tablicy pomysłów.',

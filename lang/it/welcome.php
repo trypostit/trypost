@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'Vedi il prompt',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Programma',
                 'title' => 'Crea e programma dalla chat',
                 'hint' => 'Caroselli, thread e video',
                 'ask' => 'Crea un carosello sulla nostra promo e programmalo per martedì su Instagram e LinkedIn.',
                 'reply' => 'Fatto. Il carosello è programmato per martedì alle 10 su Instagram e LinkedIn.',
             ],
             'analytics' => [
-                'tab' => 'Analizza',
-                'title' => 'Impara dai tuoi numeri',
+                'title' => 'Segui la tua crescita',
                 'hint' => 'Tutti gli account in un report',
-                'ask' => 'Cosa ha funzionato meglio il mese scorso? Pianifica la prossima settimana di conseguenza.',
-                'reply' => 'I caroselli di martedì e giovedì hanno avuto più engagement. Ho preparato 3 post in quel formato.',
+                'ask' => 'Come stanno crescendo i miei follower su tutti i social?',
+                'reply' => 'Hai guadagnato 1,2k follower questo mese. LinkedIn è cresciuto di più.',
             ],
             'queue' => [
-                'tab' => 'Coda',
                 'title' => 'Riempi la coda',
                 'hint' => 'Nei tuoi orari migliori',
                 'ask' => 'Distribuisci questi 10 post nei miei prossimi slot liberi.',
                 'reply' => 'Fatto. I 10 post sono in coda, uno per slot libero, fino a venerdì.',
             ],
             'ideas' => [
-                'tab' => 'Idee',
                 'title' => 'Organizza le tue idee',
                 'hint' => 'Dal brainstorming al piano editoriale',
                 'ask' => 'Salva queste idee nella mia bacheca delle idee.',

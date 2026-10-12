@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'Ver prompt',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Agendar',
                 'title' => 'Crie e agende pelo chat',
                 'hint' => 'Carrosséis, threads e vídeos',
                 'ask' => 'Crie um carrossel sobre a nossa promoção e agende para terça no Instagram e no LinkedIn.',
                 'reply' => 'Pronto. Agendei o carrossel para terça, 10h, no Instagram e no LinkedIn.',
             ],
             'analytics' => [
-                'tab' => 'Analisar',
-                'title' => 'Aprenda com seus números',
+                'title' => 'Acompanhe seu crescimento',
                 'hint' => 'Todas as contas em um relatório',
-                'ask' => 'O que funcionou melhor no último mês? Planeje a próxima semana com base nisso.',
-                'reply' => 'Os carrosséis de terça e quinta foram os que mais engajaram. Montei 3 posts nesse formato.',
+                'ask' => 'Como está a evolução dos meus seguidores em todas as redes?',
+                'reply' => 'Você ganhou 1,2 mil seguidores no mês. O LinkedIn foi o que mais cresceu.',
             ],
             'queue' => [
-                'tab' => 'Fila',
                 'title' => 'Encha a fila',
                 'hint' => 'Nos seus melhores horários',
                 'ask' => 'Distribua esses 10 posts nos meus próximos horários livres.',
                 'reply' => 'Feito. Os 10 posts entraram na fila, um por horário livre, até sexta.',
             ],
             'ideas' => [
-                'tab' => 'Ideias',
                 'title' => 'Organize suas ideias',
                 'hint' => 'Do brainstorm para a pauta',
                 'ask' => 'Salve essas ideias no meu quadro de ideias.',

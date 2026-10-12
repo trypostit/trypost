@@ -62,28 +62,24 @@ return [
         'view_prompt' => 'Voir le prompt',
         'benefits' => [
             'schedule' => [
-                'tab' => 'Planifier',
                 'title' => 'Créez et planifiez depuis le chat',
                 'hint' => 'Carrousels, threads et vidéos',
                 'ask' => 'Crée un carrousel sur notre promo et planifie-le mardi sur Instagram et LinkedIn.',
                 'reply' => 'C’est fait. Votre carrousel est planifié mardi à 10 h sur Instagram et LinkedIn.',
             ],
             'analytics' => [
-                'tab' => 'Analyser',
-                'title' => 'Apprenez de vos chiffres',
+                'title' => 'Suivez votre croissance',
                 'hint' => 'Tous vos comptes dans un rapport',
-                'ask' => 'Qu’est-ce qui a le mieux marché le mois dernier ? Planifie la semaine prochaine en conséquence.',
-                'reply' => 'Vos carrousels du mardi et du jeudi ont le plus engagé. J’ai préparé 3 posts dans ce format.',
+                'ask' => 'Comment évoluent mes abonnés sur tous mes réseaux ?',
+                'reply' => 'Vous avez gagné 1,2 k abonnés ce mois-ci. LinkedIn a le plus progressé.',
             ],
             'queue' => [
-                'tab' => 'File',
                 'title' => 'Remplissez votre file',
                 'hint' => 'Aux meilleurs horaires',
                 'ask' => 'Répartis ces 10 posts sur mes prochains créneaux libres.',
                 'reply' => 'C’est fait. Les 10 posts sont dans votre file, un par créneau libre, jusqu’à vendredi.',
             ],
             'ideas' => [
-                'tab' => 'Idées',
                 'title' => 'Organisez vos idées',
                 'hint' => 'Du brainstorming au planning',
                 'ask' => 'Enregistre ces idées dans mon tableau d’idées.',
