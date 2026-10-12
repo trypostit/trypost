@@ -17,7 +17,6 @@ import {
     type Component,
 } from 'vue';
 
-import AppLogo from '@/components/AppLogo.vue';
 import { Button } from '@/components/ui/button';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
 import McpConnectDialog from '@/components/welcome/mcp/McpConnectDialog.vue';
@@ -163,18 +162,12 @@ const goToSchedule = (): void => {
                 @mouseleave="resumeBenefits"
             >
                 <div
-                    class="relative flex h-9 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3.5"
+                    class="flex h-9 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3.5"
                     aria-hidden="true"
                 >
                     <span class="size-3 rounded-full bg-[#ff5f57]" />
                     <span class="size-3 rounded-full bg-[#febc2e]" />
                     <span class="size-3 rounded-full bg-[#28c840]" />
-                    <span
-                        class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
-                    >
-                        <AppLogo variant="mark" class="text-sm" />
-                        TryPost
-                    </span>
                 </div>
 
                 <div
