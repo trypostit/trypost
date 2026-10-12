@@ -26,15 +26,17 @@ trait SyncsStripeCustomer
     public static function bootSyncsStripeCustomer(): void
     {
         static::updated(function (self $user): void {
-            if (! $user->wasChanged(['name', 'email', ...self::STRIPE_METADATA_ATTRIBUTES]) || ! $user->isAccountOwner()) {
+            if (! $user->wasChanged(['name', 'email', ...self::STRIPE_METADATA_ATTRIBUTES])) {
                 return;
             }
 
-            $account = $user->account;
+            dispatch(function () use ($user): void {
+                $account = $user->loadMissing('account')->account;
 
-            if ($account?->hasStripeId()) {
-                dispatch(fn () => $account->syncStripeCustomerDetails());
-            }
+                if ($account?->owner_id === $user->id && $account->hasStripeId()) {
+                    $account->syncStripeCustomerDetails();
+                }
+            });
         });
     }
 
