@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { IconChevronDown, IconCopy } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, type Component } from 'vue';
 
+import ClaudeLogo from '@/components/mcp/ClaudeLogo.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,7 +24,7 @@ interface AdvancedMcpClient {
     key: AdvancedMcpClientKey;
     name: string;
     description: string;
-    logo: string;
+    logo: string | Component;
     logoClass?: string;
     httpType: boolean;
     configRoot: McpConfigRoot;
@@ -51,7 +52,8 @@ const advancedClients: AdvancedMcpClient[] = [
         key: 'claude_code',
         name: 'mcp.clients.claude_code_name',
         description: 'mcp.clients.claude_code',
-        logo: '/images/ai/claude.svg',
+        logo: ClaudeLogo,
+        logoClass: 'text-[#D97757]',
         httpType: true,
         configRoot: 'mcpServers',
     },
@@ -111,9 +113,15 @@ const copy = (value: string): void => {
                         class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                     >
                         <img
+                            v-if="typeof client.logo === 'string'"
                             :src="client.logo"
                             :alt="$t(client.name)"
                             :class="['size-5 object-contain', client.logoClass]"
+                        />
+                        <component
+                            :is="client.logo"
+                            v-else
+                            :class="['size-5', client.logoClass]"
                         />
                     </span>
                     <span class="flex min-w-0 flex-1 flex-col gap-1">

@@ -90,10 +90,9 @@ onBeforeUnmount(() => {
                     class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card"
                     aria-hidden="true"
                 >
-                    <img
-                        :src="client.logo"
-                        alt=""
-                        :class="['size-6', client.logoClass]"
+                    <component
+                        :is="client.logo"
+                        :class="['size-6', client.brandClass]"
                     />
                 </span>
                 <div class="flex min-w-0 flex-col gap-1">
@@ -136,10 +135,9 @@ onBeforeUnmount(() => {
                     <span
                         class="absolute inset-x-0 flex items-center justify-center gap-1.5 text-xs font-medium text-muted-foreground"
                     >
-                        <img
-                            :src="client.logo"
-                            alt=""
-                            :class="['size-3.5', client.logoClass]"
+                        <component
+                            :is="client.logo"
+                            :class="['size-3.5', client.brandClass]"
                         />
                         {{ client.label }}
                     </span>

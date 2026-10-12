@@ -1,13 +1,18 @@
+import type { Component } from 'vue';
+
+import ClaudeLogo from '@/components/mcp/ClaudeLogo.vue';
+import OpenAiLogo from '@/components/mcp/OpenAiLogo.vue';
+
 export type PrimaryMcpClientId = 'claude' | 'chatgpt';
 
 export interface McpClient {
     id: PrimaryMcpClientId;
     label: string;
-    logo: string;
+    /** A one-color mark in `currentColor`: it takes the text color of where it sits. */
+    logo: Component;
+    /** The mark's brand color on neutral surfaces; primary buttons keep their text color. */
+    brandClass: string;
     settingsUrl: string;
-    logoClass?: string;
-    /** Logo classes on a primary button (white in light mode, dark in dark mode). */
-    logoOnPrimaryClass?: string;
 }
 
 /** Opens Claude straight on the "Add custom connector" dialog. */
@@ -22,15 +27,15 @@ export const mcpClients: McpClient[] = [
     {
         id: 'claude',
         label: 'Claude',
-        logo: '/images/ai/claude.svg',
+        logo: ClaudeLogo,
+        brandClass: 'text-[#D97757]',
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
-        logo: '/images/ai/chatgpt-white.svg',
+        logo: OpenAiLogo,
+        brandClass: 'text-foreground',
         settingsUrl: 'https://chatgpt.com/plugins',
-        logoClass: 'invert dark:invert-0',
-        logoOnPrimaryClass: 'dark:invert',
     },
 ];
