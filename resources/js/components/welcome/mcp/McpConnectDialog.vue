@@ -37,6 +37,11 @@ const STEPS: Record<string, string[]> = {
 
 const steps = computed((): string[] => STEPS[props.client.id] ?? []);
 
+const focusDialogFrame = (event: Event): void => {
+    event.preventDefault();
+    (event.target as HTMLElement | null)?.focus({ preventScroll: true });
+};
+
 const copied = ref(false);
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
 
@@ -69,7 +74,11 @@ onBeforeUnmount(() => {
 
 <template>
     <Dialog v-model:open="open">
-        <DialogContent class="sm:max-w-xl" data-testid="welcome-mcp-dialog">
+        <DialogContent
+            class="outline-none sm:max-w-xl"
+            data-testid="welcome-mcp-dialog"
+            @open-auto-focus="focusDialogFrame"
+        >
             <DialogHeader class="flex-row items-start gap-4 pe-8 text-start">
                 <span
                     class="inline-flex size-11 shrink-0 items-center justify-center rounded-xl border border-border bg-card"
@@ -145,7 +154,7 @@ onBeforeUnmount(() => {
                             {{ $t('mcp.url_label') }}
                         </span>
                         <div
-                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-primary-strong bg-card ps-3 pe-1 ring-3 ring-primary-strong/15"
+                            class="flex h-9 min-w-0 items-center gap-2 rounded-md border border-input bg-card ps-3 pe-1"
                         >
                             <span
                                 dir="ltr"

@@ -106,7 +106,9 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $page->click('@welcome-mcp-connect-claude');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-step-paste');
 
-    expect($page->script('window.__copied'))->toBe([]);
+    expect($page->script('window.__copied'))->toBe([])
+        ->and($page->script('document.activeElement.dataset.testid'))->toBe('welcome-mcp-dialog')
+        ->and($page->script('getComputedStyle(document.activeElement).outlineStyle'))->toBe('none');
 
     $page->click('@welcome-mcp-copy-url');
     $page->script(<<<'JS'
