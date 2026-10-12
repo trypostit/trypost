@@ -68,6 +68,11 @@ return [
                 'create' => 'Створіть застосунок TryPost і вставте URL',
                 'login' => 'Увійдіть у TryPost і виберіть workspace',
             ],
+            'other' => [
+                'add' => 'Додайте власний MCP-сервер у застосунку',
+                'paste' => 'Вставте назву й URL або конфігурацію',
+                'login' => 'Увійдіть у TryPost і виберіть workspace',
+            ],
         ],
         'waiting' => 'Чекаємо на підключення вашого ШІ…',
         'connected' => ':client підключено',

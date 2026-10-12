@@ -68,6 +68,11 @@ return [
                 'create' => 'Создайте приложение TryPost и вставьте URL',
                 'login' => 'Войдите в TryPost и выберите workspace',
             ],
+            'other' => [
+                'add' => 'Добавьте свой MCP-сервер в приложении',
+                'paste' => 'Вставьте имя и URL или конфигурацию',
+                'login' => 'Войдите в TryPost и выберите workspace',
+            ],
         ],
         'waiting' => 'Ждём подключения вашего ИИ…',
         'connected' => ':client подключён',

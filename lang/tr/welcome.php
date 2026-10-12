@@ -68,6 +68,11 @@ return [
                 'create' => 'TryPost adlı bir uygulama oluştur ve URL’yi yapıştır',
                 'login' => 'TryPost’a giriş yap ve workspace’i seç',
             ],
+            'other' => [
+                'add' => 'Uygulamana özel bir MCP sunucusu ekle',
+                'paste' => 'Adı ve URL’yi ya da yapılandırmayı yapıştır',
+                'login' => 'TryPost’a giriş yap ve workspace’i seç',
+            ],
         ],
         'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',

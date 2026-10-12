@@ -29,9 +29,17 @@ const open = defineModel<boolean>('open', { default: false });
 const STEPS: Record<string, string[]> = {
     claude: ['paste', 'add', 'login'],
     chatgpt: ['developer', 'create', 'login'],
+    other: ['add', 'paste', 'login'],
 };
 
 const steps = computed((): string[] => STEPS[props.client.id] ?? []);
+
+const configSnippet = (connectorName: string): string =>
+    JSON.stringify(
+        { mcpServers: { [connectorName]: { url: props.mcpUrl } } },
+        null,
+        2,
+    );
 
 const focusDialogFrame = (event: Event): void => {
     event.preventDefault();
@@ -60,7 +68,13 @@ const focusDialogFrame = (event: Event): void => {
                 </span>
                 <div class="flex min-w-0 flex-col gap-1">
                     <DialogTitle>
-                        {{ $t('welcome.mcp.dialog_title', { client: client.label }) }}
+                        {{
+                            client.labelKey
+                                ? $t('mcp.other_dialog_title')
+                                : $t('welcome.mcp.dialog_title', {
+                                      client: client.label,
+                                  })
+                        }}
                     </DialogTitle>
                     <DialogDescription>
                         {{ $t('welcome.mcp.dialog_description') }}
@@ -103,7 +117,7 @@ const focusDialogFrame = (event: Event): void => {
                             alt=""
                             :class="['size-3.5', client.logoClass]"
                         />
-                        {{ client.label }}
+                        {{ client.labelKey ? $t(client.label) : client.label }}
                     </span>
                 </div>
                 <div class="flex flex-col gap-3 p-4">
@@ -118,6 +132,13 @@ const focusDialogFrame = (event: Event): void => {
                         testid="welcome-mcp-url"
                         ltr
                     />
+                    <McpCopyField
+                        v-if="!client.settingsUrl"
+                        :label="$t('mcp.config_label')"
+                        :value="configSnippet($t('mcp.connector_name'))"
+                        testid="welcome-mcp-config"
+                        multiline
+                    />
                 </div>
             </div>
 
@@ -131,6 +152,7 @@ const focusDialogFrame = (event: Event): void => {
                     {{ $t('welcome.mcp.waiting') }}
                 </p>
                 <Button
+                    v-if="client.settingsUrl"
                     as="a"
                     :href="client.settingsUrl"
                     target="_blank"

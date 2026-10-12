@@ -68,6 +68,11 @@ return [
                 'create' => '「TryPost」という名前でアプリを作成し、URLを貼り付け',
                 'login' => 'TryPostにログインしてワークスペースを選択',
             ],
+            'other' => [
+                'add' => 'アプリにカスタムMCPサーバーを追加',
+                'paste' => '名前とURL、または設定を貼り付け',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
         ],
         'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',

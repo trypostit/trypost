@@ -68,6 +68,11 @@ return [
                 'create' => 'TryPost라는 앱을 만들고 URL 붙여넣기',
                 'login' => 'TryPost에 로그인하고 워크스페이스 선택',
             ],
+            'other' => [
+                'add' => '앱에 사용자 지정 MCP 서버 추가',
+                'paste' => '이름과 URL 또는 설정을 붙여넣기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
         ],
         'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',

@@ -68,6 +68,11 @@ return [
                 'create' => 'Erstelle eine App namens TryPost und füge die URL ein',
                 'login' => 'Melde dich bei TryPost an und wähle den Workspace',
             ],
+            'other' => [
+                'add' => 'Füge in deiner App einen eigenen MCP-Server hinzu',
+                'paste' => 'Füge Name und URL oder die Konfiguration ein',
+                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
+            ],
         ],
         'waiting' => 'Warte auf die Verbindung deiner KI…',
         'connected' => ':client ist verbunden',

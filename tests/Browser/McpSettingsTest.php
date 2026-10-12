@@ -77,8 +77,7 @@ test('the MCP settings open on the connect tab when nothing is connected and kee
     waitForMcpSettingsTestId($page, 'mcp-primary-client-claude');
 
     $page->assertScript('document.querySelector("[data-testid=mcp-tab-connect]").getAttribute("aria-selected")', 'true')
-        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt'])
-        ->assertVisible('@mcp-other-apps')
+        ->assertScript('[...document.querySelectorAll("[data-testid^=mcp-primary-client-]")].map((row) => row.dataset.testid)', ['mcp-primary-client-claude', 'mcp-primary-client-chatgpt', 'mcp-primary-client-other'])
         ->click('@mcp-tab-connected');
     waitForMcpSettingsTestId($page, 'mcp-connected-empty');
 
@@ -105,13 +104,15 @@ test('the MCP settings open on the connect tab when nothing is connected and kee
         })();
     JS);
 
-    $page->click('@mcp-other-apps');
-    waitForMcpSettingsTestId($page, 'mcp-other-config');
+    $page->click('@mcp-connect-other');
+    waitForMcpSettingsTestId($page, 'welcome-mcp-config');
 
-    $page->assertSeeIn('@mcp-other-name', 'TryPost')
-        ->assertSeeIn('@mcp-other-url', route('mcp.trypost'))
-        ->assertSeeIn('@mcp-other-config', '"mcpServers"')
-        ->assertSeeIn('@mcp-other-config', route('mcp.trypost'))
+    $page->assertSeeIn('@welcome-mcp-dialog', __('mcp.other_dialog_title'))
+        ->assertVisible('@welcome-mcp-step-add')
+        ->assertSeeIn('@welcome-mcp-name', 'TryPost')
+        ->assertSeeIn('@welcome-mcp-config', '"mcpServers"')
+        ->assertSeeIn('@welcome-mcp-config', route('mcp.trypost'))
+        ->assertMissing('@welcome-mcp-open')
         ->assertNoJavaScriptErrors();
 });
 

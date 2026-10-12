@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, usePoll } from '@inertiajs/vue3';
 import {
-    IconChevronDown,
     IconDotsVertical,
     IconExternalLink,
     IconPlugConnected,
@@ -12,16 +11,10 @@ import { computed, ref, watch } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import McpConnectDialog from '@/components/mcp/McpConnectDialog.vue';
-import McpCopyField from '@/components/mcp/McpCopyField.vue';
 import McpEmptyIllustration from '@/components/mcp/McpEmptyIllustration.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsRow from '@/components/settings/SettingsRow.vue';
 import { Button } from '@/components/ui/button';
-import {
-    Collapsible,
-    CollapsibleContent,
-    CollapsibleTrigger,
-} from '@/components/ui/collapsible';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -31,7 +24,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
-import { mcpClients, type McpClient } from '@/lib/mcpClients';
+import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
 
 interface ConnectedClient {
@@ -59,6 +52,8 @@ const confirmDisconnect = (client: ConnectedClient, keyword: string): void => {
         confirmText: keyword,
     });
 };
+
+const connectableClients: McpClient[] = [...mcpClients, otherMcpClient];
 
 const activeClient = ref<McpClient>(mcpClients[0]);
 const dialogOpen = ref(false);
@@ -89,14 +84,6 @@ const showNewConnection = (count: number, previous: number): void => {
 
 watch(connectedCount, showNewConnection);
 
-const otherAppsOpen = ref(false);
-
-const configSnippet = (connectorName: string): string =>
-    JSON.stringify(
-        { mcpServers: { [connectorName]: { url: props.mcpUrl } } },
-        null,
-        2,
-    );
 </script>
 
 <template>
@@ -195,7 +182,7 @@ const configSnippet = (connectorName: string): string =>
             <TabsContent value="connect" class="flex flex-col gap-10">
                 <ul class="flex flex-col gap-2">
                     <SettingsListRow
-                        v-for="client in mcpClients"
+                        v-for="client in connectableClients"
                         :key="client.id"
                         :data-testid="`mcp-primary-client-${client.id}`"
                     >
@@ -213,10 +200,14 @@ const configSnippet = (connectorName: string): string =>
                         <p
                             class="truncate text-sm leading-tight font-emphasis text-foreground"
                         >
-                            {{ client.label }}
+                            {{ client.labelKey ? $t(client.label) : client.label }}
                         </p>
                         <p class="text-sm text-muted-foreground">
-                            {{ $t('mcp.connect_hint') }}
+                            {{
+                                client.labelKey
+                                    ? $t('mcp.other_hint')
+                                    : $t('mcp.connect_hint')
+                            }}
                         </p>
                         <template #actions>
                             <Button
@@ -226,76 +217,15 @@ const configSnippet = (connectorName: string): string =>
                                 :data-testid="`mcp-connect-${client.id}`"
                                 @click="connectWith(client)"
                             >
-                                {{ $t('mcp.connect', { client: client.label }) }}
+                                {{
+                                    client.labelKey
+                                        ? $t('mcp.connect_other')
+                                        : $t('mcp.connect', { client: client.label })
+                                }}
                             </Button>
                         </template>
                     </SettingsListRow>
 
-                    <Collapsible
-                        v-model:open="otherAppsOpen"
-                        as="li"
-                        class="overflow-hidden rounded-xl border border-border bg-card"
-                    >
-                        <CollapsibleTrigger
-                            class="flex w-full cursor-pointer items-center gap-3 p-4 text-start transition-control outline-none hover:bg-muted focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
-                            data-testid="mcp-other-apps"
-                        >
-                            <span
-                                class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
-                            >
-                                <img
-                                    src="/images/ai/mcp.svg"
-                                    alt=""
-                                    class="size-5 object-contain dark:invert"
-                                />
-                            </span>
-                            <span class="flex min-w-0 flex-1 flex-col gap-1">
-                                <span
-                                    class="truncate text-sm leading-tight font-emphasis text-foreground"
-                                >
-                                    {{ $t('mcp.other_clients_title') }}
-                                </span>
-                                <span class="text-sm text-muted-foreground">
-                                    {{ $t('mcp.other_hint') }}
-                                </span>
-                            </span>
-                            <IconChevronDown
-                                :class="[
-                                    'pointer-events-none size-4 shrink-0 text-muted-foreground transition-transform duration-200 motion-reduce:transition-none',
-                                    otherAppsOpen ? 'rotate-180' : '',
-                                ]"
-                            />
-                        </CollapsibleTrigger>
-
-                        <CollapsibleContent
-                            class="overflow-hidden data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down motion-reduce:data-[state=closed]:animate-none motion-reduce:data-[state=open]:animate-none"
-                        >
-                            <div
-                                class="flex flex-col gap-4 border-t border-border p-4"
-                            >
-                                <p class="text-sm text-muted-foreground">
-                                    {{ $t('mcp.step_add') }}
-                                </p>
-                                <McpCopyField
-                                    :label="$t('mcp.name_label')"
-                                    :value="$t('mcp.connector_name')"
-                                    testid="mcp-other-name"
-                                />
-                                <McpCopyField
-                                    :label="$t('mcp.url_label')"
-                                    :value="mcpUrl"
-                                    testid="mcp-other-url"
-                                    ltr
-                                />
-                                <McpCopyField
-                                    :label="$t('mcp.config_label')"
-                                    :value="configSnippet($t('mcp.connector_name'))"
-                                    testid="mcp-other-config"
-                                    multiline
-                                />
-                            </div>
-                        </CollapsibleContent>
-                    </Collapsible>
                 </ul>
 
                 <SettingsRow

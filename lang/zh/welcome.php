@@ -68,6 +68,11 @@ return [
                 'create' => '创建名为 TryPost 的应用并粘贴 URL',
                 'login' => '登录 TryPost 并选择工作区',
             ],
+            'other' => [
+                'add' => '在你的应用中添加自定义 MCP 服务器',
+                'paste' => '粘贴名称和 URL，或粘贴配置',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
         ],
         'waiting' => '正在等待你的 AI 连接…',
         'connected' => ':client 已连接',
