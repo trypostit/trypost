@@ -150,7 +150,7 @@ const submit = (): void => {
                         :data-testid="`plan-highlight-${plan.slug}`"
                     >
                         <IconBuilding
-                            class="mt-0.5 size-4 shrink-0 text-muted-foreground sm:mt-1"
+                            class="mt-0.5 size-4 shrink-0 text-muted-foreground sm:size-5"
                         />
                         <span class="inline-flex items-start gap-1.5">
                             {{ $t('billing.plans.workspaces_one') }}

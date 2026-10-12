@@ -99,8 +99,8 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             >
                 <IconWorld
                     :class="[
-                        'size-4 shrink-0 text-muted-foreground',
-                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
+                        'shrink-0 text-muted-foreground',
+                        spacious ? 'mt-0.5 size-4 sm:size-5' : 'mt-0.5 size-4',
                     ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
@@ -162,8 +162,8 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                 <component
                     :is="feature.icon"
                     :class="[
-                        'size-4 shrink-0 text-muted-foreground',
-                        spacious ? 'mt-0.5 sm:mt-1' : 'mt-0.5',
+                        'shrink-0 text-muted-foreground',
+                        spacious ? 'mt-0.5 size-4 sm:size-5' : 'mt-0.5 size-4',
                     ]"
                 />
                 <span class="inline-flex items-start gap-1.5">
