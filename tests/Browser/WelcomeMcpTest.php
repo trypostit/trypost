@@ -195,3 +195,25 @@ test('the schedule and queue examples show the owner photo, or their initials wi
     'with a photo' => [true],
     'without a photo' => [false],
 ]);
+
+test('hovering a month of the follower example shows each network that month', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeMcpSubscriber());
+
+    $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-open-claude');
+
+    $page->click('@welcome-mcp-benefit-analytics');
+    waitForWelcomeMcpChat($page, 'analytics');
+
+    $page->assertMissing('@welcome-mcp-followers-tooltip')
+        ->hover('[data-testid="welcome-mcp-chat-analytics"] [data-testid="welcome-mcp-followers-month-5"]');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-followers-tooltip');
+
+    $page->assertSeeIn('@welcome-mcp-followers-tooltip', now()->format('F Y'))
+        ->assertSeeIn('@welcome-mcp-followers-tooltip', '5,840')
+        ->assertSeeIn('@welcome-mcp-followers-tooltip', '5,220')
+        ->assertSeeIn('@welcome-mcp-followers-tooltip', '1,340')
+        ->assertNoJavaScriptErrors();
+});
