@@ -5,6 +5,8 @@ import {
     IconInfoCircle,
     IconStarFilled,
 } from '@tabler/icons-vue';
+import { useIntervalFn, useMediaQuery } from '@vueuse/core';
+import { ref, watch } from 'vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import {
@@ -24,6 +26,41 @@ defineProps<{
 }>();
 
 const form = useForm({});
+
+const REVIEW_INTERVAL_MS = 6000;
+
+const activeReview = ref(0);
+const prefersReducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+
+const showNextReview = (): void => {
+    activeReview.value = (activeReview.value + 1) % REVIEWS.length;
+};
+
+const { pause, resume } = useIntervalFn(showNextReview, REVIEW_INTERVAL_MS, {
+    immediate: false,
+});
+
+const pauseReviews = (): void => {
+    pause();
+};
+
+const resumeReviews = (): void => {
+    if (!prefersReducedMotion.value) {
+        resume();
+    }
+};
+
+watch(
+    prefersReducedMotion,
+    (reduced) => {
+        if (reduced) {
+            pause();
+        } else {
+            resume();
+        }
+    },
+    { immediate: true },
+);
 
 const submit = (): void => {
     if (form.processing) {
@@ -52,32 +89,64 @@ const submit = (): void => {
                 class="flex flex-col items-start justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
             >
                 <div
-                    class="flex items-center gap-3"
+                    class="flex w-full flex-col gap-6"
                     data-testid="welcome-plan-reviews"
+                    @mouseenter="pauseReviews"
+                    @mouseleave="resumeReviews"
                 >
-                    <div class="flex -space-x-2 rtl:space-x-reverse">
-                        <img
-                            v-for="review in REVIEWS"
-                            :key="review.key"
-                            :src="review.photo"
-                            :alt="review.name"
-                            width="64"
-                            height="64"
-                            class="size-7 rounded-full object-cover ring-2 ring-primary-subtle dark:ring-primary-selected"
-                        />
-                    </div>
-                    <span class="flex flex-col gap-0.5">
-                        <span class="flex gap-0.5">
-                            <IconStarFilled
-                                v-for="star in 5"
-                                :key="star"
-                                class="size-3 text-amber-500"
+                    <div class="flex items-center gap-3">
+                        <div class="flex -space-x-2 rtl:space-x-reverse">
+                            <img
+                                v-for="(review, index) in REVIEWS"
+                                :key="review.key"
+                                :src="review.photo"
+                                :alt="review.name"
+                                width="72"
+                                height="72"
+                                :class="[
+                                    'size-9 rounded-full object-cover ring-2 ring-primary-subtle transition-opacity duration-500 dark:ring-primary-selected',
+                                    index === activeReview ? 'opacity-100' : 'opacity-50',
+                                ]"
                             />
+                        </div>
+                        <span class="flex flex-col gap-1">
+                            <span class="flex gap-0.5">
+                                <IconStarFilled
+                                    v-for="star in 5"
+                                    :key="star"
+                                    class="size-3.5 text-amber-500"
+                                />
+                            </span>
+                            <span class="text-sm font-medium text-foreground">
+                                {{ $t('auth.reviews.eyebrow') }}
+                            </span>
                         </span>
-                        <span class="text-xs font-medium text-foreground">
-                            {{ $t('auth.reviews.eyebrow') }}
-                        </span>
-                    </span>
+                    </div>
+
+                    <div class="grid">
+                        <figure
+                            v-for="(review, index) in REVIEWS"
+                            :key="review.key"
+                            :class="[
+                                'flex flex-col gap-2 transition-opacity duration-500 [grid-area:1/1]',
+                                index === activeReview ? 'opacity-100' : 'opacity-0',
+                            ]"
+                            :aria-hidden="index !== activeReview"
+                            :data-testid="`welcome-plan-review-${review.key}`"
+                        >
+                            <blockquote class="text-sm text-foreground">
+                                “{{ $t(`auth.reviews.${review.key}.quote`) }}”
+                            </blockquote>
+                            <figcaption class="text-xs text-muted-foreground">
+                                <span class="font-medium text-foreground">{{
+                                    review.name
+                                }}</span>
+                                <span class="block">{{
+                                    $t(`auth.reviews.${review.key}.role`)
+                                }}</span>
+                            </figcaption>
+                        </figure>
+                    </div>
                 </div>
 
                 <p class="flex flex-col gap-1">

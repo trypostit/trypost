@@ -93,3 +93,30 @@ test('One workspace is the last item of what is included', function () {
 
     expect($last)->toBe('plan-highlight-socials');
 });
+
+test('the review quotes rotate on their own', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomePlanTestId($page, 'welcome-plan-review-paulo_dantas');
+
+    $visibleReview = <<<'JS'
+        document.querySelector('[data-testid^="welcome-plan-review-"]:not([aria-hidden="true"])')?.dataset.testid
+    JS;
+
+    expect($page->script($visibleReview))->toBe('welcome-plan-review-paulo_dantas');
+
+    $next = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                const visible = document.querySelector('[data-testid^="welcome-plan-review-"]:not([aria-hidden="true"])')?.dataset.testid;
+                if (visible !== 'welcome-plan-review-paulo_dantas') return visible;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })()
+    JS);
+
+    expect($next)->toBe('welcome-plan-review-diego');
+});
