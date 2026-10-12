@@ -71,6 +71,8 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     expect($page->script('document.documentElement.scrollHeight > window.innerHeight'))->toBeFalse();
 
+    expect($page->script('[...document.querySelectorAll("[data-testid^=welcome-mcp-benefit-]:not([data-testid*=-icon-])")].map((tab) => tab.dataset.testid.replace("welcome-mcp-benefit-", ""))'))->toBe(['ideas', 'schedule', 'queue', 'analytics']);
+
     $page->assertSee('Run your social media from a chat')
         ->assertSeeIn('@welcome-mcp-composer', 'Ask anything')
         ->assertVisible('@welcome-mcp-benefit-schedule')
@@ -78,7 +80,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->click('@welcome-mcp-benefit-schedule');
     waitForWelcomeMcpChat($page, 'schedule');
 
-    $page->assertSeeIn('@welcome-mcp-chat-schedule', 'Create a carousel about our sale')
+    $page->assertSeeIn('@welcome-mcp-chat-schedule', 'Turn the best idea into a carousel')
         ->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-schedule]").innerText.split("\\n").includes("Scheduled")', true)
         ->assertScript('[...document.querySelectorAll("[data-testid=welcome-mcp-chat-schedule] [data-testid^=welcome-mcp-schedule-post-]")].map((post) => post.dataset.testid)', ['welcome-mcp-schedule-post-instagram', 'welcome-mcp-schedule-post-linkedin'])
         ->click('@welcome-mcp-benefit-analytics');
@@ -86,7 +88,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     $page->assertScript('getComputedStyle(document.querySelector("[data-testid=welcome-mcp-benefit-icon-analytics]")).backgroundColor !== getComputedStyle(document.querySelector("[data-testid=welcome-mcp-benefit-icon-queue]")).backgroundColor', true);
 
-    $page->assertSeeIn('@welcome-mcp-chat-analytics', 'How are my followers growing')
+    $page->assertSeeIn('@welcome-mcp-chat-analytics', 'How was my month')
         ->assertSeeIn('@welcome-mcp-chat-analytics', 'Total Followers')
         ->click('@welcome-mcp-benefit-queue');
     waitForWelcomeMcpChat($page, 'queue');

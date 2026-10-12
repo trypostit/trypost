@@ -47,10 +47,10 @@ const props = defineProps<{
 usePoll(2000, { only: ['connectedClients'] });
 
 const benefits: { key: string; icon: Component }[] = [
-    { key: 'schedule', icon: IconCalendarPlus },
-    { key: 'analytics', icon: IconTrendingUp },
-    { key: 'queue', icon: IconListDetails },
     { key: 'ideas', icon: IconBulb },
+    { key: 'schedule', icon: IconCalendarPlus },
+    { key: 'queue', icon: IconListDetails },
+    { key: 'analytics', icon: IconTrendingUp },
 ];
 
 const {
