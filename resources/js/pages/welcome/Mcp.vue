@@ -271,14 +271,10 @@ const goToSchedule = (): void => {
                     </div>
                     <div class="px-4 pb-4">
                         <div
-                            class="flex h-10 items-center gap-2.5 rounded-xl border border-border bg-card px-1.5"
+                            class="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card ps-3 pe-1.5"
                             data-testid="welcome-mcp-composer"
                         >
-                            <span
-                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg border border-border text-muted-foreground"
-                            >
-                                <IconPlus class="size-4" />
-                            </span>
+                            <IconPlus class="size-5 shrink-0 text-foreground" stroke-width="1.5" />
                             <span
                                 class="min-w-0 flex-1 truncate text-sm text-muted-foreground"
                             >
@@ -288,7 +284,7 @@ const goToSchedule = (): void => {
                                 class="size-4 shrink-0 text-muted-foreground"
                             />
                             <span
-                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-lg bg-secondary text-muted-foreground"
+                                class="inline-flex size-7 shrink-0 items-center justify-center rounded-full bg-secondary text-muted-foreground"
                             >
                                 <IconArrowUp class="size-4" />
                             </span>
