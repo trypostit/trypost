@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconBuilding, IconInfoCircle } from '@tabler/icons-vue';
+import { IconBuilding, IconGift, IconInfoCircle } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import {
@@ -46,7 +46,7 @@ const submit = (): void => {
                     class="inline-flex size-10 items-center justify-center rounded-lg bg-card"
                     aria-hidden="true"
                 >
-                    <span class="text-xl leading-none">🎁</span>
+                    <IconGift class="size-5 text-primary-text" />
                 </span>
 
                 <p class="flex flex-col gap-1">
