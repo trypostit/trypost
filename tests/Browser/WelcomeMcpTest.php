@@ -100,6 +100,9 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
 
     $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2);
 
+    $page->assertSeeIn('@welcome-mcp-chat-ideas', 'To Do')
+        ->assertSeeIn('@welcome-mcp-chat-ideas', 'In Progress');
+
     expect($page->script('document.querySelector("[data-testid=welcome-mcp-connect-claude]").getAttribute("href")'))->toBeNull()
         ->and($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-connect-]:not([data-testid=welcome-mcp-connect-ai])")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1);
 
