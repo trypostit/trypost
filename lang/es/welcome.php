@@ -54,8 +54,7 @@ return [
         'description' => 'Conéctalo en un minuto y usa TryPost directo desde Claude o ChatGPT.',
         'connect_with' => 'Conectar con :client',
         'sheet_title' => 'Conecta TryPost a :client',
-        'url_copied' => 'URL del MCP de TryPost copiada',
-        'reopen' => 'Abrir :client de nuevo',
+        'open' => 'Abrir :client',
         'steps' => [
             'claude' => [
                 'paste' => 'Pega la URL en el campo de URL del conector',

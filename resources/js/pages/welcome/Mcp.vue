@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePoll } from '@inertiajs/vue3';
 import {
-    IconArrowUpRight,
     IconBulb,
     IconCalendarPlus,
     IconCircleCheckFilled,
@@ -24,7 +23,6 @@ import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vu
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { mcpClients, type McpClient } from '@/lib/mcpClients';
-import { copyToClipboard } from '@/lib/utils';
 import { index as postsIndex } from '@/routes/app/posts';
 
 interface ConnectedClient {
@@ -78,18 +76,9 @@ const connectedClient = computed(
 
 const activeClient = ref<McpClient>(mcpClients[0]);
 const sheetOpen = ref(false);
-const urlCopied = ref(false);
-
-/**
- * The button's own link opens the client's connector page in a new tab; this
- * copies TryPost's MCP URL for the paste and opens the steps beside it.
- */
-const connectWith = async (client: McpClient): Promise<void> => {
+const connectWith = (client: McpClient): void => {
     activeClient.value = client;
     sheetOpen.value = true;
-    urlCopied.value = await copyToClipboard(props.mcpUrl, undefined, {
-        showSuccessToast: false,
-    });
 };
 
 const goToSchedule = (): void => {
@@ -248,10 +237,7 @@ const goToSchedule = (): void => {
                     <Button
                         v-for="client in mcpClients"
                         :key="client.id"
-                        as="a"
-                        :href="client.settingsUrl"
-                        target="_blank"
-                        rel="noopener noreferrer"
+                        type="button"
                         size="lg"
                         variant="secondary"
                         :data-testid="`welcome-mcp-connect-${client.id}`"
@@ -267,9 +253,6 @@ const goToSchedule = (): void => {
                                 client: client.label,
                             })
                         }}
-                        <IconArrowUpRight
-                            class="size-4 text-muted-foreground rtl:-scale-x-100"
-                        />
                     </Button>
                 </div>
                 <Link
@@ -286,7 +269,6 @@ const goToSchedule = (): void => {
             v-model:open="sheetOpen"
             :client="activeClient"
             :mcp-url="mcpUrl"
-            :url-copied="urlCopied"
             :connected-name="connectedClient?.name ?? null"
             @continue="goToSchedule"
         />

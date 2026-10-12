@@ -61,7 +61,7 @@ function stubWelcomeMcpConnectTab(mixed $page): void
     JS);
 }
 
-test('the MCP step opens the connector page and a sheet with the steps, and can be skipped', function () {
+test('the MCP step opens a sheet with the steps and the app link, and can be skipped', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMcpSubscriber());
@@ -94,9 +94,7 @@ test('the MCP step opens the connector page and a sheet with the steps, and can 
 
     $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-ideas]").innerText.split("\\n").filter((line) => line === "New idea").length', 2);
 
-    expect($page->script('document.querySelector("[data-testid=welcome-mcp-connect-claude]").getAttribute("href")'))->toStartWith('https://claude.ai/')
-        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-connect-chatgpt]").getAttribute("href")'))->toBe('https://chatgpt.com/plugins')
-        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-connect-claude]").getAttribute("target")'))->toBe('_blank')
+    expect($page->script('document.querySelector("[data-testid=welcome-mcp-connect-claude]").getAttribute("href")'))->toBeNull()
         ->and($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-connect-]")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1);
 
     $page->assertSeeIn('@welcome-mcp-connect-claude', 'Connect with Claude')
@@ -106,7 +104,19 @@ test('the MCP step opens the connector page and a sheet with the steps, and can 
 
     stubWelcomeMcpConnectTab($page);
     $page->click('@welcome-mcp-connect-claude');
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-url-copied');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-step-paste');
+
+    expect($page->script('window.__copied'))->toBe([]);
+
+    $page->click('@welcome-mcp-copy-url');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (window.__copied.length) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
 
     $page->assertSeeIn('@welcome-mcp-sheet', 'Connect TryPost to Claude')
         ->assertSeeIn('@welcome-mcp-url', route('mcp.trypost'))
@@ -117,7 +127,13 @@ test('the MCP step opens the connector page and a sheet with the steps, and can 
         ->assertScript('document.querySelectorAll("[data-sonner-toast]").length', 0);
 
     expect($page->script('window.__copied'))->toBe([route('mcp.trypost')])
-        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-reopen]").getAttribute("href")'))->toStartWith('https://claude.ai/');
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("href")'))->toStartWith('https://claude.ai/')
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("target")'))->toBe('_blank');
+
+    $page->assertSeeIn('@welcome-mcp-open', 'Open Claude')
+        ->click('@welcome-mcp-open');
+
+    expect($page->script('document.querySelector("[data-testid=welcome-mcp-sheet]") !== null'))->toBeTrue();
 
     $page->keys('@welcome-mcp-sheet', 'Escape');
     $page->script(<<<'JS'
@@ -137,7 +153,7 @@ test('the MCP step opens the connector page and a sheet with the steps, and can 
         ->assertVisible('@welcome-mcp-step-create')
         ->assertMissing('@welcome-mcp-step-paste');
 
-    expect($page->script('document.querySelector("[data-testid=welcome-mcp-reopen]").getAttribute("href")'))->toBe('https://chatgpt.com/plugins');
+    expect($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("href")'))->toBe('https://chatgpt.com/plugins');
 
     $page->keys('@welcome-mcp-sheet', 'Escape');
     $page->script(<<<'JS'
@@ -197,7 +213,7 @@ test('on a phone the MCP step keeps the example and opens the steps from the bot
 
     expect($sheet)->toBe(['bottom' => 844, 'width' => 390]);
 
-    $page->assertVisible('@welcome-mcp-reopen')
+    $page->assertVisible('@welcome-mcp-open')
         ->assertNoJavaScriptErrors();
 });
 

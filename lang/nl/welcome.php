@@ -54,8 +54,7 @@ return [
         'description' => 'Koppel het in een minuut en gebruik TryPost direct vanuit Claude of ChatGPT.',
         'connect_with' => 'Koppelen met :client',
         'sheet_title' => 'Koppel TryPost aan :client',
-        'url_copied' => 'MCP-URL van TryPost gekopieerd',
-        'reopen' => ':client opnieuw openen',
+        'open' => ':client openen',
         'steps' => [
             'claude' => [
                 'paste' => 'Plak de URL in het URL-veld van de connector',

@@ -54,8 +54,7 @@ return [
         'description' => '1분이면 연결하고 Claude나 ChatGPT에서 바로 TryPost를 사용하세요.',
         'connect_with' => ':client 연결',
         'sheet_title' => 'TryPost를 :client에 연결',
-        'url_copied' => 'TryPost MCP URL이 복사되었어요',
-        'reopen' => ':client 다시 열기',
+        'open' => ':client 열기',
         'steps' => [
             'claude' => [
                 'paste' => '커넥터의 URL 필드에 URL을 붙여넣기',

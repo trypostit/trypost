@@ -23,7 +23,6 @@ import { copyToClipboard } from '@/lib/utils';
 const props = defineProps<{
     client: McpClient;
     mcpUrl: string;
-    urlCopied: boolean;
     connectedName: string | null;
 }>();
 
@@ -109,16 +108,9 @@ onBeforeUnmount(() => {
 
             <div class="flex flex-col gap-6 p-5">
                 <div class="flex flex-col gap-2">
-                    <p
-                        v-if="urlCopied"
-                        class="flex items-center gap-1.5 text-sm font-medium text-foreground"
-                        data-testid="welcome-mcp-url-copied"
-                    >
-                        <IconCircleCheckFilled
-                            class="size-4 shrink-0 text-green-500"
-                        />
-                        {{ $t('welcome.mcp.url_copied') }}
-                    </p>
+                    <span class="text-sm font-medium text-foreground">
+                        {{ $t('mcp.url_label') }}
+                    </span>
                     <div class="flex min-w-0 items-center gap-2">
                         <code
                             dir="ltr"
@@ -245,17 +237,16 @@ onBeforeUnmount(() => {
                             :href="client.settingsUrl"
                             target="_blank"
                             rel="noopener noreferrer"
-                            variant="secondary"
                             size="lg"
-                            data-testid="welcome-mcp-reopen"
+                            data-testid="welcome-mcp-open"
                         >
                             {{
-                                $t('welcome.mcp.reopen', {
+                                $t('welcome.mcp.open', {
                                     client: client.label,
                                 })
                             }}
                             <IconArrowUpRight
-                                class="size-4 text-muted-foreground rtl:-scale-x-100"
+                                class="size-4 rtl:-scale-x-100"
                             />
                         </Button>
                     </template>

@@ -54,8 +54,7 @@ return [
         'description' => '一分钟完成连接，直接在 Claude 或 ChatGPT 中使用 TryPost。',
         'connect_with' => '连接 :client',
         'sheet_title' => '将 TryPost 连接到 :client',
-        'url_copied' => '已复制 TryPost 的 MCP URL',
-        'reopen' => '重新打开 :client',
+        'open' => '打开 :client',
         'steps' => [
             'claude' => [
                 'paste' => '将 URL 粘贴到连接器的 URL 字段',
