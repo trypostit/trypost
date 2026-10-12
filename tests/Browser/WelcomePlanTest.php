@@ -77,6 +77,7 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
 
     expect($reviews)->toBe(5)
         ->and($page->script('document.querySelector("[data-testid=plan-feature-label-socials-analytics]").closest("li").querySelector("svg").classList.contains("tabler-icon-trending-up")'))->toBeTrue()
+        ->and($page->script('document.querySelector("[data-testid=plan-feature-label-socials-mcp]").closest("li").querySelector("svg").classList.contains("tabler-icon-settings-ai")'))->toBeTrue()
         ->and($page->script('[...document.querySelectorAll("[data-testid^=plan-feature-label-socials-]")].map((label) => label.dataset.testid.replace("plan-feature-label-socials-", ""))'))->toBe(['networks_all', 'accounts_unlimited', 'ideas', 'ai', 'calendar', 'analytics', 'mcp', 'repurpose', 'team']);
 
     $page->assertSeeIn('@plan-feature-label-socials-team', 'Unlimited team members')

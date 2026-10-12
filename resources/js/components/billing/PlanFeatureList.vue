@@ -3,7 +3,7 @@ import {
     IconBulb,
     IconCalendarEvent,
     IconRefresh,
-    IconRobot,
+    IconSettingsAi,
     IconShare,
     IconSparkles,
     IconTrendingUp,
@@ -53,7 +53,7 @@ const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
     { key: 'ai', icon: IconSparkles },
     { key: 'calendar', icon: IconCalendarEvent },
     { key: 'analytics', icon: IconTrendingUp },
-    { key: 'mcp', icon: IconRobot },
+    { key: 'mcp', icon: IconSettingsAi },
     { key: 'repurpose', icon: IconRefresh },
     { key: 'team', icon: IconUsers },
 ];
