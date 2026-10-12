@@ -152,8 +152,8 @@ const goToSchedule = (): void => {
     <WelcomeLayout
         :title="$t('welcome.mcp.title')"
         :description="$t('welcome.mcp.description')"
-        size="5xl"
-        actions-size="5xl"
+        size="3xl"
+        actions-size="3xl"
     >
         <article class="text-start">
             <div
@@ -178,7 +178,7 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="grid flex-1 lg:grid-cols-[18rem_minmax(0,1fr)]"
+                    class="grid flex-1 lg:grid-cols-[16rem_minmax(0,1fr)]"
                 >
                 <div
                     class="flex flex-col gap-1 border-border bg-muted/40 p-2 max-md:hidden max-lg:border-b lg:border-e"
