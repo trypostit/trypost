@@ -83,7 +83,7 @@ return [
             'schedule' => [
                 'title' => '채팅으로 만들고 예약',
                 'hint' => '캐러셀, 스레드, 동영상',
-                'ask' => '내 보드에서 가장 좋은 아이디어로 캐러셀을 만들어 화요일에 Instagram과 LinkedIn에 예약해 줘.',
+                'ask' => '내 보드의 다음 아이디어로 캐러셀을 만들어 화요일에 Instagram과 LinkedIn에 예약해 줘.',
                 'reply' => '완료했어요. 캐러셀을 화요일 오전 10시에 Instagram과 LinkedIn에 예약했어요.',
             ],
             'analytics' => [

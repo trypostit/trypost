@@ -83,7 +83,7 @@ return [
             'schedule' => [
                 'title' => '在聊天中创建并排期',
                 'hint' => '轮播图、串文和视频',
-                'ask' => '从我的看板挑出最好的点子，做成轮播图，并排期到周二发布在 Instagram 和 LinkedIn。',
+                'ask' => '从我的看板取下一个点子，做成轮播图，并排期到周二发布在 Instagram 和 LinkedIn。',
                 'reply' => '完成了。轮播图已排期在周二上午 10 点发布到 Instagram 和 LinkedIn。',
             ],
             'analytics' => [
