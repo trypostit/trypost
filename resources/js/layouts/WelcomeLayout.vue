@@ -142,7 +142,7 @@ const previousStep = computed(() =>
                     trigger-class="bg-card max-sm:px-2 max-sm:[&>span]:sr-only"
                     @update:model-value="changeLanguage"
                 />
-                <ThemeToggle compact-on-mobile />
+                <ThemeToggle />
             </div>
         </header>
 

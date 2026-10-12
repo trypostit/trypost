@@ -51,7 +51,7 @@ function welcomeMobileHeaderProblems(mixed $page): array
     return $page->script(<<<'JS'
         (() => {
             const header = document.querySelector('header');
-            const items = [...header.querySelectorAll('[data-testid="welcome-back"], [data-testid="app-logo"], [data-testid="welcome-language-trigger"], [data-testid="theme-toggle-cycle"]')]
+            const items = [...header.querySelectorAll('[data-testid="welcome-back"], [data-testid="app-logo"], [data-testid="welcome-language-trigger"], [data-testid="theme-toggle"]')]
                 .filter((element) => element.getClientRects().length > 0)
                 .map((element) => ({ id: element.dataset.testid, rect: element.getBoundingClientRect() }));
             const problems = [];
@@ -73,7 +73,7 @@ function welcomeMobileHeaderProblems(mixed $page): array
                     }
                 }
             }
-            if (!['app-logo', 'welcome-language-trigger', 'theme-toggle-cycle'].every((id) => items.some((item) => item.id === id))) {
+            if (!['app-logo', 'welcome-language-trigger', 'theme-toggle'].every((id) => items.some((item) => item.id === id))) {
                 problems.push('missing header items: ' + items.map((item) => item.id).join(','));
             }
             if (header.querySelector('[data-testid^="welcome-step-"]')) {
@@ -119,7 +119,7 @@ test('the welcome header fits a phone and the continue button stays on screen', 
     $this->actingAs(welcomeMobileOwner($attributes));
 
     $page = visit(route($route))->resize(390, 844);
-    waitForWelcomeMobileTestId($page, 'theme-toggle-cycle');
+    waitForWelcomeMobileTestId($page, 'theme-toggle');
     waitForWelcomeMobileTestId($page, $hasBack ? 'welcome-back' : 'welcome-step-persona');
 
     $result = welcomeMobileHeaderProblems($page);
@@ -138,7 +138,7 @@ test('the welcome header fits a phone and the continue button stays on screen', 
         $page->assertVisible('@welcome-back');
     }
 
-    $page->assertMissing('@theme-toggle')
+    $page->assertVisible('@theme-toggle')
         ->assertNoJavaScriptErrors();
 })->with([
     'persona' => ['app.welcome.persona', [], 'welcome-persona-continue', 'welcome-persona-', false],

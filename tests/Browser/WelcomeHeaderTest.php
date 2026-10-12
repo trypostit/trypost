@@ -107,7 +107,7 @@ test('the welcome header switches language through the shared language select an
 
     expect($user->fresh()->locale)->toBe(Locale::PortugueseBrazil);
 
-    $page->click('@theme-toggle-dark');
+    $page->click('@theme-toggle');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 100; i++) {
