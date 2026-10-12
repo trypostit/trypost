@@ -9,6 +9,10 @@ export interface McpClient {
     logoClass?: string;
 }
 
+/** Opens Claude straight on the "Add custom connector" dialog. */
+const CLAUDE_ADD_CONNECTOR_URL =
+    'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours';
+
 /**
  * First-class MCP clients surfaced on workspace MCP settings.
  * `settingsUrl` is the client's connector-management entry point (per the
@@ -19,8 +23,8 @@ export const mcpClients: McpClient[] = [
         id: 'claude',
         label: 'Claude',
         logo: '/images/ai/claude.svg',
-        settingsUrl: 'https://claude.ai/customize/connectors',
-        chatUrl: 'https://claude.ai/new',
+        settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
+        chatUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
