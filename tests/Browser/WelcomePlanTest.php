@@ -47,7 +47,7 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows the offer, what is included and the G2 reviews', function () {
+test('the plan step shows the offer, what is included and the G2 rating', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
@@ -74,7 +74,7 @@ test('the plan step shows the offer, what is included and the G2 reviews', funct
         ->assertNoJavaScriptErrors();
 
     $reviews = $page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid="welcome-plan-reviews"] figure:not([aria-hidden="true"])')].length
+        document.querySelectorAll('[data-testid="welcome-plan-reviews"] img').length
     JS);
 
     expect($reviews)->toBe(5);

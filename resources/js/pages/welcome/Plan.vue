@@ -9,7 +9,6 @@ import {
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
-import ReviewCard from '@/components/reviews/ReviewCard.vue';
 import {
     Tooltip,
     TooltipContent,
@@ -27,13 +26,6 @@ defineProps<{
 }>();
 
 const form = useForm({});
-
-// The marquee scrolls one full copy of the reviews; the second copy fills the
-// gap it leaves behind so the loop is seamless.
-const loopedReviews = [
-    ...REVIEWS.map((review) => ({ ...review, duplicate: false })),
-    ...REVIEWS.map((review) => ({ ...review, duplicate: true })),
-];
 
 const submit = (): void => {
     if (form.processing) {
@@ -131,26 +123,23 @@ const submit = (): void => {
             </PlanFeatureList>
         </article>
 
-        <section
-            class="mt-8 flex flex-col items-center gap-4"
+        <div
+            class="mt-6 flex flex-wrap items-center justify-center gap-3"
             data-testid="welcome-plan-reviews"
         >
-            <G2ReviewsLink />
-
-            <div
-                class="w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,black_8%,black_92%,transparent)]"
-            >
-                <div class="reviews-marquee flex w-max items-start gap-4">
-                    <ReviewCard
-                        v-for="(review, index) in loopedReviews"
-                        :key="`${review.key}-${index}`"
-                        :review="review"
-                        class="w-72"
-                        :aria-hidden="review.duplicate"
-                    />
-                </div>
+            <div class="flex -space-x-2 rtl:space-x-reverse">
+                <img
+                    v-for="review in REVIEWS"
+                    :key="review.key"
+                    :src="review.photo"
+                    :alt="review.name"
+                    width="64"
+                    height="64"
+                    class="size-8 rounded-full object-cover ring-2 ring-background"
+                />
             </div>
-        </section>
+            <G2ReviewsLink />
+        </div>
 
         <template #actions>
             <WelcomeContinueButton
@@ -183,43 +172,3 @@ const submit = (): void => {
         </template>
     </WelcomeLayout>
 </template>
-
-<style scoped>
-@keyframes reviews-marquee {
-    0% {
-        transform: translateX(0);
-    }
-
-    100% {
-        transform: translateX(calc(-50% - 0.5rem));
-    }
-}
-
-@keyframes reviews-marquee-rtl {
-    0% {
-        transform: translateX(0);
-    }
-
-    100% {
-        transform: translateX(calc(50% + 0.5rem));
-    }
-}
-
-.reviews-marquee {
-    animation: reviews-marquee 60s linear infinite;
-}
-
-.reviews-marquee:dir(rtl) {
-    animation-name: reviews-marquee-rtl;
-}
-
-.reviews-marquee:hover {
-    animation-play-state: paused;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .reviews-marquee {
-        animation: none;
-    }
-}
-</style>
