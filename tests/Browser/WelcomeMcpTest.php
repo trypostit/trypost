@@ -93,7 +93,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
         ->click('@welcome-mcp-benefit-queue');
     waitForWelcomeMcpChat($page, 'queue');
 
-    $page->assertSeeIn('@welcome-mcp-chat-queue', 'Tomorrow')
+    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-queue]").innerText.split("\\n").includes("Tomorrow")', true)
         ->assertSeeIn('@welcome-mcp-chat-queue', 'New')
         ->click('@welcome-mcp-benefit-ideas');
     waitForWelcomeMcpChat($page, 'ideas');
@@ -350,7 +350,7 @@ test('the schedule and queue examples show the owner photo, or their initials wi
         expect($avatar)->toBe($withPhoto ? 'photo' : 'initials');
     }
 
-    $page->assertSeeIn('@welcome-mcp-chat-queue', 'Tomorrow')
+    $page->assertScript('document.querySelector("[data-testid=welcome-mcp-chat-queue]").innerText.split("\\n").includes("Tomorrow")', true)
         ->assertNoJavaScriptErrors();
 })->with([
     'with a photo' => [true],
