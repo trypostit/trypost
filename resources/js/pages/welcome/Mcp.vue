@@ -75,33 +75,6 @@ const revealActivePill = async (): Promise<void> => {
 
 watch(activeBenefit, revealActivePill);
 
-/** Chat apps that open a new conversation with the setup prompt filled in. */
-const chatApps: {
-    id: string;
-    label: string;
-    logo: string;
-    logoClass?: string;
-    promptUrl: (prompt: string) => string;
-}[] = [
-    ...mcpClients,
-    {
-        id: 'perplexity',
-        label: 'Perplexity',
-        logo: '/images/ai/perplexity.svg',
-        logoClass: 'dark:invert',
-        promptUrl: (prompt) =>
-            `https://www.perplexity.ai/?q=${encodeURIComponent(prompt)}`,
-    },
-    {
-        id: 'grok',
-        label: 'Grok',
-        logo: '/images/ai/grok.svg',
-        logoClass: 'dark:invert',
-        promptUrl: (prompt) =>
-            `https://grok.com/?q=${encodeURIComponent(prompt)}`,
-    },
-];
-
 const connectedClient = computed(
     (): ConnectedClient | null => props.connectedClients[0] ?? null,
 );
@@ -305,7 +278,7 @@ const goToSchedule = (): void => {
                 </p>
                 <div class="flex flex-wrap justify-center gap-2">
                     <Button
-                        v-for="app in chatApps"
+                        v-for="app in mcpClients"
                         :key="app.id"
                         as="a"
                         :href="app.promptUrl(prompt)"
