@@ -36,10 +36,12 @@ const submit = (): void => {
         <article
             v-for="plan in plans"
             :key="plan.id"
-            class="grid gap-6 rounded-xl border border-border bg-card p-5 text-start sm:grid-cols-[2fr_3fr] sm:gap-8 sm:p-6"
+            class="grid overflow-hidden rounded-xl border border-border bg-card text-start sm:grid-cols-[2fr_3fr]"
             :data-testid="`plan-card-${plan.slug}`"
         >
-            <div class="flex flex-col gap-4">
+            <div
+                class="flex flex-col justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
+            >
                 <div class="flex flex-col gap-1">
                     <h3 class="text-lg leading-tight font-medium">
                         {{ plan.name }}
@@ -52,7 +54,7 @@ const submit = (): void => {
                 <div class="flex flex-col gap-1">
                     <p class="flex items-baseline gap-2">
                         <span
-                            class="text-3xl leading-10 font-strong tabular-nums"
+                            class="text-4xl leading-none font-strong tabular-nums"
                             :data-testid="`plan-price-first-month-${plan.slug}`"
                             >{{
                                 $t('billing.subscribe.prices.first_month')
@@ -81,7 +83,7 @@ const submit = (): void => {
 
             <PlanFeatureList
                 :scope="plan.slug"
-                class="max-sm:border-t max-sm:border-border max-sm:pt-6 sm:border-s sm:border-border sm:ps-8"
+                class="p-5 sm:p-6"
             >
                 <template #before>
                     <li
