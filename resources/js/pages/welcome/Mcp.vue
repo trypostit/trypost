@@ -329,7 +329,11 @@ const goToSchedule = (): void => {
                             :data-testid="`welcome-mcp-connect-${client.id}`"
                             @click="connectWith(client)"
                         >
-                            <component :is="client.logo" class="size-4" />
+                            <img
+                                :src="client.monoLogo"
+                                alt=""
+                                class="size-4 invert dark:invert-0"
+                            />
                             {{
                                 $t('welcome.mcp.connect_with', {
                                     client: client.label,

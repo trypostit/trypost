@@ -1,17 +1,13 @@
-import type { Component } from 'vue';
-
-import ClaudeLogo from '@/components/mcp/ClaudeLogo.vue';
-import OpenAiLogo from '@/components/mcp/OpenAiLogo.vue';
-
 export type PrimaryMcpClientId = 'claude' | 'chatgpt';
 
 export interface McpClient {
     id: PrimaryMcpClientId;
     label: string;
-    /** A one-color mark in `currentColor`: it takes the text color of where it sits. */
-    logo: Component;
-    /** The mark's brand color on neutral surfaces; primary buttons keep their text color. */
-    brandClass: string;
+    /** The mark on neutral surfaces, with `logoClass` for the theme. */
+    logo: string;
+    logoClass?: string;
+    /** A black mark for primary buttons, inverted to white in light mode. */
+    monoLogo: string;
     settingsUrl: string;
 }
 
@@ -27,15 +23,16 @@ export const mcpClients: McpClient[] = [
     {
         id: 'claude',
         label: 'Claude',
-        logo: ClaudeLogo,
-        brandClass: 'text-[#D97757]',
+        logo: '/images/ai/claude.svg',
+        monoLogo: '/images/ai/claude-mono.svg',
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
-        logo: OpenAiLogo,
-        brandClass: 'text-foreground',
+        logo: '/images/ai/openai.svg',
+        logoClass: 'dark:invert',
+        monoLogo: '/images/ai/openai.svg',
         settingsUrl: 'https://chatgpt.com/plugins',
     },
 ];

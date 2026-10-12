@@ -52,9 +52,10 @@ const copyMcpUrl = (): void => {
                         <span
                             class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted"
                         >
-                            <component
-                                :is="client.logo"
-                                :class="['size-5', client.brandClass]"
+                            <img
+                                :src="client.logo"
+                                :alt="client.label"
+                                :class="['size-5 object-contain', client.logoClass]"
                             />
                         </span>
                     </template>
