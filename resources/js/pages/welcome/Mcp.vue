@@ -10,7 +10,15 @@ import {
     IconListDetails,
     IconTrendingUp,
 } from '@tabler/icons-vue';
-import { computed, onBeforeUnmount, ref, type Component } from 'vue';
+import {
+    computed,
+    nextTick,
+    onBeforeUnmount,
+    ref,
+    useTemplateRef,
+    watch,
+    type Component,
+} from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { Spinner } from '@/components/ui/spinner';
@@ -49,6 +57,23 @@ const {
 } = useAutoRotate(benefits.length, 6000);
 
 const activeKey = computed((): string => benefits[activeBenefit.value].key);
+
+const pills = useTemplateRef<HTMLElement>('pills');
+
+const revealActivePill = async (): Promise<void> => {
+    await nextTick();
+
+    const pill = pills.value?.querySelector<HTMLElement>('[aria-selected="true"]');
+
+    if (pill && pills.value?.offsetParent !== null) {
+        pills.value?.scrollTo({
+            left: pill.offsetLeft - pills.value.offsetWidth / 2 + pill.offsetWidth / 2,
+            behavior: 'smooth',
+        });
+    }
+};
+
+watch(activeBenefit, revealActivePill);
 
 /** Chat apps that open a new conversation with the setup prompt filled in. */
 const chatApps: {
@@ -138,7 +163,7 @@ const goToSchedule = (): void => {
                 @mouseleave="resumeBenefits"
             >
                 <div
-                    class="flex flex-col gap-1 p-2"
+                    class="flex flex-col gap-1 p-2 max-md:hidden"
                     role="tablist"
                     aria-orientation="vertical"
                     :aria-label="$t('welcome.mcp.title')"
@@ -182,7 +207,33 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="hidden border-t border-border bg-accent p-4 md:flex lg:border-t-0 lg:border-s"
+                    ref="pills"
+                    class="flex gap-2 overflow-x-auto p-3 md:hidden"
+                    role="tablist"
+                    :aria-label="$t('welcome.mcp.title')"
+                >
+                    <button
+                        v-for="(benefit, index) in benefits"
+                        :key="benefit.key"
+                        type="button"
+                        role="tab"
+                        :aria-selected="index === activeBenefit"
+                        :class="[
+                            'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
+                            index === activeBenefit
+                                ? 'border-primary-strong bg-primary-subtle text-primary-text dark:bg-primary-selected'
+                                : 'border-border bg-card text-muted-foreground',
+                        ]"
+                        :data-testid="`welcome-mcp-pill-${benefit.key}`"
+                        @click="selectBenefit(index)"
+                    >
+                        <component :is="benefit.icon" class="size-4" />
+                        {{ $t(`welcome.mcp.benefits.${benefit.key}.title`) }}
+                    </button>
+                </div>
+
+                <div
+                    class="flex border-t border-border bg-accent p-3 sm:p-4 lg:border-t-0 lg:border-s"
                     aria-hidden="true"
                 >
                     <div
@@ -195,7 +246,7 @@ const goToSchedule = (): void => {
                             <span class="size-2.5 rounded-full bg-[#febc2e]" />
                             <span class="size-2.5 rounded-full bg-[#28c840]" />
                         </div>
-                        <div class="grid flex-1 p-4">
+                        <div class="grid flex-1 p-3 sm:p-4">
                             <McpChatExample
                                 v-for="benefit in benefits"
                                 :key="benefit.key"

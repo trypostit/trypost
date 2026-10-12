@@ -14,12 +14,14 @@ const ownerPhoto = owner.has_photo ? owner.photo_url : null;
 </script>
 
 <template>
-    <div class="grid grid-cols-[4.5rem_minmax(0,1fr)] gap-x-4">
-        <time class="pt-4 text-sm font-medium text-foreground">
+    <div
+        class="grid gap-y-2 sm:grid-cols-[4.5rem_minmax(0,1fr)] sm:gap-x-4"
+    >
+        <time class="text-sm font-medium text-foreground sm:pt-4">
             {{ date.formatClockTime('10:00') }}
         </time>
         <article class="rounded-xl border border-border-strong bg-card">
-            <div class="flex gap-4 p-4">
+            <div class="flex flex-col gap-4 p-4 sm:flex-row">
                 <div class="flex min-w-0 flex-1 flex-col gap-3">
                     <div class="flex items-center gap-3">
                         <ChannelAvatar
@@ -43,7 +45,7 @@ const ownerPhoto = owner.has_photo ? owner.photo_url : null;
                         {{ $t('posts.status.scheduled') }}
                     </Badge>
                 </div>
-                <div class="grid w-28 shrink-0 grid-cols-2 content-start gap-1.5">
+                <div class="grid shrink-0 grid-cols-4 content-start gap-1.5 sm:w-28 sm:grid-cols-2">
                     <span
                         v-for="slide in slideCount"
                         :key="slide"

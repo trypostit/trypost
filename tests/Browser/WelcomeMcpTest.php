@@ -130,25 +130,25 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
         ->assertNoJavaScriptErrors();
 });
 
-test('the MCP step fits a phone without scrolling and hides the chat example there', function () {
+test('on a phone the MCP step keeps the example, switched by pills, with one row of buttons', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMcpSubscriber());
 
     $page = visit(route('app.welcome.mcp'))->resize(390, 844);
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-open-claude');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-pill-schedule');
 
-    $layout = $page->script(<<<'JS'
-        ({
-            scrolls: document.documentElement.scrollHeight > window.innerHeight,
-            chatVisible: document.querySelector('[data-testid^="welcome-mcp-chat-"]')?.getClientRects().length > 0,
-        })
-    JS);
+    $page->assertVisible('@welcome-mcp-pill-schedule')
+        ->assertMissing('@welcome-mcp-benefit-schedule')
+        ->click('@welcome-mcp-pill-ideas');
+    waitForWelcomeMcpChat($page, 'ideas');
 
-    expect($layout)->toBe(['scrolls' => false, 'chatVisible' => false]);
+    $page->assertVisible('@welcome-mcp-chat-ideas')
+        ->assertScript('document.querySelector("[data-testid=welcome-mcp-pill-ideas]").getAttribute("aria-selected")', 'true');
 
     expect($page->script('new Set([...document.querySelectorAll("[data-testid^=welcome-mcp-open-], [data-testid=welcome-mcp-copy]")].map((button) => Math.round(button.getBoundingClientRect().top))).size'))->toBe(1)
-        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open-claude]").getAttribute("aria-label")'))->toBe('Open in Claude');
+        ->and($page->script('document.querySelector("[data-testid=welcome-mcp-open-claude]").getAttribute("aria-label")'))->toBe('Open in Claude')
+        ->and($page->script('document.documentElement.scrollWidth <= window.innerWidth'))->toBeTrue();
 
     $page->assertVisible('@welcome-mcp-copy')
         ->assertNoJavaScriptErrors();
