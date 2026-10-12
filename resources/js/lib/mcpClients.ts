@@ -5,7 +5,6 @@ export interface McpClient {
     label: string;
     logo: string;
     settingsUrl: string;
-    chatUrl: string;
     logoClass?: string;
 }
 
@@ -24,14 +23,12 @@ export const mcpClients: McpClient[] = [
         label: 'Claude',
         logo: '/images/ai/claude.svg',
         settingsUrl: CLAUDE_ADD_CONNECTOR_URL,
-        chatUrl: CLAUDE_ADD_CONNECTOR_URL,
     },
     {
         id: 'chatgpt',
         label: 'ChatGPT',
         logo: '/images/ai/chatgpt-white.svg',
         settingsUrl: 'https://chatgpt.com/plugins',
-        chatUrl: 'https://chatgpt.com/',
         logoClass: 'invert dark:invert-0',
     },
 ];

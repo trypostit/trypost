@@ -47,6 +47,7 @@ test('the MCP step shows the prompt, waits for a connection and can be skipped',
         ->assertVisible('@welcome-mcp-open-claude')
         ->assertVisible('@welcome-mcp-open-chatgpt')
         ->assertAttribute('@welcome-mcp-open-claude', 'href', 'https://claude.ai/new?modal=add-custom-connector#customize/connectors/yours')
+        ->assertAttribute('@welcome-mcp-open-chatgpt', 'href', 'https://chatgpt.com/plugins')
         ->assertSeeIn('@welcome-mcp-status', 'Waiting for your AI to connect')
         ->assertMissing('@welcome-mcp-continue');
 

@@ -135,7 +135,7 @@ const goToSchedule = (): void => {
                             v-for="client in mcpClients"
                             :key="client.id"
                             as="a"
-                            :href="client.chatUrl"
+                            :href="client.settingsUrl"
                             target="_blank"
                             rel="noopener noreferrer"
                             variant="ghost"
