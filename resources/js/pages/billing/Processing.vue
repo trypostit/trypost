@@ -4,11 +4,11 @@ import { IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
 import AuthSplitLayout from '@/layouts/auth/AuthSplitLayout.vue';
+import { mcp } from '@/routes/app/welcome';
 import type { SharedData } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
-    nextUrl: string;
 }>();
 
 const page = usePage<SharedData>();
@@ -25,7 +25,7 @@ const purchaseReady = computed(
 );
 
 const goNext = (): void => {
-    router.visit(props.nextUrl);
+    router.visit(mcp.url());
 };
 
 // Card-required trials are already `subscribed()` (`trialing`) on first paint.

@@ -28,12 +28,6 @@ use Throwable;
 
 class WelcomeController extends Controller
 {
-    /**
-     * Set when Welcome opens Stripe Checkout, so the processing page sends a new
-     * owner to the MCP step instead of straight into the app.
-     */
-    public const CHECKOUT_SESSION_KEY = 'welcome.checkout';
-
     public function persona(Request $request): InertiaResponse|RedirectResponse
     {
         if ($redirect = $this->redirectIfUnavailable($request)) {
@@ -181,8 +175,6 @@ class WelcomeController extends Controller
 
         $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
 
-        $request->session()->put(self::CHECKOUT_SESSION_KEY, true);
-
         try {
             $postHog->capture(
                 $user->id,
@@ -208,8 +200,6 @@ class WelcomeController extends Controller
         $workspace = $user->currentWorkspace;
 
         $this->authorize('view', $workspace);
-
-        $request->session()->forget(self::CHECKOUT_SESSION_KEY);
 
         $mcpUrl = route('mcp.trypost');
 

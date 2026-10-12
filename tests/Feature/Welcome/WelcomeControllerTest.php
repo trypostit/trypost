@@ -9,7 +9,6 @@ use App\Enums\User\Goal;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
-use App\Http\Controllers\App\WelcomeController;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Plan;
@@ -219,30 +218,14 @@ test('plan store sends the owner to Stripe checkout on the Socials monthly price
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
-test('plan store marks the session so processing continues to the MCP step', function () {
-    completeWelcomeThroughSoftware($this->user);
-    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.plan.store'))
-        ->assertRedirect('https://checkout.stripe.test/session')
-        ->assertSessionHas(WelcomeController::CHECKOUT_SESSION_KEY, true);
-});
-
-test('the MCP step shows a copyable prompt with the server URL in the owner language and clears the checkout mark', function () {
+test('the MCP step shows a copyable prompt with the server URL in the owner language', function () {
     attachCurrentWorkspace($this->user);
     subscribeAccount($this->user->account);
     $this->user->update(['locale' => Locale::PortugueseBrazil]);
 
     $this->actingAs($this->user->fresh())
-        ->withSession([WelcomeController::CHECKOUT_SESSION_KEY => true])
         ->get(route('app.welcome.mcp'))
         ->assertOk()
-        ->assertSessionMissing(WelcomeController::CHECKOUT_SESSION_KEY)
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Mcp', false)
             ->where('connectedClients', [])

@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-use App\Http\Controllers\App\WelcomeController;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
@@ -155,21 +154,6 @@ test('billing processing shows processing page', function () {
         ->missing('redirectToOnboarding')
     );
 });
-
-test('billing processing sends a checkout from Welcome to the MCP step and any other to the schedule', function (bool $fromWelcome, string $next) {
-    config(['trypost.self_hosted' => false]);
-
-    $session = $fromWelcome ? [WelcomeController::CHECKOUT_SESSION_KEY => true] : [];
-
-    $this->actingAs($this->user)
-        ->withSession($session)
-        ->get(route('app.billing.processing'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('nextUrl', route($next)));
-})->with([
-    'from Welcome' => [true, 'app.welcome.mcp'],
-    'a returning subscriber' => [false, 'app.posts.index'],
-]);
 
 test('billing processing keeps auth.plan null until the webhook writes plan_id', function () {
     config(['trypost.self_hosted' => false]);
