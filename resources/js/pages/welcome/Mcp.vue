@@ -182,11 +182,11 @@ const goToSchedule = (): void => {
                 </div>
 
                 <div
-                    class="hidden border-s border-border bg-secondary p-4 lg:flex"
+                    class="hidden border-s border-border bg-accent p-4 lg:flex"
                     aria-hidden="true"
                 >
                     <div
-                        class="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-strong bg-card shadow-sm"
+                        class="flex flex-1 flex-col overflow-hidden rounded-xl border border-border-strong bg-card"
                     >
                         <div
                             class="flex h-8 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3"
