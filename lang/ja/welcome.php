@@ -54,6 +54,7 @@ return [
         'description' => '1分で接続して、ClaudeやChatGPTから直接TryPostを使いましょう。',
         'connect_with' => ':clientと接続',
         'sheet_title' => 'TryPostを:clientに接続',
+        'sheet_description' => '1分ほどで完了します。接続するとこのページが自動で更新されます。',
         'open' => ':clientを開く',
         'steps' => [
             'claude' => [

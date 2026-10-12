@@ -54,6 +54,7 @@ return [
         'description' => 'Connect in a minute and use TryPost right from Claude or ChatGPT.',
         'connect_with' => 'Connect with :client',
         'sheet_title' => 'Connect TryPost to :client',
+        'sheet_description' => 'Takes about a minute. This page updates as soon as you\'re connected.',
         'open' => 'Open :client',
         'steps' => [
             'claude' => [

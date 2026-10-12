@@ -54,6 +54,7 @@ return [
         'description' => 'Підключіть за хвилину й користуйтеся TryPost просто з Claude або ChatGPT.',
         'connect_with' => 'Підключити :client',
         'sheet_title' => 'Підключіть TryPost до :client',
+        'sheet_description' => 'Це займе близько хвилини. Сторінка оновиться, щойно ви підключитеся.',
         'open' => 'Відкрити :client',
         'steps' => [
             'claude' => [

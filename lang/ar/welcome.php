@@ -54,6 +54,7 @@ return [
         'description' => 'اربطه في دقيقة واستخدم TryPost مباشرةً من Claude أو ChatGPT.',
         'connect_with' => 'الربط مع :client',
         'sheet_title' => 'اربط TryPost بـ :client',
+        'sheet_description' => 'يستغرق الأمر دقيقة تقريبًا. ستتحدّث هذه الصفحة فور اتصالك.',
         'open' => 'افتح :client',
         'steps' => [
             'claude' => [

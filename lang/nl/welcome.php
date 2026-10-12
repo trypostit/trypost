@@ -54,6 +54,7 @@ return [
         'description' => 'Koppel het in een minuut en gebruik TryPost direct vanuit Claude of ChatGPT.',
         'connect_with' => 'Koppelen met :client',
         'sheet_title' => 'Koppel TryPost aan :client',
+        'sheet_description' => 'Duurt ongeveer een minuut. Deze pagina werkt bij zodra je gekoppeld bent.',
         'open' => ':client openen',
         'steps' => [
             'claude' => [
