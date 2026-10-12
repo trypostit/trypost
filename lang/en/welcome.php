@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Then :price/month. Cancel anytime.',
     'mcp' => [
         'title' => 'Run your social media from a chat',
-        'description' => 'Your AI creates, schedules and analyzes your posts in TryPost, just by chatting.',
+        'description' => 'Create, schedule and analyze your TryPost posts with your favorite AI.',
         'connect_with' => 'Connect with :client',
         'connect_ai' => 'Connect your AI',
         'pick_ai' => 'Which AI do you use?',

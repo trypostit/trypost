@@ -51,7 +51,7 @@ return [
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
     'mcp' => [
         'title' => 'AI와 대화하며 SNS를 관리하세요',
-        'description' => 'AI가 TryPost에서 게시물을 만들고, 예약하고, 분석해요. 대화만 하면 돼요.',
+        'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
         'connect_with' => ':client 연결',
         'connect_ai' => 'AI 연결하기',
         'pick_ai' => '어떤 AI를 사용하세요?',

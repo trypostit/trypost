@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',
-        'description' => 'Twoja AI tworzy, planuje i analizuje posty w TryPost – wystarczy rozmowa.',
+        'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',
         'connect_with' => 'Połącz z :client',
         'connect_ai' => 'Połącz swoją AI',
         'pick_ai' => 'Z jakiej AI korzystasz?',

@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser.',
     'mcp' => [
         'title' => 'Gerencie suas redes pelo chat',
-        'description' => 'Sua IA cria, agenda e analisa seus posts no TryPost, só conversando.',
+        'description' => 'Crie, agende e analise posts no TryPost usando a sua IA favorita.',
         'connect_with' => 'Conectar com :client',
         'connect_ai' => 'Conectar sua IA',
         'pick_ai' => 'Qual IA você usa?',

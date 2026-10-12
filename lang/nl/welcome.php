@@ -51,7 +51,7 @@ return [
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'mcp' => [
         'title' => 'Beheer je socials via chat',
-        'description' => 'Je AI maakt, plant en analyseert je posts in TryPost, gewoon via chat.',
+        'description' => 'Maak, plan en analyseer posts in TryPost met je favoriete AI.',
         'connect_with' => 'Koppelen met :client',
         'connect_ai' => 'Koppel je AI',
         'pick_ai' => 'Welke AI gebruik je?',

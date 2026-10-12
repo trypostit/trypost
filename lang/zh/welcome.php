@@ -51,7 +51,7 @@ return [
     'plan_terms' => '之后 :price/月，随时取消。',
     'mcp' => [
         'title' => '和 AI 聊天，轻松管理社交媒体',
-        'description' => '你的 AI 在 TryPost 中创建、排期并分析帖子，聊天就能搞定。',
+        'description' => '用你最喜欢的 AI，在 TryPost 中创建、排期和分析帖子。',
         'connect_with' => '连接 :client',
         'connect_ai' => '连接你的 AI',
         'pick_ai' => '你用哪个 AI？',
