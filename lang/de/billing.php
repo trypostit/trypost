@@ -54,7 +54,7 @@ return [
             'mcp' => 'TryPost in Claude oder ChatGPT nutzen',
             'mcp_tooltip' => 'Verbinde Claude, ChatGPT oder eine andere KI. Lass sie Posts erstellen und planen, deine Warteschlange füllen, Ideen ordnen und dein Wachstum zeigen.',
             'repurpose' => 'Automatisches Video-Reposting',
-            'repurpose_tooltip' => 'Poste ein Video in einem Netzwerk und TryPost bringt es in die anderen. Auf Instagram gepostet? Es erscheint auf TikTok, YouTube und Facebook, ohne dass du etwas tun musst.',
+            'repurpose_tooltip' => 'Ein Video auf Instagram gepostet? TryPost veröffentlicht es automatisch erneut auf TikTok, YouTube, Facebook und deinen anderen Netzwerken.',
             'analytics' => 'Erweiterte Analysen',
             'analytics_tooltip' => 'Sieh alle Netzwerke zusammen, etwa deine Follower insgesamt, oder filtere nach Netzwerk und Post. Aufrufe, Reichweite, Likes, Kommentare und mehr – damit du weißt, was funktioniert.',
             'team' => 'Unbegrenzt viele Teammitglieder',

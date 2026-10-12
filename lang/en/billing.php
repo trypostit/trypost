@@ -52,7 +52,7 @@ return [
             'mcp' => 'Run TryPost from Claude or ChatGPT',
             'mcp_tooltip' => 'Connect Claude, ChatGPT or another AI. Ask it to create and schedule posts, fill your queue, organize ideas and show how you\'re growing.',
             'repurpose' => 'Automatic video reposting',
-            'repurpose_tooltip' => 'Post a video on one network and TryPost takes it to the others. Posted on Instagram? It shows up on TikTok, YouTube and Facebook, with nothing else to do.',
+            'repurpose_tooltip' => 'Posted a video on Instagram? TryPost automatically reposts it to TikTok, YouTube, Facebook and your other networks.',
             'analytics' => 'Advanced analytics',
             'analytics_tooltip' => 'See all your networks together, like your total followers, or filter by network and by post. Views, reach, likes, comments and more, so you know what works.',
             'team' => 'Unlimited team members',

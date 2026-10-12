@@ -64,7 +64,6 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertMissing('@plan-card-workspaces')
         ->assertSeeIn('@plan-price-first-month-socials', '$1')
         ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
-        ->assertSeeIn('@plan-highlight-socials', 'One workspace')
         ->assertVisible('@plan-networks-info-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
@@ -88,19 +87,23 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertVisible('@plan-feature-info-socials-ideas');
 });
 
-test('One workspace is the last item of what is included', function () {
+test('the plan step does not list the workspace limit, so team members close the list', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'plan-highlight-socials');
+    waitForWelcomePlanTestId($page, 'plan-feature-list-socials');
 
     $last = $page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid="plan-feature-list-socials"] li')].at(-1)?.dataset.testid
+        [...document.querySelectorAll('[data-testid="plan-feature-list-socials"] ul > li')].at(-1)?.querySelector('[data-testid^="plan-feature-label-"]')?.dataset.testid
     JS);
 
-    expect($last)->toBe('plan-highlight-socials');
+    expect($last)->toBe('plan-feature-label-socials-team');
+
+    $page->assertMissing('@plan-highlight-socials')
+        ->assertMissing('@plan-workspaces-info-socials')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the review quotes rotate on their own', function () {

@@ -52,7 +52,7 @@ return [
             'mcp' => 'ClaudeやChatGPTからTryPostを操作',
             'mcp_tooltip' => 'Claude、ChatGPT、その他のAIを接続。投稿の作成と予約、キューの補充、アイデアの整理、成長の確認を頼めます。',
             'repurpose' => '動画の自動再投稿',
-            'repurpose_tooltip' => '1つのSNSに動画を投稿すれば、TryPostが他のSNSにも届けます。Instagramに投稿すれば、何もしなくてもTikTok、YouTube、Facebookに表示されます。',
+            'repurpose_tooltip' => 'Instagramに動画を投稿しましたか？TryPostがTikTok、YouTube、Facebookなど他のSNSに自動で再投稿します。',
             'analytics' => '高度な分析',
             'analytics_tooltip' => 'フォロワー合計など全SNSをまとめて確認、またはSNS別・投稿別に絞り込み。再生数、リーチ、いいね、コメントなどで、何が効果的かがわかります。',
             'team' => 'チームメンバー無制限',

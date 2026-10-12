@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import {
-    IconBuilding,
-    IconStarFilled,
-} from '@tabler/icons-vue';
+import { IconStarFilled } from '@tabler/icons-vue';
 
-import PlanFeatureInfo from '@/components/billing/PlanFeatureInfo.vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
@@ -141,26 +137,7 @@ const submit = (): void => {
                 :scope="plan.slug"
                 spacious
                 class="rounded-b-xl border border-border bg-card p-5 max-sm:border-t-0 sm:rounded-e-xl sm:rounded-es-none sm:border-s-0 sm:p-6"
-            >
-                <template #after>
-                    <li
-                        class="flex items-start gap-2 text-sm leading-5 text-foreground sm:text-base sm:leading-6"
-                        :data-testid="`plan-highlight-${plan.slug}`"
-                    >
-                        <IconBuilding
-                            class="mt-0.5 size-4 shrink-0 text-muted-foreground sm:size-5"
-                        />
-                        <span class="inline-flex items-start gap-1.5">
-                            {{ $t('billing.plans.workspaces_one') }}
-                            <PlanFeatureInfo
-                                :label="$t('billing.plans.workspaces_tooltip')"
-                                :testid="`plan-workspaces-info-${plan.slug}`"
-                                spacious
-                            />
-                        </span>
-                    </li>
-                </template>
-            </PlanFeatureList>
+            />
         </article>
 
 
