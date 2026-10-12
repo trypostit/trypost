@@ -171,7 +171,7 @@ const hideMonth = (): void => {
                         :d="toCurve(account.values)"
                         fill="none"
                         :stroke="account.color"
-                        stroke-width="1.75"
+                        stroke-width="1.25"
                         stroke-linecap="round"
                         vector-effect="non-scaling-stroke"
                     />
