@@ -61,7 +61,7 @@ function stubWelcomeMcpConnectTab(mixed $page): void
     JS);
 }
 
-test('the MCP step opens a sheet with the steps and the app link, and can be skipped', function () {
+test('the MCP step opens a dialog with the steps and the app link, and can be skipped', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMcpSubscriber());
@@ -99,7 +99,7 @@ test('the MCP step opens a sheet with the steps and the app link, and can be ski
 
     $page->assertSeeIn('@welcome-mcp-connect-claude', 'Connect with Claude')
         ->assertMissing('@welcome-mcp-copy')
-        ->assertMissing('@welcome-mcp-sheet')
+        ->assertMissing('@welcome-mcp-dialog')
         ->assertMissing('@welcome-mcp-continue');
 
     stubWelcomeMcpConnectTab($page);
@@ -118,12 +118,12 @@ test('the MCP step opens a sheet with the steps and the app link, and can be ski
         })();
     JS);
 
-    $page->assertSeeIn('@welcome-mcp-sheet', 'Connect TryPost to Claude')
+    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to Claude')
         ->assertSeeIn('@welcome-mcp-url', route('mcp.trypost'))
         ->assertSeeIn('@welcome-mcp-step-paste', "Paste the URL into the connector's URL field")
         ->assertVisible('@welcome-mcp-step-add')
         ->assertVisible('@welcome-mcp-step-login')
-        ->assertSeeIn('@welcome-mcp-sheet-waiting', 'Waiting for your AI to connect')
+        ->assertSeeIn('@welcome-mcp-dialog-waiting', 'Waiting for your AI to connect')
         ->assertScript('document.querySelectorAll("[data-sonner-toast]").length', 0);
 
     expect($page->script('window.__copied'))->toBe([route('mcp.trypost')])
@@ -133,13 +133,13 @@ test('the MCP step opens a sheet with the steps and the app link, and can be ski
     $page->assertSeeIn('@welcome-mcp-open', 'Open Claude')
         ->click('@welcome-mcp-open');
 
-    expect($page->script('document.querySelector("[data-testid=welcome-mcp-sheet]") !== null'))->toBeTrue();
+    expect($page->script('document.querySelector("[data-testid=welcome-mcp-dialog]") !== null'))->toBeTrue();
 
-    $page->keys('@welcome-mcp-sheet', 'Escape');
+    $page->keys('@welcome-mcp-dialog', 'Escape');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {
-                if (!document.querySelector('[data-testid="welcome-mcp-sheet"]')) return;
+                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
@@ -148,18 +148,18 @@ test('the MCP step opens a sheet with the steps and the app link, and can be ski
     $page->click('@welcome-mcp-connect-chatgpt');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-step-developer');
 
-    $page->assertSeeIn('@welcome-mcp-sheet', 'Connect TryPost to ChatGPT')
+    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to ChatGPT')
         ->assertSeeIn('@welcome-mcp-step-developer', 'Turn on Developer mode')
         ->assertVisible('@welcome-mcp-step-create')
         ->assertMissing('@welcome-mcp-step-paste');
 
     expect($page->script('document.querySelector("[data-testid=welcome-mcp-open]").getAttribute("href")'))->toBe('https://chatgpt.com/plugins');
 
-    $page->keys('@welcome-mcp-sheet', 'Escape');
+    $page->keys('@welcome-mcp-dialog', 'Escape');
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {
-                if (!document.querySelector('[data-testid="welcome-mcp-sheet"]')) return;
+                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
@@ -181,7 +181,7 @@ test('the MCP step opens a sheet with the steps and the app link, and can be ski
         ->assertNoJavaScriptErrors();
 });
 
-test('on a phone the MCP step keeps the example and opens the steps from the bottom', function () {
+test('on a phone the MCP step keeps the example and opens the steps full screen', function () {
     config(['trypost.self_hosted' => false]);
 
     $this->actingAs(welcomeMcpSubscriber());
@@ -203,15 +203,15 @@ test('on a phone the MCP step keeps the example and opens the steps from the bot
     $page->click('@welcome-mcp-connect-claude');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-step-paste');
 
-    $sheet = $page->script(<<<'JS'
+    $dialog = $page->script(<<<'JS'
         (async () => {
             await new Promise((resolve) => setTimeout(resolve, 600));
-            const rect = document.querySelector('[data-testid="welcome-mcp-sheet"]').getBoundingClientRect();
+            const rect = document.querySelector('[data-testid="welcome-mcp-dialog"]').getBoundingClientRect();
             return { bottom: Math.round(rect.bottom), width: Math.round(rect.width) };
         })()
     JS);
 
-    expect($sheet)->toBe(['bottom' => 844, 'width' => 390]);
+    expect($dialog)->toBe(['bottom' => 844, 'width' => 390]);
 
     $page->assertVisible('@welcome-mcp-open')
         ->assertNoJavaScriptErrors();
@@ -287,7 +287,7 @@ test('hovering a month of the follower example shows each network that month', f
         ->assertNoJavaScriptErrors();
 });
 
-test('once the AI connects the sheet closes, confetti flies and the page offers to continue', function () {
+test('once the AI connects the dialog closes, confetti flies and the page offers to continue', function () {
     config(['trypost.self_hosted' => false]);
 
     $owner = welcomeMcpSubscriber();
@@ -297,7 +297,7 @@ test('once the AI connects the sheet closes, confetti flies and the page offers 
     waitForWelcomeMcpTestId($page, 'welcome-mcp-connect-claude');
 
     $page->click('@welcome-mcp-connect-claude');
-    waitForWelcomeMcpTestId($page, 'welcome-mcp-sheet-waiting');
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-dialog-waiting');
 
     mcpAccessToken($owner, mcpOauthClient('Claude'), $owner->currentWorkspace);
 
@@ -306,7 +306,7 @@ test('once the AI connects the sheet closes, confetti flies and the page offers 
             let confetti = false;
             for (let i = 0; i < 120; i++) {
                 confetti ||= document.querySelector('[data-testid="confetti-canvas"]') !== null;
-                if (confetti && document.querySelector('[data-testid="welcome-mcp-status"]') && !document.querySelector('[data-testid="welcome-mcp-sheet"]')) {
+                if (confetti && document.querySelector('[data-testid="welcome-mcp-status"]') && !document.querySelector('[data-testid="welcome-mcp-dialog"]')) {
                     return 'celebrated';
                 }
                 await new Promise((resolve) => setTimeout(resolve, 50));

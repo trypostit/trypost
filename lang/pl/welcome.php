@@ -53,8 +53,8 @@ return [
         'title' => 'Publikuj i analizuj prosto ze swojej AI',
         'description' => 'Połącz w minutę i korzystaj z TryPost prosto z Claude lub ChatGPT.',
         'connect_with' => 'Połącz z :client',
-        'sheet_title' => 'Połącz TryPost z :client',
-        'sheet_description' => 'Zajmuje około minuty. Ta strona odświeży się, gdy tylko się połączysz.',
+        'dialog_title' => 'Połącz TryPost z :client',
+        'dialog_description' => 'Zajmuje około minuty. Ta strona odświeży się, gdy tylko się połączysz.',
         'open' => 'Otwórz :client',
         'steps' => [
             'claude' => [

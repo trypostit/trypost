@@ -19,7 +19,7 @@ import {
 
 import { Button } from '@/components/ui/button';
 import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
-import McpConnectSheet from '@/components/welcome/mcp/McpConnectSheet.vue';
+import McpConnectDialog from '@/components/welcome/mcp/McpConnectDialog.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
@@ -77,10 +77,10 @@ const connectedClient = computed(
 );
 
 const activeClient = ref<McpClient>(mcpClients[0]);
-const sheetOpen = ref(false);
+const dialogOpen = ref(false);
 const connectWith = (client: McpClient): void => {
     activeClient.value = client;
-    sheetOpen.value = true;
+    dialogOpen.value = true;
 };
 
 const connectedStatus = useTemplateRef<HTMLElement>('connectedStatus');
@@ -98,7 +98,7 @@ const celebrateConnection = async (
         return;
     }
 
-    sheetOpen.value = false;
+    dialogOpen.value = false;
     await nextTick();
 
     const cannon = (x: number, angle: number): (() => void) =>
@@ -325,8 +325,8 @@ const goToSchedule = (): void => {
             </template>
         </template>
 
-        <McpConnectSheet
-            v-model:open="sheetOpen"
+        <McpConnectDialog
+            v-model:open="dialogOpen"
             :client="activeClient"
             :mcp-url="mcpUrl"
         />

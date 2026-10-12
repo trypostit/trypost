@@ -8,14 +8,13 @@ import { computed, onBeforeUnmount, ref } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import {
-    Sheet,
-    SheetContent,
-    SheetDescription,
-    SheetHeader,
-    SheetTitle,
-} from '@/components/ui/sheet';
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import type { McpClient } from '@/lib/mcpClients';
 import { copyToClipboard } from '@/lib/utils';
 
@@ -42,8 +41,6 @@ const URL_STEP: Record<string, string> = {
 };
 
 const steps = computed((): string[] => STEPS[props.client.id] ?? []);
-
-const asBottomSheet = useBelowBreakpoint('sm');
 
 const copied = ref(false);
 let copiedTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -76,13 +73,12 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <Sheet v-model:open="open">
-        <SheetContent
-            :side="asBottomSheet ? 'bottom' : 'right'"
-            class="gap-0 max-sm:max-h-[92svh] max-sm:rounded-t-2xl sm:w-full sm:max-w-xl"
-            data-testid="welcome-mcp-sheet"
+    <Dialog v-model:open="open">
+        <DialogContent
+            class="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+            data-testid="welcome-mcp-dialog"
         >
-            <SheetHeader class="flex-row items-center gap-4 p-6 pe-14">
+            <DialogHeader class="flex-row items-center gap-4 p-6 pe-14 text-start">
                 <span
                     class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl border border-border bg-card"
                     aria-hidden="true"
@@ -94,16 +90,16 @@ onBeforeUnmount(() => {
                     />
                 </span>
                 <div class="flex min-w-0 flex-col gap-1">
-                    <SheetTitle class="font-heading text-xl font-medium tracking-tight">
-                        {{ $t('welcome.mcp.sheet_title', { client: client.label }) }}
-                    </SheetTitle>
-                    <SheetDescription class="text-sm text-muted-foreground">
-                        {{ $t('welcome.mcp.sheet_description') }}
-                    </SheetDescription>
+                    <DialogTitle class="font-heading text-xl font-medium tracking-tight">
+                        {{ $t('welcome.mcp.dialog_title', { client: client.label }) }}
+                    </DialogTitle>
+                    <DialogDescription class="text-sm text-muted-foreground">
+                        {{ $t('welcome.mcp.dialog_description') }}
+                    </DialogDescription>
                 </div>
-            </SheetHeader>
+            </DialogHeader>
 
-            <div class="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-8">
+            <div class="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
                 <ol class="flex flex-col">
                     <li
                         v-for="(step, index) in steps"
@@ -213,12 +209,12 @@ onBeforeUnmount(() => {
             </div>
 
             <div
-                class="flex flex-col-reverse gap-3 border-t border-border bg-card px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+                class="flex flex-col-reverse gap-3 border-t border-border bg-muted/50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
                 aria-live="polite"
             >
                 <p
                     class="flex items-center justify-center gap-1.5 text-sm text-muted-foreground"
-                    data-testid="welcome-mcp-sheet-waiting"
+                    data-testid="welcome-mcp-dialog-waiting"
                 >
                     <Spinner class="size-3.5 shrink-0 text-primary-text" />
                     {{ $t('welcome.mcp.waiting') }}
@@ -235,6 +231,6 @@ onBeforeUnmount(() => {
                     <IconArrowUpRight class="size-4 rtl:-scale-x-100" />
                 </Button>
             </div>
-        </SheetContent>
-    </Sheet>
+        </DialogContent>
+    </Dialog>
 </template>
