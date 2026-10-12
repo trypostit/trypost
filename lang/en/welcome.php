@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Fill your queue',
                 'hint' => 'At your best posting times',
-                'ask' => 'Put the other ideas in my queue, in my next free slots.',
-                'reply' => 'Done. The other 7 ideas are now posts in your queue, one per free slot, through Friday.',
+                'ask' => 'Create posts from the other ideas and add them to my queue.',
+                'reply' => 'Done. I created 7 posts from your ideas and queued them, one per free slot, through Friday.',
             ],
             'ideas' => [
                 'title' => 'Organize your ideas',

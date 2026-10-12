@@ -95,8 +95,8 @@ return [
             'queue' => [
                 'title' => 'Wypełnij kolejkę',
                 'hint' => 'W Twoich najlepszych godzinach',
-                'ask' => 'Dodaj pozostałe pomysły do kolejki, na moje najbliższe wolne terminy.',
-                'reply' => 'Gotowe. 7 pomysłów to teraz posty w kolejce, po jednym na wolny termin, do piątku.',
+                'ask' => 'Stwórz posty z pozostałych pomysłów i dodaj je do kolejki.',
+                'reply' => 'Gotowe. Stworzyłem 7 postów z twoich pomysłów i dodałem je do kolejki, do piątku.',
             ],
             'ideas' => [
                 'title' => 'Uporządkuj pomysły',
