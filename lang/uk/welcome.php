@@ -49,5 +49,4 @@ return [
     'plan_description' => 'Підключіть канали та заплануйте перший пост уже сьогодні.',
     'plan_first_month' => 'за перший місяць',
     'plan_terms' => 'Потім :price/міс. Скасування будь-коли.',
-    'plan_secure_checkout' => 'Безпечна оплата через Stripe',
 ];

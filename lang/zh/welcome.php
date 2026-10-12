@@ -49,5 +49,4 @@ return [
     'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
-    'plan_secure_checkout' => '通过 Stripe 安全支付',
 ];

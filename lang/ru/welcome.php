@@ -49,5 +49,4 @@ return [
     'plan_description' => 'Подключите каналы и запланируйте первый пост уже сегодня.',
     'plan_first_month' => 'за первый месяц',
     'plan_terms' => 'Затем :price/мес. Отмена в любой момент.',
-    'plan_secure_checkout' => 'Безопасная оплата через Stripe',
 ];

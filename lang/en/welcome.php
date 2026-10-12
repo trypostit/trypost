@@ -49,5 +49,4 @@ return [
     'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
-    'plan_secure_checkout' => 'Secure checkout with Stripe',
 ];

@@ -49,5 +49,4 @@ return [
     'plan_description' => '채널을 연결하고 오늘 첫 게시물을 예약하세요.',
     'plan_first_month' => '첫 달 요금',
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
-    'plan_secure_checkout' => 'Stripe를 통한 안전한 결제',
 ];

@@ -69,7 +69,6 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertSeeIn('@welcome-plan-reviews', '5/5 on G2')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
-        ->assertSeeIn('@welcome-plan-secure-checkout', 'Secure checkout with Stripe')
         ->assertVisible('@welcome-step-plan')
         ->assertNoJavaScriptErrors();
 

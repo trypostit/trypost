@@ -49,5 +49,4 @@ return [
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
-    'plan_secure_checkout' => 'Stripeによる安全な決済',
 ];

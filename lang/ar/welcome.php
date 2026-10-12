@@ -49,5 +49,4 @@ return [
     'plan_description' => 'اربط حساباتك وجدول أول منشور لك اليوم.',
     'plan_first_month' => 'للشهر الأول',
     'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت.',
-    'plan_secure_checkout' => 'دفع آمن عبر Stripe',
 ];

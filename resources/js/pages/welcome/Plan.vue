@@ -2,14 +2,11 @@
 import { Head, useForm } from '@inertiajs/vue3';
 import {
     IconBuilding,
-    IconGift,
     IconInfoCircle,
-    IconBrandStripeFilled,
-    IconLockSquareRoundedFilled,
+    IconStarFilled,
 } from '@tabler/icons-vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
-import G2ReviewsLink from '@/components/reviews/G2ReviewsLink.vue';
 import {
     Tooltip,
     TooltipContent,
@@ -54,12 +51,34 @@ const submit = (): void => {
             <div
                 class="flex flex-col items-start justify-between gap-8 bg-primary-subtle p-5 sm:p-6 dark:bg-primary-selected"
             >
-                <span
-                    class="inline-flex size-10 items-center justify-center rounded-lg bg-card"
-                    aria-hidden="true"
+                <div
+                    class="flex items-center gap-3"
+                    data-testid="welcome-plan-reviews"
                 >
-                    <IconGift class="size-5 text-primary-text" />
-                </span>
+                    <div class="flex -space-x-2 rtl:space-x-reverse">
+                        <img
+                            v-for="review in REVIEWS"
+                            :key="review.key"
+                            :src="review.photo"
+                            :alt="review.name"
+                            width="64"
+                            height="64"
+                            class="size-7 rounded-full object-cover ring-2 ring-primary-subtle dark:ring-primary-selected"
+                        />
+                    </div>
+                    <span class="flex flex-col gap-0.5">
+                        <span class="flex gap-0.5">
+                            <IconStarFilled
+                                v-for="star in 5"
+                                :key="star"
+                                class="size-3 text-amber-500"
+                            />
+                        </span>
+                        <span class="text-xs font-medium text-foreground">
+                            {{ $t('auth.reviews.eyebrow') }}
+                        </span>
+                    </span>
+                </div>
 
                 <p class="flex flex-col gap-1">
                     <span
@@ -124,23 +143,6 @@ const submit = (): void => {
             </PlanFeatureList>
         </article>
 
-        <div
-            class="mt-6 flex flex-wrap items-center justify-center gap-3"
-            data-testid="welcome-plan-reviews"
-        >
-            <div class="flex -space-x-2 rtl:space-x-reverse">
-                <img
-                    v-for="review in REVIEWS"
-                    :key="review.key"
-                    :src="review.photo"
-                    :alt="review.name"
-                    width="64"
-                    height="64"
-                    class="size-8 rounded-full object-cover ring-2 ring-background"
-                />
-            </div>
-            <G2ReviewsLink />
-        </div>
 
         <template #actions>
             <WelcomeContinueButton
@@ -162,19 +164,6 @@ const submit = (): void => {
                         price: $t('billing.subscribe.prices.socials.monthly'),
                     })
                 }}
-            </p>
-            <p
-                class="flex items-center gap-1.5 text-xs text-muted-foreground"
-                data-testid="welcome-plan-secure-checkout"
-            >
-                <IconLockSquareRoundedFilled
-                    class="size-4 shrink-0 text-green-500"
-                />
-                {{ $t('welcome.plan_secure_checkout') }}
-                <IconBrandStripeFilled
-                    class="size-4 shrink-0 text-[#635bff]"
-                    aria-hidden="true"
-                />
             </p>
         </template>
     </WelcomeLayout>
