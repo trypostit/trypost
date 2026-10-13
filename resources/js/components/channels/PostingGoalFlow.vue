@@ -36,7 +36,7 @@ import type {
     ChannelScheduleState,
     PostingSchedule,
 } from '@/types/posting-schedule';
-import { fireConfetti } from '@/utils/confetti';
+import { fireCelebration } from '@/utils/confetti';
 
 const props = defineProps<{
     accountId: string;
@@ -96,7 +96,7 @@ watch(avatar, (element) => {
     confettiFired = true;
 
     const frame = requestAnimationFrame(() => {
-        stopConfetti = fireConfetti({ origin: element });
+        stopConfetti = fireCelebration(element);
     });
 
     stopConfetti = () => cancelAnimationFrame(frame);

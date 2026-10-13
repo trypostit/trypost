@@ -24,6 +24,11 @@ class TrackMcpConnection
             return;
         }
 
+        rescue(fn () => $this->capture($event));
+    }
+
+    private function capture(AccessTokenCreated $event): void
+    {
         $token = AccessToken::query()
             ->mcpOAuth()
             ->with(['client', 'workspace.account'])

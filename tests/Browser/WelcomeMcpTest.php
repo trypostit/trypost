@@ -120,7 +120,7 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $tracked = $page->script(<<<JS
         (async () => {
             for (let i = 0; i < 60; i++) {
-                if (performance.getEntriesByType('resource').some((entry) => new URL(entry.name).pathname === '{$connectClickPath}')) return true;
+                if (performance.getEntriesByType('resource').some((entry) => new URL(entry.name).pathname === '{$connectClickPath}' && entry.responseStatus === 204)) return true;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
             return false;
@@ -422,6 +422,8 @@ test('once the AI connects the dialog closes, confetti flies and the page offers
 
     expect($celebration)->toBe('celebrated');
 
+    expect($page->script('document.querySelector("[data-testid=welcome-mcp-announcement]").textContent.trim()'))->toBe('Claude is connected');
+
     $page->assertSeeIn('@welcome-mcp-status', 'Claude is connected')
         ->assertVisible('@welcome-mcp-continue')
         ->assertMissing('@welcome-mcp-connect-claude')
@@ -445,7 +447,17 @@ test('the MCP examples rotate on their own until the user picks a tab', function
         })()
     JS);
 
-    expect($selectedAfter(8600))->toBe('welcome-mcp-benefit-schedule');
+    $firstRotation = $page->script(<<<'JS'
+        (async () => {
+            const selected = () => document.querySelector('[data-testid^="welcome-mcp-benefit-"][aria-pressed="true"]')?.dataset.testid;
+            for (let i = 0; i < 240; i++) {
+                if (selected() !== 'welcome-mcp-benefit-ideas') return selected();
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
+
+    expect($firstRotation)->toBe('welcome-mcp-benefit-schedule');
 
     $page->click('@welcome-mcp-benefit-queue')
         ->hover('@welcome-title');

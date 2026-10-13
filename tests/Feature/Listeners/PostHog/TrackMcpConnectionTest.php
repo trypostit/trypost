@@ -6,8 +6,16 @@ use App\Enums\PostHog\McpEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Passport\AccessTokenRepository;
+use App\Passport\AuthCode;
+use App\Passport\OAuthPayloadDecryptor;
+use App\Services\PostHogService;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Str;
+use Laravel\Passport\Bridge\Scope;
 use Laravel\Passport\Events\AccessTokenCreated;
+use League\OAuth2\Server\Entities\AccessTokenEntityInterface;
+use League\OAuth2\Server\Entities\ClientEntityInterface;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
@@ -70,3 +78,58 @@ test('no MCP connection is recorded', function (Closure $issue) {
         issueMcpToken($test, 'authorization_code');
     }],
 ]);
+
+test('the token repository records the connection when it stores an authorization code token', function () {
+    $clientId = mcpOauthClient('Claude');
+    $authCodeId = Str::random(80);
+    $tokenId = Str::random(80);
+
+    AuthCode::query()->forceCreate([
+        'id' => $authCodeId,
+        'user_id' => $this->user->id,
+        'client_id' => $clientId,
+        'workspace_id' => $this->workspace->id,
+        'scopes' => '[]',
+        'revoked' => true,
+        'expires_at' => now()->addMinutes(10),
+    ]);
+
+    request()->merge([
+        'grant_type' => 'authorization_code',
+        'code' => app(OAuthPayloadDecryptor::class)->encrypt([
+            'client_id' => $clientId,
+            'auth_code_id' => $authCodeId,
+            'user_id' => (string) $this->user->id,
+            'scopes' => ['mcp:use'],
+            'expire_time' => now()->addMinutes(10)->timestamp,
+        ]),
+    ]);
+
+    $client = Mockery::mock(ClientEntityInterface::class);
+    $client->shouldReceive('getIdentifier')->andReturn($clientId);
+
+    $entity = Mockery::mock(AccessTokenEntityInterface::class);
+    $entity->shouldReceive('getIdentifier')->andReturn($tokenId);
+    $entity->shouldReceive('getUserIdentifier')->andReturn((string) $this->user->id);
+    $entity->shouldReceive('getClient')->andReturn($client);
+    $entity->shouldReceive('getScopes')->andReturn([new Scope('mcp:use')]);
+    $entity->shouldReceive('getExpiryDateTime')->andReturn(now()->addHour()->toDateTimeImmutable());
+
+    app(AccessTokenRepository::class)->persistNewAccessToken($entity);
+
+    $events = mcpConnectedEvents();
+
+    expect($events)->toHaveCount(1)
+        ->and(data_get($events[0]->payload, 'properties.client'))->toBe('claude')
+        ->and(data_get($events[0]->payload, 'properties.workspace_id'))->toBe($this->workspace->id);
+});
+
+test('a failure while recording the connection never breaks the token request', function () {
+    $clientId = mcpOauthClient('Claude');
+    $token = mcpAccessToken($this->user, $clientId, $this->workspace);
+    $this->mock(PostHogService::class)->shouldReceive('capture')->once()->andThrow(new RuntimeException('PostHog is down'));
+
+    request()->merge(['grant_type' => 'authorization_code']);
+
+    expect(fn () => event(new AccessTokenCreated($token->id, $this->user->id, $clientId)))->not->toThrow(Throwable::class);
+});

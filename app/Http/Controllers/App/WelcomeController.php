@@ -186,7 +186,7 @@ class WelcomeController extends Controller
                 [
                     'plan_name' => $plan->name,
                     'interval' => Interval::Monthly->value,
-                    'first_month_offer' => $firstMonthOffer,
+                    'is_first_month_offer' => $firstMonthOffer,
                 ],
                 $user->account,
             );
@@ -236,6 +236,10 @@ class WelcomeController extends Controller
     public function skipMcp(Request $request, PostHogService $postHog): RedirectResponse
     {
         $user = $request->user();
+
+        if (! $user->account?->hasAppAccess()) {
+            return redirect()->route('app.welcome.persona');
+        }
 
         $postHog->capture(
             $user->id,

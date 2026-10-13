@@ -322,7 +322,7 @@ test('connecting a channel fires a confetti burst that cleans up after itself', 
     [$page, $channel] = connectPostingGoalChannel();
 
     expect(postingGoalPollFor($page, 'document.querySelector(\'[data-testid="confetti-canvas"]\')'))->toBeTrue()
-        ->and(postingGoalPollFor($page, '!document.querySelector(\'[data-testid="confetti-canvas"]\')'))->toBeTrue();
+        ->and(postingGoalPollFor($page, '!document.querySelector(\'[data-testid="confetti-canvas"]\')', 200))->toBeTrue();
 
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
 });

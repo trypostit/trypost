@@ -41,7 +41,7 @@ import {
     connectClick,
     skip as skipMcp,
 } from '@/routes/app/welcome/mcp';
-import { fireConfetti } from '@/utils/confetti';
+import { fireCelebration } from '@/utils/confetti';
 
 interface ConnectedClient {
     client_id: string;
@@ -88,7 +88,7 @@ const revealActivePill = async (): Promise<void> => {
     await nextTick();
 
     const row = pills.value;
-    const pill = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    const pill = row?.children[activeBenefit.value];
 
     if (!row || !pill || row.clientWidth === 0) {
         return;
@@ -159,37 +159,7 @@ const celebrateConnection = async (
     dialogOpen.value = false;
     await nextTick();
 
-    const cannon = (x: number, angle: number): (() => void) =>
-        fireConfetti({
-            origin: { x, y: 1 },
-            angle,
-            spread: 55,
-            particleCount: 160,
-            startVelocity: 48,
-            duration: 4200,
-        });
-
-    const stops = [
-        fireConfetti({
-            origin: connectedStatus.value ?? { x: 0.5, y: 0.8 },
-            particleCount: 200,
-            spread: 120,
-            startVelocity: 26,
-            duration: 3600,
-        }),
-        cannon(0, 60),
-        cannon(1, 120),
-    ];
-    const timeouts = [250, 500].map((delay) =>
-        setTimeout(() => {
-            stops.push(cannon(0, 65), cannon(1, 115));
-        }, delay),
-    );
-
-    stopConfetti = () => {
-        timeouts.forEach(clearTimeout);
-        stops.forEach((stop) => stop());
-    };
+    stopConfetti = fireCelebration(connectedStatus.value ?? undefined);
 };
 
 watch(connectedClient, celebrateConnection);
@@ -213,6 +183,19 @@ const goToSchedule = (): void => {
         actions-size="4xl"
     >
         <article class="text-start">
+            <p
+                class="sr-only"
+                aria-live="polite"
+                data-testid="welcome-mcp-announcement"
+            >
+                {{
+                    connectedClient
+                        ? $t('welcome.mcp.connected', {
+                              client: connectedClient.name,
+                          })
+                        : ''
+                }}
+            </p>
             <div
                 class="flex flex-col overflow-hidden rounded-xl border border-border-strong bg-card"
                 data-testid="welcome-mcp-window"
@@ -367,7 +350,7 @@ const goToSchedule = (): void => {
                     ref="connectedStatus"
                     class="flex items-center gap-1.5 text-sm font-medium text-foreground"
                     data-testid="welcome-mcp-status"
-                    aria-live="polite"
+                    aria-hidden="true"
                 >
                     <IconCircleCheckFilled class="size-4 shrink-0 text-green-500" />
                     {{

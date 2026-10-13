@@ -158,3 +158,18 @@ test('the stripe customer is not touched', function (Closure $update) {
         $member->update(['referral_source' => ReferralSource::Google]);
     }],
 ]);
+
+test('a customer deleted in Stripe is reported instead of failing the job', function () {
+    [, $owner] = stripeCustomerOwner('cus_deleted');
+    Bus::fake();
+    $client = new class implements ClientInterface
+    {
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            return [json_encode(['error' => ['code' => 'resource_missing', 'type' => 'invalid_request_error', 'message' => 'No such customer']]), 404, []];
+        }
+    };
+    ApiRequestor::setHttpClient($client);
+
+    expect(fn () => (new SyncStripeCustomer($owner->id))->handle())->not->toThrow(Throwable::class);
+});

@@ -301,3 +301,44 @@ export const fireConfetti = (options: ConfettiOptions = {}): (() => void) => {
         }
     };
 };
+
+/**
+ * The full celebration: a burst from `origin` plus cannons from both bottom
+ * corners, fired again twice in quick succession. Returns a function that
+ * stops all of it, including the salvos still waiting to fire.
+ */
+export const fireCelebration = (
+    origin: ConfettiPoint | HTMLElement = { x: 0.5, y: 0.8 },
+): (() => void) => {
+    const cannon = (x: number, angle: number): (() => void) =>
+        fireConfetti({
+            origin: { x, y: 1 },
+            angle,
+            spread: 55,
+            particleCount: 160,
+            startVelocity: 48,
+            duration: 4200,
+        });
+
+    const stops = [
+        fireConfetti({
+            origin,
+            particleCount: 200,
+            spread: 120,
+            startVelocity: 26,
+            duration: 3600,
+        }),
+        cannon(0, 60),
+        cannon(1, 120),
+    ];
+    const timeouts = [250, 500].map((delay) =>
+        setTimeout(() => {
+            stops.push(cannon(0, 65), cannon(1, 115));
+        }, delay),
+    );
+
+    return () => {
+        timeouts.forEach(clearTimeout);
+        stops.forEach((stop) => stop());
+    };
+};

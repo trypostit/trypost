@@ -10,10 +10,12 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Stripe\Exception\InvalidRequestException;
 
 /**
  * Mirrors the owner's name, email and Stripe metadata onto the account's
- * Stripe customer. Members and accounts without a customer are skipped.
+ * Stripe customer. Members and accounts without a customer are skipped, and a
+ * customer deleted in Stripe is reported once instead of retried.
  */
 class SyncStripeCustomer implements ShouldQueue
 {
@@ -36,6 +38,14 @@ class SyncStripeCustomer implements ShouldQueue
             return;
         }
 
-        $account->syncStripeCustomerDetails();
+        try {
+            $account->syncStripeCustomerDetails();
+        } catch (InvalidRequestException $exception) {
+            if ($exception->getStripeCode() !== 'resource_missing') {
+                throw $exception;
+            }
+
+            report($exception);
+        }
     }
 }

@@ -268,7 +268,7 @@ test('checkout.started records whether the first-month offer was shown', functio
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.first_month_offer') === $offered);
+        && data_get($event->payload, 'properties.is_first_month_offer') === $offered);
 })->with([
     'with the coupon' => ['coupon_socials', true],
     'without the coupon' => ['', false],
@@ -316,6 +316,17 @@ test('skipping the MCP step records it and goes to the schedule', function () {
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
         && data_get($event->payload, 'event') === WelcomeEvent::McpSkipped->value);
+});
+
+test('skipping the MCP step without app access goes back to Welcome and records nothing', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->get(route('app.welcome.mcp.skip'))
+        ->assertRedirect(route('app.welcome.persona'));
+
+    Bus::assertNotDispatched(SendEvent::class);
 });
 
 test('the MCP step gives the TryPost MCP URL and the owner connections', function () {
