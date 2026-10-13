@@ -74,14 +74,17 @@ const pills = useTemplateRef<HTMLElement>('pills');
 const revealActivePill = async (): Promise<void> => {
     await nextTick();
 
-    const pill = pills.value?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const row = pills.value;
+    const pill = row?.querySelector<HTMLElement>('[aria-selected="true"]');
 
-    if (pill && pills.value?.offsetParent !== null) {
-        pills.value?.scrollTo({
-            left: pill.offsetLeft - pills.value.offsetWidth / 2 + pill.offsetWidth / 2,
-            behavior: 'smooth',
-        });
+    if (!row || !pill || row.clientWidth === 0) {
+        return;
     }
+
+    row.scrollTo({
+        left: pill.offsetLeft - (row.clientWidth - pill.offsetWidth) / 2,
+        behavior: 'smooth',
+    });
 };
 
 watch(activeBenefit, revealActivePill);
