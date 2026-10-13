@@ -400,7 +400,7 @@ test('redirect updates an existing stripe customer with the current details and 
         ->and($client->requests[0]['params'])->toMatchArray([
             'email' => 'new-owner@example.test',
             'name' => 'New Owner',
-            'metadata' => ['persona' => 'agency'],
         ])
+        ->and($client->requests[0]['params']['metadata'])->toMatchArray(['persona' => 'agency', 'referral_source' => ''])
         ->and($account->fresh()->stripe_id)->toBe('cus_existing');
 });

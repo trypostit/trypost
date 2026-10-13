@@ -41,7 +41,7 @@ test('disconnecting an MCP app asks for the translated disconnect keyword, not t
     waitForMcpSettingsTestId($page, "mcp-connected-menu-{$clientId}");
 
     $page->assertScript('document.querySelector("[data-testid=mcp-tab-connected]").getAttribute("aria-selected")', 'true')
-        ->assertVisible("@mcp-connected-logo-claude");
+        ->assertVisible('@mcp-connected-logo-claude');
 
     $page->click("@mcp-connected-menu-{$clientId}");
     waitForMcpSettingsTestId($page, "mcp-disconnect-{$clientId}");
@@ -90,30 +90,30 @@ test('the MCP settings open on the connected tab, whose empty state leads to the
         ->assertScript('document.querySelector("[data-testid=settings-page-learn-more]").getAttribute("href")', 'https://docs.trypost.it/ai/introduction');
 
     $page->click('@mcp-connect-claude');
-    waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
+    waitForMcpSettingsTestId($page, 'mcp-dialog-waiting');
 
-    $page->assertSeeIn('@welcome-mcp-dialog', 'Connect TryPost to Claude')
-        ->assertSeeIn('@welcome-mcp-url', route('mcp.trypost'))
-        ->keys('@welcome-mcp-dialog', 'Escape');
+    $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to Claude')
+        ->assertSeeIn('@mcp-dialog-url', route('mcp.trypost'))
+        ->keys('@mcp-dialog', 'Escape');
 
     $page->script(<<<'JS'
         (async () => {
             for (let i = 0; i < 50; i++) {
-                if (!document.querySelector('[data-testid="welcome-mcp-dialog"]')) return;
+                if (!document.querySelector('[data-testid="mcp-dialog"]')) return;
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
         })();
     JS);
 
     $page->click('@mcp-connect-other');
-    waitForMcpSettingsTestId($page, 'welcome-mcp-config');
+    waitForMcpSettingsTestId($page, 'mcp-dialog-config');
 
-    $page->assertSeeIn('@welcome-mcp-dialog', __('mcp.other_dialog_title'))
-        ->assertVisible('@welcome-mcp-step-add')
-        ->assertSeeIn('@welcome-mcp-name', 'TryPost')
-        ->assertSeeIn('@welcome-mcp-config', '"mcpServers"')
-        ->assertSeeIn('@welcome-mcp-config', route('mcp.trypost'))
-        ->assertMissing('@welcome-mcp-open')
+    $page->assertSeeIn('@mcp-dialog', __('mcp.other_dialog_title'))
+        ->assertVisible('@mcp-dialog-step-add')
+        ->assertSeeIn('@mcp-dialog-name', 'TryPost')
+        ->assertSeeIn('@mcp-dialog-config', '"mcpServers"')
+        ->assertSeeIn('@mcp-dialog-config', route('mcp.trypost'))
+        ->assertMissing('@mcp-dialog-open')
         ->assertNoJavaScriptErrors();
 });
 
@@ -136,7 +136,7 @@ test('a new connection closes the connect dialog and shows the connected tab', f
     waitForMcpSettingsTestId($page, 'mcp-connect-chatgpt');
 
     $page->click('@mcp-connect-chatgpt');
-    waitForMcpSettingsTestId($page, 'welcome-mcp-dialog-waiting');
+    waitForMcpSettingsTestId($page, 'mcp-dialog-waiting');
 
     $clientId = mcpOauthClient('ChatGPT');
     mcpAccessToken($user, $clientId, $workspace);
@@ -145,7 +145,7 @@ test('a new connection closes the connect dialog and shows the connected tab', f
         (async () => {
             for (let i = 0; i < 100; i++) {
                 const row = document.querySelector('[data-testid="mcp-connected-client-{$clientId}"]');
-                if (row && row.getBoundingClientRect().height > 0 && !document.querySelector('[data-testid="welcome-mcp-dialog"]')) return 'shown';
+                if (row && row.getBoundingClientRect().height > 0 && !document.querySelector('[data-testid="mcp-dialog"]')) return 'shown';
                 await new Promise((resolve) => setTimeout(resolve, 50));
             }
             return 'missing';

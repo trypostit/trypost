@@ -19,6 +19,7 @@ use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -151,10 +152,11 @@ class WelcomeController extends Controller
             return $redirect;
         }
 
+        $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+
         return Inertia::render('welcome/Plan', [
-            'plans' => PlanResource::collection(
-                Plan::active()->where('slug', Slug::Socials)->get(),
-            )->resolve(),
+            'plan' => PlanResource::make($plan)->resolve(),
+            'firstMonthOffer' => ConfigureSubscriptionCheckout::offersFirstMonthCoupon($request->user()->account, $plan),
         ]);
     }
 
@@ -199,6 +201,10 @@ class WelcomeController extends Controller
 
         $workspace = $user->currentWorkspace;
 
+        if (blank($workspace)) {
+            return redirect()->route('app.workspaces.create');
+        }
+
         $this->authorize('view', $workspace);
 
         return Inertia::render('welcome/Mcp', [
@@ -235,7 +241,7 @@ class WelcomeController extends Controller
 
         $user = $request->user();
 
-        if (! $user->persona) {
+        if (blank($user->persona)) {
             return redirect()->route('app.welcome.persona');
         }
 
@@ -243,7 +249,7 @@ class WelcomeController extends Controller
             return redirect()->route('app.welcome.goals');
         }
 
-        if ($requireSoftware && ! $user->previous_software) {
+        if ($requireSoftware && blank($user->previous_software)) {
             return redirect()->route('app.welcome.software');
         }
 

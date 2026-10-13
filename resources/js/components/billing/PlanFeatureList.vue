@@ -20,7 +20,6 @@ import { Platform } from '@/types/platform';
 interface PlanFeature {
     key: string;
     icon: Component;
-    hasTooltip: boolean;
 }
 
 withDefaults(
@@ -47,7 +46,11 @@ const PLAN_NETWORKS = [
     Platform.GoogleBusiness,
 ] as const;
 
-const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
+/**
+ * Labels stay as keys and resolve with `$t` in the template: the language JSON
+ * loads asynchronously and `trans()` in a computed would cache the raw keys.
+ */
+const SHARED_FEATURES: PlanFeature[] = [
     { key: 'accounts_unlimited', icon: IconShare },
     { key: 'ideas', icon: IconBulb },
     { key: 'ai', icon: IconSparkles },
@@ -57,26 +60,6 @@ const SHARED_FEATURES: Omit<PlanFeature, 'hasTooltip'>[] = [
     { key: 'repurpose', icon: IconRefresh },
     { key: 'team', icon: IconUsers },
 ];
-
-const FEATURES_WITH_TOOLTIP = new Set([
-    'accounts_unlimited',
-    'ai',
-    'analytics',
-    'calendar',
-    'ideas',
-    'mcp',
-    'repurpose',
-    'team',
-]);
-
-/**
- * Labels stay as keys and resolve with `$t` in the template: the language JSON
- * loads asynchronously and `trans()` in a computed would cache the raw keys.
- */
-const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
-    ...feature,
-    hasTooltip: FEATURES_WITH_TOOLTIP.has(feature.key),
-}));
 </script>
 
 <template>
@@ -150,7 +133,7 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
             </li>
 
             <li
-                v-for="feature in sharedFeatures"
+                v-for="feature in SHARED_FEATURES"
                 :key="feature.key"
                 :class="[
                     'flex items-start gap-2 text-foreground',
@@ -174,7 +157,6 @@ const sharedFeatures: PlanFeature[] = SHARED_FEATURES.map((feature) => ({
                         }}</span
                     >
                     <PlanFeatureInfo
-                        v-if="feature.hasTooltip"
                         :label="$t(`billing.plans.features.${feature.key}_tooltip`)"
                         :testid="`plan-feature-info-${scope}-${feature.key}`"
                         :spacious="spacious"

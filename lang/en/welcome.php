@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
+    'plan_per_month' => 'per month',
+    'plan_cancel_anytime' => 'Cancel anytime.',
     'mcp' => [
         'title' => 'Run your social media from a chat',
         'description' => 'Create, schedule and analyze your TryPost posts with your favorite AI.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'Where do you want to use TryPost?',
         'connect_other' => 'Connect another app',
         'composer' => 'Ask anything',
-        'dialog_title' => 'Connect TryPost to :client',
-        'dialog_description' => 'Takes about a minute. This page updates as soon as you\'re connected.',
-        'open' => 'Open :client',
-        'steps' => [
-            'claude' => [
-                'paste' => 'Paste the URL into the connector\'s URL field',
-                'add' => 'Click Add, then Connect',
-                'login' => 'Log in to TryPost and pick your workspace',
-            ],
-            'chatgpt' => [
-                'developer' => 'Turn on Developer mode in ChatGPT\'s settings',
-                'create' => 'Create an app named TryPost and paste the URL',
-                'login' => 'Log in to TryPost and pick your workspace',
-            ],
-            'other' => [
-                'add' => 'Add a custom MCP server in your app',
-                'paste' => 'Paste the name and URL, or the config',
-                'login' => 'Log in to TryPost and pick your workspace',
-            ],
-        ],
-        'waiting' => 'Waiting for your AI to connect…',
         'connected' => ':client is connected',
         'benefits' => [
             'schedule' => [

@@ -54,4 +54,28 @@ return [
 
     'other_clients_title' => '다른 앱',
 
+    'dialog' => [
+        'title' => 'TryPost를 :client에 연결',
+        'description' => '1분 정도 걸려요. 연결되면 이 페이지가 바로 업데이트돼요.',
+        'open' => ':client 열기',
+        'steps' => [
+            'claude' => [
+                'paste' => '커넥터의 URL 필드에 URL을 붙여넣기',
+                'add' => '추가를 누른 뒤 연결을 누르기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
+            'chatgpt' => [
+                'developer' => 'ChatGPT 설정에서 개발자 모드 켜기',
+                'create' => 'TryPost라는 앱을 만들고 URL 붙여넣기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
+            'other' => [
+                'add' => '앱에 사용자 지정 MCP 서버 추가',
+                'paste' => '이름과 URL 또는 설정을 붙여넣기',
+                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
+            ],
+        ],
+        'waiting' => 'AI 연결을 기다리는 중…',
+    ],
+
 ];

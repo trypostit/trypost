@@ -6,6 +6,7 @@ import PlatformLogo from '@/components/PlatformLogo.vue';
 import type { ChartConfig } from '@/components/ui/chart';
 import ChartTooltipContent from '@/components/ui/chart/ChartTooltipContent.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import date from '@/date';
 import dayjs from '@/dayjs';
 import { accountColor } from '@/lib/analyticsColors';
 import type { SharedData } from '@/types';
@@ -40,7 +41,7 @@ const accounts = [
 ].map((account, index) => ({ ...account, color: accountColor(index) }));
 
 const months = Array.from({ length: 6 }, (_, index) =>
-    dayjs().subtract(5 - index, 'month'),
+    date.userNow().subtract(5 - index, 'month'),
 );
 
 const hovered = ref<number | null>(null);
@@ -118,8 +119,11 @@ const tooltipPayload = (index: number): Record<string, number> =>
         ]),
     );
 
-const formatMonth = (value: number | Date): string =>
-    dayjs(value).format('MMMM YYYY');
+const formatMonth = (value: number | Date): string => {
+    const month = dayjs(value);
+
+    return date.formatMonthYear(month.month() + 1, month.year());
+};
 
 const showMonth = (index: number): void => {
     hovered.value = index;
@@ -220,7 +224,7 @@ const hideMonth = (): void => {
                     v-for="month in months"
                     :key="month.format('YYYY-MM')"
                 >
-                    {{ month.format('MMM') }}
+                    {{ date.formatShortMonth(month.month() + 1) }}
                 </span>
             </div>
         </div>

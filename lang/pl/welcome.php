@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_first_month' => 'za pierwszy miesiąc',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
+    'plan_per_month' => 'miesięcznie',
+    'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',
         'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'Gdzie chcesz używać TryPost?',
         'connect_other' => 'Połącz inną aplikację',
         'composer' => 'Zapytaj o cokolwiek',
-        'dialog_title' => 'Połącz TryPost z :client',
-        'dialog_description' => 'Zajmuje około minuty. Ta strona odświeży się, gdy tylko się połączysz.',
-        'open' => 'Otwórz :client',
-        'steps' => [
-            'claude' => [
-                'paste' => 'Wklej adres URL w pole URL konektora',
-                'add' => 'Kliknij Dodaj, a potem Połącz',
-                'login' => 'Zaloguj się do TryPost i wybierz workspace',
-            ],
-            'chatgpt' => [
-                'developer' => 'Włącz tryb programisty w ustawieniach ChatGPT',
-                'create' => 'Utwórz aplikację o nazwie TryPost i wklej adres URL',
-                'login' => 'Zaloguj się do TryPost i wybierz workspace',
-            ],
-            'other' => [
-                'add' => 'Dodaj własny serwer MCP w swojej aplikacji',
-                'paste' => 'Wklej nazwę i adres URL albo konfigurację',
-                'login' => 'Zaloguj się do TryPost i wybierz workspace',
-            ],
-        ],
-        'waiting' => 'Czekamy na połączenie Twojej AI…',
         'connected' => ':client jest połączony',
         'benefits' => [
             'schedule' => [

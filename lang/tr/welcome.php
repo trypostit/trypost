@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
+    'plan_per_month' => 'aylık',
+    'plan_cancel_anytime' => 'İstediğin zaman iptal et.',
     'mcp' => [
         'title' => 'Sosyal medyanı sohbetle yönet',
         'description' => 'TryPost’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'TryPost’u nerede kullanmak istersin?',
         'connect_other' => 'Başka uygulama bağla',
         'composer' => 'Bir şey sor',
-        'dialog_title' => ':client ile TryPost’u bağla',
-        'dialog_description' => 'Yaklaşık bir dakika sürer. Bağlandığınız anda bu sayfa güncellenir.',
-        'open' => ':client uygulamasını aç',
-        'steps' => [
-            'claude' => [
-                'paste' => 'URL’yi bağlayıcının URL alanına yapıştır',
-                'add' => 'Ekle’ye, ardından Bağlan’a tıkla',
-                'login' => 'TryPost’a giriş yap ve workspace’i seç',
-            ],
-            'chatgpt' => [
-                'developer' => 'ChatGPT ayarlarında Geliştirici modunu aç',
-                'create' => 'TryPost adlı bir uygulama oluştur ve URL’yi yapıştır',
-                'login' => 'TryPost’a giriş yap ve workspace’i seç',
-            ],
-            'other' => [
-                'add' => 'Uygulamana özel bir MCP sunucusu ekle',
-                'paste' => 'Adı ve URL’yi ya da yapılandırmayı yapıştır',
-                'login' => 'TryPost’a giriş yap ve workspace’i seç',
-            ],
-        ],
-        'waiting' => 'Yapay zekânın bağlanması bekleniyor…',
         'connected' => ':client bağlandı',
         'benefits' => [
             'schedule' => [

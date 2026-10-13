@@ -49,6 +49,8 @@ return [
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
+    'plan_per_month' => '毎月',
+    'plan_cancel_anytime' => 'いつでも解約できます。',
     'mcp' => [
         'title' => 'AIとの会話でSNSを運用',
         'description' => 'お気に入りのAIで、TryPostの投稿を作成・予約・分析。',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'どこでTryPostを使いますか？',
         'connect_other' => '他のアプリを接続',
         'composer' => '何でも聞いてください',
-        'dialog_title' => 'TryPostを:clientに接続',
-        'dialog_description' => '1分ほどで完了します。接続するとこのページが自動で更新されます。',
-        'open' => ':clientを開く',
-        'steps' => [
-            'claude' => [
-                'paste' => 'コネクタのURL欄にURLを貼り付け',
-                'add' => '「追加」→「接続」をクリック',
-                'login' => 'TryPostにログインしてワークスペースを選択',
-            ],
-            'chatgpt' => [
-                'developer' => 'ChatGPTの設定で開発者モードをオン',
-                'create' => '「TryPost」という名前でアプリを作成し、URLを貼り付け',
-                'login' => 'TryPostにログインしてワークスペースを選択',
-            ],
-            'other' => [
-                'add' => 'アプリにカスタムMCPサーバーを追加',
-                'paste' => '名前とURL、または設定を貼り付け',
-                'login' => 'TryPostにログインしてワークスペースを選択',
-            ],
-        ],
-        'waiting' => 'AIの接続を待っています…',
         'connected' => ':clientに接続しました',
         'benefits' => [
             'schedule' => [

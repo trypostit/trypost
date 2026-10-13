@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
+    'plan_per_month' => 'per maand',
+    'plan_cancel_anytime' => 'Altijd opzegbaar.',
     'mcp' => [
         'title' => 'Beheer je socials via chat',
         'description' => 'Maak, plan en analyseer posts in TryPost met je favoriete AI.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'Waar wil je TryPost gebruiken?',
         'connect_other' => 'Andere app koppelen',
         'composer' => 'Vraag maar raak',
-        'dialog_title' => 'Koppel TryPost aan :client',
-        'dialog_description' => 'Duurt ongeveer een minuut. Deze pagina werkt bij zodra je gekoppeld bent.',
-        'open' => ':client openen',
-        'steps' => [
-            'claude' => [
-                'paste' => 'Plak de URL in het URL-veld van de connector',
-                'add' => 'Klik op Toevoegen en daarna op Verbinden',
-                'login' => 'Log in bij TryPost en kies de workspace',
-            ],
-            'chatgpt' => [
-                'developer' => 'Zet de ontwikkelaarsmodus aan in de instellingen van ChatGPT',
-                'create' => 'Maak een app met de naam TryPost en plak de URL',
-                'login' => 'Log in bij TryPost en kies de workspace',
-            ],
-            'other' => [
-                'add' => 'Voeg een eigen MCP-server toe in je app',
-                'paste' => 'Plak de naam en URL, of de configuratie',
-                'login' => 'Log in bij TryPost en kies de workspace',
-            ],
-        ],
-        'waiting' => 'Wachten tot je AI verbindt…',
         'connected' => ':client is gekoppeld',
         'benefits' => [
             'schedule' => [

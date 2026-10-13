@@ -3,8 +3,11 @@
 declare(strict_types=1);
 
 use App\Enums\User\ReferralSource;
+use App\Jobs\Billing\SyncStripeCustomer;
 use App\Models\Account;
 use App\Models\User;
+use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Str;
 use Stripe\ApiRequestor;
 use Stripe\HttpClient\ClientInterface;
 
@@ -65,9 +68,64 @@ test('the owner answering where they found us syncs the stripe customer', functi
         ->and($client->requests[0]['params'])->toMatchArray([
             'name' => 'Ada Lovelace',
             'email' => 'ada@example.test',
-            'metadata' => ['referral_source' => 'product_hunt'],
+        ])
+        ->and($client->requests[0]['params']['metadata'])->toMatchArray([
+            'referral_source' => 'product_hunt',
+            'persona' => '',
+            'utm_source' => '',
         ]);
 });
+
+test('the sync only sends what TryPost owns on the stripe customer', function () {
+    [, $owner] = stripeCustomerOwner('cus_existing');
+    $client = fakeStripeCustomerSyncClient();
+
+    $owner->update(['referral_source' => ReferralSource::Google]);
+
+    expect(array_keys($client->requests[0]['params']))->toEqualCanonicalizing(['name', 'email', 'metadata']);
+});
+
+test('the owner changing their email syncs the stripe customer email', function () {
+    [, $owner] = stripeCustomerOwner('cus_existing');
+    $client = fakeStripeCustomerSyncClient();
+
+    $owner->update(['email' => 'ada.king@example.test']);
+
+    expect($client->requests)->toHaveCount(1)
+        ->and($client->requests[0]['params'])->toMatchArray(['email' => 'ada.king@example.test']);
+});
+
+test('a cleared answer removes its key from the stripe customer', function () {
+    [, $owner] = stripeCustomerOwner('cus_existing');
+    $client = fakeStripeCustomerSyncClient();
+    $owner->update(['utm_source' => 'newsletter']);
+    $client->requests = [];
+
+    $owner->update(['utm_source' => null]);
+
+    expect($client->requests)->toHaveCount(1)
+        ->and($client->requests[0]['params']['metadata'])->toMatchArray(['utm_source' => '']);
+});
+
+test('the sync runs on the queue as its own job', function () {
+    [, $owner] = stripeCustomerOwner('cus_existing');
+    Bus::fake();
+
+    $owner->update(['name' => 'Ada King']);
+
+    Bus::assertDispatched(SyncStripeCustomer::class, fn (SyncStripeCustomer $job): bool => $job->userId === $owner->id);
+});
+
+test('the job skips a user who is gone or has no account', function (Closure $userId) {
+    $client = fakeStripeCustomerSyncClient();
+
+    (new SyncStripeCustomer($userId()))->handle();
+
+    expect($client->requests)->toBe([]);
+})->with([
+    'deleted user' => [fn (): string => (string) Str::uuid()],
+    'user without an account' => [fn (): string => User::factory()->create(['account_id' => null])->id],
+]);
 
 test('the owner renaming themselves syncs the stripe customer name', function () {
     [, $owner] = stripeCustomerOwner('cus_existing');

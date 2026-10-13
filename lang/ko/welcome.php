@@ -49,6 +49,8 @@ return [
     'plan_description' => '채널을 연결하고 오늘 첫 게시물을 예약하세요.',
     'plan_first_month' => '첫 달 요금',
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
+    'plan_per_month' => '매월',
+    'plan_cancel_anytime' => '언제든지 해지 가능.',
     'mcp' => [
         'title' => 'AI와 대화하며 SNS를 관리하세요',
         'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => '어디에서 TryPost를 사용할까요?',
         'connect_other' => '다른 앱 연결',
         'composer' => '무엇이든 물어보세요',
-        'dialog_title' => 'TryPost를 :client에 연결',
-        'dialog_description' => '1분 정도 걸려요. 연결되면 이 페이지가 바로 업데이트돼요.',
-        'open' => ':client 열기',
-        'steps' => [
-            'claude' => [
-                'paste' => '커넥터의 URL 필드에 URL을 붙여넣기',
-                'add' => '추가를 누른 뒤 연결을 누르기',
-                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
-            ],
-            'chatgpt' => [
-                'developer' => 'ChatGPT 설정에서 개발자 모드 켜기',
-                'create' => 'TryPost라는 앱을 만들고 URL 붙여넣기',
-                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
-            ],
-            'other' => [
-                'add' => '앱에 사용자 지정 MCP 서버 추가',
-                'paste' => '이름과 URL 또는 설정을 붙여넣기',
-                'login' => 'TryPost에 로그인하고 워크스페이스 선택',
-            ],
-        ],
-        'waiting' => 'AI 연결을 기다리는 중…',
         'connected' => ':client 연결됨',
         'benefits' => [
             'schedule' => [

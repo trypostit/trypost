@@ -55,6 +55,11 @@ final class ConfigureSubscriptionCheckout
         return $subscription;
     }
 
+    public static function offersFirstMonthCoupon(Account $account, Plan $plan): bool
+    {
+        return self::firstMonthCouponId($account, $plan) !== null;
+    }
+
     private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string
     {
         if ($plan === null || ! (bool) config('trypost.billing.require_card_for_trial', true)) {

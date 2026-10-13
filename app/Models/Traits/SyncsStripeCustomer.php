@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models\Traits;
 
+use App\Jobs\Billing\SyncStripeCustomer;
 use App\Support\AttributionKeys;
 use BackedEnum;
 use Illuminate\Support\Str;
@@ -30,13 +31,7 @@ trait SyncsStripeCustomer
                 return;
             }
 
-            dispatch(function () use ($user): void {
-                $account = $user->loadMissing('account')->account;
-
-                if ($account?->owner_id === $user->id && $account->hasStripeId()) {
-                    $account->syncStripeCustomerDetails();
-                }
-            });
+            SyncStripeCustomer::dispatch($user->id);
         });
     }
 
@@ -57,5 +52,19 @@ trait SyncsStripeCustomer
             ->filter(filled(...))
             ->map(fn (string $value): string => Str::limit($value, 500, ''))
             ->all();
+    }
+
+    /**
+     * Stripe merges metadata on update, so a cleared answer has to be sent as
+     * an empty string to remove its key from the customer.
+     *
+     * @return array<string, string>
+     */
+    public function stripeMetadataForUpdate(): array
+    {
+        return [
+            ...array_fill_keys(self::STRIPE_METADATA_ATTRIBUTES, ''),
+            ...$this->stripeMetadata(),
+        ];
     }
 }

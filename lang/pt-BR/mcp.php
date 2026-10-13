@@ -54,4 +54,28 @@ return [
 
     'other_clients_title' => 'Outros apps',
 
+    'dialog' => [
+        'title' => 'Conecte o TryPost ao :client',
+        'description' => 'Leva cerca de um minuto. Esta página atualiza assim que você conectar.',
+        'open' => 'Abrir o :client',
+        'steps' => [
+            'claude' => [
+                'paste' => 'Cole a URL no campo de URL do conector',
+                'add' => 'Clique em Adicionar e depois em Conectar',
+                'login' => 'Faça login no TryPost e escolha o workspace',
+            ],
+            'chatgpt' => [
+                'developer' => 'Ative o Modo desenvolvedor nas configurações do ChatGPT',
+                'create' => 'Crie um app com o nome TryPost e cole a URL',
+                'login' => 'Faça login no TryPost e escolha o workspace',
+            ],
+            'other' => [
+                'add' => 'Adicione um servidor MCP personalizado no seu app',
+                'paste' => 'Cole o nome e a URL, ou a configuração',
+                'login' => 'Faça login no TryPost e escolha o workspace',
+            ],
+        ],
+        'waiting' => 'Aguardando sua IA conectar…',
+    ],
+
 ];

@@ -354,6 +354,9 @@ export default {
     /** The signed-in user's time zone (`users.timezone`), never the browser's. */
     getUserTimezone,
 
+    /** Now as a wall clock in the user's zone, never the browser clock. */
+    userNow,
+
     /**
      * Formata uma data para o formato YYYY-MM-DD (usado em DatePicker)
      * Evita problemas de timezone ao não criar objeto Date

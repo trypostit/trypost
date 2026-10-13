@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models\Traits;
 
 use Laravel\Cashier\Billable;
+use Stripe\Customer;
 
 /**
  * Cashier's Billable, with the owner as the Stripe customer: their name,
@@ -30,5 +31,17 @@ trait BillsOwnerAsStripeCustomer
     public function stripeMetadata(): array
     {
         return $this->owner?->stripeMetadata() ?? [];
+    }
+
+    /**
+     * @return Customer
+     */
+    public function syncStripeCustomerDetails()
+    {
+        return $this->updateStripeCustomer([
+            'name' => $this->stripeName(),
+            'email' => $this->stripeEmail(),
+            'metadata' => $this->owner?->stripeMetadataForUpdate() ?? [],
+        ]);
     }
 }

@@ -48,7 +48,7 @@ function welcomeOwnerOnPlanStep(): User
 }
 
 test('the plan step shows the offer, what is included and the G2 rating', function () {
-    config(['trypost.self_hosted' => false]);
+    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
@@ -62,7 +62,7 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertSee('Activate your account')
         ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
-        ->assertSeeIn('@plan-price-first-month-socials', '$1')
+        ->assertSeeIn('@plan-price-socials', '$1')
         ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
         ->assertVisible('@plan-networks-info-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
@@ -85,6 +85,24 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertSeeIn('@plan-feature-label-socials-analytics', 'Advanced analytics')
         ->assertSeeIn('@plan-feature-label-socials-ideas', 'Content planning')
         ->assertVisible('@plan-feature-info-socials-ideas');
+});
+
+test('the plan step shows the full price when checkout will not apply the first-month coupon', function () {
+    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => '']);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+
+    $page->assertSeeIn('@plan-price-socials', '$19')
+        ->assertSeeIn('@plan-price-suffix-socials', 'per month')
+        ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
+        ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
+        ->assertDontSee('first month')
+        ->assertNoJavaScriptErrors();
+
+    expect($page->script('document.querySelector("[data-testid=plan-price-socials]").textContent.trim()'))->toBe('$19');
 });
 
 test('the plan step does not list the workspace limit, so team members close the list', function () {
@@ -147,6 +165,15 @@ test('clicking a reviewer photo shows their quote', function () {
     $page->assertVisible('@welcome-plan-review-pedro')
         ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors();
+
+    $stillPedro = $page->script(<<<'JS'
+        (async () => {
+            await new Promise((resolve) => setTimeout(resolve, 7000));
+            return document.querySelector('[data-testid^="welcome-plan-review-"]:not([aria-hidden="true"])')?.dataset.testid;
+        })()
+    JS);
+
+    expect($stillPedro)->toBe('welcome-plan-review-pedro');
 
     $opacities = $page->script(<<<'JS'
         (async () => {
@@ -220,6 +247,46 @@ test('the feature info opens on a tap or click', function (int $width, int $heig
     'desktop' => [1440, 900],
     'phone' => [390, 844],
 ]);
+
+test('the feature info opens from the keyboard and closes with Escape', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'))->resize(1440, 900);
+    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+
+    $page->script('document.querySelector("[data-testid=plan-feature-info-socials-team]").focus()');
+    $page->keys('@plan-feature-info-socials-team', 'Enter');
+
+    $opened = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (document.querySelector('[data-slot="popover-content"]')) return true;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return false;
+        })()
+    JS);
+
+    expect($opened)->toBeTrue();
+
+    $page->keys('@plan-feature-info-socials-team', 'Escape');
+
+    $closed = $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 50; i++) {
+                if (!document.querySelector('[data-slot="popover-content"]')) return true;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return false;
+        })()
+    JS);
+
+    expect($closed)->toBeTrue();
+
+    $page->assertNoJavaScriptErrors();
+});
 
 test('the activate button shows a spinner while checkout opens', function () {
     config(['trypost.self_hosted' => false]);

@@ -54,4 +54,28 @@ return [
 
     'other_clients_title' => 'その他のアプリ',
 
+    'dialog' => [
+        'title' => 'TryPostを:clientに接続',
+        'description' => '1分ほどで完了します。接続するとこのページが自動で更新されます。',
+        'open' => ':clientを開く',
+        'steps' => [
+            'claude' => [
+                'paste' => 'コネクタのURL欄にURLを貼り付け',
+                'add' => '「追加」→「接続」をクリック',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
+            'chatgpt' => [
+                'developer' => 'ChatGPTの設定で開発者モードをオン',
+                'create' => '「TryPost」という名前でアプリを作成し、URLを貼り付け',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
+            'other' => [
+                'add' => 'アプリにカスタムMCPサーバーを追加',
+                'paste' => '名前とURL、または設定を貼り付け',
+                'login' => 'TryPostにログインしてワークスペースを選択',
+            ],
+        ],
+        'waiting' => 'AIの接続を待っています…',
+    ],
+
 ];

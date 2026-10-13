@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_first_month' => 'im ersten Monat',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
+    'plan_per_month' => 'pro Monat',
+    'plan_cancel_anytime' => 'Jederzeit kündbar.',
     'mcp' => [
         'title' => 'Social Media per Chat steuern',
         'description' => 'Erstelle, plane und analysiere Posts in TryPost mit deiner Lieblings-KI.',
@@ -57,27 +59,6 @@ return [
         'pick_ai' => 'Wo willst du TryPost nutzen?',
         'connect_other' => 'Andere App verbinden',
         'composer' => 'Frag mich alles',
-        'dialog_title' => 'Verbinde TryPost mit :client',
-        'dialog_description' => 'Dauert etwa eine Minute. Diese Seite aktualisiert sich, sobald du verbunden bist.',
-        'open' => ':client öffnen',
-        'steps' => [
-            'claude' => [
-                'paste' => 'Füge die URL in das URL-Feld des Connectors ein',
-                'add' => 'Klicke auf Hinzufügen und dann auf Verbinden',
-                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
-            ],
-            'chatgpt' => [
-                'developer' => 'Aktiviere den Entwicklermodus in den ChatGPT-Einstellungen',
-                'create' => 'Erstelle eine App namens TryPost und füge die URL ein',
-                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
-            ],
-            'other' => [
-                'add' => 'Füge in deiner App einen eigenen MCP-Server hinzu',
-                'paste' => 'Füge Name und URL oder die Konfiguration ein',
-                'login' => 'Melde dich bei TryPost an und wähle den Workspace',
-            ],
-        ],
-        'waiting' => 'Warte auf die Verbindung deiner KI…',
         'connected' => ':client ist verbunden',
         'benefits' => [
             'schedule' => [

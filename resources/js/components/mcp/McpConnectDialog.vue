@@ -13,7 +13,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
-import type { McpClient } from '@/lib/mcpClients';
+import type { McpClient, McpClientId } from '@/lib/mcpClients';
 
 const props = defineProps<{
     client: McpClient;
@@ -26,13 +26,13 @@ const open = defineModel<boolean>('open', { default: false });
  * What to do in each client once its connector page is open. ChatGPT needs
  * developer mode before it accepts a custom MCP app.
  */
-const STEPS: Record<string, string[]> = {
+const STEPS: Record<McpClientId, string[]> = {
     claude: ['paste', 'add', 'login'],
     chatgpt: ['developer', 'create', 'login'],
     other: ['add', 'paste', 'login'],
 };
 
-const steps = computed((): string[] => STEPS[props.client.id] ?? []);
+const steps = computed((): string[] => STEPS[props.client.id]);
 
 const configSnippet = (connectorName: string): string =>
     JSON.stringify(
@@ -45,14 +45,13 @@ const focusDialogFrame = (event: Event): void => {
     event.preventDefault();
     (event.target as HTMLElement | null)?.focus({ preventScroll: true });
 };
-
 </script>
 
 <template>
     <Dialog v-model:open="open">
         <DialogContent
             class="outline-none sm:max-w-xl"
-            data-testid="welcome-mcp-dialog"
+            data-testid="mcp-dialog"
             @open-auto-focus="focusDialogFrame"
         >
             <DialogHeader class="flex-row items-start gap-4 pe-8 text-start">
@@ -71,13 +70,13 @@ const focusDialogFrame = (event: Event): void => {
                         {{
                             client.labelKey
                                 ? $t('mcp.other_dialog_title')
-                                : $t('welcome.mcp.dialog_title', {
+                                : $t('mcp.dialog.title', {
                                       client: client.label,
                                   })
                         }}
                     </DialogTitle>
                     <DialogDescription>
-                        {{ $t('welcome.mcp.dialog_description') }}
+                        {{ $t('mcp.dialog.description') }}
                     </DialogDescription>
                 </div>
             </DialogHeader>
@@ -87,7 +86,7 @@ const focusDialogFrame = (event: Event): void => {
                     v-for="(step, index) in steps"
                     :key="step"
                     class="flex items-start gap-2.5 text-sm text-foreground"
-                    :data-testid="`welcome-mcp-step-${step}`"
+                    :data-testid="`mcp-dialog-step-${step}`"
                 >
                     <span
                         class="inline-flex size-5 shrink-0 items-center justify-center rounded-full bg-secondary text-xs font-semibold tabular-nums"
@@ -95,7 +94,7 @@ const focusDialogFrame = (event: Event): void => {
                     >
                         {{ index + 1 }}
                     </span>
-                    {{ $t(`welcome.mcp.steps.${client.id}.${step}`) }}
+                    {{ $t(`mcp.dialog.steps.${client.id}.${step}`) }}
                 </li>
             </ol>
 
@@ -124,19 +123,19 @@ const focusDialogFrame = (event: Event): void => {
                     <McpCopyField
                         :label="$t('mcp.name_label')"
                         :value="$t('mcp.connector_name')"
-                        testid="welcome-mcp-name"
+                        testid="mcp-dialog-name"
                     />
                     <McpCopyField
                         :label="$t('mcp.url_label')"
                         :value="mcpUrl"
-                        testid="welcome-mcp-url"
+                        testid="mcp-dialog-url"
                         ltr
                     />
                     <McpCopyField
                         v-if="!client.settingsUrl"
                         :label="$t('mcp.config_label')"
                         :value="configSnippet($t('mcp.connector_name'))"
-                        testid="welcome-mcp-config"
+                        testid="mcp-dialog-config"
                         multiline
                     />
                 </div>
@@ -146,10 +145,10 @@ const focusDialogFrame = (event: Event): void => {
                 <p
                     class="flex items-center gap-1.5 text-sm text-muted-foreground max-sm:w-full max-sm:justify-center sm:me-auto"
                     aria-live="polite"
-                    data-testid="welcome-mcp-dialog-waiting"
+                    data-testid="mcp-dialog-waiting"
                 >
                     <Spinner class="size-3.5 shrink-0 text-primary-text" />
-                    {{ $t('welcome.mcp.waiting') }}
+                    {{ $t('mcp.dialog.waiting') }}
                 </p>
                 <Button
                     v-if="client.settingsUrl"
@@ -157,9 +156,9 @@ const focusDialogFrame = (event: Event): void => {
                     :href="client.settingsUrl"
                     target="_blank"
                     rel="noopener noreferrer"
-                    data-testid="welcome-mcp-open"
+                    data-testid="mcp-dialog-open"
                 >
-                    {{ $t('welcome.mcp.open', { client: client.label }) }}
+                    {{ $t('mcp.dialog.open', { client: client.label }) }}
                     <IconArrowUpRight class="size-4 rtl:-scale-x-100" />
                 </Button>
             </DialogFooter>

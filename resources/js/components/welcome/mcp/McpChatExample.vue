@@ -42,7 +42,7 @@ const scheduledTime = computed((): string => date.formatClockTime('10:00'));
             <p class="text-sm text-foreground">
                 {{ $t(`welcome.mcp.benefits.${benefit}.reply`, { time: scheduledTime }) }}
             </p>
-            <component :is="mockups[benefit]" class="mt-1" />
+            <component :is="mockups[benefit]" class="mt-1" aria-hidden="true" />
         </div>
     </div>
 </template>

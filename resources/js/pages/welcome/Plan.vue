@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
 import { IconStarFilled } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
@@ -11,9 +12,16 @@ import { REVIEWS } from '@/lib/reviews';
 import { store } from '@/routes/app/welcome/plan';
 import type { PlanOption } from '@/types/plan';
 
-defineProps<{
-    plans: PlanOption[];
+const props = defineProps<{
+    plan: PlanOption;
+    firstMonthOffer: boolean;
 }>();
+
+const checkoutPriceKey = computed((): string =>
+    props.firstMonthOffer
+        ? 'billing.subscribe.prices.first_month'
+        : 'billing.subscribe.prices.socials.monthly',
+);
 
 const form = useForm({});
 
@@ -22,7 +30,13 @@ const {
     select: selectReview,
     pause: pauseReviews,
     resume: resumeReviews,
+    stop: stopReviews,
 } = useAutoRotate(REVIEWS.length, 6000);
+
+const pickReview = (index: number): void => {
+    selectReview(index);
+    stopReviews();
+};
 
 const submit = (): void => {
     if (form.processing) {
@@ -42,8 +56,6 @@ const submit = (): void => {
         step="plan"
     >
         <article
-            v-for="plan in plans"
-            :key="plan.id"
             class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
             :data-testid="`plan-card-${plan.slug}`"
         >
@@ -55,6 +67,8 @@ const submit = (): void => {
                     data-testid="welcome-plan-reviews"
                     @mouseenter="pauseReviews"
                     @mouseleave="resumeReviews"
+                    @focusin="pauseReviews"
+                    @focusout="resumeReviews"
                 >
                     <div class="flex -space-x-2 rtl:space-x-reverse">
                         <button
@@ -70,7 +84,7 @@ const submit = (): void => {
                                     : 'opacity-50 hover:z-10 hover:opacity-100',
                             ]"
                             :data-testid="`welcome-plan-reviewer-${review.key}`"
-                            @click="selectReview(index)"
+                            @click="pickReview(index)"
                         >
                             <img
                                 :src="review.photo"
@@ -122,13 +136,17 @@ const submit = (): void => {
                 <p class="flex flex-col gap-1">
                     <span
                         class="text-5xl leading-none font-strong tabular-nums"
-                        :data-testid="`plan-price-first-month-${plan.slug}`"
-                        >{{ $t('billing.subscribe.prices.first_month') }}</span
+                        :data-testid="`plan-price-${plan.slug}`"
+                        >{{ $t(checkoutPriceKey) }}</span
                     >
                     <span
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{ $t('welcome.plan_first_month') }}</span
+                        >{{
+                            firstMonthOffer
+                                ? $t('welcome.plan_first_month')
+                                : $t('welcome.plan_per_month')
+                        }}</span
                     >
                 </p>
             </div>
@@ -140,14 +158,13 @@ const submit = (): void => {
             />
         </article>
 
-
         <template #actions>
             <WelcomeContinueButton
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
                     $t('billing.plans.start_first_month', {
-                        price: $t('billing.subscribe.prices.first_month'),
+                        price: $t(checkoutPriceKey),
                     })
                 "
                 testid="welcome-plan-continue"
@@ -158,9 +175,11 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    $t('welcome.plan_terms', {
-                        price: $t('billing.subscribe.prices.socials.monthly'),
-                    })
+                    firstMonthOffer
+                        ? $t('welcome.plan_terms', {
+                              price: $t('billing.subscribe.prices.socials.monthly'),
+                          })
+                        : $t('welcome.plan_cancel_anytime')
                 }}
             </p>
         </template>

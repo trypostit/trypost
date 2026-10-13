@@ -44,7 +44,11 @@ const props = defineProps<{
     connectedClients: ConnectedClient[];
 }>();
 
-usePoll(2000, { only: ['connectedClients'] });
+const { stop: stopPolling } = usePoll(
+    2000,
+    { only: ['connectedClients'] },
+    { autoStart: props.connectedClients.length === 0 },
+);
 
 const benefits: { key: string; icon: Component }[] = [
     { key: 'ideas', icon: IconBulb },
@@ -75,14 +79,18 @@ const revealActivePill = async (): Promise<void> => {
     await nextTick();
 
     const row = pills.value;
-    const pill = row?.querySelector<HTMLElement>('[aria-selected="true"]');
+    const pill = row?.querySelector<HTMLElement>('[aria-pressed="true"]');
 
     if (!row || !pill || row.clientWidth === 0) {
         return;
     }
 
-    row.scrollTo({
-        left: pill.offsetLeft - (row.clientWidth - pill.offsetWidth) / 2,
+    const rowBox = row.getBoundingClientRect();
+    const pillBox = pill.getBoundingClientRect();
+
+    row.scrollBy({
+        left:
+            pillBox.left + pillBox.width / 2 - (rowBox.left + rowBox.width / 2),
         behavior: 'smooth',
     });
 };
@@ -130,6 +138,7 @@ const celebrateConnection = async (
         return;
     }
 
+    stopPolling();
     dialogOpen.value = false;
     await nextTick();
 
@@ -192,6 +201,8 @@ const goToSchedule = (): void => {
                 data-testid="welcome-mcp-window"
                 @mouseenter="pauseBenefits"
                 @mouseleave="resumeBenefits"
+                @focusin="pauseBenefits"
+                @focusout="resumeBenefits"
             >
                 <div
                     class="flex h-9 shrink-0 items-center gap-1.5 border-b border-border bg-muted px-3.5"
@@ -207,16 +218,14 @@ const goToSchedule = (): void => {
                 >
                 <div
                     class="flex flex-col gap-1 border-border bg-muted/40 p-2 max-md:hidden max-lg:border-b lg:border-e"
-                    role="tablist"
-                    aria-orientation="vertical"
+                    role="group"
                     :aria-label="$t('welcome.mcp.title')"
                 >
                     <button
                         v-for="(benefit, index) in benefits"
                         :key="benefit.key"
                         type="button"
-                        role="tab"
-                        :aria-selected="index === activeBenefit"
+                        :aria-pressed="index === activeBenefit"
                         :class="[
                             'flex w-full cursor-pointer items-start gap-3 rounded-lg p-2.5 text-start sm:p-3 transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                             index === activeBenefit
@@ -258,15 +267,14 @@ const goToSchedule = (): void => {
                 <div
                     ref="pills"
                     class="flex gap-2 overflow-x-auto border-b border-border bg-muted/40 p-3 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:hidden rtl:[mask-image:linear-gradient(to_left,black_85%,transparent)]"
-                    role="tablist"
+                    role="group"
                     :aria-label="$t('welcome.mcp.title')"
                 >
                     <button
                         v-for="(benefit, index) in benefits"
                         :key="benefit.key"
                         type="button"
-                        role="tab"
-                        :aria-selected="index === activeBenefit"
+                        :aria-pressed="index === activeBenefit"
                         :class="[
                             'inline-flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-sm font-medium whitespace-nowrap transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring',
                             index === activeBenefit
@@ -281,13 +289,14 @@ const goToSchedule = (): void => {
                     </button>
                 </div>
 
-                <div class="flex flex-col" aria-hidden="true">
+                <div class="flex flex-col">
                     <div class="grid flex-1 px-4 pt-4 pb-3">
                         <McpChatExample
                             v-for="benefit in benefits"
                             :key="benefit.key"
                             :benefit="benefit.key"
                             class="invisible [grid-area:1/1]"
+                            aria-hidden="true"
                         />
                         <Transition
                             mode="out-in"
@@ -304,7 +313,7 @@ const goToSchedule = (): void => {
                             />
                         </Transition>
                     </div>
-                    <div class="px-4 pb-4 max-sm:hidden">
+                    <div class="px-4 pb-4 max-sm:hidden" aria-hidden="true">
                         <div
                             class="flex h-10 items-center gap-2.5 rounded-full border border-border bg-card ps-3 pe-1.5"
                             data-testid="welcome-mcp-composer"

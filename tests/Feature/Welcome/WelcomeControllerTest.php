@@ -182,7 +182,7 @@ test('plan redirects to software until a tool is selected', function () {
         ->assertRedirect(route('app.welcome.software'));
 });
 
-test('plan lists only the Socials plan', function () {
+test('plan shows the Socials plan', function () {
     completeWelcomeThroughSoftware($this->user);
 
     $this->actingAs($this->user->fresh())
@@ -190,11 +190,39 @@ test('plan lists only the Socials plan', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('welcome/Plan', false)
-            ->has('plans', 1)
-            ->where('plans.0.slug', Slug::Socials->value)
-            ->where('plans.0.workspace_limit', 1)
+            ->where('plan.slug', Slug::Socials->value)
+            ->where('plan.workspace_limit', 1)
         );
 });
+
+test('plan offers the first month only when checkout will apply the coupon', function (Closure $setup, bool $offered) {
+    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+    completeWelcomeThroughSoftware($this->user);
+    $setup($this->user);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('firstMonthOffer', $offered));
+})->with([
+    'first-time subscriber' => [fn () => null, true],
+    'retrying an incomplete checkout' => [fn (User $user) => $user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_incomplete',
+        'stripe_status' => 'incomplete',
+        'stripe_price' => 'price_monthly_test',
+        'quantity' => 1,
+    ]), true],
+    'former subscriber' => [fn (User $user) => $user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_canceled',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_monthly_test',
+        'quantity' => 1,
+        'ends_at' => now()->subDay(),
+    ]), false],
+    'no coupon configured' => [fn () => config(['cashier.first_month_coupon_ids.socials' => '']), false],
+]);
 
 test('plan store sends the owner to Stripe checkout on the Socials monthly price', function () {
     completeWelcomeThroughSoftware($this->user);
@@ -232,6 +260,53 @@ test('the MCP step gives the TryPost MCP URL and the owner connections', functio
             ->missing('prompt')
         );
 });
+
+test('the MCP step lists the MCP apps the owner already connected', function () {
+    $workspace = attachCurrentWorkspace($this->user);
+    subscribeAccount($this->user->account);
+    $clientId = mcpOauthClient('Claude');
+    mcpAccessToken($this->user, $clientId, $workspace);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.mcp'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('connectedClients', 1)
+            ->where('connectedClients.0.client_id', $clientId)
+            ->where('connectedClients.0.name', 'Claude')
+        );
+});
+
+test('the MCP step sends a user without a current workspace to create one', function () {
+    subscribeAccount($this->user->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.mcp'))
+        ->assertRedirect(route('app.workspaces.create'));
+});
+
+test('the MCP step works for a member and on self-hosted', function (Closure $actor) {
+    $this->actingAs($actor($this->user))
+        ->get(route('app.welcome.mcp'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('welcome/Mcp', false));
+})->with([
+    'member' => [function (User $owner): User {
+        $workspace = attachCurrentWorkspace($owner);
+        subscribeAccount($owner->account);
+        $member = User::factory()->create(['account_id' => $owner->account_id]);
+        $workspace->members()->attach($member->id, membershipPivot('member'));
+        $member->update(['current_workspace_id' => $workspace->id]);
+
+        return $member->fresh();
+    }],
+    'self-hosted' => [function (User $owner): User {
+        config(['trypost.self_hosted' => true]);
+        attachCurrentWorkspace($owner);
+
+        return $owner->fresh();
+    }],
+]);
 
 test('the MCP step sends an account without app access back to Welcome', function () {
     attachCurrentWorkspace($this->user);

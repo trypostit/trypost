@@ -54,4 +54,28 @@ return [
 
     'other_clients_title' => '其他应用',
 
+    'dialog' => [
+        'title' => '将 TryPost 连接到 :client',
+        'description' => '大约一分钟即可完成。连接成功后此页面会自动更新。',
+        'open' => '打开 :client',
+        'steps' => [
+            'claude' => [
+                'paste' => '将 URL 粘贴到连接器的 URL 字段',
+                'add' => '点击“添加”，然后点击“连接”',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
+            'chatgpt' => [
+                'developer' => '在 ChatGPT 设置中开启开发者模式',
+                'create' => '创建名为 TryPost 的应用并粘贴 URL',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
+            'other' => [
+                'add' => '在你的应用中添加自定义 MCP 服务器',
+                'paste' => '粘贴名称和 URL，或粘贴配置',
+                'login' => '登录 TryPost 并选择工作区',
+            ],
+        ],
+        'waiting' => '正在等待你的 AI 连接…',
+    ],
+
 ];
