@@ -338,7 +338,10 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
     subscribeAccount($user->account);
     $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
 
-    foreach (['2026-01-01', '2026-07-01'] as $date) {
+    $latestDay = now()->subMonths(3)->startOfDay();
+    $firstDay = $latestDay->subMonths(6);
+
+    foreach ([$firstDay, $latestDay] as $date) {
         AnalyticsAccountDailySnapshot::factory()->create([
             'workspace_id' => $workspace->id,
             'social_account_id' => $account->id,
@@ -346,13 +349,13 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
             'platform' => $account->platform,
             'network' => $account->platform->network(),
             'platform_user_id' => $account->platform_user_id,
-            'date' => $date,
+            'date' => $date->toDateString(),
             'followers_count' => 100,
         ]);
     }
 
     $this->actingAs($user);
-    $page = visit(route('app.insights', ['start' => '2026-01-01', 'end' => '2026-02-01']));
+    $page = visit(route('app.insights', ['start' => $firstDay->toDateString(), 'end' => $firstDay->addMonth()->toDateString()]));
     waitForWorkspaceInsightsTestId($page, 'insights-range-custom');
 
     $page->assertMissing('@date-range-picker-trigger')
@@ -364,11 +367,11 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
     $page->assertPresent('[role=dialog]')
         ->assertSeeIn('@date-range-preset-last_7_days', __('common.date_range_picker.last_7_days', [], 'pt-BR'))
         ->click('@date-range-preset-last_7_days');
-    waitForWorkspaceInsightsQueryParameter($page, 'start', '2026-06-25');
+    waitForWorkspaceInsightsQueryParameter($page, 'start', $latestDay->subDays(6)->toDateString());
 
     $page->assertQueryStringHas('range', 'custom')
-        ->assertQueryStringHas('start', '2026-06-25')
-        ->assertQueryStringHas('end', '2026-07-01')
+        ->assertQueryStringHas('start', $latestDay->subDays(6)->toDateString())
+        ->assertQueryStringHas('end', $latestDay->toDateString())
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -518,7 +521,10 @@ test('workspace dashboard abbreviates large percentage changes in the user local
         'platform' => Platform::Instagram,
     ]);
 
-    foreach ([['2026-09-01 10:00:00', 1], ['2026-09-23 10:00:00', 1866]] as [$publishedAt, $reactions]) {
+    $rangeEnd = now()->subDays(20)->startOfDay();
+    $rangeStart = $rangeEnd->subDays(11);
+
+    foreach ([[$rangeStart->subDays(11)->setTime(10, 0), 1], [$rangeEnd->setTime(10, 0), 1866]] as [$publishedAt, $reactions]) {
         $publication = AnalyticsPublication::factory()->create([
             'workspace_id' => $workspace->id,
             'social_account_id' => $account->id,
@@ -534,7 +540,7 @@ test('workspace dashboard abbreviates large percentage changes in the user local
     }
 
     $this->actingAs($user);
-    $page = visit(route('app.insights', ['start' => '2026-09-12', 'end' => '2026-09-23']));
+    $page = visit(route('app.insights', ['start' => $rangeStart->toDateString(), 'end' => $rangeEnd->toDateString()]));
     waitForWorkspaceInsightsTestId($page, 'analytics-summary-reactions-change');
 
     expect(workspaceInsightsInnerText($page, 'analytics-summary-reactions-change'))->toContain($expectedChange);
@@ -627,7 +633,7 @@ test('charts keep their width while the sidebar animates and resize once it sett
         'network' => Platform::Instagram->network(),
         'platform_user_id' => $account->platform_user_id,
         'account_username' => 'first',
-        'date' => '2026-09-23',
+        'date' => now()->subDay()->toDateString(),
         'followers_count' => 120,
     ]);
 
