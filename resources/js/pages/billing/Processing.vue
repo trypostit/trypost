@@ -3,7 +3,9 @@ import { Head, router, usePage, usePoll } from '@inertiajs/vue3';
 import { IconLoader2 } from '@tabler/icons-vue';
 import { computed, onMounted, ref, watch } from 'vue';
 
+import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import AuthSplitLayout from '@/layouts/auth/AuthSplitLayout.vue';
+import { index as postsIndex } from '@/routes/app/posts';
 import { mcp } from '@/routes/app/welcome';
 import type { SharedData } from '@/types';
 
@@ -24,8 +26,11 @@ const purchaseReady = computed(
     (): boolean => props.subscriptionActive && page.props.auth.plan !== null,
 );
 
+const isPhone = useBelowBreakpoint('sm');
+
+/** Connecting an AI is a desktop task, so phones go straight to the schedule. */
 const goNext = (): void => {
-    router.visit(mcp.url());
+    router.visit(isPhone.value ? postsIndex.url() : mcp.url());
 };
 
 // Card-required trials are already `subscribed()` (`trialing`) on first paint.

@@ -30,9 +30,8 @@ function waitForBillingProcessingPath(mixed $page, string $path): void
     JS);
 }
 
-test('once the subscription and plan are ready the processing page sends the user to the MCP step', function () {
-    config(['trypost.self_hosted' => false]);
-
+function billingProcessingSubscriber(): User
+{
     $user = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
@@ -43,7 +42,13 @@ test('once the subscription and plan are ready the processing page sends the use
     subscribeAccount($user->account);
     $user->account->update(['plan_id' => Plan::query()->value('id') ?? Plan::factory()->create()->id]);
 
-    $this->actingAs($user);
+    return $user;
+}
+
+test('once the subscription and plan are ready the processing page sends the user to the MCP step', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(billingProcessingSubscriber());
 
     $mcpPath = parse_url(route('app.welcome.mcp'), PHP_URL_PATH);
 
@@ -51,6 +56,20 @@ test('once the subscription and plan are ready the processing page sends the use
     waitForBillingProcessingPath($page, $mcpPath);
 
     $page->assertPathIs($mcpPath)
+        ->assertNoJavaScriptErrors();
+});
+
+test('on a phone the processing page skips the MCP step and opens the schedule', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(billingProcessingSubscriber());
+
+    $schedulePath = parse_url(route('app.posts.index'), PHP_URL_PATH);
+
+    $page = visit(route('app.billing.processing'))->on()->mobile();
+    waitForBillingProcessingPath($page, $schedulePath);
+
+    $page->assertPathIs($schedulePath)
         ->assertNoJavaScriptErrors();
 });
 
