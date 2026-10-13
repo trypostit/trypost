@@ -19,6 +19,54 @@ function waitForSettingsSidebarTestId(mixed $page, string $testId): void
     JS);
 }
 
+function waitForSettingsSidebarScript(mixed $page, string $condition): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if ({$condition}) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+}
+
+function waitForSettingsSidebarState(mixed $page, string $state): void
+{
+    waitForSettingsSidebarScript($page, "document.querySelector('[data-slot=\"sidebar\"][data-state]')?.dataset.state === '{$state}'");
+}
+
+/**
+ * @return list<string>
+ */
+function settingsSidebarNavTestIds(mixed $page): array
+{
+    return $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid^="settings-nav-"]')].map((item) => item.dataset.testid)
+    JS);
+}
+
+/**
+ * @return array{state: string, width: int, active: string, icon: bool, back: bool, trigger: bool}
+ */
+function settingsSidebarProfileLayout(mixed $page): array
+{
+    return $page->script(<<<'JS'
+        (() => {
+            const profile = document.querySelector('[data-testid="settings-nav-profile"]');
+            const box = profile.getBoundingClientRect();
+            return {
+                state: document.querySelector('[data-slot="sidebar"][data-state]').dataset.state,
+                width: Math.round(box.width),
+                active: profile.dataset.active,
+                icon: profile.querySelector('svg').getBoundingClientRect().width > 0,
+                back: document.querySelector('[data-testid="settings-back"]').getBoundingClientRect().width > 0,
+                trigger: (document.querySelector('[data-testid="app-sidebar-trigger"]')?.getBoundingClientRect().width ?? 0) > 0,
+            };
+        })()
+    JS);
+}
+
 function settingsSidebarUser(string $role): User
 {
     $owner = User::factory()->create();
@@ -64,11 +112,9 @@ test('settings pages swap the app sidebar for the settings sidebar', function ()
         ->assertMissing('@settings-tab-profile')
         ->assertNoJavaScriptErrors();
 
-    expect($page->script(<<<'JS'
-        [...document.querySelectorAll('[data-testid^="settings-nav-"]')]
-            .map((item) => item.dataset.testid)
-            .filter((id) => ['settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks', 'settings-nav-labels'].includes(id))
-    JS))->toBe(['settings-nav-labels', 'settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks']);
+    $grouped = ['settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks', 'settings-nav-labels'];
+
+    expect(array_values(array_intersect(settingsSidebarNavTestIds($page), $grouped)))->toBe(['settings-nav-labels', 'settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks']);
 });
 
 test('members only see the settings they may use', function () {
@@ -100,29 +146,13 @@ test('the back link returns to the app', function () {
 test('with the sidebar collapsed the settings nav stays as icons and the footer toggle expands it', function () {
     $this->actingAs(settingsSidebarUser('admin'));
 
-    $state = "document.querySelector('[data-slot=\"sidebar\"][data-state]')?.dataset.state";
-    $layout = <<<'JS'
-        (() => {
-            const profile = document.querySelector('[data-testid="settings-nav-profile"]');
-            const box = profile.getBoundingClientRect();
-            return {
-                state: document.querySelector('[data-slot="sidebar"][data-state]').dataset.state,
-                width: Math.round(box.width),
-                active: profile.dataset.active,
-                icon: profile.querySelector('svg').getBoundingClientRect().width > 0,
-                back: document.querySelector('[data-testid="settings-back"]').getBoundingClientRect().width > 0,
-                trigger: (document.querySelector('[data-testid="app-sidebar-trigger"]')?.getBoundingClientRect().width ?? 0) > 0,
-            };
-        })()
-    JS;
-
     $page = visit(route('app.profile.edit'))->resize(1280, 900);
     waitForSettingsSidebarTestId($page, 'sidebar-footer-toggle');
     $page->click('@sidebar-footer-toggle');
-    waitForSettingsSidebarScript($page, "{$state} === 'collapsed'");
+    waitForSettingsSidebarState($page, 'collapsed');
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
 
-    expect($page->script($layout))->toBe([
+    expect(settingsSidebarProfileLayout($page))->toBe([
         'state' => 'collapsed',
         'width' => 32,
         'active' => 'true',
@@ -134,14 +164,14 @@ test('with the sidebar collapsed the settings nav stays as icons and the footer 
 
     $page->script('location.reload()');
     waitForSettingsSidebarTestId($page, 'settings-nav-profile');
-    waitForSettingsSidebarScript($page, "{$state} === 'collapsed'");
+    waitForSettingsSidebarState($page, 'collapsed');
     $page->assertVisible('@settings-nav-profile');
 
     $page->click('@sidebar-footer-toggle');
-    waitForSettingsSidebarScript($page, "{$state} === 'expanded'");
+    waitForSettingsSidebarState($page, 'expanded');
     $page->script('new Promise((resolve) => setTimeout(resolve, 400))');
 
-    $expanded = $page->script($layout);
+    $expanded = settingsSidebarProfileLayout($page);
 
     expect($expanded['state'])->toBe('expanded')
         ->and($expanded['width'])->toBeGreaterThan(150)
@@ -151,15 +181,3 @@ test('with the sidebar collapsed the settings nav stays as icons and the footer 
     $page->assertSeeIn('@settings-nav-profile', 'Profile')
         ->assertNoJavaScriptErrors();
 });
-
-function waitForSettingsSidebarScript(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if ({$condition}) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
-}

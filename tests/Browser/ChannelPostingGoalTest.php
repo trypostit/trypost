@@ -24,6 +24,107 @@ function waitForPostingGoalTestId(mixed $page, string $testId): void
     waitForWebFonts($page);
 }
 
+function postingGoalPollFor(mixed $page, string $condition, int $attempts = 120): bool
+{
+    return (bool) $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < {$attempts}; i++) {
+                if ({$condition}) return true;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+            return false;
+        })();
+    JS);
+}
+
+function postingGoalTestIdSelector(string $testId, ?string $within = null): string
+{
+    $selector = "[data-testid=\"{$testId}\"]";
+
+    return $within === null ? $selector : "[data-testid=\"{$within}\"] {$selector}";
+}
+
+function postingGoalTestIdAppearsWithin(mixed $page, string $testId, int $attempts = 120): bool
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+
+    return postingGoalPollFor($page, "document.querySelector({$selector}) !== null", $attempts);
+}
+
+function waitForPostingGoalTestIdGone(mixed $page, string $testId, int $attempts = 120): void
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+
+    postingGoalPollFor($page, "document.querySelector({$selector}) === null", $attempts);
+}
+
+function waitForPostingGoalViewportSettled(mixed $page, int $width, string $testId): bool
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+
+    return postingGoalPollFor($page, "window.innerWidth === {$width} && document.querySelector({$selector}).getAnimations().length === 0");
+}
+
+/**
+ * @return array{left: float, right: float, top: float, bottom: float, width: float, height: float}
+ */
+function postingGoalRect(mixed $page, string $testId, ?string $within = null): array
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId, $within));
+
+    return $page->script(<<<JS
+        (() => {
+            const { left, right, top, bottom, width, height } = document.querySelector({$selector}).getBoundingClientRect();
+
+            return { left, right, top, bottom, width, height };
+        })();
+    JS);
+}
+
+function postingGoalStyle(mixed $page, string $testId, string $property): string
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+    $property = json_encode($property);
+
+    return $page->script("getComputedStyle(document.querySelector({$selector}))[{$property}]");
+}
+
+function postingGoalOffsetWidth(mixed $page, string $testId): int
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+
+    return $page->script("document.querySelector({$selector}).offsetWidth");
+}
+
+function postingGoalInnerText(mixed $page, string $testId): string
+{
+    $selector = json_encode(postingGoalTestIdSelector($testId));
+
+    return $page->script("document.querySelector({$selector}).innerText.replace(/\\s+/g, ' ').trim()");
+}
+
+/**
+ * @return list<int>
+ */
+function postingGoalPerWeekLineCounts(mixed $page): array
+{
+    return $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="goal-option-label"] > span:nth-child(2)')]
+            .map((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    JS);
+}
+
+/**
+ * @return list<list<string>>
+ */
+function postingGoalRecommendedTimesPerRow(mixed $page): array
+{
+    return $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="goal-recommended-row"]')]
+            .map((row) => [...row.querySelectorAll('strong')].map((el) => el.textContent.trim()));
+    JS);
+}
+
 function postingGoalSetup(): array
 {
     $user = User::factory()->create();
@@ -78,7 +179,7 @@ test('a newly created channel opens the goal flow and saves the chosen goal', fu
     $page->click('@goal-option-5')->click('@goal-next');
     waitForPostingGoalTestId($page, 'goal-recommended');
 
-    expect($page->script('document.querySelectorAll(\'[data-testid="goal-recommended-row"]\').length'))->toBe(5);
+    $page->assertCount('@goal-recommended-row', 5);
     expect($channel->fresh()->posting_goal)->toBe(5)
         ->and($channel->fresh()->posting_schedule->slotCount())->toBe(5);
 
@@ -115,19 +216,6 @@ test('customize goes to the channel settings page', function () {
     $page->assertVisible('@channel-settings-page')->assertNoJavaScriptErrors();
 });
 
-function postingGoalPollFor(mixed $page, string $condition, int $attempts = 120): bool
-{
-    return (bool) $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < {$attempts}; i++) {
-                if ({$condition}) return true;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-            return false;
-        })();
-    JS);
-}
-
 test('the goal step matches the wide card layout with right-side radios', function () {
     [$user, $channel] = postingGoalSetup();
     $this->actingAs($user);
@@ -135,41 +223,21 @@ test('the goal step matches the wide card layout with right-side radios', functi
     [$page, $channel] = connectPostingGoalChannel();
     waitForPostingGoalTestId($page, 'goal-option-3');
 
-    $layout = $page->script(<<<'JS'
-        (() => {
-            const rect = (el) => el.getBoundingClientRect();
-            const dialog = document.querySelector('[data-testid="connect-channel-dialog"]');
-            const row = document.querySelector('[data-testid="goal-option-3"]');
-            const other = document.querySelector('[data-testid="goal-option-1"]');
-            const badge = row.querySelector('[data-testid="goal-option-badge"]');
-            const radio = row.querySelector('[data-testid="goal-option-radio"]');
-            const footer = document.querySelector('[data-testid="goal-footer"]');
-            const help = rect(document.querySelector('[data-testid="goal-help"]'));
-            const next = rect(document.querySelector('[data-testid="goal-next"]'));
+    $row = postingGoalRect($page, 'goal-option-3');
+    $badge = postingGoalRect($page, 'goal-option-badge', within: 'goal-option-3');
+    $radio = postingGoalRect($page, 'goal-option-radio', within: 'goal-option-3');
+    $help = postingGoalRect($page, 'goal-help');
+    $next = postingGoalRect($page, 'goal-next');
 
-            return {
-                dialogWidth: dialog.offsetWidth,
-                rowHeight: Math.round(rect(row).height),
-                radioRightOfBadge: rect(radio).left > rect(badge).right,
-                radioNearRightEdge: rect(row).right - rect(radio).right < 40,
-                selectedBackground: getComputedStyle(row).backgroundColor,
-                selectedBorderDiffers: getComputedStyle(row).borderColor !== getComputedStyle(other).borderColor,
-                footerHasTopBorder: getComputedStyle(footer).borderTopWidth === '1px',
-                helpBeforeNext: help.right < next.left,
-                labelText: row.innerText.replace(/\s+/g, ' ').trim(),
-            };
-        })();
-    JS);
-
-    expect($layout['dialogWidth'])->toBe(800)
-        ->and($layout['rowHeight'])->toBeGreaterThanOrEqual(62)
-        ->and($layout['radioRightOfBadge'])->toBeTrue()
-        ->and($layout['radioNearRightEdge'])->toBeTrue()
-        ->and($layout['selectedBackground'])->toBe('rgba(0, 0, 0, 0)')
-        ->and($layout['selectedBorderDiffers'])->toBeTrue()
-        ->and($layout['footerHasTopBorder'])->toBeTrue()
-        ->and($layout['helpBeforeNext'])->toBeTrue()
-        ->and($layout['labelText'])->toBe('3x Build a presence · 3 times/week');
+    expect(postingGoalOffsetWidth($page, 'connect-channel-dialog'))->toBe(800)
+        ->and((int) round($row['height']))->toBeGreaterThanOrEqual(62)
+        ->and($radio['left'])->toBeGreaterThan($badge['right'])
+        ->and($row['right'] - $radio['right'])->toBeLessThan(40)
+        ->and(postingGoalStyle($page, 'goal-option-3', 'backgroundColor'))->toBe('rgba(0, 0, 0, 0)')
+        ->and(postingGoalStyle($page, 'goal-option-3', 'borderColor'))->not->toBe(postingGoalStyle($page, 'goal-option-1', 'borderColor'))
+        ->and(postingGoalStyle($page, 'goal-footer', 'borderTopWidth'))->toBe('1px')
+        ->and($help['right'])->toBeLessThan($next['left'])
+        ->and(postingGoalInnerText($page, 'goal-option-3'))->toBe('3x Build a presence · 3 times/week');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -182,28 +250,21 @@ test('on a phone the goal step shows a full-width Next above the help', function
     $page->resize(390, 844);
     waitForPostingGoalTestId($page, 'goal-next');
 
-    expect(postingGoalPollFor($page, 'window.innerWidth === 390 && document.querySelector(\'[data-testid="connect-channel-dialog"]\').getAnimations().length === 0'))->toBeTrue();
+    expect(waitForPostingGoalViewportSettled($page, 390, 'connect-channel-dialog'))->toBeTrue();
 
-    $layout = $page->script(<<<'JS'
-        (() => {
-            const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
-            const footer = rect('goal-footer');
-            const help = rect('goal-help');
-            const next = rect('goal-next');
-            const perWeekLines = [...document.querySelectorAll('[data-testid="goal-option-label"] > span:nth-child(2)')]
-                .map((el) => Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight)));
+    $footer = postingGoalRect($page, 'goal-footer');
+    $help = postingGoalRect($page, 'goal-help');
+    $next = postingGoalRect($page, 'goal-next');
+    $option = postingGoalRect($page, 'goal-option-custom');
 
-            return {
-                nextAlignedWithOptions: (() => { const option = rect('goal-option-custom'); return Math.abs(next.left - option.left) <= 1 && Math.abs(next.right - option.right) <= 1 && Math.round(next.top - option.bottom) === 24; })(),
-                nextAboveHelp: next.bottom <= help.top,
-                helpInside: help.left >= footer.left && help.right <= footer.right,
-                footerBorder: getComputedStyle(document.querySelector('[data-testid="goal-footer"]')).borderTopWidth,
-                perWeekOnOneLine: perWeekLines.every((lines) => lines === 1),
-            };
-        })();
-    JS);
-
-    expect($layout)->toBe(['nextAlignedWithOptions' => true, 'nextAboveHelp' => true, 'helpInside' => true, 'footerBorder' => '0px', 'perWeekOnOneLine' => true]);
+    expect(abs($next['left'] - $option['left']))->toBeLessThanOrEqual(1)
+        ->and(abs($next['right'] - $option['right']))->toBeLessThanOrEqual(1)
+        ->and((int) round($next['top'] - $option['bottom']))->toBe(24)
+        ->and($next['bottom'])->toBeLessThanOrEqual($help['top'])
+        ->and($help['left'])->toBeGreaterThanOrEqual($footer['left'])
+        ->and($help['right'])->toBeLessThanOrEqual($footer['right'])
+        ->and(postingGoalStyle($page, 'goal-footer', 'borderTopWidth'))->toBe('0px')
+        ->and(postingGoalPerWeekLineCounts($page))->each->toBe(1);
 
     $page->assertNoJavaScriptErrors();
 });
@@ -219,25 +280,18 @@ test('on a phone the recommended step stacks Done, Customize and Change goal in 
     $page->click('@goal-next');
     waitForPostingGoalTestId($page, 'goal-recommended');
 
-    $layout = $page->script(<<<'JS'
-        (() => {
-            const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
-            const row = rect('goal-recommended-row');
-            const done = rect('goal-done');
-            const customize = rect('goal-customize');
-            const change = rect('goal-change');
-            const sameWidth = (box) => Math.abs(box.left - row.left) <= 1 && Math.abs(box.right - row.right) <= 1;
+    $row = postingGoalRect($page, 'goal-recommended-row');
+    $done = postingGoalRect($page, 'goal-done');
+    $customize = postingGoalRect($page, 'goal-customize');
+    $change = postingGoalRect($page, 'goal-change');
 
-            return {
-                doneFullWidth: sameWidth(done),
-                customizeFullWidth: sameWidth(customize),
-                order: done.bottom <= customize.top && customize.bottom <= change.top,
-                changeOnOneLine: Math.round(change.height) <= 40,
-            };
-        })();
-    JS);
-
-    expect($layout)->toBe(['doneFullWidth' => true, 'customizeFullWidth' => true, 'order' => true, 'changeOnOneLine' => true]);
+    expect(abs($done['left'] - $row['left']))->toBeLessThanOrEqual(1)
+        ->and(abs($done['right'] - $row['right']))->toBeLessThanOrEqual(1)
+        ->and(abs($customize['left'] - $row['left']))->toBeLessThanOrEqual(1)
+        ->and(abs($customize['right'] - $row['right']))->toBeLessThanOrEqual(1)
+        ->and($done['bottom'])->toBeLessThanOrEqual($customize['top'])
+        ->and($customize['bottom'])->toBeLessThanOrEqual($change['top'])
+        ->and((int) round($change['height']))->toBeLessThanOrEqual(40);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -250,32 +304,20 @@ test('the recommended-time help opens above its trigger and links to the docs', 
     $page->click('@goal-help');
     waitForPostingGoalTestId($page, 'goal-help-popover');
 
-    $popover = $page->script(<<<'JS'
-        (() => {
-            const trigger = document.querySelector('[data-testid="goal-help"]').getBoundingClientRect();
-            const card = document.querySelector('[data-testid="goal-help-popover"]').getBoundingClientRect();
-            const link = document.querySelector('[data-testid="goal-help-learn-more"]');
+    $trigger = postingGoalRect($page, 'goal-help');
+    $card = postingGoalRect($page, 'goal-help-popover');
 
-            return {
-                above: card.bottom <= trigger.top,
-                href: link.getAttribute('href'),
-                target: link.getAttribute('target'),
-                rel: link.getAttribute('rel'),
-                actionsOrder: link.getBoundingClientRect().right
-                    < document.querySelector('[data-testid="goal-help-close"]').getBoundingClientRect().left,
-            };
-        })();
-    JS);
+    expect($card['bottom'])->toBeLessThanOrEqual($trigger['top'])
+        ->and(postingGoalRect($page, 'goal-help-learn-more')['right'])->toBeLessThan(postingGoalRect($page, 'goal-help-close')['left']);
 
-    expect($popover['above'])->toBeTrue()
-        ->and($popover['href'])->toBe('https://docs.trypost.it')
-        ->and($popover['target'])->toBe('_blank')
-        ->and($popover['rel'])->toContain('noopener')
-        ->and($popover['actionsOrder'])->toBeTrue();
+    $page->assertAttribute('@goal-help-learn-more', 'href', 'https://docs.trypost.it')
+        ->assertAttribute('@goal-help-learn-more', 'target', '_blank')
+        ->assertAttributeContains('@goal-help-learn-more', 'rel', 'noopener');
 
     $page->click('@goal-help-close');
+    waitForPostingGoalTestIdGone($page, 'goal-help-popover');
 
-    expect(postingGoalPollFor($page, '!document.querySelector(\'[data-testid="goal-help-popover"]\')'))->toBeTrue();
+    $page->assertNotPresent('@goal-help-popover');
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
 });
 
@@ -289,26 +331,15 @@ test('the recommended step bolds the times, orders its footer and shows no succe
     $page->click('@goal-next');
     waitForPostingGoalTestId($page, 'goal-recommended');
 
-    $state = $page->script(<<<'JS'
-        (() => {
-            const rows = [...document.querySelectorAll('[data-testid="goal-recommended-row"]')];
-            const left = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect().left;
+    $timesPerRow = postingGoalRecommendedTimesPerRow($page);
 
-            return {
-                strongPerRow: rows.map((row) => row.querySelectorAll('strong').length),
-                strongTimes: rows.flatMap((row) => [...row.querySelectorAll('strong')].map((el) => el.textContent.trim())),
-                footerOrder: left('goal-change') < left('goal-customize') && left('goal-customize') < left('goal-done'),
-                learnMore: document.querySelector('[data-testid="goal-learn-more"]').getAttribute('href'),
-                toasts: [...document.querySelectorAll('[data-sonner-toast]')].map((toast) => toast.innerText.trim()),
-            };
-        })();
-    JS);
+    expect(array_map('count', $timesPerRow))->toBe([2, 2, 2])
+        ->and(array_merge(...$timesPerRow))->each->toMatch('/^\d{2}:00$/')
+        ->and(postingGoalRect($page, 'goal-change')['left'])->toBeLessThan(postingGoalRect($page, 'goal-customize')['left'])
+        ->and(postingGoalRect($page, 'goal-customize')['left'])->toBeLessThan(postingGoalRect($page, 'goal-done')['left']);
 
-    expect($state['strongPerRow'])->toBe([2, 2, 2])
-        ->and($state['strongTimes'])->each->toMatch('/^\d{2}:00$/')
-        ->and($state['footerOrder'])->toBeTrue()
-        ->and($state['learnMore'])->toBe('https://docs.trypost.it')
-        ->and($state['toasts'])->toBe([]);
+    $page->assertAttribute('@goal-learn-more', 'href', 'https://docs.trypost.it')
+        ->assertNotPresent('[data-sonner-toast]');
 
     $page->click('@goal-change');
     waitForPostingGoalTestId($page, 'goal-flow');
@@ -321,8 +352,11 @@ test('connecting a channel fires a confetti burst that cleans up after itself', 
 
     [$page, $channel] = connectPostingGoalChannel();
 
-    expect(postingGoalPollFor($page, 'document.querySelector(\'[data-testid="confetti-canvas"]\')'))->toBeTrue()
-        ->and(postingGoalPollFor($page, '!document.querySelector(\'[data-testid="confetti-canvas"]\')', 200))->toBeTrue();
+    waitForPostingGoalTestId($page, 'confetti-canvas');
+    $page->assertPresent('@confetti-canvas');
+
+    waitForPostingGoalTestIdGone($page, 'confetti-canvas', 200);
+    $page->assertNotPresent('@confetti-canvas');
 
     $page->assertVisible('@goal-flow')->assertNoJavaScriptErrors();
 });
@@ -341,7 +375,8 @@ test('confetti stays off when the user prefers reduced motion', function () {
     JS));
     waitForPostingGoalTestId($page, 'goal-flow');
 
-    expect(postingGoalPollFor($page, 'document.querySelector(\'[data-testid="confetti-canvas"]\')', 20))->toBeFalse();
+    expect(postingGoalTestIdAppearsWithin($page, 'confetti-canvas', 20))->toBeFalse();
+    $page->assertNotPresent('@confetti-canvas');
     $page->assertNoJavaScriptErrors();
 });
 

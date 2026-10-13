@@ -31,6 +31,158 @@ function waitForWorkspaceInsightsTestId(mixed $page, string $testId): void
     JS);
 }
 
+function workspaceInsightsTestIdSelector(string $testId): string
+{
+    return json_encode("[data-testid=\"{$testId}\"]");
+}
+
+function waitForWorkspaceInsightsTestIdGone(mixed $page, string $testId): void
+{
+    $selector = workspaceInsightsTestIdSelector($testId);
+
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (!document.querySelector({$selector})) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+}
+
+function waitForWorkspaceInsightsQueryParameter(mixed $page, string $name, string $value): void
+{
+    $name = json_encode($name);
+    $value = json_encode($value);
+
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (new URLSearchParams(location.search).get({$name}) === {$value}) return;
+                await new Promise((resolve) => setTimeout(resolve, 100));
+            }
+        })();
+    JS);
+}
+
+function clickWorkspaceInsightsTestIdUntilDialogOpens(mixed $page, string $testId): void
+{
+    $selector = workspaceInsightsTestIdSelector($testId);
+
+    $page->script(<<<JS
+        (async () => {
+            for (let attempt = 0; attempt < 100; attempt++) {
+                if (document.querySelector('[role="dialog"]')) return;
+                if (attempt % 10 === 0) document.querySelector({$selector}).click();
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
+/**
+ * @return list<string>
+ */
+function workspaceInsightsSectionTitles(mixed $page, ?string $withinTestId = null): array
+{
+    $scope = $withinTestId === null ? '' : "[data-testid=\"{$withinTestId}\"] ";
+    $selector = json_encode("{$scope}[data-testid=\"analytics-section-title\"]");
+
+    return $page->script("Array.from(document.querySelectorAll({$selector})).map((heading) => heading.textContent.trim())");
+}
+
+function workspaceInsightsInnerText(mixed $page, string $testId): ?string
+{
+    $selector = workspaceInsightsTestIdSelector($testId);
+
+    return $page->script("document.querySelector({$selector})?.innerText ?? null");
+}
+
+/**
+ * @return array{left: float, right: float, top: float, bottom: float, width: float, height: float}|null
+ */
+function workspaceInsightsRect(mixed $page, string $testId): ?array
+{
+    $selector = workspaceInsightsTestIdSelector($testId);
+
+    return $page->script(<<<JS
+        (() => {
+            const element = document.querySelector({$selector});
+            if (!element) return null;
+            const { left, right, top, bottom, width, height } = element.getBoundingClientRect();
+
+            return { left, right, top, bottom, width, height };
+        })();
+    JS);
+}
+
+function workspaceInsightsHasNoHorizontalOverflow(mixed $page): bool
+{
+    return $page->script('document.documentElement.scrollWidth <= window.innerWidth + 2');
+}
+
+function workspaceInsightsScrollerScrolls(mixed $page): bool
+{
+    return $page->script(<<<'JS'
+        (() => {
+            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
+
+            return ['auto', 'scroll'].includes(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight;
+        })();
+    JS);
+}
+
+function workspaceInsightsSpaceBelowLastSection(mixed $page): float
+{
+    return $page->script(<<<'JS'
+        (() => {
+            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
+            const lastSection = Array.from(document.querySelectorAll('[data-testid="analytics-section"]')).at(-1);
+
+            return scroller.scrollHeight - (lastSection.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop);
+        })();
+    JS);
+}
+
+function workspaceInsightsHeaderSticksWhenScrolled(mixed $page): bool
+{
+    return $page->script(<<<'JS'
+        (() => {
+            const scroller = document.querySelector('[data-testid="app-layout-scroller"]');
+            scroller.scrollTop = scroller.scrollHeight;
+            const header = document.querySelector('[data-testid="analytics-page-header"]');
+            const toolbar = document.querySelector('[data-testid="analytics-toolbar"]');
+            const top = scroller.getBoundingClientRect().top;
+            const stuck = scroller.scrollTop > 0 && Math.abs(header.getBoundingClientRect().top - top) <= 1 && toolbar.getBoundingClientRect().bottom > top;
+            scroller.scrollTop = 0;
+
+            return stuck;
+        })();
+    JS);
+}
+
+/**
+ * @return array{before: int, during: list<int>, after: int}
+ */
+function workspaceInsightsChartWidthsAroundSidebarToggle(mixed $page): array
+{
+    return $page->script(<<<'JS'
+        (async () => {
+            const chart = () => document.querySelector('[data-testid="accounts-unovis-bar-chart"] [data-vis-xy-container]');
+            const before = chart().getBoundingClientRect().width;
+            document.querySelector('[data-testid="sidebar-footer-toggle"]').click();
+            const during = [];
+            const started = performance.now();
+            while (performance.now() - started < 180) {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                during.push(Math.round(chart().getBoundingClientRect().width));
+            }
+            await new Promise((resolve) => setTimeout(resolve, 600));
+            return { before: Math.round(before), during, after: Math.round(chart().getBoundingClientRect().width) };
+        })();
+    JS);
+}
+
 test('workspace dashboard separates accounts and switches follower and post chart modes', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -76,9 +228,11 @@ test('workspace dashboard separates accounts and switches follower and post char
     $page = visit(route('app.insights'));
     waitForWorkspaceInsightsTestId($page, 'analytics-summary-followers');
 
-    $page->assertVisible('@analytics-summary-followers')
-        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-section-title]")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Performance|Followers|Posts')
-        ->assertSee('@first')
+    $page->assertVisible('@analytics-summary-followers');
+
+    expect(workspaceInsightsSectionTitles($page))->toBe(['Summary', 'Top 5 Posts', 'Performance', 'Followers', 'Posts']);
+
+    $page->assertSee('@first')
         ->assertSee('@second')
         ->assertSee('Top 5 Posts')
         ->assertPresent('@analytics-top-post')
@@ -92,21 +246,25 @@ test('workspace dashboard separates accounts and switches follower and post char
         ->assertVisible('@followers-unovis-chart')
         ->click('@followers-growth')
         ->assertPresent('@accounts-unovis-bar-chart')
-        ->assertScript('document.querySelector("[data-testid=posts-bar]")?.getAttribute("aria-pressed")', 'true')
-        ->assertScript('document.querySelector("[data-testid=posts-stacked]")?.getAttribute("aria-pressed")', 'false')
+        ->assertAttribute('@posts-bar', 'aria-pressed', 'true')
+        ->assertAttribute('@posts-stacked', 'aria-pressed', 'false')
         ->assertPresent('@accounts-unovis-bar-chart')
         ->click('@posts-stacked')
         ->assertVisible('@posts-unovis-chart')
         ->hover('[data-testid="analytics-post-bar"] >> nth=0')
         ->assertPresent('@analytics-tooltip-avatar')
-        ->click('@top-comments')
-        ->assertScript('(() => { const scroller = document.querySelector("[data-testid=app-layout-scroller]"); return ["auto", "scroll"].includes(getComputedStyle(scroller).overflowY) && scroller.scrollHeight > scroller.clientHeight; })()', true)
-        ->assertScript('(() => { const scroller = document.querySelector("[data-testid=app-layout-scroller]"); const lastSection = Array.from(document.querySelectorAll("[data-testid=analytics-section]")).at(-1); return scroller.scrollHeight - (lastSection.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop) >= 24; })()', true)
-        ->assertScript('(() => { const scroller = document.querySelector("[data-testid=app-layout-scroller]"); scroller.scrollTop = scroller.scrollHeight; const header = document.querySelector("[data-testid=analytics-page-header]"); const toolbar = document.querySelector("[data-testid=analytics-toolbar]"); const top = scroller.getBoundingClientRect().top; const stuck = scroller.scrollTop > 0 && Math.abs(header.getBoundingClientRect().top - top) <= 1 && toolbar.getBoundingClientRect().bottom > top; scroller.scrollTop = 0; return stuck; })()', true)
-        ->resize(375, 812)
-        ->assertScript('document.querySelector("[data-testid=analytics-page-header]")?.getBoundingClientRect().top > document.querySelector("[data-testid=app-sidebar-trigger]")?.getBoundingClientRect().bottom', true)
-        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
-        ->assertNoJavaScriptErrors()
+        ->click('@top-comments');
+
+    expect(workspaceInsightsScrollerScrolls($page))->toBeTrue()
+        ->and(workspaceInsightsSpaceBelowLastSection($page))->toBeGreaterThanOrEqual(24)
+        ->and(workspaceInsightsHeaderSticksWhenScrolled($page))->toBeTrue();
+
+    $page->resize(375, 812);
+
+    expect(workspaceInsightsRect($page, 'analytics-page-header')['top'] ?? null)->toBeGreaterThan(workspaceInsightsRect($page, 'app-sidebar-trigger')['bottom'] ?? null)
+        ->and(workspaceInsightsHasNoHorizontalOverflow($page))->toBeTrue();
+
+    $page->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
 
@@ -127,21 +285,25 @@ test('workspace dashboard explains the empty state without inventing follower to
         ->assertMissing('@analytics-summary')
         ->assertSee('Turn your posts into insights')
         ->assertSee('Understand your performance and spot opportunities without the guesswork.')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-empty-tile]").length', 7)
+        ->assertCount('@analytics-empty-tile', 7)
         ->assertPresent('@analytics-empty-summary')
         ->assertPresent('@analytics-empty-top-posts')
         ->assertPresent('@analytics-empty-metrics')
-        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-empty-preview] [data-testid=analytics-section-title]")).map((heading) => heading.textContent.trim()).join("|")', 'Summary|Top 5 Posts|Metrics')
-        ->assertScript('document.querySelector("[data-testid=analytics-empty-summary]").innerText.replace(/\\s+/g, " ").trim()', 'Likes Comments Impressions Engagement rate')
-        ->assertScript('document.querySelector("[data-testid=analytics-empty-top-posts]").children.length', 5)
-        ->click('@analytics-empty-connect');
+        ->assertCount('[data-testid="analytics-empty-top-posts"] > *', 5);
+
+    expect(workspaceInsightsSectionTitles($page, 'analytics-empty-preview'))->toBe(['Summary', 'Top 5 Posts', 'Metrics'])
+        ->and(trim(preg_replace('/\s+/u', ' ', (string) workspaceInsightsInnerText($page, 'analytics-empty-summary'))))->toBe('Likes Comments Impressions Engagement rate');
+
+    $page->click('@analytics-empty-connect');
 
     waitForWorkspaceInsightsTestId($page, 'connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')
-        ->resize(375, 812)
-        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
-        ->assertNoJavaScriptErrors()
+        ->resize(375, 812);
+
+    expect(workspaceInsightsHasNoHorizontalOverflow($page))->toBeTrue();
+
+    $page->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
 
@@ -194,32 +356,19 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
     waitForWorkspaceInsightsTestId($page, 'insights-range-custom');
 
     $page->assertMissing('@date-range-picker-trigger')
-        ->assertScript('document.querySelector("[data-testid=insights-range-custom]")?.getAttribute("aria-pressed")', 'true')
-        ->assertScript('document.querySelector("[data-testid=insights-range-presets] [role=group]")?.getAttribute("aria-label")', 'Período')
+        ->assertAttribute('@insights-range-custom', 'aria-pressed', 'true')
+        ->assertAttribute('[data-testid="insights-range-presets"] [role=group]', 'aria-label', 'Período')
         ->assertPresent('@insights-range-custom');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[role="dialog"]')) return;
-                if (attempt % 10 === 0) document.querySelector('[data-testid="insights-range-custom"]').click();
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    clickWorkspaceInsightsTestIdUntilDialogOpens($page, 'insights-range-custom');
 
-    $page->assertScript('document.querySelector("[role=dialog]") !== null', true)
+    $page->assertPresent('[role=dialog]')
         ->assertSeeIn('@date-range-preset-last_7_days', __('common.date_range_picker.last_7_days', [], 'pt-BR'))
         ->click('@date-range-preset-last_7_days');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (location.search.includes('start=2026-06-25')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
+    waitForWorkspaceInsightsQueryParameter($page, 'start', '2026-06-25');
 
-    $page->assertScript('location.search.includes("range=custom") && location.search.includes("start=2026-06-25") && location.search.includes("end=2026-07-01")', true)
+    $page->assertQueryStringHas('range', 'custom')
+        ->assertQueryStringHas('start', '2026-06-25')
+        ->assertQueryStringHas('end', '2026-07-01')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -248,17 +397,10 @@ test('a range preset on the workspace dashboard reloads with that range', functi
     waitForWorkspaceInsightsTestId($page, 'insights-range-7d');
 
     $page->click('@insights-range-7d');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (new URLSearchParams(location.search).get('range') === '7d') return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForWorkspaceInsightsQueryParameter($page, 'range', '7d');
 
-    $page->assertScript('new URLSearchParams(location.search).get("range")', '7d')
-        ->assertScript('document.querySelector("[data-testid=insights-range-7d]")?.getAttribute("aria-pressed")', 'true')
+    $page->assertQueryStringHas('range', '7d')
+        ->assertAttribute('@insights-range-7d', 'aria-pressed', 'true')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
@@ -316,14 +458,7 @@ test('import progress disappears after the queued backfill finishes without navi
     $page->assertVisible('@analytics-import-coverage');
 
     $state->update(['status' => SyncStatus::Complete]);
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector('[data-testid="analytics-import-coverage"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForWorkspaceInsightsTestIdGone($page, 'analytics-import-coverage');
 
     $page->assertMissing('@analytics-import-coverage')
         ->assertNoJavaScriptErrors()
@@ -363,9 +498,11 @@ test('follower chart localizes tooltip values and names accounts without usernam
     $page->assertPresent('@accounts-unovis-bar-chart')
         ->assertSee('Instagram')
         ->assertDontSee('instagram-facebook')
-        ->hover('[data-testid="analytics-account-bar"] >> nth=0')
-        ->assertScript('document.querySelector("[data-testid=analytics-chart-tooltip]")?.innerText.includes("1.234")', true)
-        ->assertNoJavaScriptErrors()
+        ->hover('[data-testid="analytics-account-bar"] >> nth=0');
+
+    expect(workspaceInsightsInnerText($page, 'analytics-chart-tooltip'))->toContain('1.234');
+
+    $page->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 });
 
@@ -398,9 +535,11 @@ test('workspace dashboard abbreviates large percentage changes in the user local
 
     $this->actingAs($user);
     $page = visit(route('app.insights', ['start' => '2026-09-12', 'end' => '2026-09-23']));
+    waitForWorkspaceInsightsTestId($page, 'analytics-summary-reactions-change');
 
-    $page->assertScript('document.querySelector("[data-testid=analytics-summary-reactions-change]")?.innerText.includes('.json_encode($expectedChange).')', true)
-        ->assertDontSee('+186500%')
+    expect(workspaceInsightsInnerText($page, 'analytics-summary-reactions-change'))->toContain($expectedChange);
+
+    $page->assertDontSee('+186500%')
         ->assertNoJavaScriptErrors()
         ->assertNoConsoleLogs();
 })->with([
@@ -451,24 +590,18 @@ test('on a phone the workspace insights range presets collapse into a dropdown',
     $page = visit(route('app.insights'))->resize(390, 844);
     waitForWorkspaceInsightsTestId($page, 'insights-range-mobile-trigger');
 
-    $page->assertScript('document.querySelector("[data-testid=insights-range-7d]").getBoundingClientRect().height', 0)
-        ->assertSeeIn('@insights-range-mobile-trigger', '30 Days')
+    expect(workspaceInsightsRect($page, 'insights-range-7d')['height'] ?? null)->toBe(0);
+
+    $page->assertSeeIn('@insights-range-mobile-trigger', '30 Days')
         ->click('@insights-range-mobile-trigger');
     waitForWorkspaceInsightsTestId($page, 'insights-range-mobile-30d-check');
 
     $page->assertPresent('@insights-range-mobile-30d-check')
         ->assertMissing('@insights-range-mobile-7d-check')
         ->click('@insights-range-mobile-7d');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (new URLSearchParams(location.search).get('range') === '7d') return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
+    waitForWorkspaceInsightsQueryParameter($page, 'range', '7d');
 
-    $page->assertScript('new URLSearchParams(location.search).get("range")', '7d')
+    $page->assertQueryStringHas('range', '7d')
         ->assertSeeIn('@insights-range-mobile-trigger', '7 Days')
         ->assertNoJavaScriptErrors();
 });
@@ -503,21 +636,7 @@ test('charts keep their width while the sidebar animates and resize once it sett
     waitForWorkspaceInsightsTestId($page, 'accounts-unovis-bar-chart');
     waitForWorkspaceInsightsTestId($page, 'sidebar-footer-toggle');
 
-    $widths = $page->script(<<<'JS'
-        (async () => {
-            const chart = () => document.querySelector('[data-testid="accounts-unovis-bar-chart"] [data-vis-xy-container]');
-            const before = chart().getBoundingClientRect().width;
-            document.querySelector('[data-testid="sidebar-footer-toggle"]').click();
-            const during = [];
-            const started = performance.now();
-            while (performance.now() - started < 180) {
-                await new Promise((resolve) => requestAnimationFrame(resolve));
-                during.push(Math.round(chart().getBoundingClientRect().width));
-            }
-            await new Promise((resolve) => setTimeout(resolve, 600));
-            return { before: Math.round(before), during, after: Math.round(chart().getBoundingClientRect().width) };
-        })();
-    JS);
+    $widths = workspaceInsightsChartWidthsAroundSidebarToggle($page);
 
     expect(array_unique($widths['during']))->toBe([$widths['before']])
         ->and($widths['after'])->toBeGreaterThan($widths['before']);

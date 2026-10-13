@@ -28,6 +28,30 @@ function waitForWelcomeTestId(mixed $page, string $testId): void
     JS);
 }
 
+function waitForWelcomeHeaderTextIn(mixed $page, string $testId, string $text): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (document.querySelector('[data-testid="{$testId}"]')?.textContent.includes('{$text}')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+}
+
+function waitForWelcomeHeaderDarkTheme(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (document.documentElement.classList.contains('dark')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+}
+
 function welcomeHeaderOwner(): User
 {
     $user = User::factory()->create();
@@ -96,26 +120,12 @@ test('the welcome header switches language through the shared language select an
 
     $page->fill('@welcome-language-search', 'Português')
         ->click('@welcome-language-option-pt-BR');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (document.querySelector('[data-testid="welcome-language-value"]')?.textContent.includes('Portugu')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForWelcomeHeaderTextIn($page, 'welcome-language-value', 'Portugu');
 
     expect($user->fresh()->locale)->toBe(Locale::PortugueseBrazil);
 
     $page->click('@theme-toggle');
-    $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 100; i++) {
-                if (document.documentElement.classList.contains('dark')) return;
-                await new Promise((r) => setTimeout(r, 50));
-            }
-        })();
-    JS);
+    waitForWelcomeHeaderDarkTheme($page);
     $page->assertNoJavaScriptErrors();
 
     expect($user->fresh()->theme)->toBe(Theme::Dark);
