@@ -54,7 +54,7 @@ return [
         'description' => 'Φτιάξτε, προγραμματίστε και αναλύστε posts στο TryPost με την AI σας.',
         'connect_with' => 'Σύνδεση με :client',
         'connect_ai' => 'Συνδέστε την AI σας',
-        'pick_ai' => 'Επιλέξτε την AI σας',
+        'pick_ai' => 'Πού θα χρησιμοποιήσετε το TryPost;',
         'connect_other' => 'Σύνδεση άλλης εφαρμογής',
         'composer' => 'Ρωτήστε οτιδήποτε',
         'dialog_title' => 'Συνδέστε το TryPost με το :client',

@@ -54,7 +54,7 @@ return [
         'description' => 'Erstelle, plane und analysiere Posts in TryPost mit deiner Lieblings-KI.',
         'connect_with' => 'Mit :client verbinden',
         'connect_ai' => 'Deine KI verbinden',
-        'pick_ai' => 'Wähle die KI, die du nutzen willst',
+        'pick_ai' => 'Wo willst du TryPost nutzen?',
         'connect_other' => 'Andere App verbinden',
         'composer' => 'Frag mich alles',
         'dialog_title' => 'Verbinde TryPost mit :client',

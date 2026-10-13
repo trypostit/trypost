@@ -54,7 +54,7 @@ return [
         'description' => 'Створюйте, плануйте й аналізуйте дописи в TryPost з улюбленим ШІ.',
         'connect_with' => 'Підключити :client',
         'connect_ai' => 'Підключити ШІ',
-        'pick_ai' => 'Виберіть свій ШІ',
+        'pick_ai' => 'Де ви хочете використовувати TryPost?',
         'connect_other' => 'Підключити інший застосунок',
         'composer' => 'Запитайте будь-що',
         'dialog_title' => 'Підключіть TryPost до :client',

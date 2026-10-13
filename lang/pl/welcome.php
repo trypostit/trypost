@@ -54,7 +54,7 @@ return [
         'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',
         'connect_with' => 'Połącz z :client',
         'connect_ai' => 'Połącz swoją AI',
-        'pick_ai' => 'Wybierz AI, której chcesz używać',
+        'pick_ai' => 'Gdzie chcesz używać TryPost?',
         'connect_other' => 'Połącz inną aplikację',
         'composer' => 'Zapytaj o cokolwiek',
         'dialog_title' => 'Połącz TryPost z :client',
