@@ -18,7 +18,9 @@ use App\Http\Resources\App\HandleInertiaRequests\AuthWorkspaceResource;
 use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
+use App\Models\Account;
 use App\Models\Plan;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
@@ -62,11 +64,7 @@ class HandleInertiaRequests extends Middleware
             'channels' => fn (): array => $user?->currentWorkspace
                 ? SidebarChannelResource::collection($user->currentWorkspace)
                 : [],
-            'referralSources' => fn (): ?array => $user !== null
-                && ! $isSelfHosted
-                && $account?->hasAppAccess()
-                && $user->getRawOriginal('referral_source') === null
-                && $user->created_at?->lte(now()->subHour())
+            'referralSources' => fn (): ?array => $this->showsReferralSources($user, $account, $isSelfHosted)
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
@@ -129,5 +127,14 @@ class HandleInertiaRequests extends Middleware
             ...($workspace !== null ? ['composer' => ComposerResource::once($workspace)] : []),
             ...($user !== null && config('trypost.platforms.x.defuse_links') ? ['xLinkTlds' => fn (): array => LinkTlds::all()] : []),
         ];
+    }
+
+    private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool
+    {
+        return $user !== null
+            && ! $isSelfHosted
+            && $account?->hasAppAccess() === true
+            && $user->getRawOriginal('referral_source') === null
+            && $user->created_at?->lte(now()->subHour()) === true;
     }
 }
