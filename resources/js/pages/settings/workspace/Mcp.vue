@@ -95,6 +95,7 @@ const showNewConnection = (count: number, previous: number): void => {
     if (count > previous) {
         dialogOpen.value = false;
         tab.value = 'connected';
+        stopConfetti();
         stopConfetti = fireCelebration();
     }
 };
