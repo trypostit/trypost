@@ -396,6 +396,26 @@ test('publish post succeeds for a Discord platform with a channel', function () 
     Queue::assertPushed(PublishPost::class);
 });
 
+test('create post persists YouTube first_comment meta', function () {
+    $youtube = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::YouTube]);
+
+    $response = TryPostServer::actingAs($this->user)
+        ->tool(CreatePostTool::class, [
+            'content' => 'Short title text',
+            'social_account_id' => $youtube->id,
+            'content_type' => ContentType::YouTubeShort->value,
+            'meta' => [
+                'first_comment' => 'More details: https://example.com',
+            ],
+        ]);
+
+    $response->assertOk();
+
+    $meta = Post::where('social_account_id', $youtube->id)->sole()->meta;
+
+    expect(data_get($meta, 'first_comment'))->toBe('More details: https://example.com');
+});
+
 test('create post persists Pinterest title and link meta', function () {
     $pinterest = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Pinterest]);
 
