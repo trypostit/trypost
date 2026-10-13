@@ -25,6 +25,7 @@ use App\Models\Workspace;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -133,8 +134,12 @@ class HandleInertiaRequests extends Middleware
     {
         return $user !== null
             && ! $isSelfHosted
-            && $account?->hasAppAccess() === true
             && $user->getRawOriginal('referral_source') === null
-            && $user->created_at?->lte(now()->subHour()) === true;
+            && $user->created_at?->lte(now()->subHour()) === true
+            && Cache::remember(
+                "referral-sources.{$user->id}",
+                now()->addMinutes(5),
+                fn (): bool => $account?->hasAppAccess() === true,
+            );
     }
 }

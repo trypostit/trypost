@@ -8,6 +8,7 @@ use App\Jobs\PostHog\SendEvent;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -46,6 +47,18 @@ test('the question is not shared once answered, on self-hosted, before app acces
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
     'signed up less than an hour ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subMinutes(59)])->save()],
 ]);
+
+test('the app access check behind the question is cached for five minutes', function () {
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertOk();
+
+    expect(Cache::get("referral-sources.{$this->user->id}"))->toBeTrue();
+
+    $this->travel(6)->minutes();
+
+    expect(Cache::has("referral-sources.{$this->user->id}"))->toBeFalse();
+});
 
 test('answering stores the source, mirrors it to PostHog and goes back', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
