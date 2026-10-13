@@ -6,7 +6,7 @@ import {
     IconPlus,
     IconTrash,
 } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import EmptyState from '@/components/EmptyState.vue';
@@ -26,6 +26,7 @@ import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { DOCS_URL } from '@/lib/docs';
 import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
 import { disconnect as mcpDisconnect } from '@/routes/app/mcp';
+import { fireCelebration } from '@/utils/confetti';
 
 interface ConnectedClient {
     client_id: string;
@@ -84,19 +85,25 @@ const showConnectTab = (): void => {
 
 const connectedCount = computed((): number => props.connectedClients.length);
 
+let stopConfetti = (): void => {};
+
 /**
  * The poll notices the new connection while the user is in the other browser
- * tab: close the steps and show it in the connected list.
+ * tab: close the steps, show it in the connected list and celebrate.
  */
 const showNewConnection = (count: number, previous: number): void => {
     if (count > previous) {
         dialogOpen.value = false;
         tab.value = 'connected';
+        stopConfetti = fireCelebration();
     }
 };
 
 watch(connectedCount, showNewConnection);
 
+onBeforeUnmount(() => {
+    stopConfetti();
+});
 </script>
 
 <template>

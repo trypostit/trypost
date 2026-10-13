@@ -159,6 +159,8 @@ test('a new connection closes the connect dialog and shows the connected tab', f
     $clientId = mcpOauthClient('ChatGPT');
     mcpAccessToken($user, $clientId, $workspace);
 
+    waitForMcpSettingsTestId($page, 'confetti-canvas');
+    $page->assertPresent('@confetti-canvas');
     waitForMcpSettingsTestId($page, "mcp-connected-client-{$clientId}");
     waitForMcpSettingsTestIdGone($page, 'mcp-dialog');
 
