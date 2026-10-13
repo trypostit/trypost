@@ -54,7 +54,7 @@ return [
         'description' => 'Crie, agende e analise posts no TryPost usando a sua IA favorita.',
         'connect_with' => 'Conectar com :client',
         'connect_ai' => 'Conectar sua IA',
-        'pick_ai' => 'Qual IA você usa?',
+        'pick_ai' => 'Selecione a IA que você quer usar',
         'connect_other' => 'Conectar outro app',
         'composer' => 'Pergunte qualquer coisa',
         'dialog_title' => 'Conecte o TryPost ao :client',

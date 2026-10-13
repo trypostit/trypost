@@ -54,7 +54,7 @@ return [
         'description' => 'TryPost’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',
         'connect_with' => ':client ile bağlan',
         'connect_ai' => 'Yapay zekânı bağla',
-        'pick_ai' => 'Hangi yapay zekâyı kullanıyorsun?',
+        'pick_ai' => 'Kullanmak istediğin yapay zekâyı seç',
         'connect_other' => 'Başka uygulama bağla',
         'composer' => 'Bir şey sor',
         'dialog_title' => ':client ile TryPost’u bağla',

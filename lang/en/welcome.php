@@ -54,7 +54,7 @@ return [
         'description' => 'Create, schedule and analyze your TryPost posts with your favorite AI.',
         'connect_with' => 'Connect with :client',
         'connect_ai' => 'Connect your AI',
-        'pick_ai' => 'Which AI do you use?',
+        'pick_ai' => 'Choose the AI you want to use',
         'connect_other' => 'Connect another app',
         'composer' => 'Ask anything',
         'dialog_title' => 'Connect TryPost to :client',

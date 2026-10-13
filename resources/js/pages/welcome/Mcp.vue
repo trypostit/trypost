@@ -439,12 +439,11 @@ const goToSchedule = (): void => {
                             <span class="text-sm font-medium text-foreground">
                                 {{ client.labelKey ? $t(client.label) : client.label }}
                             </span>
-                            <span class="text-sm text-muted-foreground">
-                                {{
-                                    client.labelKey
-                                        ? $t('mcp.other_hint')
-                                        : $t('mcp.connect_hint')
-                                }}
+                            <span
+                                v-if="client.labelKey"
+                                class="text-sm text-muted-foreground"
+                            >
+                                {{ $t('mcp.other_hint') }}
                             </span>
                         </span>
                         <IconChevronRight

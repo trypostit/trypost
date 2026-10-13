@@ -54,7 +54,7 @@ return [
         'description' => 'Maak, plan en analyseer posts in TryPost met je favoriete AI.',
         'connect_with' => 'Koppelen met :client',
         'connect_ai' => 'Koppel je AI',
-        'pick_ai' => 'Welke AI gebruik je?',
+        'pick_ai' => 'Kies de AI die je wilt gebruiken',
         'connect_other' => 'Andere app koppelen',
         'composer' => 'Vraag maar raak',
         'dialog_title' => 'Koppel TryPost aan :client',

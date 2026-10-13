@@ -238,12 +238,11 @@ watch(connectedCount, showNewConnection);
                         >
                             {{ client.labelKey ? $t(client.label) : client.label }}
                         </p>
-                        <p class="text-sm text-muted-foreground">
-                            {{
-                                client.labelKey
-                                    ? $t('mcp.other_hint')
-                                    : $t('mcp.connect_hint')
-                            }}
+                        <p
+                            v-if="client.labelKey"
+                            class="text-sm text-muted-foreground"
+                        >
+                            {{ $t('mcp.other_hint') }}
                         </p>
                         <template #actions>
                             <Button

@@ -54,7 +54,7 @@ return [
         'description' => 'Créez, planifiez et analysez vos posts TryPost avec votre IA préférée.',
         'connect_with' => 'Connecter :client',
         'connect_ai' => 'Connecter votre IA',
-        'pick_ai' => 'Quelle IA utilisez-vous ?',
+        'pick_ai' => 'Choisissez l’IA que vous voulez utiliser',
         'connect_other' => 'Connecter une autre app',
         'composer' => 'Posez votre question',
         'dialog_title' => 'Connectez TryPost à :client',

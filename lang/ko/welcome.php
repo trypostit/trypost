@@ -54,7 +54,7 @@ return [
         'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
         'connect_with' => ':client 연결',
         'connect_ai' => 'AI 연결하기',
-        'pick_ai' => '어떤 AI를 사용하세요?',
+        'pick_ai' => '사용할 AI를 선택하세요',
         'connect_other' => '다른 앱 연결',
         'composer' => '무엇이든 물어보세요',
         'dialog_title' => 'TryPost를 :client에 연결',

@@ -151,6 +151,7 @@ return [
     'mcp.connect_other' => 10,
     'mcp.tabs.connected' => 23,
     'mcp.tabs.connect' => 21,
+    'welcome.mcp.pick_ai' => 40,
     'welcome.mcp.skip' => 21,
     'welcome.mcp.connect_ai' => 20,
     'welcome.mcp.connect_other' => 28,

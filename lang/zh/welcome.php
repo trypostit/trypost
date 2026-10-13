@@ -54,7 +54,7 @@ return [
         'description' => '用你最喜欢的 AI，在 TryPost 中创建、排期和分析帖子。',
         'connect_with' => '连接 :client',
         'connect_ai' => '连接你的 AI',
-        'pick_ai' => '你用哪个 AI？',
+        'pick_ai' => '选择你想使用的 AI',
         'connect_other' => '连接其他应用',
         'composer' => '有问题，尽管问',
         'dialog_title' => '将 TryPost 连接到 :client',

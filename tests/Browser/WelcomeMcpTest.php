@@ -272,7 +272,7 @@ test('on a phone the MCP step keeps the example and connects through an AI picke
     $page->click('@welcome-mcp-connect-ai');
     waitForWelcomeMcpTestId($page, 'welcome-mcp-pick-other');
 
-    $page->assertSeeIn('@welcome-mcp-ai-picker', 'Which AI do you use?')
+    $page->assertSeeIn('@welcome-mcp-ai-picker', 'Choose the AI you want to use')
         ->assertVisible('@welcome-mcp-pick-claude')
         ->assertVisible('@welcome-mcp-pick-chatgpt')
         ->click('@welcome-mcp-pick-other');

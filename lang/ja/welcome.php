@@ -54,7 +54,7 @@ return [
         'description' => 'お気に入りのAIで、TryPostの投稿を作成・予約・分析。',
         'connect_with' => ':clientと接続',
         'connect_ai' => 'AIを接続',
-        'pick_ai' => 'どのAIを使っていますか？',
+        'pick_ai' => '使いたいAIを選んでください',
         'connect_other' => '他のアプリを接続',
         'composer' => '何でも聞いてください',
         'dialog_title' => 'TryPostを:clientに接続',

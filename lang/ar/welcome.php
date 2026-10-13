@@ -54,7 +54,7 @@ return [
         'description' => 'أنشئ منشوراتك في TryPost وجدولها وحللها باستخدام ذكائك الاصطناعي المفضل.',
         'connect_with' => 'الربط مع :client',
         'connect_ai' => 'اربط ذكاءك الاصطناعي',
-        'pick_ai' => 'أي ذكاء اصطناعي تستخدم؟',
+        'pick_ai' => 'اختر الذكاء الاصطناعي الذي تريد استخدامه',
         'connect_other' => 'ربط تطبيق آخر',
         'composer' => 'اسأل عن أي شيء',
         'dialog_title' => 'اربط TryPost بـ :client',

@@ -54,7 +54,7 @@ return [
         'description' => 'Создавайте, планируйте и анализируйте посты в TryPost с любимым ИИ.',
         'connect_with' => 'Подключить :client',
         'connect_ai' => 'Подключить ИИ',
-        'pick_ai' => 'Каким ИИ вы пользуетесь?',
+        'pick_ai' => 'Выберите свой ИИ',
         'connect_other' => 'Подключить другое приложение',
         'composer' => 'Спросите что угодно',
         'dialog_title' => 'Подключите TryPost к :client',
