@@ -10,7 +10,7 @@ return [
             'personal' => 'Προσωπικά',
             'workspace' => 'Workspace',
             'features' => 'Λειτουργίες',
-            'other' => 'Άλλα',
+            'integrations' => 'Ενσωματώσεις',
             'account' => 'Λογαριασμός',
         ],
         'items' => [

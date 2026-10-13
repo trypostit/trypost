@@ -10,7 +10,7 @@ return [
             'personal' => 'Особисте',
             'workspace' => 'Робочий простір',
             'features' => 'Функції',
-            'other' => 'Інше',
+            'integrations' => 'Інтеграції',
             'account' => 'Обліковий запис',
         ],
         'items' => [

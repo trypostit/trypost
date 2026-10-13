@@ -10,7 +10,7 @@ return [
             'personal' => '개인',
             'workspace' => '워크스페이스',
             'features' => '기능',
-            'other' => '기타',
+            'integrations' => '연동',
             'account' => '계정',
         ],
         'items' => [

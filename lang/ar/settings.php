@@ -10,7 +10,7 @@ return [
             'personal' => 'شخصي',
             'workspace' => 'مساحة العمل',
             'features' => 'الميزات',
-            'other' => 'أخرى',
+            'integrations' => 'التكاملات',
             'account' => 'الحساب',
         ],
         'items' => [

@@ -12,7 +12,7 @@ return [
             'personal' => 'Kişisel',
             'workspace' => 'Çalışma Alanı',
             'features' => 'Özellikler',
-            'other' => 'Diğer',
+            'integrations' => 'Entegrasyonlar',
             'account' => 'Hesap',
         ],
         'items' => [

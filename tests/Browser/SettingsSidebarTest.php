@@ -56,11 +56,17 @@ test('settings pages swap the app sidebar for the settings sidebar', function ()
         ->assertSeeIn('@settings-nav-api-keys', 'API')
         ->assertDontSeeIn('@settings-nav-api-keys', 'Keys')
         ->assertPresent('[data-testid="settings-nav-api-keys"] svg.tabler-icon-code')
-        ->assertSeeIn('@settings-sidebar', 'Other')
+        ->assertSeeIn('@settings-sidebar', 'Integrations')
         ->assertDontSeeIn('@settings-sidebar', 'Developers')
         ->assertMissing('@sidebar-new')
         ->assertMissing('@settings-tab-profile')
         ->assertNoJavaScriptErrors();
+
+    expect($page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid^="settings-nav-"]')]
+            .map((item) => item.dataset.testid)
+            .filter((id) => ['settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks', 'settings-nav-labels'].includes(id))
+    JS))->toBe(['settings-nav-labels', 'settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks']);
 });
 
 test('members only see the settings they may use', function () {

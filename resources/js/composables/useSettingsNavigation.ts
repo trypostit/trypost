@@ -144,17 +144,11 @@ export const useSettingsNavigation = () => {
                         IconTag,
                         workspace && canCreatePost.value,
                     ),
-                    ...item(
-                        'webhooks',
-                        webhooks.url(),
-                        IconWebhook,
-                        workspace && canManageWebhooks.value,
-                    ),
                 ],
             },
             {
-                key: 'other',
-                label: trans('settings.sidebar.groups.other'),
+                key: 'integrations',
+                label: trans('settings.sidebar.groups.integrations'),
                 items: [
                     ...item(
                         'api_keys',
@@ -163,6 +157,12 @@ export const useSettingsNavigation = () => {
                         workspace && canManageWorkspace.value,
                     ),
                     ...item('mcp', mcp.url(), IconPlugConnected, workspace),
+                    ...item(
+                        'webhooks',
+                        webhooks.url(),
+                        IconWebhook,
+                        workspace && canManageWebhooks.value,
+                    ),
                 ],
             },
             {

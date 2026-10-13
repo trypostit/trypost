@@ -10,7 +10,7 @@ return [
             'personal' => 'Personal',
             'workspace' => 'Workspace',
             'features' => 'Funciones',
-            'other' => 'Otros',
+            'integrations' => 'Integraciones',
             'account' => 'Cuenta',
         ],
         'items' => [

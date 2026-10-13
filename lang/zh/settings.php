@@ -10,7 +10,7 @@ return [
             'personal' => '个人',
             'workspace' => '工作区',
             'features' => '功能',
-            'other' => '其他',
+            'integrations' => '集成',
             'account' => '账户',
         ],
         'items' => [

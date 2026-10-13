@@ -10,7 +10,7 @@ return [
             'personal' => '個人',
             'workspace' => 'ワークスペース',
             'features' => '機能',
-            'other' => 'その他',
+            'integrations' => '連携',
             'account' => 'アカウント',
         ],
         'items' => [

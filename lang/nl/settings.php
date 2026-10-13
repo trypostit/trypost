@@ -10,7 +10,7 @@ return [
             'personal' => 'Persoonlijk',
             'workspace' => 'Workspace',
             'features' => 'Functies',
-            'other' => 'Overig',
+            'integrations' => 'Integraties',
             'account' => 'Account',
         ],
         'items' => [
