@@ -11,7 +11,7 @@ return [
         'groups' => [
             'personal' => 'Persönlich',
             'workspace' => 'Workspace',
-            'features' => 'Funktionen',
+            'content' => 'Inhalte',
             'integrations' => 'Integrationen',
             'account' => 'Konto',
         ],

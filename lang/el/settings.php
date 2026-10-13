@@ -9,7 +9,7 @@ return [
         'groups' => [
             'personal' => 'Προσωπικά',
             'workspace' => 'Workspace',
-            'features' => 'Λειτουργίες',
+            'content' => 'Περιεχόμενο',
             'integrations' => 'Ενσωματώσεις',
             'account' => 'Λογαριασμός',
         ],

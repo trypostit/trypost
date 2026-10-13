@@ -11,7 +11,7 @@ return [
         'groups' => [
             'personal' => 'Kişisel',
             'workspace' => 'Çalışma Alanı',
-            'features' => 'Özellikler',
+            'content' => 'İçerik',
             'integrations' => 'Entegrasyonlar',
             'account' => 'Hesap',
         ],

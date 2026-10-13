@@ -9,7 +9,7 @@ return [
         'groups' => [
             'personal' => '個人',
             'workspace' => 'ワークスペース',
-            'features' => '機能',
+            'content' => 'コンテンツ',
             'integrations' => '連携',
             'account' => 'アカウント',
         ],

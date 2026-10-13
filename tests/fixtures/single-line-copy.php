@@ -163,6 +163,7 @@ return [
     'mcp.dialog.open' => 18,
     'common.learn_more' => 18,
     'settings.sidebar.groups.integrations' => 14,
+    'settings.sidebar.groups.content' => 11,
     'settings.sidebar.items.api_keys' => 3,
     'welcome.personas.agency' => 10,
     'welcome.personas.creator' => 23,

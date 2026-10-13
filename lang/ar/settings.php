@@ -9,7 +9,7 @@ return [
         'groups' => [
             'personal' => 'شخصي',
             'workspace' => 'مساحة العمل',
-            'features' => 'الميزات',
+            'content' => 'المحتوى',
             'integrations' => 'التكاملات',
             'account' => 'الحساب',
         ],

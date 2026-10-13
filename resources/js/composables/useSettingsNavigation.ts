@@ -129,8 +129,8 @@ export const useSettingsNavigation = () => {
                 ],
             },
             {
-                key: 'features',
-                label: trans('settings.sidebar.groups.features'),
+                key: 'content',
+                label: trans('settings.sidebar.groups.content'),
                 items: [
                     ...item(
                         'signatures',
