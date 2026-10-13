@@ -11,7 +11,6 @@ return [
             'workspace' => 'مساحة العمل',
             'content' => 'المحتوى',
             'integrations' => 'التكاملات',
-            'account' => 'الحساب',
         ],
         'items' => [
             'profile' => 'الملف الشخصي',

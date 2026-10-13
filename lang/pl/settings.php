@@ -11,7 +11,6 @@ return [
             'workspace' => 'Przestrzeń robocza',
             'content' => 'Treści',
             'integrations' => 'Integracje',
-            'account' => 'Konto',
         ],
         'items' => [
             'profile' => 'Profil',

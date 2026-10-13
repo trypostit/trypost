@@ -11,7 +11,6 @@ return [
             'workspace' => '工作区',
             'content' => '内容',
             'integrations' => '集成',
-            'account' => '账户',
         ],
         'items' => [
             'profile' => '个人资料',

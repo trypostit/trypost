@@ -11,7 +11,6 @@ return [
             'workspace' => 'Робочий простір',
             'content' => 'Контент',
             'integrations' => 'Інтеграції',
-            'account' => 'Обліковий запис',
         ],
         'items' => [
             'profile' => 'Профіль',

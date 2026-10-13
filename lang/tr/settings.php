@@ -13,7 +13,6 @@ return [
             'workspace' => 'Çalışma Alanı',
             'content' => 'İçerik',
             'integrations' => 'Entegrasyonlar',
-            'account' => 'Hesap',
         ],
         'items' => [
             'profile' => 'Profil',

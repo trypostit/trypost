@@ -89,6 +89,7 @@ function settingsSidebarUser(string $role): User
 }
 
 test('settings pages swap the app sidebar for the settings sidebar', function () {
+    config(['trypost.self_hosted' => false]);
     $this->actingAs(settingsSidebarUser('admin'));
 
     $page = visit(route('app.profile.edit'));
@@ -104,20 +105,25 @@ test('settings pages swap the app sidebar for the settings sidebar', function ()
         ->assertSeeIn('@settings-nav-api-keys', 'API')
         ->assertDontSeeIn('@settings-nav-api-keys', 'Keys')
         ->assertPresent('[data-testid="settings-nav-api-keys"] svg.tabler-icon-code')
+        ->assertPresent('[data-testid="settings-nav-authentication"] svg.tabler-icon-fingerprint')
+        ->assertPresent('[data-testid="settings-nav-general"] svg.tabler-icon-building')
+        ->assertPresent('[data-testid="settings-nav-mcp"] svg.tabler-icon-plug')
         ->assertSeeIn('@settings-sidebar', 'Content')
         ->assertDontSeeIn('@settings-sidebar', 'Features')
         ->assertSeeIn('@settings-sidebar', 'Integrations')
         ->assertDontSeeIn('@settings-sidebar', 'Developers')
+        ->assertDontSeeIn('@settings-sidebar', 'Account')
         ->assertMissing('@sidebar-new')
         ->assertMissing('@settings-tab-profile')
         ->assertNoJavaScriptErrors();
 
-    $grouped = ['settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks', 'settings-nav-labels'];
+    $grouped = ['settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks', 'settings-nav-labels', 'settings-nav-members', 'settings-nav-billing'];
 
-    expect(array_values(array_intersect(settingsSidebarNavTestIds($page), $grouped)))->toBe(['settings-nav-labels', 'settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks']);
+    expect(array_values(array_intersect(settingsSidebarNavTestIds($page), $grouped)))->toBe(['settings-nav-members', 'settings-nav-billing', 'settings-nav-labels', 'settings-nav-api-keys', 'settings-nav-mcp', 'settings-nav-webhooks']);
 });
 
 test('members only see the settings they may use', function () {
+    config(['trypost.self_hosted' => false]);
     $this->actingAs(settingsSidebarUser('member'));
 
     $page = visit(route('app.profile.edit'));
@@ -129,6 +135,7 @@ test('members only see the settings they may use', function () {
         ->assertMissing('@settings-nav-channels')
         ->assertMissing('@settings-nav-general')
         ->assertMissing('@settings-nav-webhooks')
+        ->assertNotPresent('@settings-nav-billing')
         ->assertNoJavaScriptErrors();
 });
 

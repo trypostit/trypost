@@ -13,7 +13,6 @@ return [
             'workspace' => 'Workspace',
             'content' => 'Inhalte',
             'integrations' => 'Integrationen',
-            'account' => 'Konto',
         ],
         'items' => [
             'profile' => 'Profil',

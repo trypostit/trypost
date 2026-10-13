@@ -11,7 +11,6 @@ return [
             'workspace' => '워크스페이스',
             'content' => '콘텐츠',
             'integrations' => '연동',
-            'account' => '계정',
         ],
         'items' => [
             'profile' => '프로필',

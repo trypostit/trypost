@@ -11,7 +11,6 @@ return [
             'workspace' => 'Workspace',
             'content' => 'Περιεχόμενο',
             'integrations' => 'Ενσωματώσεις',
-            'account' => 'Λογαριασμός',
         ],
         'items' => [
             'profile' => 'Προφίλ',

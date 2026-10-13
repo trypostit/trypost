@@ -11,7 +11,6 @@ return [
             'workspace' => 'ワークスペース',
             'content' => 'コンテンツ',
             'integrations' => '連携',
-            'account' => 'アカウント',
         ],
         'items' => [
             'profile' => 'プロフィール',

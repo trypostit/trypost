@@ -5,9 +5,9 @@ import {
     IconCoin,
     IconCode,
     IconSignature,
-    IconLock,
-    IconPlugConnected,
-    IconSettings,
+    IconFingerprint,
+    IconPlug,
+    IconBuilding,
     IconAdjustmentsHorizontal,
     IconTag,
     IconUser,
@@ -92,7 +92,7 @@ export const useSettingsNavigation = () => {
                     ...item(
                         'authentication',
                         authenticationEdit.url(),
-                        IconLock,
+                        IconFingerprint,
                         true,
                     ),
                     ...item(
@@ -110,7 +110,7 @@ export const useSettingsNavigation = () => {
                     ...item(
                         'general',
                         workspaceSettings.url(),
-                        IconSettings,
+                        IconBuilding,
                         workspace && canManageWorkspace.value,
                     ),
                     ...item(
@@ -125,6 +125,12 @@ export const useSettingsNavigation = () => {
                         members.url(),
                         IconUsers,
                         workspace && canManageWorkspace.value,
+                    ),
+                    ...item(
+                        'billing',
+                        billing.url(),
+                        IconCoin,
+                        canManageBilling.value && !selfHosted.value,
                     ),
                 ],
             },
@@ -156,24 +162,12 @@ export const useSettingsNavigation = () => {
                         IconCode,
                         workspace && canManageWorkspace.value,
                     ),
-                    ...item('mcp', mcp.url(), IconPlugConnected, workspace),
+                    ...item('mcp', mcp.url(), IconPlug, workspace),
                     ...item(
                         'webhooks',
                         webhooks.url(),
                         IconWebhook,
                         workspace && canManageWebhooks.value,
-                    ),
-                ],
-            },
-            {
-                key: 'account',
-                label: trans('settings.sidebar.groups.account'),
-                items: [
-                    ...item(
-                        'billing',
-                        billing.url(),
-                        IconCoin,
-                        canManageBilling.value && !selfHosted.value,
                     ),
                 ],
             },
