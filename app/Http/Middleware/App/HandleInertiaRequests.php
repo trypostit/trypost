@@ -66,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                 && ! $isSelfHosted
                 && $account?->hasAppAccess()
                 && $user->getRawOriginal('referral_source') === null
+                && $user->created_at?->lte(now()->subDay())
                     ? array_map(fn (ReferralSource $source): string => $source->value, ReferralSource::cases())
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,

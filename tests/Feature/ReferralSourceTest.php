@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Bus;
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
 
-    $this->user = User::factory()->create(['referral_source' => null]);
+    $this->user = User::factory()->create(['referral_source' => null, 'created_at' => now()->subDays(2)]);
     $workspace = Workspace::factory()->create([
         'account_id' => $this->user->account_id,
         'user_id' => $this->user->id,
@@ -32,7 +32,7 @@ test('a user inside the app who has not answered is asked where they found us', 
         ));
 });
 
-test('the question is not shared once answered, on self-hosted or before app access', function (Closure $setup) {
+test('the question is not shared once answered, on self-hosted, before app access or on signup day', function (Closure $setup) {
     $setup($this->user);
 
     $this->actingAs($this->user->fresh())
@@ -44,6 +44,7 @@ test('the question is not shared once answered, on self-hosted or before app acc
     'answered' => [fn (User $user) => $user->update(['referral_source' => ReferralSource::Google->value])],
     'self-hosted' => [fn () => config(['trypost.self_hosted' => true])],
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
+    'signed up less than a day ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subHours(23)])->save()],
 ]);
 
 test('answering stores the source, mirrors it to PostHog and goes back', function () {

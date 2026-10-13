@@ -21,7 +21,7 @@ function waitForReferralSurveyCondition(mixed $page, string $condition): void
 test('a user who has not said where they found us answers from the in-app card', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = User::factory()->create(['referral_source' => null]);
+    $user = User::factory()->create(['referral_source' => null, 'created_at' => now()->subDays(2)]);
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
@@ -50,7 +50,7 @@ test('a user who has not said where they found us answers from the in-app card',
 test('on a phone the survey slides up as a bottom sheet and can be answered', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = User::factory()->create(['referral_source' => null]);
+    $user = User::factory()->create(['referral_source' => null, 'created_at' => now()->subDays(2)]);
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
