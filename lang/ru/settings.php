@@ -10,7 +10,7 @@ return [
             'personal' => 'Личное',
             'workspace' => 'Рабочее пространство',
             'features' => 'Возможности',
-            'developers' => 'Разработчикам',
+            'other' => 'Другое',
             'account' => 'Аккаунт',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => 'Подписи',
             'labels' => 'Метки',
             'webhooks' => 'Вебхуки',
-            'api_keys' => 'API-ключи',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'Оплата',
         ],

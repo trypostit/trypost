@@ -12,7 +12,7 @@ return [
             'personal' => 'Kişisel',
             'workspace' => 'Çalışma Alanı',
             'features' => 'Özellikler',
-            'developers' => 'Geliştiriciler',
+            'other' => 'Diğer',
             'account' => 'Hesap',
         ],
         'items' => [
@@ -26,7 +26,7 @@ return [
             'signatures' => 'İmzalar',
             'labels' => 'Etiketler',
             'webhooks' => 'Webhooklar',
-            'api_keys' => 'API Anahtarları',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'Faturalandırma',
         ],

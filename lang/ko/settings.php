@@ -10,7 +10,7 @@ return [
             'personal' => '개인',
             'workspace' => '워크스페이스',
             'features' => '기능',
-            'developers' => '개발자',
+            'other' => '기타',
             'account' => '계정',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => '서명',
             'labels' => '라벨',
             'webhooks' => '웹훅',
-            'api_keys' => 'API 키',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => '결제',
         ],

@@ -10,7 +10,7 @@ return [
             'personal' => 'شخصي',
             'workspace' => 'مساحة العمل',
             'features' => 'الميزات',
-            'developers' => 'المطورون',
+            'other' => 'أخرى',
             'account' => 'الحساب',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => 'التوقيعات',
             'labels' => 'التسميات',
             'webhooks' => 'Webhooks',
-            'api_keys' => 'مفاتيح API',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'الفوترة',
         ],

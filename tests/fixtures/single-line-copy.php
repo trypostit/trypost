@@ -162,6 +162,8 @@ return [
     'mcp.copied' => 11,
     'mcp.dialog.open' => 18,
     'common.learn_more' => 18,
+    'settings.sidebar.groups.other' => 9,
+    'settings.sidebar.items.api_keys' => 3,
     'welcome.personas.agency' => 10,
     'welcome.personas.creator' => 23,
     'welcome.personas.developer' => 15,

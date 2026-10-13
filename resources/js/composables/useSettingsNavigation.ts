@@ -3,8 +3,8 @@ import {
     IconLayoutGrid,
     IconBell,
     IconCoin,
+    IconCode,
     IconSignature,
-    IconKey,
     IconLock,
     IconPlugConnected,
     IconSettings,
@@ -153,13 +153,13 @@ export const useSettingsNavigation = () => {
                 ],
             },
             {
-                key: 'developers',
-                label: trans('settings.sidebar.groups.developers'),
+                key: 'other',
+                label: trans('settings.sidebar.groups.other'),
                 items: [
                     ...item(
                         'api_keys',
                         apiKeys.url(),
-                        IconKey,
+                        IconCode,
                         workspace && canManageWorkspace.value,
                     ),
                     ...item('mcp', mcp.url(), IconPlugConnected, workspace),

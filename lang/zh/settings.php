@@ -10,7 +10,7 @@ return [
             'personal' => '个人',
             'workspace' => '工作区',
             'features' => '功能',
-            'developers' => '开发者',
+            'other' => '其他',
             'account' => '账户',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => '签名',
             'labels' => '标签',
             'webhooks' => 'Webhooks',
-            'api_keys' => 'API 密钥',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => '账单',
         ],

@@ -10,7 +10,7 @@ return [
             'personal' => 'Προσωπικά',
             'workspace' => 'Workspace',
             'features' => 'Λειτουργίες',
-            'developers' => 'Προγραμματιστές',
+            'other' => 'Άλλα',
             'account' => 'Λογαριασμός',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => 'Υπογραφές',
             'labels' => 'Ετικέτες',
             'webhooks' => 'Webhooks',
-            'api_keys' => 'Κλειδιά API',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'Χρέωση',
         ],

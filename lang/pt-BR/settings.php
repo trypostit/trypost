@@ -10,7 +10,7 @@ return [
             'personal' => 'Pessoal',
             'workspace' => 'Workspace',
             'features' => 'Recursos',
-            'developers' => 'Desenvolvedores',
+            'other' => 'Outros',
             'account' => 'Conta',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => 'Assinaturas',
             'labels' => 'Etiquetas',
             'webhooks' => 'Webhooks',
-            'api_keys' => 'API Keys',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'Cobrança',
         ],

@@ -10,7 +10,7 @@ return [
             'personal' => 'Personal',
             'workspace' => 'Workspace',
             'features' => 'Features',
-            'developers' => 'Developers',
+            'other' => 'Other',
             'account' => 'Account',
         ],
         'items' => [
@@ -24,7 +24,7 @@ return [
             'signatures' => 'Signatures',
             'labels' => 'Labels',
             'webhooks' => 'Webhooks',
-            'api_keys' => 'API Keys',
+            'api_keys' => 'API',
             'mcp' => 'MCP',
             'billing' => 'Billing',
         ],
