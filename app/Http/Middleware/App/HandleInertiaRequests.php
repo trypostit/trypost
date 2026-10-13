@@ -92,7 +92,7 @@ class HandleInertiaRequests extends Middleware
             'contentTypeMediaRules' => fn (): array => ContentType::mediaRulesForFrontend(),
             'defaultCropPresets' => fn (): array => ContentType::defaultCropPresets(),
             'plans' => function (): array {
-                if (config('trypost.self_hosted') || auth()->user()?->account === null) {
+                if (config('trypost.self_hosted') || blank(auth()->user()?->account)) {
                     return [];
                 }
 
@@ -108,7 +108,7 @@ class HandleInertiaRequests extends Middleware
             'aiEnabled' => fn (): bool => filled(config('ai.providers.'.config('ai.default').'.key')),
             'googleAuthEnabled' => fn (): bool => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => fn (): bool => SocialAuthProvider::GitHub->isEnabled(),
-            ...($user !== null ? [
+            ...(filled($user) ? [
                 'mediaSources' => fn (): array => ['menu' => MediaSource::menu()],
                 'mediaUploadLimits' => fn (): array => [
                     'max_bytes' => [
@@ -125,8 +125,8 @@ class HandleInertiaRequests extends Middleware
                     'heic' => HeicConverter::available(),
                 ],
             ] : []),
-            ...($workspace !== null ? ['composer' => ComposerResource::once($workspace)] : []),
-            ...($user !== null && config('trypost.platforms.x.defuse_links') ? ['xLinkTlds' => fn (): array => LinkTlds::all()] : []),
+            ...(filled($workspace) ? ['composer' => ComposerResource::once($workspace)] : []),
+            ...(filled($user) && config('trypost.platforms.x.defuse_links') ? ['xLinkTlds' => fn (): array => LinkTlds::all()] : []),
         ];
     }
 
@@ -137,7 +137,7 @@ class HandleInertiaRequests extends Middleware
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool
     {
-        if ($user === null) {
+        if (blank($user)) {
             return false;
         }
 
@@ -145,7 +145,7 @@ class HandleInertiaRequests extends Middleware
             self::referralSourcesCacheKey($user),
             now()->addMinutes(5),
             fn (): bool => ! $isSelfHosted
-                && $user->getRawOriginal('referral_source') === null
+                && blank($user->getRawOriginal('referral_source'))
                 && $user->created_at?->lte(now()->subHour()) === true
                 && $account?->hasAppAccess() === true,
         );
