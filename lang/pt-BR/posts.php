@@ -395,6 +395,13 @@ return [
                 'travel_and_events' => 'Viagens e eventos',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Primeiro comentário',
+            'placeholder' => 'Link e extras para o primeiro comentário…',
+            'hint' => 'Publicado pelo seu canal logo após o vídeo ir ao ar.',
+            'hint_instagram' => 'Publicado logo após a postagem — o lugar clássico para links que as legendas do Instagram não tornam clicáveis. Reconecte a conta uma vez para conceder a permissão de comentários.',
+            'max' => 'O primeiro comentário não pode exceder 2200 caracteres.',
+        ],
         'ai_generated' => [
             'label' => 'Gerado por IA',
             'hint' => 'Avise aos espectadores que o conteúdo foi gerado ou editado com IA.',

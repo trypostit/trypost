@@ -395,6 +395,13 @@ return [
                 'travel_and_events' => 'Podróże i wydarzenia',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Pierwszy komentarz',
+            'placeholder' => 'Link i dodatki do pierwszego komentarza…',
+            'hint' => 'Publikowany przez Twój kanał zaraz po opublikowaniu filmu.',
+            'hint_instagram' => 'Publikowany zaraz po poście — klasyczne miejsce na linki, których opisy na Instagramie nie czynią klikalnymi. Połącz konto ponownie, aby nadać uprawnienie do komentarzy.',
+            'max' => 'Pierwszy komentarz nie może przekraczać 2200 znaków.',
+        ],
         'ai_generated' => [
             'label' => 'Treść AI',
             'hint' => 'Poinformuj widzów, że treść została wygenerowana lub edytowana przez AI.',

@@ -395,6 +395,13 @@ return [
                 'travel_and_events' => 'Travel & Events',
             ],
         ],
+        'first_comment' => [
+            'label' => 'First comment',
+            'placeholder' => 'Link and extras for the first comment…',
+            'hint' => 'Posted by your channel right after the video is published.',
+            'hint_instagram' => 'Posted right after publishing — the classic spot for links Instagram captions can\'t make clickable. Requires reconnecting the account once to grant the comments permission.',
+            'max' => 'First comment may not exceed 2200 characters.',
+        ],
         'ai_generated' => [
             'label' => 'AI-generated',
             'hint' => 'Tell viewers your content was generated or edited with AI.',

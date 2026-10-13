@@ -9,13 +9,14 @@ use App\Rules\ContentFitsPlatformLimits;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Support\Facades\Validator;
 
-test('custom meta messages only cover pinterest title and link', function () {
+test('custom meta messages cover pinterest, google business and first-comment fields', function () {
     expect(PostPlatformMetaRules::messages())->toBe([
         'meta.link.url' => __('posts.form.pinterest.link_invalid'),
         'meta.link.max' => __('posts.form.pinterest.link_max'),
         'meta.title.max' => __('posts.form.pinterest.title_max'),
         'meta.event.end_date.after_or_equal' => __('posts.form.google_business.event_end_date_before_start'),
         'meta.event.title.max' => __('posts.form.google_business.title_max'),
+        'meta.first_comment.max' => __('posts.form.first_comment.max'),
     ]);
 });
 
@@ -26,6 +27,7 @@ test('custom meta attributes use translated field names', function () {
         'meta.link' => __('posts.form.pinterest.link'),
         'meta.event.title' => __('posts.form.google_business.event_title'),
         'meta.call_to_action.url' => __('posts.form.google_business.cta_url'),
+        'meta.first_comment' => __('posts.form.first_comment.label'),
     ]);
 });
 
@@ -52,6 +54,7 @@ test('shared meta rules still include non-pinterest platform fields', function (
             'meta.channel_id',
             'meta.title',
             'meta.link',
+            'meta.first_comment',
         ]);
 });
 

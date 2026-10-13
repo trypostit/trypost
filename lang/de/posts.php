@@ -397,6 +397,13 @@ return [
                 'travel_and_events' => 'Reisen & Events',
             ],
         ],
+        'first_comment' => [
+            'label' => 'Erster Kommentar',
+            'placeholder' => 'Link und Extras für den ersten Kommentar…',
+            'hint' => 'Wird direkt nach der Veröffentlichung vom Kanal gepostet.',
+            'hint_instagram' => 'Wird direkt nach dem Beitrag gepostet — der klassische Ort für Links, die in Instagram-Beschreibungen nicht klickbar sind. Konto einmal neu verbinden, um die Kommentar-Berechtigung zu erteilen.',
+            'max' => 'Der erste Kommentar darf 2200 Zeichen nicht überschreiten.',
+        ],
         'ai_generated' => [
             'label' => 'KI-generiert',
             'hint' => 'Zeige deinen Zuschauern, dass dein Inhalt mit KI erstellt oder bearbeitet wurde.',
