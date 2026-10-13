@@ -116,7 +116,19 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     $page->click('@welcome-mcp-connect-claude');
     waitForWelcomeMcpTestId($page, 'mcp-dialog-step-paste');
 
-    expect($page->script('window.__copied'))->toBe([])
+    $connectClickPath = parse_url(route('app.welcome.mcp.connect-click'), PHP_URL_PATH);
+    $tracked = $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 60; i++) {
+                if (performance.getEntriesByType('resource').some((entry) => new URL(entry.name).pathname === '{$connectClickPath}')) return true;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+            return false;
+        })()
+    JS);
+
+    expect($tracked)->toBeTrue()
+        ->and($page->script('window.__copied'))->toBe([])
         ->and($page->script('document.activeElement.dataset.testid'))->toBe('mcp-dialog')
         ->and($page->script('getComputedStyle(document.activeElement).outlineStyle'))->toBe('none');
 

@@ -94,6 +94,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('throttle:6,1')
         ->name('app.welcome.plan.store');
     Route::get('welcome/mcp', [WelcomeController::class, 'mcp'])->name('app.welcome.mcp');
+    Route::post('welcome/mcp/connect-click', [WelcomeController::class, 'storeMcpConnectClick'])
+        ->middleware('throttle:30,1')
+        ->name('app.welcome.mcp.connect-click');
+    Route::get('welcome/mcp/skip', [WelcomeController::class, 'skipMcp'])->name('app.welcome.mcp.skip');
     Route::post('referral-source', [ReferralSourceController::class, 'store'])
         ->middleware('throttle:6,1')
         ->name('app.referral-source.store');

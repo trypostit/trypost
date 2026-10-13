@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router, usePoll } from '@inertiajs/vue3';
+import { Head, Link, router, useHttp, usePoll } from '@inertiajs/vue3';
 import {
     IconArrowRight,
     IconArrowUp,
@@ -30,8 +30,17 @@ import McpChatExample from '@/components/welcome/mcp/McpChatExample.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
-import { mcpClients, otherMcpClient, type McpClient } from '@/lib/mcpClients';
+import {
+    mcpClients,
+    otherMcpClient,
+    type McpClient,
+    type McpClientId,
+} from '@/lib/mcpClients';
 import { index as postsIndex } from '@/routes/app/posts';
+import {
+    connectClick,
+    skip as skipMcp,
+} from '@/routes/app/welcome/mcp';
 import { fireConfetti } from '@/utils/confetti';
 
 interface ConnectedClient {
@@ -105,9 +114,17 @@ const connectableClients: McpClient[] = [...mcpClients, otherMcpClient];
 
 const activeClient = ref<McpClient>(mcpClients[0]);
 const dialogOpen = ref(false);
+const connectClickHttp = useHttp<{ client: McpClientId }>({ client: 'claude' });
+
+const trackConnectClick = (client: McpClient): void => {
+    connectClickHttp.client = client.id;
+    connectClickHttp.post(connectClick.url()).catch(() => {});
+};
+
 const connectWith = (client: McpClient): void => {
     activeClient.value = client;
     dialogOpen.value = true;
+    trackConnectClick(client);
 };
 
 const aiPickerOpen = ref(false);
@@ -400,7 +417,7 @@ const goToSchedule = (): void => {
                         size="lg"
                     >
                         <Link
-                            :href="postsIndex.url()"
+                            :href="skipMcp.url()"
                             data-testid="welcome-mcp-skip-link"
                         >
                             {{ $t('welcome.mcp.skip') }}
@@ -415,7 +432,7 @@ const goToSchedule = (): void => {
                     class="max-sm:hidden sm:fixed sm:end-8 sm:bottom-8 lg:end-12"
                 >
                     <Link
-                        :href="postsIndex.url()"
+                        :href="skipMcp.url()"
                         data-testid="welcome-mcp-skip"
                     >
                         {{ $t('welcome.mcp.skip') }}

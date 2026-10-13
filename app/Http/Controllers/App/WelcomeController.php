@@ -14,6 +14,7 @@ use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
+use App\Http\Requests\App\Welcome\StoreWelcomeMcpConnectClickRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
 use App\Http\Resources\App\PlanResource;
@@ -175,13 +176,18 @@ class WelcomeController extends Controller
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
+        $firstMonthOffer = ConfigureSubscriptionCheckout::offersFirstMonthCoupon($user->account, $plan);
         $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
 
         try {
             $postHog->capture(
                 $user->id,
                 CheckoutEvent::Started->value,
-                ['plan_name' => $plan->name, 'interval' => Interval::Monthly->value],
+                [
+                    'plan_name' => $plan->name,
+                    'interval' => Interval::Monthly->value,
+                    'first_month_offer' => $firstMonthOffer,
+                ],
                 $user->account,
             );
         } catch (Throwable $e) {
@@ -211,6 +217,34 @@ class WelcomeController extends Controller
             'mcpUrl' => route('mcp.trypost'),
             'connectedClients' => ListConnectedMcpClients::forUser($user, $workspace),
         ]);
+    }
+
+    public function storeMcpConnectClick(StoreWelcomeMcpConnectClickRequest $request, PostHogService $postHog): Response
+    {
+        $user = $request->user();
+
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::McpConnectClicked->value,
+            ['client' => (string) $request->validated('client')],
+            $user->account,
+        );
+
+        return response()->noContent();
+    }
+
+    public function skipMcp(Request $request, PostHogService $postHog): RedirectResponse
+    {
+        $user = $request->user();
+
+        $postHog->capture(
+            $user->id,
+            WelcomeEvent::McpSkipped->value,
+            [],
+            $user->account,
+        );
+
+        return redirect()->route('app.posts.index');
     }
 
     public function subscriptionRequired(Request $request): InertiaResponse|RedirectResponse

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Locale;
@@ -244,6 +245,77 @@ test('plan store sends the owner to Stripe checkout on the Socials monthly price
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.plan.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('checkout.started records whether the first-month offer was shown', function (string $couponId, bool $offered) {
+    config([
+        'services.posthog.enabled' => true,
+        'services.posthog.api_key' => 'phc_test',
+        'cashier.first_month_coupon_ids.socials' => $couponId,
+    ]);
+    Bus::fake();
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === CheckoutEvent::Started->value
+        && data_get($event->payload, 'properties.first_month_offer') === $offered);
+})->with([
+    'with the coupon' => ['coupon_socials', true],
+    'without the coupon' => ['', false],
+]);
+
+test('picking an AI app on the MCP step records which one', function (string $client) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    attachCurrentWorkspace($this->user);
+    subscribeAccount($this->user->account);
+
+    $this->actingAs($this->user->fresh())
+        ->postJson(route('app.welcome.mcp.connect-click'), ['client' => $client])
+        ->assertNoContent();
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === WelcomeEvent::McpConnectClicked->value
+        && data_get($event->payload, 'properties.client') === $client
+        && data_get($event->payload, 'properties.account_id') === $this->user->account_id);
+})->with(['claude', 'chatgpt', 'other']);
+
+test('picking an AI app requires a known app', function (array $payload) {
+    Bus::fake();
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.welcome.mcp.connect-click'), $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('client');
+
+    Bus::assertNotDispatched(SendEvent::class);
+})->with([
+    'missing' => [[]],
+    'unknown' => [['client' => 'gemini']],
+]);
+
+test('skipping the MCP step records it and goes to the schedule', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    attachCurrentWorkspace($this->user);
+    subscribeAccount($this->user->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.mcp.skip'))
+        ->assertRedirect(route('app.posts.index'));
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
+        && data_get($event->payload, 'event') === WelcomeEvent::McpSkipped->value);
 });
 
 test('the MCP step gives the TryPost MCP URL and the owner connections', function () {
