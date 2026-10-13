@@ -32,7 +32,7 @@ test('a user inside the app who has not answered is asked where they found us', 
         ));
 });
 
-test('the question is not shared once answered, on self-hosted, before app access or on signup day', function (Closure $setup) {
+test('the question is not shared once answered, on self-hosted, before app access or in the first hour', function (Closure $setup) {
     $setup($this->user);
 
     $this->actingAs($this->user->fresh())
@@ -44,7 +44,7 @@ test('the question is not shared once answered, on self-hosted, before app acces
     'answered' => [fn (User $user) => $user->update(['referral_source' => ReferralSource::Google->value])],
     'self-hosted' => [fn () => config(['trypost.self_hosted' => true])],
     'no app access' => [fn (User $user) => $user->account->subscriptions()->delete()],
-    'signed up less than a day ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subHours(23)])->save()],
+    'signed up less than an hour ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subMinutes(59)])->save()],
 ]);
 
 test('answering stores the source, mirrors it to PostHog and goes back', function () {
