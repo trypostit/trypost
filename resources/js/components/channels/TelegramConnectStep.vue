@@ -226,6 +226,7 @@ onUnmounted(() => {
                 >
                     <h3
                         class="flex items-center gap-2 text-lg leading-tight font-medium text-foreground"
+                        data-testid="telegram-connect-steps-title"
                     >
                         <PlatformLogo
                             platform="telegram"

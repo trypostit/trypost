@@ -349,7 +349,7 @@ test('the telegram step shows its instructions, copies and regenerates the comma
     $page->assertMissing('@connect-channel-logos')
         ->assertSee(trans('accounts.telegram.title'))
         ->assertSee(trans('accounts.telegram.description'))
-        ->assertSeeIn('@telegram-connect-steps', trans('accounts.telegram.steps'))
+        ->assertSeeIn('@telegram-connect-steps-title', trans('accounts.telegram.steps'))
         ->assertSeeIn('@telegram-connect-bot', '@TryPost_Bot')
         ->assertSeeIn('@telegram-connect-waiting', trans('accounts.telegram.waiting'))
         ->assertVisible('@telegram-connect-regenerate')
