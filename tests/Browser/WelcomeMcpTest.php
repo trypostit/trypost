@@ -417,3 +417,28 @@ test('once the AI connects the dialog closes, confetti flies and the page offers
         ->assertScript('document.querySelector("[data-testid=welcome-mcp-continue]").getBoundingClientRect().top < document.querySelector("[data-testid=welcome-mcp-status]").getBoundingClientRect().top', true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the MCP examples rotate on their own until the user picks a tab', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeMcpSubscriber());
+
+    $page = visit(route('app.welcome.mcp'))->resize(1440, 900);
+    waitForWelcomeMcpTestId($page, 'welcome-mcp-benefit-ideas');
+
+    $selectedAfter = fn (int $milliseconds): ?string => $page->script(<<<JS
+        (async () => {
+            await new Promise((resolve) => setTimeout(resolve, {$milliseconds}));
+            return document.querySelector('[data-testid^="welcome-mcp-benefit-"][aria-selected="true"]')?.dataset.testid;
+        })()
+    JS);
+
+    expect($selectedAfter(8600))->toBe('welcome-mcp-benefit-schedule');
+
+    $page->click('@welcome-mcp-benefit-queue')
+        ->hover('@welcome-title');
+
+    expect($selectedAfter(9000))->toBe('welcome-mcp-benefit-queue');
+
+    $page->assertNoJavaScriptErrors();
+});

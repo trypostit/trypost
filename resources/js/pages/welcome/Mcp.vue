@@ -58,7 +58,14 @@ const {
     select: selectBenefit,
     pause: pauseBenefits,
     resume: resumeBenefits,
+    stop: stopBenefits,
 } = useAutoRotate(benefits.length, 8000);
+
+/** Picking a tab means the user wants to read it: the rotation stops for good. */
+const chooseBenefit = (index: number): void => {
+    selectBenefit(index);
+    stopBenefits();
+};
 
 const activeKey = computed((): string => benefits[activeBenefit.value].key);
 
@@ -214,7 +221,7 @@ const goToSchedule = (): void => {
                                 : 'hover:bg-muted',
                         ]"
                         :data-testid="`welcome-mcp-benefit-${benefit.key}`"
-                        @click="selectBenefit(index)"
+                        @click="chooseBenefit(index)"
                     >
                         <span
                             :class="[
@@ -264,7 +271,7 @@ const goToSchedule = (): void => {
                                 : 'border-border bg-card text-muted-foreground',
                         ]"
                         :data-testid="`welcome-mcp-pill-${benefit.key}`"
-                        @click="selectBenefit(index)"
+                        @click="chooseBenefit(index)"
                     >
                         <component :is="benefit.icon" class="size-4" />
                         {{ $t(`welcome.mcp.benefits.${benefit.key}.title`) }}
