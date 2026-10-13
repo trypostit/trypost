@@ -130,16 +130,24 @@ class HandleInertiaRequests extends Middleware
         ];
     }
 
+    public static function referralSourcesCacheKey(User $user): string
+    {
+        return "referral-sources.{$user->id}";
+    }
+
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool
     {
-        return $user !== null
-            && ! $isSelfHosted
-            && $user->getRawOriginal('referral_source') === null
-            && $user->created_at?->lte(now()->subHour()) === true
-            && Cache::remember(
-                "referral-sources.{$user->id}",
-                now()->addMinutes(5),
-                fn (): bool => $account?->hasAppAccess() === true,
-            );
+        if ($user === null) {
+            return false;
+        }
+
+        return Cache::remember(
+            self::referralSourcesCacheKey($user),
+            now()->addMinutes(5),
+            fn (): bool => ! $isSelfHosted
+                && $user->getRawOriginal('referral_source') === null
+                && $user->created_at?->lte(now()->subHour()) === true
+                && $account?->hasAppAccess() === true,
+        );
     }
 }

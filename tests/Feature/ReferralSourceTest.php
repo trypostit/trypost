@@ -8,7 +8,6 @@ use App\Jobs\PostHog\SendEvent;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -48,21 +47,33 @@ test('the question is not shared once answered, on self-hosted, before app acces
     'signed up less than an hour ago' => [fn (User $user) => $user->forceFill(['created_at' => now()->subMinutes(59)])->save()],
 ]);
 
-test('the app access check behind the question is cached for five minutes', function () {
+test('whether to ask is cached for five minutes', function () {
+    $this->user->forceFill(['created_at' => now()->subMinutes(58)])->save();
+
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
-        ->assertOk();
+        ->assertInertia(fn ($page) => $page->where('referralSources', null));
 
-    expect(Cache::get("referral-sources.{$this->user->id}"))->toBeTrue();
+    $this->travel(4)->minutes();
 
-    $this->travel(6)->minutes();
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->where('referralSources', null));
 
-    expect(Cache::has("referral-sources.{$this->user->id}"))->toBeFalse();
+    $this->travel(2)->minutes();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->whereNotNull('referralSources'));
 });
 
 test('answering stores the source, mirrors it to PostHog and goes back', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn ($page) => $page->whereNotNull('referralSources'));
 
     $this->actingAs($this->user->fresh())
         ->from(route('app.calendar'))
