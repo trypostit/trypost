@@ -77,7 +77,8 @@ test('the calendar header follows the language, not the previous one', function 
 
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => '2026-09-14']));
+    $week = now()->startOfMonth()->addDays(10)->startOfWeek();
+    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $week->toDateString()]));
     waitForSidebarLanguageTestId($page, 'sidebar-workspace-menu');
 
     $page->script(<<<'JS'
@@ -99,8 +100,8 @@ test('the calendar header follows the language, not the previous one', function 
 
     // The month name comes from dayjs on the client, so it is the piece that used
     // to lag one switch behind the interface strings.
-    $page->assertScript('/setembro/i.test(window.__header)', true)
-        ->assertScript('/September/.test(window.__header)', false);
+    $page->assertScript("/{$week->locale('pt_BR')->translatedFormat('F')}/i.test(window.__header)", true)
+        ->assertScript("/{$week->format('F')}/.test(window.__header)", false);
 });
 
 test('switching theme in the sidebar applies it in place and saves it', function () {

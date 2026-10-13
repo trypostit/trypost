@@ -127,11 +127,12 @@ test('a note timestamp follows the display zone of the list', function () {
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     $post = Post::factory()->create(['workspace_id' => $workspace->id, 'user_id' => $user->id, 'content' => 'zone check']);
+    $createdAt = now()->subMonth()->setTime(10, 0);
     PostNote::factory()->create([
         'post_id' => $post->id,
         'user_id' => $user->id,
-        'created_at' => '2026-09-20 10:00:00',
-        'updated_at' => '2026-09-20 10:00:00',
+        'created_at' => $createdAt,
+        'updated_at' => $createdAt,
     ]);
     $this->actingAs($user);
 
@@ -141,7 +142,7 @@ test('a note timestamp follows the display zone of the list', function () {
     waitForPostNotesTestId($page, 'note-created-at');
 
     expect($page->script('document.querySelector(\'[data-testid="note-created-at"]\').getAttribute("title")'))
-        ->toBe('September 20, 2026 7:00 AM');
+        ->toBe($createdAt->setTimezone('America/Sao_Paulo')->format('F j, Y g:i A'));
     $page->assertNoJavaScriptErrors();
 });
 

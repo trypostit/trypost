@@ -649,7 +649,9 @@ test('on a phone the period picker opens from the bottom, switches the view in p
     [$user] = calendarPageSetup();
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'week', 'week' => '2027-03-01']))->resize(390, 844);
+    $shownWeek = now()->addYear()->setDate(now()->addYear()->year, 3, 1)->toDateString();
+    $pickedDay = now()->addYear()->setDate(now()->addYear()->year, 3, 17);
+    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $shownWeek]))->resize(390, 844);
     waitForCalendarTestId($page, 'calendar-period-trigger');
 
     expect($page->script('Boolean(document.querySelector(\'[data-testid="calendar-previous"]\'))'))->toBeFalse();
@@ -659,11 +661,11 @@ test('on a phone the period picker opens from the bottom, switches the view in p
     waitForCalendarCondition($page, 'Math.abs(window.innerHeight - document.querySelector(\'[data-testid="calendar-period-picker"]\').getBoundingClientRect().bottom) <= 1');
 
     $page->assertVisible('@calendar-view-days')
-        ->click('[data-testid="calendar-period-calendar"] [data-testid="calendar-date-2027-03-17"]');
-    waitForCalendarCondition($page, 'new URLSearchParams(location.search).get("week") !== "2027-03-01"');
+        ->click("[data-testid=\"calendar-period-calendar\"] [data-testid=\"calendar-date-{$pickedDay->toDateString()}\"]");
+    waitForCalendarCondition($page, "new URLSearchParams(location.search).get(\"week\") !== \"{$shownWeek}\"");
 
     $week = $page->script('new URLSearchParams(location.search).get("week")');
-    expect($week >= '2027-03-11' && $week <= '2027-03-17')->toBeTrue();
+    expect($week >= $pickedDay->subDays(6)->toDateString() && $week <= $pickedDay->toDateString())->toBeTrue();
     waitForCalendarCondition($page, '!document.querySelector(\'[data-testid="calendar-period-picker"]\')');
     $page->assertMissing('@calendar-period-picker');
 

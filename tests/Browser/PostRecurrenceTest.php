@@ -178,12 +178,13 @@ test('a recurrence is edited and stopped', function () {
 
 test('the banner of a later occurrence counts from the series origin', function () {
     [$user, $post] = recurrenceSetup();
+    $year = now()->addYear()->year;
     $post->update([
-        'scheduled_at' => CarbonImmutable::parse('2027-02-28 09:00', 'UTC'),
+        'scheduled_at' => CarbonImmutable::parse("{$year}-02-28 09:00", 'UTC'),
         'recurrence_interval' => 1,
         'recurrence_frequency' => RecurrenceFrequency::Month,
         'recurrence_remaining' => 2,
-        'recurrence_origin_at' => CarbonImmutable::parse('2027-01-31 09:00', 'UTC'),
+        'recurrence_origin_at' => CarbonImmutable::parse("{$year}-01-31 09:00", 'UTC'),
     ]);
     $this->actingAs($user);
 
@@ -191,12 +192,14 @@ test('the banner of a later occurrence counts from the series origin', function 
     waitForRecurrenceTestId($page, "post-recurrence-banner-{$post->id}");
 
     expect(recurrenceText($page, "post-recurrence-banner-{$post->id}"))
-        ->toBe('This post will be shared every month on the 31st at 9:00 AM, until Apr 30, 2027 (2 posts left).');
+        ->toBe("This post will be shared every month on the 31st at 9:00 AM, until Apr 30, {$year} (2 posts left).");
     $page->assertNoJavaScriptErrors();
 });
 
 test('the end date of a recurrence follows the channel time zone', function () {
-    [$user, $post] = recurrenceSetup('America/New_York', CarbonImmutable::parse('2027-06-01 02:00', 'UTC'));
+    $scheduledAt = CarbonImmutable::parse(now()->addYear()->year.'-06-01 02:00', 'UTC');
+    $localDay = $scheduledAt->setTimezone('America/New_York');
+    [$user, $post] = recurrenceSetup('America/New_York', $scheduledAt);
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index'));
@@ -204,13 +207,13 @@ test('the end date of a recurrence follows the channel time zone', function () {
     openRecurrenceDialog($page, $post->id);
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))
-        ->toBe('This post will be shared every Monday at 10:00 PM, until Jun 7, 2027.');
+        ->toBe("This post will be shared every {$localDay->format('l')} at 10:00 PM, until {$localDay->addWeek()->format('M j, Y')}.");
 
     chooseRecurrenceFrequency($page, $post->id, 'month');
     $page->fill("@post-recurrence-times-{$post->id}", '6');
     waitForRecurrenceCondition($page, "document.querySelector('[data-testid=\"post-recurrence-summary-{$post->id}\"]')?.textContent.includes('month')");
 
     expect(recurrenceText($page, "post-recurrence-summary-{$post->id}"))
-        ->toBe('This post will be shared every month on the 31st at 10:00 PM, until Nov 30, 2027.');
+        ->toBe("This post will be shared every month on the 31st at 10:00 PM, until {$localDay->addMonthsNoOverflow(6)->format('M j, Y')}.");
     $page->assertNoJavaScriptErrors();
 });

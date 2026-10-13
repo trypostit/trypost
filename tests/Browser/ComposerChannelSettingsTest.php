@@ -67,6 +67,11 @@ function waitForChannelSettingsTestId(mixed $page, string $testId): void
     );
 }
 
+function channelSettingsEventDay(int $daysAfterStart): string
+{
+    return now()->addYear()->startOfDay()->addDays($daysAfterStart)->toDateString();
+}
+
 function waitForChannelSettingsClosedMenu(mixed $page): void
 {
     waitForChannelSettingsCondition($page, "!document.querySelector('[role=\"listbox\"]')");
@@ -335,7 +340,7 @@ test('the google business panel shows a server validation error under its field'
 test('the google business event shows start and end time fields beside the dates when add time is on', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
-    $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => '2037-03-10', 'end_date' => '2037-03-12']]]);
+    $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => channelSettingsEventDay(0), 'end_date' => channelSettingsEventDay(2)]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForChannelSettingsTestId($page, 'google-business-add-time');
@@ -366,8 +371,8 @@ test('the google business event shows start and end time fields beside the dates
 
     expect(data_get($post->fresh()->meta, 'event'))->toEqual([
         'title' => 'Launch night',
-        'start_date' => '2037-03-10',
-        'end_date' => '2037-03-12',
+        'start_date' => channelSettingsEventDay(0),
+        'end_date' => channelSettingsEventDay(2),
         'start_time' => '18:30',
         'end_time' => '21:00',
     ]);
@@ -1055,7 +1060,7 @@ test('the google business event times follow the user clock and pick from a list
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
     auth()->user()->update(['time_format' => $format]);
-    $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => '2037-03-10', 'end_date' => '2037-03-12', 'start_time' => '09:00']]]);
+    $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => channelSettingsEventDay(0), 'end_date' => channelSettingsEventDay(2), 'start_time' => '09:00']]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForChannelSettingsTestId($page, 'google-business-start-time');

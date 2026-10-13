@@ -17,7 +17,6 @@ use App\Models\RepurposeItem;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\Repurpose\SourceFetcherFactory;
-use Carbon\CarbonImmutable;
 use GuzzleHttp\Promise\PromiseInterface;
 use Illuminate\Http\Client\ResponseSequence;
 use Illuminate\Support\Facades\Bus;
@@ -42,7 +41,7 @@ function mediaRow(string $id = 'm1', string $productType = 'REELS', ?string $url
         'media_url' => $url,
         'caption' => 'Hi',
         'permalink' => 'https://instagram.com/p/1',
-        'timestamp' => '2026-09-04T10:00:00+0000',
+        'timestamp' => now()->subDay()->format('Y-m-d\\TH:i:sO'),
     ], fn ($value) => $value !== null);
 }
 
@@ -372,7 +371,7 @@ test('polling the same video twice queues it only once', function () {
     Repurpose::factory()->active()->create([
         'workspace_id' => $workspace->id,
         'source_social_account_id' => $source->id,
-        'activated_at' => CarbonImmutable::parse('2026-09-01 00:00:00', 'UTC'),
+        'activated_at' => now()->subMonth(),
     ]);
 
     (new PollRepurposeSource($source))->handle(app(SourceFetcherFactory::class));
@@ -402,7 +401,7 @@ function fakeFacebookStory(PromiseInterface|ResponseSequence $source): void
 {
     Http::fake([
         config('trypost.platforms.facebook.graph_api').'/*/stories*' => Http::response(['data' => [
-            ['post_id' => 's1', 'status' => 'PUBLISHED', 'media_type' => 'video', 'media_id' => 'vid-1', 'url' => 'https://facebook.com/stories/1', 'creation_time' => '2026-09-03T10:00:00+0000'],
+            ['post_id' => 's1', 'status' => 'PUBLISHED', 'media_type' => 'video', 'media_id' => 'vid-1', 'url' => 'https://facebook.com/stories/1', 'creation_time' => now()->subDay()->format('Y-m-d\\TH:i:sO')],
         ]]),
         config('trypost.platforms.facebook.graph_api').'/vid-1*' => $source,
     ]);
