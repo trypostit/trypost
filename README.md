@@ -71,37 +71,32 @@ Connect Claude, ChatGPT, Cursor or any MCP client and ask in plain words:
 
 Every post is published natively through each network's official API. No reminders, no "finish in the mobile app".
 
-<table>
-  <tr>
-    <td align="center"><img src="public/images/accounts/instagram.png" width="38"><br><sub><b>Instagram</b></sub></td>
-    <td align="center"><img src="public/images/accounts/tiktok.png" width="38"><br><sub><b>TikTok</b></sub></td>
-    <td align="center"><img src="public/images/accounts/linkedin.png" width="38"><br><sub><b>LinkedIn</b></sub></td>
-    <td align="center"><img src="public/images/accounts/x.png" width="38"><br><sub><b>X</b></sub></td>
-    <td align="center"><img src="public/images/accounts/youtube.png" width="38"><br><sub><b>YouTube</b></sub></td>
-    <td align="center"><img src="public/images/accounts/facebook.png" width="38"><br><sub><b>Facebook</b></sub></td>
-    <td align="center"><img src="public/images/accounts/threads.png" width="38"><br><sub><b>Threads</b></sub></td>
-  </tr>
-  <tr>
-    <td align="center"><img src="public/images/accounts/bluesky.png" width="38"><br><sub><b>Bluesky</b></sub></td>
-    <td align="center"><img src="public/images/accounts/pinterest.png" width="38"><br><sub><b>Pinterest</b></sub></td>
-    <td align="center"><img src="public/images/accounts/mastodon.png" width="38"><br><sub><b>Mastodon</b></sub></td>
-    <td align="center"><img src="public/images/accounts/google_business.png" width="38"><br><sub><b>Google Business</b></sub></td>
-    <td align="center"><img src="public/images/accounts/telegram.png" width="38"><br><sub><b>Telegram</b></sub></td>
-    <td align="center"><img src="public/images/accounts/discord.png" width="38"><br><sub><b>Discord</b></sub></td>
-    <td></td>
-  </tr>
-</table>
+<p align="center">
+  <img src="public/images/github/networks/instagram.png" width="44" alt="Instagram" title="Instagram">&nbsp;
+  <img src="public/images/github/networks/tiktok.png" width="44" alt="TikTok" title="TikTok">&nbsp;
+  <img src="public/images/github/networks/linkedin.png" width="44" alt="LinkedIn" title="LinkedIn">&nbsp;
+  <img src="public/images/github/networks/x.png" width="44" alt="X" title="X">&nbsp;
+  <img src="public/images/github/networks/youtube.png" width="44" alt="YouTube" title="YouTube">&nbsp;
+  <img src="public/images/github/networks/facebook.png" width="44" alt="Facebook" title="Facebook">&nbsp;
+  <img src="public/images/github/networks/threads.png" width="44" alt="Threads" title="Threads">&nbsp;
+  <img src="public/images/github/networks/bluesky.png" width="44" alt="Bluesky" title="Bluesky">&nbsp;
+  <img src="public/images/github/networks/pinterest.png" width="44" alt="Pinterest" title="Pinterest">&nbsp;
+  <img src="public/images/github/networks/mastodon.png" width="44" alt="Mastodon" title="Mastodon">&nbsp;
+  <img src="public/images/github/networks/google_business.png" width="44" alt="Google Business" title="Google Business">&nbsp;
+  <img src="public/images/github/networks/telegram.png" width="44" alt="Telegram" title="Telegram">&nbsp;
+  <img src="public/images/github/networks/discord.png" width="44" alt="Discord" title="Discord">&nbsp;
+</p>
+
+<p align="center"><sub>Instagram &middot; TikTok &middot; LinkedIn &middot; X &middot; YouTube &middot; Facebook &middot; Threads &middot; Bluesky &middot; Pinterest &middot; Mastodon &middot; Google Business &middot; Telegram &middot; Discord</sub></p>
 
 ## Everything else you get
 
-|  |  |
-| --- | --- |
-| **Repurpose** | Videos you post outside TryPost are copied to your other networks automatically. |
-| **Media sources** | Upload from your device, Unsplash, Google Drive, Google Photos and Canva. |
-| **Signatures and labels** | Reusable hashtag and CTA blocks, color-coded labels to filter the calendar. |
-| **Notes** | Leave feedback on a post and the rest of the team gets an email. |
-| **Webhooks** | Get notified when a post is created, scheduled, published, fails or is deleted. |
-| **16 languages** | English, Portuguese, Spanish, French, German, Italian, Dutch, Polish, Greek, Ukrainian, Russian, Turkish, Arabic, Japanese, Korean and Chinese. |
+- **Repurpose**: videos you post outside TryPost are copied to your other networks automatically.
+- **Media sources**: upload from your device, Unsplash, Google Drive, Google Photos and Canva.
+- **Signatures and labels**: reusable hashtag and CTA blocks, color-coded labels to filter the calendar.
+- **Notes**: leave feedback on a post and the rest of the team gets an email.
+- **Webhooks**: get notified when a post is created, scheduled, published, fails or is deleted.
+- **16 languages**: English, Portuguese, Spanish, French, German, Italian, Dutch, Polish, Greek, Ukrainian, Russian, Turkish, Arabic, Japanese, Korean and Chinese.
 
 ## Open source, with every feature
 
@@ -111,12 +106,14 @@ If you would rather not run servers, [TryPost Cloud](https://trypost.it) is the 
 
 ## Built by Paulo Castellano
 
+<img src="public/images/github/paulo.png" width="96" align="left" alt="Paulo Castellano">
+
 Hi, I'm Paulo, and I build TryPost in the open. Follow me for what is coming next to TryPost.
 
-<p>
-  <a href="https://www.linkedin.com/in/paulocastellano"><img src="https://img.shields.io/badge/LinkedIn-follow-0a66c2?style=flat-square&logo=linkedin&logoColor=white" alt="Follow Paulo on LinkedIn"></a>
-  <a href="https://x.com/paulocastellano"><img src="https://img.shields.io/badge/X-follow-000000?style=flat-square&logo=x&logoColor=white" alt="Follow Paulo on X"></a>
-</p>
+<a href="https://www.linkedin.com/in/paulocastellano"><img src="public/images/github/networks/linkedin.png" width="22" alt="LinkedIn"></a>&nbsp; <a href="https://www.linkedin.com/in/paulocastellano"><b>LinkedIn</b></a> &nbsp;&nbsp;&nbsp;
+<a href="https://x.com/paulocastellano"><img src="public/images/github/networks/x.png" width="22" alt="X"></a>&nbsp; <a href="https://x.com/paulocastellano"><b>@paulocastellano</b></a>
+
+<br clear="left"/>
 
 ## Community and contributing
 
