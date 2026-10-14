@@ -750,7 +750,31 @@ view turns a forgotten variable into a runtime-only failure.
 - The page size ALWAYS comes from `config('app.pagination.default')` — never a magic number, and never a `perPage`/`per_page` value supplied by the request or frontend. Action/service list methods must NOT accept a `$perPage` parameter; call `->paginate((int) config('app.pagination.default'))` directly.
     - **Exception — the per-post table on the channel insights page** (owner decision 2026-10-05): it is page-based with numbered pages, 10 posts per page (`ListChannelPublicationPerformance::INSIGHTS_PAGE_SIZE`, through `insightsPage()`), and keeps `?page=` in the URL; a sort, period or filter change goes back to page 1. The API endpoint and the MCP tool for the same list keep the config page size through `handle()`.
     - **Exception — the ideas board columns** (owner decision 2026-10-06): each stage column (and Unassigned) is its own scroll prop, `columns.<stage id|unassigned>`, with its own page name, and loads 10 ideas per page (`ListIdeas::BOARD_PAGE_SIZE`) as the column scrolls. A label filter change resets every column to page 1. Column counts come from the database (`stages.*.ideas_count`, `unassigned_count`), never from the loaded cards. The web board moves a card with `after_idea_id` (`MoveIdea::after()`), since a partly loaded column cannot send the full order; the API and MCP keep the full `idea_ids` contract. The gallery keeps the config page size.
+    - **Exception — the "What's New" modal** (owner decision 2026-10-14): it loads 5 entries per page (`ListChangelogEntries::PAGE_SIZE`) under the page name `changelog_page`, as the shared optional scroll prop `changelogEntries`, requested by a partial reload when the modal opens.
     - **This includes the public REST API** (`app/Http/Controllers/Api`). It used to pin its own page size of 15 as a stable contract; that exception is gone, so a list endpoint reads the same config as everything else. Changing `app.pagination.default` therefore changes the API's page size too — deliberate, and the reason a list response always carries `meta.per_page` for clients to read rather than assume.
+
+## Changelog ("What's New")
+
+The in-app announcements: a card at the bottom of the sidebar with the newest entry
+the user has not opened, and a "What's New" modal (Help menu) listing every entry.
+
+- **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>/entry.md`
+  (front matter `title`, `date`, optional `tag` = `new` | `beta`) plus `cover.png`
+  (1200×750). There is no admin panel. Write them with the `/changelog` command.
+- **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
+  `changelog_entries` by slug, uploads the cover to `changelog/<slug>.png` on the
+  default disk only when its hash changed, deletes rows whose folder is gone, and fails
+  loud without writing anything when one folder is invalid. Never edit the rows by hand,
+  and never rename a synced folder (its views are keyed to the row).
+- **Content is English only** (owner decision 2026-10-14). The chrome around it (modal
+  title, menu item, back, empty state, the New tag) is translated in `lang/*/changelog.php`.
+- **"Viewed" means the user opened the entry's detail**, never that it was shown in the
+  card or the list. `changelog_entry_views` holds one row per user and entry, and
+  `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
+- A user sees entries dated from their signup day to today (`ChangelogEntry::scopeVisibleTo`),
+  so a new user never inherits the backlog and a future date schedules an entry.
+- Off by default: `CHANGELOG_ENABLED` (`trypost.changelog.enabled`). Cloud turns it on;
+  off means no shared data, no card, no menu item, and the view route 404s.
 
 ## Empty states on list pages
 
