@@ -110,8 +110,8 @@ If you would rather not run servers, [TryPost Cloud](https://trypost.it) is the 
 
 Hi, I'm Paulo, and I build TryPost in the open. Follow me for what is coming next to TryPost.
 
-<a href="https://www.linkedin.com/in/paulocastellano"><img src="public/images/github/networks/linkedin.png" width="22" alt="LinkedIn"></a>&nbsp; <a href="https://www.linkedin.com/in/paulocastellano"><b>LinkedIn</b></a> &nbsp;&nbsp;&nbsp;
-<a href="https://x.com/paulocastellano"><img src="public/images/github/networks/x.png" width="22" alt="X"></a>&nbsp; <a href="https://x.com/paulocastellano"><b>@paulocastellano</b></a>
+<a href="https://www.linkedin.com/in/paulocastellano"><img src="public/images/github/follow-linkedin.png" height="44" alt="Follow Paulo on LinkedIn"></a>&nbsp;
+<a href="https://x.com/paulocastellano"><img src="public/images/github/follow-x.png" height="44" alt="Follow Paulo on X"></a>
 
 <br clear="left"/>
 
