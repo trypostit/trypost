@@ -11,6 +11,7 @@ import { createApp, h } from 'vue';
 import { initializeDataLayer } from './datalayer';
 import { bootLocale, i18nConfig, syncLocale, textDirection } from './language';
 import { syncContentTypeMediaRules } from './lib/contentTypeMediaRules';
+import { trackInAppPushes } from './lib/inAppHistory';
 import { capturePageview, initializePostHog, syncPostHogContext } from './posthog';
 import { syncPreferences } from './preferences';
 import type { Auth } from './types';
@@ -56,6 +57,8 @@ createInertiaApp({
             syncLocale(event.detail.page.props);
             syncPreferences(event.detail.page.props);
         });
+
+        trackInAppPushes();
 
         router.on('navigate', (event) => {
             syncPostHogContext(event.detail.page);

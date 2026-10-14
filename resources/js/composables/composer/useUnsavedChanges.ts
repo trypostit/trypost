@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/vue3';
 import { onScopeDispose, ref, watch } from 'vue';
 
+import { stepBackInHistory } from '@/lib/inAppHistory';
+
 /**
  * Asks before unsaved work is lost: closing what holds it (through `guard`),
  * an Inertia visit to another page, the browser's back button, or reloading
@@ -17,7 +19,9 @@ import { onScopeDispose, ref, watch } from 'vue';
  * A jump past the copy (the back button's history menu) lands on an entry
  * with state: it cannot be held, so the doubling ends and Inertia navigates.
  * Unmounting while held (a save whose page no longer shows the composer)
- * steps back onto the copy, so it never leaves a Back that goes nowhere.
+ * steps back onto the copy, so it never leaves a Back that goes nowhere; the
+ * page waits for that step (`afterHistorySettles`) before leaving through
+ * history itself.
  *
  * Releasing the hold steps back onto the copy and gives it the page's state
  * again. Inertia only fills an entry without state when its page differs from
@@ -154,7 +158,7 @@ export const useUnsavedChanges = (
         window.removeEventListener('popstate', onPopState);
         if (holdingBack) {
             holdingBack = false;
-            window.history.back();
+            stepBackInHistory();
         }
     });
 

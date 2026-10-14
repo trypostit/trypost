@@ -13,7 +13,7 @@ import {
     IconUsers,
 } from '@tabler/icons-vue';
 import { trans, transChoice } from 'laravel-vue-i18n';
-import { computed, provide, ref, shallowRef, watch } from 'vue';
+import { computed, nextTick, provide, ref, shallowRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -67,6 +67,7 @@ import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { afterHistorySettles, cameFromAppPage } from '@/lib/inAppHistory';
 import { calendar } from '@/routes/app';
 import {
     calendar as channelCalendar,
@@ -748,7 +749,30 @@ const onComposerOpenChange = (open: boolean): void => {
     if (open) return;
 
     composerOpen.value = false;
+
+    if (cameFromAppPage()) {
+        window.history.back();
+
+        return;
+    }
+
     router.visit(listUrl(), { replace: true, preserveScroll: true });
+};
+
+/**
+ * After a save, steps back to the page the composer was opened from, so the
+ * edit leaves no history entry behind, and refreshes that page's posts.
+ */
+const returnToOpeningPage = (): void => {
+    void nextTick(() =>
+        afterHistorySettles(() => {
+            const stop = router.on('navigate', () => {
+                stop();
+                router.reload();
+            });
+            window.history.back();
+        }),
+    );
 };
 
 const submitComposition = (
@@ -758,6 +782,7 @@ const submitComposition = (
 ): void => {
     const editPost = props.editPost;
     if (!editPost) return;
+    const returnsBack = cameFromAppPage();
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
@@ -765,6 +790,10 @@ const submitComposition = (
         onSuccess: () => {
             composerOpen.value = false;
             onSaved?.();
+
+            if (returnsBack) {
+                returnToOpeningPage();
+            }
         },
         onFinish: () => {
             composerSubmitting.value = false;
@@ -809,7 +838,10 @@ const submitComposition = (
         onSuccess: () => {
             options.onSuccess();
 
-            if (new URLSearchParams(window.location.search).has('edit')) {
+            if (
+                !returnsBack &&
+                new URLSearchParams(window.location.search).has('edit')
+            ) {
                 router.visit(listUrl(), {
                     replace: true,
                     preserveScroll: true,
