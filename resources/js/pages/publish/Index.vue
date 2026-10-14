@@ -783,20 +783,22 @@ const submitComposition = (
     const editPost = props.editPost;
     if (!editPost) return;
     const returnsBack = cameFromAppPage();
+    let saved = false;
     composerSubmitting.value = true;
     const options = {
         preserveScroll: true,
         replace: true,
         onSuccess: () => {
+            saved = true;
             composerOpen.value = false;
             onSaved?.();
-
-            if (returnsBack) {
-                returnToOpeningPage();
-            }
         },
         onFinish: () => {
             composerSubmitting.value = false;
+
+            if (saved && returnsBack) {
+                returnToOpeningPage();
+            }
         },
     };
     if (!initialPost.value) {
