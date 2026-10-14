@@ -9,6 +9,7 @@ import type {
     TimeFormat,
     WeekStart,
 } from '@/preferences';
+import type { ScrollChangelogEntries, SharedChangelog } from '@/types/changelog';
 import type { AuthPlan, Features, PlanOption } from '@/types/plan';
 
 export type { AuthPlan, BillingInterval, Features, PlanOption } from '@/types/plan';
@@ -112,6 +113,8 @@ export interface SharedData {
     plans?: PlanOption[];
     mediaSources?: { menu: MediaSourceOption[] } | null;
     referralSources?: string[] | null;
+    changelog?: SharedChangelog | null;
+    changelogEntries?: ScrollChangelogEntries;
     mediaUploadLimits?: MediaUploadLimits | null;
     [key: string]: unknown;
 }

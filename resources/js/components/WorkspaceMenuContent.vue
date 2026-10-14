@@ -16,6 +16,7 @@ import {
     IconMoon,
     IconPlus,
     IconSettings,
+    IconSparkles,
     IconSun,
     IconUsers,
 } from '@tabler/icons-vue';
@@ -35,6 +36,7 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
@@ -145,6 +147,8 @@ const handleLogout = (): void => {
 };
 
 const showChatSupport = computed(() => page.props.selfHosted === false);
+const showChangelog = computed(() => Boolean(page.props.changelog));
+const { openList: openChangelog } = useChangelogDialog();
 
 const statusTheme = computed(() =>
     currentTheme.value === 'dark' ||
@@ -448,6 +452,14 @@ const supportLinks = [
                     >
                         <IconMessageChatbot />
                         {{ $t('sidebar.support.chat') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        v-if="showChangelog"
+                        data-testid="sidebar-support-changelog"
+                        @click="openChangelog"
+                    >
+                        <IconSparkles />
+                        {{ $t('changelog.menu') }}
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel
