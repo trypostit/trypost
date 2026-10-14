@@ -113,6 +113,21 @@ test('after saving an edited post the list shows the saved post and one back lea
     expect($post->fresh()->content)->toContain('Saved from the composer');
 });
 
+test('a query parameter added to the edit entry after it opened still lets one back after saving reach the page before', function () {
+    $post = seedUnsavedChangesReel();
+    $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
+    $page->script("window.history.replaceState(window.history.state, '', window.location.href + '&queue_days=14')");
+
+    $page->fill("@composer-caption-{$post->social_account_id}", 'Saved after a partial reload')
+        ->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=') && document.querySelector('[data-testid=\"post-card-{$post->id}\"]')?.textContent.includes('Saved after a partial reload')");
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+
+    $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
+        ->assertNoJavaScriptErrors();
+});
+
 test('closing an untouched post with X then one back leaves the list for the page before', function () {
     $post = seedUnsavedChangesReel();
     $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));

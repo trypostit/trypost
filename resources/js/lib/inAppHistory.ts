@@ -26,10 +26,26 @@ export const trackInAppPushes = (): void => {
 
 /**
  * Whether the app pushed the current history entry, so the entry behind it is
- * another page of the app the user can be sent back to.
+ * another page of the app the user can be sent back to. A partial reload may
+ * add query parameters to the entry afterwards (`queue_days`), so the entry
+ * still counts while its path and every parameter it was pushed with match.
  */
-export const cameFromAppPage = (): boolean =>
-    pushedUrl !== null && pushedUrl === window.location.href;
+export const cameFromAppPage = (): boolean => {
+    if (pushedUrl === null) {
+        return false;
+    }
+
+    const pushed = new URL(pushedUrl);
+    const current = new URL(window.location.href);
+
+    return (
+        pushed.origin === current.origin &&
+        pushed.pathname === current.pathname &&
+        [...pushed.searchParams].every(
+            ([key, value]) => current.searchParams.get(key) === value,
+        )
+    );
+};
 
 let settling: Promise<void> | null = null;
 
