@@ -9,7 +9,7 @@ const page = usePage();
 const { openEntry } = useChangelogDialog();
 
 const entry = computed(
-    () => page.props.changelog?.latestUnseen ?? null,
+    () => page.props.changelog?.latest ?? null,
 );
 
 const openLatestEntry = (): void => {

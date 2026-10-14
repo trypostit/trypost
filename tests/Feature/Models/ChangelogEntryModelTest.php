@@ -10,23 +10,30 @@ beforeEach(function () {
     $this->user = User::factory()->create(['created_at' => now()->subDays(10)]);
 });
 
-test('a user sees entries published between their signup day and today', function () {
-    $visible = ChangelogEntry::factory()->create(['published_on' => today()->subDays(3)]);
+test('published entries are the ones dated today or earlier', function () {
+    $today = ChangelogEntry::factory()->create(['published_on' => today()]);
+    $beforeSignup = ChangelogEntry::factory()->create(['published_on' => today()->subDays(11)]);
+    ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
+
+    expect(ChangelogEntry::published()->pluck('id')->sort()->values()->all())
+        ->toEqual(collect([$today->id, $beforeSignup->id])->sort()->values()->all());
+});
+
+test('the card may only announce published entries dated since the signup day', function () {
+    $recent = ChangelogEntry::factory()->create(['published_on' => today()->subDays(3)]);
     $signupDay = ChangelogEntry::factory()->create(['published_on' => today()->subDays(10)]);
     ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
     ChangelogEntry::factory()->create(['published_on' => today()->subDays(11)]);
 
-    expect(ChangelogEntry::visibleTo($this->user)->pluck('id')->sort()->values()->all())
-        ->toEqual(collect([$visible->id, $signupDay->id])->sort()->values()->all());
+    expect(ChangelogEntry::announcedTo($this->user)->pluck('id')->sort()->values()->all())
+        ->toEqual(collect([$recent->id, $signupDay->id])->sort()->values()->all());
 });
 
-test('an entry the user opened is no longer unseen and is flagged as seen', function () {
+test('an entry the user opened is flagged as seen for that user only', function () {
     $opened = ChangelogEntry::factory()->create();
     $unopened = ChangelogEntry::factory()->create();
     ChangelogEntryView::factory()->create(['changelog_entry_id' => $opened->id, 'user_id' => $this->user->id]);
     ChangelogEntryView::factory()->create(['changelog_entry_id' => $unopened->id]);
-
-    expect(ChangelogEntry::unseenBy($this->user)->pluck('id')->all())->toBe([$unopened->id]);
 
     $seen = ChangelogEntry::withSeenBy($this->user)->get()->pluck('seen', 'id');
 

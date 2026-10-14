@@ -36,7 +36,14 @@ function waitForChangelogTestIdGone(mixed $page, string $testId): void
     waitForChangelogCondition($page, "!document.querySelector('[data-testid=\"{$testId}\"]')");
 }
 
-test('opening the sidebar card shows the entry, records the view and moves the card on', function () {
+function waitForChangelogViews(mixed $page, User $user, int $count): void
+{
+    for ($attempt = 0; $attempt < 100 && ChangelogEntryView::where('user_id', $user->id)->count() < $count; $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 50))');
+    }
+}
+
+test('opening the sidebar card shows the newest entry, records the view and hides the card', function () {
     config(['trypost.changelog.enabled' => true]);
 
     $user = User::factory()->create([
@@ -76,7 +83,7 @@ test('opening the sidebar card shows the entry, records the view and moves the c
     $page->assertSeeIn('@changelog-entry', 'The newest feature body.')
         ->assertSeeIn('@changelog-entry-tags', 'New')
         ->assertSeeIn('@changelog-entry-tags', 'Beta');
-    waitForChangelogText($page, 'changelog-card-title', 'Older feature');
+    waitForChangelogTestIdGone($page, 'changelog-card');
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->all())
         ->toBe([$newest->id]);
@@ -88,7 +95,7 @@ test('opening the sidebar card shows the entry, records the view and moves the c
 
     $page->click('@changelog-item-2026-10-13-older');
     waitForChangelogText($page, 'changelog-entry-title', 'Older feature');
-    waitForChangelogTestIdGone($page, 'changelog-card');
+    waitForChangelogViews($page, $user, 2);
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->sort()->values()->all())
         ->toEqual(collect([$newest->id, $older->id])->sort()->values()->all());

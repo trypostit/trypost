@@ -74,8 +74,8 @@ class HandleInertiaRequests extends Middleware
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
             'changelog' => fn (): ?array => $user && config('trypost.changelog.enabled')
-                ? ['latestUnseen' => transform(
-                    ListChangelogEntries::latestUnseen($user),
+                ? ['latest' => transform(
+                    ListChangelogEntries::latestForCard($user),
                     fn ($entry) => ChangelogEntryResource::make($entry)->resolve($request),
                 )]
                 : null,

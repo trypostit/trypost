@@ -18,7 +18,7 @@ export interface ChangelogEntry {
 }
 
 export interface SharedChangelog {
-    latestUnseen: ChangelogEntry | null;
+    latest: ChangelogEntry | null;
 }
 
 export interface ScrollChangelogEntries {

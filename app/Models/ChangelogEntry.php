@@ -48,23 +48,24 @@ class ChangelogEntry extends Model
     }
 
     /**
-     * Entries already published and published on or after the day the user
-     * signed up, so a new user never inherits the backlog.
+     * Entries whose date has come. The "What's New" list shows all of them.
      *
      * @param  Builder<self>  $query
      */
-    public function scopeVisibleTo(Builder $query, User $user): void
+    public function scopePublished(Builder $query): void
     {
-        $query->whereDate('published_on', '<=', today())
-            ->whereDate('published_on', '>=', $user->created_at->toDateString());
+        $query->whereDate('published_on', '<=', today());
     }
 
     /**
+     * Published entries dated on or after the day the user signed up: the only
+     * ones the sidebar card may announce, so a new user never gets the backlog.
+     *
      * @param  Builder<self>  $query
      */
-    public function scopeUnseenBy(Builder $query, User $user): void
+    public function scopeAnnouncedTo(Builder $query, User $user): void
     {
-        $query->whereDoesntHave('views', fn (Builder $views) => $views->where('user_id', $user->id));
+        $query->published()->whereDate('published_on', '>=', $user->created_at->toDateString());
     }
 
     /**

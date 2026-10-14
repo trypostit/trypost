@@ -755,8 +755,8 @@ view turns a forgotten variable into a runtime-only failure.
 
 ## Changelog ("What's New")
 
-The in-app announcements: a card at the bottom of the sidebar with the newest entry
-the user has not opened, and a "What's New" modal (Help menu) listing every entry.
+The in-app announcements: a card at the bottom of the sidebar announcing the newest
+entry, and a "What's New" modal (Help menu) listing every published entry.
 
 - **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>/entry.md`
   (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`) plus `cover.png`
@@ -773,8 +773,13 @@ the user has not opened, and a "What's New" modal (Help menu) listing every entr
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
   `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
-- A user sees entries dated from their signup day to today (`ChangelogEntry::scopeVisibleTo`),
-  so a new user never inherits the backlog and a future date schedules an entry.
+- **The sidebar card announces one entry only** (owner decision 2026-10-14): the newest
+  one dated since the user's signup day (`ChangelogEntry::scopeAnnouncedTo`), and only
+  while the user has not opened it (`ListChangelogEntries::latestForCard`). Opening it hides
+  the card; older unopened entries never take its place. A new user never gets the backlog.
+- **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
+  including those from before the user signed up, with a dot on the ones not opened yet. A
+  future date schedules an entry for both.
 - Off by default: `CHANGELOG_ENABLED` (`trypost.changelog.enabled`). Cloud turns it on;
   off means no shared data, no card, no menu item, and the view route 404s.
 

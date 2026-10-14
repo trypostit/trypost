@@ -22,38 +22,46 @@ beforeEach(function () {
     subscribeAccount($this->user->account);
 });
 
-test('the card gets the newest entry the user has not opened', function () {
-    $opened = ChangelogEntry::factory()->create(['published_on' => today()]);
-    $newestUnseen = ChangelogEntry::factory()->create([
-        'published_on' => today()->subDay(),
-        'title' => 'Newest unseen',
+test('the card gets the newest entry while the user has not opened it', function () {
+    $newest = ChangelogEntry::factory()->create([
+        'published_on' => today(),
+        'title' => 'Newest entry',
         'tags' => [Tag::New, Tag::Beta],
     ]);
-    ChangelogEntry::factory()->create(['published_on' => today()->subDays(2)]);
+    ChangelogEntry::factory()->create(['published_on' => today()->subDay()]);
     ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
-    ChangelogEntryView::factory()->create(['changelog_entry_id' => $opened->id, 'user_id' => $this->user->id]);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
         ->assertOk()
         ->assertInertia(fn (AssertableInertia $page) => $page
-            ->where('changelog.latestUnseen.id', $newestUnseen->id)
-            ->where('changelog.latestUnseen.title', 'Newest unseen')
-            ->where('changelog.latestUnseen.seen', false)
-            ->where('changelog.latestUnseen.tags', [
+            ->where('changelog.latest.id', $newest->id)
+            ->where('changelog.latest.title', 'Newest entry')
+            ->where('changelog.latest.seen', false)
+            ->where('changelog.latest.tags', [
                 ['value' => 'new', 'label' => 'New'],
                 ['value' => 'beta', 'label' => 'Beta'],
             ])
             ->missing('changelogEntries'));
 });
 
-test('the card is empty once every entry was opened', function () {
-    $entry = ChangelogEntry::factory()->create();
-    ChangelogEntryView::factory()->create(['changelog_entry_id' => $entry->id, 'user_id' => $this->user->id]);
+test('the card is empty once the newest entry was opened, even with older ones unopened', function () {
+    $newest = ChangelogEntry::factory()->create(['published_on' => today()]);
+    ChangelogEntry::factory()->create(['published_on' => today()->subDay()]);
+    ChangelogEntryView::factory()->create(['changelog_entry_id' => $newest->id, 'user_id' => $this->user->id]);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latestUnseen', null));
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+});
+
+test('a user who signed up today never gets an older entry on the card', function () {
+    $this->user->forceFill(['created_at' => now()])->save();
+    ChangelogEntry::factory()->create(['published_on' => today()->subDay()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
 });
 
 test('nothing is shared when the changelog is turned off', function () {
@@ -67,10 +75,12 @@ test('nothing is shared when the changelog is turned off', function () {
             ->missing('changelogEntries'));
 });
 
-test('the modal list loads five entries per page, newest first, flagging the opened ones', function () {
+test('the modal list loads every published entry, five per page, newest first, flagging the opened ones', function () {
+    $this->user->forceFill(['created_at' => now()->subDays(2)])->save();
     $entries = collect(range(0, 6))->map(fn (int $daysAgo) => ChangelogEntry::factory()->create([
         'published_on' => today()->subDays($daysAgo),
     ]));
+    ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
     ChangelogEntryView::factory()->create(['changelog_entry_id' => $entries[1]->id, 'user_id' => $this->user->id]);
 
     $this->actingAs($this->user->fresh())

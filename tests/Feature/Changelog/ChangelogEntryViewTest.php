@@ -52,8 +52,17 @@ test('an entry the user cannot see is not found', function (Closure $setup) {
 })->with([
     'changelog turned off' => [fn () => config(['trypost.changelog.enabled' => false])],
     'published in the future' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->addDay()])],
-    'published before signup' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->subDays(31)])],
 ]);
+
+test('an entry published before the user signed up can still be opened from the list', function () {
+    $this->entry->update(['published_on' => today()->subDays(31)]);
+
+    $this->actingAs($this->user)
+        ->post(route('app.changelog.views.store', $this->entry))
+        ->assertNoContent();
+
+    expect(ChangelogEntryView::where('user_id', $this->user->id)->count())->toBe(1);
+});
 
 test('guests cannot record a view', function () {
     $this->post(route('app.changelog.views.store', $this->entry))->assertRedirect(route('login'));

@@ -19,7 +19,7 @@ class ChangelogEntryViewController extends Controller
 
         abort_unless(
             config('trypost.changelog.enabled')
-                && ChangelogEntry::visibleTo($user)->whereKey($changelogEntry->id)->exists(),
+                && ChangelogEntry::published()->whereKey($changelogEntry->id)->exists(),
             Response::HTTP_NOT_FOUND,
         );
 
