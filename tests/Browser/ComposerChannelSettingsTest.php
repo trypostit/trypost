@@ -1609,7 +1609,7 @@ test('playing the reel preview video plays the picked track at the chosen music 
     $page->assertNoJavaScriptErrors();
 });
 
-test('playing the picked track plays the reel preview video at the chosen video volume', function () {
+test('playing the picked track from its card plays the music only and leaves the reel preview video still', function () {
     fakeChannelSettingsApis();
     $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel, $video);
@@ -1636,14 +1636,9 @@ test('playing the picked track plays the reel preview video at the chosen video 
 
     $page->assertSeeIn('@instagram-preview-audio', 'Summer Song · The Band')
         ->click('@instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "window.__played.includes('PREVIEW')");
+    waitForChannelSettingsCondition($page, "window.__played.includes('AUDIO')");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
 
-    expect($page->script("window.__played.includes('AUDIO') && window.__played.includes('PREVIEW')"))->toBeTrue()
-        ->and($page->script("Math.round(document.querySelector('[data-testid=\"instagram-reel-preview\"] video').volume * 100)"))->toBe(30);
-
-    $page->click('@instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "window.__played.includes('PREVIEW:paused')");
-
-    expect($page->script("window.__played.includes('PREVIEW:paused')"))->toBeTrue();
+    expect($page->script('window.__played'))->not->toContain('PREVIEW');
     $page->assertNoJavaScriptErrors();
 });
