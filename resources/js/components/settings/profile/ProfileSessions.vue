@@ -1,10 +1,5 @@
 <script setup lang="ts">
-import {
-    IconDeviceDesktop,
-    IconDeviceMobile,
-    IconDeviceTablet,
-} from '@tabler/icons-vue';
-import { computed, type Component, useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 
 import SessionController from '@/actions/App/Http/Controllers/App/Settings/SessionController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -17,26 +12,14 @@ import {
     isMonochromeOsIcon,
     osIconUrl,
     parseBrowserName,
-    parseBrowserVersion,
-    parseDeviceType,
     parseOsName,
-    parseOsVersion,
 } from '@/lib/userAgent';
-import type { DeviceType } from '@/lib/userAgent';
 
 export type Session = {
     id: string;
-    ip_address: string | null;
     user_agent: string | null;
     last_active: string;
-    last_page: string | null;
     is_current: boolean;
-};
-
-const DEVICE_ICONS: Record<DeviceType, Component> = {
-    desktop: IconDeviceDesktop,
-    mobile: IconDeviceMobile,
-    tablet: IconDeviceTablet,
 };
 
 const props = defineProps<{
@@ -91,7 +74,6 @@ const openLogoutDialog = (): void => {
                 >
                     <span class="truncate font-emphasis">
                         {{ parseBrowserName(session.user_agent) }}
-                        {{ parseBrowserVersion(session.user_agent) }}
                     </span>
                     <template v-if="parseOsName(session.user_agent)">
                         <span class="text-muted-foreground">
@@ -110,44 +92,14 @@ const openLogoutDialog = (): void => {
                         />
                         <span class="truncate text-muted-foreground">
                             {{ parseOsName(session.user_agent) }}
-                            {{ parseOsVersion(session.user_agent) }}
                         </span>
                     </template>
                 </p>
                 <p
-                    class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
+                    v-if="!session.is_current"
+                    class="text-sm text-muted-foreground"
                 >
-                    <component
-                        :is="DEVICE_ICONS[parseDeviceType(session.user_agent)]"
-                        class="size-4 shrink-0"
-                        aria-hidden="true"
-                        :data-testid="`session-device-icon-${session.id}`"
-                    />
-                    <span>{{
-                        $t(
-                            `settings.profile.sessions.devices.${parseDeviceType(session.user_agent)}`,
-                        )
-                    }}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{{
-                        session.ip_address ??
-                        $t('settings.profile.sessions.unknown_ip')
-                    }}</span>
-                    <template v-if="!session.is_current">
-                        <span aria-hidden="true">·</span>
-                        <span>{{ session.last_active }}</span>
-                    </template>
-                </p>
-                <p
-                    v-if="session.last_page"
-                    class="truncate text-sm text-muted-foreground"
-                    :data-testid="`session-last-page-${session.id}`"
-                >
-                    {{
-                        $t('settings.profile.sessions.last_page', {
-                            page: session.last_page,
-                        })
-                    }}
+                    {{ session.last_active }}
                 </p>
                 <template #actions>
                     <Badge

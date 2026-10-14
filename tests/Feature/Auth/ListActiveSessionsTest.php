@@ -22,34 +22,12 @@ test('lists the user sessions, most recent first, flagging the current one', fun
 
     expect(array_column($sessions, 'id'))->toBe(['current', 'older'])
         ->and(array_column($sessions, 'is_current'))->toBe([true, false])
-        ->and($sessions[1])->toMatchArray(['ip_address' => '203.0.113.1', 'user_agent' => 'Firefox']);
+        ->and($sessions[1])->toMatchArray(['user_agent' => 'Firefox'])
+        ->and($sessions[1])->not->toHaveKey('ip_address');
 });
 
 test('lists nothing when sessions are not kept in the database', function () {
     config(['session.driver' => 'array']);
 
     expect(ListActiveSessions::execute(User::factory()->create(), 'any'))->toBe([]);
-});
-
-test('shows the path of the last page each session opened, without its query string', function (string $serialization) {
-    config(['session.driver' => 'database', 'session.serialization' => $serialization]);
-    $user = User::factory()->create();
-    $data = ['_token' => 'token', '_previous' => ['url' => 'https://app.trypost.test/calendar?view=week&token=secret', 'route' => 'app.calendar']];
-
-    DB::table(config('session.table', 'sessions'))->insert([
-        ['id' => 'with-page', 'user_id' => $user->id, 'ip_address' => null, 'user_agent' => null, 'payload' => base64_encode($serialization === 'json' ? json_encode($data) : serialize($data)), 'last_activity' => now()->timestamp],
-        ['id' => 'without-page', 'user_id' => $user->id, 'ip_address' => null, 'user_agent' => null, 'payload' => base64_encode('not a session'), 'last_activity' => now()->subMinute()->timestamp],
-    ]);
-
-    expect(array_column(ListActiveSessions::execute($user, 'with-page'), 'last_page', 'id'))
-        ->toBe(['with-page' => '/calendar', 'without-page' => null]);
-})->with(['json', 'php']);
-
-test('an encrypted session payload gives no last page', function () {
-    config(['session.driver' => 'database', 'session.encrypt' => true]);
-    $user = User::factory()->create();
-
-    DB::table(config('session.table', 'sessions'))->insert(['id' => 'encrypted', 'user_id' => $user->id, 'ip_address' => null, 'user_agent' => null, 'payload' => base64_encode(json_encode(['_previous' => ['url' => 'https://app.trypost.test/calendar']])), 'last_activity' => now()->timestamp]);
-
-    expect(ListActiveSessions::execute($user, 'encrypted')[0]['last_page'])->toBeNull();
 });
