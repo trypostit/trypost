@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Mail\PostNoteAdded;
 use App\Models\Post;
 use App\Models\PostNote;
+use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Mail;
@@ -236,3 +237,59 @@ test('the notes count follows the thread when it opens and when a note is delete
 
     $page->assertSeeIn("@post-notes-count-{$post->id}", '1')->assertNoJavaScriptErrors();
 });
+
+test('notes open, grow, send, edit and fit the card on every tab, on desktop and on a phone', function (string $tab, string $state, int $width) {
+    Mail::fake();
+
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($account)->{$state}()->create(['user_id' => $user->id, 'content' => 'hello team']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => $tab]))->resize($width, 900);
+    waitForPostNotesTestId($page, "post-notes-trigger-{$post->id}");
+    $page->click("@post-notes-trigger-{$post->id}");
+    waitForPostNotesTestId($page, 'note-input');
+
+    $singleLine = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
+    $page->fill('@note-input', "First line\nSecond line\nThird line");
+    $grown = $page->script("document.querySelector('[data-testid=\"note-input\"]').getBoundingClientRect().height");
+    expect($grown)->toBeGreaterThan($singleLine);
+
+    $page->keys('@note-input', ['Enter']);
+    waitForPostNotesTestId($page, 'note-body');
+    $page->assertSeeIn("@post-notes-count-{$post->id}", '1')
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true);
+
+    $page->hover('@note-item')->click('@note-actions');
+    waitForPostNotesTestId($page, 'note-edit');
+    $page->click('@note-edit');
+    waitForPostNotesTestId($page, 'note-edit-input');
+    $page->fill('@note-edit-input', 'Edited note')
+        ->click('@note-edit-save');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100; i++) {
+                if (!document.querySelector('[data-testid="note-edit-input"]') && document.querySelector('[data-testid="note-body"]')?.textContent.includes('Edited note')) return;
+                await new Promise((r) => setTimeout(r, 50));
+            }
+        })();
+    JS);
+
+    $page->assertSeeIn('@note-body', 'Edited note')
+        ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+        ->assertNoJavaScriptErrors();
+    expect(PostNote::query()->where('post_id', $post->id)->sole()->body)->toBe('Edited note');
+})->with([
+    'drafts' => ['drafts', 'draft'],
+    'queue' => ['queue', 'scheduled'],
+    'approvals' => ['approvals', 'pendingApproval'],
+    'sent' => ['sent', 'published'],
+])->with([
+    'desktop' => [1280],
+    'phone' => [390],
+]);

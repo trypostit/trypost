@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -111,6 +112,47 @@ test('after saving an edited post two backs leave the list for the page before i
         ->assertNoJavaScriptErrors();
 });
 
+test('after saving a post edited from the calendar, a channel drafts tab or the approvals tab, two backs land on the page before it', function (string $from) {
+    $post = seedUnsavedChangesReel();
+    $account = $post->socialAccount;
+    $state = match ($from) {
+        'calendar' => ['status' => PostStatus::Scheduled, 'schedule_mode' => ScheduleMode::Custom, 'scheduled_at' => now()->addHour()],
+        'approvals' => ['status' => PostStatus::PendingApproval, 'scheduled_at' => now()->addHour(), 'approval_requested_by' => $post->user_id],
+        default => [],
+    };
+    $post->forceFill($state)->saveQuietly();
+    $list = match ($from) {
+        'calendar' => route('app.calendar', ['view' => 'week']),
+        'channel drafts' => route('app.channels.publish', ['account' => $account, 'tab' => 'drafts']),
+        'approvals' => route('app.posts.index', ['tab' => 'approvals']),
+    };
+    $listPath = (string) parse_url($list, PHP_URL_PATH);
+    $before = (string) parse_url(route('app.settings.preferences'), PHP_URL_PATH);
+
+    $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
+    if ($from === 'calendar') {
+        waitForUnsavedChangesTestId($page, "calendar-post-{$post->id}");
+        $page->click("@calendar-post-{$post->id}");
+    }
+    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    $page->click("@post-edit-{$post->id}");
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+
+    $page->click('@instagram-share-to-feed')
+        ->click('@composer-save-draft');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+    $page->assertPathIs($from === 'calendar' ? unsavedChangesListPath() : $listPath)->assertMissing('@unsaved-changes-dialog');
+
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '{$listPath}'");
+    $page->back();
+    waitForUnsavedChangesCondition($page, "location.pathname === '{$before}'");
+
+    $page->assertPathIs($before)->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
+})->with(['calendar', 'channel drafts', 'approvals']);
+
 test('saving an edited post never moves through history before the saved page lands', function () {
     $post = seedUnsavedChangesReel();
     $page = openUnsavedChangesFromList($post);
@@ -131,7 +173,7 @@ test('saving an edited post never moves through history before the saved page la
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
 });
 
-test('closing an untouched post of any network asks nothing, even when its settings fill in on their own', function (Platform $platform, ContentType $contentType, array $meta) {
+test('closing an untouched post of any network asks nothing, even when its settings fill in on their own', function (Platform $platform, ContentType $contentType, array $meta, bool $clickTextFirst) {
     Http::fake([
         config('trypost.platforms.pinterest.api').'/boards*' => Http::response(['items' => [['id' => 'board_1', 'name' => 'Ideas']]]),
         '*' => Http::response([], 200),
@@ -158,10 +200,22 @@ test('closing an untouched post of any network asks nothing, even when its setti
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    if ($clickTextFirst) {
+        waitForUnsavedChangesTestId($page, 'composer-editor-column');
+        $page->script(<<<'JS'
+            (() => {
+                const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
+                const options = { bubbles: true, cancelable: true, pointerType: 'mouse', button: 0 };
+                target.dispatchEvent(new PointerEvent('pointerdown', options));
+                target.dispatchEvent(new PointerEvent('pointerup', options));
+                target.dispatchEvent(new MouseEvent('click', options));
+            })()
+        JS);
+    }
     waitForUnsavedChangesTestId($page, 'channel-settings-rows');
     $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -172,6 +226,9 @@ test('closing an untouched post of any network asks nothing, even when its setti
     'tiktok' => [Platform::TikTok, ContentType::TikTokVideo, []],
     'google business' => [Platform::GoogleBusiness, ContentType::GoogleBusinessPost, []],
     'discord without a channel name' => [Platform::Discord, ContentType::DiscordMessage, ['channel_id' => '111']],
+])->with([
+    'closed after the settings load' => [false],
+    'text clicked right away' => [true],
 ]);
 
 test('closing an untouched post with media, a time or a queue slot asks nothing', function (ContentType $contentType, array $media, array $schedule) {
@@ -179,10 +236,22 @@ test('closing an untouched post with media, a time or a queue slot asks nothing'
     $post->forceFill(['content_type' => $contentType, 'media' => $media, ...$schedule])->save();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    if ($clickTextFirst) {
+        waitForUnsavedChangesTestId($page, 'composer-editor-column');
+        $page->script(<<<'JS'
+            (() => {
+                const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
+                const options = { bubbles: true, cancelable: true, pointerType: 'mouse', button: 0 };
+                target.dispatchEvent(new PointerEvent('pointerdown', options));
+                target.dispatchEvent(new PointerEvent('pointerup', options));
+                target.dispatchEvent(new MouseEvent('click', options));
+            })()
+        JS);
+    }
     waitForUnsavedChangesTestId($page, 'channel-settings-rows');
     $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
 
     $page->assertMissing('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
 })->with([
