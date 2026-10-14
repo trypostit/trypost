@@ -37,7 +37,8 @@ const showsFacebook = computed(() =>
     props.methods.includes(Platform.InstagramFacebook),
 );
 const showsBoth = computed(() => showsStandalone.value && showsFacebook.value);
-const requirementsOpen = ref(false);
+const standaloneRequirementsOpen = ref(false);
+const facebookRequirementsOpen = ref(false);
 
 const connectStandalone = (): void => {
     emit('select', Platform.Instagram);
@@ -132,17 +133,50 @@ const connectFacebook = (): void => {
                             {{ $t('accounts.instagram_connect.connect') }}
                         </Button>
 
-                        <div
-                            class="flex gap-3 border-t border-border pt-5 text-sm leading-[21px] font-medium text-foreground"
+                        <Collapsible
+                            v-model:open="standaloneRequirementsOpen"
+                            class="border-t border-border pt-5"
                         >
-                            <IconInfoCircle
-                                class="mt-[2.5px] size-4 shrink-0"
-                                aria-hidden="true"
-                            />
-                            <p>
-                                {{ $t('accounts.instagram_connect.convert_hint') }}
-                            </p>
-                        </div>
+                            <CollapsibleTrigger
+                                class="flex w-full items-center gap-3 text-start text-sm leading-[21px] font-medium text-foreground"
+                                data-testid="instagram-connect-standalone-requirements-toggle"
+                            >
+                                <IconInfoCircle
+                                    class="size-4 shrink-0"
+                                    aria-hidden="true"
+                                />
+                                <span class="flex-1">{{
+                                    $t(
+                                        'accounts.instagram_facebook_requirements.heading',
+                                    )
+                                }}</span>
+                                <IconChevronDown
+                                    class="size-4 shrink-0 text-muted-foreground transition-transform"
+                                    :class="{
+                                        'rotate-180': standaloneRequirementsOpen,
+                                    }"
+                                    aria-hidden="true"
+                                />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent
+                                class="pt-3"
+                                data-testid="instagram-connect-standalone-requirements"
+                            >
+                                <p
+                                    class="flex gap-2 text-xs leading-[18px] text-foreground"
+                                >
+                                    <IconCheck
+                                        class="mt-px size-3.5 shrink-0 text-success"
+                                        aria-hidden="true"
+                                    />
+                                    {{
+                                        $t(
+                                            'accounts.instagram_connect.convert_hint',
+                                        )
+                                    }}
+                                </p>
+                            </CollapsibleContent>
+                        </Collapsible>
                     </section>
 
                     <section
@@ -218,7 +252,7 @@ const connectFacebook = (): void => {
                         </Button>
 
                         <Collapsible
-                            v-model:open="requirementsOpen"
+                            v-model:open="facebookRequirementsOpen"
                             class="border-t border-border pt-5"
                         >
                             <CollapsibleTrigger
@@ -236,7 +270,7 @@ const connectFacebook = (): void => {
                                 }}</span>
                                 <IconChevronDown
                                     class="size-4 shrink-0 text-muted-foreground transition-transform"
-                                    :class="{ 'rotate-180': requirementsOpen }"
+                                    :class="{ 'rotate-180': facebookRequirementsOpen }"
                                     aria-hidden="true"
                                 />
                             </CollapsibleTrigger>

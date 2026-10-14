@@ -250,6 +250,12 @@ test('the instagram step offers the instagram login and facebook cards side by s
 
     expect($layout)->toBe(['sideBySide' => true, 'sameHeight' => true, 'buttonsAligned' => true, 'fitsWithoutScroll' => true]);
 
+    $page->assertMissing('@instagram-connect-standalone-requirements')
+        ->click('@instagram-connect-standalone-requirements-toggle');
+    waitForConnectDialogTestId($page, 'instagram-connect-standalone-requirements');
+    $page->assertSeeIn('@instagram-connect-standalone-requirements', trans('accounts.instagram_connect.convert_hint'))
+        ->click('@instagram-connect-standalone-requirements-toggle');
+
     $page->assertMissing('@instagram-connect-facebook-requirements')
         ->click('@instagram-connect-facebook-requirements-toggle');
     waitForConnectDialogTestId($page, 'instagram-connect-facebook-requirements');
