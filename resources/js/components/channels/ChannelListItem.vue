@@ -3,6 +3,7 @@ import { Link } from '@inertiajs/vue3';
 import {
     IconAlertCircle,
     IconArrowDown,
+    IconBrandFacebook,
     IconArrowUp,
     IconDotsVertical,
     IconExternalLink,
@@ -35,12 +36,19 @@ const props = withDefaults(
         showSettings?: boolean;
         canMoveUp?: boolean;
         canMoveDown?: boolean;
+        canLinkFacebook?: boolean;
     }>(),
-    { showSettings: true, canMoveUp: false, canMoveDown: false },
+    {
+        showSettings: true,
+        canMoveUp: false,
+        canMoveDown: false,
+        canLinkFacebook: false,
+    },
 );
 
 const emit = defineEmits<{
     reconnect: [channel: ConnectedAccount];
+    linkFacebook: [channel: ConnectedAccount];
     disconnect: [channel: ConnectedAccount];
     move: [channel: ConnectedAccount, offset: -1 | 1];
 }>();
@@ -142,6 +150,14 @@ const typeKey = computed(() => accountTypeKey(props.channel));
                             <IconExternalLink class="size-4" />
                             {{ $t('channels.view_profile') }}
                         </a>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                        v-if="canLinkFacebook"
+                        :data-testid="`channel-menu-link-facebook-${channel.id}`"
+                        @click="emit('linkFacebook', channel)"
+                    >
+                        <IconBrandFacebook class="size-4" />
+                        {{ $t('channels.link_facebook_page') }}
                     </DropdownMenuItem>
                     <DropdownMenuItem
                         :data-testid="`channel-menu-reconnect-${channel.id}`"

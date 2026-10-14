@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'Επανασυνδέστε αυτό το κανάλι για να συνεχίσετε τη δημοσίευση.',
     'reconnect' => 'Επανασύνδεση',
     'refresh_connection' => 'Ανανέωση σύνδεσης',
+    'link_facebook_page' => 'Σύνδεση με σελίδα Facebook',
     'view_profile' => 'Προβολή προφίλ',
     'disconnect' => 'Αποσύνδεση',
     'actions' => 'Ενέργειες καναλιού',

@@ -12,6 +12,7 @@ import { orderChannels, useChannelOrder } from '@/composables/useChannelOrder';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { Platform } from '@/types/platform';
 import type {
     AvailablePlatform,
     ConnectedAccount,
@@ -35,8 +36,15 @@ const page = usePage();
 const platforms = computed<AvailablePlatform[]>(
     () => (page.props.connectablePlatforms as AvailablePlatform[]) ?? [],
 );
-const { open: openConnectDialog } = useConnectChannelDialog();
-const { startConnect } = useNetworkConnect(platforms);
+const { open: openConnectDialog, openAt } = useConnectChannelDialog();
+const { startConnect, instagramMethods } = useNetworkConnect(platforms);
+
+const canLinkFacebook = (channel: ConnectedAccount): boolean =>
+    channel.platform === Platform.Instagram &&
+    instagramMethods.value.includes(Platform.InstagramFacebook);
+
+const linkFacebook = (channel: ConnectedAccount): void =>
+    openAt(Platform.InstagramFacebook, channel.id);
 
 const disconnectDialog = ref<InstanceType<
     typeof DisconnectChannelDialog
@@ -82,7 +90,9 @@ const disconnectChannel = (channel: ConnectedAccount): void =>
                         :channel="channel"
                         :can-move-up="reorderable && index > 0"
                         :can-move-down="reorderable && index < channels.length - 1"
+                        :can-link-facebook="canLinkFacebook(channel)"
                         @reconnect="reconnectChannel"
+                        @link-facebook="linkFacebook"
                         @disconnect="disconnectChannel"
                         @move="(moved, offset) => move(moved.id, offset)"
                     >

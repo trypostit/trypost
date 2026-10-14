@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'Połącz ten kanał ponownie, aby dalej publikować.',
     'reconnect' => 'Połącz ponownie',
     'refresh_connection' => 'Odśwież połączenie',
+    'link_facebook_page' => 'Połącz ze stroną na Facebooku',
     'view_profile' => 'Zobacz profil',
     'disconnect' => 'Rozłącz',
     'actions' => 'Akcje kanału',

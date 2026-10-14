@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => '계속 게시하려면 이 채널을 다시 연결하세요.',
     'reconnect' => '재연결',
     'refresh_connection' => '연결 새로고침',
+    'link_facebook_page' => 'Facebook 페이지에 연결',
     'view_profile' => '프로필 보기',
     'disconnect' => '연결 해제',
     'actions' => '채널 작업',

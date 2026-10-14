@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'Переподключите этот канал, чтобы продолжить публикации.',
     'reconnect' => 'Переподключить',
     'refresh_connection' => 'Обновить подключение',
+    'link_facebook_page' => 'Связать со страницей Facebook',
     'view_profile' => 'Открыть профиль',
     'disconnect' => 'Отключить',
     'actions' => 'Действия с каналом',

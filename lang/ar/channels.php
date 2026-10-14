@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'أعد ربط هذه القناة لمتابعة النشر.',
     'reconnect' => 'إعادة الربط',
     'refresh_connection' => 'تحديث الاتصال',
+    'link_facebook_page' => 'الربط بصفحة فيسبوك',
     'view_profile' => 'عرض الملف الشخصي',
     'disconnect' => 'فصل',
     'actions' => 'إجراءات القناة',

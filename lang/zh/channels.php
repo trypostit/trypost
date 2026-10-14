@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => '请重新连接此频道以继续发布。',
     'reconnect' => '重新连接',
     'refresh_connection' => '刷新连接',
+    'link_facebook_page' => '关联 Facebook 主页',
     'view_profile' => '查看主页',
     'disconnect' => '断开连接',
     'actions' => '频道操作',

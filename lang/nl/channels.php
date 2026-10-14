@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'Koppel dit kanaal opnieuw om te blijven publiceren.',
     'reconnect' => 'Opnieuw koppelen',
     'refresh_connection' => 'Verbinding vernieuwen',
+    'link_facebook_page' => 'Koppelen aan een Facebook-pagina',
     'view_profile' => 'Profiel bekijken',
     'disconnect' => 'Loskoppelen',
     'actions' => 'Kanaalacties',

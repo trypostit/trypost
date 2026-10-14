@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => '投稿を続けるには、このチャンネルを再接続してください。',
     'reconnect' => '再接続',
     'refresh_connection' => '接続を更新',
+    'link_facebook_page' => 'Facebookページにリンク',
     'view_profile' => 'プロフィールを表示',
     'disconnect' => '接続解除',
     'actions' => 'チャンネルの操作',

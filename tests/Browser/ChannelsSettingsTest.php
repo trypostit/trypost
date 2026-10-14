@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\SocialAccount\Platform;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -177,5 +178,38 @@ test('the disconnect dialog shows the keyword with a copy button, like the other
         ->assertVisible('@confirm-delete-keyword-copied');
 
     expect($page->script('window.__copied'))->toBe($keyword);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('an instagram login channel offers to link a facebook page, which reconnects that card through facebook', function () {
+    $user = channelsSettingsAdmin();
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id]);
+    $viaFacebook = SocialAccount::factory()->create(['workspace_id' => $user->current_workspace_id, 'platform' => Platform::InstagramFacebook]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.workspace.channels'));
+    waitForChannelsSettingsTestId($page, "channel-row-{$viaFacebook->id}");
+    $page->click("@channel-menu-{$viaFacebook->id}");
+    waitForChannelsSettingsTestId($page, "channel-menu-reconnect-{$viaFacebook->id}");
+    $page->assertMissing("@channel-menu-link-facebook-{$viaFacebook->id}")
+        ->keys("@channel-menu-reconnect-{$viaFacebook->id}", 'Escape');
+
+    $page->click("@channel-menu-{$instagram->id}");
+    waitForChannelsSettingsTestId($page, "channel-menu-link-facebook-{$instagram->id}");
+    $page->assertSeeIn("@channel-menu-link-facebook-{$instagram->id}", __('channels.link_facebook_page'))
+        ->click("@channel-menu-link-facebook-{$instagram->id}");
+    waitForChannelsSettingsTestId($page, 'instagram-facebook-requirements');
+
+    $page->script(<<<'JS'
+        document.addEventListener('inertia:before', (event) => {
+            window.__connectUrl = event.detail.visit.url.href;
+            event.preventDefault();
+        });
+    JS);
+    $page->click('@instagram-facebook-requirements-connect');
+    $page->script('(async () => { for (let i = 0; i < 100 && window.__connectUrl === undefined; i++) await new Promise((r) => setTimeout(r, 50)); })()');
+
+    expect($page->script('window.__connectUrl'))->toContain("reconnect={$instagram->id}")
+        ->and($page->script('new URL(window.__connectUrl).pathname'))->toBe((string) parse_url(route('app.social.instagram-facebook.connect'), PHP_URL_PATH));
     $page->assertNoJavaScriptErrors();
 });

@@ -50,6 +50,7 @@ return [
     'calendar.title' => 10,
     'channels.description' => 43,
     'channels.goal_dialog.description' => 57,
+    'channels.link_facebook_page' => 35,
     'channels.grid.title' => 10,
     'channels.settings_page.cancel' => 9,
     'channels.settings_page.timezone_confirm' => 22,

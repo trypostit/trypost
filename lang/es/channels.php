@@ -16,6 +16,7 @@ return [
     'connection_lost_hint' => 'Vuelve a conectar este canal para seguir publicando.',
     'reconnect' => 'Reconectar',
     'refresh_connection' => 'Actualizar conexión',
+    'link_facebook_page' => 'Vincular a una página de Facebook',
     'view_profile' => 'Ver perfil',
     'disconnect' => 'Desconectar',
     'actions' => 'Acciones del canal',
