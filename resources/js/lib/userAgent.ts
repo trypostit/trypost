@@ -198,8 +198,16 @@ const OS_ICONS: Record<string, string> = {
 export const browserIconUrl = (userAgent: string | null): string =>
     `/images/browsers/${BROWSER_ICONS[parseBrowserName(userAgent)] ?? 'fallback.svg'}`;
 
+const MONOCHROME_OS = new Set(['macOS', 'iPadOS', 'PlayStation']);
+
 export const osIconUrl = (userAgent: string | null): string => {
     const os = parseOsName(userAgent);
 
     return `/images/os/${(os && OS_ICONS[os]) || 'fallback.svg'}`;
 };
+
+/**
+ * Black, single-colour logos that would vanish on the dark theme.
+ */
+export const isMonochromeOsIcon = (userAgent: string | null): boolean =>
+    MONOCHROME_OS.has(parseOsName(userAgent) ?? '');

@@ -99,6 +99,26 @@ test('each session shows its browser and system icons under the log out button',
     $page->assertNoJavaScriptErrors();
 });
 
+test('the apple logo of a mac session turns light on the dark theme', function () {
+    config(['session.driver' => 'database']);
+    $user = User::factory()->create(['theme' => Theme::Dark]);
+    DB::table(config('session.table', 'sessions'))->insert([
+        'id' => 'safari-on-mac',
+        'user_id' => $user->id,
+        'ip_address' => '203.0.113.8',
+        'user_agent' => 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15',
+        'payload' => '',
+        'last_activity' => now()->subHour()->timestamp,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
+    waitForProfileTabsTestId($page, 'session-os-icon-safari-on-mac');
+
+    expect($page->script('getComputedStyle(document.querySelector(\'[data-testid="session-os-icon-safari-on-mac"]\')).filter'))->toBe('invert(1)');
+    $page->assertNoJavaScriptErrors();
+});
+
 test('the github mark turns light on the dark theme while google keeps its colors', function () {
     $this->actingAs(User::factory()->create(['theme' => Theme::Dark]));
 

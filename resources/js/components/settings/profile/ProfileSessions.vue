@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Form } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 
 import SessionController from '@/actions/App/Http/Controllers/App/Settings/SessionController';
 import InputError from '@/components/InputError.vue';
@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
     browserIconUrl,
+    isMonochromeOsIcon,
     osIconUrl,
     parseBrowserName,
     parseOsName,
@@ -35,10 +36,15 @@ export type Session = {
     is_current: boolean;
 };
 
-defineProps<{
+const props = defineProps<{
     sessions: Session[];
     hasPassword: boolean;
 }>();
+
+const orderedSessions = computed<Session[]>(() => [
+    ...props.sessions.filter((session) => session.is_current),
+    ...props.sessions.filter((session) => !session.is_current),
+]);
 
 const logoutDialogOpen = ref(false);
 
@@ -167,39 +173,43 @@ const closeLogoutDialog = (): void => {
 
         <ul class="flex flex-col gap-2">
             <SettingsListRow
-                v-for="session in sessions"
+                v-for="session in orderedSessions"
                 :key="session.id"
                 data-test="session-row"
             >
                 <template #media>
-                    <span
-                        class="relative inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card"
-                    >
-                        <img
-                            :src="browserIconUrl(session.user_agent)"
-                            :alt="parseBrowserName(session.user_agent)"
-                            class="size-6 object-contain"
-                            :data-testid="`session-browser-icon-${session.id}`"
-                        />
-                        <img
-                            :src="osIconUrl(session.user_agent)"
-                            :alt="parseOsName(session.user_agent) ?? ''"
-                            class="absolute -end-1.5 -bottom-1.5 size-5 rounded-full border-2 border-card bg-white object-contain p-px"
-                            :data-testid="`session-os-icon-${session.id}`"
-                        />
-                    </span>
+                    <img
+                        :src="browserIconUrl(session.user_agent)"
+                        :alt="parseBrowserName(session.user_agent)"
+                        class="size-8 shrink-0 object-contain"
+                        :data-testid="`session-browser-icon-${session.id}`"
+                    />
                 </template>
                 <p
-                    class="truncate text-sm leading-tight font-emphasis text-foreground"
+                    class="flex min-w-0 items-center gap-1.5 text-sm leading-tight text-foreground"
                 >
-                    {{ parseBrowserName(session.user_agent) }}
-                    <span
-                        v-if="parseOsName(session.user_agent)"
-                        class="font-normal text-muted-foreground"
-                    >
-                        {{ $t('settings.profile.sessions.on') }}
-                        {{ parseOsName(session.user_agent) }}
+                    <span class="truncate font-emphasis">
+                        {{ parseBrowserName(session.user_agent) }}
                     </span>
+                    <template v-if="parseOsName(session.user_agent)">
+                        <span class="text-muted-foreground">
+                            {{ $t('settings.profile.sessions.on') }}
+                        </span>
+                        <img
+                            :src="osIconUrl(session.user_agent)"
+                            alt=""
+                            class="size-4 shrink-0 object-contain"
+                            :class="{
+                                'dark:invert': isMonochromeOsIcon(
+                                    session.user_agent,
+                                ),
+                            }"
+                            :data-testid="`session-os-icon-${session.id}`"
+                        />
+                        <span class="truncate text-muted-foreground">
+                            {{ parseOsName(session.user_agent) }}
+                        </span>
+                    </template>
                 </p>
                 <p
                     class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
