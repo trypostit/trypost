@@ -1643,7 +1643,7 @@ test('playing the picked track from its card plays the music only and leaves the
     $page->assertNoJavaScriptErrors();
 });
 
-test('a collaborator link shows the diagonal arrow cursor of a link that opens a new tab', function () {
+test('a collaborator link shows the link cursor of a link that opens a new tab', function () {
     fakeChannelSettingsApis();
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
     $post->update(['meta' => ['collaborators' => ['alice']]]);
@@ -1651,7 +1651,7 @@ test('a collaborator link shows the diagonal arrow cursor of a link that opens a
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForChannelSettingsTestId($page, 'instagram-collaborator-alice');
 
-    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"instagram-collaborator-alice\"]')).cursor"))->toBe('ne-resize')
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"instagram-collaborator-alice\"]')).cursor"))->toBe('alias')
         ->and($page->script("document.querySelector('[data-testid=\"instagram-collaborator-alice\"]').target"))->toBe('_blank');
     $page->assertNoJavaScriptErrors();
 });

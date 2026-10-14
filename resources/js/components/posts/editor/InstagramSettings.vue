@@ -802,7 +802,7 @@ onUnmounted(() => {
                                     :href="instagramProfileUrl(username)"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    class="cursor-ne-resize underline-offset-2 hover:underline"
+                                    class="cursor-alias underline-offset-2 hover:underline"
                                     :data-testid="`instagram-collaborator-${username}`"
                                     >@{{ username }}</a
                                 >
