@@ -2225,7 +2225,7 @@ const onDialogOpenChange = (value: boolean): void => {
                         ><IconArrowLeft class="size-4"
                     /></Button>
                     <DialogTitle class="font-sans">{{
-                        initialPost || initialDraft
+                        initialPost
                             ? $t('posts.edit.title')
                             : $t('posts.create.title')
                     }}</DialogTitle>

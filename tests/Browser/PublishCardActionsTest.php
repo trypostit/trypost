@@ -314,5 +314,7 @@ test('a sent post with a link offers to share it in a new post and to copy it', 
 
     $page->assertVisible("@composer-account-{$channel->id}")
         ->assertValue("@composer-caption-{$channel->id}", $url)
+        ->assertSeeIn('@composer-header', __('posts.create.title'))
+        ->assertDontSeeIn('@composer-header', __('posts.edit.title'))
         ->assertNoJavaScriptErrors();
 });
