@@ -16,7 +16,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profil',
-            'authentication' => 'Kimlik Doğrulama',
             'notifications' => 'Bildirimler',
             'preferences' => 'Tercihler',
             'general' => 'Genel',
@@ -101,11 +100,11 @@ return [
         'resend_verification' => 'Doğrulama e-postasını yeniden göndermek için buraya tıklayın.',
         'verification_sent' => 'E-posta adresinize yeni bir doğrulama bağlantısı gönderildi.',
         'save' => 'Kaydet',
-    ],
-
-    'authentication' => [
-        'title' => 'Kimlik Doğrulama',
-        'page_title' => 'Kimlik doğrulama ayarları',
+        'tabs' => [
+            'profile' => 'Profil',
+            'login' => 'Şifre ve giriş',
+            'sessions' => 'Oturumlar',
+        ],
         'sessions' => [
             'title' => 'Etkin oturumlar',
             'description' => 'Şüpheli bir şey fark ederseniz diğer cihazlardan çıkış yapın.',

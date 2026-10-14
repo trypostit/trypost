@@ -17,7 +17,7 @@ test('authenticated user can hit the connect-provider route for github', functio
     Socialite::shouldReceive('driver')->with('github')->andReturn($driver);
 
     $this->actingAs($user)
-        ->get(route('app.authentication.connect-provider', 'github'))
+        ->get(route('app.profile.connected-accounts.connect', 'github'))
         ->assertRedirect('https://github.com/login/oauth/authorize');
 });
 
@@ -30,7 +30,7 @@ test('authenticated user can hit the connect-provider route for google', functio
     Socialite::shouldReceive('driver')->with('google-auth')->andReturn($driver);
 
     $this->actingAs($user)
-        ->get(route('app.authentication.connect-provider', 'google'))
+        ->get(route('app.profile.connected-accounts.connect', 'google'))
         ->assertRedirect('https://accounts.google.com/o/oauth2/auth');
 });
 
@@ -38,7 +38,7 @@ test('connect-provider route rejects unknown provider', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get(route('app.authentication.connect-provider', 'twitter'))
+        ->get(route('app.profile.connected-accounts.connect', 'twitter'))
         ->assertNotFound();
 });
 
@@ -47,12 +47,12 @@ test('connect-provider route 404s when the provider is disabled', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get(route('app.authentication.connect-provider', 'github'))
+        ->get(route('app.profile.connected-accounts.connect', 'github'))
         ->assertNotFound();
 });
 
 test('connect-provider route requires authentication', function () {
-    $this->get(route('app.authentication.connect-provider', 'github'))
+    $this->get(route('app.profile.connected-accounts.connect', 'github'))
         ->assertRedirect(route('login'));
 });
 
@@ -74,7 +74,7 @@ test('authenticated callback connects github to the current user', function () {
 
     $this->actingAs($user)
         ->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.authentication.edit'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']))
         ->assertSessionHas('flash.success');
 
     expect($user->fresh()->github_id)->toBe('gh-me');
@@ -98,7 +98,7 @@ test('authenticated callback links github by current user, not by email', functi
 
     $this->actingAs($user)
         ->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.authentication.edit'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']))
         ->assertSessionHas('flash.success');
 
     expect($user->fresh()->github_id)->toBe('gh-personal');
@@ -122,7 +122,7 @@ test('authenticated callback rejects when github account is already linked to an
 
     $this->actingAs($me)
         ->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.authentication.edit'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']))
         ->assertSessionHas('flash.error');
 
     expect($me->fresh()->github_id)->toBeNull();
@@ -147,7 +147,7 @@ test('authenticated callback connects google to the current user', function () {
 
     $this->actingAs($user)
         ->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.authentication.edit'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']))
         ->assertSessionHas('flash.success');
 
     expect($user->fresh()->google_id)->toBe('g-me');
@@ -169,7 +169,7 @@ test('authenticated callback rejects when google account is already linked to an
 
     $this->actingAs($me)
         ->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.authentication.edit'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']))
         ->assertSessionHas('flash.error');
 
     expect($me->fresh()->google_id)->toBeNull();

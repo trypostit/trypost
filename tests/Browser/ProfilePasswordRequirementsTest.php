@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 use App\Models\User;
 
-function waitForAuthenticationPasswordRequirement(mixed $page, string $key, string $met): void
+function waitForProfilePasswordRequirement(mixed $page, string $key, string $met): void
 {
     $page->script(<<<JS
         (async () => {
@@ -22,16 +22,16 @@ test('setting or changing a password shows the same requirements as sign up', fu
     $user = User::factory()->create($hasPassword ? [] : ['password' => null]);
     $this->actingAs($user);
 
-    $page = visit(route('app.authentication.edit'));
-    waitForAuthenticationPasswordRequirement($page, 'min', 'false');
+    $page = visit(route('app.profile.edit', ['tab' => 'login']));
+    waitForProfilePasswordRequirement($page, 'min', 'false');
 
     $page->assertSeeIn('@password-requirement-min', 'At least 12 characters')
         ->assertAttribute('@password-requirement-mixed_case', 'data-met', 'false')
         ->assertAttribute('@password-requirement-number', 'data-met', 'false')
         ->assertAttribute('@password-requirement-symbol', 'data-met', 'false');
 
-    $page->type('@authentication-new-password', 'abcD1!abcdef');
-    waitForAuthenticationPasswordRequirement($page, 'min', 'true');
+    $page->type('@profile-new-password', 'abcD1!abcdef');
+    waitForProfilePasswordRequirement($page, 'min', 'true');
 
     $page->assertAttribute('@password-requirement-min', 'data-met', 'true')
         ->assertAttribute('@password-requirement-mixed_case', 'data-met', 'true')

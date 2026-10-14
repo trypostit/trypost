@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'الملف الشخصي',
-            'authentication' => 'المصادقة',
             'notifications' => 'الإشعارات',
             'preferences' => 'التفضيلات',
             'general' => 'عام',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'انقر هنا لإعادة إرسال بريد التأكيد.',
         'verification_sent' => 'تم إرسال رابط تأكيد جديد إلى بريدك الإلكتروني.',
         'save' => 'حفظ',
-    ],
-
-    'authentication' => [
-        'title' => 'المصادقة',
-        'page_title' => 'إعدادات المصادقة',
+        'tabs' => [
+            'profile' => 'الملف الشخصي',
+            'login' => 'كلمة المرور وتسجيل الدخول',
+            'sessions' => 'الجلسات',
+        ],
         'sessions' => [
             'title' => 'الجلسات النشطة',
             'description' => 'إذا لاحظت أي شيء مريب، سجّل الخروج من الأجهزة الأخرى.',

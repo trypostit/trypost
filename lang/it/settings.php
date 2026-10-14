@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profilo',
-            'authentication' => 'Autenticazione',
             'notifications' => 'Notifiche',
             'preferences' => 'Preferenze',
             'general' => 'Generale',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'Clicca qui per inviare di nuovo l\'email di verifica.',
         'verification_sent' => 'Un nuovo link di verifica è stato inviato al tuo indirizzo email.',
         'save' => 'Salva',
-    ],
-
-    'authentication' => [
-        'title' => 'Autenticazione',
-        'page_title' => 'Impostazioni di autenticazione',
+        'tabs' => [
+            'profile' => 'Profilo',
+            'login' => 'Password e accesso',
+            'sessions' => 'Sessioni',
+        ],
         'sessions' => [
             'title' => 'Sessioni attive',
             'description' => 'Se noti qualcosa di sospetto, disconnetti gli altri dispositivi.',

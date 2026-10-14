@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => '个人资料',
-            'authentication' => '身份验证',
             'notifications' => '通知',
             'preferences' => '偏好设置',
             'general' => '常规',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => '点击此处重新发送验证邮件。',
         'verification_sent' => '新的验证链接已发送至你的邮箱地址。',
         'save' => '保存',
-    ],
-
-    'authentication' => [
-        'title' => '身份验证',
-        'page_title' => '身份验证设置',
+        'tabs' => [
+            'profile' => '个人资料',
+            'login' => '密码与登录',
+            'sessions' => '会话',
+        ],
         'sessions' => [
             'title' => '活动会话',
             'description' => '如果你发现任何可疑情况，请退出其他设备的登录。',

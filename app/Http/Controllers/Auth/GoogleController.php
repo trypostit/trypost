@@ -64,16 +64,16 @@ class GoogleController extends Controller
             ->first();
 
         if ($existing) {
-            return redirect()->route('app.authentication.edit')
-                ->with('flash.error', __('settings.authentication.providers.flash_already_linked', ['provider' => 'Google']));
+            return redirect()->route('app.profile.edit', ['tab' => 'login'])
+                ->with('flash.error', __('settings.profile.providers.flash_already_linked', ['provider' => 'Google']));
         }
 
         if ($user->google_id !== $googleId) {
             $user->update(['google_id' => $googleId]);
         }
 
-        return redirect()->route('app.authentication.edit')
-            ->with('flash.success', __('settings.authentication.providers.flash_connected', ['provider' => 'Google']));
+        return redirect()->route('app.profile.edit', ['tab' => 'login'])
+            ->with('flash.success', __('settings.profile.providers.flash_connected', ['provider' => 'Google']));
     }
 
     private function loginExistingUser(User $user, string $googleId): RedirectResponse

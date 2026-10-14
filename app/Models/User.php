@@ -177,4 +177,19 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
     {
         return (bool) $this->{"{$provider->value}_id"};
     }
+
+    /**
+     * Whether unlinking this provider still leaves the user a way to sign in:
+     * a password or another connected provider.
+     */
+    public function canDisconnectFrom(SocialAuthProvider $provider): bool
+    {
+        if ($this->password) {
+            return true;
+        }
+
+        return collect(SocialAuthProvider::cases())
+            ->reject(fn (SocialAuthProvider $other): bool => $other === $provider)
+            ->contains(fn (SocialAuthProvider $other): bool => $this->isConnectedTo($other));
+    }
 }

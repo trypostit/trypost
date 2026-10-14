@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => '프로필',
-            'authentication' => '인증',
             'notifications' => '알림',
             'preferences' => '환경설정',
             'general' => '일반',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => '인증 이메일을 다시 보내려면 여기를 클릭하세요.',
         'verification_sent' => '이메일 주소로 새 인증 링크를 보냈습니다.',
         'save' => '저장',
-    ],
-
-    'authentication' => [
-        'title' => '인증',
-        'page_title' => '인증 설정',
+        'tabs' => [
+            'profile' => '프로필',
+            'login' => '비밀번호 및 로그인',
+            'sessions' => '세션',
+        ],
         'sessions' => [
             'title' => '활성 세션',
             'description' => '의심스러운 점이 발견되면 다른 기기에서 로그아웃하세요.',

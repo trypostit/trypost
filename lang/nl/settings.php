@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profiel',
-            'authentication' => 'Authenticatie',
             'notifications' => 'Meldingen',
             'preferences' => 'Voorkeuren',
             'general' => 'Algemeen',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'Klik hier om de verificatiemail opnieuw te versturen.',
         'verification_sent' => 'Er is een nieuwe verificatielink naar je e-mailadres verstuurd.',
         'save' => 'Opslaan',
-    ],
-
-    'authentication' => [
-        'title' => 'Authenticatie',
-        'page_title' => 'Authenticatie-instellingen',
+        'tabs' => [
+            'profile' => 'Profiel',
+            'login' => 'Inloggen',
+            'sessions' => 'Sessies',
+        ],
         'sessions' => [
             'title' => 'Actieve sessies',
             'description' => 'Als je iets verdachts opmerkt, log dan uit op andere apparaten.',

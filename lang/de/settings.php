@@ -16,7 +16,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profil',
-            'authentication' => 'Authentifizierung',
             'notifications' => 'Benachrichtigungen',
             'preferences' => 'Präferenzen',
             'general' => 'Allgemein',
@@ -101,11 +100,11 @@ return [
         'resend_verification' => 'Klicke hier, um die Bestätigungs-E-Mail erneut zu senden.',
         'verification_sent' => 'Ein neuer Bestätigungslink wurde an deine E-Mail-Adresse gesendet.',
         'save' => 'Speichern',
-    ],
-
-    'authentication' => [
-        'title' => 'Authentifizierung',
-        'page_title' => 'Authentifizierungseinstellungen',
+        'tabs' => [
+            'profile' => 'Profil',
+            'login' => 'Anmeldung',
+            'sessions' => 'Sitzungen',
+        ],
         'sessions' => [
             'title' => 'Aktive Sitzungen',
             'description' => 'Wenn dir etwas Verdächtiges auffällt, melde dich von anderen Geräten ab.',

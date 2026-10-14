@@ -11,10 +11,10 @@ test('authentication page is displayed', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->get(route('app.authentication.edit'))
+        ->get(route('app.profile.edit', ['tab' => 'login']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('settings/profile/Authentication')
+            ->component('settings/profile/Profile')
             ->has('sessions')
             ->where('hasPassword', true)
             ->has('connectedAccounts')
@@ -26,14 +26,14 @@ test('password can be updated', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->put(route('app.authentication.update-password'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->put(route('app.profile.password.update'), [
             'current_password' => 'password',
             'password' => strongPassword(),
             'password_confirmation' => strongPassword(),
         ])
         ->assertSessionHasNoErrors()
-        ->assertRedirect(route('app.authentication.edit'));
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']));
 
     expect(Hash::check(strongPassword(), $user->refresh()->password))->toBeTrue();
 });
@@ -42,8 +42,8 @@ test('password cannot be updated to a weak or compromised password', function (s
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->put(route('app.authentication.update-password'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->put(route('app.profile.password.update'), [
             'current_password' => 'password',
             'password' => $password,
             'password_confirmation' => $password,
@@ -60,18 +60,18 @@ test('correct password must be provided to update password', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->put(route('app.authentication.update-password'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->put(route('app.profile.password.update'), [
             'current_password' => 'wrong-password',
             'password' => strongPassword(),
             'password_confirmation' => strongPassword(),
         ])
         ->assertSessionHasErrors('current_password')
-        ->assertRedirect(route('app.authentication.edit'));
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']));
 });
 
 test('password update requires authentication', function () {
-    $this->put(route('app.authentication.update-password'), [])
+    $this->put(route('app.profile.password.update'), [])
         ->assertRedirect(route('login'));
 });
 
@@ -79,8 +79,8 @@ test('password must be confirmed', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->put(route('app.authentication.update-password'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->put(route('app.profile.password.update'), [
             'current_password' => 'password',
             'password' => strongPassword(),
             'password_confirmation' => 'wrong-confirmation',
@@ -92,8 +92,8 @@ test('user without a password can set one without current_password', function ()
     $user = User::factory()->create(['password' => null, 'google_id' => 'google-123']);
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->put(route('app.authentication.update-password'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->put(route('app.profile.password.update'), [
             'password' => strongPassword(),
             'password_confirmation' => strongPassword(),
         ])
@@ -106,9 +106,9 @@ test('disconnect provider removes the link', function () {
     $user = User::factory()->create(['google_id' => 'google-123', 'password' => bcrypt('password')]);
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
-        ->assertRedirect(route('app.authentication.edit'));
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->delete(route('app.profile.connected-accounts.destroy', 'google'))
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']));
 
     expect($user->refresh()->google_id)->toBeNull();
 });
@@ -117,8 +117,8 @@ test('disconnect provider blocked when it is the only sign-in method', function 
     $user = User::factory()->create(['google_id' => 'google-123', 'password' => null]);
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.disconnect-provider', 'google'))
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->delete(route('app.profile.connected-accounts.destroy', 'google'))
         ->assertSessionHas('flash.error');
 
     expect($user->refresh()->google_id)->toBe('google-123');
@@ -128,7 +128,7 @@ test('disconnect provider rejects unknown provider', function () {
     $user = User::factory()->create();
 
     $this->actingAs($user)
-        ->delete(route('app.authentication.disconnect-provider', 'twitter'))
+        ->delete(route('app.profile.connected-accounts.destroy', 'twitter'))
         ->assertNotFound();
 });
 
@@ -152,11 +152,11 @@ test('destroy other sessions removes other rows for the user', function () {
     ]);
 
     $this->actingAs($user)
-        ->from(route('app.authentication.edit'))
-        ->delete(route('app.authentication.destroy-other-sessions'), [
+        ->from(route('app.profile.edit', ['tab' => 'login']))
+        ->delete(route('app.profile.sessions.destroy-others'), [
             'password' => 'password',
         ])
-        ->assertRedirect(route('app.authentication.edit'));
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']));
 
     expect(DB::table($sessionsTable)->where('id', 'other-session-id')->exists())->toBeFalse();
 });

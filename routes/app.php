@@ -43,10 +43,12 @@ use App\Http\Controllers\App\RepurposeController;
 use App\Http\Controllers\App\RssFeedCollectionController;
 use App\Http\Controllers\App\RssFeedController;
 use App\Http\Controllers\App\RssFeedItemController;
-use App\Http\Controllers\App\Settings\AuthenticationController;
+use App\Http\Controllers\App\Settings\ConnectedAccountController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
+use App\Http\Controllers\App\Settings\PasswordController;
 use App\Http\Controllers\App\Settings\PreferencesController;
 use App\Http\Controllers\App\Settings\ProfileController;
+use App\Http\Controllers\App\Settings\SessionController;
 use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
@@ -416,16 +418,15 @@ Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::delete('settings/profile', [ProfileController::class, 'destroy'])->name('app.profile.destroy');
 
-    Route::get('settings/authentication', [AuthenticationController::class, 'edit'])->name('app.authentication.edit');
-    Route::put('settings/authentication/password', [AuthenticationController::class, 'updatePassword'])
+    Route::put('settings/profile/password', [PasswordController::class, 'update'])
         ->middleware('throttle:6,1')
-        ->name('app.authentication.update-password');
-    Route::delete('settings/authentication/sessions', [AuthenticationController::class, 'destroyOtherSessions'])
-        ->name('app.authentication.destroy-other-sessions');
-    Route::get('settings/authentication/providers/{provider}/connect', [AuthenticationController::class, 'connectProvider'])
-        ->name('app.authentication.connect-provider');
-    Route::delete('settings/authentication/providers/{provider}', [AuthenticationController::class, 'disconnectProvider'])
-        ->name('app.authentication.disconnect-provider');
+        ->name('app.profile.password.update');
+    Route::delete('settings/profile/sessions', [SessionController::class, 'destroyOthers'])
+        ->name('app.profile.sessions.destroy-others');
+    Route::get('settings/profile/connected-accounts/{provider}/connect', [ConnectedAccountController::class, 'connect'])
+        ->name('app.profile.connected-accounts.connect');
+    Route::delete('settings/profile/connected-accounts/{provider}', [ConnectedAccountController::class, 'destroy'])
+        ->name('app.profile.connected-accounts.destroy');
 
     Route::get('settings/profile/notifications', [NotificationPreferenceController::class, 'edit'])->name('app.notifications.preferences');
     Route::patch('settings/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('app.notifications.preferences.update');

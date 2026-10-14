@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'プロフィール',
-            'authentication' => '認証',
             'notifications' => '通知',
             'preferences' => '環境設定',
             'general' => '一般',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'こちらをクリックして確認メールを再送信してください。',
         'verification_sent' => '新しい確認リンクをメールアドレスに送信しました。',
         'save' => '保存',
-    ],
-
-    'authentication' => [
-        'title' => '認証',
-        'page_title' => '認証設定',
+        'tabs' => [
+            'profile' => 'プロフィール',
+            'login' => 'パスワードとログイン',
+            'sessions' => 'セッション',
+        ],
         'sessions' => [
             'title' => 'アクティブなセッション',
             'description' => '不審な点に気づいた場合は、他のデバイスからログアウトしてください。',

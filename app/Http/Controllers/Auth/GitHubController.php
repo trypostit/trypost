@@ -72,16 +72,16 @@ class GitHubController extends Controller
             ->first();
 
         if ($existing) {
-            return redirect()->route('app.authentication.edit')
-                ->with('flash.error', __('settings.authentication.providers.flash_already_linked', ['provider' => 'GitHub']));
+            return redirect()->route('app.profile.edit', ['tab' => 'login'])
+                ->with('flash.error', __('settings.profile.providers.flash_already_linked', ['provider' => 'GitHub']));
         }
 
         if ($user->github_id !== $githubId) {
             $user->update(['github_id' => $githubId]);
         }
 
-        return redirect()->route('app.authentication.edit')
-            ->with('flash.success', __('settings.authentication.providers.flash_connected', ['provider' => 'GitHub']));
+        return redirect()->route('app.profile.edit', ['tab' => 'login'])
+            ->with('flash.success', __('settings.profile.providers.flash_connected', ['provider' => 'GitHub']));
     }
 
     private function loginExistingUser(User $user, string $githubId): RedirectResponse

@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profile',
-            'authentication' => 'Authentication',
             'notifications' => 'Notifications',
             'preferences' => 'Preferences',
             'general' => 'General',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'Click here to resend the verification email.',
         'verification_sent' => 'A new verification link has been sent to your email address.',
         'save' => 'Save',
-    ],
-
-    'authentication' => [
-        'title' => 'Authentication',
-        'page_title' => 'Authentication settings',
+        'tabs' => [
+            'profile' => 'Profile',
+            'login' => 'Password & login',
+            'sessions' => 'Sessions',
+        ],
         'sessions' => [
             'title' => 'Active sessions',
             'description' => 'If you notice anything suspicious, sign out of other devices.',

@@ -5,7 +5,6 @@ import {
     IconCoin,
     IconCode,
     IconSignature,
-    IconFingerprint,
     IconPlug,
     IconBuilding,
     IconAdjustmentsHorizontal,
@@ -20,7 +19,6 @@ import { computed } from 'vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { members } from '@/routes/app';
 import { index as apiKeys } from '@/routes/app/api-keys';
-import { edit as authenticationEdit } from '@/routes/app/authentication';
 import { index as billing } from '@/routes/app/billing';
 import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
@@ -87,12 +85,6 @@ export const useSettingsNavigation = () => {
                         'preferences',
                         preferences.url(),
                         IconAdjustmentsHorizontal,
-                        true,
-                    ),
-                    ...item(
-                        'authentication',
-                        authenticationEdit.url(),
-                        IconFingerprint,
                         true,
                     ),
                     ...item(

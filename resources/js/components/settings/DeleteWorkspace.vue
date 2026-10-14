@@ -6,8 +6,8 @@ import { computed, ref } from 'vue';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Button } from '@/components/ui/button';
-import { edit as editAuthentication } from '@/routes/app/authentication';
 import { index as billingIndex } from '@/routes/app/billing';
+import { edit as editProfile } from '@/routes/app/profile';
 import { destroy as destroyWorkspace } from '@/routes/app/workspaces';
 
 const props = defineProps<{
@@ -95,7 +95,7 @@ const openDeleteModal = () => {
                 </Link>
             </Button>
             <Button variant="destructive" as-child>
-                <Link :href="editAuthentication()">
+                <Link :href="editProfile()">
                     {{ $t('settings.workspace.delete_go_to_delete_account') }}
                 </Link>
             </Button>

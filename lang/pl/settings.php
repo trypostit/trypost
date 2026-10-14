@@ -14,7 +14,6 @@ return [
         ],
         'items' => [
             'profile' => 'Profil',
-            'authentication' => 'Uwierzytelnianie',
             'notifications' => 'Powiadomienia',
             'preferences' => 'Preferencje',
             'general' => 'Ogólne',
@@ -99,11 +98,11 @@ return [
         'resend_verification' => 'Kliknij tutaj, aby ponownie wysłać e-mail weryfikacyjny.',
         'verification_sent' => 'Nowy link weryfikacyjny został wysłany na Twój adres e-mail.',
         'save' => 'Zapisz',
-    ],
-
-    'authentication' => [
-        'title' => 'Uwierzytelnianie',
-        'page_title' => 'Ustawienia uwierzytelniania',
+        'tabs' => [
+            'profile' => 'Profil',
+            'login' => 'Hasło i logowanie',
+            'sessions' => 'Sesje',
+        ],
         'sessions' => [
             'title' => 'Aktywne sesje',
             'description' => 'Jeśli zauważysz coś podejrzanego, wyloguj się z innych urządzeń.',
