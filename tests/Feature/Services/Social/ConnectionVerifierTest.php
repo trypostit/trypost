@@ -35,7 +35,7 @@ test('verifies account without refresh when token is not expired', function () {
     expect($result)->toBeTrue();
 
     Http::assertSentCount(1);
-    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/rest/userinfo'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/v2/userinfo'));
 });
 
 test('refreshes linkedin token before verifying when expired', function () {
@@ -534,7 +534,7 @@ test('does NOT refresh proactively when token still works (lazy refresh)', funct
 
     // Refresh endpoint must NOT have been called — verify worked without it.
     Http::assertNotSent(fn ($request) => str_contains($request->url(), 'oauth/v2/accessToken'));
-    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/rest/userinfo'));
+    Http::assertSent(fn ($request) => str_contains($request->url(), config('trypost.platforms.linkedin.api').'/v2/userinfo'));
 });
 
 test('refreshes lazily on 401 then retries verify', function () {
@@ -1145,7 +1145,7 @@ test('throws PlatformUnavailableException when the discord guild lookup fails tr
 
 test('linkedin verify treats a 5xx as platform unavailable, not a disconnect', function () {
     Http::fake([
-        config('trypost.platforms.linkedin.api').'/rest/userinfo' => Http::response(['message' => 'Internal Server Error'], 500),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['message' => 'Internal Server Error'], 500),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create();
@@ -1157,7 +1157,7 @@ test('linkedin verify treats a 5xx as platform unavailable, not a disconnect', f
 test('linkedin verify throws TokenExpiredException on a bare 401', function () {
     Http::fake([
         config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
-        config('trypost.platforms.linkedin.api').'/rest/userinfo' => Http::response(['message' => 'Unauthorized'], 401),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['message' => 'Unauthorized'], 401),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create();

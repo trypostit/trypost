@@ -577,14 +577,14 @@ class ConnectionVerifier
         $account->refresh();
     }
 
+    /**
+     * The OpenID Connect userinfo endpoint lives under `/v2`, not the versioned
+     * `/rest` API, so it takes no LinkedIn-Version header.
+     */
     private function verifyLinkedIn(SocialAccount $account): bool
     {
         $response = Http::withToken($account->access_token)
-            ->withHeaders([
-                'X-Restli-Protocol-Version' => '2.0.0',
-                'LinkedIn-Version' => '202601',
-            ])
-            ->get(config('trypost.platforms.linkedin.api').'/rest/userinfo');
+            ->get(config('trypost.platforms.linkedin.api').'/v2/userinfo');
 
         if (LinkedInPublishException::isConfirmedDeadToken($response)) {
             throw new TokenExpiredException('LinkedIn access token is invalid or expired');
