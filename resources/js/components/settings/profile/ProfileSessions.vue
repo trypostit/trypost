@@ -65,7 +65,7 @@ const openLogoutDialog = (): void => {
                     <img
                         :src="browserIconUrl(session.user_agent)"
                         :alt="parseBrowserName(session.user_agent)"
-                        class="size-8 shrink-0 object-contain"
+                        class="size-9 shrink-0 object-contain"
                         :data-testid="`session-browser-icon-${session.id}`"
                     />
                 </template>
@@ -97,7 +97,7 @@ const openLogoutDialog = (): void => {
                 </p>
                 <p
                     v-if="!session.is_current"
-                    class="text-sm text-muted-foreground"
+                    class="-mt-0.5 text-xs leading-4 text-muted-foreground"
                     :data-testid="`session-last-activity-${session.id}`"
                 >
                     {{
