@@ -653,3 +653,16 @@ test('on a phone the view switch and the new post button fit inside the card, on
     'all channels' => [true],
     'a channel' => [false],
 ])->with(['approvals', 'sent']);
+
+test('the reel and story badges on a post card show a 16px icon', function (ContentType $contentType) {
+    [$user, $workspace] = publishPageSetup();
+    $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $post = Post::factory()->forAccount($instagram, $contentType)->create(['user_id' => $user->id, 'content' => 'Badge']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']));
+    waitForPublishPageTestId($page, "post-content-type-icon-{$post->id}");
+
+    expect($page->script("(() => { const box = document.querySelector('[data-testid=\"post-content-type-icon-{$post->id}\"]').getBoundingClientRect(); return [Math.round(box.width), Math.round(box.height)]; })()"))->toBe([16, 16]);
+    $page->assertNoJavaScriptErrors();
+})->with([ContentType::InstagramReel, ContentType::InstagramStory]);

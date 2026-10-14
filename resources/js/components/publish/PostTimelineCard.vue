@@ -3,6 +3,7 @@ import { router, usePage } from '@inertiajs/vue3';
 import {
     IconArrowsMaximize,
     IconCircleDashedPlus,
+    IconCirclePlay,
     IconEdit,
     IconExternalLink,
     IconMessageCircle,
@@ -15,7 +16,6 @@ import {
     IconPlayerPlayFilled,
     IconRepeat,
     IconSend,
-    IconVideo,
     IconX,
 } from '@tabler/icons-vue';
 import { type Component, computed, inject, ref, watch } from 'vue';
@@ -253,8 +253,8 @@ const openLightbox = (index: number): void => {
 const CONTENT_TYPE_ICONS: Record<string, Component> = {
     instagram_story: IconCircleDashedPlus,
     facebook_story: IconCircleDashedPlus,
-    instagram_reel: IconVideo,
-    facebook_reel: IconVideo,
+    instagram_reel: IconCirclePlay,
+    facebook_reel: IconCirclePlay,
 };
 
 const contentTypeIcon = computed(() =>
@@ -620,14 +620,15 @@ defineExpose({ openDetails });
                             <Badge
                                 v-if="contentTypeKey"
                                 variant="secondary"
-                                class="ms-auto h-6 gap-1 px-2"
+                                class="ms-auto h-6 gap-1.5 px-2 [&>svg]:size-4"
                                 :data-testid="`post-content-type-${post.id}`"
                             >
                                 <component
                                     :is="contentTypeIcon"
                                     v-if="contentTypeIcon"
-                                    class="size-3.5"
+                                    class="shrink-0"
                                     aria-hidden="true"
+                                    :data-testid="`post-content-type-icon-${post.id}`"
                                 />
                                 {{ $t(contentTypeKey) }}
                             </Badge>
