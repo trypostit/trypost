@@ -49,3 +49,19 @@ test('a link to the login tab opens it', function () {
         ->assertMissing('[data-test="update-profile-button"]')
         ->assertNoJavaScriptErrors();
 });
+
+test('the delete account button sits under its warning', function () {
+    $this->actingAs(User::factory()->create());
+
+    $page = visit(route('app.profile.edit'));
+    waitForProfileTabsTestId($page, 'delete-account-warning');
+
+    expect($page->script(<<<'JS'
+        (() => {
+            const warning = document.querySelector('[data-testid="delete-account-warning"]').getBoundingClientRect();
+            const button = document.querySelector('[data-test="delete-user-button"]').getBoundingClientRect();
+            return button.top >= warning.bottom && Math.round(button.left) === Math.round(warning.left);
+        })()
+    JS))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});

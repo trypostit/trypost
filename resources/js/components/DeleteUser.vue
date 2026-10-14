@@ -45,123 +45,123 @@ const focusFirstInput = () => {
         :title="$t('settings.delete_account.heading')"
         :description="$t('settings.delete_account.description')"
     >
-        <template #actions>
-            <Dialog>
-                <DialogTrigger as-child>
-                    <Button
-                        variant="destructive"
-                        data-test="delete-user-button"
-                    >
-                        {{ $t('settings.delete_account.button') }}
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <Form
-                        v-bind="ProfileController.destroy.form()"
-                        reset-on-success
-                        @error="focusFirstInput"
-                        :options="{
-                            preserveScroll: true,
-                        }"
-                        class="space-y-6"
-                        v-slot="{ errors, processing, reset, clearErrors }"
-                    >
-                        <DialogHeader class="space-y-3">
-                            <DialogTitle>{{
-                                $t('settings.delete_account.modal_title')
-                            }}</DialogTitle>
-                            <DialogDescription>
-                                {{
-                                    hasPassword
-                                        ? $t(
-                                              'settings.delete_account.modal_description_password',
-                                          )
-                                        : trans(
-                                              'settings.delete_account.modal_description_email',
-                                              { email: userEmail },
-                                          )
-                                }}
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div v-if="hasPassword" class="grid gap-2">
-                            <Label for="password" class="sr-only">
-                                {{ $t('settings.delete_account.password') }}
-                            </Label>
-                            <Input
-                                id="password"
-                                type="password"
-                                name="password"
-                                ref="passwordInput"
-                                :placeholder="
-                                    trans(
-                                        'settings.delete_account.password_placeholder',
-                                    )
-                                "
-                            />
-                            <InputError :message="errors.password" />
-                        </div>
-
-                        <div v-else class="grid gap-2">
-                            <Label for="email_confirmation" class="sr-only">{{
-                                $t('settings.profile.email')
-                            }}</Label>
-                            <Input
-                                id="email_confirmation"
-                                type="email"
-                                name="email_confirmation"
-                                ref="emailInput"
-                                :placeholder="
-                                    trans(
-                                        'settings.delete_account.email_placeholder',
-                                    )
-                                "
-                                autocomplete="off"
-                            />
-                            <InputError :message="errors.email_confirmation" />
-                        </div>
-
-                        <DialogFooter>
-                            <DialogClose as-child>
-                                <Button
-                                    variant="ghost"
-                                    @click="
-                                        () => {
-                                            clearErrors();
-                                            reset();
-                                        }
-                                    "
-                                >
-                                    {{ $t('settings.delete_account.cancel') }}
-                                </Button>
-                            </DialogClose>
-
-                            <Button
-                                type="submit"
-                                variant="destructive"
-                                :disabled="processing"
-                                data-test="confirm-delete-user-button"
-                            >
-                                {{ $t('settings.delete_account.confirm') }}
-                            </Button>
-                        </DialogFooter>
-                    </Form>
-                </DialogContent>
-            </Dialog>
-        </template>
-
         <div
             class="flex items-start gap-2 rounded-xl bg-critical-subtle p-4 text-sm text-foreground"
+            data-testid="delete-account-warning"
         >
             <IconAlertTriangle
                 class="mt-0.5 size-4 shrink-0 text-destructive-text"
             />
-            <p>
-                <span class="font-emphasis">{{
-                    $t('settings.delete_account.warning')
-                }}</span>
-                {{ $t('settings.delete_account.warning_message') }}
-            </p>
+            <div class="flex flex-col gap-1">
+                <p class="font-emphasis">
+                    {{ $t('settings.delete_account.warning') }}
+                </p>
+                <p>{{ $t('settings.delete_account.warning_message') }}</p>
+            </div>
         </div>
+
+        <Dialog>
+            <DialogTrigger as-child>
+                <Button
+                    variant="destructive"
+                    class="self-start"
+                    data-test="delete-user-button"
+                >
+                    {{ $t('settings.delete_account.button') }}
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <Form
+                    v-bind="ProfileController.destroy.form()"
+                    reset-on-success
+                    @error="focusFirstInput"
+                    :options="{
+                        preserveScroll: true,
+                    }"
+                    class="space-y-6"
+                    v-slot="{ errors, processing, reset, clearErrors }"
+                >
+                    <DialogHeader class="space-y-3">
+                        <DialogTitle>{{
+                            $t('settings.delete_account.modal_title')
+                        }}</DialogTitle>
+                        <DialogDescription>
+                            {{
+                                hasPassword
+                                    ? $t(
+                                          'settings.delete_account.modal_description_password',
+                                      )
+                                    : trans(
+                                          'settings.delete_account.modal_description_email',
+                                          { email: userEmail },
+                                      )
+                            }}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div v-if="hasPassword" class="grid gap-2">
+                        <Label for="password" class="sr-only">
+                            {{ $t('settings.delete_account.password') }}
+                        </Label>
+                        <Input
+                            id="password"
+                            type="password"
+                            name="password"
+                            ref="passwordInput"
+                            :placeholder="
+                                trans(
+                                    'settings.delete_account.password_placeholder',
+                                )
+                            "
+                        />
+                        <InputError :message="errors.password" />
+                    </div>
+
+                    <div v-else class="grid gap-2">
+                        <Label for="email_confirmation" class="sr-only">{{
+                            $t('settings.profile.email')
+                        }}</Label>
+                        <Input
+                            id="email_confirmation"
+                            type="email"
+                            name="email_confirmation"
+                            ref="emailInput"
+                            :placeholder="
+                                trans(
+                                    'settings.delete_account.email_placeholder',
+                                )
+                            "
+                            autocomplete="off"
+                        />
+                        <InputError :message="errors.email_confirmation" />
+                    </div>
+
+                    <DialogFooter>
+                        <DialogClose as-child>
+                            <Button
+                                variant="ghost"
+                                @click="
+                                    () => {
+                                        clearErrors();
+                                        reset();
+                                    }
+                                "
+                            >
+                                {{ $t('settings.delete_account.cancel') }}
+                            </Button>
+                        </DialogClose>
+
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            :disabled="processing"
+                            data-test="confirm-delete-user-button"
+                        >
+                            {{ $t('settings.delete_account.confirm') }}
+                        </Button>
+                    </DialogFooter>
+                </Form>
+            </DialogContent>
+        </Dialog>
     </SettingsSection>
 </template>
