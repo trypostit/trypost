@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App\Settings;
 
 use App\Actions\Auth\ListActiveSessions;
+use App\Actions\Auth\ListConnectedAccounts;
 use App\Actions\User\DeleteUser;
-use App\Enums\Auth\SocialAuthProvider;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Settings\ProfileDeleteRequest;
 use App\Http\Requests\App\Settings\ProfileUpdateRequest;
 use App\Http\Requests\App\Settings\UpdateLanguageRequest;
 use App\Http\Requests\App\Settings\UploadPhotoRequest;
 use App\Jobs\PostHog\SyncUser;
-use App\Models\User;
 use App\Services\PostHogService;
 use App\Support\Auth\PasswordRequirements;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
@@ -33,7 +32,7 @@ class ProfileController extends Controller
             'status' => $request->session()->get('status'),
             'hasPassword' => (bool) $user->password,
             'passwordRequirements' => PasswordRequirements::checklist(),
-            'connectedAccounts' => $this->connectedAccounts($user),
+            'connectedAccounts' => ListConnectedAccounts::execute($user),
             'sessions' => ListActiveSessions::execute($user, $request->session()->getId()),
         ]);
     }
@@ -100,18 +99,5 @@ class ProfileController extends Controller
         }
 
         return redirect('/');
-    }
-
-    /**
-     * @return array<int, array{provider: string, label: string, connected: bool, can_disconnect: bool}>
-     */
-    private function connectedAccounts(User $user): array
-    {
-        return collect(SocialAuthProvider::cases())->map(fn (SocialAuthProvider $provider): array => [
-            'provider' => $provider->value,
-            'label' => $provider->label(),
-            'connected' => $user->isConnectedTo($provider),
-            'can_disconnect' => $user->isConnectedTo($provider) && $user->canDisconnectFrom($provider),
-        ])->values()->all();
     }
 }
