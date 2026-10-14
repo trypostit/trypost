@@ -46,17 +46,19 @@ const focusFirstInput = () => {
         :description="$t('settings.delete_account.description')"
     >
         <div
-            class="flex items-start gap-2 rounded-xl border border-border bg-muted p-4 text-sm text-foreground"
+            class="flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-3 text-sm text-foreground"
             data-testid="delete-account-warning"
         >
             <IconAlertTriangle
-                class="mt-0.5 size-4 shrink-0 text-destructive-text"
+                class="mt-0.5 size-4 shrink-0 text-destructive"
             />
-            <div class="flex flex-col gap-1">
+            <div class="grid gap-0.5">
                 <p class="font-emphasis">
                     {{ $t('settings.delete_account.warning') }}
                 </p>
-                <p>{{ $t('settings.delete_account.warning_message') }}</p>
+                <p class="text-muted-foreground">
+                    {{ $t('settings.delete_account.warning_message') }}
+                </p>
             </div>
         </div>
 
