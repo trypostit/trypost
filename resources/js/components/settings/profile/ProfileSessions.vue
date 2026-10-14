@@ -9,10 +9,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     browserIconUrl,
+    deviceIconUrl,
     isMonochromeOsIcon,
     osIconUrl,
     parseBrowserName,
+    parseBrowserVersion,
+    parseDeviceType,
     parseOsName,
+    parseOsVersion,
 } from '@/lib/userAgent';
 
 export type Session = {
@@ -20,6 +24,7 @@ export type Session = {
     ip_address: string | null;
     user_agent: string | null;
     last_active: string;
+    last_page: string | null;
     is_current: boolean;
 };
 
@@ -75,6 +80,7 @@ const openLogoutDialog = (): void => {
                 >
                     <span class="truncate font-emphasis">
                         {{ parseBrowserName(session.user_agent) }}
+                        {{ parseBrowserVersion(session.user_agent) }}
                     </span>
                     <template v-if="parseOsName(session.user_agent)">
                         <span class="text-muted-foreground">
@@ -93,12 +99,25 @@ const openLogoutDialog = (): void => {
                         />
                         <span class="truncate text-muted-foreground">
                             {{ parseOsName(session.user_agent) }}
+                            {{ parseOsVersion(session.user_agent) }}
                         </span>
                     </template>
                 </p>
                 <p
                     class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
                 >
+                    <img
+                        :src="deviceIconUrl(session.user_agent)"
+                        alt=""
+                        class="size-4 shrink-0 object-contain"
+                        :data-testid="`session-device-icon-${session.id}`"
+                    />
+                    <span>{{
+                        $t(
+                            `settings.profile.sessions.devices.${parseDeviceType(session.user_agent)}`,
+                        )
+                    }}</span>
+                    <span aria-hidden="true">·</span>
                     <span>{{
                         session.ip_address ??
                         $t('settings.profile.sessions.unknown_ip')
@@ -107,6 +126,17 @@ const openLogoutDialog = (): void => {
                         <span aria-hidden="true">·</span>
                         <span>{{ session.last_active }}</span>
                     </template>
+                </p>
+                <p
+                    v-if="session.last_page"
+                    class="truncate text-sm text-muted-foreground"
+                    :data-testid="`session-last-page-${session.id}`"
+                >
+                    {{
+                        $t('settings.profile.sessions.last_page', {
+                            page: session.last_page,
+                        })
+                    }}
                 </p>
                 <template #actions>
                     <Badge

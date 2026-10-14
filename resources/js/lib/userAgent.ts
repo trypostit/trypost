@@ -211,3 +211,91 @@ export const osIconUrl = (userAgent: string | null): string => {
  */
 export const isMonochromeOsIcon = (userAgent: string | null): boolean =>
     MONOCHROME_OS.has(parseOsName(userAgent) ?? '');
+
+export type DeviceType = 'desktop' | 'mobile' | 'tablet';
+
+export const parseDeviceType = (userAgent: string | null): DeviceType => {
+    if (!userAgent) {
+        return 'desktop';
+    }
+
+    if (
+        /iPad|Tablet|PlayBook|Silk\/|KF[A-Z]{2,4}\b/.test(userAgent) ||
+        (/Android/.test(userAgent) && !/Mobile/.test(userAgent))
+    ) {
+        return 'tablet';
+    }
+
+    if (/Mobile|iPhone|iPod|Android|Windows Phone|KAIOS/i.test(userAgent)) {
+        return 'mobile';
+    }
+
+    return 'desktop';
+};
+
+export const deviceIconUrl = (userAgent: string | null): string =>
+    `/images/devices/${parseDeviceType(userAgent)}.png`;
+
+const BROWSER_VERSION_PATTERNS: Record<string, RegExp> = {
+    Chrome: /(?:Chrome|CriOS)\/(\d+)/,
+    Chromium: /Chromium\/(\d+)/,
+    curl: /curl\/([\d.]+)/,
+    DuckDuckGo: /(?:DuckDuckGo|Ddg)\/(\d+)/,
+    Edge: /Edg(?:A|iOS)?\/(\d+)/,
+    Firefox: /(?:Firefox|FxiOS)\/(\d+)/,
+    'Huawei Browser': /HuaweiBrowser\/(\d+)/,
+    'Internet Explorer': /(?:MSIE |rv:)(\d+)/,
+    Opera: /(?:OPR|Opera)\/(\d+)/,
+    'QQ Browser': /QQBrowser\/(\d+)/,
+    Safari: /Version\/(\d+(?:\.\d+)?)/,
+    'Samsung Internet': /SamsungBrowser\/(\d+)/,
+    'UC Browser': /UCBrowser\/(\d+)/,
+    Vivaldi: /Vivaldi\/(\d+)/,
+    'Vivo Browser': /VivoBrowser\/(\d+)/,
+    Yandex: /YaBrowser\/(\d+)/,
+};
+
+/**
+ * The browser's major version as its user agent reports it. Browsers freeze
+ * parts of this string, so it is a hint, not an exact build.
+ */
+export const parseBrowserVersion = (userAgent: string | null): string | null => {
+    const pattern = BROWSER_VERSION_PATTERNS[parseBrowserName(userAgent)];
+
+    return (userAgent && pattern?.exec(userAgent)?.[1]) || null;
+};
+
+const WINDOWS_VERSIONS: Record<string, string> = {
+    '6.1': '7',
+    '6.2': '8',
+    '6.3': '8.1',
+};
+
+/**
+ * The system version as the user agent reports it. Windows 10 and 11 both
+ * report "NT 10.0", so no version is shown for them.
+ */
+export const parseOsVersion = (userAgent: string | null): string | null => {
+    if (!userAgent) {
+        return null;
+    }
+
+    const read = (pattern: RegExp): string | null =>
+        pattern.exec(userAgent)?.[1]?.replace(/_/g, '.') ?? null;
+
+    switch (parseOsName(userAgent)) {
+        case 'macOS':
+            return read(/Mac OS X (\d+[._]\d+)/);
+        case 'iOS':
+        case 'iPadOS':
+            return read(/OS (\d+[._]\d+)/);
+        case 'Android':
+            return read(/Android (\d+(?:\.\d+)?)/);
+        case 'Windows':
+            return WINDOWS_VERSIONS[read(/Windows NT (\d+\.\d+)/) ?? ''] ?? null;
+        case 'KaiOS':
+            return read(/KAIOS\/(\d+(?:\.\d+)?)/i);
+        default:
+            return null;
+    }
+};

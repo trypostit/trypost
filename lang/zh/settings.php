@@ -109,6 +109,12 @@ return [
             'unknown_browser' => '未知浏览器',
             'unknown_ip' => '未知 IP',
             'on' => '于',
+            'devices' => [
+                'desktop' => '电脑',
+                'mobile' => '手机',
+                'tablet' => '平板',
+            ],
+            'last_page' => '最后访问的页面：:page',
             'active_now' => '当前活动',
             'log_out_others' => '退出其他设备',
             'modal_title' => '退出其他设备',

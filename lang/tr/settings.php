@@ -111,6 +111,12 @@ return [
             'unknown_browser' => 'Bilinmeyen tarayıcı',
             'unknown_ip' => 'Bilinmeyen IP',
             'on' => 'tarih:',
+            'devices' => [
+                'desktop' => 'Bilgisayar',
+                'mobile' => 'Telefon',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Son sayfa: :page',
             'active_now' => 'Şu anda etkin',
             'log_out_others' => 'Diğer cihazlardan çıkış yap',
             'modal_title' => 'Diğer cihazlardan çıkış yap',

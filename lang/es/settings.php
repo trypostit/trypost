@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Navegador desconocido',
             'unknown_ip' => 'IP desconocida',
             'on' => 'en',
+            'devices' => [
+                'desktop' => 'Ordenador',
+                'mobile' => 'Móvil',
+                'tablet' => 'Tableta',
+            ],
+            'last_page' => 'Última página: :page',
             'active_now' => 'Activa ahora',
             'log_out_others' => 'Cerrar otras sesiones',
             'modal_title' => 'Cerrar otras sesiones',

@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Browser sconosciuto',
             'unknown_ip' => 'IP sconosciuto',
             'on' => 'su',
+            'devices' => [
+                'desktop' => 'Computer',
+                'mobile' => 'Cellulare',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Ultima pagina: :page',
             'active_now' => 'Attivo ora',
             'log_out_others' => 'Disconnetti gli altri dispositivi',
             'modal_title' => 'Disconnetti gli altri dispositivi',

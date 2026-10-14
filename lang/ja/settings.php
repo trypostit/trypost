@@ -109,6 +109,12 @@ return [
             'unknown_browser' => '不明なブラウザ',
             'unknown_ip' => '不明な IP',
             'on' => '·',
+            'devices' => [
+                'desktop' => 'パソコン',
+                'mobile' => 'スマートフォン',
+                'tablet' => 'タブレット',
+            ],
+            'last_page' => '最後のページ: :page',
             'active_now' => '現在アクティブ',
             'log_out_others' => '他のデバイスからログアウト',
             'modal_title' => '他のデバイスからログアウト',

@@ -109,6 +109,12 @@ return [
             'unknown_browser' => '알 수 없는 브라우저',
             'unknown_ip' => '알 수 없는 IP',
             'on' => '·',
+            'devices' => [
+                'desktop' => '컴퓨터',
+                'mobile' => '휴대폰',
+                'tablet' => '태블릿',
+            ],
+            'last_page' => '마지막 페이지: :page',
             'active_now' => '현재 활성',
             'log_out_others' => '다른 기기에서 로그아웃',
             'modal_title' => '다른 기기에서 로그아웃',

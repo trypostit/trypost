@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'متصفح غير معروف',
             'unknown_ip' => 'عنوان IP غير معروف',
             'on' => 'على',
+            'devices' => [
+                'desktop' => 'كمبيوتر',
+                'mobile' => 'هاتف',
+                'tablet' => 'جهاز لوحي',
+            ],
+            'last_page' => 'آخر صفحة: :page',
             'active_now' => 'نشط الآن',
             'log_out_others' => 'تسجيل الخروج من الأجهزة الأخرى',
             'modal_title' => 'تسجيل الخروج من الأجهزة الأخرى',

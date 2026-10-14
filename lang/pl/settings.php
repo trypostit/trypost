@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Nieznana przeglądarka',
             'unknown_ip' => 'Nieznany adres IP',
             'on' => 'w',
+            'devices' => [
+                'desktop' => 'Komputer',
+                'mobile' => 'Telefon',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Ostatnia strona: :page',
             'active_now' => 'Aktywna teraz',
             'log_out_others' => 'Wyloguj inne urządzenia',
             'modal_title' => 'Wyloguj inne urządzenia',

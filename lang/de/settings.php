@@ -111,6 +111,12 @@ return [
             'unknown_browser' => 'Unbekannter Browser',
             'unknown_ip' => 'Unbekannte IP',
             'on' => 'am',
+            'devices' => [
+                'desktop' => 'Computer',
+                'mobile' => 'Smartphone',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Letzte Seite: :page',
             'active_now' => 'Jetzt aktiv',
             'log_out_others' => 'Andere Geräte abmelden',
             'modal_title' => 'Andere Geräte abmelden',

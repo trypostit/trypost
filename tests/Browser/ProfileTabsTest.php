@@ -78,7 +78,7 @@ test('each session shows its browser and system icons under the log out button',
         'user_id' => $user->id,
         'ip_address' => '203.0.113.7',
         'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0',
-        'payload' => '',
+        'payload' => base64_encode(json_encode(['_previous' => ['url' => 'https://app.trypost.test/insights?range=30d', 'route' => 'app.insights']])),
         'last_activity' => now()->subHour()->timestamp,
     ]);
     $this->actingAs($user);
@@ -87,7 +87,10 @@ test('each session shows its browser and system icons under the log out button',
     waitForProfileTabsTestId($page, 'session-browser-icon-firefox-on-windows');
 
     $page->assertAttribute('@session-browser-icon-firefox-on-windows', 'src', '/images/browsers/firefox.svg')
-        ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png');
+        ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png')
+        ->assertAttribute('@session-device-icon-firefox-on-windows', 'src', '/images/devices/desktop.png')
+        ->assertSeeIn('[data-test="session-row"]:has([data-testid="session-browser-icon-firefox-on-windows"])', 'Firefox 130')
+        ->assertSeeIn('@session-last-page-firefox-on-windows', '/insights');
 
     expect($page->script(<<<'JS'
         (() => {

@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Unknown browser',
             'unknown_ip' => 'Unknown IP',
             'on' => 'on',
+            'devices' => [
+                'desktop' => 'Desktop',
+                'mobile' => 'Mobile',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Last page: :page',
             'active_now' => 'Active now',
             'log_out_others' => 'Log out other devices',
             'modal_title' => 'Log out other devices',

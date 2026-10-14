@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Невідомий браузер',
             'unknown_ip' => 'Невідомий IP',
             'on' => 'на',
+            'devices' => [
+                'desktop' => 'Комп’ютер',
+                'mobile' => 'Телефон',
+                'tablet' => 'Планшет',
+            ],
+            'last_page' => 'Остання сторінка: :page',
             'active_now' => 'Активна зараз',
             'log_out_others' => 'Вийти з інших пристроїв',
             'modal_title' => 'Вийти з інших пристроїв',

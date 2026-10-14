@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Onbekende browser',
             'unknown_ip' => 'Onbekend IP',
             'on' => 'op',
+            'devices' => [
+                'desktop' => 'Computer',
+                'mobile' => 'Mobiel',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Laatste pagina: :page',
             'active_now' => 'Nu actief',
             'log_out_others' => 'Uitloggen op andere apparaten',
             'modal_title' => 'Uitloggen op andere apparaten',

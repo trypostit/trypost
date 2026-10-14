@@ -109,6 +109,12 @@ return [
             'unknown_browser' => 'Άγνωστο πρόγραμμα περιήγησης',
             'unknown_ip' => 'Άγνωστη IP',
             'on' => 'στις',
+            'devices' => [
+                'desktop' => 'Υπολογιστής',
+                'mobile' => 'Κινητό',
+                'tablet' => 'Tablet',
+            ],
+            'last_page' => 'Τελευταία σελίδα: :page',
             'active_now' => 'Ενεργό τώρα',
             'log_out_others' => 'Αποσύνδεση από άλλες συσκευές',
             'modal_title' => 'Αποσύνδεση από άλλες συσκευές',
