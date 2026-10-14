@@ -8,6 +8,7 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsSyncState;
 use App\Models\SocialAccount;
+use Illuminate\Contracts\Database\Eloquent\Builder;
 
 class MoveAnalyticsIdentity
 {
@@ -22,17 +23,20 @@ class MoveAnalyticsIdentity
      */
     public function handle(SocialAccount $account, string $previousPlatformUserId): void
     {
-        $identity = AnalyticsSyncState::identityFor($account);
+        $collectorsHeldByIdentity = AnalyticsSyncState::query()
+            ->forIdentity($account)
+            ->where(fn (Builder $query) => $query
+                ->whereNull('social_account_id')
+                ->orWhereNot('social_account_id', $account->id))
+            ->pluck('collector');
 
-        $account->analyticsSyncStates()->get()->each(function (AnalyticsSyncState $state) use ($account, $identity): void {
-            $heldByIdentity = AnalyticsSyncState::query()
-                ->forIdentity($account)
-                ->forCollector($state->collector)
-                ->whereKeyNot($state->id)
-                ->exists();
+        $account->analyticsSyncStates()
+            ->whereIn('collector', $collectorsHeldByIdentity)
+            ->update(['social_account_id' => null]);
 
-            $state->update($heldByIdentity ? ['social_account_id' => null] : $identity);
-        });
+        $account->analyticsSyncStates()
+            ->whereNotIn('collector', $collectorsHeldByIdentity)
+            ->update(AnalyticsSyncState::identityFor($account));
 
         AnalyticsPublication::query()
             ->where('social_account_id', $account->id)
