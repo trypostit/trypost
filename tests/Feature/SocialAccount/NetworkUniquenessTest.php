@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\SyncCollector;
+use App\Enums\Analytics\SyncStatus;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -9,6 +11,9 @@ use App\Enums\SocialAccount\Status;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Models\AnalyticsAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsSyncState;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
@@ -513,4 +518,86 @@ test('an instagram login account without a stored account id is not matched acro
     expect($account->isIdentity(Platform::InstagramFacebook, 'ig-pro-1'))->toBeFalse();
 
     Http::assertNothingSent();
+});
+
+test('reconnecting through facebook carries the card analytics over to the new identity', function () {
+    $account = SocialAccount::factory()->instagram()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'app-scoped-id',
+        'meta' => ['ig_user_id' => 'ig-account-id'],
+    ]);
+    $backfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Instagram,
+        'platform_user_id' => 'app-scoped-id',
+    ]);
+    $snapshot = AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $account->id,
+        'network' => Platform::Instagram->network(),
+        'platform' => Platform::Instagram,
+        'platform_user_id' => 'app-scoped-id',
+    ]);
+
+    SocialAccount::connectIdentity(
+        $this->workspace,
+        Platform::InstagramFacebook,
+        'ig-account-id',
+        ['status' => Status::Connected],
+        $account,
+    );
+
+    expect($backfill->fresh())
+        ->social_account_id->toBe($account->id)
+        ->platform_user_id->toBe('ig-account-id')
+        ->identity_key->toBe(AnalyticsSyncState::identityFor($account->fresh())['identity_key'])
+        ->and($publication->fresh())
+        ->platform->toBe(Platform::InstagramFacebook)
+        ->platform_user_id->toBe('ig-account-id')
+        ->and($snapshot->fresh())
+        ->platform->toBe(Platform::InstagramFacebook)
+        ->platform_user_id->toBe('ig-account-id');
+});
+
+test('a card moved onto an identity it was connected as before takes that sync history back', function () {
+    $account = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform' => Platform::InstagramFacebook,
+        'platform_user_id' => 'ig-account-id',
+    ]);
+    $facebookBackfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor($account),
+        'social_account_id' => $account->id,
+        'status' => SyncStatus::Complete,
+    ]);
+    $earlierLoginBackfill = AnalyticsSyncState::factory()->create([
+        ...AnalyticsSyncState::identityFor(new SocialAccount([
+            'workspace_id' => $this->workspace->id,
+            'platform' => Platform::Instagram,
+            'platform_user_id' => 'app-scoped-id',
+        ])),
+        'social_account_id' => null,
+        'status' => SyncStatus::Complete,
+    ]);
+
+    SocialAccount::connectIdentity(
+        $this->workspace,
+        Platform::Instagram,
+        'app-scoped-id',
+        ['status' => Status::Connected, 'meta' => ['ig_user_id' => 'ig-account-id']],
+        $account,
+    );
+    (new BootstrapAccountAnalytics($account->id, true))->handleFor($account->id);
+
+    expect($earlierLoginBackfill->fresh()->social_account_id)->toBe($account->id)
+        ->and($facebookBackfill->fresh())
+        ->social_account_id->toBeNull()
+        ->platform_user_id->toBe('ig-account-id')
+        ->and(AnalyticsSyncState::query()->where('social_account_id', $account->id)->where('collector', SyncCollector::PublicationBackfill)->count())->toBe(1);
 });
