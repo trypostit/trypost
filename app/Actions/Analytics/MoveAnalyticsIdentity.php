@@ -34,13 +34,20 @@ class MoveAnalyticsIdentity
             $state->update($heldByIdentity ? ['social_account_id' => null] : $identity);
         });
 
-        foreach ([AnalyticsPublication::query(), AnalyticsAccountDailySnapshot::query()] as $rows) {
-            $rows->where('social_account_id', $account->id)
-                ->where('platform_user_id', $previousPlatformUserId)
-                ->update([
-                    'platform' => $account->platform,
-                    'platform_user_id' => $account->platform_user_id,
-                ]);
-        }
+        AnalyticsPublication::query()
+            ->where('social_account_id', $account->id)
+            ->where('platform_user_id', $previousPlatformUserId)
+            ->update([
+                'platform' => $account->platform,
+                'platform_user_id' => $account->platform_user_id,
+            ]);
+
+        AnalyticsAccountDailySnapshot::query()
+            ->where('social_account_id', $account->id)
+            ->where('platform_user_id', $previousPlatformUserId)
+            ->update([
+                'platform' => $account->platform,
+                'platform_user_id' => $account->platform_user_id,
+            ]);
     }
 }
