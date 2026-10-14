@@ -88,7 +88,7 @@ const frameClass = computed((): string =>
                     v-if="isDocument(first)"
                     :src="`${first.url}#toolbar=0&navpanes=0&view=FitH`"
                     :title="first.original_filename || 'PDF'"
-                    class="size-full border-0"
+                    class="absolute -top-2 -left-2 h-[calc(100%+1rem)] w-[calc(100%+1rem)] max-w-none border-0"
                     loading="lazy"
                 />
                 <PostMediaPreview
