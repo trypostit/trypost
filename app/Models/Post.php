@@ -148,6 +148,14 @@ class Post extends Model
         );
     }
 
+    /**
+     * The first image or video of the post, the one shown as its thumbnail.
+     */
+    public function coverMedia(): ?MediaItem
+    {
+        return $this->media_items->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo());
+    }
+
     public function workspace(): BelongsTo
     {
         return $this->belongsTo(Workspace::class);

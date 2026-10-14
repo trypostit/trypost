@@ -175,3 +175,20 @@ test('post scope failed returns only failed posts', function () {
     expect($posts)->toHaveCount(1);
     expect($posts->first()->id)->toBe($failed->id);
 });
+
+test('the cover media is the first image or video, skipping documents', function (array $media, ?string $expected) {
+    expect((new Post(['media' => $media]))->coverMedia()?->id)->toBe($expected);
+})->with([
+    'video after a document' => [[
+        ['id' => 'deck', 'path' => 'medias/deck.pdf', 'url' => 'https://cdn.trypost.test/medias/deck.pdf', 'type' => 'document'],
+        ['id' => 'reel', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video'],
+    ], 'reel'],
+    'first image' => [[
+        ['id' => 'first', 'path' => 'medias/a.jpg', 'url' => 'https://cdn.trypost.test/medias/a.jpg', 'type' => 'image'],
+        ['id' => 'second', 'path' => 'medias/b.jpg', 'url' => 'https://cdn.trypost.test/medias/b.jpg', 'type' => 'image'],
+    ], 'first'],
+    'only a document' => [[
+        ['id' => 'deck', 'path' => 'medias/deck.pdf', 'url' => 'https://cdn.trypost.test/medias/deck.pdf', 'type' => 'document'],
+    ], null],
+    'no media' => [[], null],
+]);

@@ -6,7 +6,6 @@ namespace App\Actions\Analytics;
 
 use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
-use App\Dto\MediaItem;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Models\Post;
@@ -85,7 +84,7 @@ class ListChannelPublicationPerformance
     private function row(object $row, int $rank): array
     {
         $measured = $row->metrics === null ? [] : (array) json_decode((string) $row->metrics, true);
-        $media = $this->media($row->post_media);
+        $media = (new Post)->newFromBuilder(['media' => $row->post_media])->coverMedia();
 
         return [
             'id' => $row->id,
@@ -114,16 +113,6 @@ class ListChannelPublicationPerformance
             ],
             'post_id' => $row->post_id,
         ];
-    }
-
-    /**
-     * The post's first image or video, stored in our bucket.
-     */
-    private function media(?string $postMedia): ?MediaItem
-    {
-        return collect(json_decode((string) $postMedia, true))
-            ->map(fn (array $item): MediaItem => MediaItem::fromArray($item))
-            ->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo());
     }
 
     private function thumbnail(?string $previewMetadata): ?string

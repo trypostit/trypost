@@ -6,7 +6,6 @@ namespace App\Actions\Analytics;
 
 use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
-use App\Dto\MediaItem;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\User\WeekStart;
@@ -305,9 +304,7 @@ class BuildPublicationAnalyticsReport
         return Post::query()
             ->whereKey(collect($rows)->pluck('post_id')->filter())
             ->get(['id', 'media'])
-            ->mapWithKeys(fn (Post $post): array => [
-                $post->id => $post->mediaItems->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo())?->toArray(),
-            ])
+            ->mapWithKeys(fn (Post $post): array => [$post->id => $post->coverMedia()?->toArray()])
             ->filter();
     }
 
