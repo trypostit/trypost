@@ -1,6 +1,7 @@
 ---
 title: A calendar that fits your phone
 date: 2026-10-10
+tags: [improved]
 ---
 
 On a phone, the month and week views used to squeeze every post into a chip with a cut-off time and thumbnail.

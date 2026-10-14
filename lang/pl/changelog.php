@@ -9,5 +9,7 @@ return [
     'empty' => 'Na razie nic nowego. Nowości pojawią się tutaj.',
     'tags' => [
         'new' => 'Nowe',
+        'improved' => 'Ulepszone',
+        'fixed' => 'Naprawione',
     ],
 ];

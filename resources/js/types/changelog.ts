@@ -1,4 +1,4 @@
-export type ChangelogTag = 'new' | 'beta';
+export type ChangelogTag = 'new' | 'improved' | 'fixed' | 'beta';
 
 export interface ChangelogEntry {
     id: string;

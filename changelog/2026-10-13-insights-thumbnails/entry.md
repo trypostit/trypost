@@ -1,6 +1,7 @@
 ---
 title: Post thumbnails in Insights that don't expire
 date: 2026-10-13
+tags: [fixed]
 ---
 
 Instagram and TikTok sign their preview links and expire them after a few days, so thumbnails in Insights used to break.

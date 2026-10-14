@@ -21,7 +21,7 @@ changelog/<YYYY-MM-DD>-<slug>/
 ---
 title: Music, collaborators and trial reels for Instagram
 date: 2026-10-14
-tags: [new]         # optional, any of: new, beta
+tags: [new]         # optional, any of: new, improved, fixed, beta
 ---
 
 Body in Markdown.
@@ -48,7 +48,14 @@ files; never describe behaviour you have not confirmed.
 Load the `in-app-copy` skill first, then write:
 
 - **title**: what the user can now do, in their words, sentence case, max ~60 characters.
-- **tags**: `new` for a new capability, `beta` for a beta feature (both when it is new and in beta), none for improvements and fixes. They render above the title.
+- **tags** (render above the title, each with a fixed color):
+  - `new`: a capability users did not have before.
+  - `improved`: something that already existed works better.
+  - `fixed`: something that was broken works again.
+  - `beta`: the feature is in beta (combine with `new` when both apply).
+
+  Adding a tag means a case in `App\Enums\Changelog\Tag`, its color and label in
+  `ChangelogTagBadge.vue`, and `changelog.tags.<tag>` in every `lang/*/changelog.php`.
 - **body**: one short lead sentence on the benefit, then details. Use a bullet list when there
   are several parts (bold the part's name). Use the names the user sees on screen. No internal
   names, no PR or commit references, no apologies, 40–120 words.

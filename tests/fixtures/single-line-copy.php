@@ -50,6 +50,8 @@ return [
     'calendar.title' => 10,
     'changelog.back' => 8,
     'changelog.menu' => 15,
+    'changelog.tags.fixed' => 11,
+    'changelog.tags.improved' => 11,
     'changelog.tags.new' => 7,
     'changelog.title' => 15,
     'channels.description' => 43,

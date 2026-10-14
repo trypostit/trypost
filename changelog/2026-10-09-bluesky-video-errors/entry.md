@@ -1,6 +1,7 @@
 ---
 title: Clearer Bluesky video errors
 date: 2026-10-09
+tags: [improved]
 ---
 
 When Bluesky refuses a video, TryPost now tells you why instead of showing a generic failure.
