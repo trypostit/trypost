@@ -54,8 +54,8 @@ Load the `in-app-copy` skill first, then write:
   - `fixed`: something that was broken works again.
   - `beta`: the feature is in beta (combine with `new` when both apply).
 
-  Adding a tag means a case in `App\Enums\Changelog\Tag`, its color and label in
-  `ChangelogTagBadge.vue`, and `changelog.tags.<tag>` in every `lang/*/changelog.php`.
+  Adding a tag means a case in `App\Enums\Changelog\Tag` with its English `label()`, and its
+  color in `ChangelogTagBadge.vue`. Tags are not translated, like the rest of the entry.
 - **body**: one short lead sentence on the benefit, then details. Use a bullet list when there
   are several parts (bold the part's name). Use the names the user sees on screen. No internal
   names, no PR or commit references, no apologies, 40–120 words.

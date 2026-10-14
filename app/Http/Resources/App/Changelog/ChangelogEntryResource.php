@@ -23,7 +23,10 @@ class ChangelogEntryResource extends JsonResource
             'id' => $this->id,
             'slug' => $this->slug,
             'title' => $this->title,
-            'tags' => ($this->tags ?? collect())->map(fn (Tag $tag): string => $tag->value)->values()->all(),
+            'tags' => ($this->tags ?? collect())
+                ->map(fn (Tag $tag): array => ['value' => $tag->value, 'label' => $tag->label()])
+                ->values()
+                ->all(),
             'cover_url' => $this->coverUrl(),
             'published_on' => $this->published_on->toDateString(),
             'excerpt' => $this->excerpt(),

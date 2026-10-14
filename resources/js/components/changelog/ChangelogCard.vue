@@ -44,7 +44,7 @@ const openLatestEntry = (): void => {
             >
                 <ChangelogTagBadge
                     v-for="tag in entry.tags"
-                    :key="tag"
+                    :key="tag.value"
                     :tag="tag"
                     class="me-1 align-[2px]"
                 />

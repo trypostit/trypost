@@ -40,7 +40,10 @@ test('the card gets the newest entry the user has not opened', function () {
             ->where('changelog.latestUnseen.id', $newestUnseen->id)
             ->where('changelog.latestUnseen.title', 'Newest unseen')
             ->where('changelog.latestUnseen.seen', false)
-            ->where('changelog.latestUnseen.tags', ['new', 'beta'])
+            ->where('changelog.latestUnseen.tags', [
+                ['value' => 'new', 'label' => 'New'],
+                ['value' => 'beta', 'label' => 'Beta'],
+            ])
             ->missing('changelogEntries'));
 });
 

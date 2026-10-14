@@ -459,7 +459,7 @@ const supportLinks = [
                         @click="openChangelog"
                     >
                         <IconSparkles />
-                        {{ $t('changelog.menu') }}
+                        What's New
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuLabel

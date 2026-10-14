@@ -102,17 +102,17 @@ watch(activeEntry, (entry) => {
                     variant="ghost"
                     size="icon"
                     class="-ms-2"
-                    :aria-label="$t('changelog.back')"
+                    :aria-label="$t('common.back')"
                     data-testid="changelog-back"
                     @click="backToList"
                 >
                     <IconArrowLeft class="size-4" />
                 </Button>
                 <DialogTitle class="text-base font-medium">
-                    {{ $t('changelog.title') }}
+                    What's New
                 </DialogTitle>
                 <DialogDescription class="sr-only">
-                    {{ $t('changelog.title') }}
+                    What's New
                 </DialogDescription>
                 <DialogClose as-child>
                     <Button
@@ -145,7 +145,7 @@ watch(activeEntry, (entry) => {
                     >
                         <ChangelogTagBadge
                             v-for="tag in activeEntry.tags"
-                            :key="tag"
+                            :key="tag.value"
                             :tag="tag"
                         />
                     </div>
@@ -182,7 +182,7 @@ watch(activeEntry, (entry) => {
                     class="py-10 text-center text-sm text-muted-foreground"
                     data-testid="changelog-empty"
                 >
-                    {{ $t('changelog.empty') }}
+                    Nothing new yet. New features will show up here.
                 </p>
                 <InfiniteScroll
                     v-else
@@ -207,7 +207,7 @@ watch(activeEntry, (entry) => {
                                 >
                                     <ChangelogTagBadge
                                         v-for="tag in entry.tags"
-                                        :key="tag"
+                                        :key="tag.value"
                                         :tag="tag"
                                     />
                                 </span>

@@ -766,8 +766,10 @@ the user has not opened, and a "What's New" modal (Help menu) listing every entr
   default disk only when its hash changed, deletes rows whose folder is gone, and fails
   loud without writing anything when one folder is invalid. Never edit the rows by hand,
   and never rename a synced folder (its views are keyed to the row).
-- **Content is English only** (owner decision 2026-10-14). The chrome around it (modal
-  title, menu item, back, empty state, the New tag) is translated in `lang/*/changelog.php`.
+- **The whole feature is English only** (owner decision 2026-10-14): the entries, the tag
+  labels (`Tag::label()`), the modal title, its empty state and the "What's New" menu item
+  are hard-coded English, never lang keys. Only the back and close buttons' `aria-label`s
+  reuse `common.back` / `common.close`.
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
   `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
