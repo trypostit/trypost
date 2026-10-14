@@ -138,15 +138,21 @@ watch(activeEntry, (entry) => {
                     class="aspect-[8/5] w-full rounded-xl object-cover"
                 />
                 <div class="flex flex-col gap-1">
+                    <div
+                        v-if="activeEntry.tags.length"
+                        class="mb-1 flex flex-wrap gap-1.5"
+                        data-testid="changelog-entry-tags"
+                    >
+                        <ChangelogTagBadge
+                            v-for="tag in activeEntry.tags"
+                            :key="tag"
+                            :tag="tag"
+                        />
+                    </div>
                     <h2
                         class="text-xl leading-7 font-medium text-foreground"
                         data-testid="changelog-entry-title"
                     >
-                        <ChangelogTagBadge
-                            v-if="activeEntry.tag"
-                            :tag="activeEntry.tag"
-                            class="me-1.5"
-                        />
                         {{ activeEntry.title }}
                     </h2>
                     <p class="text-sm text-muted-foreground">
@@ -196,17 +202,22 @@ watch(activeEntry, (entry) => {
                         >
                             <span class="flex min-w-0 flex-1 flex-col gap-1">
                                 <span
+                                    v-if="entry.tags.length"
+                                    class="flex flex-wrap gap-1.5"
+                                >
+                                    <ChangelogTagBadge
+                                        v-for="tag in entry.tags"
+                                        :key="tag"
+                                        :tag="tag"
+                                    />
+                                </span>
+                                <span
                                     class="text-sm leading-5 font-medium text-foreground"
                                 >
                                     <span
                                         v-if="isUnseen(entry)"
                                         class="me-1.5 inline-block size-2 rounded-full bg-primary-strong align-[1px]"
                                         :data-testid="`changelog-unseen-${entry.slug}`"
-                                    />
-                                    <ChangelogTagBadge
-                                        v-if="entry.tag"
-                                        :tag="entry.tag"
-                                        class="me-1"
                                     />
                                     {{ entry.title }}
                                 </span>

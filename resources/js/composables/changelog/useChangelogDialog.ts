@@ -1,4 +1,4 @@
-import { readonly, shallowRef } from 'vue';
+import { shallowReadonly, shallowRef } from 'vue';
 
 import type { ChangelogEntry } from '@/types/changelog';
 
@@ -30,7 +30,7 @@ const close = (): void => {
 };
 
 export const useChangelogDialog = () => ({
-    state: readonly(state),
+    state: shallowReadonly(state),
     openList,
     openEntry,
     backToList,

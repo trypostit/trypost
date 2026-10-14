@@ -8,7 +8,7 @@ defineProps<{
 
 <template>
     <span
-        class="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 align-[2px] text-xs font-medium"
+        class="inline-flex h-5 shrink-0 items-center rounded-md px-1.5 text-xs font-medium"
         :class="
             tag === 'beta'
                 ? 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300'

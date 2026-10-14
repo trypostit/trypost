@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\Changelog\Tag;
 use Database\Factories\ChangelogEntryFactory;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\AsEnumCollection;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -26,7 +27,7 @@ class ChangelogEntry extends Model
     protected $fillable = [
         'slug',
         'title',
-        'tag',
+        'tags',
         'body',
         'cover_path',
         'cover_hash',
@@ -36,7 +37,7 @@ class ChangelogEntry extends Model
     protected function casts(): array
     {
         return [
-            'tag' => Tag::class,
+            'tags' => AsEnumCollection::of(Tag::class),
             'published_on' => 'date',
         ];
     }

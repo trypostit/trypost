@@ -759,7 +759,7 @@ The in-app announcements: a card at the bottom of the sidebar with the newest en
 the user has not opened, and a "What's New" modal (Help menu) listing every entry.
 
 - **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>/entry.md`
-  (front matter `title`, `date`, optional `tag` = `new` | `beta`) plus `cover.png`
+  (front matter `title`, `date`, optional `tags`, any of `new` / `beta`, shown above the title) plus `cover.png`
   (1200×750). There is no admin panel. Write them with the `/changelog` command.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
   `changelog_entries` by slug, uploads the cover to `changelog/<slug>.png` on the

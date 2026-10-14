@@ -21,7 +21,7 @@ changelog/<YYYY-MM-DD>-<slug>/
 ---
 title: Music, collaborators and trial reels for Instagram
 date: 2026-10-14
-tag: new            # optional: new | beta
+tags: [new]         # optional, any of: new, beta
 ---
 
 Body in Markdown.
@@ -48,7 +48,7 @@ files; never describe behaviour you have not confirmed.
 Load the `in-app-copy` skill first, then write:
 
 - **title**: what the user can now do, in their words, sentence case, max ~60 characters.
-- **tag**: `new` for a new capability, `beta` for a beta feature, none for improvements and fixes.
+- **tags**: `new` for a new capability, `beta` for a beta feature (both when it is new and in beta), none for improvements and fixes. They render above the title.
 - **body**: one short lead sentence on the benefit, then details. Use a bullet list when there
   are several parts (bold the part's name). Use the names the user sees on screen. No internal
   names, no PR or commit references, no apologies, 40–120 words.
@@ -83,4 +83,4 @@ Locally it also uploads the cover to the default disk, so the entry shows in the
 
 ### Step 5 — Hand over
 
-Show the user the title, tag, body and cover path. Do not commit or push unless asked.
+Show the user the title, tags, body and cover path. Do not commit or push unless asked.

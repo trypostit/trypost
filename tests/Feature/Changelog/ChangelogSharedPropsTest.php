@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
@@ -23,7 +24,11 @@ beforeEach(function () {
 
 test('the card gets the newest entry the user has not opened', function () {
     $opened = ChangelogEntry::factory()->create(['published_on' => today()]);
-    $newestUnseen = ChangelogEntry::factory()->create(['published_on' => today()->subDay(), 'title' => 'Newest unseen']);
+    $newestUnseen = ChangelogEntry::factory()->create([
+        'published_on' => today()->subDay(),
+        'title' => 'Newest unseen',
+        'tags' => [Tag::New, Tag::Beta],
+    ]);
     ChangelogEntry::factory()->create(['published_on' => today()->subDays(2)]);
     ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
     ChangelogEntryView::factory()->create(['changelog_entry_id' => $opened->id, 'user_id' => $this->user->id]);
@@ -35,6 +40,7 @@ test('the card gets the newest entry the user has not opened', function () {
             ->where('changelog.latestUnseen.id', $newestUnseen->id)
             ->where('changelog.latestUnseen.title', 'Newest unseen')
             ->where('changelog.latestUnseen.seen', false)
+            ->where('changelog.latestUnseen.tags', ['new', 'beta'])
             ->missing('changelogEntries'));
 });
 

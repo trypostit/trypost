@@ -4,7 +4,7 @@ export interface ChangelogEntry {
     id: string;
     slug: string;
     title: string;
-    tag: ChangelogTag | null;
+    tags: ChangelogTag[];
     cover_url: string;
     published_on: string;
     excerpt: string;

@@ -26,7 +26,7 @@ class ChangelogEntryFactory extends Factory
         return [
             'slug' => $slug,
             'title' => fake()->sentence(5),
-            'tag' => null,
+            'tags' => [],
             'body' => fake()->paragraph(),
             'cover_path' => "changelog/{$slug}.png",
             'cover_hash' => sha1($slug),

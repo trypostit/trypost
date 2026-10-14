@@ -42,7 +42,12 @@ const openLatestEntry = (): void => {
                 class="text-sm leading-5 font-medium text-foreground"
                 data-testid="changelog-card-title"
             >
-                <ChangelogTagBadge v-if="entry.tag" :tag="entry.tag" class="me-1" />
+                <ChangelogTagBadge
+                    v-for="tag in entry.tags"
+                    :key="tag"
+                    :tag="tag"
+                    class="me-1 align-[2px]"
+                />
                 {{ entry.title }}
                 <IconArrowRight class="inline size-4 align-[-3px]" />
             </span>

@@ -27,12 +27,12 @@ test('it stores every entry and uploads its cover to the default disk', function
     $second = ChangelogEntry::where('slug', '2026-10-02-second')->firstOrFail();
 
     expect($first->title)->toBe('First entry')
-        ->and($first->tag)->toBeNull()
+        ->and($first->tags->all())->toBe([])
         ->and($first->body)->toBe('The first **entry**.')
         ->and($first->published_on->toDateString())->toBe('2026-10-01')
         ->and($first->cover_path)->toBe('changelog/2026-10-01-first.png')
         ->and($first->cover_hash)->toBe(sha1_file("{$this->directory}/2026-10-01-first/cover.png"))
-        ->and($second->tag)->toBe(Tag::Beta);
+        ->and($second->tags->all())->toBe([Tag::New, Tag::Beta]);
 
     Storage::assertExists('changelog/2026-10-01-first.png');
     Storage::assertExists('changelog/2026-10-02-second.png');
@@ -93,7 +93,8 @@ test('an invalid entry fails the sync, names its folder and writes nothing', fun
 })->with([
     'missing title' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ndate: 2026-10-02\n---\n\nBody.\n")],
     'invalid date' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: next week\n---\n\nBody.\n")],
-    'unknown tag' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\ntag: hot\n---\n\nBody.\n")],
+    'unknown tag' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\ntags: [new, hot]\n---\n\nBody.\n")],
+    'repeated tag' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\ntags: [new, new]\n---\n\nBody.\n")],
     'empty body' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\n---\n")],
     'missing cover' => [fn (string $folder) => File::delete("{$folder}/cover.png")],
     'missing entry file' => [fn (string $folder) => File::delete("{$folder}/entry.md")],

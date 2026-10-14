@@ -1,7 +1,7 @@
 ---
 title: Add images and videos to each reply in a thread
 date: 2026-10-12
-tag: new
+tags: [new]
 ---
 
 Threads on X, Bluesky and Mastodon can now carry media in every reply, not just the first post.

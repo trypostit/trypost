@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Changelog\Tag;
 use App\Enums\User\ReferralSource;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
@@ -54,6 +55,7 @@ test('opening the sidebar card shows the entry, records the view and moves the c
         'slug' => '2026-10-14-newest',
         'title' => 'Newest feature',
         'body' => 'The **newest** feature body.',
+        'tags' => [Tag::New, Tag::Beta],
         'published_on' => today(),
     ]);
     $older = ChangelogEntry::factory()->create([
@@ -69,7 +71,9 @@ test('opening the sidebar card shows the entry, records the view and moves the c
 
     $page->click('@changelog-card');
     waitForChangelogText($page, 'changelog-entry-title', 'Newest feature');
-    $page->assertSeeIn('@changelog-entry', 'The newest feature body.');
+    $page->assertSeeIn('@changelog-entry', 'The newest feature body.')
+        ->assertSeeIn('@changelog-entry-tags', 'New')
+        ->assertSeeIn('@changelog-entry-tags', 'Beta');
     waitForChangelogText($page, 'changelog-card-title', 'Older feature');
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->all())

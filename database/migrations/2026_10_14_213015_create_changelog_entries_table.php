@@ -14,7 +14,7 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->string('slug')->unique();
             $table->string('title');
-            $table->string('tag')->nullable();
+            $table->json('tags')->nullable();
             $table->text('body');
             $table->string('cover_path');
             $table->string('cover_hash');

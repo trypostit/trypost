@@ -1,7 +1,7 @@
 ---
 title: Music, collaborators and trial reels for Instagram
 date: 2026-10-14
-tag: new
+tags: [new]
 ---
 
 Your Instagram reels and feed posts can now carry everything Instagram's publishing API offers.

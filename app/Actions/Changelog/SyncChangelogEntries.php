@@ -71,7 +71,7 @@ class SyncChangelogEntries
     }
 
     /**
-     * @return array{slug: string, title: string, tag: ?string, body: string, cover_path: string, cover_hash: string, published_on: string, cover_file: string}
+     * @return array{slug: string, title: string, tags: list<string>, body: string, cover_path: string, cover_hash: string, published_on: string, cover_file: string}
      */
     private static function parse(string $folder): array
     {
@@ -98,14 +98,15 @@ class SyncChangelogEntries
 
         $data = [
             'title' => data_get($frontMatter, 'title'),
-            'tag' => data_get($frontMatter, 'tag'),
+            'tags' => data_get($frontMatter, 'tags', []),
             'date' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
             'body' => trim($document->getContent()),
         ];
 
         $validator = Validator::make($data, [
             'title' => ['required', 'string', 'max:255'],
-            'tag' => ['nullable', Rule::enum(Tag::class)],
+            'tags' => ['nullable', 'array'],
+            'tags.*' => ['distinct', Rule::enum(Tag::class)],
             'date' => ['required', 'date_format:Y-m-d'],
             'body' => ['required', 'string'],
         ]);
@@ -117,7 +118,7 @@ class SyncChangelogEntries
         return [
             'slug' => $slug,
             'title' => (string) data_get($data, 'title'),
-            'tag' => data_get($data, 'tag'),
+            'tags' => array_values((array) data_get($data, 'tags', [])),
             'body' => (string) data_get($data, 'body'),
             'cover_path' => "changelog/{$slug}.png",
             'cover_hash' => (string) sha1_file($coverFile),
