@@ -58,8 +58,8 @@ Connect Claude, ChatGPT, Cursor or any MCP client and ask in plain words:
 </p>
 
 <p align="center">
-  <img src="public/images/github/ideas.png" alt="Ideas board with cards in To Do, In Progress and Done" width="100%">
-  <br/><sub><b>Ideas board.</b> Collect ideas, move them through your stages and turn them into posts.</sub>
+  <img src="public/images/github/ideas.png" alt="Ideas board in dark mode with cards in To Do, In Progress and Done" width="100%">
+  <br/><sub><b>Ideas board, in dark mode.</b> Collect ideas, move them through your stages and turn them into posts.</sub>
 </p>
 
 <p align="center">
