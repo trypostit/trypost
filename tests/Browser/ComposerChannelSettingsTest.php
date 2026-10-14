@@ -1558,6 +1558,20 @@ test('collaborators added on the instagram card are saved with the post', functi
     expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice', 'bob']);
 });
 
+test('a collaborator typed without pressing Enter is added when the field loses focus and saved with the post', function () {
+    fakeChannelSettingsApis();
+    $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForChannelSettingsTestId($page, 'instagram-collaborator-input');
+    $page->type('@instagram-collaborator-input', '@alice')
+        ->click('@composer-save-draft');
+    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertNoJavaScriptErrors();
+    expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice']);
+});
+
 test('playing the reel preview video plays the picked track at the chosen music volume and pausing it stops the track', function () {
     fakeChannelSettingsApis();
     $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];

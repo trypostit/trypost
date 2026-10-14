@@ -846,6 +846,7 @@ onUnmounted(() => {
                                     "
                                     :disabled="disabled"
                                     @keydown="onCollaboratorKeydown"
+                                    @blur="addCollaborator"
                                 />
                             </div>
                             <Button
