@@ -199,6 +199,42 @@ test('instagram publisher fits an image story to 9:16 and posts the hosted copy'
     });
 });
 
+test('instagram publisher sends no collaborators on a story that still has them in its meta', function () {
+    Storage::fake();
+    $this->post->update([
+        'content_type' => ContentType::InstagramStory,
+        'meta' => ['collaborators' => ['alice', 'bob']],
+        'media' => [[
+            'id' => 'test-media-story',
+            'path' => 'media/2026-01/story.jpg',
+            'url' => 'https://example.com/media/2026-01/story.jpg',
+            'mime_type' => 'image/jpeg',
+            'original_filename' => 'story.jpg',
+        ]],
+    ]);
+    $optimizer = Mockery::mock(MediaOptimizer::class);
+    $optimizer->shouldReceive('fitToCanvas')->andReturnUsing(function (string $tempFile): string {
+        $out = tempnam(sys_get_temp_dir(), 'ig_fit_');
+        copy($tempFile, $out);
+
+        return $out;
+    });
+    app()->instance(MediaOptimizer::class, $optimizer);
+
+    Http::fake([
+        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'story-container-123'], 200),
+        'https://graph.instagram.com/v25.0/story-container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'story-123456789'], 200),
+        'https://graph.instagram.com/v25.0/story-123456789*' => Http::response(['permalink' => 'https://www.instagram.com/stories/testuser/123/'], 200),
+        '*' => Http::response(file_get_contents(__DIR__.'/../../../fixtures/1x1.png'), 200, ['Content-Type' => 'image/png']),
+    ]);
+
+    expect($this->publisher->publish($this->post)['id'])->toBe('story-123456789');
+
+    Http::assertSent(fn (Request $request): bool => str_ends_with($request->url(), '/ig_123456789/media'));
+    Http::assertNotSent(fn (Request $request): bool => data_get($request->data(), 'collaborators') !== null);
+});
+
 test('instagram publisher fits a real off-ratio story image to a 1080x1920 jpeg', function () {
     Storage::fake();
     $this->post->update(['content_type' => ContentType::InstagramStory]);
