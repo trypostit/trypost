@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
+use App\Actions\Changelog\ListChangelogEntries;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
 use App\Enums\Media\Type as MediaType;
@@ -11,6 +12,7 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Locale;
 use App\Enums\User\ReferralSource;
+use App\Http\Resources\App\Changelog\ChangelogEntryResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -26,6 +28,7 @@ use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -70,6 +73,17 @@ class HandleInertiaRequests extends Middleware
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
+            'changelog' => fn (): ?array => $user && config('trypost.changelog.enabled')
+                ? ['latestUnseen' => transform(
+                    ListChangelogEntries::latestUnseen($user),
+                    fn ($entry) => ChangelogEntryResource::make($entry)->resolve($request),
+                )]
+                : null,
+            ...($user && config('trypost.changelog.enabled') ? [
+                'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
+                    fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
+                )),
+            ] : []),
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
