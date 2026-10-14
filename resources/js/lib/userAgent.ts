@@ -237,27 +237,28 @@ export const deviceIconUrl = (userAgent: string | null): string =>
     `/images/devices/${parseDeviceType(userAgent)}.png`;
 
 const BROWSER_VERSION_PATTERNS: Record<string, RegExp> = {
-    Chrome: /(?:Chrome|CriOS)\/(\d+)/,
-    Chromium: /Chromium\/(\d+)/,
-    curl: /curl\/([\d.]+)/,
-    DuckDuckGo: /(?:DuckDuckGo|Ddg)\/(\d+)/,
-    Edge: /Edg(?:A|iOS)?\/(\d+)/,
-    Firefox: /(?:Firefox|FxiOS)\/(\d+)/,
-    'Huawei Browser': /HuaweiBrowser\/(\d+)/,
-    'Internet Explorer': /(?:MSIE |rv:)(\d+)/,
-    Opera: /(?:OPR|Opera)\/(\d+)/,
-    'QQ Browser': /QQBrowser\/(\d+)/,
-    Safari: /Version\/(\d+(?:\.\d+)?)/,
-    'Samsung Internet': /SamsungBrowser\/(\d+)/,
-    'UC Browser': /UCBrowser\/(\d+)/,
-    Vivaldi: /Vivaldi\/(\d+)/,
-    'Vivo Browser': /VivoBrowser\/(\d+)/,
-    Yandex: /YaBrowser\/(\d+)/,
+    Chrome: /(?:Chrome|CriOS)\/(\d+(?:\.\d+)*)/,
+    Chromium: /Chromium\/(\d+(?:\.\d+)*)/,
+    curl: /curl\/(\d+(?:\.\d+)*)/,
+    DuckDuckGo: /(?:DuckDuckGo|Ddg)\/(\d+(?:\.\d+)*)/,
+    Edge: /Edg(?:A|iOS)?\/(\d+(?:\.\d+)*)/,
+    Firefox: /(?:Firefox|FxiOS)\/(\d+(?:\.\d+)*)/,
+    'Huawei Browser': /HuaweiBrowser\/(\d+(?:\.\d+)*)/,
+    'Internet Explorer': /(?:MSIE |rv:)(\d+(?:\.\d+)*)/,
+    Opera: /(?:OPR|Opera)\/(\d+(?:\.\d+)*)/,
+    'QQ Browser': /QQBrowser\/(\d+(?:\.\d+)*)/,
+    Safari: /Version\/(\d+(?:\.\d+)*)/,
+    'Samsung Internet': /SamsungBrowser\/(\d+(?:\.\d+)*)/,
+    'UC Browser': /UCBrowser\/(\d+(?:\.\d+)*)/,
+    Vivaldi: /Vivaldi\/(\d+(?:\.\d+)*)/,
+    'Vivo Browser': /VivoBrowser\/(\d+(?:\.\d+)*)/,
+    Yandex: /YaBrowser\/(\d+(?:\.\d+)*)/,
 };
 
 /**
- * The browser's major version as its user agent reports it. Browsers freeze
- * parts of this string, so it is a hint, not an exact build.
+ * The browser's full version exactly as its user agent reports it (Chrome
+ * freezes everything after the major number to zeros), kept whole for
+ * debugging.
  */
 export const parseBrowserVersion = (userAgent: string | null): string | null => {
     const pattern = BROWSER_VERSION_PATTERNS[parseBrowserName(userAgent)];
@@ -285,16 +286,16 @@ export const parseOsVersion = (userAgent: string | null): string | null => {
 
     switch (parseOsName(userAgent)) {
         case 'macOS':
-            return read(/Mac OS X (\d+[._]\d+)/);
+            return read(/Mac OS X (\d+(?:[._]\d+)*)/);
         case 'iOS':
         case 'iPadOS':
-            return read(/OS (\d+[._]\d+)/);
+            return read(/OS (\d+(?:[._]\d+)*)/);
         case 'Android':
-            return read(/Android (\d+(?:\.\d+)?)/);
+            return read(/Android (\d+(?:\.\d+)*)/);
         case 'Windows':
             return WINDOWS_VERSIONS[read(/Windows NT (\d+\.\d+)/) ?? ''] ?? null;
         case 'KaiOS':
-            return read(/KAIOS\/(\d+(?:\.\d+)?)/i);
+            return read(/KAIOS\/(\d+(?:\.\d+)*)/i);
         default:
             return null;
     }

@@ -89,7 +89,7 @@ test('each session shows its browser and system icons under the log out button',
     $page->assertAttribute('@session-browser-icon-firefox-on-windows', 'src', '/images/browsers/firefox.svg')
         ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png')
         ->assertAttribute('@session-device-icon-firefox-on-windows', 'src', '/images/devices/desktop.png')
-        ->assertSeeIn('[data-test="session-row"]:has([data-testid="session-browser-icon-firefox-on-windows"])', 'Firefox 130')
+        ->assertSeeIn('[data-test="session-row"]:has([data-testid="session-browser-icon-firefox-on-windows"])', 'Firefox 130.0')
         ->assertSeeIn('@session-last-page-firefox-on-windows', '/insights');
 
     expect($page->script(<<<'JS'
