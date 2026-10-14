@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 function waitForProfileTabsTestId(mixed $page, string $testId): void
 {
@@ -63,6 +64,35 @@ test('the delete account button sits under a neutral warning', function () {
             const warningColor = getComputedStyle(document.querySelector('[data-testid="delete-account-warning"]')).backgroundColor;
             const buttonColor = getComputedStyle(document.querySelector('[data-test="delete-user-button"]')).backgroundColor;
             return button.top >= warning.bottom && Math.round(button.left) === Math.round(warning.left) && warningColor !== buttonColor;
+        })()
+    JS))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('each session shows its browser and system icons under the log out button', function () {
+    config(['session.driver' => 'database']);
+    $user = User::factory()->create();
+    DB::table(config('session.table', 'sessions'))->insert([
+        'id' => 'firefox-on-windows',
+        'user_id' => $user->id,
+        'ip_address' => '203.0.113.7',
+        'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0',
+        'payload' => '',
+        'last_activity' => now()->subHour()->timestamp,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
+    waitForProfileTabsTestId($page, 'session-browser-icon-firefox-on-windows');
+
+    $page->assertAttribute('@session-browser-icon-firefox-on-windows', 'src', '/images/browsers/firefox.svg')
+        ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png');
+
+    expect($page->script(<<<'JS'
+        (() => {
+            const button = document.querySelector('[data-test="log-out-other-sessions-button"]').getBoundingClientRect();
+            const firstRow = document.querySelector('[data-test="session-row"]').getBoundingClientRect();
+            return button.bottom <= firstRow.top;
         })()
     JS))->toBeTrue();
     $page->assertNoJavaScriptErrors();

@@ -42,8 +42,32 @@ export const parseBrowserName = (userAgent: string | null): string => {
         return 'DuckDuckGo';
     }
 
+    if (userAgent.includes('HuaweiBrowser/')) {
+        return 'Huawei Browser';
+    }
+
+    if (userAgent.includes('VivoBrowser/')) {
+        return 'Vivo Browser';
+    }
+
+    if (userAgent.includes('QQBrowser/')) {
+        return 'QQ Browser';
+    }
+
+    if (userAgent.includes('Ecosia')) {
+        return 'Ecosia';
+    }
+
+    if (userAgent.startsWith('curl/')) {
+        return 'curl';
+    }
+
     if (userAgent.includes('FxiOS/') || userAgent.includes('Firefox/')) {
         return 'Firefox';
+    }
+
+    if (userAgent.includes('Chromium/')) {
+        return 'Chromium';
     }
 
     if (userAgent.includes('CriOS/') || userAgent.includes('Chrome/')) {
@@ -66,7 +90,31 @@ export const parseOsName = (userAgent: string | null): string | null => {
         return null;
     }
 
-    if (/iPhone|iPad|iPod/.test(userAgent)) {
+    if (/PlayStation/.test(userAgent)) {
+        return 'PlayStation';
+    }
+
+    if (/KAIOS/i.test(userAgent)) {
+        return 'KaiOS';
+    }
+
+    if (/Tizen/.test(userAgent)) {
+        return 'Tizen';
+    }
+
+    if (/HarmonyOS|OpenHarmony/.test(userAgent)) {
+        return 'HarmonyOS';
+    }
+
+    if (/Silk\/|Kindle|KF[A-Z]{2,4}\b/.test(userAgent)) {
+        return 'Fire OS';
+    }
+
+    if (/iPad/.test(userAgent)) {
+        return 'iPadOS';
+    }
+
+    if (/iPhone|iPod/.test(userAgent)) {
         return 'iOS';
     }
 
@@ -94,6 +142,14 @@ export const parseOsName = (userAgent: string | null): string | null => {
         return 'BSD';
     }
 
+    if (/Ubuntu/.test(userAgent)) {
+        return 'Ubuntu';
+    }
+
+    if (/Fedora/.test(userAgent)) {
+        return 'Fedora';
+    }
+
     if (/Linux/.test(userAgent)) {
         return 'Linux';
     }
@@ -101,12 +157,49 @@ export const parseOsName = (userAgent: string | null): string | null => {
     return null;
 };
 
-export const isMobileDevice = (userAgent: string | null): boolean => {
-    if (!userAgent) {
-        return false;
-    }
+const BROWSER_ICONS: Record<string, string> = {
+    Chrome: 'chrome.svg',
+    Chromium: 'chromium.svg',
+    curl: 'curl.svg',
+    DuckDuckGo: 'duckduckgo.svg',
+    Ecosia: 'ecosia.png',
+    Edge: 'edge.svg',
+    Firefox: 'firefox.svg',
+    'Huawei Browser': 'huawei.png',
+    Opera: 'opera.svg',
+    'QQ Browser': 'qq.png',
+    Safari: 'safari.png',
+    'Samsung Internet': 'samsung-internet.svg',
+    'UC Browser': 'uc.svg',
+    Vivaldi: 'vivaldi.svg',
+    'Vivo Browser': 'vivo.png',
+    Yandex: 'yandex.png',
+};
 
-    return /Mobile|Android|iPhone|iPad|iPod|Windows Phone|BlackBerry|BB10|webOS|Opera Mini|IEMobile/i.test(
-        userAgent,
-    );
+const OS_ICONS: Record<string, string> = {
+    Android: 'android.png',
+    BSD: 'freebsd.png',
+    ChromeOS: 'chrome_os.png',
+    Fedora: 'fedora.png',
+    'Fire OS': 'fire_os.png',
+    HarmonyOS: 'harmony_os.png',
+    iOS: 'ios.png',
+    iPadOS: 'ipad_os.png',
+    KaiOS: 'kai_os.png',
+    Linux: 'gnu_linux.png',
+    macOS: 'mac.png',
+    PlayStation: 'playstation.png',
+    Tizen: 'tizen.png',
+    Ubuntu: 'ubuntu.png',
+    Windows: 'windows.png',
+    'Windows Phone': 'windows.png',
+};
+
+export const browserIconUrl = (userAgent: string | null): string =>
+    `/images/browsers/${BROWSER_ICONS[parseBrowserName(userAgent)] ?? 'fallback.svg'}`;
+
+export const osIconUrl = (userAgent: string | null): string => {
+    const os = parseOsName(userAgent);
+
+    return `/images/os/${(os && OS_ICONS[os]) || 'fallback.svg'}`;
 };
