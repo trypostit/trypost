@@ -98,8 +98,13 @@ const openLogoutDialog = (): void => {
                 <p
                     v-if="!session.is_current"
                     class="text-sm text-muted-foreground"
+                    :data-testid="`session-last-activity-${session.id}`"
                 >
-                    {{ session.last_active }}
+                    {{
+                        $t('settings.profile.sessions.last_activity', {
+                            time: session.last_active,
+                        })
+                    }}
                 </p>
                 <template #actions>
                     <Badge

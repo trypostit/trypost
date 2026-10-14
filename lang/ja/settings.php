@@ -109,6 +109,7 @@ return [
             'unknown_browser' => '不明なブラウザ',
             'on' => '·',
             'active_now' => '現在アクティブ',
+            'last_activity' => '最終アクティビティ：:time',
             'log_out_others' => '他のデバイスからログアウト',
             'modal_title' => '他のデバイスからログアウト',
             'modal_description' => 'アカウントにログインしている他のすべてのデバイスからログアウトします。このセッションはそのまま使えます。',

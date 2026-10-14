@@ -109,6 +109,7 @@ return [
             'unknown_browser' => '未知浏览器',
             'on' => '于',
             'active_now' => '当前活动',
+            'last_activity' => '最后活动：:time',
             'log_out_others' => '退出其他设备',
             'modal_title' => '退出其他设备',
             'modal_description' => '登录你账户的所有其他设备都将退出登录。当前会话保持登录。',

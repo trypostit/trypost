@@ -109,6 +109,7 @@ return [
             'unknown_browser' => 'Nieznana przeglądarka',
             'on' => 'w',
             'active_now' => 'Aktywna teraz',
+            'last_activity' => 'Ostatnia aktywność :time',
             'log_out_others' => 'Wyloguj inne urządzenia',
             'modal_title' => 'Wyloguj inne urządzenia',
             'modal_description' => 'Wszystkie inne urządzenia zalogowane na Twoje konto zostaną wylogowane. Ta sesja pozostanie aktywna.',

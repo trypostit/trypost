@@ -109,6 +109,7 @@ return [
             'unknown_browser' => 'Onbekende browser',
             'on' => 'op',
             'active_now' => 'Nu actief',
+            'last_activity' => 'Laatste activiteit :time',
             'log_out_others' => 'Uitloggen op andere apparaten',
             'modal_title' => 'Uitloggen op andere apparaten',
             'modal_description' => 'Alle andere apparaten die op je account zijn ingelogd, worden uitgelogd. Deze sessie blijft actief.',

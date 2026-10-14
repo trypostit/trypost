@@ -109,6 +109,7 @@ return [
             'unknown_browser' => 'Navegador desconhecido',
             'on' => 'em',
             'active_now' => 'Ativa agora',
+            'last_activity' => 'Última atividade :time',
             'log_out_others' => 'Encerrar outras sessões',
             'modal_title' => 'Encerrar outras sessões',
             'modal_description' => 'Todos os outros dispositivos com acesso à sua conta serão desconectados. Esta sessão continua ativa.',

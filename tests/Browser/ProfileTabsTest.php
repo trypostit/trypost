@@ -87,7 +87,8 @@ test('each session shows its browser and system icons under the log out button',
     waitForProfileTabsTestId($page, 'session-browser-icon-firefox-on-windows');
 
     $page->assertAttribute('@session-browser-icon-firefox-on-windows', 'src', '/images/browsers/firefox.svg')
-        ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png');
+        ->assertAttribute('@session-os-icon-firefox-on-windows', 'src', '/images/os/windows.png')
+        ->assertSeeIn('@session-last-activity-firefox-on-windows', 'Last activity 1 hour ago');
 
     expect($page->script(<<<'JS'
         (() => {
