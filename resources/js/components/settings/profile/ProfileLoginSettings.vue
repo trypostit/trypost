@@ -149,19 +149,15 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     :data-test="`connected-account-${account.provider}`"
                 >
                     <template #media>
-                        <span
-                            class="inline-flex size-10 shrink-0 items-center justify-center rounded-lg border border-border bg-card"
-                        >
-                            <img
-                                :src="`/images/social/${account.provider}.svg`"
-                                :alt="account.label"
-                                class="size-5"
-                                :class="{
-                                    'dark:invert': account.provider === 'github',
-                                }"
-                                :data-testid="`connected-account-icon-${account.provider}`"
-                            />
-                        </span>
+                        <img
+                            :src="`/images/social/${account.provider}.svg`"
+                            :alt="account.label"
+                            class="size-7 shrink-0 object-contain"
+                            :class="{
+                                'dark:invert': account.provider === 'github',
+                            }"
+                            :data-testid="`connected-account-icon-${account.provider}`"
+                        />
                     </template>
                     <p
                         class="truncate text-sm leading-tight font-emphasis text-foreground"
