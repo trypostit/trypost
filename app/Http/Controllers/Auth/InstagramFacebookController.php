@@ -75,7 +75,7 @@ class InstagramFacebookController extends MetaController
         $workspace = $this->connectWorkspace($request);
         $reconnect = $this->reconnectAccount($workspace);
 
-        $this->rememberInstagramAccountId($reconnect);
+        $this->fetchMissingInstagramAccountId($reconnect);
 
         try {
             $socialUser = Socialite::driver($this->driver)
@@ -134,7 +134,7 @@ class InstagramFacebookController extends MetaController
      * Facebook asks Instagram for the id first. A failed lookup leaves the card
      * as it was, and the reconnect reports the missing page as before.
      */
-    private function rememberInstagramAccountId(?SocialAccount $reconnect): void
+    private function fetchMissingInstagramAccountId(?SocialAccount $reconnect): void
     {
         if ($reconnect?->platform !== SocialPlatform::Instagram || filled(data_get($reconnect->meta, 'ig_user_id'))) {
             return;
