@@ -121,8 +121,7 @@ class ListChannelPublicationPerformance
      */
     private function media(?string $postMedia): ?MediaItem
     {
-        return collect($postMedia === null ? [] : (array) json_decode($postMedia, true))
-            ->filter(fn (mixed $item): bool => is_array($item))
+        return collect(json_decode((string) $postMedia, true))
             ->map(fn (array $item): MediaItem => MediaItem::fromArray($item))
             ->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo());
     }

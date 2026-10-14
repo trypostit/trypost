@@ -185,6 +185,17 @@ function workspaceInsightsChartWidthsAroundSidebarToggle(mixed $page): array
     JS);
 }
 
+function workspaceInsightsBrowserUser(): User
+{
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    return $user->fresh();
+}
+
 test('workspace dashboard separates accounts and switches follower and post chart modes', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -653,11 +664,8 @@ test('charts keep their width while the sidebar animates and resize once it sett
 
 test('top posts tag each post type like the channel table', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
+    $user = workspaceInsightsBrowserUser();
+    $workspace = $user->currentWorkspace;
     $publications = [];
 
     foreach ([
@@ -690,11 +698,8 @@ test('top posts tag each post type like the channel table', function () {
 
 test('top posts show the post media from our bucket, a video by its cover frame', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
-    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
+    $user = workspaceInsightsBrowserUser();
+    $workspace = $user->currentWorkspace;
     $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
     $publications = [];
 

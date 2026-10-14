@@ -16,6 +16,7 @@ use App\Support\Analytics\MetricComparison;
 use App\Support\Analytics\PeriodBuckets;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\LazyCollection;
 
 class BuildPublicationAnalyticsReport
@@ -297,54 +298,45 @@ class BuildPublicationAnalyticsReport
      * The first image or video of each ranked post, keyed by post id.
      *
      * @param  list<object>  $rows
-     * @return array<string, array<string, mixed>>
+     * @return Collection<string, array<string, mixed>>
      */
-    private function postMedia(array $rows): array
+    private function postMedia(array $rows): Collection
     {
-        $postIds = array_values(array_unique(array_filter(array_column($rows, 'post_id'))));
-
-        if ($postIds === []) {
-            return [];
-        }
-
         return Post::query()
-            ->whereKey($postIds)
+            ->whereKey(collect($rows)->pluck('post_id')->filter())
             ->get(['id', 'media'])
             ->mapWithKeys(fn (Post $post): array => [
                 $post->id => $post->mediaItems->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo())?->toArray(),
             ])
-            ->filter()
-            ->all();
+            ->filter();
     }
 
     /**
      * @param  list<object>  $rows
-     * @param  array<string, array<string, mixed>>  $postMedia
+     * @param  Collection<string, array<string, mixed>>  $postMedia
      * @return list<array<string, mixed>>
      */
-    private function top(array $rows, array $postMedia): array
+    private function top(array $rows, Collection $postMedia): array
     {
-        return array_map(function (object $row) use ($postMedia): array {
-            return [
-                'id' => $row->id,
-                'post_id' => $row->post_id,
-                'social_account_key' => $row->social_account_key,
-                'platform' => $row->platform,
-                'name' => $row->account_display_name,
-                'username' => $row->account_username,
-                'avatar_url' => $row->account_avatar_url,
-                'origin' => $row->origin,
-                'content_type' => $row->content_type,
-                'availability' => $row->availability,
-                'published_at' => $row->provider_published_at,
-                'permalink' => $row->permalink,
-                'excerpt' => $row->excerpt,
-                'preview_metadata' => $row->preview_metadata ? json_decode((string) $row->preview_metadata, true) : null,
-                'media' => filled($row->post_id) ? data_get($postMedia, $row->post_id) : null,
-                'reactions' => $row->reactions_count === null ? null : (int) $row->reactions_count,
-                'comments' => $row->comments_count === null ? null : (int) $row->comments_count,
-            ];
-        }, $rows);
+        return collect($rows)->map(fn (object $row): array => [
+            'id' => $row->id,
+            'post_id' => $row->post_id,
+            'social_account_key' => $row->social_account_key,
+            'platform' => $row->platform,
+            'name' => $row->account_display_name,
+            'username' => $row->account_username,
+            'avatar_url' => $row->account_avatar_url,
+            'origin' => $row->origin,
+            'content_type' => $row->content_type,
+            'availability' => $row->availability,
+            'published_at' => $row->provider_published_at,
+            'permalink' => $row->permalink,
+            'excerpt' => $row->excerpt,
+            'preview_metadata' => $row->preview_metadata ? json_decode((string) $row->preview_metadata, true) : null,
+            'media' => $postMedia->get((string) $row->post_id),
+            'reactions' => $row->reactions_count === null ? null : (int) $row->reactions_count,
+            'comments' => $row->comments_count === null ? null : (int) $row->comments_count,
+        ])->all();
     }
 
     /** @return list<array<string, mixed>> */

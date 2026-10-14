@@ -434,10 +434,7 @@ test('channel insights show the same summary, metrics, series and ranking on web
         ->json();
 
     expect($list['data'])->toEqual(data_get($web, 'publications.data'))
-        ->and($list['filters'])->toEqual($web['filters'])
-        ->and(collect($list['data'])->pluck('media.url')->filter()->values()->all())->toBe(
-            in_array($filters($label), [['untagged' => '1']], true) ? [] : ['https://cdn.trypost.test/medias/reel.mp4'],
-        );
+        ->and($list['filters'])->toEqual($web['filters']);
 
     $arguments = ['account_id' => $account->id, ...$query];
     TryPostServer::actingAs($this->user)

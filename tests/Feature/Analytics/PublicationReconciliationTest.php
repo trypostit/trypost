@@ -299,10 +299,9 @@ test('a network that does not report the type stores its default on a new public
 
 test('a network that reports the type still corrects the type TryPost published', function () {
     $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
-    $video = Media::factory()->video()->create();
     $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create([
         'platform_post_id' => 'remote-1',
-        'media' => [['id' => $video->id, 'path' => $video->path, 'url' => $video->url, 'type' => 'video', 'mime_type' => 'video/mp4']],
+        'media' => [['id' => 'video', 'path' => 'medias/a.mp4', 'url' => 'https://cdn.trypost.test/medias/a.mp4', 'type' => 'video', 'mime_type' => 'video/mp4']],
     ]);
     app(SyncTryPostPublication::class)->handle($post);
 
