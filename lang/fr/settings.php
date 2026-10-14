@@ -109,7 +109,7 @@ return [
             'unknown_browser' => 'Navigateur inconnu',
             'on' => 'le',
             'active_now' => 'Actif maintenant',
-            'log_out_others' => 'Déconnecter les autres appareils',
+            'log_out_others' => 'Fermer les autres',
             'modal_title' => 'Déconnecter les autres appareils',
             'modal_description' => 'Tous les autres appareils connectés à votre compte seront déconnectés. Cette session reste active.',
             'cancel' => 'Annuler',

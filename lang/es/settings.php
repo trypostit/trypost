@@ -109,7 +109,7 @@ return [
             'unknown_browser' => 'Navegador desconocido',
             'on' => 'en',
             'active_now' => 'Activa ahora',
-            'log_out_others' => 'Cerrar otras sesiones',
+            'log_out_others' => 'Cerrar otras',
             'modal_title' => 'Cerrar otras sesiones',
             'modal_description' => 'Se cerrará la sesión en todos los demás dispositivos con acceso a tu cuenta. Esta sesión sigue activa.',
             'cancel' => 'Cancelar',

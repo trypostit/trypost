@@ -109,7 +109,7 @@ return [
             'unknown_browser' => 'Browser sconosciuto',
             'on' => 'su',
             'active_now' => 'Attivo ora',
-            'log_out_others' => 'Disconnetti gli altri dispositivi',
+            'log_out_others' => 'Esci dagli altri',
             'modal_title' => 'Disconnetti gli altri dispositivi',
             'modal_description' => 'Tutti gli altri dispositivi collegati al tuo account verranno disconnessi. Questa sessione resta attiva.',
             'cancel' => 'Annulla',

@@ -109,7 +109,7 @@ return [
             'unknown_browser' => '不明なブラウザ',
             'on' => '·',
             'active_now' => '現在アクティブ',
-            'log_out_others' => '他のデバイスからログアウト',
+            'log_out_others' => '他をログアウト',
             'modal_title' => '他のデバイスからログアウト',
             'modal_description' => 'アカウントにログインしている他のすべてのデバイスからログアウトします。このセッションはそのまま使えます。',
             'cancel' => 'キャンセル',

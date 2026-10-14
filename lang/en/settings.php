@@ -109,7 +109,7 @@ return [
             'unknown_browser' => 'Unknown browser',
             'on' => 'on',
             'active_now' => 'Active now',
-            'log_out_others' => 'Log out other devices',
+            'log_out_others' => 'Log out others',
             'modal_title' => 'Log out other devices',
             'modal_description' => 'Every other device signed in to your account will be signed out. This session stays active.',
             'cancel' => 'Cancel',

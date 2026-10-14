@@ -111,7 +111,7 @@ return [
             'unknown_browser' => 'Bilinmeyen tarayıcı',
             'on' => 'tarih:',
             'active_now' => 'Şu anda etkin',
-            'log_out_others' => 'Diğer cihazlardan çıkış yap',
+            'log_out_others' => 'Diğerlerinden çık',
             'modal_title' => 'Diğer cihazlardan çıkış yap',
             'modal_description' => 'Hesabınızda oturum açık olan diğer tüm cihazlardan çıkış yapılacak. Bu oturum açık kalır.',
             'cancel' => 'İptal',
