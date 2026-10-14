@@ -11,6 +11,8 @@ use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\AnalyticsSyncState;
+use App\Models\ChangelogEntry;
+use App\Models\ChangelogEntryView;
 use App\Models\Idea;
 use App\Models\IdeaStage;
 use App\Models\Invite;
@@ -108,6 +110,8 @@ class AppServiceProvider extends ServiceProvider
             'analyticsPublication' => AnalyticsPublication::class,
             'analyticsPublicationDailySnapshot' => AnalyticsPublicationDailySnapshot::class,
             'analyticsSyncState' => AnalyticsSyncState::class,
+            'changelogEntry' => ChangelogEntry::class,
+            'changelogEntryView' => ChangelogEntryView::class,
             'idea' => Idea::class,
             'ideaStage' => IdeaStage::class,
             'invite' => Invite::class,

@@ -18,6 +18,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Changelog ("What's New")
+    |--------------------------------------------------------------------------
+    |
+    | Shows the sidebar card and the "What's New" modal fed by the entries
+    | under changelog/, synced with `php artisan changelog:sync`. Off by
+    | default; TryPost Cloud turns it on.
+    |
+    */
+
+    'changelog' => [
+        'enabled' => (bool) env('CHANGELOG_ENABLED', false),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Legal pages
     |--------------------------------------------------------------------------
     |
