@@ -220,3 +220,20 @@ test('the post type filter leaves a gap between the search and the first type', 
     $page->assertScript('document.querySelector("[data-testid=insights-post-type-option-instagram_feed]").getBoundingClientRect().top - document.querySelector("[data-testid=insights-post-type-search]").getBoundingClientRect().bottom >= 8', true)
         ->assertNoJavaScriptErrors();
 });
+
+test('a type already in the URL keeps the post type filter on a network without it so it can be cleared', function () {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => Platform::Threads]);
+    $publication = insightsFilterPublication($channel, $this->user, CarbonImmutable::today('UTC')->subDays(2)->setTime(10, 0), 10, ContentType::ThreadsPost);
+
+    $page = visit(route('app.channels.insights', ['account' => $channel, 'types' => [ContentType::ThreadsGhostPost->value]]));
+    waitForInsightsFilterTestId($page, 'insights-post-type-filter');
+
+    $page->click('@insights-post-type-filter');
+    waitForInsightsFilterTestId($page, 'insights-post-type-clear');
+    $page->click('@insights-post-type-clear');
+    waitForInsightsFilterTestId($page, "insights-posts-row-{$publication->id}");
+
+    $page->assertVisible("@insights-posts-row-{$publication->id}")
+        ->assertMissing('@insights-post-type-filter')
+        ->assertNoJavaScriptErrors();
+});

@@ -9,7 +9,7 @@ import PublicationDetailsDialog from '@/components/publish/PublicationDetailsDia
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
-import { isVideo } from '@/lib/mediaType';
+import { isImage, isVideo } from '@/lib/mediaType';
 import { formatNumberCompact } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
@@ -57,7 +57,11 @@ const openDetails = (post: TopPost): void => {
     openPublication(post.id);
 };
 const thumbnailFor = (post: TopPost): string | null => {
-    const value = post.media?.url ?? post.preview_metadata?.thumbnail_url;
+    if (post.media && isImage(post.media)) {
+        return post.media.url;
+    }
+
+    const value = post.preview_metadata?.thumbnail_url;
     return typeof value === 'string' && /^https:\/\//i.test(value)
         ? value
         : null;
@@ -169,6 +173,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                             muted
                             playsinline
                             preload="metadata"
+                            aria-hidden="true"
                             :data-testid="`analytics-top-post-video-${post.id}`"
                         />
                         <img

@@ -700,7 +700,7 @@ test('top posts show the post media from our bucket, a video by its cover frame'
 
     foreach ([
         'video' => ['id' => 'video', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4'],
-        'image' => ['id' => 'image', 'path' => 'medias/a.jpg', 'url' => 'https://cdn.trypost.test/medias/a.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'],
+        'image' => ['id' => 'image', 'path' => 'medias/a.jpg', 'url' => 'http://trypost.test/storage/medias/a.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'],
     ] as $key => $media) {
         $post = Post::factory()->forAccount($account)->published()->create(['media' => [$media]]);
         $publications[$key] = AnalyticsPublication::factory()->create([
@@ -721,6 +721,6 @@ test('top posts show the post media from our bucket, a video by its cover frame'
     waitForWorkspaceInsightsTestId($page, "analytics-top-post-video-{$publications['video']->id}");
 
     $page->assertAttribute("@analytics-top-post-video-{$publications['video']->id}", 'src', 'https://cdn.trypost.test/medias/reel.mp4#t=0.1')
-        ->assertScript("Array.from(document.querySelectorAll('[data-testid=\"analytics-top-post\"] img')).map((image) => image.getAttribute('src')).includes('https://cdn.trypost.test/medias/a.jpg')", true)
+        ->assertScript("Array.from(document.querySelectorAll('[data-testid=\"analytics-top-post\"] img')).map((image) => image.getAttribute('src')).includes('http://trypost.test/storage/medias/a.jpg')", true)
         ->assertNoJavaScriptErrors();
 });

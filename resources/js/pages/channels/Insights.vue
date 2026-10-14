@@ -57,6 +57,11 @@ const span = (range: { start: string; end: string }): string =>
 const selectedLabelIds = ref<string[]>(props.filters?.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters?.untagged ?? false);
 const selectedTypes = ref<string[]>(props.filters?.types ?? []);
+const showsTypeFilter = computed(
+    () =>
+        showsPostTypeFilter(props.channel.platform) ||
+        selectedTypes.value.length > 0,
+);
 const publicationFilters = computed(
     (): Record<string, string | string[]> => ({
         ...(selectedLabelIds.value.length
@@ -205,7 +210,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                             test-id="insights-label"
                         />
                         <PostTypeFilter
-                            v-if="showsPostTypeFilter(channel.platform)"
+                            v-if="showsTypeFilter"
                             v-model="selectedTypes"
                             :types="contentTypes ?? []"
                         />

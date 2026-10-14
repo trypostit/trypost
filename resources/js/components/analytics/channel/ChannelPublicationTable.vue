@@ -492,6 +492,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                                 muted
                                                 playsinline
                                                 preload="metadata"
+                                                aria-hidden="true"
                                                 :data-testid="`insights-posts-video-${row.id}`"
                                             />
                                             <img
