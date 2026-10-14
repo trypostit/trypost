@@ -50,7 +50,7 @@ test('a link to the login tab opens it', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the delete account button sits under its warning', function () {
+test('the delete account button sits under a neutral warning', function () {
     $this->actingAs(User::factory()->create());
 
     $page = visit(route('app.profile.edit'));
@@ -60,7 +60,9 @@ test('the delete account button sits under its warning', function () {
         (() => {
             const warning = document.querySelector('[data-testid="delete-account-warning"]').getBoundingClientRect();
             const button = document.querySelector('[data-test="delete-user-button"]').getBoundingClientRect();
-            return button.top >= warning.bottom && Math.round(button.left) === Math.round(warning.left);
+            const warningColor = getComputedStyle(document.querySelector('[data-testid="delete-account-warning"]')).backgroundColor;
+            const buttonColor = getComputedStyle(document.querySelector('[data-test="delete-user-button"]')).backgroundColor;
+            return button.top >= warning.bottom && Math.round(button.left) === Math.round(warning.left) && warningColor !== buttonColor;
         })()
     JS))->toBeTrue();
     $page->assertNoJavaScriptErrors();

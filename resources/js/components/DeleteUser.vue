@@ -46,7 +46,7 @@ const focusFirstInput = () => {
         :description="$t('settings.delete_account.description')"
     >
         <div
-            class="flex items-start gap-2 rounded-xl bg-critical-subtle p-4 text-sm text-foreground"
+            class="flex items-start gap-2 rounded-xl border border-border bg-muted p-4 text-sm text-foreground"
             data-testid="delete-account-warning"
         >
             <IconAlertTriangle
