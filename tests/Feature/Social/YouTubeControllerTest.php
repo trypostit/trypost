@@ -33,7 +33,6 @@ test('youtube connect redirects to oauth provider', function () {
     $driverMock->shouldReceive('with')->with([
         'access_type' => 'offline',
         'prompt' => 'select_account consent',
-        'include_granted_scopes' => 'true',
     ])->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
         'getTargetUrl' => 'https://accounts.google.com/o/oauth2/v2/auth?test=1',

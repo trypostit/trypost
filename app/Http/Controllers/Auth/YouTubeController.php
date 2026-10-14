@@ -99,7 +99,6 @@ class YouTubeController extends SocialController
                 ->with([
                     'access_type' => 'offline',
                     'prompt' => 'select_account consent',
-                    'include_granted_scopes' => 'true',
                 ])
                 ->redirect()
                 ->getTargetUrl()

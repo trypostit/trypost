@@ -437,6 +437,11 @@ There is no connect popup (owner decision 2026-10-06): no `window.open`, no
   `force_login=true` (YouTube, Instagram and TikTok already send theirs on every
   connect). X OAuth 2, LinkedIn, Pinterest, Threads and Discord document none, so
   the step's instructions are the only help there.
+- Google connects (YouTube, Google Business) never send `include_granted_scopes`.
+  TryPost may run every Google feature on one OAuth client, and that flag folds in
+  the scopes the user granted elsewhere (the composer's `drive.file`), which Google
+  refuses to combine with the YouTube scopes ("scopes that cannot be requested
+  together"). Each Google flow asks for its own scopes only.
 
 ## Disconnecting a channel deletes its posts
 

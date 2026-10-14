@@ -59,7 +59,7 @@ test('a plain connect keeps the parameters it always sends', function (string $r
 })->with([
     'facebook re-asks declined permissions' => ['app.social.facebook.connect', 'auth_type=rerequest'],
     'instagram via facebook re-asks declined permissions' => ['app.social.instagram-facebook.connect', 'auth_type=rerequest'],
-    'google business asks for consent' => ['app.social.google-business.connect', 'consent&include_granted_scopes=true'],
+    'google business asks for consent' => ['app.social.google-business.connect', 'consent'],
     'youtube always shows the account chooser' => ['app.social.youtube.connect', 'prompt=select_account consent'],
     'tiktok always shows its authorization page' => ['app.social.tiktok.connect', 'disable_auto_auth=1'],
     'instagram always asks for the instagram login' => ['app.social.instagram.connect', 'force_reauth=true'],
@@ -168,3 +168,14 @@ test('switch account is offered only while there is an account to confirm', func
         ->get(route('app.social.connect.show', Platform::X))
         ->assertInertia(fn (AssertableInertia $page) => $page->where('state', 'cancelled')->where('switchUrl', null));
 });
+
+test('google connects ask only for their own scopes, never the ones granted to other features of the same app', function (string $route, string $scope) {
+    $url = urldecode(switchAccountAuthorizeUrl($route));
+
+    expect($url)->toContain($scope)
+        ->not->toContain('include_granted_scopes')
+        ->not->toContain('drive.file');
+})->with([
+    'youtube' => ['app.social.youtube.connect', 'https://www.googleapis.com/auth/youtube.upload'],
+    'google business' => ['app.social.google-business.connect', 'https://www.googleapis.com/auth/business.manage'],
+]);

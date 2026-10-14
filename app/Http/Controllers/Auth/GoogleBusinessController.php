@@ -40,7 +40,6 @@ class GoogleBusinessController extends SocialController
         return $this->redirectToProvider($request, $this->driver, $this->scopes, [
             'access_type' => 'offline',
             'prompt' => $this->switchingAccount($request) ? 'select_account consent' : 'consent',
-            'include_granted_scopes' => 'true',
         ]);
     }
 
