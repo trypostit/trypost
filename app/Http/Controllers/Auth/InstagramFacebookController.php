@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Enums\SocialAccount\Platform as SocialPlatform;
+use App\Models\SocialAccount;
+use App\Services\Social\ConnectionVerifier;
 use App\Services\Social\Meta\ManagedPages;
 use App\Support\Social\PendingConnection;
 use Exception;
@@ -73,6 +75,8 @@ class InstagramFacebookController extends MetaController
         $workspace = $this->connectWorkspace($request);
         $reconnect = $this->reconnectAccount($workspace);
 
+        $this->rememberInstagramAccountId($reconnect);
+
         try {
             $socialUser = Socialite::driver($this->driver)
                 ->usingGraphVersion($this->graphVersion())
@@ -121,6 +125,28 @@ class InstagramFacebookController extends MetaController
             ]);
 
             return $this->failConnection('error_connecting');
+        }
+    }
+
+    /**
+     * An Instagram Login card connected before its professional account id was
+     * stored has nothing to match the Facebook listing against, so moving it to
+     * Facebook asks Instagram for the id first. A failed lookup leaves the card
+     * as it was, and the reconnect reports the missing page as before.
+     */
+    private function rememberInstagramAccountId(?SocialAccount $reconnect): void
+    {
+        if ($reconnect?->platform !== SocialPlatform::Instagram || filled(data_get($reconnect->meta, 'ig_user_id'))) {
+            return;
+        }
+
+        try {
+            app(ConnectionVerifier::class)->verify($reconnect);
+        } catch (Exception $e) {
+            Log::warning('Instagram account id lookup failed before reconnecting through Facebook', [
+                'social_account_id' => $reconnect->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
