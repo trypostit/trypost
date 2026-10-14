@@ -182,7 +182,7 @@ const selectTab = (value: string | number): void => {
             </TabsContent>
 
             <TabsContent value="sessions">
-                <ProfileSessions :sessions="sessions" :has-password="hasPassword" />
+                <ProfileSessions :sessions="sessions" />
             </TabsContent>
         </Tabs>
     </SettingsLayout>

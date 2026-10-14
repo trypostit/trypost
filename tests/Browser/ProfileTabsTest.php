@@ -129,3 +129,29 @@ test('the github mark turns light on the dark theme while google keeps its color
         ->and($page->script('getComputedStyle(document.querySelector(\'[data-testid="connected-account-icon-google"]\')).filter'))->toBe('none');
     $page->assertNoJavaScriptErrors();
 });
+
+test('logging out other devices asks for a plain confirmation without a password', function () {
+    config(['session.driver' => 'database']);
+    $user = User::factory()->create();
+    $table = config('session.table', 'sessions');
+    DB::table($table)->insert([
+        ['id' => 'phone', 'user_id' => $user->id, 'ip_address' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'payload' => '', 'last_activity' => now()->subHour()->timestamp],
+        ['id' => 'laptop', 'user_id' => $user->id, 'ip_address' => '203.0.113.10', 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0', 'payload' => '', 'last_activity' => now()->subDay()->timestamp],
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.profile.edit', ['tab' => 'sessions']));
+    waitForProfileTabsTestId($page, 'session-browser-icon-phone');
+    $page->click('[data-test="log-out-other-sessions-button"]');
+    waitForProfileTabsTestId($page, 'confirm-log-out-other-sessions');
+
+    expect($page->script('document.querySelectorAll(\'[data-testid="confirm-delete-modal"] input\').length'))->toBe(0);
+
+    $page->click('@confirm-log-out-other-sessions');
+    for ($attempt = 0; $attempt < 50 && DB::table($table)->whereIn('id', ['phone', 'laptop'])->exists(); $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
+
+    expect(DB::table($table)->whereIn('id', ['phone', 'laptop'])->exists())->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});

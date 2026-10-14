@@ -1,25 +1,12 @@
 <script setup lang="ts">
-import { Form } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { computed, useTemplateRef } from 'vue';
 
 import SessionController from '@/actions/App/Http/Controllers/App/Settings/SessionController';
-import InputError from '@/components/InputError.vue';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import SettingsListRow from '@/components/settings/SettingsListRow.vue';
 import SettingsSection from '@/components/settings/SettingsSection.vue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogClose,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     browserIconUrl,
     isMonochromeOsIcon,
@@ -38,7 +25,6 @@ export type Session = {
 
 const props = defineProps<{
     sessions: Session[];
-    hasPassword: boolean;
 }>();
 
 const orderedSessions = computed<Session[]>(() => [
@@ -46,10 +32,10 @@ const orderedSessions = computed<Session[]>(() => [
     ...props.sessions.filter((session) => !session.is_current),
 ]);
 
-const logoutDialogOpen = ref(false);
+const logoutDialog = useTemplateRef('logoutDialog');
 
-const closeLogoutDialog = (): void => {
-    logoutDialogOpen.value = false;
+const openLogoutDialog = (): void => {
+    logoutDialog.value?.open({ url: SessionController.destroyOthers.url() });
 };
 </script>
 
@@ -60,115 +46,14 @@ const closeLogoutDialog = (): void => {
         :description="$t('settings.profile.sessions.description')"
     >
         <template #actions>
-            <Dialog v-model:open="logoutDialogOpen">
-                <DialogTrigger as-child>
-                    <Button
-                        variant="outline"
-                        data-test="log-out-other-sessions-button"
-                        :disabled="sessions.length <= 1"
-                    >
-                        {{
-                            $t(
-                                'settings.profile.sessions.log_out_others',
-                            )
-                        }}
-                    </Button>
-                </DialogTrigger>
-                <DialogContent>
-                    <Form
-                        v-bind="
-                            SessionController.destroyOthers.form()
-                        "
-                        :options="{ preserveScroll: true }"
-                        reset-on-success
-                        @success="closeLogoutDialog"
-                        class="flex flex-col gap-6"
-                        v-slot="{ errors, processing }"
-                    >
-                        <DialogHeader>
-                            <DialogTitle>{{
-                                $t(
-                                    'settings.profile.sessions.modal_title',
-                                )
-                            }}</DialogTitle>
-                            <DialogDescription>
-                                {{
-                                    hasPassword
-                                        ? $t(
-                                              'settings.profile.sessions.modal_description_password',
-                                          )
-                                        : $t(
-                                              'settings.profile.sessions.modal_description_email',
-                                          )
-                                }}
-                            </DialogDescription>
-                        </DialogHeader>
-
-                        <div v-if="hasPassword" class="flex flex-col gap-2">
-                            <Label for="session_password" class="sr-only">
-                                {{
-                                    $t(
-                                        'settings.profile.password.current_password',
-                                    )
-                                }}
-                            </Label>
-                            <Input
-                                id="session_password"
-                                type="password"
-                                name="password"
-                                :placeholder="
-                                    $t(
-                                        'settings.profile.sessions.password_placeholder',
-                                    )
-                                "
-                            />
-                            <InputError :message="errors.password" />
-                        </div>
-
-                        <div v-else class="flex flex-col gap-2">
-                            <Label
-                                for="session_email_confirmation"
-                                class="sr-only"
-                            >
-                                {{ $t('settings.profile.email') }}
-                            </Label>
-                            <Input
-                                id="session_email_confirmation"
-                                type="email"
-                                name="email_confirmation"
-                                :placeholder="
-                                    $t(
-                                        'settings.profile.sessions.email_placeholder',
-                                    )
-                                "
-                                autocomplete="off"
-                            />
-                            <InputError
-                                :message="errors.email_confirmation"
-                            />
-                        </div>
-
-                        <DialogFooter>
-                            <DialogClose as-child>
-                                <Button variant="ghost">
-                                    {{
-                                        $t(
-                                            'settings.profile.sessions.cancel',
-                                        )
-                                    }}
-                                </Button>
-                            </DialogClose>
-                            <Button type="submit" :disabled="processing">
-                                {{
-                                    $t(
-                                        'settings.profile.sessions.submit',
-                                    )
-                                }}
-                            </Button>
-                        </DialogFooter>
-                    </Form>
-                </DialogContent>
-            </Dialog>
+            <Button
+                variant="outline"
+                data-test="log-out-other-sessions-button"
+                :disabled="sessions.length <= 1"
+                @click="openLogoutDialog"
+            >
+                {{ $t('settings.profile.sessions.log_out_others') }}
+            </Button>
         </template>
 
         <ul class="flex flex-col gap-2">
@@ -234,5 +119,14 @@ const closeLogoutDialog = (): void => {
                 </template>
             </SettingsListRow>
         </ul>
+
+        <ConfirmDeleteModal
+            ref="logoutDialog"
+            :title="$t('settings.profile.sessions.modal_title')"
+            :description="$t('settings.profile.sessions.modal_description')"
+            :action="$t('settings.profile.sessions.submit')"
+            :cancel="$t('settings.profile.sessions.cancel')"
+            action-test-id="confirm-log-out-other-sessions"
+        />
     </SettingsSection>
 </template>

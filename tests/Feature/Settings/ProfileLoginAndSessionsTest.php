@@ -132,10 +132,10 @@ test('disconnect provider rejects unknown provider', function () {
         ->assertNotFound();
 });
 
-test('destroy other sessions removes other rows for the user', function () {
+test('logging out other devices needs no password, with or without one set', function (?string $password) {
     config(['session.driver' => 'database']);
 
-    $user = User::factory()->create();
+    $user = User::factory()->create(['password' => $password]);
     $sessionsTable = config('session.table', 'sessions');
 
     DB::table($sessionsTable)->insert([
@@ -150,11 +150,10 @@ test('destroy other sessions removes other rows for the user', function () {
     ]);
 
     $this->actingAs($user)
-        ->from(route('app.profile.edit', ['tab' => 'login']))
-        ->delete(route('app.profile.sessions.destroy-others'), [
-            'password' => 'password',
-        ])
-        ->assertRedirect(route('app.profile.edit', ['tab' => 'login']));
+        ->from(route('app.profile.edit', ['tab' => 'sessions']))
+        ->delete(route('app.profile.sessions.destroy-others'))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('app.profile.edit', ['tab' => 'sessions']));
 
     expect(DB::table($sessionsTable)->where('id', 'other-session-id')->exists())->toBeFalse();
-});
+})->with(['with a password' => 'password', 'signed up with Google or GitHub' => null]);
