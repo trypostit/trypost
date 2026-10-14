@@ -133,9 +133,7 @@ test('disconnect provider rejects unknown provider', function () {
 });
 
 test('destroy other sessions removes other rows for the user', function () {
-    if (config('session.driver') !== 'database') {
-        $this->markTestSkipped('Session driver is not database.');
-    }
+    config(['session.driver' => 'database']);
 
     $user = User::factory()->create();
     $sessionsTable = config('session.table', 'sessions');
