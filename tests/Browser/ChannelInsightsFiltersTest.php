@@ -152,3 +152,16 @@ test('on a phone both filters show only their icon and chevron', function () {
     $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the post type filter search matches each word typed in any order and ignores case', function () {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitForInsightsFilterTestId($page, 'insights-post-type-filter');
+    $page->click('@insights-post-type-filter');
+    waitForInsightsFilterTestId($page, 'insights-post-type-search');
+
+    $page->type('@insights-post-type-search', 'POST feed');
+    waitForInsightsFilterScript($page, '!document.querySelector("[data-testid=insights-post-type-option-instagram_reel]")');
+
+    $page->assertScript('Array.from(document.querySelectorAll("[data-testid^=insights-post-type-option-]")).map((element) => element.dataset.testid.replace("insights-post-type-option-", "")).join(",")', 'instagram_feed')
+        ->assertNoJavaScriptErrors();
+});

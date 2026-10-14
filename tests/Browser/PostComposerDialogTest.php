@@ -157,7 +157,10 @@ test('posts channel filter keeps accounts distinct and persists across tabs', fu
         waitForComposerCondition($page, "document.querySelector('[data-testid=\"posts-channel-search\"]')?.getBoundingClientRect().height > 0");
     }
 
-    $page->fill('@posts-channel-search', 'first_channel')
+    $page->fill('@posts-channel-search', 'SECOND instagram')
+        ->assertVisible("@posts-channel-option-{$secondInstagram->id}")
+        ->assertMissing("@posts-channel-option-{$firstInstagram->id}")
+        ->fill('@posts-channel-search', 'first_channel')
         ->assertVisible("@posts-channel-option-{$firstInstagram->id}")
         ->assertMissing("@posts-channel-option-{$secondInstagram->id}")
         ->click("@posts-channel-checkbox-{$firstInstagram->id}")

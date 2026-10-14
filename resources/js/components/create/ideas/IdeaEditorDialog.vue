@@ -431,6 +431,7 @@ const iconButtonClass =
                                 <input
                                     v-model="stageSearch"
                                     type="search"
+                                    data-testid="idea-editor-stage-search"
                                     :aria-label="$t('create.ideas.stages_search')"
                                     :placeholder="
                                         $t('create.ideas.stages_search')

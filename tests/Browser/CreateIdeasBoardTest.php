@@ -743,3 +743,22 @@ test('dragging a card into a partly loaded column keeps the unloaded ideas in or
     $page->assertSeeIn("@idea-column-count-{$stages['done']->id}", '13')
         ->assertNoJavaScriptErrors();
 });
+
+test('the gallery stage filter search ignores accents and matches each word in any order', function () {
+    [$user, $workspace, $stages] = createIdeasBoardSetup();
+    $stages['in_progress']->update(['name' => 'Revisão final']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index', ['view' => 'gallery']));
+    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-filter');
+    $page->click('@ideas-filter-stages-filter');
+    waitForCreateIdeasBoardTestId($page, 'ideas-filter-stages-search');
+    $page->type('@ideas-filter-stages-search', 'FINAL revisao');
+    waitForCreateIdeasBoardCondition($page, "!document.querySelector('[data-testid=\"ideas-filter-stages-option-{$stages['todo']->id}\"]')");
+
+    $page->assertPresent("@ideas-filter-stages-option-{$stages['in_progress']->id}")
+        ->assertMissing("@ideas-filter-stages-option-{$stages['todo']->id}")
+        ->assertMissing("@ideas-filter-stages-option-{$stages['done']->id}")
+        ->assertMissing('@ideas-filter-stages-unassigned')
+        ->assertNoJavaScriptErrors();
+});

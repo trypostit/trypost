@@ -858,3 +858,21 @@ test('the generate ideas dialog keeps its footer on screen at 390px in the form 
         ->and($page->script("document.querySelector('[data-testid=\"ideas-generate-use\"]').getBoundingClientRect().bottom <= window.innerHeight"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
+
+test('the stage picker search ignores accents and matches each word in any order', function () {
+    [$user, $workspace, $stage] = createIdeaEditorSetup();
+    $stage->update(['name' => 'Revisão final']);
+    $other = $workspace->ideaStages()->whereKeyNot($stage->id)->firstOrFail();
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.create'));
+    waitForCreateIdeaEditorDialog($page);
+    $page->click('@idea-editor-stage');
+    waitForCreateIdeaEditorTestId($page, 'idea-editor-stage-search');
+    $page->type('@idea-editor-stage-search', 'FINAL revisao');
+    waitForCreateIdeaEditorTestId($page, "idea-editor-stage-option-{$stage->id}");
+
+    $page->assertPresent("@idea-editor-stage-option-{$stage->id}")
+        ->assertMissing("@idea-editor-stage-option-{$other->id}")
+        ->assertNoJavaScriptErrors();
+});

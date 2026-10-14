@@ -219,7 +219,7 @@ test('the pinterest board picker searches, refreshes and creates boards', functi
         ->assertVisible('@pinterest-board-option-board_2');
     expect($page->script("!!document.querySelector('[data-testid=\"pinterest-board-option-board_1\"] img')"))->toBeTrue();
 
-    $page->fill('@pinterest-board-search', 'dis');
+    $page->fill('@pinterest-board-search', 'DÍS');
     waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"pinterest-board-option-board_2\"]')");
     $page->assertMissing('@pinterest-board-option-board_2')
         ->assertVisible('@pinterest-board-option-board_1')

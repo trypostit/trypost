@@ -112,6 +112,11 @@ test('the language picker suggests the browser language, filters as you type and
     $page->assertMissing('@preferences-language-suggestions')
         ->assertVisible('@preferences-language-option-de');
 
+    $page->fill('@preferences-language-search', 'francais');
+    waitForPreferencesTestId($page, 'preferences-language-option-fr');
+    $page->assertVisible('@preferences-language-option-fr')
+        ->assertMissing('@preferences-language-option-de');
+
     $page->fill('@preferences-language-search', 'Portug');
     waitForPreferencesTestId($page, 'preferences-language-option-pt-BR');
     $page->assertVisible('@preferences-language-option-pt-BR')
@@ -262,5 +267,27 @@ test('the time zone search ignores accents and matches each word typed', functio
 
     $page->assertScript('Boolean(document.querySelector(\'[data-testid^="preferences-timezone-option-America-Sao"]\'))', true)
         ->assertMissing('@preferences-timezone-option-UTC')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the time zone search matches the offset shown next to each zone', function () {
+    $user = preferencesUser(['timezone' => 'UTC']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.settings.preferences'))->withTimezone('UTC');
+    waitForPreferencesTestId($page, 'preferences-timezone-trigger');
+    $page->click('@preferences-timezone-trigger');
+    waitForPreferencesTestId($page, 'preferences-timezone-search');
+
+    $page->type('@preferences-timezone-search', 'gmt-3 paulo');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100 && document.querySelector('[data-testid="preferences-timezone-option-UTC"]'); i++) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
+
+    $page->assertScript('Array.from(document.querySelectorAll(\'[data-testid^="preferences-timezone-option-"]\')).map((option) => option.dataset.testid.replace("preferences-timezone-option-", "")).join(",")', 'America-Sao_Paulo')
         ->assertNoJavaScriptErrors();
 });
