@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useHttp, usePage } from '@inertiajs/vue3';
+import { Link, useHttp, usePage } from '@inertiajs/vue3';
 import {
     IconAlertTriangle,
     IconArrowLeft,
@@ -2146,7 +2146,7 @@ const onDialogOpenChange = (value: boolean): void => {
             class="mt-2 space-y-1 border-t border-border-strong px-3 pt-3 pb-1 text-xs text-muted-foreground"
         >
             <p>{{ $t('posts.composer.queue.no_slots_hint') }}</p>
-            <a
+            <Link
                 v-if="accountsWithoutSlots.length === 1"
                 :href="
                     channelSettings.url(
@@ -2157,7 +2157,7 @@ const onDialogOpenChange = (value: boolean): void => {
                 class="font-medium text-foreground underline underline-offset-2"
                 >{{
                     $t('posts.composer.queue.manage_slots')
-                }}</a
+                }}</Link
             >
             <p v-else>
                 {{

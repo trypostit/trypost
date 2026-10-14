@@ -901,3 +901,29 @@ test('closing an edited post while a file is still uploading asks first', functi
     $page->assertMissing('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
 });
+
+test('manage posting times in the schedule menu of an edited post asks first instead of the browser prompt', function () {
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::LinkedIn]);
+    $post = Post::factory()->forAccount($account, ContentType::LinkedInPost)->create([
+        'user_id' => $user->id,
+        'content' => 'Queue me',
+        'meta' => [],
+    ]);
+    $this->actingAs($user);
+
+    $page = openUnsavedChangesFromList($post, null, "composer-caption-{$account->id}");
+    $page->click("@composer-caption-{$account->id}")
+        ->type("@composer-caption-{$account->id}", ' later')
+        ->click('@composer-schedule-trigger');
+    waitForUnsavedChangesTestId($page, 'composer-queue-manage-slots');
+    $page->click('@composer-queue-manage-slots');
+    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+
+    $page->assertVisible('@unsaved-changes-dialog')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
