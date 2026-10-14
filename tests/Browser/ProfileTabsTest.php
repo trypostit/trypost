@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Theme;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -95,5 +96,16 @@ test('each session shows its browser and system icons under the log out button',
             return button.bottom <= firstRow.top;
         })()
     JS))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the github mark turns light on the dark theme while google keeps its colors', function () {
+    $this->actingAs(User::factory()->create(['theme' => Theme::Dark]));
+
+    $page = visit(route('app.profile.edit', ['tab' => 'login']));
+    waitForProfileTabsTestId($page, 'connected-account-icon-github');
+
+    expect($page->script('getComputedStyle(document.querySelector(\'[data-testid="connected-account-icon-github"]\')).filter'))->toBe('invert(1)')
+        ->and($page->script('getComputedStyle(document.querySelector(\'[data-testid="connected-account-icon-google"]\')).filter'))->toBe('none');
     $page->assertNoJavaScriptErrors();
 });
