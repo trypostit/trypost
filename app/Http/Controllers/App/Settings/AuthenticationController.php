@@ -8,6 +8,7 @@ use App\Enums\Auth\SocialAuthProvider;
 use App\Http\Controllers\App\Controller;
 use App\Http\Requests\App\Settings\AuthenticationPasswordRequest;
 use App\Models\User;
+use App\Support\Auth\PasswordRequirements;
 use Carbon\Carbon;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,6 +27,7 @@ class AuthenticationController extends Controller
         return Inertia::render('settings/profile/Authentication', [
             'sessions' => $this->getSessions($request),
             'hasPassword' => (bool) $user->password,
+            'passwordRequirements' => PasswordRequirements::checklist(),
             'connectedAccounts' => $this->getConnectedAccounts($user),
         ]);
     }

@@ -4,6 +4,8 @@ import { IconDeviceDesktop, IconDeviceMobile } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import AuthenticationController from '@/actions/App/Http/Controllers/App/Settings/AuthenticationController';
+import PasswordRequirements from '@/components/auth/PasswordRequirements.vue';
+import type { PasswordRequirement } from '@/components/auth/PasswordRequirements.vue';
 import DeleteUser from '@/components/DeleteUser.vue';
 import InputError from '@/components/InputError.vue';
 import SettingsField from '@/components/settings/SettingsField.vue';
@@ -49,7 +51,14 @@ defineProps<{
     sessions: Session[];
     hasPassword: boolean;
     connectedAccounts: ConnectedAccount[];
+    passwordRequirements: PasswordRequirement[];
 }>();
+
+const newPassword = ref('');
+
+const clearNewPassword = (): void => {
+    newPassword.value = '';
+};
 
 const logoutDialogOpen = ref(false);
 
@@ -259,6 +268,8 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     ]"
                     class="flex flex-col gap-6"
                     v-slot="{ errors, processing }"
+                    @success="clearNewPassword"
+                    @error="clearNewPassword"
                 >
                     <SettingsField
                         v-if="hasPassword"
@@ -283,9 +294,15 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     >
                         <Input
                             id="password"
+                            v-model="newPassword"
                             name="password"
                             type="password"
                             autocomplete="new-password"
+                            data-testid="authentication-new-password"
+                        />
+                        <PasswordRequirements
+                            :password="newPassword"
+                            :requirements="passwordRequirements"
                         />
                     </SettingsField>
 

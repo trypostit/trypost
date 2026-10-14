@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use App\Support\Auth\PasswordRequirements;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
@@ -17,6 +18,7 @@ test('authentication page is displayed', function () {
             ->has('sessions')
             ->where('hasPassword', true)
             ->has('connectedAccounts')
+            ->where('passwordRequirements', PasswordRequirements::checklist())
         );
 });
 
