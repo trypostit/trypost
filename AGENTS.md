@@ -250,6 +250,8 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 
 Text inside the app (popovers, empty states, dialogs, tooltips that ask for an action, errors, toasts) talks to the end user, who is in the middle of doing something. Write it from their side, not from how the system is built. The `copywriting` skill in `.agents/skills` is for marketing pages; it does not apply here.
 
+**Full guide, examples, per-component rules, the review checklist and the sources: the `in-app-copy` skill** (`.claude/skills/in-app-copy/SKILL.md`, mirrored in `.agents/skills` and `.cursor/skills`). Load it before writing or reviewing any user-facing string. The rules below are the minimum.
+
 - **A prompt that asks the user to act follows three steps, in this order** (owner decision October 2026):
     1. **What is missing, in the user's words and addressed to them:** "You haven't set up this channel's queue yet". Not a system state ("Set up the queue first", "No posting times configured").
     2. **Why it matters for what they just tried:** "To add posts to the queue, set this channel's posting times." Tie it to the click that opened the prompt, never to how the feature works in general.
