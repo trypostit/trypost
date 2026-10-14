@@ -69,6 +69,8 @@ test('opening the sidebar card shows the entry, records the view and moves the c
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitForChangelogText($page, 'changelog-card-title', 'Newest feature');
 
+    expect($page->script("document.querySelector('[data-testid=\"changelog-card\"] [data-testid^=\"changelog-tag-\"]') === null"))->toBeTrue();
+
     $page->click('@changelog-card');
     waitForChangelogText($page, 'changelog-entry-title', 'Newest feature');
     $page->assertSeeIn('@changelog-entry', 'The newest feature body.')

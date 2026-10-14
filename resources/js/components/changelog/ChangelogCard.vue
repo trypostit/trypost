@@ -3,7 +3,6 @@ import { usePage } from '@inertiajs/vue3';
 import { IconArrowRight } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import ChangelogTagBadge from '@/components/changelog/ChangelogTagBadge.vue';
 import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
 
 const page = usePage();
@@ -42,12 +41,6 @@ const openLatestEntry = (): void => {
                 class="text-sm leading-5 font-medium text-foreground"
                 data-testid="changelog-card-title"
             >
-                <ChangelogTagBadge
-                    v-for="tag in entry.tags"
-                    :key="tag.value"
-                    :tag="tag"
-                    class="me-1 align-[2px]"
-                />
                 {{ entry.title }}
                 <IconArrowRight class="inline size-4 align-[-3px]" />
             </span>
