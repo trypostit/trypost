@@ -22,7 +22,7 @@ beforeEach(function () {
 
 test('verifies account without refresh when token is not expired', function () {
     Http::fake([
-        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -45,7 +45,7 @@ test('refreshes linkedin token before verifying when expired', function () {
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
         ], 200),
-        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
@@ -519,7 +519,7 @@ test('instagram refresh records a 60-day expiry when the response omits expires_
 
 test('does NOT refresh proactively when token still works (lazy refresh)', function () {
     Http::fake([
-        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['sub' => '123'], 200),
     ]);
 
     // Token is "expiring soon" but access_token still works.
@@ -540,7 +540,7 @@ test('does NOT refresh proactively when token still works (lazy refresh)', funct
 test('refreshes lazily on 401 then retries verify', function () {
     Http::fake([
         // First verify call returns 401, second (after refresh) returns 200.
-        config('trypost.platforms.linkedin.api').'/*' => Http::sequence()
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::sequence()
             ->push(['error' => 'unauthorized'], 401)
             ->push(['sub' => '123'], 200),
         config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response([
@@ -564,7 +564,7 @@ test('refreshes lazily on 401 then retries verify', function () {
 
 test('throws when verify returns 401 AND refresh also fails', function () {
     Http::fake([
-        config('trypost.platforms.linkedin.api').'/*' => Http::response(['error' => 'unauthorized'], 401),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['error' => 'unauthorized'], 401),
         config('trypost.platforms.linkedin.oauth_api').'/oauth/v2/accessToken' => Http::response(['error' => 'invalid_grant'], 400),
     ]);
 
@@ -585,7 +585,7 @@ test('forces refresh when token is hard-expired', function () {
             'refresh_token' => 'new_refresh_token',
             'expires_in' => 5184000,
         ], 200),
-        config('trypost.platforms.linkedin.api').'/*' => Http::response(['sub' => '123'], 200),
+        config('trypost.platforms.linkedin.api').'/v2/userinfo' => Http::response(['sub' => '123'], 200),
     ]);
 
     $account = SocialAccount::factory()->linkedin()->create([
