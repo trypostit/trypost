@@ -874,5 +874,6 @@ test('the stage picker search ignores accents and matches each word in any order
 
     $page->assertPresent("@idea-editor-stage-option-{$stage->id}")
         ->assertMissing("@idea-editor-stage-option-{$other->id}")
+        ->assertMissing('@idea-editor-stage-option-unassigned')
         ->assertNoJavaScriptErrors();
 });
