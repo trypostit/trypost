@@ -12,6 +12,11 @@
 //   --badge "Changelog"  (default) — the amber sticker label, top-right.
 //   --underline "phrase" — a phrase inside the headline to get the hand-drawn
 //                          violet squiggle (mirrors the marketing-site hero).
+//   --template "changelog-cover.template.html" (default thumbnail.template.html)
+//   --width 1200 --height 630 --scale 2 — viewport and device scale factor.
+//
+// Changelog covers (/changelog) use:
+//   --template changelog-cover.template.html --width 1200 --height 750 --scale 1
 //
 // Playwright is resolved from the repo's node_modules, so the script works
 // regardless of where it is invoked.
@@ -73,7 +78,7 @@ if (args.version) {
 
 const logoDataUri = `data:image/png;base64,${readFileSync(join(here, 'logo.png')).toString('base64')}`;
 
-const html = readFileSync(join(here, 'thumbnail.template.html'), 'utf8')
+const html = readFileSync(join(here, args.template ?? 'thumbnail.template.html'), 'utf8')
     .replace('{{LOGO}}', logoDataUri)
     .replace('{{BADGE_INNER}}', badgeInner)
     .replace('{{HEADLINE}}', headlineHtml)
@@ -85,8 +90,11 @@ writeFileSync(tmpFile, html);
 const browser = await chromium.launch();
 try {
     const page = await browser.newPage({
-        viewport: { width: 1200, height: 630 },
-        deviceScaleFactor: 2,
+        viewport: {
+            width: Number(args.width ?? 1200),
+            height: Number(args.height ?? 630),
+        },
+        deviceScaleFactor: Number(args.scale ?? 2),
     });
     await page.goto(`file://${tmpFile}`, { waitUntil: 'networkidle' });
     await page.evaluate(() => document.fonts.ready);
