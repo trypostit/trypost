@@ -205,7 +205,6 @@ return [
     'settings.profile.tabs.profile' => 12,
     'settings.profile.tabs.login' => 25,
     'settings.profile.tabs.sessions' => 9,
-    'settings.profile.sessions.log_out_others' => 17,
     'welcome.personas.agency' => 10,
     'welcome.personas.creator' => 23,
     'welcome.personas.developer' => 15,

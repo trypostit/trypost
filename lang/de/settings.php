@@ -111,7 +111,7 @@ return [
             'unknown_browser' => 'Unbekannter Browser',
             'on' => 'am',
             'active_now' => 'Jetzt aktiv',
-            'log_out_others' => 'Andere abmelden',
+            'log_out_others' => 'Andere Geräte abmelden',
             'modal_title' => 'Andere Geräte abmelden',
             'modal_description' => 'Alle anderen Geräte, die bei deinem Konto angemeldet sind, werden abgemeldet. Diese Sitzung bleibt aktiv.',
             'cancel' => 'Abbrechen',
