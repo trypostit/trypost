@@ -156,6 +156,33 @@ test('top posts include the source post id for TryPost publications', function (
     expect($report['top_posts']['reactions'][0]['post_id'])->toBe($post->id);
 });
 
+test('top posts carry the post media from our bucket instead of the network preview', function () {
+    $workspace = Workspace::factory()->create();
+    $account = analyticsReportAccount($workspace, Platform::Instagram);
+    $video = ['id' => 'video', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'meta' => ['cover_offset_ms' => 1500]];
+    $document = ['id' => 'document', 'path' => 'medias/deck.pdf', 'url' => 'https://cdn.trypost.test/medias/deck.pdf', 'type' => 'document', 'mime_type' => 'application/pdf'];
+    $post = Post::factory()->forAccount($account)->published()->create(['media' => [$document, $video]]);
+    $other = Post::factory()->forAccount($account)->published()->create(['media' => [$video]]);
+    $linked = analyticsReportPublication($account, '2026-09-05 10:00:00', 9, 1, 10, 100);
+    $linked->update(['post_id' => $post->id, 'preview_metadata' => ['thumbnail_url' => 'https://scontent.cdninstagram.com/expired.jpg?oe=6ACC450F']]);
+    $commented = analyticsReportPublication($account, '2026-09-06 10:00:00', 1, 9, 10, 100);
+    $commented->update(['post_id' => $other->id]);
+    $external = analyticsReportPublication($account, '2026-09-07 10:00:00', 5, 5, 10, 100);
+    $external->update(['preview_metadata' => ['thumbnail_url' => 'https://pbs.twimg.com/media/external.jpg']]);
+
+    $report = app(BuildWorkspaceAnalyticsReport::class)->execute(
+        $workspace,
+        new DateRange(CarbonImmutable::parse('2026-09-01', 'UTC'), CarbonImmutable::parse('2026-09-10', 'UTC')),
+    );
+    $reactions = collect($report['top_posts']['reactions'])->keyBy('id');
+    $comments = collect($report['top_posts']['comments'])->keyBy('id');
+
+    expect($reactions[$linked->id]['media'])->toMatchArray(['url' => $video['url'], 'type' => 'video', 'meta' => ['cover_offset_ms' => 1500]])
+        ->and($comments[$commented->id]['media'])->toMatchArray(['url' => $video['url'], 'type' => 'video'])
+        ->and($reactions[$external->id]['media'])->toBeNull()
+        ->and($reactions[$external->id]['preview_metadata']['thumbnail_url'])->toBe('https://pbs.twimg.com/media/external.jpg');
+});
+
 test('workspace follower total stays unavailable until every connected account has an observation', function () {
     $workspace = Workspace::factory()->create();
     $first = analyticsReportAccount($workspace, Platform::Instagram);

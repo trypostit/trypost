@@ -6,6 +6,7 @@ namespace App\Actions\Analytics;
 
 use App\Dto\Analytics\DateRange;
 use App\Dto\Analytics\PublicationFilter;
+use App\Dto\MediaItem;
 use App\Enums\Analytics\MetricAvailability;
 use App\Enums\Analytics\MetricKey;
 use App\Enums\User\WeekStart;
@@ -108,6 +109,8 @@ class BuildPublicationAnalyticsReport
         }
         unset($bucket);
 
+        $postMedia = $this->postMedia([...$topReactions, ...$topComments]);
+
         return [
             'current_totals' => $this->finalizeTotals($currentTotals),
             'previous_totals' => $this->finalizeTotals($previousTotals),
@@ -117,8 +120,8 @@ class BuildPublicationAnalyticsReport
                 'buckets' => $buckets,
             ],
             'top_posts' => [
-                'reactions' => $this->top($topReactions),
-                'comments' => $this->top($topComments),
+                'reactions' => $this->top($topReactions, $postMedia),
+                'comments' => $this->top($topComments, $postMedia),
             ],
             'performance' => $this->performance($currentAccounts, $previousAccounts),
         ];
@@ -290,10 +293,38 @@ class BuildPublicationAnalyticsReport
         }
     }
 
-    /** @return list<array<string, mixed>> */
-    private function top(array $rows): array
+    /**
+     * The first image or video of each ranked post, keyed by post id.
+     *
+     * @param  list<object>  $rows
+     * @return array<string, array<string, mixed>>
+     */
+    private function postMedia(array $rows): array
     {
-        return array_map(function (object $row): array {
+        $postIds = array_values(array_unique(array_filter(array_column($rows, 'post_id'))));
+
+        if ($postIds === []) {
+            return [];
+        }
+
+        return Post::query()
+            ->whereKey($postIds)
+            ->get(['id', 'media'])
+            ->mapWithKeys(fn (Post $post): array => [
+                $post->id => $post->mediaItems->first(fn (MediaItem $item): bool => $item->isImage() || $item->isVideo())?->toArray(),
+            ])
+            ->filter()
+            ->all();
+    }
+
+    /**
+     * @param  list<object>  $rows
+     * @param  array<string, array<string, mixed>>  $postMedia
+     * @return list<array<string, mixed>>
+     */
+    private function top(array $rows, array $postMedia): array
+    {
+        return array_map(function (object $row) use ($postMedia): array {
             return [
                 'id' => $row->id,
                 'post_id' => $row->post_id,
@@ -309,6 +340,7 @@ class BuildPublicationAnalyticsReport
                 'permalink' => $row->permalink,
                 'excerpt' => $row->excerpt,
                 'preview_metadata' => $row->preview_metadata ? json_decode((string) $row->preview_metadata, true) : null,
+                'media' => filled($row->post_id) ? data_get($postMedia, $row->post_id) : null,
                 'reactions' => $row->reactions_count === null ? null : (int) $row->reactions_count,
                 'comments' => $row->comments_count === null ? null : (int) $row->comments_count,
             ];

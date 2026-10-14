@@ -43,6 +43,9 @@ const clear = (): void => {
         <template #icon>
             <IconLayoutGrid class="size-4" />
         </template>
+        <template #before-options>
+            <div class="pt-2" />
+        </template>
         <template #footer>
             <div
                 class="-mx-3 mt-2 flex items-center border-t border-border px-3 pt-2"

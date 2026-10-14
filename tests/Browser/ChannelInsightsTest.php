@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
@@ -349,5 +350,30 @@ test('the per post table shows ten posts per page with numbered pages kept in th
     waitForChannelInsightsScript($page, 'document.querySelectorAll("#insights-posts-body tr").length === 10');
 
     $page->assertAttribute('@insights-posts-page-1', 'aria-current', 'page')
+        ->assertNoJavaScriptErrors();
+});
+
+test('reels, stories and videos show the content type badge with its icon, other types show none', function () {
+    $this->mostReactions->update(['content_type' => PublicationContentType::Reel]);
+    $this->mostViews->update(['content_type' => PublicationContentType::Story]);
+    $this->previous->update(['content_type' => PublicationContentType::Short, 'provider_published_at' => CarbonImmutable::today('UTC')->subDays(4)->setTime(10, 0)]);
+    $image = channelInsightsBrowserPublication($this->instagram, CarbonImmutable::today('UTC')->subDays(3)->setTime(10, 0), ['reactions_count' => 20]);
+    $image->update(['content_type' => PublicationContentType::Image]);
+    $link = channelInsightsBrowserPublication($this->instagram, CarbonImmutable::today('UTC')->subDays(6)->setTime(10, 0), ['reactions_count' => 15]);
+    $link->update(['content_type' => PublicationContentType::Link]);
+    $video = channelInsightsBrowserPublication($this->instagram, CarbonImmutable::today('UTC')->subDays(7)->setTime(10, 0), ['reactions_count' => 12]);
+    $video->update(['content_type' => PublicationContentType::Video]);
+
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitForChannelInsightsTestId($page, "insights-posts-type-{$this->mostReactions->id}");
+
+    $page->assertVisible("@insights-posts-type-{$this->mostReactions->id}-icon")
+        ->assertVisible("@insights-posts-type-{$this->mostViews->id}-icon")
+        ->assertMissing("@insights-posts-type-{$image->id}")
+        ->assertMissing("@insights-posts-type-{$this->previous->id}")
+        ->assertMissing("@insights-posts-type-{$link->id}")
+        ->assertScript("document.querySelector('[data-testid=\"insights-posts-type-{$video->id}-icon\"]').classList.contains('tabler-icon-video')", true)
+        ->assertScript("document.querySelector('[data-testid=\"insights-posts-type-{$this->mostReactions->id}-icon\"]').classList.contains('tabler-icon-circle-play')", true)
+        ->assertScript("document.querySelector('[data-testid=\"insights-posts-type-{$this->mostViews->id}-icon\"]').classList.contains('tabler-icon-circle-dashed-plus')", true)
         ->assertNoJavaScriptErrors();
 });

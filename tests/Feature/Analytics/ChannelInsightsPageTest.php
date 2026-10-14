@@ -110,6 +110,27 @@ test('the insights page renders the channel report and its publications', functi
             ->etc());
 });
 
+test('publications show the post media from our bucket instead of the network preview', function () {
+    $image = ['id' => 'image', 'path' => 'medias/a.jpg', 'url' => 'https://cdn.trypost.test/medias/a.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'];
+    $video = ['id' => 'video', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'meta' => ['cover_offset_ms' => 1500]];
+    $imagePost = Post::factory()->forAccount($this->instagram)->published()->create(['media' => [$image]]);
+    $videoPost = Post::factory()->forAccount($this->instagram)->published()->create(['media' => [$video]]);
+    $expired = ['preview_metadata' => ['thumbnail_url' => 'https://scontent.cdninstagram.com/expired.jpg?oe=6ACC450F']];
+    channelInsightsPublication($this->instagram, '2026-09-20 10:00:00', ['reactions_count' => 8], [...$expired, 'post_id' => $imagePost->id]);
+    channelInsightsPublication($this->instagram, '2026-09-19 10:00:00', ['reactions_count' => 3], [...$expired, 'post_id' => $videoPost->id]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.channels.insights', $this->instagram))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('publications.data.0.thumbnail_url', $image['url'])
+            ->where('publications.data.0.media.url', $image['url'])
+            ->where('publications.data.1.media.url', $video['url'])
+            ->where('publications.data.1.media.type', 'video')
+            ->where('publications.data.1.media.meta.cover_offset_ms', 1500)
+            ->etc());
+});
+
 test('publications sort by the chosen metric with nulls last and ties by published date', function () {
     $older = channelInsightsPublication($this->instagram, '2026-09-10 10:00:00', ['reactions_count' => 5, 'views_count' => 100]);
     $top = channelInsightsPublication($this->instagram, '2026-09-11 10:00:00', ['reactions_count' => 10, 'views_count' => null]);

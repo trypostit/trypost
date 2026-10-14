@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\SyncCollector;
 use App\Enums\Analytics\SyncStatus;
 use App\Enums\SocialAccount\Platform;
@@ -647,4 +648,41 @@ test('charts keep their width while the sidebar animates and resize once it sett
     expect(array_unique($widths['during']))->toBe([$widths['before']])
         ->and($widths['after'])->toBeGreaterThan($widths['before']);
     $page->assertNoJavaScriptErrors();
+});
+
+test('top posts tag each post type like the channel table', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $publications = [];
+
+    foreach ([
+        'reel' => [Platform::Instagram, PublicationContentType::Reel],
+        'image' => [Platform::Instagram, PublicationContentType::Image],
+        'tiktok' => [Platform::TikTok, PublicationContentType::Video],
+    ] as $key => [$platform, $contentType]) {
+        $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => $platform]);
+        $publications[$key] = AnalyticsPublication::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => $platform,
+            'network' => $platform->network(),
+            'content_type' => $contentType,
+            'provider_published_at' => now()->subDays(3)->setTime(10, 0),
+        ]);
+        AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publications[$key]->id, 'reactions_count' => 10]);
+    }
+
+    $this->actingAs($user);
+    $page = visit(route('app.insights'));
+    waitForWorkspaceInsightsTestId($page, "analytics-top-post-type-{$publications['reel']->id}");
+
+    $page->assertScript("document.querySelector('[data-testid=\"analytics-top-post-type-{$publications['reel']->id}-icon\"]').classList.contains('tabler-icon-circle-play')", true)
+        ->assertMissing("@analytics-top-post-type-{$publications['image']->id}")
+        ->assertMissing("@analytics-top-post-type-{$publications['tiktok']->id}")
+        ->assertNoJavaScriptErrors();
 });

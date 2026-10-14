@@ -1,3 +1,4 @@
+import type { MediaItem } from '@/types/media';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface Comparison {
@@ -51,6 +52,7 @@ export interface TopPost {
     permalink: string | null;
     excerpt: string | null;
     preview_metadata: Record<string, unknown> | null;
+    media: MediaItem | null;
     reactions: number | null;
     comments: number | null;
 }
@@ -231,6 +233,7 @@ export interface ChannelPublicationRow {
     rank: number;
     excerpt: string | null;
     thumbnail_url: string | null;
+    media: MediaItem | null;
     permalink: string | null;
     published_at: string;
     content_type: string | null;

@@ -5,16 +5,15 @@ import {
     IconChevronDown,
     IconChevronLeft,
     IconChevronRight,
-    IconCopy,
     IconDotsVertical,
     IconExternalLink,
     IconLayoutColumns,
     IconLink,
     IconPhoto,
-    IconPlayerPlayFilled,
 } from '@tabler/icons-vue';
-import { computed, ref, watch, type Component } from 'vue';
+import { computed, ref, watch } from 'vue';
 
+import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -38,11 +37,13 @@ import {
 } from '@/components/ui/table';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
+import { isVideo } from '@/lib/mediaType';
 import {
     copyToClipboard,
     formatNumberCompact,
     formatPercent,
 } from '@/lib/utils';
+import { videoFrameUrl } from '@/lib/videoFrame';
 import type {
     AnalyticsReport,
     ChannelInsightsFilters,
@@ -208,19 +209,6 @@ const pages = computed<PageItem[]>(() => {
     return items;
 });
 
-const OVERLAY_ICONS: Partial<Record<string, Component>> = {
-    video: IconPlayerPlayFilled,
-    reel: IconPlayerPlayFilled,
-    short: IconPlayerPlayFilled,
-    carousel: IconCopy,
-};
-const BADGED_TYPES = ['video', 'reel', 'story', 'short', 'link', 'poll'];
-
-const overlayIcon = (row: ChannelPublicationRow): Component | undefined =>
-    row.content_type ? OVERLAY_ICONS[row.content_type] : undefined;
-
-const hasTypeBadge = (row: ChannelPublicationRow): boolean =>
-    row.content_type !== null && BADGED_TYPES.includes(row.content_type);
 
 const isReloading = ref(false);
 
@@ -492,10 +480,22 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                             >#{{ row.rank }}</span
                                         >
                                         <span
-                                            class="relative flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
+                                            class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
                                         >
+                                            <video
+                                                v-if="
+                                                    row.media &&
+                                                    isVideo(row.media)
+                                                "
+                                                :src="videoFrameUrl(row.media)"
+                                                class="size-full object-cover"
+                                                muted
+                                                playsinline
+                                                preload="metadata"
+                                                :data-testid="`insights-posts-video-${row.id}`"
+                                            />
                                             <img
-                                                v-if="row.thumbnail_url"
+                                                v-else-if="row.thumbnail_url"
                                                 :src="row.thumbnail_url"
                                                 alt=""
                                                 class="size-full object-cover"
@@ -506,17 +506,6 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                                 class="size-4"
                                                 aria-hidden="true"
                                             />
-                                            <span
-                                                v-if="overlayIcon(row)"
-                                                class="absolute right-1 bottom-1 flex size-5 items-center justify-center rounded-md bg-black/60 text-white"
-                                                :data-testid="`insights-posts-type-icon-${row.id}`"
-                                            >
-                                                <component
-                                                    :is="overlayIcon(row)"
-                                                    class="size-3"
-                                                    aria-hidden="true"
-                                                />
-                                            </span>
                                         </span>
                                         <span
                                             class="flex min-w-0 flex-col gap-0.5 whitespace-normal"
@@ -544,16 +533,11 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                                         row.published_at,
                                                     )
                                                 }}
-                                                <span
-                                                    v-if="hasTypeBadge(row)"
-                                                    class="inline-flex h-4.5 shrink-0 items-center rounded-full bg-secondary px-1.5 text-xs font-medium text-foreground"
-                                                    :data-testid="`insights-posts-type-${row.id}`"
-                                                    >{{
-                                                        $t(
-                                                            `analytics.detail.content_types.${row.content_type}`,
-                                                        )
-                                                    }}</span
-                                                >
+                                                <PublicationTypeBadge
+                                                    :platform="platform"
+                                                    :content-type="row.content_type"
+                                                    :test-id="`insights-posts-type-${row.id}`"
+                                                />
                                             </span>
                                         </span>
                                     </button>

@@ -82,6 +82,7 @@ class TikTokPublicationCollector extends AbstractPublicationHistoryCollector
                 providerPostId: $postId,
                 publishedAt: $publishedAt,
                 contentType: PublicationContentType::Video,
+                contentTypeReported: false,
                 providerContentType: 'video',
                 permalink: data_get($row, 'share_url'),
                 excerpt: data_get($row, 'video_description') ?: data_get($row, 'title'),

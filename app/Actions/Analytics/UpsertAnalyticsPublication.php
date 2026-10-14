@@ -48,6 +48,7 @@ class UpsertAnalyticsPublication
             providerMetadata: $publication->providerMetadata,
             providerSyncedAt: now(),
             liveAccount: $account,
+            contentTypeReported: $publication->contentTypeReported,
         );
     }
 
@@ -179,6 +180,7 @@ class UpsertAnalyticsPublication
         ?string $postId = null,
         ?DateTimeInterface $providerSyncedAt = null,
         ?SocialAccount $liveAccount = null,
+        bool $contentTypeReported = true,
     ): AnalyticsPublication {
         $excerpt = $excerpt === null ? null : mb_strcut($excerpt, 0, self::EXCERPT_MAX_BYTES, 'UTF-8');
 
@@ -198,6 +200,7 @@ class UpsertAnalyticsPublication
                 $providerSyncedAt,
                 $liveAccount,
                 true,
+                $contentTypeReported,
             );
         } catch (UniqueConstraintViolationException) {
             return $this->write(
@@ -215,6 +218,7 @@ class UpsertAnalyticsPublication
                 $providerSyncedAt,
                 $liveAccount,
                 false,
+                $contentTypeReported,
             );
         }
     }
@@ -238,8 +242,9 @@ class UpsertAnalyticsPublication
         ?DateTimeInterface $providerSyncedAt,
         ?SocialAccount $liveAccount,
         bool $mayCreate,
+        bool $contentTypeReported,
     ): AnalyticsPublication {
-        return DB::transaction(function () use ($contentType, $excerpt, $identity, $liveAccount, $mayCreate, $origin, $permalink, $postId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
+        return DB::transaction(function () use ($contentType, $contentTypeReported, $excerpt, $identity, $liveAccount, $mayCreate, $origin, $permalink, $postId, $previewMetadata, $providerContentType, $providerMetadata, $providerPostId, $providerPublishedAt, $providerSyncedAt): AnalyticsPublication {
             $identityFields = [
                 'workspace_id' => $identity->workspaceId,
                 'social_account_key' => $identity->socialAccountKey,
@@ -281,7 +286,7 @@ class UpsertAnalyticsPublication
                 'origin' => $origin === PublicationOrigin::TryPost
                     ? PublicationOrigin::TryPost
                     : ($publication->origin ?? PublicationOrigin::External),
-                'content_type' => $contentType,
+                'content_type' => $contentTypeReported || ! $publication->exists ? $contentType : $publication->content_type,
                 'availability' => PublicationAvailability::Available,
                 'last_seen_at' => $now,
                 'provider_synced_at' => $providerSyncedAt ?? $publication->provider_synced_at,

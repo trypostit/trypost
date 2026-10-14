@@ -83,6 +83,7 @@ class YouTubePublicationCollector extends AbstractPublicationHistoryCollector
                 providerPostId: (string) $videoId,
                 publishedAt: $publishedAt,
                 contentType: PublicationContentType::Video,
+                contentTypeReported: false,
                 providerContentType: 'video',
                 permalink: "https://www.youtube.com/watch?v={$videoId}",
                 excerpt: data_get($row, 'snippet.description') ?: data_get($row, 'snippet.title'),

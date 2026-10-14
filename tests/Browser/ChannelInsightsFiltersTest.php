@@ -165,3 +165,58 @@ test('the post type filter search matches each word typed in any order and ignor
     $page->assertScript('Array.from(document.querySelectorAll("[data-testid^=insights-post-type-option-]")).map((element) => element.dataset.testid.replace("insights-post-type-option-", "")).join(",")', 'instagram_feed')
         ->assertNoJavaScriptErrors();
 });
+
+test('a channel without the post type filter or the type tag', function (Platform $platform, ContentType $contentType, PublicationContentType $publicationType) {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => $platform]);
+    $publication = insightsFilterPublication($channel, $this->user, CarbonImmutable::today('UTC')->subDays(2)->setTime(10, 0), 10, $contentType, publicationType: $publicationType);
+
+    $page = visit(route('app.channels.insights', $channel));
+    waitForInsightsFilterTestId($page, "insights-posts-row-{$publication->id}");
+
+    $page->assertVisible('@insights-label-filter')
+        ->assertMissing('@insights-post-type-filter')
+        ->assertMissing("@insights-posts-type-{$publication->id}")
+        ->assertNoJavaScriptErrors();
+})->with([
+    'YouTube' => [Platform::YouTube, ContentType::YouTubeShort, PublicationContentType::Short],
+    'Bluesky' => [Platform::Bluesky, ContentType::BlueskyPost, PublicationContentType::Video],
+    'Mastodon' => [Platform::Mastodon, ContentType::MastodonPost, PublicationContentType::Video],
+]);
+
+test('a channel without the post type filter keeps the type tag', function (Platform $platform, ContentType $contentType) {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => $platform]);
+    $publication = insightsFilterPublication($channel, $this->user, CarbonImmutable::today('UTC')->subDays(2)->setTime(10, 0), 10, $contentType, publicationType: PublicationContentType::Video);
+
+    $page = visit(route('app.channels.insights', $channel));
+    waitForInsightsFilterTestId($page, "insights-posts-row-{$publication->id}");
+
+    $page->assertVisible('@insights-label-filter')
+        ->assertMissing('@insights-post-type-filter')
+        ->assertVisible("@insights-posts-type-{$publication->id}")
+        ->assertNoJavaScriptErrors();
+})->with([
+    'X' => [Platform::X, ContentType::XPost],
+    'Threads' => [Platform::Threads, ContentType::ThreadsPost],
+]);
+
+test('a TikTok channel keeps the post type filter but shows no type tag', function () {
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => Platform::TikTok]);
+    $publication = insightsFilterPublication($channel, $this->user, CarbonImmutable::today('UTC')->subDays(2)->setTime(10, 0), 10, ContentType::TikTokPhoto, publicationType: PublicationContentType::Video);
+
+    $page = visit(route('app.channels.insights', $channel));
+    waitForInsightsFilterTestId($page, "insights-posts-row-{$publication->id}");
+
+    $page->assertVisible('@insights-post-type-filter')
+        ->assertMissing("@insights-posts-type-{$publication->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('the post type filter leaves a gap between the search and the first type', function () {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitForInsightsFilterTestId($page, 'insights-post-type-filter');
+    $page->click('@insights-post-type-filter');
+    waitForInsightsFilterTestId($page, 'insights-post-type-option-instagram_feed');
+
+    $page->assertScript('document.querySelector("[data-testid=insights-post-type-option-instagram_feed]").getBoundingClientRect().top - document.querySelector("[data-testid=insights-post-type-search]").getBoundingClientRect().bottom >= 8', true)
+        ->assertNoJavaScriptErrors();
+});

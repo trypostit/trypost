@@ -10,6 +10,7 @@ use Carbon\CarbonImmutable;
 final readonly class DiscoveredPublication
 {
     /**
+     * @param  bool  $contentTypeReported  False when the network does not report the type, so $contentType only fills a new publication.
      * @param  array<string, mixed>|null  $previewMetadata
      * @param  array<string, mixed>|null  $providerMetadata
      */
@@ -22,5 +23,6 @@ final readonly class DiscoveredPublication
         public ?string $excerpt = null,
         public ?array $previewMetadata = null,
         public ?array $providerMetadata = null,
+        public bool $contentTypeReported = true,
     ) {}
 }

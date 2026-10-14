@@ -2,13 +2,16 @@
 import { IconArrowUpRight } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PublicationDetailsDialog from '@/components/publish/PublicationDetailsDialog.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
+import { isVideo } from '@/lib/mediaType';
 import { formatNumberCompact } from '@/lib/utils';
+import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
@@ -54,7 +57,7 @@ const openDetails = (post: TopPost): void => {
     openPublication(post.id);
 };
 const thumbnailFor = (post: TopPost): string | null => {
-    const value = post.preview_metadata?.thumbnail_url;
+    const value = post.media?.url ?? post.preview_metadata?.thumbnail_url;
     return typeof value === 'string' && /^https:\/\//i.test(value)
         ? value
         : null;
@@ -144,14 +147,11 @@ const thumbnailFor = (post: TopPost): string | null => {
                                 date.formatDateShort(post.published_at)
                             }}</span>
                         </span>
-                        <span
-                            class="inline-flex h-4.5 shrink-0 items-center rounded-full bg-secondary px-1 text-xs font-medium text-foreground"
-                            >{{
-                                $t(
-                                    `analytics.detail.content_types.${post.content_type}`,
-                                )
-                            }}</span
-                        >
+                        <PublicationTypeBadge
+                            :platform="post.platform"
+                            :content-type="post.content_type"
+                            :test-id="`analytics-top-post-type-${post.id}`"
+                        />
                     </div>
                     <div class="flex min-h-[54px] gap-3">
                         <p
@@ -162,8 +162,17 @@ const thumbnailFor = (post: TopPost): string | null => {
                                 $t('analytics.dashboard.no_excerpt')
                             }}
                         </p>
+                        <video
+                            v-if="post.media && isVideo(post.media)"
+                            :src="videoFrameUrl(post.media)"
+                            class="size-11 shrink-0 rounded-md object-cover"
+                            muted
+                            playsinline
+                            preload="metadata"
+                            data-testid="analytics-top-post-video"
+                        />
                         <img
-                            v-if="thumbnailFor(post)"
+                            v-else-if="thumbnailFor(post)"
                             :src="thumbnailFor(post)!"
                             alt=""
                             loading="lazy"

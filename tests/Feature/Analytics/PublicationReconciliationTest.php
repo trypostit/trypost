@@ -265,3 +265,52 @@ test('a less-than sign typed in a TryPost post stays in its analytics excerpt', 
 
     expect(app(SyncTryPostPublication::class)->handle($post->fresh())->excerpt)->toBe('I <3 TryPost and price < 10');
 });
+
+test('a network that does not report the type keeps the type TryPost published', function (Platform $platform, ContentType $contentType, PublicationContentType $expected) {
+    $account = SocialAccount::factory()->create(['platform' => $platform]);
+    $post = Post::factory()->forAccount($account, $contentType)->published()->create(['platform_post_id' => 'remote-1']);
+    app(SyncTryPostPublication::class)->handle($post);
+
+    app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'remote-1',
+        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        contentType: PublicationContentType::Video,
+        contentTypeReported: false,
+    ));
+
+    expect(AnalyticsPublication::sole()->content_type)->toBe($expected);
+})->with([
+    'TikTok photo' => [Platform::TikTok, ContentType::TikTokPhoto, PublicationContentType::Carousel],
+    'YouTube Short' => [Platform::YouTube, ContentType::YouTubeShort, PublicationContentType::Short],
+]);
+
+test('a network that does not report the type stores its default on a new publication', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::TikTok]);
+
+    app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'remote-1',
+        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        contentType: PublicationContentType::Video,
+        contentTypeReported: false,
+    ));
+
+    expect(AnalyticsPublication::sole()->content_type)->toBe(PublicationContentType::Video);
+});
+
+test('a network that reports the type still corrects the type TryPost published', function () {
+    $account = SocialAccount::factory()->create(['platform' => Platform::Instagram]);
+    $video = Media::factory()->video()->create();
+    $post = Post::factory()->forAccount($account, ContentType::InstagramFeed)->published()->create([
+        'platform_post_id' => 'remote-1',
+        'media' => [['id' => $video->id, 'path' => $video->path, 'url' => $video->url, 'type' => 'video', 'mime_type' => 'video/mp4']],
+    ]);
+    app(SyncTryPostPublication::class)->handle($post);
+
+    app(UpsertAnalyticsPublication::class)->external($account, new DiscoveredPublication(
+        providerPostId: 'remote-1',
+        publishedAt: CarbonImmutable::parse('2026-09-20 12:00:00', 'UTC'),
+        contentType: PublicationContentType::Reel,
+    ));
+
+    expect(AnalyticsPublication::sole()->content_type)->toBe(PublicationContentType::Reel);
+});
