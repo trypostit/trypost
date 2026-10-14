@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { computed, useTemplateRef } from 'vue';
+import {
+    IconDeviceDesktop,
+    IconDeviceMobile,
+    IconDeviceTablet,
+} from '@tabler/icons-vue';
+import { computed, type Component, useTemplateRef } from 'vue';
 
 import SessionController from '@/actions/App/Http/Controllers/App/Settings/SessionController';
 import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
@@ -9,7 +14,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     browserIconUrl,
-    deviceIconUrl,
     isMonochromeOsIcon,
     osIconUrl,
     parseBrowserName,
@@ -18,6 +22,7 @@ import {
     parseOsName,
     parseOsVersion,
 } from '@/lib/userAgent';
+import type { DeviceType } from '@/lib/userAgent';
 
 export type Session = {
     id: string;
@@ -26,6 +31,12 @@ export type Session = {
     last_active: string;
     last_page: string | null;
     is_current: boolean;
+};
+
+const DEVICE_ICONS: Record<DeviceType, Component> = {
+    desktop: IconDeviceDesktop,
+    mobile: IconDeviceMobile,
+    tablet: IconDeviceTablet,
 };
 
 const props = defineProps<{
@@ -106,10 +117,10 @@ const openLogoutDialog = (): void => {
                 <p
                     class="flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground"
                 >
-                    <img
-                        :src="deviceIconUrl(session.user_agent)"
-                        alt=""
-                        class="size-4 shrink-0 object-contain"
+                    <component
+                        :is="DEVICE_ICONS[parseDeviceType(session.user_agent)]"
+                        class="size-4 shrink-0"
+                        aria-hidden="true"
                         :data-testid="`session-device-icon-${session.id}`"
                     />
                     <span>{{

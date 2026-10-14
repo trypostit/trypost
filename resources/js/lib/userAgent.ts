@@ -233,9 +233,6 @@ export const parseDeviceType = (userAgent: string | null): DeviceType => {
     return 'desktop';
 };
 
-export const deviceIconUrl = (userAgent: string | null): string =>
-    `/images/devices/${parseDeviceType(userAgent)}.png`;
-
 const BROWSER_VERSION_PATTERNS: Record<string, RegExp> = {
     Chrome: /(?:Chrome|CriOS)\/(\d+(?:\.\d+)*)/,
     Chromium: /Chromium\/(\d+(?:\.\d+)*)/,
