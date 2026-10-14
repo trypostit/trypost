@@ -246,6 +246,21 @@ Typing the exact name is the stronger guard for the identity-bound ones, on purp
 - **Exception — disconnecting a channel** (`DisconnectChannelDialog`, user decision October 2026): its keyword, `channels.disconnect_modal.keyword`, is translated and **lowercase** (`disconnect`, `desconectar`, …), shown as the input placeholder and in the copyable keyword line `Type [disconnect ⧉] to confirm.` (same markup as `ConfirmDeleteModal`), and still compared case-sensitively after trimming (`DISCONNECT` must not confirm). The dialog ends its description with a bold `This cannot be undone.` and offers **Refresh connection** before disconnecting. Do not carry either into the other dialogs.
 - **Disconnecting an MCP app** (`settings/workspace/Mcp.vue`, owner decision October 2026) asks for the same `channels.disconnect_modal.keyword`, not the app's name, so the word matches the channel dialog in every locale (compared case-sensitively after trimming). It keeps the plain `ConfirmDeleteModal` without the refresh option or the bold line.
 
+## Writing in-app copy
+
+Text inside the app (popovers, empty states, dialogs, tooltips that ask for an action, errors, toasts) talks to the end user, who is in the middle of doing something. Write it from their side, not from how the system is built. The `copywriting` skill in `.agents/skills` is for marketing pages; it does not apply here.
+
+- **A prompt that asks the user to act follows three steps, in this order** (owner decision October 2026):
+    1. **What is missing, in the user's words and addressed to them:** "You haven't set up this channel's queue yet". Not a system state ("Set up the queue first", "No posting times configured").
+    2. **Why it matters for what they just tried:** "To add posts to the queue, set this channel's posting times." Tie it to the click that opened the prompt, never to how the feature works in general.
+    3. **The next action, named by its button:** the body leads to the button ("Set posting times"), and the button says exactly what happens. Keep a way out ("Not now").
+- **Talk to the user ("you"), lead with the point, keep it short.** One or two sentences. No explanation of the mechanism before the user knows what to do, no apology, no "please", no blame, no generic "This action cannot be undone" line.
+- **A user who cannot do the action** (a member without the permission) gets the same title and a body that names who can do it: "To add posts to the queue, a workspace admin needs to set this channel's posting times." Never show them a button they cannot use.
+- **Errors say what happened and how to fix it**, in the interface's voice: "Couldn't load music from Instagram. Try again." Not "Something went wrong".
+- **Use the words the user already sees on screen.** The same action keeps the same name everywhere (the button "Add to queue", the tab "Queue", the prompt "the queue"). Never introduce internal names (slots, holders, destinations, meta).
+- **Every locale follows the same structure**, written natively, not word for word: keep each locale's existing word for the feature (Fila, Warteschlange, file, cola), and rephrase a sentence that needs grammatical gender for the user into an impersonal one (Polish "Kolejka tego kanału nie jest jeszcze skonfigurowana").
+- Reference: the queue setup popover (`posts.publish.actions.queue_setup`, shown by `AddToQueueButton.vue`).
+
 ## Translated copy must fit its UI slot
 
 Every lang string is rendered in all 16 locales, and the longest one decides the layout. Menu items, buttons, tabs, badges and other single-line controls must not wrap onto a second line in any locale.
