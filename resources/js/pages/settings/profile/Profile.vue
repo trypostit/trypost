@@ -26,7 +26,6 @@ const PROFILE_TABS: ProfileTab[] = ['profile', 'login', 'sessions'];
 
 interface Props {
     mustVerifyEmail: boolean;
-    status?: string;
     hasPassword: boolean;
     passwordRequirements: PasswordRequirement[];
     connectedAccounts: ConnectedAccount[];
@@ -148,13 +147,6 @@ const selectTab = (value: string | number): void => {
                                 >
                                     {{ $t('settings.profile.resend_verification') }}
                                 </Link>
-                            </p>
-
-                            <p
-                                v-if="status === 'verification-link-sent'"
-                                class="text-sm font-medium text-success-text"
-                            >
-                                {{ $t('settings.profile.verification_sent') }}
                             </p>
                         </div>
 
