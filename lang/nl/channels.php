@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => 'Sleep om :name te verplaatsen',
-        'move_up' => 'Omhoog',
-        'move_down' => 'Omlaag',
         'failed' => 'Je kanalen konden niet opnieuw worden geordend. Probeer het opnieuw.',
         'stale' => 'Je kanalen zijn gewijzigd sinds je de pagina hebt geladen. Vernieuw en probeer het opnieuw.',
     ],

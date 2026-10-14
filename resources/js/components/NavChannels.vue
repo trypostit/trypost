@@ -60,7 +60,6 @@ const { vSortableChannel, vSortableChannelList, onHandleKeydown, dragPreview } =
     useChannelOrder({
         list: 'sidebar',
         order: () => channels.value.map((channel) => channel.id),
-        placeholder: true,
     });
 const reorderable = computed(
     () => canManageAccounts.value && channels.value.length > 1,

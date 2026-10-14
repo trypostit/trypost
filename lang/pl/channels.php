@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => 'Przeciągnij, aby zmienić kolejność: :name',
-        'move_up' => 'Przenieś w górę',
-        'move_down' => 'Przenieś w dół',
         'failed' => 'Nie udało się zmienić kolejności kanałów. Spróbuj ponownie.',
         'stale' => 'Twoje kanały zmieniły się od załadowania strony. Odśwież i spróbuj ponownie.',
     ],

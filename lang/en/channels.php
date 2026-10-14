@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => 'Drag to reorder :name',
-        'move_up' => 'Move up',
-        'move_down' => 'Move down',
         'failed' => 'Could not reorder your channels. Try again.',
         'stale' => 'Your channels changed since you loaded the page. Refresh and try again.',
     ],

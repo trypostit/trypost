@@ -1,4 +1,3 @@
-import { combine } from '@atlaskit/pragmatic-drag-and-drop/combine';
 import {
     draggable,
     dropTargetForElements,
@@ -6,9 +5,6 @@ import {
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { disableNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview';
 import { reorder } from '@atlaskit/pragmatic-drag-and-drop/reorder';
-import { attachClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge/attach-closest-edge';
-import { extractClosestEdge } from '@atlaskit/pragmatic-drag-and-drop-hitbox/closest-edge/extract-closest-edge';
-import { getReorderDestinationIndex } from '@atlaskit/pragmatic-drag-and-drop-hitbox/util/get-reorder-destination-index';
 import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { nextTick, onBeforeUnmount, ref, type Directive, type Ref } from 'vue';
@@ -20,11 +16,6 @@ import {
     placeholderIndexAt,
 } from '@/lib/dragPlaceholder';
 import { reorder as reorderChannels } from '@/routes/app/channels';
-
-export interface ChannelDropIndicator {
-    channelId: string;
-    edge: 'top' | 'bottom';
-}
 
 export interface ChannelDragPreview {
     channelId: string;
@@ -137,26 +128,22 @@ const focusHandle = (list: string, channelId: string): void => {
 /**
  * Drag-and-drop (by handle) and keyboard reordering for one rendered list of
  * channels. `list` keeps two lists on the same page from accepting each
- * other's drops; `order` returns the ids as currently rendered. With
- * `placeholder`, the list element bound with `vSortableChannelList` is the
- * only drop target: the dragged row collapses, `dragPreview` holds the slot
- * it would land in, and dropping anywhere over the list lands it there.
+ * other's drops; `order` returns the ids as currently rendered. The list
+ * element bound with `vSortableChannelList` is the only drop target: the
+ * dragged row collapses, `dragPreview` holds the slot it would land in, and
+ * dropping anywhere over the list lands it there.
  */
 export const useChannelOrder = (options: {
     list: string;
     order: () => string[];
-    placeholder?: boolean;
 }): {
     vSortableChannel: Directive<HTMLElement, string | null>;
     vSortableChannelList: Directive<HTMLElement, boolean>;
-    move: (channelId: string, offset: -1 | 1) => void;
     onHandleKeydown: (event: KeyboardEvent, channelId: string) => void;
-    dropIndicator: Ref<ChannelDropIndicator | null>;
     dragPreview: Ref<ChannelDragPreview | null>;
     saving: Ref<boolean>;
 } => {
     const { list } = options;
-    const dropIndicator = ref<ChannelDropIndicator | null>(null);
     const dragPreview = ref<ChannelDragPreview | null>(null);
     let listElement: HTMLElement | null = null;
     let startIndex = -1;
@@ -235,65 +222,29 @@ export const useChannelOrder = (options: {
         saveChannelOrder(next);
     };
 
-    const dropOnRow = (
-        channelId: string,
-        target: { data: Record<string | symbol, unknown> } | undefined,
-    ): void => {
-        if (!target || !isChannelItem(target.data, list)) {
-            return;
-        }
-
-        const order = options.order();
-        const start = order.indexOf(channelId);
-        const targetIndex = order.indexOf(target.data.channelId);
-
-        if (start === -1 || targetIndex === -1) {
-            return;
-        }
-
-        const finishIndex = getReorderDestinationIndex({
-            startIndex: start,
-            indexOfTarget: targetIndex,
-            closestEdgeOfTarget: extractClosestEdge(target.data),
-            axis: 'vertical',
-        });
-
-        if (finishIndex !== start) {
-            saveChannelOrder(reorder({ list: order, startIndex: start, finishIndex }));
-        }
-    };
-
     const stopMonitor = monitorForElements({
         canMonitor: ({ source }) => isChannelItem(source.data, list),
         onDragStart: ({ source }) => {
-            if (options.placeholder && isChannelItem(source.data, list)) {
+            if (isChannelItem(source.data, list)) {
                 startPreview(source.data.channelId);
             }
         },
         onDrop: ({ source, location }) => {
-            dropIndicator.value = null;
-
             if (!isChannelItem(source.data, list)) {
                 endPreview();
 
                 return;
             }
 
-            if (options.placeholder) {
-                const overList = location.current.dropTargets.some((target) =>
-                    isListTarget(target.data, list),
-                );
+            const overList = location.current.dropTargets.some((target) =>
+                isListTarget(target.data, list),
+            );
 
-                if (overList) {
-                    placeAt(location.current.input);
-                }
-
-                dropPreview(source.data.channelId, overList);
-
-                return;
+            if (overList) {
+                placeAt(location.current.input);
             }
 
-            dropOnRow(source.data.channelId, location.current.dropTargets[0]);
+            dropPreview(source.data.channelId, overList);
         },
     });
 
@@ -306,62 +257,16 @@ export const useChannelOrder = (options: {
         row: HTMLElement,
         handle: HTMLElement,
         channelId: string,
-    ): (() => void) => {
-        const drag = draggable({
+    ): (() => void) =>
+        draggable({
             element: row,
             dragHandle: handle,
             getInitialData: () => ({ [ITEM_KEY]: list, channelId }),
-            onGenerateDragPreview: ({ nativeSetDragImage }) => {
-                if (options.placeholder) {
-                    disableNativeDragPreview({ nativeSetDragImage });
-                }
-            },
+            onGenerateDragPreview: ({ nativeSetDragImage }) =>
+                disableNativeDragPreview({ nativeSetDragImage }),
             onDragStart: () => row.setAttribute('data-dragging', ''),
             onDrop: () => row.removeAttribute('data-dragging'),
         });
-
-        if (options.placeholder) {
-            return drag;
-        }
-
-        return combine(
-            drag,
-            dropTargetForElements({
-                element: row,
-                canDrop: ({ source }) => isChannelItem(source.data, list),
-                getData: ({ input }) =>
-                    attachClosestEdge(
-                        { [ITEM_KEY]: list, channelId },
-                        {
-                            element: row,
-                            input,
-                            allowedEdges: ['top', 'bottom'],
-                        },
-                    ),
-                onDrag: ({ self, source }) => {
-                    const edge = extractClosestEdge(self.data);
-
-                    dropIndicator.value =
-                        edge &&
-                        isChannelItem(source.data, list) &&
-                        source.data.channelId !== channelId
-                            ? {
-                                  channelId,
-                                  edge: edge === 'bottom' ? 'bottom' : 'top',
-                              }
-                            : null;
-                },
-                onDragLeave: () => {
-                    if (dropIndicator.value?.channelId === channelId) {
-                        dropIndicator.value = null;
-                    }
-                },
-                onDrop: () => {
-                    dropIndicator.value = null;
-                },
-            }),
-        );
-    };
 
     const cleanups = new WeakMap<HTMLElement, () => void>();
 
@@ -483,9 +388,7 @@ export const useChannelOrder = (options: {
     return {
         vSortableChannel,
         vSortableChannelList,
-        move,
         onHandleKeydown,
-        dropIndicator,
         dragPreview,
         saving,
     };

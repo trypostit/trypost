@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => ':name öğesini sürükleyerek sırala',
-        'move_up' => 'Yukarı taşı',
-        'move_down' => 'Aşağı taşı',
         'failed' => 'Kanallarınız yeniden sıralanamadı. Tekrar deneyin.',
         'stale' => 'Sayfayı yüklediğinizden beri kanallarınız değişti. Yenileyip tekrar deneyin.',
     ],

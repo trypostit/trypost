@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => 'Arraste para reordenar :name',
-        'move_up' => 'Mover para cima',
-        'move_down' => 'Mover para baixo',
         'failed' => 'Não foi possível reordenar seus canais. Tente novamente.',
         'stale' => 'Seus canais mudaram desde que você abriu a página. Atualize e tente novamente.',
     ],

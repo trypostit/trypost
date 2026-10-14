@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => '拖动以重新排序 :name',
-        'move_up' => '上移',
-        'move_down' => '下移',
         'failed' => '无法重新排序你的频道。请重试。',
         'stale' => '加载页面后你的频道已发生变化。请刷新后重试。',
     ],

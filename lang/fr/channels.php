@@ -23,8 +23,6 @@ return [
 
     'reorder' => [
         'handle' => 'Glisser pour réorganiser :name',
-        'move_up' => 'Monter',
-        'move_down' => 'Descendre',
         'failed' => 'Impossible de réorganiser vos canaux. Réessayez.',
         'stale' => 'Vos canaux ont changé depuis le chargement de la page. Actualisez et réessayez.',
     ],
