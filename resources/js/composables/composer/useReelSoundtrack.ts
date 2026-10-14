@@ -16,6 +16,7 @@ import type { InstagramAudio } from '@/types/instagram';
 interface PreviewSoundtrack {
     playing: ComputedRef<boolean>;
     videoVolume: ComputedRef<number>;
+    start: () => void;
     stop: () => void;
 }
 
@@ -73,8 +74,9 @@ export const soundtrackLabel = (
         : null;
 
 /**
- * Lets the reel preview's video follow the post's picked track: it plays
- * while that track plays, at the chosen video volume.
+ * Ties the reel preview's video to the post's picked track: playing either
+ * one plays the other, the video at the chosen video volume and the track at
+ * the chosen music volume.
  */
 export const providePreviewSoundtrack = (
     audio: () => InstagramAudio | null,
@@ -85,20 +87,27 @@ export const providePreviewSoundtrack = (
                 Boolean(audio()?.id) && playingAudioId.value === audio()?.id,
         ),
         videoVolume: computed(() => (audio()?.video_volume ?? 100) / 100),
+        start: () => {
+            const track = audio();
+            if (track?.id && track.preview_url) {
+                play(track.id, track.preview_url, track.audio_volume ?? 100);
+            }
+        },
         stop,
     });
 };
 
 /**
- * Plays a preview video along with the soundtrack its reel provides, and
- * stops the soundtrack when the video is paused. Outside a reel preview it
- * does nothing.
+ * Plays a preview video and the soundtrack its reel provides together: the
+ * track starts the video from the beginning, the video starts the track, and
+ * pausing or ending the video stops the track. Outside a reel preview it does
+ * nothing.
  *
- * @returns what to call when the video pauses
+ * @returns what to call when the video plays and when it pauses
  */
 export const useSoundtrackVideo = (
     video: Ref<HTMLVideoElement | null>,
-): (() => void) => {
+): { onVideoPlay: () => void; onVideoPause: () => void } => {
     const soundtrack = inject(PREVIEW_SOUNDTRACK, null);
 
     watch(
@@ -110,8 +119,9 @@ export const useSoundtrackVideo = (
                 element.pause();
                 return;
             }
-            element.currentTime = 0;
             element.volume = soundtrack?.videoVolume.value ?? 1;
+            if (!element.paused) return;
+            element.currentTime = 0;
             void element.play().catch((error: unknown) => {
                 if ((error as DOMException)?.name !== 'AbortError') {
                     soundtrack?.stop();
@@ -129,7 +139,12 @@ export const useSoundtrackVideo = (
         },
     );
 
-    return (): void => {
-        if (soundtrack?.playing.value) soundtrack.stop();
+    return {
+        onVideoPlay: (): void => {
+            if (soundtrack && !soundtrack.playing.value) soundtrack.start();
+        },
+        onVideoPause: (): void => {
+            if (soundtrack?.playing.value) soundtrack.stop();
+        },
     };
 };

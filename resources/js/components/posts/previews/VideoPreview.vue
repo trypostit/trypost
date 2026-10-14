@@ -17,15 +17,16 @@ const props = withDefaults(
 const videoRef = ref<HTMLVideoElement | null>(null);
 const isPlaying = ref(false);
 
+const soundtrack = useSoundtrackVideo(videoRef);
+
 const markPlaying = (): void => {
     isPlaying.value = true;
+    soundtrack.onVideoPlay();
 };
-
-const stopSoundtrack = useSoundtrackVideo(videoRef);
 
 const markPaused = (): void => {
     isPlaying.value = false;
-    stopSoundtrack();
+    soundtrack.onVideoPause();
 };
 
 const toggle = () => {
