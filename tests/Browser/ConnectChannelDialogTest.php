@@ -213,7 +213,7 @@ function openInstagramConnectStep(): mixed
     return $page;
 }
 
-test('the instagram step offers the professional card, links its help, opens the facebook requirements and asks before closing', function () {
+test('the instagram step offers the instagram login and facebook cards side by side, links its help and asks before closing', function () {
     $this->actingAs(connectDialogAdmin());
 
     $page = openInstagramConnectStep();
@@ -224,12 +224,43 @@ test('the instagram step offers the professional card, links its help, opens the
         ->assertSeeIn('@instagram-connect-professional', trans('accounts.instagram_connect.features.automatic.description'))
         ->assertSeeIn('@instagram-connect-professional', trans('accounts.instagram_connect.features.metrics.description'))
         ->assertSeeIn('@instagram-connect-standalone', trans('accounts.instagram_connect.connect'))
-        ->assertSeeIn('@instagram-connect-facebook', trans('accounts.instagram_connect.facebook_link'))
+        ->assertSeeIn('@instagram-connect-facebook-card', trans('accounts.instagram_connect.facebook_types'))
+        ->assertSeeIn('@instagram-connect-facebook-feature-music', trans('accounts.instagram_connect.features.music.title'))
+        ->assertSeeIn('@instagram-connect-facebook-card', trans('accounts.instagram_facebook_requirements.heading'))
+        ->assertSeeIn('@instagram-connect-facebook', trans('accounts.instagram_facebook_requirements.connect'))
         ->assertNoJavaScriptErrors();
 
-    $dialogText = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').textContent');
+    $layout = $page->script(<<<'JS'
+        (() => {
+            const instagram = document.querySelector('[data-testid="instagram-connect-professional"]').getBoundingClientRect();
+            const facebook = document.querySelector('[data-testid="instagram-connect-facebook-card"]').getBoundingClientRect();
 
-    expect($dialogText)->not->toContain('Personal')->not->toContain('Notification');
+            const instagramButton = document.querySelector('[data-testid="instagram-connect-standalone"]').getBoundingClientRect();
+            const facebookButton = document.querySelector('[data-testid="instagram-connect-facebook"]').getBoundingClientRect();
+            const scroller = document.querySelector('[data-testid="instagram-connect-options"]').closest('.overflow-y-auto');
+
+            return {
+                sideBySide: facebook.left >= instagram.right && Math.abs(facebook.top - instagram.top) < 1,
+                sameHeight: Math.abs(facebook.height - instagram.height) < 1,
+                buttonsAligned: Math.abs(facebookButton.top - instagramButton.top) < 1,
+                fitsWithoutScroll: scroller.scrollHeight <= scroller.clientHeight,
+            };
+        })();
+    JS);
+
+    expect($layout)->toBe(['sideBySide' => true, 'sameHeight' => true, 'buttonsAligned' => true, 'fitsWithoutScroll' => true]);
+
+    $page->assertMissing('@instagram-connect-facebook-requirements')
+        ->click('@instagram-connect-facebook-requirements-toggle');
+    waitForConnectDialogTestId($page, 'instagram-connect-facebook-requirements');
+    $page->assertVisible('@instagram-connect-facebook-requirements')
+        ->click('@instagram-connect-facebook-requirements-toggle');
+
+    $dialogText = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').textContent');
+    $instagramCardText = $page->script('document.querySelector(\'[data-testid="instagram-connect-professional"]\').textContent');
+
+    expect($dialogText)->not->toContain('Notification')
+        ->and($instagramCardText)->not->toContain('Personal');
 
     $page->click('@instagram-connect-help');
     waitForConnectDialogTestId($page, 'instagram-connect-help-convert');
@@ -256,21 +287,6 @@ test('the instagram step offers the professional card, links its help, opens the
         })();
     JS);
 
-    $page->click('@instagram-connect-facebook');
-    waitForConnectDialogTestId($page, 'instagram-facebook-requirements');
-
-    expect($page->script('window.location.search'))->toBe('');
-    $page->assertVisible('@instagram-facebook-requirements')
-        ->assertSee(trans('accounts.instagram_facebook_requirements.title'))
-        ->assertMissing('@instagram-connect-professional');
-
-    $page->click('@connect-channel-back');
-    waitForConnectDialogTestId($page, 'instagram-connect-professional');
-
-    $page->assertVisible('@instagram-connect-professional')
-        ->assertMissing('@instagram-facebook-requirements')
-        ->assertNoJavaScriptErrors();
-
     $page->click('@dialog-close');
     waitForConnectDialogTestId($page, 'connect-channel-exit-confirm');
 
@@ -292,6 +308,29 @@ test('the instagram step offers the professional card, links its help, opens the
         ->assertNoJavaScriptErrors();
 });
 
+test('on a phone the instagram step stacks the facebook card under the instagram login card', function () {
+    $this->actingAs(connectDialogAdmin());
+
+    $page = visit(route('app.workspace.channels'))->resize(390, 844);
+    waitForConnectDialogTestId($page, 'channels-empty-connect');
+    $page->click('@channels-empty-connect');
+    waitForConnectDialogTestId($page, 'connect-channel-instagram');
+    $page->click('@connect-channel-instagram');
+    waitForConnectDialogTestId($page, 'instagram-connect-facebook-card');
+
+    $stacked = $page->script(<<<'JS'
+        (() => {
+            const instagram = document.querySelector('[data-testid="instagram-connect-professional"]').getBoundingClientRect();
+            const facebook = document.querySelector('[data-testid="instagram-connect-facebook-card"]').getBoundingClientRect();
+
+            return facebook.top >= instagram.bottom && document.documentElement.scrollWidth <= window.innerWidth;
+        })();
+    JS);
+
+    expect($stacked)->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('connect to instagram leaves for the instagram login', function () {
     $this->actingAs(connectDialogAdmin());
     stubConnectDialogProviders();
@@ -303,13 +342,13 @@ test('connect to instagram leaves for the instagram login', function () {
     $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
 
-test('connect through facebook leaves for the facebook login', function () {
+test('connect through facebook on the instagram step leaves for the facebook login', function () {
     $this->actingAs(connectDialogAdmin());
     stubConnectDialogProviders();
 
     $page = openInstagramConnectStep();
-    $page->click('@instagram-connect-facebook');
-    waitForConnectDialogTestId($page, 'instagram-facebook-requirements-connect');
+    $page->click('@instagram-connect-facebook-requirements-toggle');
+    waitForConnectDialogTestId($page, 'instagram-facebook-requirements-learn-how');
 
     $learnHow = $page->script(<<<'JS'
         (() => {
@@ -321,7 +360,7 @@ test('connect through facebook leaves for the facebook login', function () {
 
     expect($learnHow)->toBe(['host' => 'www.facebook.com', 'target' => '_blank']);
 
-    $page->click('@instagram-facebook-requirements-connect');
+    $page->click('@instagram-connect-facebook');
 
     expect(connectDialogReachedProvider($page))->toBe('facebook');
     $page->assertMissing('@connect-channel-dialog')->assertNoJavaScriptErrors();

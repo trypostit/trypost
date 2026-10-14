@@ -54,6 +54,7 @@ return [
         'description' => 'Functies hangen af van het type Instagram-account dat je hebt en de koppeling die je kiest.',
         'professional_title' => 'Professioneel',
         'professional_types' => '(Bedrijf & Creator)',
+        'facebook_types' => '(gekoppeld aan een Facebook-pagina)',
         'badge' => 'Automatisch posten',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Statistieken van verzonden posts',
                 'description' => 'Bekijk de prestaties van eerdere posts',
             ],
+            'music' => [
+                'title' => 'Muziek in reels',
+                'description' => 'Voeg een nummer uit de bibliotheek van Instagram toe',
+            ],
         ],
         'connect' => 'Koppelen met Instagram',
         'convert_hint' => 'Instagram vraagt je indien nodig om eenvoudig over te stappen naar een professioneel account.',
-        'facebook_link' => 'Koppel Instagram via Facebook',
-        'facebook_suffix' => 'als je Instagram-account momenteel aan Facebook is gekoppeld.',
         'help' => [
             'account_type' => 'Het type van je Instagram-account vinden',
             'convert' => 'Je Instagram-account omzetten naar een professioneel account',

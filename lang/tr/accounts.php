@@ -56,6 +56,7 @@ return [
         'description' => 'Özellikler, sahip olduğunuz Instagram hesabı türüne ve seçtiğiniz bağlantıya bağlıdır.',
         'professional_title' => 'Profesyonel',
         'professional_types' => '(İşletme ve İçerik Üreticisi)',
+        'facebook_types' => '(bir Facebook sayfasına bağlı)',
         'badge' => 'Otomatik paylaşım',
         'features' => [
             'automatic' => [
@@ -66,11 +67,13 @@ return [
                 'title' => 'Gönderilen gönderi metrikleri',
                 'description' => 'Geçmiş gönderilerin performansını görün',
             ],
+            'music' => [
+                'title' => 'Reels\'te müzik',
+                'description' => 'Instagram kitaplığından bir parça ekle',
+            ],
         ],
         'connect' => 'Instagram\'a bağlan',
         'convert_hint' => 'Gerekirse Instagram, hesabınızı kolayca profesyonel hesaba dönüştürmenizi isteyecek.',
-        'facebook_link' => 'Instagram\'ı Facebook üzerinden bağlayın',
-        'facebook_suffix' => '(Instagram hesabınız şu anda Facebook\'a bağlıysa).',
         'help' => [
             'account_type' => 'Instagram hesap türünüzü öğrenme',
             'convert' => 'Instagram hesabınızı profesyonel hesaba dönüştürme',

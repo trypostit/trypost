@@ -1,9 +1,5 @@
 <script setup lang="ts">
-import {
-    IconCheck,
-    IconExternalLink,
-} from '@tabler/icons-vue';
-
+import InstagramFacebookRequirementsList from '@/components/channels/InstagramFacebookRequirementsList.vue';
 import InstagramHelpMenu from '@/components/channels/InstagramHelpMenu.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
@@ -12,11 +8,6 @@ import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
 const emit = defineEmits<{
     connect: [];
 }>();
-
-const REQUIREMENTS = ['account_type', 'page', 'admin', 'permissions'] as const;
-
-const LINK_PAGE_HELP_URL =
-    'https://www.facebook.com/business/help/connect-instagram-to-page';
 </script>
 
 <template>
@@ -54,48 +45,7 @@ const LINK_PAGE_HELP_URL =
                         {{ $t('accounts.instagram_facebook_requirements.heading') }}
                     </h3>
 
-                    <ul class="flex flex-col gap-3">
-                        <li
-                            v-for="requirement in REQUIREMENTS"
-                            :key="requirement"
-                            class="flex gap-3 text-sm leading-[21px] text-foreground"
-                        >
-                            <IconCheck
-                                class="mt-[2.5px] size-4 shrink-0 text-success"
-                                aria-hidden="true"
-                            />
-                            <span>
-                                <strong class="font-medium">{{
-                                    $t(
-                                        `accounts.instagram_facebook_requirements.items.${requirement}.lead`,
-                                    )
-                                }}</strong>
-                                {{
-                                    $t(
-                                        `accounts.instagram_facebook_requirements.items.${requirement}.rest`,
-                                    )
-                                }}
-                                <a
-                                    v-if="requirement === 'page'"
-                                    :href="LINK_PAGE_HELP_URL"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    class="inline-flex items-center gap-1 text-primary-text underline underline-offset-2 hover:text-primary-text-hover"
-                                    data-testid="instagram-facebook-requirements-learn-how"
-                                >
-                                    {{
-                                        $t(
-                                            'accounts.instagram_facebook_requirements.learn_how',
-                                        )
-                                    }}
-                                    <IconExternalLink
-                                        class="size-3.5"
-                                        aria-hidden="true"
-                                    />
-                                </a>
-                            </span>
-                        </li>
-                    </ul>
+                    <InstagramFacebookRequirementsList />
 
                     <p
                         class="border-t border-border pt-4 text-xs text-muted-foreground"

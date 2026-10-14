@@ -54,6 +54,7 @@ return [
         'description' => 'Funkcje zależą od typu Twojego konta na Instagramie i wybranego sposobu połączenia.',
         'professional_title' => 'Profesjonalne',
         'professional_types' => '(Firma i Twórca)',
+        'facebook_types' => '(połączone ze stroną na Facebooku)',
         'badge' => 'Automatyczne publikowanie',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Statystyki wysłanych postów',
                 'description' => 'Sprawdzaj wyniki wcześniejszych postów',
             ],
+            'music' => [
+                'title' => 'Muzyka w rolkach',
+                'description' => 'Dodaj utwór z biblioteki Instagrama',
+            ],
         ],
         'connect' => 'Połącz z Instagramem',
         'convert_hint' => 'W razie potrzeby Instagram poprosi Cię o łatwe przełączenie na konto profesjonalne.',
-        'facebook_link' => 'Połącz Instagram przez Facebooka',
-        'facebook_suffix' => '(jeśli Twoje konto na Instagramie jest obecnie połączone z Facebookiem).',
         'help' => [
             'account_type' => 'Jak sprawdzić typ konta na Instagramie',
             'convert' => 'Jak przełączyć konto na Instagramie na profesjonalne',

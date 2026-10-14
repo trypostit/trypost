@@ -54,6 +54,7 @@ return [
         'description' => '利用できる機能は、Instagram アカウントの種類と選択した接続方法によって異なります。',
         'professional_title' => 'プロアカウント',
         'professional_types' => '（ビジネス・クリエイター）',
+        'facebook_types' => '（Facebook ページにリンク）',
         'badge' => '自動投稿',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => '投稿済みのメトリクス',
                 'description' => '過去の投稿のパフォーマンスを確認',
             ],
+            'music' => [
+                'title' => 'リールに音楽',
+                'description' => 'Instagram のライブラリから曲を追加',
+            ],
         ],
         'connect' => 'Instagram に接続',
         'convert_hint' => '必要に応じて、Instagram からプロアカウントへの簡単な切り替えを案内されます。',
-        'facebook_link' => 'Facebook 経由で Instagram を接続',
-        'facebook_suffix' => '（Instagram アカウントが Facebook にリンクされている場合）',
         'help' => [
             'account_type' => 'Instagram アカウントの種類を確認する',
             'convert' => 'Instagram アカウントをプロアカウントに切り替える',

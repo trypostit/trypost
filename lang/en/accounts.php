@@ -54,6 +54,7 @@ return [
         'description' => 'Features depend on the type of Instagram account you have and the connection you choose.',
         'professional_title' => 'Professional',
         'professional_types' => '(Business & Creator)',
+        'facebook_types' => '(linked to a Facebook Page)',
         'badge' => 'Automatic posting',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Sent post metrics',
                 'description' => 'View past post performance',
             ],
+            'music' => [
+                'title' => 'Music on reels',
+                'description' => 'Add a track from Instagram\'s library',
+            ],
         ],
         'connect' => 'Connect to Instagram',
         'convert_hint' => 'Instagram will prompt you to easily convert to a professional account if needed.',
-        'facebook_link' => 'Connect Instagram through Facebook',
-        'facebook_suffix' => 'if your Instagram account is currently linked to Facebook.',
         'help' => [
             'account_type' => 'Finding your Instagram account type',
             'convert' => 'Converting your Instagram account to a Professional account',

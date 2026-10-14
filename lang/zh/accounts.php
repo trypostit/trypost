@@ -54,6 +54,7 @@ return [
         'description' => '可用功能取决于你的 Instagram 账号类型以及所选的连接方式。',
         'professional_title' => '专业账号',
         'professional_types' => '（商家和创作者）',
+        'facebook_types' => '（已关联 Facebook 公共主页）',
         'badge' => '自动发布',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => '已发布帖子数据',
                 'description' => '查看过往帖子的表现',
             ],
+            'music' => [
+                'title' => 'Reels 配乐',
+                'description' => '从 Instagram 曲库添加音乐',
+            ],
         ],
         'connect' => '连接到 Instagram',
         'convert_hint' => '如有需要，Instagram 会提示你轻松转换为专业账号。',
-        'facebook_link' => '通过 Facebook 连接 Instagram',
-        'facebook_suffix' => '（如果你的 Instagram 账号已关联 Facebook）。',
         'help' => [
             'account_type' => '查看你的 Instagram 账号类型',
             'convert' => '将 Instagram 账号转换为专业账号',

@@ -56,6 +56,7 @@ return [
         'description' => 'Die Funktionen hängen von der Art deines Instagram-Kontos und der gewählten Verbindung ab.',
         'professional_title' => 'Professionell',
         'professional_types' => '(Unternehmen & Creator)',
+        'facebook_types' => '(mit einer Facebook-Seite verknüpft)',
         'badge' => 'Automatisches Posten',
         'features' => [
             'automatic' => [
@@ -66,11 +67,13 @@ return [
                 'title' => 'Metriken gesendeter Beiträge',
                 'description' => 'Leistung früherer Beiträge ansehen',
             ],
+            'music' => [
+                'title' => 'Musik in Reels',
+                'description' => 'Füge einen Titel aus der Instagram-Bibliothek hinzu',
+            ],
         ],
         'connect' => 'Mit Instagram verbinden',
         'convert_hint' => 'Instagram fordert dich bei Bedarf auf, ganz einfach zu einem professionellen Konto zu wechseln.',
-        'facebook_link' => 'Instagram über Facebook verbinden',
-        'facebook_suffix' => '(wenn dein Instagram-Konto derzeit mit Facebook verknüpft ist).',
         'help' => [
             'account_type' => 'Den Typ deines Instagram-Kontos herausfinden',
             'convert' => 'Dein Instagram-Konto in ein professionelles Konto umwandeln',

@@ -15,7 +15,6 @@ export interface ConnectChannelState {
     goalAccountId?: string;
     detailsPlatform?: string;
     canGoBack: boolean;
-    parentCanGoBack?: boolean;
 }
 
 let nextId = 0;
@@ -49,7 +48,6 @@ const goTo = (step: Exclude<ConnectChannelStep, 'grid' | 'details'>): void => {
         ...state.value,
         step,
         canGoBack: true,
-        parentCanGoBack: state.value.canGoBack,
     };
 };
 
@@ -65,15 +63,6 @@ const showDetails = (platform: string): void => {
 
 const back = (): void => {
     if (!state.value) return;
-
-    if (state.value.step === 'instagram-facebook') {
-        state.value = {
-            ...state.value,
-            step: 'instagram',
-            canGoBack: state.value.parentCanGoBack ?? false,
-        };
-        return;
-    }
 
     state.value = {
         ...state.value,

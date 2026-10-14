@@ -1,13 +1,21 @@
 <script setup lang="ts">
 import {
     IconCheck,
+    IconChevronDown,
     IconInfoCircle,
     IconRefresh,
 } from '@tabler/icons-vue';
+import { computed, ref } from 'vue';
 
+import InstagramFacebookRequirementsList from '@/components/channels/InstagramFacebookRequirementsList.vue';
 import InstagramHelpMenu from '@/components/channels/InstagramHelpMenu.vue';
 import PlatformLogo from '@/components/PlatformLogo.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Collapsible,
+    CollapsibleContent,
+    CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { DialogDescription, DialogTitle } from '@/components/ui/dialog';
 import { Platform } from '@/types/platform';
 
@@ -19,17 +27,32 @@ const emit = defineEmits<{
     select: [method: string];
 }>();
 
-const FEATURES = ['automatic', 'metrics'] as const;
+const STANDALONE_FEATURES = ['automatic', 'metrics'] as const;
+const FACEBOOK_FEATURES = ['automatic', 'metrics', 'music'] as const;
 
-const showsStandalone = () => props.methods.includes(Platform.Instagram);
-const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
+const showsStandalone = computed(() =>
+    props.methods.includes(Platform.Instagram),
+);
+const showsFacebook = computed(() =>
+    props.methods.includes(Platform.InstagramFacebook),
+);
+const showsBoth = computed(() => showsStandalone.value && showsFacebook.value);
+const requirementsOpen = ref(false);
+
+const connectStandalone = (): void => {
+    emit('select', Platform.Instagram);
+};
+
+const connectFacebook = (): void => {
+    emit('select', Platform.InstagramFacebook);
+};
 </script>
 
 <template>
     <div class="flex min-h-0 flex-1 flex-col">
         <div class="min-h-0 flex-1 overflow-y-auto">
             <div
-                class="mx-auto flex w-full max-w-[720px] flex-col gap-8 px-4 pt-2 pb-8 sm:px-6"
+                class="mx-auto flex w-full max-w-[800px] flex-col gap-8 px-4 pt-2 pb-8 sm:px-6"
             >
                 <header class="flex flex-col gap-2 text-center max-sm:px-10">
                     <DialogTitle
@@ -42,91 +65,190 @@ const showsFacebook = () => props.methods.includes(Platform.InstagramFacebook);
                     </DialogDescription>
                 </header>
 
-                <section
-                    v-if="showsStandalone()"
-                    class="mx-auto flex w-full max-w-[432px] flex-col gap-5 rounded-xl border border-border bg-card p-6"
-                    data-testid="instagram-connect-professional"
+                <div
+                    class="mx-auto grid w-full gap-x-4 gap-y-4"
+                    :class="showsBoth ? 'sm:grid-cols-2' : 'max-w-[432px]'"
+                    data-testid="instagram-connect-options"
                 >
-                    <div class="flex flex-col items-start gap-2">
-                        <h3 class="text-lg leading-tight text-foreground">
-                            <span class="font-medium">{{
-                                $t('accounts.instagram_connect.professional_title')
-                            }}</span>
-                            {{ $t('accounts.instagram_connect.professional_types') }}
-                        </h3>
-                        <span
-                            class="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-1.5 py-0.5 text-xs text-primary-text"
-                        >
-                            <IconRefresh class="size-3.5" aria-hidden="true" />
-                            {{ $t('accounts.instagram_connect.badge') }}
-                        </span>
-                    </div>
-
-                    <ul class="flex flex-col gap-3">
-                        <li
-                            v-for="feature in FEATURES"
-                            :key="feature"
-                            class="flex gap-3 text-sm leading-[21px] text-foreground"
-                        >
-                            <IconCheck
-                                class="mt-[2.5px] size-4 shrink-0 text-success"
-                                aria-hidden="true"
-                            />
-                            <span>
+                    <section
+                        v-if="showsStandalone"
+                        class="row-span-4 grid grid-rows-subgrid gap-5 rounded-xl border border-border bg-card p-6"
+                        data-testid="instagram-connect-professional"
+                    >
+                        <div class="flex flex-col items-start gap-2">
+                            <PlatformLogo platform="instagram" :size="24" />
+                            <h3 class="text-lg leading-tight text-foreground">
                                 <span class="font-medium">{{
-                                    $t(`accounts.instagram_connect.features.${feature}.title`)
+                                    $t(
+                                        'accounts.instagram_connect.professional_title',
+                                    )
                                 }}</span>
-                                -
                                 {{
                                     $t(
-                                        `accounts.instagram_connect.features.${feature}.description`,
+                                        'accounts.instagram_connect.professional_types',
                                     )
                                 }}
+                            </h3>
+                            <span
+                                class="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-1.5 py-0.5 text-xs text-primary-text"
+                            >
+                                <IconRefresh class="size-3.5" aria-hidden="true" />
+                                {{ $t('accounts.instagram_connect.badge') }}
                             </span>
-                        </li>
-                    </ul>
+                        </div>
 
-                    <Button
-                        size="lg"
-                        class="w-full"
-                        data-testid="instagram-connect-standalone"
-                        @click="emit('select', Platform.Instagram)"
-                    >
-                        {{ $t('accounts.instagram_connect.connect') }}
-                    </Button>
+                        <ul class="flex flex-col gap-3">
+                            <li
+                                v-for="feature in STANDALONE_FEATURES"
+                                :key="feature"
+                                class="flex gap-3 text-sm leading-[21px] text-foreground"
+                            >
+                                <IconCheck
+                                    class="mt-[2.5px] size-4 shrink-0 text-success"
+                                    aria-hidden="true"
+                                />
+                                <span>
+                                    <span class="font-medium">{{
+                                        $t(
+                                            `accounts.instagram_connect.features.${feature}.title`,
+                                        )
+                                    }}</span>
+                                    -
+                                    {{
+                                        $t(
+                                            `accounts.instagram_connect.features.${feature}.description`,
+                                        )
+                                    }}
+                                </span>
+                            </li>
+                        </ul>
 
-                    <div
-                        class="flex gap-3 border-t border-border pt-5 text-sm leading-[21px] font-medium text-foreground"
-                    >
-                        <IconInfoCircle
-                            class="mt-[2.5px] size-4 shrink-0"
-                            aria-hidden="true"
-                        />
-                        <p>{{ $t('accounts.instagram_connect.convert_hint') }}</p>
-                    </div>
-                </section>
-
-                <p
-                    v-if="showsFacebook()"
-                    class="flex items-start justify-center gap-2 text-center text-sm leading-[21px] text-foreground"
-                >
-                    <PlatformLogo
-                        platform="facebook"
-                        :size="16"
-                        class="mt-[2.5px] shrink-0"
-                    />
-                    <span>
-                        <button
-                            type="button"
-                            class="cursor-pointer underline underline-offset-2 hover:text-primary-text focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                            data-testid="instagram-connect-facebook"
-                            @click="emit('select', Platform.InstagramFacebook)"
+                        <Button
+                            size="lg"
+                            class="w-full"
+                            data-testid="instagram-connect-standalone"
+                            @click="connectStandalone"
                         >
-                            {{ $t('accounts.instagram_connect.facebook_link') }}
-                        </button>
-                        {{ $t('accounts.instagram_connect.facebook_suffix') }}
-                    </span>
-                </p>
+                            {{ $t('accounts.instagram_connect.connect') }}
+                        </Button>
+
+                        <div
+                            class="flex gap-3 border-t border-border pt-5 text-sm leading-[21px] font-medium text-foreground"
+                        >
+                            <IconInfoCircle
+                                class="mt-[2.5px] size-4 shrink-0"
+                                aria-hidden="true"
+                            />
+                            <p>
+                                {{ $t('accounts.instagram_connect.convert_hint') }}
+                            </p>
+                        </div>
+                    </section>
+
+                    <section
+                        v-if="showsFacebook"
+                        class="row-span-4 grid grid-rows-subgrid gap-5 rounded-xl border border-border bg-card p-6"
+                        data-testid="instagram-connect-facebook-card"
+                    >
+                        <div class="flex flex-col items-start gap-2">
+                            <span
+                                class="flex items-center gap-1 text-foreground"
+                                aria-hidden="true"
+                            >
+                                <PlatformLogo platform="instagram" :size="24" />
+                                <span class="text-xs">+</span>
+                                <PlatformLogo platform="facebook" :size="24" />
+                            </span>
+                            <h3 class="text-lg leading-tight text-foreground">
+                                <span class="font-medium">{{
+                                    $t(
+                                        'accounts.instagram_connect.professional_title',
+                                    )
+                                }}</span>
+                                {{
+                                    $t('accounts.instagram_connect.facebook_types')
+                                }}
+                            </h3>
+                            <span
+                                class="inline-flex items-center gap-1 rounded-md bg-primary-subtle px-1.5 py-0.5 text-xs text-primary-text"
+                            >
+                                <IconRefresh class="size-3.5" aria-hidden="true" />
+                                {{ $t('accounts.instagram_connect.badge') }}
+                            </span>
+                        </div>
+
+                        <ul class="flex flex-col gap-3">
+                            <li
+                                v-for="feature in FACEBOOK_FEATURES"
+                                :key="feature"
+                                class="flex gap-3 text-sm leading-[21px] text-foreground"
+                                :data-testid="`instagram-connect-facebook-feature-${feature}`"
+                            >
+                                <IconCheck
+                                    class="mt-[2.5px] size-4 shrink-0 text-success"
+                                    aria-hidden="true"
+                                />
+                                <span>
+                                    <span class="font-medium">{{
+                                        $t(
+                                            `accounts.instagram_connect.features.${feature}.title`,
+                                        )
+                                    }}</span>
+                                    -
+                                    {{
+                                        $t(
+                                            `accounts.instagram_connect.features.${feature}.description`,
+                                        )
+                                    }}
+                                </span>
+                            </li>
+                        </ul>
+
+                        <Button
+                            size="lg"
+                            class="w-full"
+                            data-testid="instagram-connect-facebook"
+                            @click="connectFacebook"
+                        >
+                            {{
+                                $t(
+                                    'accounts.instagram_facebook_requirements.connect',
+                                )
+                            }}
+                        </Button>
+
+                        <Collapsible
+                            v-model:open="requirementsOpen"
+                            class="border-t border-border pt-5"
+                        >
+                            <CollapsibleTrigger
+                                class="flex w-full items-center gap-3 text-start text-sm leading-[21px] font-medium text-foreground"
+                                data-testid="instagram-connect-facebook-requirements-toggle"
+                            >
+                                <IconInfoCircle
+                                    class="size-4 shrink-0"
+                                    aria-hidden="true"
+                                />
+                                <span class="flex-1">{{
+                                    $t(
+                                        'accounts.instagram_facebook_requirements.heading',
+                                    )
+                                }}</span>
+                                <IconChevronDown
+                                    class="size-4 shrink-0 text-muted-foreground transition-transform"
+                                    :class="{ 'rotate-180': requirementsOpen }"
+                                    aria-hidden="true"
+                                />
+                            </CollapsibleTrigger>
+                            <CollapsibleContent
+                                class="pt-3"
+                                data-testid="instagram-connect-facebook-requirements"
+                            >
+                                <InstagramFacebookRequirementsList compact />
+                            </CollapsibleContent>
+                        </Collapsible>
+                    </section>
+                </div>
             </div>
         </div>
 

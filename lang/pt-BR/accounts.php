@@ -54,6 +54,7 @@ return [
         'description' => 'Os recursos dependem do tipo de conta do Instagram que você tem e da conexão que você escolher.',
         'professional_title' => 'Profissional',
         'professional_types' => '(Empresa e Criador de conteúdo)',
+        'facebook_types' => '(vinculado a uma página do Facebook)',
         'badge' => 'Publicação automática',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Métricas dos posts enviados',
                 'description' => 'Veja o desempenho dos posts anteriores',
             ],
+            'music' => [
+                'title' => 'Música nos reels',
+                'description' => 'Adicione uma música da biblioteca do Instagram',
+            ],
         ],
         'connect' => 'Conectar ao Instagram',
         'convert_hint' => 'O Instagram vai pedir para você converter facilmente para uma conta profissional, se necessário.',
-        'facebook_link' => 'Conecte o Instagram pelo Facebook',
-        'facebook_suffix' => 'se a sua conta do Instagram estiver vinculada ao Facebook.',
         'help' => [
             'account_type' => 'Descobrir o tipo da sua conta do Instagram',
             'convert' => 'Converter sua conta do Instagram em uma conta profissional',

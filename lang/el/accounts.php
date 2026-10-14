@@ -54,6 +54,7 @@ return [
         'description' => 'Οι λειτουργίες εξαρτώνται από τον τύπο του λογαριασμού σας στο Instagram και τη σύνδεση που θα επιλέξετε.',
         'professional_title' => 'Επαγγελματικός',
         'professional_types' => '(Επιχείρηση & Δημιουργός)',
+        'facebook_types' => '(συνδεδεμένος με σελίδα Facebook)',
         'badge' => 'Αυτόματη δημοσίευση',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Μετρήσεις δημοσιεύσεων',
                 'description' => 'Δείτε την απόδοση προηγούμενων δημοσιεύσεων',
             ],
+            'music' => [
+                'title' => 'Μουσική στα reels',
+                'description' => 'Πρόσθεσε ένα κομμάτι από τη βιβλιοθήκη του Instagram',
+            ],
         ],
         'connect' => 'Σύνδεση με το Instagram',
         'convert_hint' => 'Το Instagram θα σας ζητήσει να μετατρέψετε εύκολα τον λογαριασμό σε επαγγελματικό, αν χρειαστεί.',
-        'facebook_link' => 'Συνδέστε το Instagram μέσω Facebook',
-        'facebook_suffix' => 'αν ο λογαριασμός σας στο Instagram είναι συνδεδεμένος με το Facebook.',
         'help' => [
             'account_type' => 'Βρείτε τον τύπο του λογαριασμού σας στο Instagram',
             'convert' => 'Μετατροπή του λογαριασμού σας στο Instagram σε επαγγελματικό',

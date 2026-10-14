@@ -54,6 +54,7 @@ return [
         'description' => 'Можливості залежать від типу вашого акаунта Instagram і вибраного способу підключення.',
         'professional_title' => 'Професійний',
         'professional_types' => '(Бізнес і Автор)',
+        'facebook_types' => '(пов’язаний зі сторінкою Facebook)',
         'badge' => 'Автоматична публікація',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Метрики опублікованих дописів',
                 'description' => 'Переглядайте результати минулих дописів',
             ],
+            'music' => [
+                'title' => 'Музика в Reels',
+                'description' => 'Додайте трек із бібліотеки Instagram',
+            ],
         ],
         'connect' => 'Підключитися до Instagram',
         'convert_hint' => 'За потреби Instagram запропонує легко перейти на професійний акаунт.',
-        'facebook_link' => 'Підключіть Instagram через Facebook',
-        'facebook_suffix' => '(якщо ваш акаунт Instagram зараз пов’язаний із Facebook).',
         'help' => [
             'account_type' => 'Як дізнатися тип акаунта Instagram',
             'convert' => 'Як перевести акаунт Instagram у професійний',

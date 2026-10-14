@@ -57,21 +57,14 @@ const selectPlatform = (platform: string): void => {
     openConnect(platform);
 };
 
-
-
 const connectInstagramFacebook = (): void => {
     emit('close');
     openConnect(Platform.InstagramFacebook, props.state.reconnectId);
 };
 
 const selectInstagramMethod = (method: string): void => {
-    if (method === Platform.InstagramFacebook) {
-        goTo('instagram-facebook');
-        return;
-    }
-
     emit('close');
-    openConnect(method);
+    openConnect(method, props.state.reconnectId);
 };
 </script>
 

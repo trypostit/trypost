@@ -54,6 +54,7 @@ return [
         'description' => '사용 가능한 기능은 Instagram 계정 유형과 선택한 연결 방식에 따라 다릅니다.',
         'professional_title' => '프로페셔널',
         'professional_types' => '(비즈니스 및 크리에이터)',
+        'facebook_types' => '(Facebook 페이지에 연결됨)',
         'badge' => '자동 게시',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => '게시된 게시물 지표',
                 'description' => '지난 게시물의 성과 확인',
             ],
+            'music' => [
+                'title' => '릴스에 음악 추가',
+                'description' => 'Instagram 라이브러리에서 음악을 추가하세요',
+            ],
         ],
         'connect' => 'Instagram에 연결',
         'convert_hint' => '필요한 경우 Instagram에서 프로페셔널 계정으로 쉽게 전환하도록 안내합니다.',
-        'facebook_link' => 'Facebook을 통해 Instagram 연결',
-        'facebook_suffix' => '(Instagram 계정이 현재 Facebook에 연결되어 있는 경우)',
         'help' => [
             'account_type' => 'Instagram 계정 유형 확인하기',
             'convert' => 'Instagram 계정을 프로페셔널 계정으로 전환하기',

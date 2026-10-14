@@ -54,6 +54,7 @@ return [
         'description' => 'Les fonctionnalités dépendent du type de compte Instagram que vous avez et de la connexion choisie.',
         'professional_title' => 'Professionnel',
         'professional_types' => '(Entreprise et Créateur)',
+        'facebook_types' => '(lié à une page Facebook)',
         'badge' => 'Publication automatique',
         'features' => [
             'automatic' => [
@@ -64,11 +65,13 @@ return [
                 'title' => 'Statistiques des publications envoyées',
                 'description' => 'Consultez les performances des publications passées',
             ],
+            'music' => [
+                'title' => 'Musique sur les reels',
+                'description' => 'Ajoutez un morceau de la bibliothèque d\'Instagram',
+            ],
         ],
         'connect' => 'Se connecter à Instagram',
         'convert_hint' => 'Instagram vous proposera de passer facilement à un compte professionnel si nécessaire.',
-        'facebook_link' => 'Connectez Instagram via Facebook',
-        'facebook_suffix' => 'si votre compte Instagram est actuellement lié à Facebook.',
         'help' => [
             'account_type' => 'Connaître le type de votre compte Instagram',
             'convert' => 'Convertir votre compte Instagram en compte professionnel',
