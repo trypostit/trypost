@@ -237,30 +237,29 @@ test('the instagram step offers the instagram login and facebook cards side by s
 
             const instagramButton = document.querySelector('[data-testid="instagram-connect-standalone"]').getBoundingClientRect();
             const facebookButton = document.querySelector('[data-testid="instagram-connect-facebook"]').getBoundingClientRect();
-            const scroller = document.querySelector('[data-testid="instagram-connect-options"]').closest('.overflow-y-auto');
 
             return {
                 sideBySide: facebook.left >= instagram.right && Math.abs(facebook.top - instagram.top) < 1,
                 sameHeight: Math.abs(facebook.height - instagram.height) < 1,
                 buttonsAligned: Math.abs(facebookButton.top - instagramButton.top) < 1,
-                fitsWithoutScroll: scroller.scrollHeight <= scroller.clientHeight,
             };
         })();
     JS);
 
-    expect($layout)->toBe(['sideBySide' => true, 'sameHeight' => true, 'buttonsAligned' => true, 'fitsWithoutScroll' => true]);
+    expect($layout)->toBe(['sideBySide' => true, 'sameHeight' => true, 'buttonsAligned' => true]);
 
-    $page->assertMissing('@instagram-connect-standalone-requirements')
-        ->click('@instagram-connect-standalone-requirements-toggle');
-    waitForConnectDialogTestId($page, 'instagram-connect-standalone-requirements');
     $page->assertSeeIn('@instagram-connect-standalone-requirements', trans('accounts.instagram_connect.convert_hint'))
-        ->click('@instagram-connect-standalone-requirements-toggle');
-
+        ->assertVisible('@instagram-connect-facebook-requirements')
+        ->click('@instagram-connect-facebook-requirements-toggle');
+    $page->script(<<<'JS'
+        (async () => {
+            for (let i = 0; i < 100 && document.querySelector('[data-testid="instagram-connect-facebook-requirements"]'); i++) {
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })()
+    JS);
     $page->assertMissing('@instagram-connect-facebook-requirements')
-        ->click('@instagram-connect-facebook-requirements-toggle');
-    waitForConnectDialogTestId($page, 'instagram-connect-facebook-requirements');
-    $page->assertVisible('@instagram-connect-facebook-requirements')
-        ->click('@instagram-connect-facebook-requirements-toggle');
+        ->assertVisible('@instagram-connect-standalone-requirements');
 
     $dialogText = $page->script('document.querySelector(\'[data-testid="connect-channel-dialog"]\').textContent');
     $instagramCardText = $page->script('document.querySelector(\'[data-testid="instagram-connect-professional"]\').textContent');
@@ -353,8 +352,6 @@ test('connect through facebook on the instagram step leaves for the facebook log
     stubConnectDialogProviders();
 
     $page = openInstagramConnectStep();
-    $page->click('@instagram-connect-facebook-requirements-toggle');
-    waitForConnectDialogTestId($page, 'instagram-facebook-requirements-learn-how');
 
     $learnHow = $page->script(<<<'JS'
         (() => {

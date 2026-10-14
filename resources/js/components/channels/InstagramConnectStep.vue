@@ -37,8 +37,8 @@ const showsFacebook = computed(() =>
     props.methods.includes(Platform.InstagramFacebook),
 );
 const showsBoth = computed(() => showsStandalone.value && showsFacebook.value);
-const standaloneRequirementsOpen = ref(false);
-const facebookRequirementsOpen = ref(false);
+const standaloneRequirementsOpen = ref(true);
+const facebookRequirementsOpen = ref(true);
 
 const connectStandalone = (): void => {
     emit('select', Platform.Instagram);
