@@ -24,8 +24,6 @@ export const showsPostTypeTag = (platform: string): boolean => {
     switch (platform) {
         case Platform.YouTube:
         case Platform.TikTok:
-        case Platform.Bluesky:
-        case Platform.Mastodon:
             return false;
         default:
             return true;

@@ -49,6 +49,7 @@ test('x reads one owned timeline page with only discovery fields', function () {
 
     expect($page->publications)->toHaveCount(1)
         ->and($page->publications[0]->contentType)->toBe(PublicationContentType::Image)
+        ->and($page->publications[0]->contentTypeReported)->toBeTrue()
         ->and($page->publications[0]->permalink)->toBe('https://x.com/example/status/tweet-1')
         ->and($page->nextCursor)->toBe('x-next')
         ->and($page->providerExhausted)->toBeFalse();
@@ -185,6 +186,7 @@ test('youtube pages the uploads playlist and hydrates videos in one batch withou
             PublicationContentType::Video,
             PublicationContentType::Video,
         ])
+        ->and(array_column($page->publications, 'contentTypeReported'))->toBe([false, false])
         ->and($page->nextCursor)->toBe('youtube-next');
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/playlistItems')
         && $request['playlistId'] === 'uploads-1'
@@ -291,6 +293,7 @@ test('tiktok reads at most twenty videos and marks expiring covers', function ()
 
     expect($page->publications)->toHaveCount(1)
         ->and($page->publications[0]->contentType)->toBe(PublicationContentType::Video)
+        ->and($page->publications[0]->contentTypeReported)->toBeFalse()
         ->and($page->publications[0]->previewMetadata)->toMatchArray([
             'thumbnail_url' => 'https://cdn.example/cover.jpg?x-expires=1790003600',
             'expires_at' => CarbonImmutable::createFromTimestampUTC(1_790_003_600)->toIso8601String(),

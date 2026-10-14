@@ -357,7 +357,12 @@ function seedChannelInsightsParity(Workspace $workspace, User $user): array
         $post = null;
 
         if ($type !== null) {
-            $post = Post::factory()->forAccount($account, $type)->published()->create(['user_id' => $user->id]);
+            $post = Post::factory()->forAccount($account, $type)->published()->create([
+                'user_id' => $user->id,
+                'media' => $type === ContentType::InstagramReel
+                    ? [['id' => 'reel', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4']]
+                    : [],
+            ]);
 
             if ($labelled) {
                 $post->labels()->attach($label->id);
@@ -429,7 +434,10 @@ test('channel insights show the same summary, metrics, series and ranking on web
         ->json();
 
     expect($list['data'])->toEqual(data_get($web, 'publications.data'))
-        ->and($list['filters'])->toEqual($web['filters']);
+        ->and($list['filters'])->toEqual($web['filters'])
+        ->and(collect($list['data'])->pluck('media.url')->filter()->values()->all())->toBe(
+            in_array($filters($label), [['untagged' => '1']], true) ? [] : ['https://cdn.trypost.test/medias/reel.mp4'],
+        );
 
     $arguments = ['account_id' => $account->id, ...$query];
     TryPostServer::actingAs($this->user)

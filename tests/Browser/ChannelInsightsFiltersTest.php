@@ -166,7 +166,7 @@ test('the post type filter search matches each word typed in any order and ignor
         ->assertNoJavaScriptErrors();
 });
 
-test('a channel without the post type filter or the type tag', function (Platform $platform, ContentType $contentType, PublicationContentType $publicationType) {
+test('a YouTube channel shows no post type filter and no type tag', function (Platform $platform, ContentType $contentType, PublicationContentType $publicationType) {
     $channel = SocialAccount::factory()->create(['workspace_id' => $this->instagram->workspace_id, 'platform' => $platform]);
     $publication = insightsFilterPublication($channel, $this->user, CarbonImmutable::today('UTC')->subDays(2)->setTime(10, 0), 10, $contentType, publicationType: $publicationType);
 
@@ -179,8 +179,6 @@ test('a channel without the post type filter or the type tag', function (Platfor
         ->assertNoJavaScriptErrors();
 })->with([
     'YouTube' => [Platform::YouTube, ContentType::YouTubeShort, PublicationContentType::Short],
-    'Bluesky' => [Platform::Bluesky, ContentType::BlueskyPost, PublicationContentType::Video],
-    'Mastodon' => [Platform::Mastodon, ContentType::MastodonPost, PublicationContentType::Video],
 ]);
 
 test('a channel without the post type filter keeps the type tag', function (Platform $platform, ContentType $contentType) {
@@ -197,6 +195,8 @@ test('a channel without the post type filter keeps the type tag', function (Plat
 })->with([
     'X' => [Platform::X, ContentType::XPost],
     'Threads' => [Platform::Threads, ContentType::ThreadsPost],
+    'Bluesky' => [Platform::Bluesky, ContentType::BlueskyPost],
+    'Mastodon' => [Platform::Mastodon, ContentType::MastodonPost],
 ]);
 
 test('a TikTok channel keeps the post type filter but shows no type tag', function () {

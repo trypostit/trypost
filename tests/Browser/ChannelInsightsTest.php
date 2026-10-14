@@ -377,3 +377,22 @@ test('reels, stories and videos show the content type badge with its icon, other
         ->assertScript("document.querySelector('[data-testid=\"insights-posts-type-{$this->mostViews->id}-icon\"]').classList.contains('tabler-icon-circle-dashed-plus')", true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the per post table shows the post media from our bucket, a video by its cover frame', function () {
+    $video = Post::factory()->forAccount($this->instagram)->published()->create(['media' => [
+        ['id' => 'video', 'path' => 'medias/reel.mp4', 'url' => 'https://cdn.trypost.test/medias/reel.mp4', 'type' => 'video', 'mime_type' => 'video/mp4', 'meta' => ['cover_offset_ms' => 1500]],
+    ]]);
+    $image = Post::factory()->forAccount($this->instagram)->published()->create(['media' => [
+        ['id' => 'image', 'path' => 'medias/a.jpg', 'url' => 'https://cdn.trypost.test/medias/a.jpg', 'type' => 'image', 'mime_type' => 'image/jpeg'],
+    ]]);
+    $expired = ['thumbnail_url' => 'https://scontent.cdninstagram.com/expired.jpg?oe=6ACC450F'];
+    $this->mostReactions->update(['post_id' => $video->id, 'preview_metadata' => $expired]);
+    $this->mostViews->update(['post_id' => $image->id, 'preview_metadata' => $expired]);
+
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitForChannelInsightsTestId($page, "insights-posts-video-{$this->mostReactions->id}");
+
+    $page->assertAttribute("@insights-posts-video-{$this->mostReactions->id}", 'src', 'https://cdn.trypost.test/medias/reel.mp4#t=1.5')
+        ->assertScript("document.querySelector('[data-testid=\"insights-posts-row-{$this->mostViews->id}\"] img').getAttribute('src')", 'https://cdn.trypost.test/medias/a.jpg')
+        ->assertNoJavaScriptErrors();
+});

@@ -169,7 +169,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                             muted
                             playsinline
                             preload="metadata"
-                            data-testid="analytics-top-post-video"
+                            :data-testid="`analytics-top-post-video-${post.id}`"
                         />
                         <img
                             v-else-if="thumbnailFor(post)"
