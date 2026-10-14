@@ -110,6 +110,7 @@ import {
 } from '@/composables/useComposerAutosave';
 import { useComposerLiveState } from '@/composables/useComposerData';
 import { useConnectChannelDialog } from '@/composables/useConnectChannelDialog';
+import { trackPostComposerOpen } from '@/composables/useGlobalPostComposer';
 import { useLinkCard } from '@/composables/useLinkCard';
 import {
     getMediaValidationWarning,
@@ -257,6 +258,8 @@ const emit = defineEmits<{
         onSaved?: () => void,
     ): void;
 }>();
+
+trackPostComposerOpen(() => props.open);
 
 const composition = usePostComposition(
     () => props.socialAccounts,

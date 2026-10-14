@@ -124,6 +124,36 @@ test('creating a channel post includes labels and its channel in the payload', f
     });
 });
 
+test('creating an instagram reel with music and collaborators carries them in the post.created payload', function () {
+    subscribeToWebhook($this->workspace, [EventType::PostCreated]);
+
+    $account = SocialAccount::factory()->recycle($this->workspace)->create(['platform' => Platform::InstagramFacebook]);
+
+    $post = createWebhookPost($this->workspace, $this->user, [
+        'content' => 'Reel with music',
+        'created_via' => CreatedVia::Api,
+        'destination' => [
+            'social_account_id' => $account->id,
+            'content_type' => ContentType::InstagramReel->value,
+            'meta' => [
+                'audio' => ['id' => '1234567890', 'title' => 'Summer Song', 'artist' => 'The Band', 'audio_volume' => 40, 'video_volume' => 30],
+                'collaborators' => ['alice', 'bob'],
+                'share_to_feed' => false,
+            ],
+        ],
+    ]);
+
+    Queue::assertPushed(DispatchWebhook::class, fn (DispatchWebhook $job): bool => $job->eventType === EventType::PostCreated->value
+        && data_get($job->payload, 'id') === $post->id
+        && data_get($job->payload, 'platform') === Platform::InstagramFacebook->value
+        && data_get($job->payload, 'content_type') === ContentType::InstagramReel->value
+        && data_get($job->payload, 'meta.audio.id') === '1234567890'
+        && data_get($job->payload, 'meta.audio.audio_volume') === 40
+        && data_get($job->payload, 'meta.audio.video_volume') === 30
+        && data_get($job->payload, 'meta.collaborators') === ['alice', 'bob']
+        && data_get($job->payload, 'meta.share_to_feed') === false);
+});
+
 test('scheduling a post through UpdatePost includes labels and meta from the same save', function () {
     subscribeToWebhook($this->workspace, [EventType::PostScheduled]);
 

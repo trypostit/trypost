@@ -617,6 +617,31 @@ test('discarding after back closes a post opened straight from a link, with no p
     expect($post->fresh()->meta)->toBe([]);
 });
 
+test('the command palette shortcut and the workspace switcher cannot leave an edited post without asking', function () {
+    $post = seedUnsavedChangesReel();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    $page->click('@instagram-share-to-feed');
+    $page->script("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true, cancelable: true }))");
+    $page->assertMissing('@command-palette')
+        ->assertVisible('@post-composer-dialog');
+
+    $switcherCovered = $page->script(<<<'JS'
+        (() => {
+            const menu = document.querySelector('[data-testid="sidebar-workspace-menu"]');
+            const box = menu.getBoundingClientRect();
+
+            return !menu.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2));
+        })()
+    JS);
+
+    expect($switcherCovered)->toBeTrue();
+    $page->assertMissing('@sidebar-workspaces-trigger')
+        ->assertVisible('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('clicking outside an edited post asks first', function () {
     $post = seedUnsavedChangesReel();
 

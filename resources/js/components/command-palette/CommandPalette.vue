@@ -7,7 +7,7 @@ import CommandPaletteContent from '@/components/command-palette/CommandPaletteCo
 import InviteMemberDialog from '@/components/members/InviteMemberDialog.vue';
 import { CommandDialog } from '@/components/ui/command';
 import { useCommandPalette } from '@/composables/useCommandPalette';
-import { postComposerRequest } from '@/composables/useGlobalPostComposer';
+import { isPostComposerOpen } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import type { CommandPaletteEntry } from '@/types/command-palette';
 
@@ -83,7 +83,7 @@ useEventListener(window, 'keydown', (event: KeyboardEvent) => {
         return;
     }
 
-    if (postComposerRequest.value !== null && !isOpen.value) {
+    if (isPostComposerOpen.value && !isOpen.value) {
         return;
     }
 

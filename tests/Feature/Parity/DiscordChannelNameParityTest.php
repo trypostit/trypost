@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\CreatePosts;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -11,6 +12,7 @@ use App\Mcp\Tools\Post\UpdatePostTool;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Services\Social\Discord\DiscordClient;
+use App\Support\PostingSchedule;
 use Illuminate\Support\Facades\Http;
 use Mockery\MockInterface;
 
@@ -149,3 +151,35 @@ test('the channel list the web loads is the one a later save reads the name from
     expect(data_get($post->meta, 'channel_name'))->toBe('general');
     Http::assertNothingSent();
 });
+
+test('approving, moving to drafts or adding to the queue keeps a discord post channel name while the channel list is cached and drops it without', function (string $action, ?array $cached, ?string $stored) {
+    $this->mock(DiscordClient::class, function (MockInterface $discord) use ($cached): void {
+        $discord->shouldReceive('cachedChannels')->andReturn($cached);
+        $discord->shouldNotReceive('channels');
+    });
+    $this->discord->update(['posting_schedule' => PostingSchedule::empty()->withTime(1, '09:00')->withTime(3, '09:00')]);
+    $requester = workspaceMember($this->workspace, 'approval');
+
+    $post = CreatePosts::execute($this->workspace, $action === 'approve' ? $requester : $this->user, [
+        'status' => $action === 'queue_next' ? 'draft' : 'scheduled',
+        'scheduled_at' => $action === 'queue_next' ? null : now()->addDays(3)->toIso8601String(),
+        'content' => 'Release notes',
+        'media' => [],
+        'destinations' => [['social_account_id' => $this->discord->id, 'content_type' => ContentType::DiscordMessage->value, 'meta' => ['channel_id' => '111', 'channel_name' => 'general']]],
+    ])->sole();
+    $post->forceFill(['meta' => ['channel_id' => '111', 'channel_name' => 'general']])->saveQuietly();
+
+    expect($post->status)->toBe($action === 'approve' ? Status::PendingApproval : ($action === 'queue_next' ? Status::Draft : Status::Scheduled));
+
+    $response = $action === 'approve'
+        ? $this->actingAs($this->user)->put(route('app.posts.approve', $post))
+        : $this->actingAs($this->user)->put(route('app.posts.schedule.update', $post), ['action' => $action]);
+
+    $response->assertSessionHasNoErrors();
+    expect(data_get($post->fresh()->meta, 'channel_id'))->toBe('111')
+        ->and($post->fresh()->status)->toBe($action === 'draft' ? Status::Draft : Status::Scheduled)
+        ->and(data_get($post->fresh()->meta, 'channel_name'))->toBe($stored);
+})->with(['approve', 'draft', 'queue_next'])->with([
+    'channel list cached' => [[['id' => '111', 'name' => 'general']], 'general'],
+    'no cached list' => [null, null],
+]);

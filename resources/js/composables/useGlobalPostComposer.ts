@@ -1,4 +1,4 @@
-import { shallowRef } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef, watch } from 'vue';
 
 import type { ComposerInitialDraft } from '@/composables/usePostComposition';
 
@@ -14,6 +14,31 @@ export interface PostComposerRequest {
 let nextRequestId = 0;
 
 export const postComposerRequest = shallowRef<PostComposerRequest | null>(null);
+
+const openComposerDialogs = ref(0);
+
+/**
+ * Whether a post composer is on screen, however it opened: a request still
+ * loading its data, or any composer dialog (the global one, or the edit and
+ * create dialogs of the publish page).
+ */
+export const isPostComposerOpen = computed(
+    () => postComposerRequest.value !== null || openComposerDialogs.value > 0,
+);
+
+export const trackPostComposerOpen = (isOpen: () => boolean): void => {
+    let counted = false;
+
+    const sync = (open: boolean): void => {
+        if (open === counted) return;
+
+        counted = open;
+        openComposerDialogs.value += open ? 1 : -1;
+    };
+
+    watch(isOpen, sync, { immediate: true });
+    onBeforeUnmount(() => sync(false));
+};
 
 export const openPostComposer = (
     options: {
