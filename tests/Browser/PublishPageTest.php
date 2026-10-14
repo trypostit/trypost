@@ -8,6 +8,7 @@ use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Post;
@@ -624,3 +625,31 @@ test('a draft without a channel shows no add to queue button', function () {
         ->assertMissing("@post-add-to-queue-{$draft->id}")
         ->assertNoJavaScriptErrors();
 });
+
+test('on a phone the view switch and the new post button fit inside the card, on all channels and on a channel', function (bool $allChannels, string $tab) {
+    [$user, $workspace, $channel] = publishPageSetup();
+    $user->update(['locale' => Locale::from('pt-BR')]);
+    SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user->fresh());
+
+    $url = $allChannels ? route('app.posts.index', ['tab' => $tab]) : route('app.channels.publish', ['account' => $channel, 'tab' => $tab]);
+    $page = visit($url)->resize(390, 844);
+    waitForPublishPageTestId($page, 'posts-new-post');
+
+    $fits = $page->script(<<<'JS'
+        (() => {
+            const card = document.querySelector('[data-testid="publish-page"]').getBoundingClientRect();
+            return ['posts-new-post', 'schedule-view-calendar'].every((testId) => {
+                const box = document.querySelector(`[data-testid="${testId}"]`).getBoundingClientRect();
+                return box.width > 0 && box.left >= card.left && box.right <= card.right;
+            });
+        })()
+    JS);
+
+    expect($fits)->toBeTrue();
+    $page->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
+        ->assertNoJavaScriptErrors();
+})->with([
+    'all channels' => [true],
+    'a channel' => [false],
+])->with(['approvals', 'sent']);

@@ -867,7 +867,7 @@ const submitComposition = (
                             />
                         </template>
                     </PublishFilterMenu>
-                    <AppHeaderActions>
+                    <AppHeaderActions :on-phones="!channel">
                         <div class="flex items-center gap-2">
                             <ScheduleViewSwitch
                                 active-view="list"
