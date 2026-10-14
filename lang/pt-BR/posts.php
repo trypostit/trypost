@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Adicionar à fila',
             'add_to_queue_hint' => 'Adiciona no próximo horário livre do canal.',
             'queue_setup' => [
-                'title' => 'Configure a fila primeiro',
-                'body' => 'Este canal ainda não tem horários de postagem. Adicione os horários e cada post que você colocar na fila vai para o próximo livre.',
-                'body_member' => 'Este canal ainda não tem horários de postagem. Peça a um admin do workspace para adicioná-los.',
+                'title' => 'Quando este canal deve postar?',
+                'body' => 'Os posts da fila saem nos horários de postagem do canal, e este canal ainda não tem nenhum. Escolha os horários uma vez e cada post que você adicionar entra no próximo horário livre.',
+                'body_member' => 'Os posts da fila saem nos horários de postagem do canal, e este canal ainda não tem nenhum. Peça a um admin do workspace para definir os horários.',
                 'not_now' => 'Agora não',
                 'action' => 'Definir horários',
             ],

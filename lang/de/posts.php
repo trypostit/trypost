@@ -1001,9 +1001,9 @@ return [
             'add_to_queue' => 'Zur Warteschlange hinzufügen',
             'add_to_queue_hint' => 'Fügt zum nächsten freien Termin des Kanals hinzu.',
             'queue_setup' => [
-                'title' => 'Richte zuerst die Warteschlange ein',
-                'body' => 'Dieser Kanal hat noch keine Posting-Zeiten. Füge sie hinzu, dann bekommt jeder Post in der Warteschlange den nächsten freien Termin.',
-                'body_member' => 'Dieser Kanal hat noch keine Posting-Zeiten. Bitte einen Workspace-Admin, sie hinzuzufügen.',
+                'title' => 'Wann soll dieser Kanal posten?',
+                'body' => 'Posts in der Warteschlange gehen zu den Posting-Zeiten des Kanals raus, und dieser Kanal hat noch keine. Leg sie einmal fest, dann bekommt jeder Post, den du hinzufügst, den nächsten freien Termin.',
+                'body_member' => 'Posts in der Warteschlange gehen zu den Posting-Zeiten des Kanals raus, und dieser Kanal hat noch keine. Bitte einen Workspace-Admin, sie festzulegen.',
                 'not_now' => 'Nicht jetzt',
                 'action' => 'Zeiten festlegen',
             ],

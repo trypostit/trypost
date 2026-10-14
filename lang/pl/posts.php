@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Dodaj do kolejki',
             'add_to_queue_hint' => 'Dodaje do najbliższego wolnego terminu kanału.',
             'queue_setup' => [
-                'title' => 'Najpierw skonfiguruj kolejkę',
-                'body' => 'Ten kanał nie ma jeszcze godzin publikacji. Dodaj je, a każdy post w kolejce zajmie najbliższy wolny termin.',
-                'body_member' => 'Ten kanał nie ma jeszcze godzin publikacji. Poproś admina workspace\'u o ich dodanie.',
+                'title' => 'Kiedy ten kanał ma publikować?',
+                'body' => 'Posty z kolejki wychodzą w godzinach publikacji kanału, a ten kanał jeszcze ich nie ma. Ustaw je raz, a każdy dodany post zajmie najbliższy wolny termin.',
+                'body_member' => 'Posty z kolejki wychodzą w godzinach publikacji kanału, a ten kanał jeszcze ich nie ma. Poproś admina workspace\'u o ich ustawienie.',
                 'not_now' => 'Nie teraz',
                 'action' => 'Ustaw godziny',
             ],
