@@ -1000,9 +1000,9 @@ return [
             'add_to_queue' => 'Añadir a la cola',
             'add_to_queue_hint' => 'Añade al siguiente horario libre del canal.',
             'queue_setup' => [
-                'title' => 'Elige cuándo publica este canal',
-                'body' => 'Los posts de la cola salen en los horarios de publicación del canal, y este canal aún no tiene ninguno. Elígelos una vez y cada post que agregues ocupará el siguiente horario libre.',
-                'body_member' => 'Los posts de la cola salen en los horarios de publicación del canal, y este canal aún no tiene ninguno. Pide a un admin del workspace que los defina.',
+                'title' => 'Aún no configuraste la cola de este canal',
+                'body' => 'Para agregar posts a la cola, define los horarios de publicación del canal. Cada post de la cola sale en el siguiente horario libre.',
+                'body_member' => 'Para agregar posts a la cola, un admin del workspace tiene que definir los horarios de publicación de este canal.',
                 'not_now' => 'Ahora no',
                 'action' => 'Definir horarios',
             ],

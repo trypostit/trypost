@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Ajouter à la file d\'attente',
             'add_to_queue_hint' => 'Ajoute au prochain créneau libre de la chaîne.',
             'queue_setup' => [
-                'title' => 'Quand cette chaîne doit-elle publier ?',
-                'body' => 'Les posts de la file partent aux horaires de publication de la chaîne, et celle-ci n\'en a pas encore. Choisissez-les une fois : chaque post ajouté prendra le prochain créneau libre.',
-                'body_member' => 'Les posts de la file partent aux horaires de publication de la chaîne, et celle-ci n\'en a pas encore. Demandez à un admin du workspace de les définir.',
+                'title' => 'Vous n\'avez pas encore configuré la file de cette chaîne',
+                'body' => 'Pour ajouter des posts à la file, définissez les horaires de publication de la chaîne. Chaque post de la file part au prochain créneau libre.',
+                'body_member' => 'Pour ajouter des posts à la file, un admin du workspace doit définir les horaires de publication de cette chaîne.',
                 'not_now' => 'Plus tard',
                 'action' => 'Définir les horaires',
             ],

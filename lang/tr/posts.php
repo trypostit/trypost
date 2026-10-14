@@ -1001,9 +1001,9 @@ return [
             'add_to_queue' => 'Kuyruğa ekle',
             'add_to_queue_hint' => 'Kanalın bir sonraki boş saatine ekler.',
             'queue_setup' => [
-                'title' => 'Bu kanal ne zaman paylaşsın?',
-                'body' => 'Kuyruktaki gönderiler kanalın paylaşım saatlerinde yayınlanır ve bu kanalın henüz paylaşım saati yok. Saatleri bir kez seç, eklediğin her gönderi bir sonraki boş saati alsın.',
-                'body_member' => 'Kuyruktaki gönderiler kanalın paylaşım saatlerinde yayınlanır ve bu kanalın henüz paylaşım saati yok. Bir workspace yöneticisinden saatleri belirlemesini iste.',
+                'title' => 'Bu kanalın kuyruğunu henüz ayarlamadın',
+                'body' => 'Kuyruğa gönderi eklemek için kanalın paylaşım saatlerini belirle. Kuyruktaki her gönderi bir sonraki boş saatte yayınlanır.',
+                'body_member' => 'Kuyruğa gönderi eklemek için bir workspace yöneticisinin bu kanalın paylaşım saatlerini belirlemesi gerekiyor.',
                 'not_now' => 'Şimdi değil',
                 'action' => 'Saatleri ayarla',
             ],

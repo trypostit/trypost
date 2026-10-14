@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Aan wachtrij toevoegen',
             'add_to_queue_hint' => 'Voegt toe aan het volgende vrije tijdstip van het kanaal.',
             'queue_setup' => [
-                'title' => 'Wanneer moet dit kanaal posten?',
-                'body' => 'Posts in de wachtrij gaan uit op de posttijden van het kanaal, en dit kanaal heeft er nog geen. Kies ze één keer, dan krijgt elke post die je toevoegt het volgende vrije tijdstip.',
-                'body_member' => 'Posts in de wachtrij gaan uit op de posttijden van het kanaal, en dit kanaal heeft er nog geen. Vraag een workspace-admin om ze in te stellen.',
+                'title' => 'Je hebt de wachtrij van dit kanaal nog niet ingesteld',
+                'body' => 'Stel de posttijden van het kanaal in om posts aan de wachtrij toe te voegen. Elke post in de wachtrij gaat uit op het volgende vrije tijdstip.',
+                'body_member' => 'Om posts aan de wachtrij toe te voegen, moet een workspace-admin de posttijden van dit kanaal instellen.',
                 'not_now' => 'Niet nu',
                 'action' => 'Tijden instellen',
             ],

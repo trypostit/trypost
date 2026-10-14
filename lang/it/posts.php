@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Aggiungi alla coda',
             'add_to_queue_hint' => 'Aggiunge al prossimo orario libero del canale.',
             'queue_setup' => [
-                'title' => 'Quando deve pubblicare questo canale?',
-                'body' => 'I post in coda escono negli orari di pubblicazione del canale, e questo canale non ne ha ancora. Sceglili una volta e ogni post che aggiungi prenderà il prossimo orario libero.',
-                'body_member' => 'I post in coda escono negli orari di pubblicazione del canale, e questo canale non ne ha ancora. Chiedi a un admin del workspace di impostarli.',
+                'title' => 'Non hai ancora configurato la coda di questo canale',
+                'body' => 'Per aggiungere post alla coda, imposta gli orari di pubblicazione del canale. Ogni post in coda esce al prossimo orario libero.',
+                'body_member' => 'Per aggiungere post alla coda, un admin del workspace deve impostare gli orari di pubblicazione di questo canale.',
                 'not_now' => 'Non ora',
                 'action' => 'Imposta orari',
             ],

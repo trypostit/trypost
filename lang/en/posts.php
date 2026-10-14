@@ -999,9 +999,9 @@ return [
             'add_to_queue' => 'Add to queue',
             'add_to_queue_hint' => 'Add to the channel\'s next free posting time.',
             'queue_setup' => [
-                'title' => 'When should this channel post?',
-                'body' => 'Posts in the queue go out at this channel\'s posting times, and it doesn\'t have any yet. Choose them once, and every post you add takes the next open time.',
-                'body_member' => 'Posts in the queue go out at this channel\'s posting times, and it doesn\'t have any yet. Ask a workspace admin to set them.',
+                'title' => 'You haven\'t set up this channel\'s queue yet',
+                'body' => 'To add posts to the queue, set this channel\'s posting times. Each queued post goes out at the next open time.',
+                'body_member' => 'To add posts to the queue, a workspace admin needs to set this channel\'s posting times.',
                 'not_now' => 'Not now',
                 'action' => 'Set posting times',
             ],
