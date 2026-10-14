@@ -23,7 +23,7 @@ defineProps<PreviewProps>();
         :media="media"
         :handle="`@${socialAccount.username || socialAccount.handle_label}`"
         content-testid="x-preview-content"
-        media-layout="stack"
+        media-layout="grid"
         link-card
         :actions="[
             { icon: IconMessageCircle },

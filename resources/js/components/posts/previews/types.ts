@@ -30,7 +30,6 @@ export interface PreviewAction {
 
 export type PreviewMediaLayout =
     | 'grid'
-    | 'stack'
     | 'peek'
     | 'carousel'
     | 'collage';

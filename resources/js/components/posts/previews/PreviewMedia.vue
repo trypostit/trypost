@@ -99,29 +99,6 @@ const frameClass = computed((): string =>
                 />
             </div>
         </div>
-        <div v-else-if="mode === 'stack'" class="space-y-0.5">
-            <div
-                v-for="item in media"
-                :key="item.id"
-                class="relative overflow-hidden bg-muted"
-                :class="frameClass"
-                :style="{ paddingBottom: `${ratioOf(item) * 100}%` }"
-            >
-                <div class="absolute inset-0">
-                    <VideoPreview
-                        v-if="isVideo(item)"
-                        :src="item.url"
-                        video-class="size-full object-cover bg-black"
-                    />
-                    <img
-                        v-else
-                        :src="item.url"
-                        :alt="item.original_filename"
-                        class="size-full object-cover"
-                    />
-                </div>
-            </div>
-        </div>
         <div
             v-else-if="mode === 'collage'"
             class="grid grid-cols-6 gap-0.5 overflow-hidden"
@@ -182,10 +159,12 @@ const frameClass = computed((): string =>
             <div
                 v-for="(item, index) in media.slice(0, 4)"
                 :key="item.id"
-                class="relative aspect-square overflow-hidden"
-                :class="{
-                    'row-span-2 aspect-auto': media.length === 3 && index === 0,
-                }"
+                class="relative overflow-hidden"
+                :class="
+                    media.length === 3 && index === 0
+                        ? 'row-span-2'
+                        : 'aspect-square'
+                "
             >
                 <VideoPreview
                     v-if="isVideo(item)"

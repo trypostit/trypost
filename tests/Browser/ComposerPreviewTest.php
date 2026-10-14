@@ -139,3 +139,42 @@ test('a pdf preview crops the browser viewer frame around the page', function ()
     expect($crop)->toBe(['clipped' => true, 'left' => 8, 'top' => 8, 'right' => 8, 'bottom' => 8]);
     $page->assertNoJavaScriptErrors();
 });
+
+test('the x preview lays two images side by side and three as one tall image beside two', function (int $count) {
+    Http::fake();
+    [$user, $accounts] = composerPreviewWorkspace();
+    $media = collect(range(1, $count))->map(fn (int $index): array => [
+        'id' => (string) Str::uuid(),
+        'type' => 'image',
+        'path' => "medias/photo-{$index}.png",
+        'url' => 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'mime_type' => 'image/png',
+        'original_filename' => "photo-{$index}.png",
+        'meta' => ['width' => 1200, 'height' => 800],
+    ])->all();
+    $post = Post::factory()->forAccount($accounts['x'])->create(['user_id' => $user->id, 'content' => 'Photos', 'media' => $media]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.edit', $post))->resize(1440, 900);
+    waitForComposerPreviewTestId($page, 'x-preview');
+
+    $tiles = $page->script(<<<'JS'
+        [...document.querySelectorAll('[data-testid="x-preview"] [data-testid="preview-media"] img')].map((image) => {
+            const box = image.getBoundingClientRect();
+            return [Math.round(box.left), Math.round(box.top), Math.round(box.height)];
+        })
+    JS);
+
+    expect($page->script('document.querySelector(\'[data-testid="x-preview"] [data-testid="preview-media"]\').dataset.layout'))->toBe('grid')
+        ->and($tiles)->toHaveCount($count)
+        ->and($tiles[1][0])->toBeGreaterThan($tiles[0][0])
+        ->and($tiles[1][1])->toBe($tiles[0][1]);
+
+    if ($count === 3) {
+        expect($tiles[2][0])->toBe($tiles[1][0])
+            ->and($tiles[2][1])->toBeGreaterThan($tiles[1][1])
+            ->and($tiles[0][2])->toBeGreaterThan($tiles[1][2]);
+    }
+
+    $page->assertNoJavaScriptErrors();
+})->with([2, 3]);
