@@ -21,11 +21,11 @@ const openLatestEntry = (): void => {
 <template>
     <div
         v-if="entry"
-        class="px-3 pb-3 group-data-[collapsible=icon]:hidden"
+        class="px-3 pb-3 perspective-midrange group-data-[collapsible=icon]:hidden"
     >
         <button
             type="button"
-            class="group/changelog flex w-full flex-col gap-2 rounded-xl border border-border-strong bg-card p-2 text-start transition duration-200 ease-out hover:bg-accent hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:shadow-none"
+            class="group/changelog flex w-full flex-col gap-2 rounded-xl border border-border-strong bg-card p-2 text-start origin-top transition duration-300 ease-out hover:bg-accent hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:hover:-rotate-x-12 motion-safe:active:rotate-x-0 motion-safe:active:shadow-none"
             :aria-label="entry.title"
             data-testid="changelog-card"
             @click="openLatestEntry"
