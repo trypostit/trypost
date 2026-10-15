@@ -154,7 +154,7 @@ class HandleInertiaRequests extends Middleware
      */
     private function changelog(?User $user, Request $request): array
     {
-        if (blank($user) || ! config('trypost.changelog.enabled')) {
+        if (! $user instanceof User || ! config('trypost.changelog.enabled')) {
             return ['changelog' => null];
         }
 
