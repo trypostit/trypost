@@ -1,6 +1,7 @@
 ---
 paths:
   - routes/well-known.php
+  - app/Http/Controllers/WellKnownController.php
 ---
 
 # Routes
