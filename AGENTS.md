@@ -768,9 +768,9 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   `cover_url` (not reported) and the UI keeps the empty muted frame; factories hit this, production
   does not because the build and the sync run from the same commit. Never upload covers to a disk
   or put them in `public/`.
-- **`php artisan changelog:sync` runs on every deploy** (after `migrate`). Each folder is read and
-  validated by the `App\Dto\ChangelogEntryFile` DTO (like `BlueskySession`); `SyncChangelogEntries`
-  only writes what the DTOs hold. It upserts
+- **`php artisan changelog:sync` runs on every deploy** (after `migrate`). Each folder is validated against
+  `App\Http\Requests\App\Changelog\SyncChangelogEntryRequest` (rules and messages live there, like
+  every other request); `SyncChangelogEntries` reads the files, validates and writes. DTOs never validate. It upserts
   `changelog_entries` by slug, deletes rows whose folder is gone, and fails loud without writing
   anything when the folder itself is missing (never "no entries, delete everything") or one folder is invalid (its name must be `<YYYY-MM-DD>-<slug>` and its `date` that same day, which also catches an impossible unquoted date YAML would roll over) (missing `entry.md` or `cover.png`, or a cover that is not
   16:9). Never edit the rows by hand, and never rename a synced folder (its views are keyed to
