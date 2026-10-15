@@ -291,13 +291,18 @@ watch(activeEntry, (entry) => {
                                 class="group/cover relative block aspect-video overflow-hidden rounded-lg bg-muted"
                                 :data-testid="`changelog-item-cover-${entry.slug}`"
                             >
-                                <img
-                                    v-if="entry.cover_url"
-                                    :src="entry.cover_url"
-                                    alt=""
-                                    class="size-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/cover:scale-[1.04]"
-                                    draggable="false"
-                                />
+                                <span
+                                    class="block size-full transition-transform duration-500 ease-out motion-safe:group-hover/cover:scale-[1.04]"
+                                    :data-testid="`changelog-item-zoom-${entry.slug}`"
+                                >
+                                    <img
+                                        v-if="entry.cover_url"
+                                        :src="entry.cover_url"
+                                        alt=""
+                                        class="size-full object-cover"
+                                        draggable="false"
+                                    />
+                                </span>
                             </span>
                             <span class="flex min-w-0 flex-col gap-1">
                                 <span

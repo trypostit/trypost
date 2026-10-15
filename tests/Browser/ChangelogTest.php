@@ -209,7 +209,7 @@ test('hovering a list item highlights it, only hovering its cover zooms the cove
     $page->click('@sidebar-support-changelog');
     waitForChangelogTestId($page, 'changelog-item-cover-2026-10-13-hovered');
 
-    $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-cover-2026-10-13-hovered\"] img')).scale";
+    $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-zoom-2026-10-13-hovered\"]')).scale";
     $itemBackground = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-2026-10-13-hovered\"]')).backgroundColor";
     $idleBackground = $page->script($itemBackground);
 
