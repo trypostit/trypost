@@ -293,7 +293,7 @@ watch(activeEntry, (entry) => {
                             v-for="entry in entries"
                             :key="entry.id"
                             type="button"
-                            class="-mx-3 flex flex-col gap-3 rounded-xl p-3 text-start transition-control hover:bg-accent focus-visible:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                            class="-mx-3 flex flex-col gap-3 rounded-xl p-3 text-start transition-control hover:bg-sidebar focus-visible:bg-sidebar focus-visible:outline-2 dark:hover:bg-accent dark:focus-visible:bg-accent focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :data-testid="`changelog-item-${entry.slug}`"
                             @click="showEntry(entry)"
                         >
