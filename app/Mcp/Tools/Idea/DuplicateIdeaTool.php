@@ -20,7 +20,7 @@ use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
 #[IsReadOnly(false)]
-#[IsDestructive(false)]
+#[IsDestructive(true)]
 #[IsOpenWorld(false)]
 #[Description('Duplicate an idea with its media and labels. The copy is placed right after the original in its stage. Ideas cannot be turned into posts through MCP; use create-post-tool with the idea text if needed.')]
 class DuplicateIdeaTool extends Tool

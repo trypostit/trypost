@@ -68,7 +68,7 @@ function mcpExpectedToolAnnotations(): array
         'create-idea-tool' => [false, false, false],
         'update-idea-tool' => [false, true, false],
         'delete-ideas-tool' => [false, true, false],
-        'duplicate-idea-tool' => [false, false, false],
+        'duplicate-idea-tool' => [false, true, false],
         'move-ideas-tool' => [false, true, false],
         'list-idea-stages-tool' => [true, false, false],
         'create-idea-stage-tool' => [false, false, false],
