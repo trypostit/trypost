@@ -88,7 +88,7 @@ never another product's composition, elements or sample content.
   `@` already lives in the handles). Never two icons for the same thing.
 - **Settings are drawn the way the app shows them:** the Tabler icon of the idea (`users` for
   collaborators, `music`, `movie` for reels), the label exactly as on screen, and the real
-  control: `handle` chips with `@`, a `track` playing (`eq`: a green sound wave centered on its axis, then title and muted artist), the
+  control: `handle` chips with `@`, a `track` playing (`eq`: a thin green sound wave (3px bars, 3px gap) centered on its axis, then title and muted artist), the
   app's violet `switch`.
 - **Content is ours:** handles are the team's own, `@paulocastellano` then `@luizmazini`, never
   an invented handle that may belong to someone else, and never a customer's account or data. Tracks are songs known worldwide (e.g. Bohemian Rhapsody ·

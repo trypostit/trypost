@@ -96,8 +96,8 @@ body {
 .track .artist { margin-left: -6px; color: var(--muted-foreground); font-weight: 500; }
 
 /* A track playing: a sound wave in green, centered on its axis. */
-.eq { display: flex; align-items: center; gap: 4px; height: 30px; }
-.eq > i { display: block; width: 6px; border-radius: 3px; background: #16a34a; }
+.eq { display: flex; align-items: center; gap: 3px; height: 28px; }
+.eq > i { display: block; width: 3px; border-radius: 999px; background: #16a34a; }
 
 /* The app's switch: primary-strong with the white knob. */
 .switch { position: relative; width: 84px; height: 46px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--primary-strong); }
