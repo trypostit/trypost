@@ -12,10 +12,12 @@ Feature to announce: $ARGUMENTS
 ## What an entry is
 
 ```
-changelog/<YYYY-MM-DD>-<slug>/
-  entry.md     front matter + Markdown body
-  cover.png    1200×675 cover (16:9, the card and modal slot)
+changelog/<YYYY-MM-DD>-<slug>.md                 front matter + Markdown body
+public/images/changelog/<YYYY-MM-DD>-<slug>.png  1200×675 cover (16:9, the card and modal slot)
 ```
+
+Both files share the slug. The cover is a plain public file served by the app; nothing is
+uploaded anywhere.
 
 ```markdown
 ---
@@ -27,7 +29,7 @@ tags: [new]         # optional, any of: new, improved, fixed, beta
 Body in Markdown.
 ```
 
-- The folder name is the slug and never changes once synced (views are keyed to the row it creates).
+- The file name is the slug and never changes once synced (views and reactions are keyed to the row it creates).
 - `date` is the day users see. A future date hides the entry until that day (UTC).
 - The sidebar card announces only the newest entry dated on or after the user's signup day; the
   "What's New" list shows every published entry.
@@ -66,7 +68,7 @@ Run the text through the `humanizer` skill before saving.
 ### Step 3 — Render the cover
 
 The cover is **always 16:9, 1200×675 PNG**. The sidebar card, the list thumbnail and the detail
-all show it in a 16:9 slot (`aspect-video`), and `changelog:sync` refuses any `cover.png` that is
+all show it in a 16:9 slot (`aspect-video`), and `changelog:sync` refuses any cover that is
 not 16:9. Always render it with the command below; never hand-make, crop or resize a cover, and
 never change `--width`, `--height` or `--scale`.
 
@@ -80,7 +82,7 @@ node .claude/release-assets/render-thumbnail.mjs \
   --headline "Music, collaborators and trial reels" \
   --underline "trial reels" \
   --themes "Music,Collaborators,Trial reels" \
-  --out changelog/<YYYY-MM-DD>-<slug>/cover.png
+  --out public/images/changelog/<YYYY-MM-DD>-<slug>.png
 ```
 
 Open the PNG and check it:
@@ -96,10 +98,10 @@ Open the PNG and check it:
 php artisan changelog:sync
 ```
 
-It fails loud, naming the folder, when the front matter is invalid, the cover is missing or the
-cover is not 16:9.
-Locally it also uploads the cover to the default disk, so the entry shows in the sidebar card.
+It fails loud, naming the entry, when the front matter is invalid, the cover is missing or the
+cover is not 16:9. Locally it also writes the entry to the database, so it shows in the sidebar
+card and the "What's New" list.
 
 ### Step 5 — Hand over
 
-Show the user the title, tags, body and cover path. Do not commit or push unless asked.
+Show the user the title, tags, body and the paths of both files. Do not commit or push unless asked.

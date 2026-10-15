@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'Uygulama durumu',
         'chat' => 'Sohbet desteği',
+        'changelog' => 'Yenilikler',
         'referral' => '%30 referans kazanın',
         'discord' => 'Discord topluluğu',
         'community' => 'Topluluk',

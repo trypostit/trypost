@@ -150,6 +150,7 @@ return [
     'sidebar.plans_billing' => 26,
     'sidebar.settings' => 13,
     'sidebar.support.menu' => 20,
+    'sidebar.support.changelog' => 15,
     'sidebar.theme' => 26,
     'signatures.description' => 43,
     'webhooks.actions.delete' => 11,

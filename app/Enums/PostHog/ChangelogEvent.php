@@ -7,4 +7,5 @@ namespace App\Enums\PostHog;
 enum ChangelogEvent: string
 {
     case EntryViewed = 'changelog.entry_viewed';
+    case EntryReacted = 'changelog.entry_reacted';
 }

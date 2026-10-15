@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'حالة التطبيق',
         'chat' => 'الدعم عبر الدردشة',
+        'changelog' => 'ما الجديد',
         'referral' => 'اربح عمولة إحالة 30%',
         'discord' => 'مجتمع Discord',
         'community' => 'المجتمع',

@@ -1,8 +1,17 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
-import { IconArrowLeft, IconX } from '@tabler/icons-vue';
+import {
+    IconArrowLeft,
+    IconThumbDown,
+    IconThumbDownFilled,
+    IconThumbUp,
+    IconThumbUpFilled,
+    IconX,
+} from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
+import { toast } from 'vue-sonner';
 
+import { update as updateReaction } from '@/actions/App/Http/Controllers/App/ChangelogEntryReactionController';
 import { store as storeView } from '@/actions/App/Http/Controllers/App/ChangelogEntryViewController';
 import ChangelogTagBadge from '@/components/changelog/ChangelogTagBadge.vue';
 import { Button } from '@/components/ui/button';
@@ -17,14 +26,19 @@ import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
 import date from '@/date';
 import type {
     ChangelogEntry,
+    ChangelogReaction,
     ScrollChangelogEntries,
 } from '@/types/changelog';
 
 const page = usePage();
 const { state, openEntry, backToList, close } = useChangelogDialog();
 const http = useHttp<Record<string, never>, null>({});
+const reactionHttp = useHttp<{ reaction: ChangelogReaction | null }, null>({
+    reaction: null,
+});
 
 const openedIds = ref(new Set<string>());
+const reactions = ref<Record<string, ChangelogReaction | null>>({});
 
 const entries = computed(
     () =>
@@ -59,6 +73,35 @@ const recordView = async (entry: ChangelogEntry): Promise<void> => {
         next.delete(entry.id);
         openedIds.value = next;
     }
+};
+
+const reactionOf = (entry: ChangelogEntry): ChangelogReaction | null =>
+    entry.id in reactions.value ? reactions.value[entry.id] : entry.reaction;
+
+const react = async (
+    entry: ChangelogEntry,
+    reaction: ChangelogReaction,
+): Promise<void> => {
+    const previous = reactionOf(entry);
+    const next = previous === reaction ? null : reaction;
+
+    reactions.value = { ...reactions.value, [entry.id]: next };
+    reactionHttp.reaction = next;
+
+    try {
+        await reactionHttp.put(updateReaction.url(entry.id));
+    } catch {
+        reactions.value = { ...reactions.value, [entry.id]: previous };
+        toast.error("Couldn't save your answer. Try again.");
+    }
+};
+
+const like = (entry: ChangelogEntry): void => {
+    void react(entry, 'like');
+};
+
+const dislike = (entry: ChangelogEntry): void => {
+    void react(entry, 'dislike');
 };
 
 const showEntry = (entry: ChangelogEntry): void => {
@@ -163,6 +206,44 @@ watch(activeEntry, (entry) => {
                     class="prose prose-sm max-w-none text-foreground dark:prose-invert prose-a:text-primary-text"
                     v-html="activeEntry.body_html"
                 />
+                <div
+                    class="mt-2 flex items-center justify-center gap-3 border-t border-border pt-5"
+                    data-testid="changelog-reaction"
+                >
+                    <p class="text-sm font-medium text-foreground">
+                        Do you like it?
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Like"
+                            :aria-pressed="reactionOf(activeEntry) === 'like'"
+                            data-testid="changelog-reaction-like"
+                            @click="like(activeEntry)"
+                        >
+                            <IconThumbUpFilled
+                                v-if="reactionOf(activeEntry) === 'like'"
+                                class="size-5 text-primary-strong"
+                            />
+                            <IconThumbUp v-else class="size-5" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Dislike"
+                            :aria-pressed="reactionOf(activeEntry) === 'dislike'"
+                            data-testid="changelog-reaction-dislike"
+                            @click="dislike(activeEntry)"
+                        >
+                            <IconThumbDownFilled
+                                v-if="reactionOf(activeEntry) === 'dislike'"
+                                class="size-5 text-primary-strong"
+                            />
+                            <IconThumbDown v-else class="size-5" />
+                        </Button>
+                    </div>
+                </div>
             </article>
 
             <div v-else class="px-6 pb-6">

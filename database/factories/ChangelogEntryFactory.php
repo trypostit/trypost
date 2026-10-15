@@ -21,15 +21,12 @@ class ChangelogEntryFactory extends Factory
     public function definition(): array
     {
         $publishedOn = now()->subDay()->toDateString();
-        $slug = "{$publishedOn}-".Str::slug(fake()->unique()->words(3, true));
 
         return [
-            'slug' => $slug,
+            'slug' => "{$publishedOn}-".Str::slug(fake()->unique()->words(3, true)),
             'title' => fake()->sentence(5),
             'tags' => [],
             'body' => fake()->paragraph(),
-            'cover_path' => "changelog/{$slug}.png",
-            'cover_hash' => sha1($slug),
             'published_on' => $publishedOn,
         ];
     }

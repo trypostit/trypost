@@ -758,21 +758,29 @@ view turns a forgotten variable into a runtime-only failure.
 The in-app announcements: a card at the bottom of the sidebar announcing the newest
 entry, and a "What's New" modal (Help menu) listing every published entry.
 
-- **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>/entry.md`
-  (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`) plus `cover.png`
-  (1200×675, 16:9). There is no admin panel. Write them with the `/changelog` command.
+- **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>.md`
+  (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`), with
+  its cover at `public/images/changelog/<slug>.png` (1200×675, 16:9), served as a plain public
+  file (no CDN upload, so self-hosted installs get it too). There is no admin panel. Write them
+  with the `/changelog` command.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
-  `changelog_entries` by slug, uploads the cover to `changelog/<slug>.png` on the
-  default disk only when its hash changed, deletes rows whose folder is gone, and fails
-  loud without writing anything when one folder is invalid (a cover that is not 16:9 counts as invalid). Never edit the rows by hand,
-  and never rename a synced folder (its views are keyed to the row).
-- **The whole feature is English only** (owner decision 2026-10-14): the entries, the tag
-  labels (`Tag::label()`), the modal title, its empty state and the "What's New" menu item
-  are hard-coded English, never lang keys. Only the back and close buttons' `aria-label`s
-  reuse `common.back` / `common.close`.
+  `changelog_entries` by slug, deletes rows whose file is gone, and fails loud without writing
+  anything when one entry is invalid (missing cover or a cover that is not 16:9 included). Never
+  edit the rows by hand, and never rename a synced entry (its views are keyed to the row).
+- **The entries and the modal are English only** (owner decision 2026-10-14): the entries, the
+  tag labels (`Tag::label()`), the modal title, its empty state and the "Do you like it?" block
+  are hard-coded English, never lang keys. The exception is the Help menu item, which is part
+  of the app menu and is translated (`sidebar.support.changelog`, all 16 locales). The back and
+  close buttons' `aria-label`s reuse `common.back` / `common.close`.
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
   `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
+- **"Do you like it?"** sits at the end of an entry's detail with 👍 / 👎
+  (`App\Enums\Changelog\Reaction`: `like`, `dislike`). The answer is the `reaction` column on the
+  user's view row (owner decision 2026-10-14: no separate reactions table); clicking the chosen
+  one again clears it. `ReactToChangelogEntry` (`PUT app.changelog.reaction.update`) records the
+  view if needed and sends `changelog.entry_reacted` (with `reaction`, null when cleared) to
+  PostHog on every change. Counts are never shown in the app.
 - **The sidebar card announces one entry only** (owner decision 2026-10-14): the newest
   one dated since the user's signup day (`ChangelogEntry::scopeAnnouncedTo`), and only
   while the user has not opened it (`ListChangelogEntries::latestForCard`). Opening it hides
@@ -781,7 +789,7 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   including those from before the user signed up, with a dot on the ones not opened yet. A
   future date schedules an entry for both.
 - Off by default: `CHANGELOG_ENABLED` (`trypost.changelog.enabled`). Cloud turns it on;
-  off means no shared data, no card, no menu item, and the view route 404s.
+  off means no shared data, no card, no menu item, and the view and reaction routes 404.
 
 ## Empty states on list pages
 

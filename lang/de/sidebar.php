@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'App-Status',
         'chat' => 'Chat-Support',
+        'changelog' => 'Neuigkeiten',
         'referral' => '30% Provision verdienen',
         'discord' => 'Discord-Community',
         'community' => 'Community',

@@ -1,3 +1,5 @@
+export type ChangelogReaction = 'like' | 'dislike';
+
 export type ChangelogTagValue = 'new' | 'improved' | 'fixed' | 'beta';
 
 export interface ChangelogTag {
@@ -15,6 +17,7 @@ export interface ChangelogEntry {
     excerpt: string;
     body_html: string;
     seen: boolean;
+    reaction: ChangelogReaction | null;
 }
 
 export interface SharedChangelog {

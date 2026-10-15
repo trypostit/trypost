@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Changelog\Reaction;
 use Database\Factories\ChangelogEntryViewFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -11,7 +12,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * A user opened a changelog entry. One row per user and entry.
+ * A user opened a changelog entry, and their answer to "Do you like it?".
+ * One row per user and entry.
  */
 class ChangelogEntryView extends Model
 {
@@ -22,12 +24,14 @@ class ChangelogEntryView extends Model
         'changelog_entry_id',
         'user_id',
         'viewed_at',
+        'reaction',
     ];
 
     protected function casts(): array
     {
         return [
             'viewed_at' => 'datetime',
+            'reaction' => Reaction::class,
         ];
     }
 

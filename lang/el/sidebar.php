@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'Κατάσταση εφαρμογής',
         'chat' => 'Υποστήριξη μέσω chat',
+        'changelog' => 'Τι νέο υπάρχει',
         'referral' => 'Κερδίστε 30% από συστάσεις',
         'discord' => 'Κοινότητα Discord',
         'community' => 'Κοινότητα',

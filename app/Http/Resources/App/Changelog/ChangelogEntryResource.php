@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources\App\Changelog;
 
+use App\Enums\Changelog\Reaction;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class ChangelogEntryResource extends JsonResource
             'excerpt' => $this->excerpt(),
             'body_html' => $this->bodyHtml(),
             'seen' => (bool) ($this->seen ?? false),
+            'reaction' => Reaction::tryFrom((string) ($this->reaction ?? ''))?->value,
         ];
     }
 }

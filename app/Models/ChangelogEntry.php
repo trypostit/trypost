@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
  * A "What's New" announcement. The rows are written only by `changelog:sync`
- * from the Markdown files under `changelog/`; never edit them by hand.
+ * from the Markdown files under `changelog/`; never edit them by hand. The
+ * cover is the public file `images/changelog/<slug>.png`.
  */
 class ChangelogEntry extends Model
 {
@@ -29,8 +29,6 @@ class ChangelogEntry extends Model
         'title',
         'tags',
         'body',
-        'cover_path',
-        'cover_hash',
         'published_on',
     ];
 
@@ -77,6 +75,20 @@ class ChangelogEntry extends Model
     }
 
     /**
+     * Adds the user's `reaction` to each entry (null when they gave none).
+     *
+     * @param  Builder<self>  $query
+     */
+    public function scopeWithReactionBy(Builder $query, User $user): void
+    {
+        $query->addSelect(['reaction' => ChangelogEntryView::query()
+            ->select('reaction')
+            ->whereColumn('changelog_entry_id', 'changelog_entries.id')
+            ->where('user_id', $user->id)
+            ->limit(1)]);
+    }
+
+    /**
      * @param  Builder<self>  $query
      */
     public function scopeLatestFirst(Builder $query): void
@@ -86,7 +98,7 @@ class ChangelogEntry extends Model
 
     public function coverUrl(): string
     {
-        return Storage::url($this->cover_path);
+        return asset("images/changelog/{$this->slug}.png");
     }
 
     public function bodyHtml(): string

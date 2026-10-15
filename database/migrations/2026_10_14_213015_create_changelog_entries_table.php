@@ -16,8 +16,6 @@ return new class extends Migration
             $table->string('title');
             $table->json('tags')->nullable();
             $table->text('body');
-            $table->string('cover_path');
-            $table->string('cover_hash');
             $table->date('published_on')->index();
             $table->timestamps();
         });

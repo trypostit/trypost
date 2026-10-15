@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\Changelog\Reaction;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
@@ -75,13 +76,18 @@ test('nothing is shared when the changelog is turned off', function () {
             ->missing('changelogEntries'));
 });
 
-test('the modal list loads every published entry, five per page, newest first, flagging the opened ones', function () {
+test('the modal list loads every published entry, five per page, newest first, with whether the user opened and liked each one', function () {
     $this->user->forceFill(['created_at' => now()->subDays(2)])->save();
     $entries = collect(range(0, 6))->map(fn (int $daysAgo) => ChangelogEntry::factory()->create([
         'published_on' => today()->subDays($daysAgo),
     ]));
     ChangelogEntry::factory()->create(['published_on' => today()->addDay()]);
-    ChangelogEntryView::factory()->create(['changelog_entry_id' => $entries[1]->id, 'user_id' => $this->user->id]);
+    ChangelogEntryView::factory()->create([
+        'changelog_entry_id' => $entries[1]->id,
+        'user_id' => $this->user->id,
+        'reaction' => Reaction::Like,
+    ]);
+    ChangelogEntryView::factory()->create(['changelog_entry_id' => $entries[1]->id, 'reaction' => Reaction::Dislike]);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
@@ -90,7 +96,9 @@ test('the modal list loads every published entry, five per page, newest first, f
                 ->has('changelogEntries.data', 5)
                 ->where('changelogEntries.data.0.id', $entries[0]->id)
                 ->where('changelogEntries.data.1.seen', true)
-                ->where('changelogEntries.data.0.seen', false)));
+                ->where('changelogEntries.data.0.seen', false)
+                ->where('changelogEntries.data.1.reaction', 'like')
+                ->where('changelogEntries.data.0.reaction', null)));
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar', ['changelog_page' => 2]))

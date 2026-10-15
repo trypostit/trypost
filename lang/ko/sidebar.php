@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => '앱 상태',
         'chat' => '채팅 지원',
+        'changelog' => '새로운 기능',
         'referral' => '30% 추천 수익 받기',
         'discord' => 'Discord 커뮤니티',
         'community' => '커뮤니티',

@@ -26,6 +26,7 @@ class ListChangelogEntries
         return ChangelogEntry::query()
             ->published()
             ->withSeenBy($user)
+            ->withReactionBy($user)
             ->latestFirst()
             ->paginate(self::PAGE_SIZE, pageName: self::PAGE_NAME);
     }

@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => '应用状态',
         'chat' => '在线客服',
+        'changelog' => '新功能',
         'referral' => '赚取 30% 推荐奖励',
         'discord' => 'Discord 社区',
         'community' => '社区',

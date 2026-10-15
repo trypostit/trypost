@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'Статус застосунку',
         'chat' => 'Підтримка в чаті',
+        'changelog' => 'Що нового',
         'referral' => 'Отримуйте 30% за рефералами',
         'discord' => 'Спільнота Discord',
         'community' => 'Спільнота',

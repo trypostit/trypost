@@ -48,6 +48,7 @@ return [
         'github' => 'GitHub',
         'status' => 'アプリのステータス',
         'chat' => 'チャットサポート',
+        'changelog' => '新機能',
         'referral' => '30% の紹介報酬を獲得',
         'discord' => 'Discord コミュニティ',
         'community' => 'コミュニティ',

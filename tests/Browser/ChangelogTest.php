@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\Changelog\Reaction;
 use App\Enums\Changelog\Tag;
+use App\Enums\User\Locale;
 use App\Enums\User\ReferralSource;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
@@ -43,7 +45,14 @@ function waitForChangelogViews(mixed $page, User $user, int $count): void
     }
 }
 
-test('opening the sidebar card shows the newest entry, records the view and hides the card', function () {
+function waitForChangelogReaction(mixed $page, ChangelogEntry $entry, ?Reaction $reaction): void
+{
+    for ($attempt = 0; $attempt < 100 && ChangelogEntryView::where('changelog_entry_id', $entry->id)->value('reaction') !== $reaction?->value; $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 50))');
+    }
+}
+
+test('opening the sidebar card shows the newest entry, records the view, hides the card and takes a reaction', function () {
     config(['trypost.changelog.enabled' => true]);
 
     $user = User::factory()->create([
@@ -100,10 +109,74 @@ test('opening the sidebar card shows the newest entry, records the view and hide
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->sort()->values()->all())
         ->toEqual(collect([$newest->id, $older->id])->sort()->values()->all());
 
+    $page->assertSeeIn('@changelog-reaction', 'Do you like it?')
+        ->click('@changelog-reaction-like');
+    waitForChangelogReaction($page, $older, Reaction::Like);
+    expect(ChangelogEntryView::where('changelog_entry_id', $older->id)->sole()->reaction)->toBe(Reaction::Like)
+        ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('true');
+
+    $page->click('@changelog-reaction-dislike');
+    waitForChangelogReaction($page, $older, Reaction::Dislike);
+    expect(ChangelogEntryView::where('changelog_entry_id', $older->id)->sole()->reaction)->toBe(Reaction::Dislike);
+
+    $page->click('@changelog-reaction-dislike');
+    waitForChangelogReaction($page, $older, null);
+    expect(ChangelogEntryView::where('changelog_entry_id', $older->id)->sole()->reaction)->toBeNull();
+
     $page->click('@changelog-close');
     waitForChangelogTestIdGone($page, 'changelog-dialog');
 
     $page->assertMissing('@changelog-card')
         ->assertMissing('@changelog-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the help menu item is translated and opens the list', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = User::factory()->create([
+        'locale' => Locale::PortugueseBrazil,
+        'referral_source' => ReferralSource::Google->value,
+    ]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    ChangelogEntry::factory()->create(['slug' => '2026-10-13-listed', 'published_on' => today()->subYear()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const find = async (testId) => {
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const element = document.querySelector(`[data-testid="${testId}"]`);
+                    if (element) return element;
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+            };
+            (await find('sidebar-workspace-menu')).click();
+            const trigger = await find('sidebar-support-trigger');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await find('sidebar-support-changelog');
+        })();
+    JS);
+
+    $page->assertSeeIn('@sidebar-support-changelog', __('sidebar.support.changelog', [], 'pt-BR'));
+    expect(__('sidebar.support.changelog', [], 'pt-BR'))->toBe('Novidades');
+
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-listed');
+
+    $page->assertPresent('@changelog-unseen-2026-10-13-listed')
+        ->assertMissing('@changelog-card')
         ->assertNoJavaScriptErrors();
 });
