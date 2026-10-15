@@ -761,8 +761,8 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
 - **Each entry is one folder in the repo**, `resources/changelog/<YYYY-MM-DD>-<slug>/` with
   `entry.md` (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`)
   and `cover.png` (16:9, rendered at 2400×1350). Covers use flat colors, a firm ink border and the content inside:
-  one flat app tint (violet by default), white surfaces with a 2.5px ink border and no shadow, the post in
-  its real shape next to a composer-like settings panel, no decoration; the style only, never another
+  one flat app tint (violet by default), white surfaces with a 2.5px ink border and no shadow, a composer-like
+  settings panel with the network's badge (no phones or device mockups), one icon per idea, no decoration; the style only, never another
   product's composition or sample content: feature, integration and announcement scenes in `.claude/release-assets/changelog-covers/`,
   rendered by its `render.mjs`), never screenshots or headlines. The folder holds a `.gitkeep` so it exists with no entries.
   There is no admin panel. Write them with the `/changelog` command.

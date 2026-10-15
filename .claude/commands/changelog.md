@@ -80,12 +80,14 @@ never another product's composition, elements or sample content.
   between consecutive entries.
 - **Surfaces:** white, with the 2.5px ink border (`#292928`, the app's text color), rounded, and
   **no shadow**. Dividers inside a surface use the same ink line.
-- **Show what the user posts and what is new about it.** For a post feature, draw the post in
-  its real shape (a 9:16 `reel`, a square feed post, a carousel), its media illustrated in flat
-  colors with ink outlines, next to one `panel` that reads like the composer's section for that
-  network, with the new settings as `setting` rows. Add the network's `badge` on the post.
-- **Settings are drawn the way the app shows them:** the Tabler icon of the screen (`at` for
-  collaborators, `music`, `video` for reels), the label exactly as on screen, and the real
+- **Draw where the feature lives, not a device.** For new settings, one `panel` that reads like
+  the composer's section (a header naming what it applies to, e.g. `Reel`, then the new settings
+  as `setting` rows), with the network's `badge` stuck on its top-left corner. No phones, browser
+  frames or mockups of hardware.
+- **One icon per idea, everywhere:** if the header uses `movie` for the reel, every reel on the
+  cover uses `movie` too (the Trial reel row included). Never two icons for the same thing.
+- **Settings are drawn the way the app shows them:** the Tabler icon of the idea (`at` for
+  collaborators, `music`, `movie` for reels), the label exactly as on screen, and the real
   control: `handle` chips with `@`, a `track` pick, the app's violet `switch`.
 - **Content is ours and generic:** invented handles (`@nina`, `@leomakes`), an invented track;
   never a real person, account or customer.
@@ -99,7 +101,7 @@ scratchpad and edit the copy (the templates stay as they are):
 
 | Scene | Template | Use it for |
 | --- | --- | --- |
-| Feature (default) | `feature.html` | A new or improved option, control or screen: the post next to the composer panel with the new settings. |
+| Feature (default) | `feature.html` | A new or improved option, control or screen: the composer-like panel with the new settings and the network's badge. |
 | Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's app icon. |
 | Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis on white surfaces. |
 

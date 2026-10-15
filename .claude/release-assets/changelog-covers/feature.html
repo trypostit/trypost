@@ -1,26 +1,12 @@
 <!--
-  FEATURE (default scene): what the user posts next to the new settings, drawn
-  as the composer shows them. Example: Instagram reels gain collaborators,
-  music and trial reels. Draw only what the entry is about.
+  FEATURE (default scene): the composer section where the new settings live,
+  with the network's badge stuck on its corner. Example: Instagram reels gain
+  collaborators, music and trial reels. Draw only what the entry is about, and
+  use one icon per idea everywhere (here `movie` is the reel).
 -->
 <div class="canvas bg-violet">
-    <div class="surface reel at" style="left: 130px; top: 80px">
-        <div class="frame" style="background: #c4b5fd">
-            <svg class="at" style="left: 0; top: 0" width="290" height="516" viewBox="0 0 290 516" preserveAspectRatio="none">
-                <circle cx="200" cy="170" r="46" fill="#ffcc33" stroke="#292928" stroke-width="2.5" />
-                <path d="M-4 360 C 60 310, 120 380, 180 335 S 260 320, 294 345 L 294 520 L -4 520 Z" fill="#a78bfa" stroke="#292928" stroke-width="2.5" />
-                <path d="M-4 410 C 70 370, 140 440, 210 400 S 270 395, 294 410 L 294 520 L -4 520 Z" fill="#6d28d9" stroke="#292928" stroke-width="2.5" />
-            </svg>
-            <div class="top"><i data-icon="movie"></i>Reels</div>
-            <div class="sound"><i data-icon="music"></i>Golden hour · Mira</div>
-        </div>
-    </div>
-
-    <div class="badge at" style="left: 360px; top: 44px; background: #e1306c">
-        <i data-icon="brand-instagram"></i>
-    </div>
-
-    <div class="surface panel at" style="left: 500px; top: 150px">
+    <div class="surface panel at" style="left: 230px; top: 150px; width: 740px">
+        <div class="head"><i data-icon="movie"></i>Reel</div>
         <div class="setting">
             <i data-icon="at"></i>Collaborators
             <span class="control"><span class="handle">@nina</span><span class="handle">@leomakes</span></span>
@@ -30,8 +16,12 @@
             <span class="control"><span class="track"><span class="art" style="background: #f39200"><i data-icon="player-play" data-filled></i></span>Golden hour</span></span>
         </div>
         <div class="setting">
-            <i data-icon="video"></i>Trial reel
+            <i data-icon="movie"></i>Trial reel
             <span class="control"><span class="switch"></span></span>
         </div>
+    </div>
+
+    <div class="badge at" style="left: 176px; top: 100px; background: #e1306c">
+        <i data-icon="brand-instagram"></i>
     </div>
 </div>

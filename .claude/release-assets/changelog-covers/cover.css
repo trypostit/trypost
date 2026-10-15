@@ -40,29 +40,6 @@ body {
 /* A white surface with the ink border, no shadow. */
 .surface { background: #fff; border: 2.5px solid var(--ink); border-radius: 24px; }
 
-/* A vertical reel (9:16), illustrated in flat colors. */
-.reel { width: 290px; height: 516px; overflow: hidden; }
-.reel .frame { position: relative; width: 100%; height: 100%; }
-.reel .top { position: absolute; left: 18px; top: 16px; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; }
-.reel .top .icon { font-size: 30px; }
-.reel .sound {
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    bottom: 16px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    height: 48px;
-    padding: 0 16px;
-    border: 2.5px solid var(--ink);
-    border-radius: 999px;
-    background: #fff;
-    font-size: 19px;
-    font-weight: 600;
-}
-.reel .sound .icon { font-size: 22px; }
-
 /* A network's mark in its brand circle. */
 .badge {
     display: grid;
@@ -76,7 +53,18 @@ body {
 }
 
 /* A settings panel, like the composer's section for a network. */
-.panel { width: 610px; }
+.panel { width: 610px; overflow: hidden; }
+.panel .head {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 22px 28px 22px 92px;
+    border-bottom: 2.5px solid var(--ink);
+    background: var(--accent);
+    font-size: 26px;
+    font-weight: 600;
+}
+.panel .head .icon { font-size: 32px; }
 .setting {
     display: flex;
     align-items: center;
