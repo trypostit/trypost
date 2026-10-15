@@ -183,7 +183,7 @@ test('the help menu item is translated and opens the list', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('hovering anywhere on a list item zooms its cover, and the whole item opens the entry', function () {
+test('hovering a list item highlights it, only hovering its cover zooms the cover, and the whole item opens the entry', function () {
     config(['trypost.changelog.enabled' => true]);
 
     $user = User::factory()->create(['referral_source' => ReferralSource::Google->value]);
@@ -225,10 +225,15 @@ test('hovering anywhere on a list item zooms its cover, and the whole item opens
     JS);
 
     $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-cover-2026-10-13-hovered\"] img')).scale";
-
-    expect($page->script($coverScale))->toBe('none');
+    $itemBackground = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-2026-10-13-hovered\"]')).backgroundColor";
+    $idleBackground = $page->script($itemBackground);
 
     $page->hover('@changelog-item-title-2026-10-13-hovered');
+    waitForChangelogCondition($page, "{$itemBackground} !== '{$idleBackground}'");
+    expect($page->script($itemBackground))->not->toBe($idleBackground)
+        ->and($page->script($coverScale))->toBe('none');
+
+    $page->hover('@changelog-item-cover-2026-10-13-hovered');
     waitForChangelogCondition($page, "{$coverScale} === '1.04'");
     expect($page->script($coverScale))->toBe('1.04');
 

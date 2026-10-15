@@ -293,18 +293,18 @@ watch(activeEntry, (entry) => {
                             v-for="entry in entries"
                             :key="entry.id"
                             type="button"
-                            class="group/item -mx-2 flex flex-col gap-3 rounded-xl p-2 text-start focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                            class="-mx-3 flex flex-col gap-3 rounded-xl p-3 text-start transition-control hover:bg-accent focus-visible:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :data-testid="`changelog-item-${entry.slug}`"
                             @click="showEntry(entry)"
                         >
                             <span
-                                class="relative block overflow-hidden rounded-lg bg-muted"
+                                class="group/cover relative block overflow-hidden rounded-lg bg-muted"
                                 :data-testid="`changelog-item-cover-${entry.slug}`"
                             >
                                 <img
                                     :src="entry.cover_url"
                                     alt=""
-                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/item:scale-[1.04] motion-safe:group-focus-visible/item:scale-[1.04]"
+                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/cover:scale-[1.04]"
                                     draggable="false"
                                 />
                             </span>
