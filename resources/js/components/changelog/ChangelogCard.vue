@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import { IconArrowRight } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
@@ -21,30 +22,53 @@ const openLatestEntry = (): void => {
 <template>
     <div
         v-if="entry"
-        class="px-3 pb-3 perspective-midrange group-data-[collapsible=icon]:hidden"
+        class="px-3 pb-3 group-data-[collapsible=icon]:hidden"
     >
         <button
             type="button"
-            class="group/changelog flex w-full flex-col gap-2 rounded-xl border border-border-strong bg-card p-2 text-start origin-top transition duration-300 ease-out hover:bg-accent hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:hover:-rotate-x-12 motion-safe:active:rotate-x-0 motion-safe:active:shadow-none"
+            class="group/changelog flex w-full flex-col rounded-xl border border-border-strong bg-card p-3 text-start transition-[background-color,box-shadow] duration-200 ease-out hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
             :aria-label="entry.title"
             data-testid="changelog-card"
             @click="openLatestEntry"
         >
+            <span class="flex flex-col gap-1">
+                <span
+                    class="line-clamp-2 text-[13px] leading-5 font-medium text-foreground"
+                    data-testid="changelog-card-title"
+                >
+                    {{ entry.title }}
+                </span>
+                <span
+                    class="line-clamp-2 text-[13px] leading-5 text-muted-foreground"
+                >
+                    {{ entry.excerpt }}
+                </span>
+            </span>
             <span
-                class="block overflow-hidden rounded-lg border border-border"
+                class="mt-3 block overflow-hidden rounded-lg border border-border bg-muted"
             >
                 <img
                     :src="entry.cover_url"
                     alt=""
-                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/changelog:scale-[1.08] motion-safe:group-hover/changelog:-rotate-1"
+                    class="aspect-video w-full object-cover"
+                    draggable="false"
                     data-testid="changelog-card-cover"
                 />
             </span>
             <span
-                class="px-1 pb-0.5 text-sm leading-5 font-medium text-foreground"
-                data-testid="changelog-card-title"
+                class="grid grid-rows-[0fr] opacity-0 transition-[grid-template-rows,opacity] duration-200 ease-out group-hover/changelog:grid-rows-[1fr] group-hover/changelog:opacity-100 group-focus-visible/changelog:grid-rows-[1fr] group-focus-visible/changelog:opacity-100"
+                aria-hidden="true"
             >
-                {{ entry.title }}
+                <span class="overflow-hidden">
+                    <span
+                        class="flex items-center gap-1 pt-3 text-xs font-medium text-foreground"
+                    >
+                        Read more
+                        <IconArrowRight
+                            class="size-3.5 transition-transform duration-200 ease-out motion-safe:group-hover/changelog:translate-x-0.5"
+                        />
+                    </span>
+                </span>
             </span>
         </button>
     </div>
