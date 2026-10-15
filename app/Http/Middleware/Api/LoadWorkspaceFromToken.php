@@ -18,7 +18,7 @@ class LoadWorkspaceFromToken
     {
         $user = $request->user();
 
-        if ($user === null && $context === 'mcp' && HostedMcpClient::allowsAnonymousDiscovery($request)) {
+        if (blank($user) && $context === 'mcp' && HostedMcpClient::allowsAnonymousDiscovery($request)) {
             return $next($request);
         }
 

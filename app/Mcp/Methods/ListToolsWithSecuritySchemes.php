@@ -14,7 +14,7 @@ class ListToolsWithSecuritySchemes extends ListTools
     /**
      * Every tool needs the user's account, so each one declares OAuth with
      * the mcp:use scope. ChatGPT offers sign-in in the conversation only for
-     * tools that declare it (https://developers.openai.com/apps-sdk/build/auth);
+     * tools that declare it (https://developers.openai.com/plugins/build/auth);
      * other clients ignore the field.
      */
     public function handle(JsonRpcRequest $request, ServerContext $context): JsonRpcResponse

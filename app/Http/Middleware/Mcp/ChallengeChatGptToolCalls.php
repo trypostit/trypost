@@ -17,7 +17,7 @@ class ChallengeChatGptToolCalls
     /**
      * ChatGPT shows its sign-in prompt in the conversation only for a tool
      * result carrying _meta["mcp/www_authenticate"], never for an HTTP 401
-     * (https://developers.openai.com/apps-sdk/build/auth). A refused tool
+     * (https://developers.openai.com/plugins/build/auth). A refused tool
      * call from ChatGPT is answered in that shape; Claude and every other
      * client keep the 401 they sign in from.
      */
@@ -31,17 +31,18 @@ class ChallengeChatGptToolCalls
             return $response;
         }
 
+        $message = self::MESSAGE;
         $resourceMetadata = route('mcp.oauth.protected-resource.nested', ['path' => $request->path()]);
 
         return response()->json([
             'jsonrpc' => '2.0',
             'id' => $request->json('id'),
             'result' => [
-                'content' => [['type' => 'text', 'text' => self::MESSAGE]],
+                'content' => [['type' => 'text', 'text' => $message]],
                 'isError' => true,
                 '_meta' => [
                     'mcp/www_authenticate' => [
-                        "Bearer resource_metadata=\"{$resourceMetadata}\", error=\"insufficient_scope\", error_description=\"".self::MESSAGE.'"',
+                        "Bearer resource_metadata=\"{$resourceMetadata}\", error=\"insufficient_scope\", error_description=\"{$message}\"",
                     ],
                 ],
             ],
