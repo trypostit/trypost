@@ -21,12 +21,12 @@ class ListToolsWithSecuritySchemes extends ListTools
     {
         $result = data_get(parent::handle($request, $context)->toArray(), 'result', []);
 
-        $result['tools'] = collect(data_get($result, 'tools', []))
+        data_set($result, 'tools', collect(data_get($result, 'tools', []))
             ->map(fn (array $tool): array => [
                 ...$tool,
                 'securitySchemes' => [['type' => 'oauth2', 'scopes' => ['mcp:use']]],
             ])
-            ->all();
+            ->all());
 
         return JsonRpcResponse::result($request->id, $result);
     }

@@ -6,7 +6,6 @@ namespace App\Http\Middleware\Api;
 
 use App\Models\AccessToken;
 use App\Models\Workspace;
-use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
 use Illuminate\Http\Request;
 use Laravel\Passport\AccessToken as PassportAccessToken;
@@ -17,11 +16,6 @@ class LoadWorkspaceFromToken
     public function handle(Request $request, Closure $next, ?string $context = null): Response
     {
         $user = $request->user();
-
-        if (blank($user) && $context === 'mcp' && ChatGptMcpClient::allowsAnonymousDiscovery($request)) {
-            return $next($request);
-        }
-
         $authenticatedToken = $user?->token();
 
         if (! $authenticatedToken instanceof PassportAccessToken) {

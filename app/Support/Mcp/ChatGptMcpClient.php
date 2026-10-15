@@ -39,7 +39,7 @@ class ChatGptMcpClient
     public static function allowsAnonymousDiscovery(Request $request): bool
     {
         return ! $request->attributes->get(self::TOKEN_SENT, filled($request->bearerToken()))
-            && in_array($request->json('method'), self::DISCOVERY_METHODS, true)
+            && collect(self::DISCOVERY_METHODS)->containsStrict($request->json('method'))
             && self::matches($request);
     }
 }
