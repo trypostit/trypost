@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
-import { IconArrowLeft, IconX } from '@tabler/icons-vue';
+import { IconChevronLeft, IconX } from '@tabler/icons-vue';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -145,18 +145,23 @@ watch(activeEntry, (entry) => {
                 ref="header"
                 class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-background px-6"
             >
-                <Button
-                    v-if="activeEntry"
-                    variant="ghost"
-                    size="icon"
-                    class="-ms-2"
-                    :aria-label="$t('common.back')"
-                    data-testid="changelog-back"
-                    @click="backToList"
-                >
-                    <IconArrowLeft class="size-4" />
-                </Button>
-                <DialogTitle class="text-lg font-semibold">
+                <template v-if="activeEntry">
+                    <button
+                        type="button"
+                        class="group -ms-1 inline-flex h-8 cursor-pointer items-center gap-1 rounded-md px-1 text-sm font-medium text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                        data-testid="changelog-back"
+                        @click="backToList"
+                    >
+                        <IconChevronLeft
+                            class="size-4 transition-transform group-hover:-translate-x-0.5"
+                        />
+                        All updates
+                    </button>
+                    <DialogTitle class="sr-only">
+                        {{ activeEntry.title }}
+                    </DialogTitle>
+                </template>
+                <DialogTitle v-else class="text-lg font-semibold">
                     <span aria-hidden="true">✨</span>
                     What's New
                 </DialogTitle>

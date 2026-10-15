@@ -120,7 +120,10 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
     waitForChangelogText($page, 'changelog-entry-title', 'Newest feature');
     $page->assertSeeIn('@changelog-entry', 'The newest feature body.')
         ->assertSeeIn('@changelog-entry-tags', 'New')
-        ->assertSeeIn('@changelog-entry-tags', 'Beta');
+        ->assertSeeIn('@changelog-entry-tags', 'Beta')
+        ->assertSeeIn('@changelog-back', 'All updates');
+    expect($page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').getAttribute('aria-labelledby') && document.getElementById(document.querySelector('[data-testid=\"changelog-dialog\"]').getAttribute('aria-labelledby')).textContent.trim()"))
+        ->toBe('Newest feature');
     waitForChangelogTestIdGone($page, 'changelog-card');
 
     expect(ChangelogEntryView::where('user_id', $user->id)->pluck('changelog_entry_id')->all())

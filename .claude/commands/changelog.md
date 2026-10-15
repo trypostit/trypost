@@ -129,9 +129,8 @@ with three stronger tiles in the middle row. Nothing else goes on them.
 - Fixed: the grid, the TryPost mark on the left (filling its tile, no white square behind it),
   the `+` in the center, the service's white tile on the right.
 - Swap: the service's **official** logo, a PNG in `logos/` taken from the brand's own assets
-  (e.g. Google's `gstatic.com/images/branding/product`), never a look-alike Tabler icon; and the
-  tint, `tiles-blue` by default or whichever pair (`tiles-green`, `tiles-peach`, `tiles-violet`)
-  suits that logo best. No settings, no text.
+  (e.g. Google's `gstatic.com/images/branding/product`), never a look-alike Tabler icon. The tint stays
+  `tiles-violet`, like every cover. No settings, no text.
 
 **Template 3 · Announcement.**
 - Fixed: the grid, three emojis in the middle row, 📣 in the center.

@@ -777,10 +777,12 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   the row).
 - **The entries and the modal are English only** (owner decision 2026-10-14): the entries, the
   tag labels (`Tag::label()`), the modal title, its empty state, the "Do you like it?" block (its
-  `Like` / `Dislike` labels and its error toast) and the card's "Read more" are hard-coded English,
+  `Like` / `Dislike` labels and its error toast), the card's "Read more" and the entry's "All updates" button are hard-coded English,
   never lang keys. The exception is the Help menu item, which is part
-  of the app menu and is translated (`sidebar.support.changelog`, all 16 locales). The back and
-  close buttons' `aria-label`s reuse `common.back` / `common.close`.
+  of the app menu and is translated (`sidebar.support.changelog`, all 16 locales). The close
+  button's `aria-label` reuses `common.close`. An open entry's header drops the "What's New"
+  title for an "← All updates" button (English, like the rest) and the X; the dialog's title
+  for screen readers is then the entry's title (`sr-only`).
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
   `ChangelogEntryViewObserver` queues `TrackChangelogEntryEvent` (`posthog` queue) when the row
