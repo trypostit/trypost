@@ -9,9 +9,17 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
+function writeSyncChangelogEntry(string $folder, string $markdown): void
+{
+    File::ensureDirectoryExists($folder);
+    File::put("{$folder}/entry.md", $markdown);
+    File::put("{$folder}/cover.png", UploadedFile::fake()->image('cover.png', 1600, 900)->getContent());
+}
+
 beforeEach(function () {
     $this->directory = storage_path('framework/testing/changelog-'.Str::random(8));
-    File::copyDirectory(base_path('tests/fixtures/changelog'), $this->directory);
+    writeSyncChangelogEntry("{$this->directory}/2026-10-01-first", "---\ntitle: First entry\ndate: 2026-10-01\n---\n\nThe first **entry**.\n");
+    writeSyncChangelogEntry("{$this->directory}/2026-10-02-second", "---\ntitle: Second entry\ndate: 2026-10-02\ntags: [new, beta]\n---\n\nThe second entry.\n");
 
     config(['trypost.changelog.path' => $this->directory]);
     $this->sync = fn () => $this->artisan('changelog:sync');
