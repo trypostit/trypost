@@ -848,6 +848,15 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
 - Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
 
+## MCP tool annotations
+
+**Every MCP tool declares all three annotations explicitly, `false` included** (owner decision October 2026): `#[IsReadOnly(bool)]`, `#[IsDestructive(bool)]` and `#[IsOpenWorld(bool)]`, above its `#[Description]`. The OpenAI plugin directory refuses ("Not live") any tool without three explicit booleans, and the Claude directory requires `readOnlyHint` or `destructiveHint`. Annotations only describe the tool to the AI client (when to ask the user for confirmation); they never change what it does and are not rate limits.
+
+- **readOnly**: `true` only when the tool reads or computes. Warming a cache or refreshing a token during a read still counts as read-only.
+- **destructive**: `true` when the tool changes or removes existing data or sends something irreversible (updates, deletes, reorders, replacing a schedule, publishing, approving or rejecting, emails, webhook replays). `false` for purely additive writes. A read-only tool is never destructive.
+- **openWorld**: `true` when the tool can publish to public networks, fetch arbitrary URLs, call or set arbitrary external endpoints, or read a public catalog. `false` inside the private workspace, including network APIs that only read the connected account's own data.
+- A new tool goes into `mcpExpectedToolAnnotations()` in `tests/Feature/Mcp/ToolAnnotationsTest.php`; the test fails when a registered tool is missing from that list or has a different value. Borderline cases already decided are listed in `.ai/rules/tools.md`; follow them instead of deciding again.
+
 ## Database engines (PostgreSQL + MySQL)
 
 TryPost runs on **both PostgreSQL and MySQL**. Cloud runs PostgreSQL; a self-hosted install may pick either. Every query, migration, and test must work on both — the suite is expected to be green on each.
