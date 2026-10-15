@@ -96,7 +96,7 @@ body {
 .track .artist { margin-left: -6px; color: var(--muted-foreground); font-weight: 500; }
 
 /* A track playing: a sound wave in green, centered on its axis. */
-.eq { display: flex; align-items: center; gap: 3px; height: 28px; }
+.eq { display: flex; align-items: center; gap: 4px; height: 28px; }
 .eq > i { display: block; width: 3px; border-radius: 999px; background: #16a34a; }
 
 /* The app's switch: primary-strong with the white knob. */
