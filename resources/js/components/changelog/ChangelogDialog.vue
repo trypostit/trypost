@@ -153,7 +153,7 @@ watch(activeEntry, (entry) => {
                 >
                     <IconArrowLeft class="size-4" />
                 </Button>
-                <DialogTitle class="text-base font-medium">
+                <DialogTitle class="text-lg font-semibold">
                     What's New
                 </DialogTitle>
                 <DialogDescription class="sr-only">
@@ -205,23 +205,23 @@ watch(activeEntry, (entry) => {
                     </p>
                 </div>
                 <div
-                    class="prose prose-sm max-w-none text-foreground dark:prose-invert prose-a:text-primary-text"
+                    class="prose prose-base max-w-none text-foreground dark:prose-invert prose-a:text-primary-text"
                     v-html="activeEntry.body_html"
                 />
                 <div
-                    class="mt-2 flex items-center justify-center gap-3 border-t border-border pt-5"
+                    class="mt-2 flex items-center justify-center gap-2 border-t border-border pt-5"
                     data-testid="changelog-reaction"
                 >
                     <p class="text-sm font-medium text-foreground">
                         Do you like it?
                     </p>
-                    <div class="flex items-center gap-1">
+                    <div class="-me-1 flex items-center gap-1">
                         <Button
                             variant="ghost"
                             size="icon"
                             aria-label="Like"
                             :aria-pressed="reactionOf(activeEntry) === 'like'"
-                            class="group/reaction hover:bg-transparent"
+                            class="group/reaction size-auto p-1 hover:bg-transparent"
                             data-testid="changelog-reaction-like"
                             @click="like(activeEntry)"
                         >
@@ -242,7 +242,7 @@ watch(activeEntry, (entry) => {
                             size="icon"
                             aria-label="Dislike"
                             :aria-pressed="reactionOf(activeEntry) === 'dislike'"
-                            class="group/reaction hover:bg-transparent"
+                            class="group/reaction size-auto p-1 hover:bg-transparent"
                             data-testid="changelog-reaction-dislike"
                             @click="dislike(activeEntry)"
                         >
@@ -309,11 +309,11 @@ watch(activeEntry, (entry) => {
                                     />
                                 </span>
                                 <span
-                                    class="text-sm leading-5 font-medium text-foreground"
+                                    class="text-base leading-6 font-medium text-foreground"
                                 >
                                     <span
                                         v-if="isUnseen(entry)"
-                                        class="me-1.5 inline-block size-2 rounded-full bg-primary-strong align-[1px]"
+                                        class="me-1.5 inline-block size-2 rounded-full bg-primary-strong align-[2px]"
                                         :data-testid="`changelog-unseen-${entry.slug}`"
                                     />
                                     {{ entry.title }}

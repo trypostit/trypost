@@ -76,7 +76,7 @@ test('nothing is shared when the changelog is turned off', function () {
             ->missing('changelogEntries'));
 });
 
-test('the modal list loads every published entry, five per page, newest first, with whether the user opened and liked each one', function () {
+test('the modal list loads every published entry, four per page, newest first, with whether the user opened and liked each one', function () {
     $this->user->forceFill(['created_at' => now()->subDays(2)])->save();
     $entries = collect(range(0, 6))->map(fn (int $daysAgo) => ChangelogEntry::factory()->create([
         'published_on' => today()->subDays($daysAgo),
@@ -93,7 +93,7 @@ test('the modal list loads every published entry, five per page, newest first, w
         ->get(route('app.calendar'))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->reloadOnly('changelogEntries', fn (AssertableInertia $reload) => $reload
-                ->has('changelogEntries.data', 5)
+                ->has('changelogEntries.data', 4)
                 ->where('changelogEntries.data.0.id', $entries[0]->id)
                 ->where('changelogEntries.data.1.seen', true)
                 ->where('changelogEntries.data.0.seen', false)
@@ -104,6 +104,6 @@ test('the modal list loads every published entry, five per page, newest first, w
         ->get(route('app.calendar', ['changelog_page' => 2]))
         ->assertInertia(fn (AssertableInertia $page) => $page
             ->reloadOnly('changelogEntries', fn (AssertableInertia $reload) => $reload
-                ->has('changelogEntries.data', 2)
-                ->where('changelogEntries.data.1.id', $entries[6]->id)));
+                ->has('changelogEntries.data', 3)
+                ->where('changelogEntries.data.2.id', $entries[6]->id)));
 });

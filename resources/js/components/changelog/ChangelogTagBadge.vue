@@ -6,10 +6,10 @@ defineProps<{
 }>();
 
 const TAG_CLASSES: Record<ChangelogTagValue, string> = {
-    new: 'bg-pink-50 text-pink-700 dark:bg-pink-950 dark:text-pink-300',
-    improved: 'bg-sky-50 text-sky-700 dark:bg-sky-950 dark:text-sky-300',
-    fixed: 'bg-amber-50 text-amber-700 dark:bg-amber-950 dark:text-amber-300',
-    beta: 'bg-teal-50 text-teal-700 dark:bg-teal-950 dark:text-teal-300',
+    new: 'bg-pink-50 text-pink-700 dark:bg-pink-400/15 dark:text-pink-300',
+    improved: 'bg-sky-50 text-sky-700 dark:bg-sky-400/15 dark:text-sky-300',
+    fixed: 'bg-amber-50 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300',
+    beta: 'bg-teal-50 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300',
 };
 </script>
 
