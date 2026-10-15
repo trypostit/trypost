@@ -18,6 +18,8 @@
     --bg-blue: #def0ff;
     --bg-green: #d9f1d1;
     --bg-peach: #ffdbd6;
+    --bg-cream: #f4f1ec;
+    --bg-yellow: #fdefc3;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -51,6 +53,8 @@ body {
 .bg-blue { background-color: var(--bg-blue); }
 .bg-green { background-color: var(--bg-green); }
 .bg-peach { background-color: var(--bg-peach); }
+.bg-cream { background-color: var(--bg-cream); }
+.bg-yellow { background-color: var(--bg-yellow); }
 
 .at { position: absolute; }
 .icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.7; }
@@ -121,12 +125,34 @@ body {
 .switch { position: relative; width: 84px; height: 46px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--primary-strong); }
 .switch::after { content: ''; position: absolute; top: 50%; right: 4px; width: 34px; height: 34px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; transform: translateY(-50%); }
 
-/* Integration: two app icons. */
-.app-icon { display: grid; place-items: center; width: 240px; height: 240px; border: 2.5px solid var(--ink); border-radius: 56px; background: #fff; overflow: hidden; }
-.app-icon .icon { font-size: 132px; color: #fff; stroke-width: 1.5; }
+/* A chip the user picked: the ink border on white. */
+.handle.is-selected { background: #fff; box-shadow: inset 0 0 0 2.5px var(--ink); }
+
+/* Integration: two app icons joined by a plus. */
+.pair { display: flex; align-items: center; justify-content: center; gap: 48px; }
+.app-icon { display: grid; place-items: center; width: 200px; height: 200px; border: 2.5px solid var(--ink); border-radius: 48px; background: #fff; overflow: hidden; }
+.app-icon .icon { font-size: 112px; color: #fff; stroke-width: 1.5; }
 .app-icon .trypost-mark { width: 100%; height: 100%; }
-.plus { font-size: 72px; }
+/* The TryPost mark on its own: no white square behind it, the canvas shows through. */
+.app-icon.is-mark { background: none; }
+.app-icon.is-mark .trypost-mark rect { fill: transparent; }
+/* A service's official logo on white. */
+.app-icon .logo { width: 136px; height: 136px; }
+.plus { font-size: 60px; }
 .plus .icon { stroke-width: 2.4; }
 
-/* Announcement: emojis on white surfaces. */
-.emoji { display: grid; place-items: center; width: 220px; height: 220px; font-size: 116px; line-height: 1; }
+/* Announcement: tinted tiles split by white lines, three emojis in the middle row. */
+.tiles {
+    display: grid;
+    grid-template-columns: 1fr 330px 330px 330px 1fr;
+    grid-template-rows: 1fr 330px 1fr;
+    gap: 6px;
+    background: #fff;
+}
+.tiles::before { display: none; }
+.tiles > i { background: var(--tile-soft); }
+.tiles > b { display: grid; place-items: center; background: var(--tile-strong); font-size: 104px; font-weight: 400; line-height: 1; }
+.tiles-violet { --tile-soft: #ede9fe; --tile-strong: #d2c7fd; }
+.tiles-green { --tile-soft: #e3f5dc; --tile-strong: #bfe8b0; }
+.tiles-blue { --tile-soft: #e6f3ff; --tile-strong: #c5e3ff; }
+.tiles-peach { --tile-soft: #ffe9e5; --tile-strong: #ffcdc5; }

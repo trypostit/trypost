@@ -760,11 +760,7 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
 
 - **Each entry is one folder in the repo**, `resources/changelog/<YYYY-MM-DD>-<slug>/` with
   `entry.md` (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`)
-  and `cover.png` (16:9, rendered at 2400×1350). Covers use flat colors, a firm ink border and the content inside:
-  one app tint (violet by default) with the home hero's dot grid fading in from the bottom-left and top-right corners, white surfaces with a 2.5px ink border and no shadow, a composer-like
-  settings panel with the network's badge (no phones or device mockups), one icon per idea, no decoration; the style only, never another
-  product's composition or sample content: numbered templates in `.claude/release-assets/changelog-covers/` (1 settings panel, 2 integration, 3 announcement; the shared pattern lives in `cover.css`, an entry only swaps the content),
-  rendered by its `render.mjs`), never screenshots or headlines. The folder holds a `.gitkeep` so it exists with no entries.
+  and `cover.png` (16:9, rendered at 2400×1350). Covers come from three numbered templates in `.claude/release-assets/changelog-covers/`, rendered by its `render.mjs`: 1 settings panel (a composer-like panel with the network's badge on a tint with corner dots, white surfaces with a 2.5px ink border), 2 integration (a tile grid with the TryPost mark, a plus and the service's official logo from `logos/`) and 3 announcement (the same grid with 🎁 📣 🎉). An entry only swaps the content; the style only, never another product's sample content, never screenshots or headlines. The folder holds a `.gitkeep` so it exists with no entries.
   There is no admin panel. Write them with the `/changelog` command.
 - **Covers are Vite assets** (owner decision 2026-10-14): `vite.config.ts` lists
   `resources/changelog/**/*.png` in the plugin's `assets`, so the build versions them, and

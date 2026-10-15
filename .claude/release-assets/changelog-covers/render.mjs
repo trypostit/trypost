@@ -10,6 +10,7 @@
 //   <i data-icon="users"></i>             Tabler outline icon (node_modules/@tabler/icons)
 //   <i data-icon="heart" data-filled></i> Tabler filled icon
 //   {{TRYPOST_MARK}}                      the TryPost mark as inline SVG
+//   <img src="logos/x.png">               a service's official logo from logos/, inlined
 //
 // Playwright and the icons are resolved from the repo's node_modules.
 
@@ -53,7 +54,8 @@ const trypostMark = `<svg class="trypost-mark" viewBox="0 0 410 410" aria-hidden
 
 const scene = readFileSync(resolve(args.scene), 'utf8')
     .replace(/<i data-icon="([a-z0-9-]+)"( data-filled)?><\/i>/g, (_, name, filled) => icon(name, Boolean(filled)))
-    .replaceAll('{{TRYPOST_MARK}}', trypostMark);
+    .replaceAll('{{TRYPOST_MARK}}', trypostMark)
+    .replace(/src="(logos\/[^"]+\.png)"/g, (_, file) => `src="data:image/png;base64,${readFileSync(join(here, file)).toString('base64')}"`);
 
 const css = readFileSync(join(here, 'cover.css'), 'utf8');
 

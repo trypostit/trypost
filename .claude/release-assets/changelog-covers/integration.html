@@ -1,10 +1,19 @@
 <!--
-  INTEGRATION: the TryPost mark and the new service as two app icons joined by
-  a plus. Set the service icon's brand color and its Tabler brand icon (or the
-  service's official SVG mark).
+  TEMPLATE 2 · INTEGRATION: a new network, app or service. The announcement's
+  tile grid in its own tint, with the TryPost mark, a plus and the service's
+  official logo in the middle row.
+  Fixed: the grid, the TryPost mark on the left, the plus in the center.
+  Swap: the service's official logo on the right (a PNG in logos/, from the
+  brand's own assets, never a look-alike icon) and the tint pair: blue by
+  default, or the one that suits that logo best (tiles-green, tiles-peach,
+  tiles-violet).
 -->
-<div class="canvas bg-violet" style="display: flex; align-items: center; justify-content: center; gap: 80px">
-    <div class="app-icon">{{TRYPOST_MARK}}</div>
-    <div class="plus"><i data-icon="plus"></i></div>
-    <div class="app-icon" style="background: #5865f2"><i data-icon="brand-discord"></i></div>
+<div class="canvas tiles tiles-blue">
+    <i></i><i></i><i></i><i></i><i></i>
+    <i></i>
+    <b><span class="app-icon is-mark">{{TRYPOST_MARK}}</span></b>
+    <b><span class="plus"><i data-icon="plus"></i></span></b>
+    <b><span class="app-icon"><img class="logo" src="logos/google-business-profile.png" alt=""></span></b>
+    <i></i>
+    <i></i><i></i><i></i><i></i><i></i>
 </div>

@@ -75,7 +75,7 @@ TryPost and stays true when the real screen changes.
 **Style rules (every cover): flat colors, a firm border, the content inside.** Use the style,
 never another product's composition, elements or sample content.
 
-- **Background:** one app tint with the home hero's dot grid, which `.canvas` already draws only
+- **Background:** (Template 1; Templates 2 and 3 use the tile grid described below) one app tint with the home hero's dot grid, which `.canvas` already draws only
   in the bottom-left and top-right corners, fading out toward the middle; add nothing else:
   `bg-violet` (the app's
   `--primary`, the default), `bg-blue`, `bg-green`, `bg-peach` (the app's light tints). Vary it
@@ -111,11 +111,8 @@ as they are), then compare your render with the template's example.
 | # | Template | File | Example | Use it for |
 | --- | --- | --- | --- | --- |
 | 1 | Settings panel (default) | `settings-panel.html` | `examples/settings-panel.png` | A new or improved option, control or screen of a network. |
-| 2 | Integration | `integration.html` | not approved yet | A new network, app or service: the TryPost mark + the service's app icon. |
-| 3 | Announcement | `announcement.html` | not approved yet | Broad news with nothing to draw (a milestone, a round-up, a policy change). |
-
-A template without an approved example is still being designed: use it only when the owner asks,
-and show them the render.
+| 2 | Integration | `integration.html` | `examples/integration.png` | A new network, app or service: the TryPost mark, a plus and the service's official logo. |
+| 3 | Announcement | `announcement.html` | `examples/announcement.png` | Broad news with nothing to draw (a release, a milestone, a round-up). |
 
 **Template 1 · Settings panel.**
 - Fixed: the panel's place and width (`left: 190px; top: 252px; width: 820px`), the network's
@@ -124,6 +121,23 @@ and show them the render.
 - Swap: the badge (brand color + Tabler brand icon), the 2–4 `setting` rows (the idea's icon, the
   label exactly as on screen, the real control: `handle` chips, a `track`, a `switch`).
 - Keep 3 rows when you can; with 2 or 4, move the panel's `top` so it stays centered.
+
+Templates 2 and 3 share one layout, a tile grid (`.tiles`): soft tiles split by white lines,
+with three stronger tiles in the middle row. Nothing else goes on them.
+
+**Template 2 · Integration.**
+- Fixed: the grid, the TryPost mark on the left (filling its tile, no white square behind it),
+  the `+` in the center, the service's white tile on the right.
+- Swap: the service's **official** logo, a PNG in `logos/` taken from the brand's own assets
+  (e.g. Google's `gstatic.com/images/branding/product`), never a look-alike Tabler icon; and the
+  tint, `tiles-blue` by default or whichever pair (`tiles-green`, `tiles-peach`, `tiles-violet`)
+  suits that logo best. No settings, no text.
+
+**Template 3 · Announcement.**
+- Fixed: the grid, three emojis in the middle row, 📣 in the center.
+- Swap: the tint pair (`tiles-violet` by default) and the two side emojis, from the approved
+  set only: 🎁 🎉 🎈 🚀 (default 🎁 📣 🎉). Never a bell, sparkles or any other emoji. The emojis
+  render as Apple's set, so render covers on a Mac.
 
 A fix usually uses Template 1 with the control that works again. Render the copy:
 
