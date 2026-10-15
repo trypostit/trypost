@@ -20,9 +20,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List the best posts of one channel in a date range, ranked by a metric (sort; defaults to the first metric the channel reports), for the current range or the previous range of the same length (period), optionally narrowed by labels, untagged posts and post types. Range preset 7d, 30d, mtd or custom with start and end; defaults to the last 30 days in your time zone. Same order as the channel Insights page; the ranking stops at the top 50 posts. Paginated: pass page to read the next page.')]
 class ListChannelPublicationsTool extends Tool
 {

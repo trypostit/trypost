@@ -12,9 +12,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Get the current workspace (the one this connection acts in: id, name, timestamps) and what the caller may do there: me.is_admin (manages members, settings, channels and posting times), me.requires_approval (true when the caller\'s scheduled, queued and publish-now posts are stored as pending_approval until an approver uses approve-post-tool) and me.publishes_directly.')]
 class GetWorkspaceTool extends Tool
 {

@@ -21,7 +21,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 #[Description('Update a repurpose. Changing the source account or the watched format resets the watermark, so only videos published after the change are replicated. Required meta (TikTok privacy_level, Pinterest board_id, Discord channel_id) is checked when the repurpose is activated and on every update of an active one. A source account can back one repurpose per source_format and cannot also be a destination.')]
 class UpdateRepurposeTool extends Tool
 {

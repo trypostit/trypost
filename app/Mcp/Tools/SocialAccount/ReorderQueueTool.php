@@ -15,7 +15,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 #[Description('Reorder the queue of a channel. post_ids lists the first queued posts of the channel in the new order; the posts swap among the slots they already hold. The ids must be exactly the first reorderable queued posts of the channel, otherwise the queue changed and the call is refused. Only members who publish directly can reorder.')]
 class ReorderQueueTool extends Tool
 {

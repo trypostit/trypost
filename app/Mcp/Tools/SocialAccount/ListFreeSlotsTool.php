@@ -15,9 +15,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List the next free queue slots of a channel as UTC instants, soonest first: at most 30, within the next 90 days. A slot is free when no scheduled post and no queue request pending approval holds it. Pass one as queue_slot to create-post-tool, or use move-post-to-slot-tool for an existing post.')]
 class ListFreeSlotsTool extends Tool
 {

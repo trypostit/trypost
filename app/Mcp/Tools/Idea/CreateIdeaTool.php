@@ -17,7 +17,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Create an idea. It needs a title, a body or at least one media item. Media IDs must belong to the current workspace. Ideas cannot be turned into posts through MCP; use create-post-tool with the idea text if needed.')]
 class CreateIdeaTool extends Tool
 {

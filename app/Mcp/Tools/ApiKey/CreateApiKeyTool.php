@@ -15,7 +15,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Create a new Personal Access Token (API key) for the current workspace. Returns `{token, plain_token}` like POST /api-keys: `token` is the key metadata and `plain_token` the secret, returned ONCE — store it immediately, it cannot be retrieved later.')]
 class CreateApiKeyTool extends Tool
 {

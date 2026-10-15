@@ -18,7 +18,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 #[Description('Generate the posting schedule of a channel from the recommended windows of its network, for a number of posts per week (goal). Replaces the current schedule; mode is accepted for parity but has no effect today (both values generate from the goal over the network windows); queued posts whose slot no longer exists are re-placed. Only workspace admins can generate it.')]
 class GeneratePostingScheduleTool extends Tool
 {

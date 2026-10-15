@@ -20,7 +20,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(true)]
 #[Description('Create a board on a connected Pinterest account. Returns the board id, name and cover_url; use the id as meta.board_id when creating a Pinterest post.')]
 class CreatePinterestBoardTool extends Tool
 {

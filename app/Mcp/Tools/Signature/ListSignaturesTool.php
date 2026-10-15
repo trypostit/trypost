@@ -14,9 +14,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List the signatures for the current workspace. Signatures are reusable text blocks (hashtags, links, custom text) that you can append to a post content; a signature is not added automatically to any post. Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
 class ListSignaturesTool extends Tool
 {

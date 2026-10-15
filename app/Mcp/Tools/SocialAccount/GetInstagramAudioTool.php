@@ -18,7 +18,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(true)]
 #[Description('Get one Instagram audio asset by id (the meta.audio.id of a reel, or an id from search-instagram-audio-tool): title, artist, duration and fresh cover and preview links, which Instagram expires. Fails when the track is no longer available. Requires an Instagram account connected through Facebook.')]
 class GetInstagramAudioTool extends Tool
 {

@@ -17,9 +17,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List posts for the current workspace, ordered by scheduled date (newest first). Optional filters: status (draft|scheduled|pending_approval|published|failed), search (matches against post content), channels (social account IDs), labels (label IDs) with untagged (posts without labels), like the publish page filters. Unknown IDs match nothing. Paginated with the app page size: pass page; the response carries total, per_page, current_page and last_page.')]
 class ListPostsTool extends Tool
 {

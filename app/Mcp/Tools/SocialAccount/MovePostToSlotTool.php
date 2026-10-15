@@ -18,7 +18,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 #[Description('Move a scheduled post of a channel onto one of its free queue slots (a UTC instant from list-free-slots-tool); it becomes a queue post in that slot. A slot that is taken, off the schedule or held by a request pending approval is refused. Only members who publish directly can move posts.')]
 class MovePostToSlotTool extends Tool
 {

@@ -16,9 +16,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Get the current workspace analytics report for a date range (range preset 7d, 30d, mtd or custom with start and end; defaults to the last 30 days in your time zone), optionally narrowed to some channels (unknown channel ids are ignored, like the web Insights page), including summary, follower and post charts, top posts, per-account performance, data bounds, and sync coverage.')]
 class GetAnalyticsReportTool extends Tool
 {

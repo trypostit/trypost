@@ -16,9 +16,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List the ideas of the current workspace, newest first, paginated. Filters combine like the ideas page: stages (stage IDs) with unassigned (no stage), and labels (label IDs) with untagged (no label). Ideas cannot be turned into posts through MCP; use create-post-tool with the idea text if needed.')]
 class ListIdeasTool extends Tool
 {

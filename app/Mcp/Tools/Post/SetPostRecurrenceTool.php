@@ -24,7 +24,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 #[Description('Make a scheduled post repeat: every `interval` days, weeks, months or years, `times` more times. The post must be scheduled with a time, and the last occurrence must fall on or before 2037-12-31 23:59:59 UTC. Each occurrence keeps the same local time in the channel time zone. Only members who publish directly can set a recurrence.')]
 class SetPostRecurrenceTool extends Tool
 {

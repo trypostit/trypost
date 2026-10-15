@@ -18,10 +18,14 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Attributes\Name;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
 #[Name('get-tiktok-creator-info-tool')]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Read what TikTok lets a connected TikTok account publish right now: privacy_level_options (the only privacy_level values allowed for this creator), comment_disabled / duet_disabled / stitch_disabled (when true, allow_comments / allow_duet / allow_stitch must stay false), max_video_post_duration_sec (the longest video TikTok accepts from this creator; it is not checked when you schedule, so compare the video duration yourself), and can_post. Call it before creating or scheduling a TikTok post and pick meta.privacy_level (destinations[].meta.privacy_level in create-posts-tool) from privacy_level_options. can_post false means TikTok banned this creator from posting. When TikTok reports a posting limit (daily cap, quota or rate limit) the tool returns an error instead: scheduled posts retry automatically once it lifts. If TikTok does not answer, the tool returns an error: retry in a moment.')]
 class GetTikTokCreatorInfoTool extends Tool
 {

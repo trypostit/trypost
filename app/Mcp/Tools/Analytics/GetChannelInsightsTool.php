@@ -20,9 +20,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsReadOnly]
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Get the insights of one channel for a date range (range preset 7d, 30d, mtd or custom with start and end; defaults to the last 30 days in your time zone), optionally narrowed by labels, untagged posts and post types: the summary, the metrics the channel reports and the metric series for the range and the previous range of the same length. In the series, posts, reach, views, impressions and profile_visits are totals of the posts published each day (or week), not daily account totals; followers is the follower count at the end of each bucket, and net_followers is the followers gained since the start of the range, so it is cumulative. growth is the monthly follower growth rate for the last 12 months (null when the channel does not report followers); it ignores the range, labels, untagged and types filters. Use list-channel-publications-tool for the ranked posts.')]
 class GetChannelInsightsTool extends Tool
 {

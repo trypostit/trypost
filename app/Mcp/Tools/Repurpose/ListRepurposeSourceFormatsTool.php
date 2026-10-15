@@ -13,10 +13,14 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
 use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(true)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('List the video formats a repurpose can watch a source account for, such as reels, feed videos and stories. Use these values when creating or updating a repurpose.')]
-#[IsReadOnly]
 class ListRepurposeSourceFormatsTool extends Tool
 {
     use AuthorizesMcpTool;

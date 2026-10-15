@@ -18,8 +18,14 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 use RuntimeException;
 
+#[IsReadOnly(false)]
+#[IsDestructive(false)]
+#[IsOpenWorld(false)]
 #[Description('Create an outgoing webhook for the current workspace. Returns the signing secret — it can be read later with get-webhook-tool or rotated with rotate-webhook-secret-tool. Private or local endpoints are rejected. Creating does not send a test request. Each delivery is a JSON POST signed in the X-Webhook-Signature header (HMAC-SHA256 of the body with the signing secret). After 5 failed deliveries in a row the webhook is paused and the account owner is emailed.')]
 class CreateWebhookTool extends Tool
 {

@@ -17,7 +17,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(false)]
 #[Description('Update an idea. Only the fields you send change; media_ids and label_ids replace the stored lists. The idea must keep a title, a body or media. Ideas cannot be turned into posts through MCP; use create-post-tool with the idea text if needed.')]
 class UpdateIdeaTool extends Tool
 {

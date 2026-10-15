@@ -18,8 +18,12 @@ use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
 use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
-#[IsDestructive]
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 #[Description('Approve a post that is waiting for approval (status pending_approval). By default it is scheduled exactly as its author asked: added to the queue (next or top) or at the requested time. Pass scheduled_at (ISO 8601, in the future) to pick another time, or publish_now to publish immediately; one of them is required when the requested time has passed or the author asked to publish now. Only members who publish directly can approve.')]
 class ApprovePostTool extends Tool
 {

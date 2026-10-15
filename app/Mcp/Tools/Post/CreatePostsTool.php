@@ -24,7 +24,13 @@ use Laravel\Mcp\Response;
 use Laravel\Mcp\ResponseFactory;
 use Laravel\Mcp\Server\Attributes\Description;
 use Laravel\Mcp\Server\Tool;
+use Laravel\Mcp\Server\Tools\Annotations\IsDestructive;
+use Laravel\Mcp\Server\Tools\Annotations\IsOpenWorld;
+use Laravel\Mcp\Server\Tools\Annotations\IsReadOnly;
 
+#[IsReadOnly(false)]
+#[IsDestructive(true)]
+#[IsOpenWorld(true)]
 #[Description('Create one independent post per destination in the current workspace, as the web composer does when several channels are selected: each destination becomes its own post on its own channel, and the posts share a post_group_id. Each destination may override the shared content, media, content_type and meta. status draft keeps them editable, scheduled schedules them at scheduled_at or in each channel queue (queue: next or top), publishing publishes them now; one specific slot (queue_slot) is not taken here, use create-post-tool or move-post-to-slot-tool for that. When the acting member needs approval in this workspace, scheduled, queued and publish-now posts are stored with status pending_approval and wait for approve-post-tool. To publish a thread on X, Bluesky or Mastodon, put the follow-up posts in meta.thread_replies: up to 24 replies published under the post, each {text, media} with up to 4 media items given by url, id or upload_token, e.g. [{"text": "2/ ..."}, {"text": "3/ ...", "media": [{"url": "https://..."}]}]. Each reply must fit the text limit of the account and follows the media rules of a post on that network. Before a post can be scheduled or published it needs: TikTok meta.privacy_level (get-tiktok-creator-info-tool), Pinterest meta.board_id (list-pinterest-boards-tool), Discord meta.channel_id (list-discord-channels-tool), Google Business events and offers meta.event (title and dates), YouTube a title (meta.title, or the first line of the text); list-content-types-tool lists them per platform as required_meta. A scheduled or published post also needs text or media.')]
 class CreatePostsTool extends Tool
 {
