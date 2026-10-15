@@ -100,6 +100,8 @@ test('an invalid entry fails the sync, names it and writes nothing', function (C
     'missing cover' => [fn (string $entry, string $cover) => File::delete($cover)],
     'missing entry file' => [fn (string $entry) => File::delete($entry)],
     'missing date' => [fn (string $entry) => File::put($entry, "---\ntitle: Second\n---\n\nBody.\n")],
+    'impossible date' => [fn (string $entry) => File::put($entry, "---\ntitle: Second\ndate: \"2026-02-30\"\n---\n\nBody.\n")],
+    'tags as a map' => [fn (string $entry) => File::put($entry, "---\ntitle: Second\ndate: 2026-10-02\ntags: {first: new}\n---\n\nBody.\n")],
     'title too long' => [fn (string $entry) => File::put($entry, Str::replace('LONG', Str::repeat('a', 256), "---\ntitle: LONG\ndate: 2026-10-02\n---\n\nBody.\n"))],
     'malformed front matter' => [fn (string $entry) => File::put($entry, "---\ntitle: [unclosed\ndate: 2026-10-02\n---\n\nBody.\n")],
 ]);
@@ -147,4 +149,12 @@ test('a folder that is not named <YYYY-MM-DD>-<slug> fails the sync and writes n
         ->assertFailed();
 
     expect(ChangelogEntry::count())->toBe(0);
+});
+
+test('a quoted date is read the same as a plain one', function () {
+    File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: First entry\ndate: \"2026-10-05\"\n---\n\nBody.\n");
+
+    $this->artisan('changelog:sync')->assertSuccessful();
+
+    expect(ChangelogEntry::where('slug', '2026-10-01-first')->value('published_on')->toDateString())->toBe('2026-10-05');
 });

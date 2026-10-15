@@ -98,7 +98,7 @@ class SyncChangelogEntries
             'slug' => ['regex:/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'cover' => [Rule::dimensions()->ratio(16 / 9)],
             'title' => ['required', 'string', 'max:255'],
-            'tags' => ['nullable', 'array'],
+            'tags' => ['nullable', 'list'],
             'tags.*' => ['distinct', Rule::enum(Tag::class)],
             'published_on' => ['required', 'date_format:Y-m-d'],
             'body' => ['required', 'string'],
@@ -111,11 +111,9 @@ class SyncChangelogEntries
 
         throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: {$errors}");
 
-        $entry = collect($validator->validated())->except('cover');
-
         return [
-            ...$entry,
-            'tags' => collect($entry->get('tags'))->values()->all(),
+            ...collect($validator->validated())->except('cover'),
+            'tags' => data_get($validator->validated(), 'tags') ?? [],
         ];
     }
 }
