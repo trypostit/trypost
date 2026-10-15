@@ -3,7 +3,8 @@
  * inside. One flat background from the app's light tints, white surfaces with
  * the ink border and no shadow, Inter, Tabler icons, the app's violet switch.
  * No headline and no props: the entry's title sits right under the cover. The
- * background carries the home hero's texture: a faint dot grid and two soft glows.
+ * background carries the home hero's dot grid, only in the bottom-left and
+ * top-right corners, fading out toward the middle.
  */
 :root {
     --ink: #292928;
@@ -34,11 +35,17 @@ body {
     width: 1200px;
     height: 675px;
     overflow: hidden;
-    background-image:
-        radial-gradient(circle, rgb(10 10 10 / 0.08) 1px, transparent 1.5px),
-        radial-gradient(circle at 92% 6%, rgb(255 255 255 / 0.6), transparent 34%),
-        radial-gradient(circle at 4% 100%, rgb(245 208 254 / 0.75), transparent 32%);
-    background-size: 28px 28px, 100% 100%, 100% 100%;
+    isolation: isolate;
+}
+.canvas::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(circle, rgb(10 10 10 / 0.22) 1.2px, transparent 1.8px) 0 0 / 24px 24px;
+    mask-image:
+        radial-gradient(circle at 100% 0%, #000, transparent 38%),
+        radial-gradient(circle at 0% 100%, #000, transparent 38%);
 }
 .bg-violet { background-color: var(--bg-violet); }
 .bg-blue { background-color: var(--bg-blue); }
