@@ -28,7 +28,7 @@ use RuntimeException;
 
 #[IsReadOnly(false)]
 #[IsDestructive(true)]
-#[IsOpenWorld(false)]
+#[IsOpenWorld(true)]
 #[Description('Update a webhook endpoint, subscribed events, or status (enabled or disabled). Re-enabling a paused webhook resets consecutive failures. Private or local endpoints are rejected. Updating does not send a test request.')]
 class UpdateWebhookTool extends Tool
 {
