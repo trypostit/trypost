@@ -4,8 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\App;
 
-use App\Actions\Changelog\ListChangelogEntries;
-use App\Actions\Changelog\ShowChangelogCard;
+use App\Actions\Changelog\BuildChangelogProps;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
 use App\Enums\Media\Type as MediaType;
@@ -13,7 +12,6 @@ use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\User\Locale;
 use App\Enums\User\ReferralSource;
-use App\Http\Resources\App\Changelog\ChangelogEntryResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthAccountResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthPlanResource;
 use App\Http\Resources\App\HandleInertiaRequests\AuthUserResource;
@@ -22,7 +20,6 @@ use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Account;
-use App\Models\ChangelogEntry;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -30,7 +27,6 @@ use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
-use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -75,7 +71,7 @@ class HandleInertiaRequests extends Middleware
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            ...($user ? $this->changelog($user, $request) : []),
+            ...($user ? BuildChangelogProps::execute($user) : []),
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
@@ -139,29 +135,6 @@ class HandleInertiaRequests extends Middleware
     public static function referralSourcesCacheKey(User $user): string
     {
         return "referral-sources.{$user->id}";
-    }
-
-    /**
-     * The sidebar card (`changelog`) and the modal list (`changelogEntries`,
-     * loaded only by the partial reload the modal makes when it opens).
-     *
-     * @return array<string, mixed>
-     */
-    private function changelog(User $user, Request $request): array
-    {
-        if (! config('trypost.changelog.enabled')) {
-            return ['changelog' => null];
-        }
-
-        return [
-            'changelog' => fn (): array => ['latest' => transform(
-                ShowChangelogCard::cached($user),
-                fn (ChangelogEntry $entry): array => ChangelogEntryResource::make($entry)->resolve($request),
-            )],
-            'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
-                fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
-            )),
-        ];
     }
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool

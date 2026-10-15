@@ -2,8 +2,7 @@
 
 declare(strict_types=1);
 
-use App\Enums\PostHog\ChangelogEvent;
-use App\Jobs\PostHog\SendEvent;
+use App\Jobs\PostHog\TrackChangelogEntryViewed;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
@@ -21,7 +20,7 @@ beforeEach(function () {
     $this->entry = ChangelogEntry::factory()->create(['title' => 'Music for reels']);
 });
 
-test('opening an entry records the view once and sends it to PostHog once', function () {
+test('opening an entry records the view once and queues its PostHog event once', function () {
     $this->actingAs($this->user)
         ->post(route('app.changelog.views.store', $this->entry))
         ->assertNoContent();
@@ -33,11 +32,8 @@ test('opening an entry records the view once and sends it to PostHog once', func
     expect(ChangelogEntryView::where('user_id', $this->user->id)->pluck('changelog_entry_id')->all())
         ->toBe([$this->entry->id]);
 
-    Bus::assertDispatchedTimes(SendEvent::class, 1);
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === ChangelogEvent::EntryViewed->value
-        && data_get($event->payload, 'properties.slug') === $this->entry->slug
-        && data_get($event->payload, 'properties.title') === 'Music for reels');
+    Bus::assertDispatchedTimes(TrackChangelogEntryViewed::class, 1);
+    Bus::assertDispatched(TrackChangelogEntryViewed::class, fn (TrackChangelogEntryViewed $job): bool => $job->viewId === ChangelogEntryView::sole()->id);
 });
 
 test('an entry the user cannot see is not found', function (Closure $setup) {
@@ -48,7 +44,7 @@ test('an entry the user cannot see is not found', function (Closure $setup) {
         ->assertNotFound();
 
     expect(ChangelogEntryView::count())->toBe(0);
-    Bus::assertNotDispatched(SendEvent::class);
+    Bus::assertNotDispatched(TrackChangelogEntryViewed::class);
 })->with([
     'changelog turned off' => [fn () => config(['trypost.changelog.enabled' => false])],
     'published in the future' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->addDay()])],

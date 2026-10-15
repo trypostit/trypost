@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Changelog\Reaction;
-use App\Enums\PostHog\ChangelogEvent;
-use App\Jobs\PostHog\SendEvent;
+use App\Jobs\PostHog\TrackChangelogEntryReacted;
+use App\Jobs\PostHog\TrackChangelogEntryViewed;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
@@ -23,19 +23,15 @@ beforeEach(function () {
     ChangelogEntryView::factory()->create(['changelog_entry_id' => $this->entry->id, 'user_id' => $this->user->id]);
 });
 
-function reactedEvents(): array
+function queuedChangelogReactions(): array
 {
-    return Bus::dispatched(SendEvent::class)
-        ->filter(fn (SendEvent $event): bool => data_get($event->payload, 'event') === ChangelogEvent::EntryReacted->value)
-        ->map(fn (SendEvent $event): array => [
-            'slug' => data_get($event->payload, 'properties.slug'),
-            'reaction' => data_get($event->payload, 'properties.reaction'),
-        ])
+    return Bus::dispatched(TrackChangelogEntryReacted::class)
+        ->map(fn (TrackChangelogEntryReacted $job): ?string => $job->reaction)
         ->values()
         ->all();
 }
 
-test('a reaction is stored on the view and every change goes to PostHog', function () {
+test('a reaction is stored on the view and every change queues a PostHog event', function () {
     foreach (['like', 'like', 'dislike', null] as $reaction) {
         $this->actingAs($this->user)
             ->putJson(route('app.changelog.reaction.update', $this->entry), ['reaction' => $reaction])
@@ -43,11 +39,7 @@ test('a reaction is stored on the view and every change goes to PostHog', functi
     }
 
     expect(ChangelogEntryView::sole()->reaction)->toBeNull()
-        ->and(reactedEvents())->toBe([
-            ['slug' => $this->entry->slug, 'reaction' => 'like'],
-            ['slug' => $this->entry->slug, 'reaction' => 'dislike'],
-            ['slug' => $this->entry->slug, 'reaction' => null],
-        ]);
+        ->and(queuedChangelogReactions())->toBe(['like', 'dislike', null]);
 });
 
 test('reacting to an entry the user has not opened records the view too', function () {
@@ -60,7 +52,7 @@ test('reacting to an entry the user has not opened records the view too', functi
     expect(ChangelogEntryView::sole())
         ->user_id->toBe($this->user->id)
         ->reaction->toBe(Reaction::Like);
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === ChangelogEvent::EntryViewed->value);
+    Bus::assertDispatched(TrackChangelogEntryViewed::class, fn (TrackChangelogEntryViewed $job): bool => $job->viewId === ChangelogEntryView::sole()->id);
 });
 
 test('an unknown or missing reaction is rejected', function (array $payload) {
@@ -70,7 +62,7 @@ test('an unknown or missing reaction is rejected', function (array $payload) {
         ->assertJsonValidationErrors('reaction');
 
     expect(ChangelogEntryView::sole()->reaction)->toBeNull()
-        ->and(reactedEvents())->toBe([]);
+        ->and(queuedChangelogReactions())->toBe([]);
 })->with([
     'unknown' => [['reaction' => 'love']],
     'missing' => [[]],
@@ -83,7 +75,7 @@ test('an entry the user cannot see is not found', function (Closure $setup) {
         ->putJson(route('app.changelog.reaction.update', $this->entry), ['reaction' => 'like'])
         ->assertNotFound();
 
-    expect(reactedEvents())->toBe([]);
+    expect(queuedChangelogReactions())->toBe([]);
 })->with([
     'changelog turned off' => [fn () => config(['trypost.changelog.enabled' => false])],
     'published in the future' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->addDay()])],

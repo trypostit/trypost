@@ -750,7 +750,7 @@ view turns a forgotten variable into a runtime-only failure.
 - The page size ALWAYS comes from `config('app.pagination.default')` — never a magic number, and never a `perPage`/`per_page` value supplied by the request or frontend. Action/service list methods must NOT accept a `$perPage` parameter; call `->paginate((int) config('app.pagination.default'))` directly.
     - **Exception — the per-post table on the channel insights page** (owner decision 2026-10-05): it is page-based with numbered pages, 10 posts per page (`ListChannelPublicationPerformance::INSIGHTS_PAGE_SIZE`, through `insightsPage()`), and keeps `?page=` in the URL; a sort, period or filter change goes back to page 1. The API endpoint and the MCP tool for the same list keep the config page size through `handle()`.
     - **Exception — the ideas board columns** (owner decision 2026-10-06): each stage column (and Unassigned) is its own scroll prop, `columns.<stage id|unassigned>`, with its own page name, and loads 10 ideas per page (`ListIdeas::BOARD_PAGE_SIZE`) as the column scrolls. A label filter change resets every column to page 1. Column counts come from the database (`stages.*.ideas_count`, `unassigned_count`), never from the loaded cards. The web board moves a card with `after_idea_id` (`MoveIdea::after()`), since a partly loaded column cannot send the full order; the API and MCP keep the full `idea_ids` contract. The gallery keeps the config page size.
-    - **Exception — the "What's New" modal** (owner decision 2026-10-14): it loads 5 entries per page, enough to fill the modal (capped at 640px) and the next one loads only when the user scrolls (`ListChangelogEntries::PAGE_SIZE`) under the page name `changelog_page`, as the shared optional scroll prop `changelogEntries`, requested by a partial reload when the modal opens.
+    - **Exception — the "What's New" modal** (owner decision 2026-10-14): it loads 5 entries per page, enough to fill the modal (capped at 640px) and the next one loads only when the user scrolls (`ListChangelogEntries::PAGE_SIZE`) under the page name `changelog_page`, as the shared optional scroll prop `changelogEntries` (built with the `changelog` card prop by `BuildChangelogProps`, which `HandleInertiaRequests` only spreads), requested by a partial reload when the modal opens.
     - **This includes the public REST API** (`app/Http/Controllers/Api`). It used to pin its own page size of 15 as a stable contract; that exception is gone, so a list endpoint reads the same config as everything else. Changing `app.pagination.default` therefore changes the API's page size too — deliberate, and the reason a list response always carries `meta.per_page` for clients to read rather than assume.
 
 ## Changelog ("What's New")
@@ -780,14 +780,17 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   close buttons' `aria-label`s reuse `common.back` / `common.close`.
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
-  `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
+  `ChangelogEntryViewObserver` queues `TrackChangelogEntryViewed` (`posthog` queue) when the row
+  is created, so `changelog.entry_viewed` goes to PostHog on the first open only.
 - **"Do you like it?"** sits at the end of an entry's detail with 👍 / 👎
   (`App\Enums\Changelog\Reaction`: `like`, `dislike`), shown as emoji that grow on hover; once
   one is picked, the other turns grayscale. The answer is the `reaction` column on the
   user's view row (owner decision 2026-10-14: no separate reactions table); clicking the chosen
   one again clears it. `ReactToChangelogEntry` (`PUT app.changelog.reaction.update`) records the
-  view if needed and sends `changelog.entry_reacted` (with `reaction`, null when cleared) to
-  PostHog on every change. Counts are never shown in the app.
+  view if needed and stores the reaction; the observer queues `TrackChangelogEntryReacted` on every
+  change, carrying the reaction picked (null when cleared). Counts are never shown in the app.
+- **PostHog events go through queued jobs**, like the rest of the app: actions never call
+  `PostHogService::capture()`; the observer dispatches `app/Jobs/PostHog` jobs on the `posthog` queue.
 - **The sidebar card announces one entry only** (owner decision 2026-10-14): the newest
   one dated since the user's signup day (`ChangelogEntry::scopeAnnouncedTo`), and only
   while the user has not opened it (`ShowChangelogCard::execute`). Opening it hides
