@@ -72,24 +72,25 @@ The cover is a drawing, never a screenshot and never a headline on a background:
 title already sits right under it. It shows the product's own UI, drawn, so it looks like
 TryPost and stays true when the real screen changes.
 
-**Style rules (every cover).** The cover is TryPost's own UI, from `resources/css/app.css`
-and the app's components, drawn big on the brand violet. Never copy another product's covers,
-compositions or sample content.
+**Style rules (every cover): flat colors, a firm border, the content inside.** Use the style,
+never another product's composition, elements or sample content.
 
-- **Background:** `bg-violet`, the brand violet, nearly flat. No glows, no patterns.
-- **Surfaces:** white, **borderless**, rounded, with the soft floating shadow. No outlines, no
-  white frames around images, no hard offset shadows.
+- **Background:** one flat color, no gradient, glow or pattern: `bg-violet` (the app's
+  `--primary`, the default), `bg-blue`, `bg-green`, `bg-peach` (the app's light tints). Vary it
+  between consecutive entries.
+- **Surfaces:** white, with the 2.5px ink border (`#292928`, the app's text color), rounded, and
+  **no shadow**. Dividers inside a surface use the same ink line.
 - **Show what the user posts and what is new about it.** For a post feature, draw the post in
-  its real shape (a 9:16 `reel`, a square feed post, a carousel) next to one `panel` that looks
-  like the composer's section for that network, listing the new settings as `setting` rows.
-  Overlap the two slightly for depth and tilt only the post.
+  its real shape (a 9:16 `reel`, a square feed post, a carousel), its media illustrated in flat
+  colors with ink outlines, next to one `panel` that reads like the composer's section for that
+  network, with the new settings as `setting` rows. Add the network's `badge` on the post.
 - **Settings are drawn the way the app shows them:** the Tabler icon of the screen (`at` for
   collaborators, `music`, `video` for reels), the label exactly as on screen, and the real
-  control: `handle` chips with `@`, a `track` pick, the violet `switch`.
-- **Content is ours and generic:** invented handles (`@nina`, `@leomakes`), an invented track,
-  illustrated media; never a real person, account or customer.
-- **No decoration:** no sparkles, confetti or stickers. The UI is the picture.
-- **Readable small:** labels about 28px semibold, nothing under 20px; the cover also shows small
+  control: `handle` chips with `@`, a `track` pick, the app's violet `switch`.
+- **Content is ours and generic:** invented handles (`@nina`, `@leomakes`), an invented track;
+  never a real person, account or customer.
+- **No decoration:** no sparkles, confetti, glows or shadows. The UI is the picture.
+- **Readable small:** labels about 28px semibold, nothing under 19px; the cover also shows small
   in the sidebar card. Keep everything inside the 1200×675 canvas, nothing overlapping by
   accident.
 

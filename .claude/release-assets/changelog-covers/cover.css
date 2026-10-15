@@ -1,22 +1,21 @@
 /*
- * TryPost "What's New" covers: the app's own UI (resources/css/app.css), drawn
- * big on the brand violet. Borderless white surfaces with soft layered
- * shadows, Inter, Tabler icons, the violet switch. No headline and no
- * decoration: the entry's title sits right under the cover.
+ * TryPost "What's New" covers: flat colors, a firm ink border and the content
+ * inside. One flat background from the app's light tints, white surfaces with
+ * the ink border and no shadow, Inter, Tabler icons, the app's violet switch.
+ * No headline and no decoration: the entry's title sits right under the cover.
  */
 :root {
-    --foreground: #292928;
+    --ink: #292928;
     --muted-foreground: #5a5a59;
-    --subtle-foreground: #6f6e6c;
     --secondary: #eae8e5;
     --accent: #f3f2f0;
-    --border: #eae8e5;
-    --primary: #ddd6fe;
-    --primary-subtle: #ede9fe;
     --primary-strong: #6d28d9;
-    --primary-text: #6d28d9;
 
-    --float: 0 1px 2px #1d0b4a14, 0 12px 24px -8px #1d0b4a40, 0 40px 64px -24px #1d0b4a66;
+    /* Backgrounds: the app's own light tints. */
+    --bg-violet: #ddd6fe;
+    --bg-blue: #def0ff;
+    --bg-green: #d9f1d1;
+    --bg-peach: #ffdbd6;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -25,67 +24,71 @@ html, body { width: 1200px; height: 675px; }
 
 body {
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
-    color: var(--foreground);
+    color: var(--ink);
     -webkit-font-smoothing: antialiased;
 }
 
 .canvas { position: relative; width: 1200px; height: 675px; overflow: hidden; }
-
-/* The brand violet, nearly flat. */
-.bg-violet { background: linear-gradient(160deg, #7c3aed 0%, #6d28d9 100%); }
+.bg-violet { background: var(--bg-violet); }
+.bg-blue { background: var(--bg-blue); }
+.bg-green { background: var(--bg-green); }
+.bg-peach { background: var(--bg-peach); }
 
 .at { position: absolute; }
 .icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.7; }
 
-/* A white surface: no border, the floating shadow. */
-.surface { background: #fff; border-radius: 28px; box-shadow: var(--float); }
+/* A white surface with the ink border, no shadow. */
+.surface { background: #fff; border: 2.5px solid var(--ink); border-radius: 24px; }
 
-/* A vertical reel (9:16) with its own overlays. */
-.reel { width: 300px; height: 534px; overflow: hidden; }
+/* A vertical reel (9:16), illustrated in flat colors. */
+.reel { width: 290px; height: 516px; overflow: hidden; }
 .reel .frame { position: relative; width: 100%; height: 100%; }
-.reel .top { position: absolute; left: 18px; top: 16px; display: flex; align-items: center; gap: 10px; color: #fff; font-size: 22px; font-weight: 600; }
+.reel .top { position: absolute; left: 18px; top: 16px; display: flex; align-items: center; gap: 10px; font-size: 22px; font-weight: 600; }
 .reel .top .icon { font-size: 30px; }
 .reel .sound {
     position: absolute;
-    left: 16px;
-    right: 16px;
-    bottom: 18px;
+    left: 14px;
+    right: 14px;
+    bottom: 16px;
     display: flex;
     align-items: center;
     gap: 10px;
-    height: 46px;
+    height: 48px;
     padding: 0 16px;
+    border: 2.5px solid var(--ink);
     border-radius: 999px;
-    background: #ffffffe6;
+    background: #fff;
     font-size: 19px;
     font-weight: 600;
 }
-.reel .sound .icon { font-size: 22px; color: var(--primary-strong); }
+.reel .sound .icon { font-size: 22px; }
 
-/* A settings panel, like the composer's network section. */
-.panel { width: 640px; padding: 12px 0; }
-.panel .head {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    padding: 16px 32px 20px;
-    border-bottom: 2px solid var(--border);
-    font-size: 26px;
-    font-weight: 600;
+/* A network's mark in its brand circle. */
+.badge {
+    display: grid;
+    place-items: center;
+    width: 100px;
+    height: 100px;
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 54px;
 }
-.panel .head .icon { font-size: 34px; color: #e1306c; }
+
+/* A settings panel, like the composer's section for a network. */
+.panel { width: 610px; }
 .setting {
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 24px 32px;
-    font-size: 28px;
+    gap: 18px;
+    padding: 24px 28px;
+    font-size: 29px;
     font-weight: 600;
     letter-spacing: -0.01em;
     white-space: nowrap;
 }
-.setting + .setting { border-top: 2px solid var(--border); }
-.setting > .icon { font-size: 34px; color: var(--muted-foreground); }
+.setting + .setting { border-top: 2.5px solid var(--ink); }
+.setting > .icon { font-size: 36px; }
 .setting .control { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 
 .handle {
@@ -93,10 +96,9 @@ body {
     align-items: center;
     height: 52px;
     padding: 0 18px;
-    border-radius: 999px;
-    background: var(--primary-subtle);
-    color: var(--primary-text);
-    font-size: 24px;
+    border-radius: 14px;
+    background: var(--secondary);
+    font-size: 25px;
     font-weight: 600;
 }
 
@@ -104,25 +106,25 @@ body {
     display: flex;
     align-items: center;
     gap: 14px;
-    height: 60px;
+    height: 62px;
     padding: 0 20px 0 8px;
-    border-radius: 16px;
-    background: var(--accent);
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
     font-size: 23px;
     font-weight: 600;
 }
-.track .art { width: 44px; height: 44px; border-radius: 10px; }
+.track .art { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 9px; color: #fff; font-size: 22px; }
 
 /* The app's switch: primary-strong with the white knob. */
-.switch { position: relative; width: 80px; height: 44px; border-radius: 999px; background: var(--primary-strong); }
-.switch::after { content: ''; position: absolute; top: 5px; right: 5px; width: 34px; height: 34px; border-radius: 999px; background: #fff; box-shadow: 0 2px 4px #0000002e; }
+.switch { position: relative; width: 84px; height: 46px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--primary-strong); }
+.switch::after { content: ''; position: absolute; top: 3px; right: 3px; width: 35px; height: 35px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; }
 
 /* Integration: two app icons. */
-.app-icon { display: grid; place-items: center; width: 248px; height: 248px; border-radius: 60px; background: #fff; box-shadow: var(--float); overflow: hidden; }
-.app-icon .icon { font-size: 136px; color: #fff; stroke-width: 1.5; }
+.app-icon { display: grid; place-items: center; width: 240px; height: 240px; border: 2.5px solid var(--ink); border-radius: 56px; background: #fff; overflow: hidden; }
+.app-icon .icon { font-size: 132px; color: #fff; stroke-width: 1.5; }
 .app-icon .trypost-mark { width: 100%; height: 100%; }
-.plus { color: #fff; font-size: 72px; }
+.plus { font-size: 72px; }
 .plus .icon { stroke-width: 2.4; }
 
 /* Announcement: emojis on white surfaces. */
-.emoji { display: grid; place-items: center; width: 230px; height: 230px; font-size: 120px; line-height: 1; }
+.emoji { display: grid; place-items: center; width: 220px; height: 220px; font-size: 116px; line-height: 1; }
