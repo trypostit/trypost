@@ -848,6 +848,10 @@ A controller serves **one resource**. Network-specific endpoints never pile up i
 - **MCP has no controllers**: one tool class per action (`app/Mcp/Tools/<Area>/<Verb><Resource>Tool.php`), never one tool that switches on the network.
 - Moving an endpoint between controllers keeps its URL and route name, so API clients see no change; the parity tests in `tests/Feature/Parity` must pass unchanged.
 
+## MCP tools list in one page
+
+`tools/list` returns every tool in a single response (owner decision October 2026): some MCP clients do not follow `nextCursor` and silently see only the first page. `TryPostServer` sets both `defaultPaginationLength` and `maxPaginationLength` to 200; laravel/mcp uses the smaller of the two, so raising only the default does nothing (the package's max is 50). Raise both before the server reaches 200 tools. `tests/Feature/Mcp/ToolListPaginationTest.php` calls the real endpoint and fails when the list is split.
+
 ## MCP tool annotations
 
 **Every MCP tool declares all three annotations explicitly, `false` included** (owner decision October 2026): `#[IsReadOnly(bool)]`, `#[IsDestructive(bool)]` and `#[IsOpenWorld(bool)]`, above its `#[Description]`. The OpenAI plugin directory refuses ("Not live") any tool without three explicit booleans, and the Claude directory requires `readOnlyHint` or `destructiveHint`. Annotations only describe the tool to the AI client (when to ask the user for confirmation); they never change what it does and are not rate limits.
