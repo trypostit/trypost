@@ -90,9 +90,8 @@ never another product's composition, elements or sample content.
   collaborators, `music`, `movie` for reels), the label exactly as on screen, and the real
   control: `handle` chips with `@`, a `track` playing (`eq` bars, title and muted artist), the
   app's violet `switch`.
-- **Content is ours:** the first handle is `@paulocastellano` when it fits, the others a big,
-  well-known brand (`@apple`), never an invented handle that may belong to a real person, and
-  never a customer's account or data. Tracks are songs known worldwide (e.g. Bohemian Rhapsody ·
+- **Content is ours:** handles are the team's own, `@paulocastellano` then `@luizmazini`, never
+  an invented handle that may belong to someone else, and never a customer's account or data. Tracks are songs known worldwide (e.g. Bohemian Rhapsody ·
   Queen), never an invented one. Make the panel wider
   rather than let a chip touch its border.
 - **No decoration:** no sparkles, confetti, glows or shadows. The UI is the picture.
