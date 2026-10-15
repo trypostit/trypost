@@ -792,8 +792,9 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
 - **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
   including those from before the user signed up, with a dot on the ones not opened yet. A
   future date schedules an entry for both.
-- Off by default: `CHANGELOG_ENABLED` (`trypost.changelog.enabled`). Cloud turns it on;
-  off means no shared data, no card, no menu item, and the view and reaction routes 404.
+- On by default (`CHANGELOG_ENABLED`, `trypost.changelog.enabled`), self-hosted included: the
+  Docker entrypoint runs `changelog:sync` after `migrate`. Turning it off means no shared data, no
+  card, no menu item, and the view and reaction routes 404.
 
 ## Empty states on list pages
 

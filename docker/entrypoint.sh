@@ -78,6 +78,9 @@ done
 echo "[entrypoint] running migrations"
 php artisan migrate --force
 
+echo "[entrypoint] syncing the What's New entries"
+php artisan changelog:sync
+
 # 8) storage:link if missing.
 if [ ! -L public/storage ]; then
     echo "[entrypoint] linking storage"

@@ -28,7 +28,7 @@ return [
     */
 
     'changelog' => [
-        'enabled' => (bool) env('CHANGELOG_ENABLED', false),
+        'enabled' => (bool) env('CHANGELOG_ENABLED', true),
     ],
 
     /*
