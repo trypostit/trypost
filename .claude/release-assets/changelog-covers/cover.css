@@ -2,7 +2,8 @@
  * TryPost "What's New" covers: flat colors, a firm ink border and the content
  * inside. One flat background from the app's light tints, white surfaces with
  * the ink border and no shadow, Inter, Tabler icons, the app's violet switch.
- * No headline and no decoration: the entry's title sits right under the cover.
+ * No headline and no props: the entry's title sits right under the cover. The
+ * background carries the home hero's texture: a faint dot grid and two soft glows.
  */
 :root {
     --ink: #292928;
@@ -28,11 +29,21 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-.canvas { position: relative; width: 1200px; height: 675px; overflow: hidden; }
-.bg-violet { background: var(--bg-violet); }
-.bg-blue { background: var(--bg-blue); }
-.bg-green { background: var(--bg-green); }
-.bg-peach { background: var(--bg-peach); }
+.canvas {
+    position: relative;
+    width: 1200px;
+    height: 675px;
+    overflow: hidden;
+    background-image:
+        radial-gradient(circle, rgb(10 10 10 / 0.08) 1px, transparent 1.5px),
+        radial-gradient(circle at 92% 6%, rgb(255 255 255 / 0.6), transparent 34%),
+        radial-gradient(circle at 4% 100%, rgb(245 208 254 / 0.75), transparent 32%);
+    background-size: 28px 28px, 100% 100%, 100% 100%;
+}
+.bg-violet { background-color: var(--bg-violet); }
+.bg-blue { background-color: var(--bg-blue); }
+.bg-green { background-color: var(--bg-green); }
+.bg-peach { background-color: var(--bg-peach); }
 
 .at { position: absolute; }
 .icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.7; }

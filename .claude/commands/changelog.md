@@ -75,7 +75,9 @@ TryPost and stays true when the real screen changes.
 **Style rules (every cover): flat colors, a firm border, the content inside.** Use the style,
 never another product's composition, elements or sample content.
 
-- **Background:** one flat color, no gradient, glow or pattern: `bg-violet` (the app's
+- **Background:** one app tint with the home hero's texture, which `.canvas` already draws (a
+  faint 28px dot grid, a white glow top right, a fuchsia glow bottom left); add nothing else:
+  `bg-violet` (the app's
   `--primary`, the default), `bg-blue`, `bg-green`, `bg-peach` (the app's light tints). Vary it
   between consecutive entries.
 - **Surfaces:** white, with the 2.5px ink border (`#292928`, the app's text color), rounded, and
@@ -94,7 +96,7 @@ never another product's composition, elements or sample content.
   an invented handle that may belong to someone else, and never a customer's account or data. Tracks are songs known worldwide (e.g. Bohemian Rhapsody ·
   Queen), never an invented one. Make the panel wider
   rather than let a chip touch its border.
-- **No decoration:** no sparkles, confetti, glows or shadows. The UI is the picture.
+- **No decoration:** no sparkles, confetti or shadows, and no glow beyond the canvas texture. The UI is the picture.
 - **Readable small:** labels about 28px semibold, nothing under 19px; the cover also shows small
   in the sidebar card. Keep everything inside the 1200×675 canvas, nothing overlapping by
   accident.
