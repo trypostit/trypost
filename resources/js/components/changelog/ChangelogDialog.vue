@@ -1,13 +1,6 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
-import {
-    IconArrowLeft,
-    IconThumbDown,
-    IconThumbDownFilled,
-    IconThumbUp,
-    IconThumbUpFilled,
-    IconX,
-} from '@tabler/icons-vue';
+import { IconArrowLeft, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -94,6 +87,15 @@ const react = async (
         reactions.value = { ...reactions.value, [entry.id]: previous };
         toast.error("Couldn't save your answer. Try again.");
     }
+};
+
+const isDimmed = (
+    entry: ChangelogEntry,
+    reaction: ChangelogReaction,
+): boolean => {
+    const current = reactionOf(entry);
+
+    return current !== null && current !== reaction;
 };
 
 const like = (entry: ChangelogEntry): void => {
@@ -219,28 +221,42 @@ watch(activeEntry, (entry) => {
                             size="icon"
                             aria-label="Like"
                             :aria-pressed="reactionOf(activeEntry) === 'like'"
+                            class="group/reaction hover:bg-transparent"
                             data-testid="changelog-reaction-like"
                             @click="like(activeEntry)"
                         >
-                            <IconThumbUpFilled
-                                v-if="reactionOf(activeEntry) === 'like'"
-                                class="size-5 text-primary-strong"
-                            />
-                            <IconThumbUp v-else class="size-5" />
+                            <span
+                                class="text-xl leading-none transition duration-200 ease-out motion-safe:group-hover/reaction:scale-125"
+                                :class="{
+                                    'opacity-50 grayscale': isDimmed(
+                                        activeEntry,
+                                        'like',
+                                    ),
+                                }"
+                                aria-hidden="true"
+                                >👍</span
+                            >
                         </Button>
                         <Button
                             variant="ghost"
                             size="icon"
                             aria-label="Dislike"
                             :aria-pressed="reactionOf(activeEntry) === 'dislike'"
+                            class="group/reaction hover:bg-transparent"
                             data-testid="changelog-reaction-dislike"
                             @click="dislike(activeEntry)"
                         >
-                            <IconThumbDownFilled
-                                v-if="reactionOf(activeEntry) === 'dislike'"
-                                class="size-5 text-primary-strong"
-                            />
-                            <IconThumbDown v-else class="size-5" />
+                            <span
+                                class="text-xl leading-none transition duration-200 ease-out motion-safe:group-hover/reaction:scale-125"
+                                :class="{
+                                    'opacity-50 grayscale': isDimmed(
+                                        activeEntry,
+                                        'dislike',
+                                    ),
+                                }"
+                                aria-hidden="true"
+                                >👎</span
+                            >
                         </Button>
                     </div>
                 </div>

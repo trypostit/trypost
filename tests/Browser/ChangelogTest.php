@@ -113,7 +113,9 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
         ->click('@changelog-reaction-like');
     waitForChangelogReaction($page, $older, Reaction::Like);
     expect(ChangelogEntryView::where('changelog_entry_id', $older->id)->sole()->reaction)->toBe(Reaction::Like)
-        ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('true');
+        ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('true')
+        ->and($page->script("getComputedStyle(document.querySelector('[data-testid=\"changelog-reaction-dislike\"] span')).filter"))->toContain('grayscale')
+        ->and($page->script("getComputedStyle(document.querySelector('[data-testid=\"changelog-reaction-like\"] span')).filter"))->toBe('none');
 
     $page->click('@changelog-reaction-dislike');
     waitForChangelogReaction($page, $older, Reaction::Dislike);

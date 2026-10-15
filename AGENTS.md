@@ -776,7 +776,8 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   card or the list. `changelog_entry_views` holds one row per user and entry, and
   `RecordChangelogEntryView` sends `changelog.entry_viewed` to PostHog on the first open only.
 - **"Do you like it?"** sits at the end of an entry's detail with 👍 / 👎
-  (`App\Enums\Changelog\Reaction`: `like`, `dislike`). The answer is the `reaction` column on the
+  (`App\Enums\Changelog\Reaction`: `like`, `dislike`), shown as emoji that grow on hover; once
+  one is picked, the other turns grayscale. The answer is the `reaction` column on the
   user's view row (owner decision 2026-10-14: no separate reactions table); clicking the chosen
   one again clears it. `ReactToChangelogEntry` (`PUT app.changelog.reaction.update`) records the
   view if needed and sends `changelog.entry_reacted` (with `reaction`, null when cleared) to
