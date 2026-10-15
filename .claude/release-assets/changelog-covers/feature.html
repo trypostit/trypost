@@ -1,41 +1,33 @@
 <!--
-  FEATURE (default scene): the post is the hero, the new options are app cards
-  floating around it. Example: Instagram reels gain music, collaborators and a
-  trial run with non-followers. Draw only what the entry is about.
+  FEATURE (default scene): what the user posts, plus the settings that are new,
+  drawn as the composer shows them. Example: Instagram reels gain
+  collaborators, music and trial reels. Draw only what the entry is about.
 -->
 <div class="canvas bg-violet">
-    <div class="spark at" style="left: 52px; top: 470px; font-size: 64px"><i data-icon="sparkles" data-filled></i></div>
-    <div class="spark at" style="left: 1080px; top: 552px; font-size: 52px"><i data-icon="sparkles" data-filled></i></div>
-
-    <div class="card post at tilt-left" style="left: 140px; top: 70px">
-        <div class="head"><span class="dot"></span><span class="bar" style="width: 150px"></span></div>
-        <div class="media" style="background: linear-gradient(160deg, #ffcc33 0%, #f39200 45%, #855ed4 100%)">
-            <div class="at" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 104px; height: 104px; border-radius: 999px; background: #ffffffe6; box-shadow: var(--float); display: grid; place-items: center; color: var(--foreground); font-size: 48px">
-                <i data-icon="player-play" data-filled></i>
-            </div>
+    <div class="surface reel at" style="left: 120px; top: 70px; transform: rotate(-4deg)">
+        <div class="frame" style="background: radial-gradient(circle at 70% 30%, #fde68a 0 9%, transparent 9.5%), linear-gradient(180deg, #c4b5fd 0%, #f0abfc 48%, #fb923c 100%)">
+            <svg class="at" style="left: 0; bottom: 0" width="300" height="240" viewBox="0 0 280 240" preserveAspectRatio="none">
+                <path d="M0 120 C 60 80, 110 150, 170 110 S 250 90, 280 120 L 280 240 L 0 240 Z" fill="#7c3aed" opacity="0.55" />
+                <path d="M0 170 C 70 130, 130 200, 200 160 S 260 150, 280 170 L 280 240 L 0 240 Z" fill="#4c1d95" opacity="0.6" />
+            </svg>
+            <div class="top"><i data-icon="movie"></i>Reels</div>
+            <div class="sound"><i data-icon="music"></i>Golden hour · Mira</div>
         </div>
-        <div class="caption"><span class="bar" style="width: 90%"></span><span class="bar" style="width: 58%"></span></div>
     </div>
 
-    <div class="badge at" style="left: 430px; top: 40px; background: #e1306c">
-        <i data-icon="brand-instagram"></i>
-    </div>
-
-    <div class="card option at tilt-right" style="left: 590px; top: 118px">
-        <span class="tile"><i data-icon="music"></i></span>
-        Music
-        <span class="wave"><i style="height: 18px"></i><i style="height: 34px"></i><i style="height: 46px"></i><i style="height: 26px"></i><i style="height: 40px"></i><i style="height: 20px"></i><i style="height: 32px"></i></span>
-    </div>
-
-    <div class="card option at tilt-left" style="left: 640px; top: 290px">
-        <span class="tile"><i data-icon="users"></i></span>
-        Collaborators
-        <span class="avatars"><span class="avatar" style="background: #ddd6fe">M</span><span class="avatar" style="background: #def0ff">T</span><span class="avatar" style="background: #d9f1d1">+1</span></span>
-    </div>
-
-    <div class="card option at tilt-right" style="left: 610px; top: 462px">
-        <span class="tile"><i data-icon="flask"></i></span>
-        Trial reel
-        <span class="switch"></span>
+    <div class="surface panel at" style="left: 410px; top: 116px">
+        <div class="head"><i data-icon="brand-instagram"></i>Instagram</div>
+        <div class="setting">
+            <i data-icon="at"></i>Collaborators
+            <span class="control"><span class="handle">@nina</span><span class="handle">@leomakes</span></span>
+        </div>
+        <div class="setting">
+            <i data-icon="music"></i>Music
+            <span class="control"><span class="track"><span class="art" style="background: linear-gradient(135deg, #fb923c, #c026d3)"></span>Golden hour</span></span>
+        </div>
+        <div class="setting">
+            <i data-icon="video"></i>Trial reel
+            <span class="control"><span class="switch"></span></span>
+        </div>
     </div>
 </div>

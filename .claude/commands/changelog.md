@@ -72,39 +72,35 @@ The cover is a drawing, never a screenshot and never a headline on a background:
 title already sits right under it. It shows the product's own UI, drawn, so it looks like
 TryPost and stays true when the real screen changes.
 
-**Style rules (every cover).** The cover is TryPost's own UI, taken from
-`resources/css/app.css` and the app's components, made louder to catch the eye. Never copy
-another product's covers, compositions or sample content, and never use heavy ink borders or
-hard offset shadows (the app has neither).
+**Style rules (every cover).** The cover is TryPost's own UI, from `resources/css/app.css`
+and the app's components, drawn big on the brand violet. Never copy another product's covers,
+compositions or sample content.
 
-- **Background:** saturated, from `cover.css`: `bg-violet` (the app's primary violet, default),
-  `bg-blue`, `bg-orange`, `bg-yellow` (the logo's colors), each with soft glows. Vary it between
-  consecutive entries.
-- **Cards are the app's cards:** white, thin `border-strong` border, xl radius, the app's soft
-  layered shadow scaled up so they float. Tilt them slightly (`tilt-left` / `tilt-right`,
-  alternating) and let them overlap in layers.
-- **The post is the hero:** when the feature lives on a post, draw the post (`post`: header,
-  `media`, skeleton caption) and float the new options around it as `option` cards. Otherwise
-  draw the screen or control the entry is about.
-- **Option cards:** the app's icon `tile` (primary tint, rounded-xl) with the Tabler icon, the
-  label exactly as on screen, then a tiny drawn control in the app's colors: `switch`, `wave`,
-  `avatars`, a `bar`.
-- **Accents:** the network's `badge` on a corner of the post, and one or two `spark`s (the
-  app's sparkles, the same icon as the What's New menu item). Nothing else decorates.
-- **Content is ours and generic:** initials in avatars, skeleton bars for text, never a real
-  person, handle or customer.
-- **Readable small:** labels about 30px semibold, nothing under 24px; the cover also shows
-  small in the sidebar card. Keep everything inside the 1200×675 canvas and nothing
-  overlapping by accident.
+- **Background:** `bg-violet`, the brand violet, nearly flat. No glows, no patterns.
+- **Surfaces:** white, **borderless**, rounded, with the soft floating shadow. No outlines, no
+  white frames around images, no hard offset shadows.
+- **Show what the user posts and what is new about it.** For a post feature, draw the post in
+  its real shape (a 9:16 `reel`, a square feed post, a carousel) next to one `panel` that looks
+  like the composer's section for that network, listing the new settings as `setting` rows.
+  Overlap the two slightly for depth and tilt only the post.
+- **Settings are drawn the way the app shows them:** the Tabler icon of the screen (`at` for
+  collaborators, `music`, `video` for reels), the label exactly as on screen, and the real
+  control: `handle` chips with `@`, a `track` pick, the violet `switch`.
+- **Content is ours and generic:** invented handles (`@nina`, `@leomakes`), an invented track,
+  illustrated media; never a real person, account or customer.
+- **No decoration:** no sparkles, confetti or stickers. The UI is the picture.
+- **Readable small:** labels about 28px semibold, nothing under 20px; the cover also shows small
+  in the sidebar card. Keep everything inside the 1200×675 canvas, nothing overlapping by
+  accident.
 
 **Pick the scene**, then copy its template from `.claude/release-assets/changelog-covers/` to the
 scratchpad and edit the copy (the templates stay as they are):
 
 | Scene | Template | Use it for |
 | --- | --- | --- |
-| Feature (default) | `feature.html` | A new or improved option, control or screen: the post (or screen) as the hero with the options floating around it. |
+| Feature (default) | `feature.html` | A new or improved option, control or screen: the post next to the composer panel with the new settings. |
 | Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's app icon. |
-| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis in app cards. |
+| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis on white surfaces. |
 
 A fix usually uses the Feature scene with the control that works again. Render the scene:
 
@@ -118,8 +114,9 @@ The renderer links `cover.css`, inlines Tabler icons (`<i data-icon="users"></i>
 `data-filled` for the filled set) and the TryPost mark (`{{TRYPOST_MARK}}`), and saves the
 cover at 2× (2400×1350, 16:9). Never resize or crop it afterwards.
 
-Open the PNG and check it against the style rules: nothing clipped or overlapping by accident,
-labels readable at the size of the sidebar card, cards tilted both ways, one background.
+Open the PNG and check it against the style rules: nothing clipped or overflowing (chips
+inside the panel, media filling its card), labels readable at the size of the sidebar card,
+no borders or decoration.
 
 ### Step 4 — Validate
 

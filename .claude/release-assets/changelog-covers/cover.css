@@ -1,24 +1,22 @@
 /*
- * TryPost "What's New" covers: the app's own components (resources/css/app.css)
- * blown up and made loud. A saturated background, white cards with the app's
- * thin border, xl radius and soft layered shadows, Inter, Tabler icons, the
- * violet switch, and the app's sparkles as the accent. No headline: the
- * entry's title sits right under the cover.
+ * TryPost "What's New" covers: the app's own UI (resources/css/app.css), drawn
+ * big on the brand violet. Borderless white surfaces with soft layered
+ * shadows, Inter, Tabler icons, the violet switch. No headline and no
+ * decoration: the entry's title sits right under the cover.
  */
 :root {
     --foreground: #292928;
     --muted-foreground: #5a5a59;
+    --subtle-foreground: #6f6e6c;
     --secondary: #eae8e5;
     --accent: #f3f2f0;
-    --border-strong: #dedcd9;
+    --border: #eae8e5;
     --primary: #ddd6fe;
     --primary-subtle: #ede9fe;
     --primary-strong: #6d28d9;
-    --ring: #7c3aed;
-    --spark: #ffcc33;
+    --primary-text: #6d28d9;
 
-    /* Shadows: the app's shadow-md, scaled up for a 1200px canvas. */
-    --float: 0 0 2px 2px #331f0017, 0 8px 16px -8px #2e1c0033, 0 32px 48px -16px #2e1c004d;
+    --float: 0 1px 2px #1d0b4a14, 0 12px 24px -8px #1d0b4a40, 0 40px 64px -24px #1d0b4a66;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -33,127 +31,98 @@ body {
 
 .canvas { position: relative; width: 1200px; height: 675px; overflow: hidden; }
 
-/* Backgrounds: the app's violet (default) or one of the logo's colors, each with soft glows. */
-.bg-violet { background: radial-gradient(circle at 18% 22%, #a78bfa 0%, transparent 42%), radial-gradient(circle at 88% 85%, #4c1d95 0%, transparent 48%), linear-gradient(135deg, #7c3aed, #6d28d9); }
-.bg-blue { background: radial-gradient(circle at 18% 22%, #7aa0ff 0%, transparent 42%), radial-gradient(circle at 88% 85%, #1d3fa8 0%, transparent 48%), linear-gradient(135deg, #3660e0, #2a4fc4); }
-.bg-orange { background: radial-gradient(circle at 18% 22%, #ffc266 0%, transparent 42%), radial-gradient(circle at 88% 85%, #c26a00 0%, transparent 48%), linear-gradient(135deg, #f7a21b, #f39200); }
-.bg-yellow { background: radial-gradient(circle at 18% 22%, #fff0b3 0%, transparent 42%), radial-gradient(circle at 88% 85%, #f3b400 0%, transparent 48%), linear-gradient(135deg, #ffd84d, #ffcc33); }
+/* The brand violet, nearly flat. */
+.bg-violet { background: linear-gradient(160deg, #7c3aed 0%, #6d28d9 100%); }
 
 .at { position: absolute; }
-.tilt-left { transform: rotate(-2.5deg); }
-.tilt-right { transform: rotate(2deg); }
+.icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.7; }
 
-.icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.6; }
+/* A white surface: no border, the floating shadow. */
+.surface { background: #fff; border-radius: 28px; box-shadow: var(--float); }
 
-/* The app's card: white, thin border-strong, xl radius, floating shadow. */
-.card {
-    background: #fff;
-    border: 2px solid var(--border-strong);
-    border-radius: 24px;
-    box-shadow: var(--float);
+/* A vertical reel (9:16) with its own overlays. */
+.reel { width: 300px; height: 534px; overflow: hidden; }
+.reel .frame { position: relative; width: 100%; height: 100%; }
+.reel .top { position: absolute; left: 18px; top: 16px; display: flex; align-items: center; gap: 10px; color: #fff; font-size: 22px; font-weight: 600; }
+.reel .top .icon { font-size: 30px; }
+.reel .sound {
+    position: absolute;
+    left: 16px;
+    right: 16px;
+    bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    height: 46px;
+    padding: 0 16px;
+    border-radius: 999px;
+    background: #ffffffe6;
+    font-size: 19px;
+    font-weight: 600;
 }
+.reel .sound .icon { font-size: 22px; color: var(--primary-strong); }
 
-/* A card holding one option: icon tile, label, then its control. */
-.option {
+/* A settings panel, like the composer's network section. */
+.panel { width: 640px; padding: 12px 0; }
+.panel .head {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 32px 20px;
+    border-bottom: 2px solid var(--border);
+    font-size: 26px;
+    font-weight: 600;
+}
+.panel .head .icon { font-size: 34px; color: #e1306c; }
+.setting {
     display: flex;
     align-items: center;
     gap: 20px;
-    padding: 18px 26px 18px 18px;
-    font-size: 30px;
+    padding: 24px 32px;
+    font-size: 28px;
     font-weight: 600;
-    letter-spacing: -0.015em;
+    letter-spacing: -0.01em;
     white-space: nowrap;
 }
+.setting + .setting { border-top: 2px solid var(--border); }
+.setting > .icon { font-size: 34px; color: var(--muted-foreground); }
+.setting .control { margin-left: auto; display: flex; align-items: center; gap: 12px; }
 
-/* The app's icon tile (sidebar "New" menu): rounded-xl, primary tint. */
-.tile {
-    display: grid;
-    place-items: center;
-    width: 64px;
-    height: 64px;
-    border-radius: 18px;
-    background: var(--primary);
-    color: var(--primary-strong);
-    font-size: 34px;
-}
-
-/* The app's switch: primary-strong with the white knob. */
-.switch {
-    position: relative;
-    width: 84px;
-    height: 46px;
+.handle {
+    display: inline-flex;
+    align-items: center;
+    height: 52px;
+    padding: 0 18px;
     border-radius: 999px;
-    background: var(--primary-strong);
-}
-.switch::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    right: 5px;
-    width: 36px;
-    height: 36px;
-    border-radius: 999px;
-    background: #fff;
-    box-shadow: 0 2px 4px #0000002e;
-}
-
-.avatars { display: flex; }
-.avatar {
-    display: grid;
-    place-items: center;
-    width: 50px;
-    height: 50px;
-    margin-left: -12px;
-    border: 3px solid #fff;
-    border-radius: 999px;
-    font-size: 20px;
+    background: var(--primary-subtle);
+    color: var(--primary-text);
+    font-size: 24px;
     font-weight: 600;
 }
-.avatar:first-child { margin-left: 0; }
 
-.wave { display: flex; align-items: center; gap: 6px; height: 46px; }
-.wave > i { display: block; width: 7px; border-radius: 999px; background: var(--primary-strong); }
-
-/* The post, as the hero: header, media, caption, like the app's post cards. */
-.post { width: 360px; padding: 18px; }
-.post .head { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
-.post .head .dot { width: 46px; height: 46px; border-radius: 999px; background: var(--primary); }
-.post .media { position: relative; height: 380px; border-radius: 16px; overflow: hidden; }
-.post .caption { display: grid; gap: 12px; padding: 18px 4px 4px; }
-.bar { display: block; height: 14px; border-radius: 999px; background: var(--secondary); }
-
-/* A network's mark in its brand circle, on the post's corner. */
-.badge {
-    display: grid;
-    place-items: center;
-    width: 96px;
-    height: 96px;
-    border: 5px solid #fff;
-    border-radius: 999px;
-    box-shadow: var(--float);
-    color: #fff;
-    font-size: 50px;
+.track {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 60px;
+    padding: 0 20px 0 8px;
+    border-radius: 16px;
+    background: var(--accent);
+    font-size: 23px;
+    font-weight: 600;
 }
+.track .art { width: 44px; height: 44px; border-radius: 10px; }
 
-/* The app's sparkles as the accent. */
-.spark { color: var(--spark); filter: drop-shadow(0 6px 10px #0000002e); }
-.spark .icon { stroke-width: 0; fill: currentColor; }
+/* The app's switch: primary-strong with the white knob. */
+.switch { position: relative; width: 80px; height: 44px; border-radius: 999px; background: var(--primary-strong); }
+.switch::after { content: ''; position: absolute; top: 5px; right: 5px; width: 34px; height: 34px; border-radius: 999px; background: #fff; box-shadow: 0 2px 4px #0000002e; }
 
-/* Integration: two app icons as cards. */
-.app-icon {
-    display: grid;
-    place-items: center;
-    width: 248px;
-    height: 248px;
-    border-radius: 60px;
-    background: #fff;
-    box-shadow: var(--float);
-    overflow: hidden;
-}
+/* Integration: two app icons. */
+.app-icon { display: grid; place-items: center; width: 248px; height: 248px; border-radius: 60px; background: #fff; box-shadow: var(--float); overflow: hidden; }
 .app-icon .icon { font-size: 136px; color: #fff; stroke-width: 1.5; }
 .app-icon .trypost-mark { width: 100%; height: 100%; }
 .plus { color: #fff; font-size: 72px; }
 .plus .icon { stroke-width: 2.4; }
 
-/* Announcement: emojis in app cards. */
+/* Announcement: emojis on white surfaces. */
 .emoji { display: grid; place-items: center; width: 230px; height: 230px; font-size: 120px; line-height: 1; }
