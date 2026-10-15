@@ -431,3 +431,27 @@ test('a browser Back between two entries of the same page closes the modal too',
         ->assertMissing('@changelog-dialog')
         ->assertNoJavaScriptErrors();
 });
+
+test('an open that fails to record keeps the entry marked as unseen', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    $entry = ChangelogEntry::factory()->create(['slug' => '2026-10-13-unrecorded', 'published_on' => today()->subYear()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-unrecorded');
+
+    $entry->update(['published_on' => today()->addDay()]);
+    $page->click('@changelog-item-title-2026-10-13-unrecorded');
+    waitForChangelogTestId($page, 'changelog-entry');
+    $page->click('@changelog-back');
+    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-unrecorded');
+
+    $page->assertPresent('@changelog-unseen-2026-10-13-unrecorded');
+    expect(ChangelogEntryView::count())->toBe(0);
+});

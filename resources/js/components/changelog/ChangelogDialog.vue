@@ -27,7 +27,7 @@ const {
     backToList,
     close,
 } = useChangelogDialog();
-const http = useHttp<Record<string, never>, null>({});
+const viewHttp = useHttp<Record<string, never>, null>({});
 const reactionHttp = useHttp<{ reaction: ChangelogReaction | null }, null>({
     reaction: null,
 });
@@ -69,7 +69,7 @@ const recordView = async (entry: ChangelogEntry): Promise<void> => {
     openedIds.value.add(entry.id);
 
     try {
-        await http.post(storeView.url(entry.id));
+        await viewHttp.post(storeView.url(entry.id));
 
         if (entry.id === page.props.changelog?.latest?.id) {
             router.reload({ only: ['changelog'] });

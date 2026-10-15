@@ -188,3 +188,16 @@ test('empty, null or missing tags are stored as no tags', function (string $tags
     'blank string' => ["tags: \"\"\n"],
     'missing' => [''],
 ]);
+
+test('an empty changelog folder deletes every entry and its views', function () {
+    $this->artisan('changelog:sync')->assertSuccessful();
+    ChangelogEntryView::factory()->create(['changelog_entry_id' => ChangelogEntry::value('id')]);
+
+    File::deleteDirectory("{$this->directory}/2026-10-01-first");
+    File::deleteDirectory("{$this->directory}/2026-10-02-second");
+
+    $this->artisan('changelog:sync')->expectsOutputToContain('0 created, 0 updated, 2 deleted')->assertSuccessful();
+
+    expect(ChangelogEntry::count())->toBe(0)
+        ->and(ChangelogEntryView::count())->toBe(0);
+});

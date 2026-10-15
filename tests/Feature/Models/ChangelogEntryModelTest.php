@@ -107,3 +107,12 @@ test('the excerpt is plain text: Markdown and tags stripped, entities decoded, w
         ->and(Str::length($long->excerpt()))->toBeLessThanOrEqual(163)
         ->and($long->excerpt())->toEndWith('...');
 });
+
+test('links in the body open in a new tab, except links to the app itself', function () {
+    config(['app.url' => 'https://app.trypost.test']);
+    $entry = ChangelogEntry::factory()->make(['body' => '[Docs](https://docs.trypost.it) and [settings](https://app.trypost.test/settings)']);
+
+    expect($entry->bodyHtml())
+        ->toContain('<a rel="noopener noreferrer" target="_blank" href="https://docs.trypost.it">Docs</a>')
+        ->toContain('<a href="https://app.trypost.test/settings">settings</a>');
+});

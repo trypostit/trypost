@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
+use League\CommonMark\Extension\ExternalLink\ExternalLinkExtension;
 
 /**
  * A "What's New" announcement. The rows are written only by `changelog:sync`
@@ -114,7 +115,11 @@ class ChangelogEntry extends Model
         return once(fn (): string => Str::markdown($this->body, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
-        ]));
+            'external_link' => [
+                'internal_hosts' => [parse_url((string) config('app.url'), PHP_URL_HOST)],
+                'open_in_new_window' => true,
+            ],
+        ], [new ExternalLinkExtension]));
     }
 
     public function excerpt(): string
