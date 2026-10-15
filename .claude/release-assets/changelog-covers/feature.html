@@ -1,27 +1,23 @@
 <!--
-  FEATURE (default scene): the composer section where the new settings live,
-  with the network's badge stuck on its corner. Example: Instagram reels gain
+  FEATURE (default scene): the composer-like panel with the new settings and
+  the network's badge set on its top edge. Example: Instagram reels gain
   collaborators, music and trial reels. Draw only what the entry is about, and
   use one icon per idea everywhere (here `movie` is the reel).
 -->
 <div class="canvas bg-violet">
-    <div class="surface panel at" style="left: 230px; top: 150px; width: 740px">
-        <div class="head"><i data-icon="movie"></i>Reel</div>
+    <div class="surface panel has-badge at" style="left: 190px; top: 166px; width: 820px">
+        <div class="badge" style="background: #e1306c"><i data-icon="brand-instagram"></i></div>
         <div class="setting">
-            <i data-icon="at"></i>Collaborators
-            <span class="control"><span class="handle">@nina</span><span class="handle">@leomakes</span></span>
+            <i data-icon="users"></i>Collaborators
+            <span class="control"><span class="handle">@paulocastellano</span><span class="handle">@leomakes</span></span>
         </div>
         <div class="setting">
             <i data-icon="music"></i>Music
-            <span class="control"><span class="track"><span class="art" style="background: #f39200"><i data-icon="player-play" data-filled></i></span>Golden hour</span></span>
+            <span class="control"><span class="track"><span class="art" style="background: var(--primary-strong)"><i data-icon="player-play" data-filled></i></span>Golden hour</span></span>
         </div>
         <div class="setting">
-            <i data-icon="movie"></i>Trial reel
+            <i data-icon="movie"></i>Trial Reels
             <span class="control"><span class="switch"></span></span>
         </div>
-    </div>
-
-    <div class="badge at" style="left: 176px; top: 100px; background: #e1306c">
-        <i data-icon="brand-instagram"></i>
     </div>
 </div>

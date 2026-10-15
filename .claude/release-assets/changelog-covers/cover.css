@@ -53,18 +53,9 @@ body {
 }
 
 /* A settings panel, like the composer's section for a network. */
-.panel { width: 610px; overflow: hidden; }
-.panel .head {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    padding: 22px 28px 22px 92px;
-    border-bottom: 2.5px solid var(--ink);
-    background: var(--accent);
-    font-size: 26px;
-    font-weight: 600;
-}
-.panel .head .icon { font-size: 32px; }
+.panel { position: relative; width: 610px; }
+.panel.has-badge { padding-top: 46px; overflow: visible; }
+.panel.has-badge > .badge { position: absolute; left: 50%; top: 0; transform: translate(-50%, -55%); }
 .setting {
     display: flex;
     align-items: center;
@@ -105,7 +96,7 @@ body {
 
 /* The app's switch: primary-strong with the white knob. */
 .switch { position: relative; width: 84px; height: 46px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--primary-strong); }
-.switch::after { content: ''; position: absolute; top: 3px; right: 3px; width: 35px; height: 35px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; }
+.switch::after { content: ''; position: absolute; top: 50%; right: 4px; width: 34px; height: 34px; border: 2.5px solid var(--ink); border-radius: 999px; background: #fff; transform: translateY(-50%); }
 
 /* Integration: two app icons. */
 .app-icon { display: grid; place-items: center; width: 240px; height: 240px; border: 2.5px solid var(--ink); border-radius: 56px; background: #fff; overflow: hidden; }

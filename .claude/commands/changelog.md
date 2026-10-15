@@ -80,17 +80,17 @@ never another product's composition, elements or sample content.
   between consecutive entries.
 - **Surfaces:** white, with the 2.5px ink border (`#292928`, the app's text color), rounded, and
   **no shadow**. Dividers inside a surface use the same ink line.
-- **Draw where the feature lives, not a device.** For new settings, one `panel` that reads like
-  the composer's section (a header naming what it applies to, e.g. `Reel`, then the new settings
-  as `setting` rows), with the network's `badge` stuck on its top-left corner. No phones, browser
-  frames or mockups of hardware.
-- **One icon per idea, everywhere:** if the header uses `movie` for the reel, every reel on the
-  cover uses `movie` too (the Trial reel row included). Never two icons for the same thing.
-- **Settings are drawn the way the app shows them:** the Tabler icon of the idea (`at` for
+- **Draw where the feature lives, not a device.** For new settings, one `panel has-badge` with
+  the new settings as `setting` rows and the network's `badge` centered on its top edge. No
+  header, phones, browser frames or mockups of hardware.
+- **One icon per idea, everywhere:** a reel is always `movie`, people are always `users` (the
+  `@` already lives in the handles). Never two icons for the same thing.
+- **Settings are drawn the way the app shows them:** the Tabler icon of the idea (`users` for
   collaborators, `music`, `movie` for reels), the label exactly as on screen, and the real
   control: `handle` chips with `@`, a `track` pick, the app's violet `switch`.
-- **Content is ours and generic:** invented handles (`@nina`, `@leomakes`), an invented track;
-  never a real person, account or customer.
+- **Content is ours:** the first handle is `@paulocastellano` when it fits, the others invented
+  (`@leomakes`), an invented track; never a customer's account or data. Make the panel wider
+  rather than let a chip touch its border.
 - **No decoration:** no sparkles, confetti, glows or shadows. The UI is the picture.
 - **Readable small:** labels about 28px semibold, nothing under 19px; the cover also shows small
   in the sidebar card. Keep everything inside the 1200×675 canvas, nothing overlapping by
