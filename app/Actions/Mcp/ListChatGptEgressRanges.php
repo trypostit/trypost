@@ -7,6 +7,7 @@ namespace App\Actions\Mcp;
 use DateTimeInterface;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 
 class ListChatGptEgressRanges
 {
@@ -65,11 +66,9 @@ class ListChatGptEgressRanges
             return false;
         }
 
-        $prefixLength = str($range)->after('/');
-
-        return filter_var(str($range)->before('/')->value(), FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false
-            && $prefixLength->isMatch('/^\d{1,2}$/')
-            && $prefixLength->toInteger() >= self::MIN_PREFIX_LENGTH
-            && $prefixLength->toInteger() <= self::MAX_PREFIX_LENGTH;
+        return filter_var(Str::before($range, '/'), FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) !== false
+            && filter_var(Str::after($range, '/'), FILTER_VALIDATE_INT, [
+                'options' => ['min_range' => self::MIN_PREFIX_LENGTH, 'max_range' => self::MAX_PREFIX_LENGTH],
+            ]) !== false;
     }
 }

@@ -154,6 +154,17 @@ describe('ChatGPT connects without a token and signs in from the conversation', 
         chatGptSignInAssertOAuthChallenge(chatGptSignInRequest($this, 'tools/list', [], CHATGPT_SIGN_IN_CHATGPT_IP, token: 'not-a-real-token'));
     });
 
+    test('a tool call without a usable id keeps the 401', function (mixed $id) {
+        $response = $this->withServerVariables(['REMOTE_ADDR' => CHATGPT_SIGN_IN_CHATGPT_IP])
+            ->withHeaders(['Accept' => 'application/json, text/event-stream'])
+            ->postJson(route('mcp.trypost'), ['jsonrpc' => '2.0', 'id' => $id, 'method' => 'tools/call', 'params' => chatGptSignInToolCall()]);
+
+        chatGptSignInAssertOAuthChallenge($response);
+    })->with([
+        'null' => [null],
+        'object' => [['nested' => 1]],
+    ]);
+
     test('a tool call with an expired token answers the sign-in prompt', function () {
         $issued = mcpBearerToken($this->user, $this->workspace);
         $issued['token']->forceFill(['expires_at' => now()->subMinute()])->save();
@@ -198,7 +209,7 @@ describe('OpenAI\'s published ranges', function () {
     });
 
     test('only valid IPv4 ranges of /8 or narrower are kept', function () {
-        fakeChatGptEgressRanges(['0.0.0.0/0', '10.0.0.0/4', 'not-a-range', '999.1.1.1/24', ['203.0.113.0/24'], '203.0.113.0/24']);
+        fakeChatGptEgressRanges(['0.0.0.0/0', '10.0.0.0/4', '198.51.100.0/24abc', '198.51.100.0', '198.51.100.0/33', 'not-a-range', '999.1.1.1/24', ['203.0.113.0/24'], '203.0.113.0/24']);
 
         chatGptSignInRequest($this, 'initialize', chatGptSignInInitializeParams(), CHATGPT_SIGN_IN_CHATGPT_IP)->assertOk();
         chatGptSignInAssertOAuthChallenge(chatGptSignInRequest($this, 'initialize', chatGptSignInInitializeParams(), CHATGPT_SIGN_IN_OTHER_IP));

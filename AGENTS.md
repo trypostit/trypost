@@ -860,7 +860,6 @@ ChatGPT offers sign-in inside the conversation when a user who never connected (
 - **Without a token, ChatGPT may only connect and list tools** (`initialize`, `notifications/initialized`, `ping`, `tools/list`), through `AuthenticateMcp` and `LoadMcpWorkspace` (the MCP route's own workspace middleware: it lets that discovery through and hands every other request to the shared `LoadWorkspaceFromToken` with `mcp`, which the MCP change leaves untouched). A tool call always needs a token, so no tool ever runs without a user. A request that carries a token, valid or not, is always authenticated; Passport blanks the `Authorization` header when it refuses a token, so `AuthenticateMcp` records `ChatGptMcpClient::TOKEN_SENT` before it runs.
 - **A refused tool call from ChatGPT** gets `ChallengeChatGptToolCalls`'s 200 tool result with `isError` and `_meta["mcp/www_authenticate"]`: ChatGPT never shows its sign-in prompt for a 401. 402 and 403 are unchanged.
 - **Every tool declares `securitySchemes`** (`oauth2`, `mcp:use`) through `ListToolsWithSecuritySchemes`; ChatGPT offers sign-in only for tools that declare it, other clients ignore it.
-- `LogMcpClient` logs each MCP request (method, tool, client, user agent, IP, whether a token was sent, status; never the token; client values cut short).
 - `tests/Feature/Mcp/ChatGptSignInTest.php` covers ChatGPT, Claude and other clients with no token, an invalid token and a valid one, and the cached ranges; every guard there fails its test when removed.
 
 ## MCP tool annotations
