@@ -87,7 +87,7 @@ export interface CanvaPresetOption {
 }
 
 export interface MediaSourceOption {
-    source: 'google_drive' | 'google_photos' | 'canva' | 'unsplash';
+    source: 'google_drive' | 'google_photos' | 'canva' | 'unsplash' | 'webdav';
     label: string;
     config: Record<string, string>;
     presets?: CanvaPresetOption[];

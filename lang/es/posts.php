@@ -44,6 +44,14 @@ return [
             'more' => 'Más fuentes de medios',
             'select_from' => 'Seleccionar de :source',
             'importing' => 'Importando…',
+            'webdav' => [
+                'root' => 'Todos los archivos',
+                'up' => 'Atrás',
+                'loading' => 'Cargando…',
+                'empty' => 'No hay imágenes ni vídeos en esta carpeta.',
+                'load_failed' => 'No se pudo abrir esta carpeta.',
+                'add' => 'Añadir (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Cuadrado 1:1',
                 'portrait_4_5' => 'Vertical 4:5',

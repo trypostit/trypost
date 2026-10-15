@@ -44,6 +44,14 @@ return [
             'more' => 'Altre fonti multimediali',
             'select_from' => 'Seleziona da :source',
             'importing' => 'Importazione…',
+            'webdav' => [
+                'root' => 'Tutti i file',
+                'up' => 'Indietro',
+                'loading' => 'Caricamento…',
+                'empty' => 'Nessuna immagine o video in questa cartella.',
+                'load_failed' => 'Impossibile aprire questa cartella.',
+                'add' => 'Aggiungi (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Quadrato 1:1',
                 'portrait_4_5' => 'Verticale 4:5',

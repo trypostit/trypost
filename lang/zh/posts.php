@@ -44,6 +44,14 @@ return [
             'more' => '更多媒体来源',
             'select_from' => '从 :source 选择',
             'importing' => '正在导入…',
+            'webdav' => [
+                'root' => '所有文件',
+                'up' => '返回',
+                'loading' => '加载中…',
+                'empty' => '此文件夹中没有图片或视频。',
+                'load_failed' => '无法打开此文件夹。',
+                'add' => '添加 (:count)',
+            ],
             'canva_presets' => [
                 'square' => '方形 1:1',
                 'portrait_4_5' => '竖版 4:5',

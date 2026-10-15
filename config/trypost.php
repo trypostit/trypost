@@ -199,6 +199,20 @@ return [
             'export_timeout_seconds' => (int) env('CANVA_EXPORT_TIMEOUT_SECONDS', 120),
             'export_poll_seconds' => (int) env('CANVA_EXPORT_POLL_SECONDS', 2),
         ],
+        // A WebDAV share (Nextcloud, ownCloud, ...) as a read-only source.
+        // The URL is the share's WebDAV endpoint; the root narrows it to one
+        // folder. Credentials never reach the browser. The share is fetched
+        // like any remote file, so a host on a private network also needs
+        // TRYPOST_ALLOW_PRIVATE_NETWORK.
+        'webdav' => [
+            'enabled' => (bool) env('WEBDAV_ENABLED', false),
+            'url' => env('WEBDAV_URL'),
+            'username' => env('WEBDAV_USERNAME'),
+            'password' => env('WEBDAV_PASSWORD'),
+            'root' => env('WEBDAV_ROOT', ''),
+            'label' => env('WEBDAV_LABEL', 'WebDAV'),
+            'requests_per_user_per_minute' => (int) env('WEBDAV_REQUESTS_PER_MINUTE', 60),
+        ],
         'import_timeout_seconds' => (int) env('MEDIA_IMPORT_TIMEOUT_SECONDS', 600),
         'imports_per_user_per_minute' => (int) env('MEDIA_IMPORTS_PER_MINUTE', 30),
     ],

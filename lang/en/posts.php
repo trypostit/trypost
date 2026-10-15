@@ -44,6 +44,14 @@ return [
             'more' => 'More media sources',
             'select_from' => 'Select from :source',
             'importing' => 'Importing…',
+            'webdav' => [
+                'root' => 'All files',
+                'up' => 'Back',
+                'loading' => 'Loading…',
+                'empty' => 'No images or videos in this folder.',
+                'load_failed' => 'This folder could not be opened.',
+                'add' => 'Add (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Square 1:1',
                 'portrait_4_5' => 'Portrait 4:5',

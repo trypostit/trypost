@@ -44,6 +44,14 @@ return [
             'more' => 'その他のメディアソース',
             'select_from' => ':source から選択',
             'importing' => 'インポート中…',
+            'webdav' => [
+                'root' => 'すべてのファイル',
+                'up' => '戻る',
+                'loading' => '読み込み中…',
+                'empty' => 'このフォルダには画像や動画がありません。',
+                'load_failed' => 'このフォルダを開けませんでした。',
+                'add' => '追加 (:count)',
+            ],
             'canva_presets' => [
                 'square' => '正方形 1:1',
                 'portrait_4_5' => '縦長 4:5',

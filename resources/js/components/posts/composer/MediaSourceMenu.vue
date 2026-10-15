@@ -5,6 +5,7 @@ import {
     IconBrandGooglePhotos,
     IconBrandUnsplash,
     IconCircleLetterCFilled,
+    IconCloud,
     IconPhotoPlus,
     IconUpload,
 } from '@tabler/icons-vue';
@@ -12,6 +13,7 @@ import { getActiveLanguage, trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 import { toast } from 'vue-sonner';
 
+import WebdavBrowserDialog from '@/components/media/WebdavBrowserDialog.vue';
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -66,6 +68,7 @@ const ICONS: Record<SourceKey, Component> = {
     google_drive: IconBrandGoogleDrive,
     google_photos: IconBrandGooglePhotos,
     unsplash: IconBrandUnsplash,
+    webdav: IconCloud,
 };
 
 const page = usePage();
@@ -168,6 +171,23 @@ const handlers: Partial<
         });
     },
     unsplash: () => emit('open-unsplash'),
+    webdav: (option) => {
+        webdavOption.value = option;
+        webdavOpen.value = true;
+    },
+};
+
+const webdavOption = ref<MediaSourceOption | null>(null);
+const webdavOpen = ref(false);
+
+/** One import per file; the request takes a single pick. */
+const importFromWebdav = async (paths: string[]): Promise<void> => {
+    const option = webdavOption.value;
+    if (!option) return;
+
+    for (const path of paths) {
+        await startImport(option, { source: option.source, file: { path } });
+    }
 };
 
 const sources = computed<MediaSourceOption[]>(() =>
@@ -315,4 +335,10 @@ const pickCanvaPreset = (
                 </template>
         </DropdownMenuContent>
     </DropdownMenu>
+    <WebdavBrowserDialog
+        v-if="webdavOption"
+        v-model:open="webdavOpen"
+        :label="webdavOption.label"
+        @picked="importFromWebdav"
+    />
 </template>

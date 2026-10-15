@@ -46,6 +46,14 @@ return [
             'more' => 'Daha fazla medya kaynağı',
             'select_from' => ':source kaynağından seç',
             'importing' => 'İçe aktarılıyor…',
+            'webdav' => [
+                'root' => 'Tüm dosyalar',
+                'up' => 'Geri',
+                'loading' => 'Yükleniyor…',
+                'empty' => 'Bu klasörde görsel veya video yok.',
+                'load_failed' => 'Bu klasör açılamadı.',
+                'add' => 'Ekle (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Kare 1:1',
                 'portrait_4_5' => 'Dikey 4:5',

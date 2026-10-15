@@ -44,6 +44,14 @@ return [
             'more' => 'Meer mediabronnen',
             'select_from' => 'Selecteren uit :source',
             'importing' => 'Importeren…',
+            'webdav' => [
+                'root' => 'Alle bestanden',
+                'up' => 'Terug',
+                'loading' => 'Laden…',
+                'empty' => 'Geen afbeeldingen of video\'s in deze map.',
+                'load_failed' => 'Deze map kon niet worden geopend.',
+                'add' => 'Toevoegen (:count)',
+            ],
             'canva_presets' => [
                 'square' => 'Vierkant 1:1',
                 'portrait_4_5' => 'Staand 4:5',

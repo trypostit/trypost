@@ -44,6 +44,14 @@ return [
             'more' => '더 많은 미디어 소스',
             'select_from' => ':source에서 선택',
             'importing' => '가져오는 중…',
+            'webdav' => [
+                'root' => '모든 파일',
+                'up' => '뒤로',
+                'loading' => '불러오는 중…',
+                'empty' => '이 폴더에 이미지나 동영상이 없습니다.',
+                'load_failed' => '이 폴더를 열 수 없습니다.',
+                'add' => '추가 (:count)',
+            ],
             'canva_presets' => [
                 'square' => '정사각형 1:1',
                 'portrait_4_5' => '세로 4:5',
