@@ -1,5 +1,5 @@
 ---
-description: Write a "What's New" entry (title, tag, body and cover) for a shipped feature, under changelog/
+description: Write a "What's New" entry (title, tag, body and cover) for a shipped feature, under resources/changelog/
 argument-hint: <PR number, branch or a short description of the feature>
 allowed-tools: Bash, Write, Read, Edit, Skill
 ---
@@ -12,12 +12,13 @@ Feature to announce: $ARGUMENTS
 ## What an entry is
 
 ```
-changelog/<YYYY-MM-DD>-<slug>.md                 front matter + Markdown body
-public/images/changelog/<YYYY-MM-DD>-<slug>.png  1200×675 cover (16:9, the card and modal slot)
+resources/changelog/<YYYY-MM-DD>-<slug>/
+  entry.md     front matter + Markdown body
+  cover.png    1200×675 cover (16:9, the card and modal slot)
 ```
 
-Both files share the slug. The cover is a plain public file served by the app; nothing is
-uploaded anywhere.
+The cover is a Vite asset: the build versions it and the app links it with `Vite::asset()`.
+Nothing is uploaded anywhere.
 
 ```markdown
 ---
@@ -29,7 +30,7 @@ tags: [new]         # optional, any of: new, improved, fixed, beta
 Body in Markdown.
 ```
 
-- The file name is the slug and never changes once synced (views and reactions are keyed to the row it creates).
+- The folder name is the slug and never changes once synced (views and reactions are keyed to the row it creates).
 - `date` is the day users see. A future date hides the entry until that day (UTC).
 - The sidebar card announces only the newest entry dated on or after the user's signup day; the
   "What's New" list shows every published entry.
@@ -82,7 +83,7 @@ node .claude/release-assets/render-thumbnail.mjs \
   --headline "Music, collaborators and trial reels" \
   --underline "trial reels" \
   --themes "Music,Collaborators,Trial reels" \
-  --out public/images/changelog/<YYYY-MM-DD>-<slug>.png
+  --out resources/changelog/<YYYY-MM-DD>-<slug>/cover.png
 ```
 
 Open the PNG and check it:
@@ -98,10 +99,10 @@ Open the PNG and check it:
 php artisan changelog:sync
 ```
 
-It fails loud, naming the entry, when the front matter is invalid, the cover is missing or the
-cover is not 16:9. Locally it also writes the entry to the database, so it shows in the sidebar
+It fails loud, naming the folder, when the front matter is invalid, `entry.md` or `cover.png` is
+missing, or the cover is not 16:9. Locally it also writes the entry to the database, so it shows in the sidebar
 card and the "What's New" list.
 
 ### Step 5 — Hand over
 
-Show the user the title, tags, body and the paths of both files. Do not commit or push unless asked.
+Show the user the title, tags, body and the entry's folder. Do not commit or push unless asked.

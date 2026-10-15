@@ -758,15 +758,21 @@ view turns a forgotten variable into a runtime-only failure.
 The in-app announcements: a card at the bottom of the sidebar announcing the newest
 entry, and a "What's New" modal (Help menu) listing every published entry.
 
-- **Entries are Markdown files in the repo**, `changelog/<YYYY-MM-DD>-<slug>.md`
-  (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`), with
-  its cover at `public/images/changelog/<slug>.png` (1200×675, 16:9), served as a plain public
-  file (no CDN upload, so self-hosted installs get it too). There is no admin panel. Write them
-  with the `/changelog` command.
+- **Each entry is one folder in the repo**, `resources/changelog/<YYYY-MM-DD>-<slug>/` with
+  `entry.md` (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`)
+  and `cover.png` (1200×675, 16:9). The folder holds a `.gitkeep` so it exists with no entries.
+  There is no admin panel. Write them with the `/changelog` command.
+- **Covers are Vite assets** (owner decision 2026-10-14): `vite.config.ts` lists
+  `resources/changelog/**/*.png` in the plugin's `assets`, so the build versions them, and
+  `ChangelogEntry::coverUrl()` reads `Vite::asset()`. A cover missing from the build gives a null
+  `cover_url` (reported) and the UI keeps the empty muted frame; factories hit this, production
+  does not because the build and the sync run from the same commit. Never upload covers to a disk
+  or put them in `public/`.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
-  `changelog_entries` by slug, deletes rows whose file is gone, and fails loud without writing
-  anything when one entry is invalid (missing cover or a cover that is not 16:9 included). Never
-  edit the rows by hand, and never rename a synced entry (its views are keyed to the row).
+  `changelog_entries` by slug, deletes rows whose folder is gone, and fails loud without writing
+  anything when one folder is invalid (missing `entry.md` or `cover.png`, or a cover that is not
+  16:9). Never edit the rows by hand, and never rename a synced folder (its views are keyed to
+  the row).
 - **The entries and the modal are English only** (owner decision 2026-10-14): the entries, the
   tag labels (`Tag::label()`), the modal title, its empty state and the "Do you like it?" block
   are hard-coded English, never lang keys. The exception is the Help menu item, which is part

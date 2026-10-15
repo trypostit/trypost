@@ -38,12 +38,13 @@ const openLatestEntry = (): void => {
                 {{ entry.title }}
             </span>
             <span
-                class="mt-3 block overflow-hidden rounded-lg bg-muted"
+                class="mt-3 block aspect-video overflow-hidden rounded-lg bg-muted"
             >
                 <img
+                    v-if="entry.cover_url"
                     :src="entry.cover_url"
                     alt=""
-                    class="aspect-video w-full object-cover"
+                    class="size-full object-cover"
                     draggable="false"
                     data-testid="changelog-card-cover"
                 />

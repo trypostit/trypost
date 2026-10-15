@@ -12,7 +12,7 @@ export interface ChangelogEntry {
     slug: string;
     title: string;
     tags: ChangelogTag[];
-    cover_url: string;
+    cover_url: string | null;
     published_on: string;
     excerpt: string;
     body_html: string;

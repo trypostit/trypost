@@ -12,12 +12,12 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\Str;
 
 /**
  * A "What's New" announcement. The rows are written only by `changelog:sync`
- * from the Markdown files under `changelog/`; never edit them by hand. The
- * cover is the public file `images/changelog/<slug>.png`.
+ * from the folders under `resources/changelog/`; never edit them by hand.
  */
 class ChangelogEntry extends Model
 {
@@ -96,9 +96,13 @@ class ChangelogEntry extends Model
         $query->orderByDesc('published_on')->orderByDesc('slug');
     }
 
-    public function coverUrl(): string
+    /**
+     * The cover's versioned URL from the Vite build, or null (reported) when the
+     * build has no such file, as with entries made by a factory.
+     */
+    public function coverUrl(): ?string
     {
-        return asset("images/changelog/{$this->slug}.png");
+        return rescue(fn (): string => Vite::asset("resources/changelog/{$this->slug}/cover.png"));
     }
 
     public function bodyHtml(): string

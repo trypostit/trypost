@@ -5,6 +5,9 @@ declare(strict_types=1);
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Vite;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     $this->user = User::factory()->create(['created_at' => now()->subDays(10)]);
@@ -69,4 +72,28 @@ test('views go with the user and with the entry', function () {
 
     $entry->delete();
     expect(ChangelogEntryView::count())->toBe(0);
+});
+
+test('the cover url is the versioned file from the Vite build, or null when the build has no cover', function () {
+    $buildDirectory = 'changelog-test-build-'.Str::lower(Str::random(8));
+    $built = ChangelogEntry::factory()->create(['slug' => '2026-10-01-built']);
+    $missing = ChangelogEntry::factory()->create(['slug' => '2026-10-02-missing']);
+
+    File::ensureDirectoryExists(public_path($buildDirectory));
+    File::put(public_path("{$buildDirectory}/manifest.json"), json_encode([
+        'resources/changelog/2026-10-01-built/cover.png' => [
+            'file' => 'assets/cover-a1b2c3.png',
+            'src' => 'resources/changelog/2026-10-01-built/cover.png',
+        ],
+    ]));
+
+    $this->withVite();
+    Vite::useHotFile(storage_path('framework/testing/no-vite-hot-file'))->useBuildDirectory($buildDirectory);
+
+    try {
+        expect($built->coverUrl())->toBe(asset("{$buildDirectory}/assets/cover-a1b2c3.png"))
+            ->and($missing->coverUrl())->toBeNull();
+    } finally {
+        File::deleteDirectory(public_path($buildDirectory));
+    }
 });

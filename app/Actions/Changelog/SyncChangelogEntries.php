@@ -17,21 +17,20 @@ use League\CommonMark\Extension\FrontMatter\Data\SymfonyYamlFrontMatterParser;
 use League\CommonMark\Extension\FrontMatter\FrontMatterParser;
 
 /**
- * Mirrors the Markdown entries (`changelog/<slug>.md`) into `changelog_entries`.
- * Each entry needs a 16:9 cover at `public/images/changelog/<slug>.png`. Every
- * entry is validated before anything is written, and a row whose file is gone
- * is deleted.
+ * Mirrors the entries under `resources/changelog/<slug>/` (entry.md plus a 16:9
+ * cover.png, served by Vite) into `changelog_entries`. Every folder is validated
+ * before anything is written, and a row whose folder is gone is deleted.
  */
 class SyncChangelogEntries
 {
     /**
      * @return array{created: int, updated: int, deleted: int}
      */
-    public static function execute(string $entriesDirectory, string $coversDirectory): array
+    public static function execute(string $directory): array
     {
-        $entries = collect(File::isDirectory($entriesDirectory) ? File::glob("{$entriesDirectory}/*.md") : [])
+        $entries = collect(File::isDirectory($directory) ? File::directories($directory) : [])
             ->sort()
-            ->map(fn (string $file): array => self::parse($file, $coversDirectory))
+            ->map(fn (string $folder): array => self::parse($folder))
             ->values();
 
         $result = ['created' => 0, 'updated' => 0, 'deleted' => 0];
@@ -62,23 +61,28 @@ class SyncChangelogEntries
     /**
      * @return array{slug: string, title: string, tags: list<string>, body: string, published_on: string}
      */
-    private static function parse(string $file, string $coversDirectory): array
+    private static function parse(string $folder): array
     {
-        $slug = File::name($file);
-        $coverFile = "{$coversDirectory}/{$slug}.png";
+        $slug = basename($folder);
+        $entryFile = "{$folder}/entry.md";
+        $coverFile = "{$folder}/cover.png";
+
+        if (! File::exists($entryFile)) {
+            throw new InvalidArgumentException("Changelog entry [{$slug}] has no entry.md.");
+        }
 
         if (! File::exists($coverFile)) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] has no cover at {$coverFile}.");
+            throw new InvalidArgumentException("Changelog entry [{$slug}] has no cover.png.");
         }
 
         [$coverWidth, $coverHeight] = getimagesize($coverFile) ?: [0, 0];
 
         if ($coverWidth === 0 || $coverWidth * 9 !== $coverHeight * 16) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] needs a 16:9 cover (1200x675), got {$coverWidth}x{$coverHeight}.");
+            throw new InvalidArgumentException("Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675), got {$coverWidth}x{$coverHeight}.");
         }
 
         try {
-            $document = (new FrontMatterParser(new SymfonyYamlFrontMatterParser))->parse(File::get($file));
+            $document = (new FrontMatterParser(new SymfonyYamlFrontMatterParser))->parse(File::get($entryFile));
         } catch (CommonMarkException $exception) {
             throw new InvalidArgumentException("Changelog entry [{$slug}] has invalid front matter: {$exception->getMessage()}");
         }

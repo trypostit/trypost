@@ -10,19 +10,14 @@ use InvalidArgumentException;
 
 class SyncChangelog extends Command
 {
-    protected $signature = 'changelog:sync
-        {--path= : Folder holding the entries (defaults to changelog/)}
-        {--covers= : Folder holding the covers (defaults to public/images/changelog/)}';
+    protected $signature = 'changelog:sync {--path= : Folder holding the entries (defaults to resources/changelog/)}';
 
-    protected $description = 'Sync the "What\'s New" entries under changelog/ into the database';
+    protected $description = 'Sync the "What\'s New" entries under resources/changelog/ into the database';
 
     public function handle(): int
     {
         try {
-            $result = SyncChangelogEntries::execute(
-                $this->option('path') ?: base_path('changelog'),
-                $this->option('covers') ?: public_path('images/changelog'),
-            );
+            $result = SyncChangelogEntries::execute($this->option('path') ?: resource_path('changelog'));
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 

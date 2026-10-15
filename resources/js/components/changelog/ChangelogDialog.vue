@@ -178,11 +178,16 @@ watch(activeEntry, (entry) => {
                 class="flex flex-col gap-4 px-6 pb-6"
                 data-testid="changelog-entry"
             >
-                <img
-                    :src="activeEntry.cover_url"
-                    alt=""
-                    class="aspect-video w-full rounded-xl object-cover"
-                />
+                <div
+                    class="aspect-video w-full overflow-hidden rounded-xl bg-muted"
+                >
+                    <img
+                        v-if="activeEntry.cover_url"
+                        :src="activeEntry.cover_url"
+                        alt=""
+                        class="size-full object-cover"
+                    />
+                </div>
                 <div class="flex flex-col gap-1">
                     <div
                         v-if="activeEntry.tags.length"
@@ -299,13 +304,14 @@ watch(activeEntry, (entry) => {
                             @click="showEntry(entry)"
                         >
                             <span
-                                class="group/cover relative block overflow-hidden rounded-lg bg-muted"
+                                class="group/cover relative block aspect-video overflow-hidden rounded-lg bg-muted"
                                 :data-testid="`changelog-item-cover-${entry.slug}`"
                             >
                                 <img
+                                    v-if="entry.cover_url"
                                     :src="entry.cover_url"
                                     alt=""
-                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/cover:scale-[1.04]"
+                                    class="size-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/cover:scale-[1.04]"
                                     draggable="false"
                                 />
                             </span>
