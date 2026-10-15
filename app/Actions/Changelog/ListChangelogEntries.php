@@ -11,10 +11,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class ListChangelogEntries
 {
     /**
-     * The "What's New" modal loads ten entries per page (owner decision
+     * The "What's New" modal loads five entries per page (owner decision
      * 2026-10-14, an exception to `app.pagination.default`).
      */
-    public const PAGE_SIZE = 10;
+    public const PAGE_SIZE = 5;
 
     public const PAGE_NAME = 'changelog_page';
 
