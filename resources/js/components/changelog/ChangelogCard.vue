@@ -38,7 +38,7 @@ const openLatestEntry = (): void => {
                 {{ entry.title }}
             </span>
             <span
-                class="mt-3 block overflow-hidden rounded-lg border border-border bg-muted"
+                class="mt-3 block overflow-hidden rounded-lg bg-muted"
             >
                 <img
                     :src="entry.cover_url"
