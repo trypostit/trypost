@@ -50,6 +50,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Well-known files
+    |--------------------------------------------------------------------------
+    |
+    | Files served at /.well-known/{name} as plain text, keyed by name. The
+    | content always comes from the environment so no install serves another
+    | install's tokens; an empty value answers 404. Add a provider with one
+    | line here and one env variable.
+    |
+    */
+
+    'well_known' => [
+        'openai-apps-challenge' => env('OPENAI_APPS_CHALLENGE'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |
