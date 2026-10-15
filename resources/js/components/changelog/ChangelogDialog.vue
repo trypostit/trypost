@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconX } from '@tabler/icons-vue';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { update as updateReaction } from '@/actions/App/Http/Controllers/App/ChangelogEntryReactionController';
@@ -116,6 +116,16 @@ watch(isOpen, (open) => {
         loadEntries();
     }
 });
+
+watch(
+    entries,
+    (list) => {
+        if (isOpen.value && list === null) {
+            void nextTick(loadEntries);
+        }
+    },
+    { immediate: true },
+);
 
 watch(activeEntry, (entry) => {
     header.value?.parentElement?.scrollTo({ top: 0 });

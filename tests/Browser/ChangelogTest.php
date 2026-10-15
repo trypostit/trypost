@@ -363,3 +363,31 @@ test('a second reaction click while the first is saving is ignored', function ()
         ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('true')
         ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-dislike\"]').getAttribute('aria-pressed')"))->toBe('false');
 });
+
+test('the open list still loads after a browser Back to the previous page', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    ChangelogEntry::factory()->create(['slug' => '2026-10-13-back', 'published_on' => today()->subYear()]);
+    $calendarPath = route('app.calendar', absolute: false);
+    $insightsPath = route('app.insights', absolute: false);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, "nav-{$insightsPath}");
+    $page->script("document.querySelector('[data-testid=\"nav-{$insightsPath}\"]').click()");
+    waitForChangelogCondition($page, "location.pathname === '{$insightsPath}'");
+
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-back');
+
+    $page->back();
+    waitForChangelogCondition($page, "location.pathname === '{$calendarPath}'");
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-back');
+
+    $page->assertPathIs($calendarPath)
+        ->assertPresent('@changelog-item-2026-10-13-back')
+        ->assertNoJavaScriptErrors();
+});

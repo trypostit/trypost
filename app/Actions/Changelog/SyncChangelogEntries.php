@@ -91,15 +91,15 @@ class SyncChangelogEntries
             'slug' => $slug,
             'cover' => new HttpFile("{$folder}/cover.png"),
             'title' => data_get($frontMatter, 'title'),
-            'tags' => data_get($frontMatter, 'tags', []),
+            'tags' => transform(data_get($frontMatter, 'tags'), fn (mixed $tags): mixed => $tags, []),
             'published_on' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
             'body' => Str::trim($document->getContent()),
         ], [
             'slug' => ['regex:/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$/'],
             'cover' => [Rule::dimensions()->ratio(16 / 9)],
             'title' => ['required', 'string', 'max:255'],
-            'tags' => ['nullable', 'list'],
-            'tags.*' => ['distinct', Rule::enum(Tag::class)],
+            'tags' => ['list'],
+            'tags.*' => ['required', 'distinct', Rule::enum(Tag::class)],
             'published_on' => ['required', 'date_format:Y-m-d'],
             'body' => ['required', 'string'],
         ], [
@@ -111,9 +111,6 @@ class SyncChangelogEntries
 
         throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: {$errors}");
 
-        return [
-            ...collect($validator->validated())->except('cover'),
-            'tags' => data_get($validator->validated(), 'tags') ?? [],
-        ];
+        return $validator->safe()->except('cover');
     }
 }
