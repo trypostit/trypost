@@ -264,7 +264,9 @@ test('the list loads the next page on scroll, reopens on the list and shows an e
     openChangelogHelpMenu($page);
     $page->click('@sidebar-support-changelog');
     waitForChangelogTestId($page, 'changelog-item-2026-09-01-paged');
+    waitForChangelogCondition($page, "document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length === 5");
 
+    expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(5);
     $page->assertMissing('@changelog-entry')
         ->assertNoJavaScriptErrors();
 
@@ -404,4 +406,28 @@ test('a browser Back closes the modal, and reopening shows a fresh list', functi
         ->assertNoJavaScriptErrors();
 
     expect(ChangelogEntryView::where('user_id', $user->id)->count())->toBe(1);
+});
+
+test('a browser Back between two entries of the same page closes the modal too', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    ChangelogEntry::factory()->create(['slug' => '2026-10-13-same', 'published_on' => today()->subYear()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    $page->script('window.history.pushState(window.history.state, "", location.href)');
+
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-same');
+
+    $page->back();
+    waitForChangelogTestIdGone($page, 'changelog-dialog');
+
+    $page->assertPathIs(route('app.calendar', absolute: false))
+        ->assertMissing('@changelog-dialog')
+        ->assertNoJavaScriptErrors();
 });

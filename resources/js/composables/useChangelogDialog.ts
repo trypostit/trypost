@@ -5,7 +5,6 @@ import type { ChangelogEntry } from '@/types/changelog';
 
 const isOpen = ref(false);
 const entry = shallowRef<ChangelogEntry | null>(null);
-let currentUrl: string | null = null;
 
 const openList = (): void => {
     entry.value = null;
@@ -26,15 +25,7 @@ const close = (): void => {
     entry.value = null;
 };
 
-router.on('navigate', (event) => {
-    const { url } = event.detail.page;
-
-    if (currentUrl !== null && url !== currentUrl) {
-        close();
-    }
-
-    currentUrl = url;
-});
+router.on('navigate', close);
 
 export const useChangelogDialog = () => ({
     isOpen: readonly(isOpen),

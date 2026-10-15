@@ -802,9 +802,10 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   The action owns its keys (private, like `ListPinterestBoards`). `RecordChangelogEntryView`
   clears one user's card when it creates a view, and a sync that changed anything bumps the cards'
   version (`ShowChangelogCard::forgetAll()`), so a new, removed or re-dated entry shows at once.
-- **The modal closes when the page changes** (`useChangelogDialog` listens to Inertia's
-  `navigate` and closes on a new URL, browser Back included); its own partial reloads keep the URL
-  and leave it open. Layouts are not persistent, so keeping it open across pages would remount it
+- **The modal closes when the page changes** (`useChangelogDialog` closes on every Inertia
+  `navigate`, which fires for pushed visits and browser Back/Forward); its own requests (list load,
+  scroll pages, card reload) are same-URL visits Inertia replaces without `navigate`, so they leave
+  it open. Layouts are not persistent, so keeping it open across pages would remount it
   with stale state.
 - **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
   including those from before the user signed up, with a dot on the ones not opened yet. A
