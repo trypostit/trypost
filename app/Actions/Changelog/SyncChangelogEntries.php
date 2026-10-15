@@ -7,6 +7,7 @@ namespace App\Actions\Changelog;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use Carbon\CarbonImmutable;
+use Illuminate\Http\File as HttpFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -76,7 +77,6 @@ class SyncChangelogEntries
 
         throw_if(File::missing("{$folder}/entry.md"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no entry.md.");
         throw_if(File::missing("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no cover.png.");
-        throw_unless(self::isWideCover("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675).");
 
         try {
             $document = (new FrontMatterParser(new SymfonyYamlFrontMatterParser))->parse(File::get("{$folder}/entry.md"));
@@ -88,35 +88,34 @@ class SyncChangelogEntries
         $date = data_get($frontMatter, 'date');
 
         $validator = Validator::make([
+            'slug' => $slug,
+            'cover' => new HttpFile("{$folder}/cover.png"),
             'title' => data_get($frontMatter, 'title'),
             'tags' => data_get($frontMatter, 'tags', []),
             'published_on' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
             'body' => Str::trim($document->getContent()),
         ], [
+            'slug' => ['regex:/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'cover' => [Rule::dimensions()->ratio(16 / 9)],
             'title' => ['required', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['distinct', Rule::enum(Tag::class)],
             'published_on' => ['required', 'date_format:Y-m-d'],
             'body' => ['required', 'string'],
-        ], attributes: ['published_on' => 'date']);
+        ], [
+            'slug.regex' => 'The folder name must be <YYYY-MM-DD>-<slug> in lowercase.',
+            'cover.dimensions' => 'The cover.png must be 16:9 (1200x675).',
+        ], ['published_on' => 'date']);
 
         $errors = collect($validator->errors()->all())->implode(' ');
 
         throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: {$errors}");
 
-        $entry = $validator->validated();
+        $entry = collect($validator->validated())->except('cover');
 
         return [
-            'slug' => $slug,
             ...$entry,
-            'tags' => collect(data_get($entry, 'tags'))->values()->all(),
+            'tags' => collect($entry->get('tags'))->values()->all(),
         ];
-    }
-
-    private static function isWideCover(string $cover): bool
-    {
-        [$width, $height] = getimagesize($cover) ?: [0, 0];
-
-        return $width > 0 && $width * 9 === $height * 16;
     }
 }

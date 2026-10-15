@@ -138,3 +138,13 @@ test('a sync that changes nothing keeps the cached cards, and one that changes t
 
     expect(ShowChangelogCard::cached($user)?->slug)->toBe('2026-10-03-third');
 });
+
+test('a folder that is not named <YYYY-MM-DD>-<slug> fails the sync and writes nothing', function () {
+    File::moveDirectory("{$this->directory}/2026-10-02-second", "{$this->directory}/Launch Day");
+
+    $this->artisan('changelog:sync')
+        ->expectsOutputToContain('Launch Day')
+        ->assertFailed();
+
+    expect(ChangelogEntry::count())->toBe(0);
+});

@@ -98,3 +98,12 @@ test('the cover url is the versioned file from the Vite build, or null when the 
         File::deleteDirectory(public_path($buildDirectory));
     }
 });
+
+test('the excerpt is plain text: Markdown and tags stripped, entities decoded, whitespace collapsed, cut at 160 characters', function () {
+    $entry = ChangelogEntry::factory()->make(['body' => "Posts & stories with \"quotes\", **bold** and <b>tags</b>.\n\n- One\n- Two"]);
+    $long = ChangelogEntry::factory()->make(['body' => Str::repeat('word ', 60)]);
+
+    expect($entry->excerpt())->toBe('Posts & stories with "quotes", bold and tags. One Two')
+        ->and(Str::length($long->excerpt()))->toBeLessThanOrEqual(163)
+        ->and($long->excerpt())->toEndWith('...');
+});

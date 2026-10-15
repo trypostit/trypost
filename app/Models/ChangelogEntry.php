@@ -119,6 +119,11 @@ class ChangelogEntry extends Model
 
     public function excerpt(): string
     {
-        return Str::of($this->bodyHtml())->stripTags()->squish()->limit(160)->toString();
+        return Str::of($this->bodyHtml())
+            ->stripTags()
+            ->pipe(fn (string $text): string => html_entity_decode($text, ENT_QUOTES | ENT_HTML5))
+            ->squish()
+            ->limit(160)
+            ->toString();
     }
 }
