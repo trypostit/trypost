@@ -143,7 +143,7 @@ function fakeChatGptEgressRanges(?array $ranges = []): void
     config(['testing.chatgpt_egress_ranges' => $ranges]);
 
     Http::fake([
-        config('trypost.mcp_hosted_clients.chatgpt.ip_ranges_url') => fn () => config('testing.chatgpt_egress_ranges') === null
+        config('trypost.mcp_chatgpt_ip_ranges_url') => fn () => config('testing.chatgpt_egress_ranges') === null
             ? Http::response('', 500)
             : Http::response([
                 'prefixes' => collect(config('testing.chatgpt_egress_ranges'))->map(fn (mixed $range): array => ['ipv4Prefix' => $range])->all(),

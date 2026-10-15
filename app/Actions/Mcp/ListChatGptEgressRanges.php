@@ -48,7 +48,7 @@ class ListChatGptEgressRanges
     private static function read(): array
     {
         try {
-            $response = Http::timeout(self::TIMEOUT_SECONDS)->get(config('trypost.mcp_hosted_clients.chatgpt.ip_ranges_url'));
+            $response = Http::timeout(self::TIMEOUT_SECONDS)->get(config('trypost.mcp_chatgpt_ip_ranges_url'));
         } catch (ConnectionException) {
             return [];
         }
