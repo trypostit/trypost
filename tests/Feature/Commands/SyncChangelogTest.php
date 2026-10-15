@@ -154,12 +154,27 @@ test('a folder that is not named <YYYY-MM-DD>-<slug> fails the sync and writes n
 });
 
 test('a quoted date is read the same as a plain one', function () {
-    File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: First entry\ndate: \"2026-10-05\"\n---\n\nBody.\n");
+    File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: First entry\ndate: \"2026-10-01\"\n---\n\nBody.\n");
 
     $this->artisan('changelog:sync')->assertSuccessful();
 
-    expect(ChangelogEntry::where('slug', '2026-10-01-first')->value('published_on')->toDateString())->toBe('2026-10-05');
+    expect(ChangelogEntry::where('slug', '2026-10-01-first')->value('published_on')->toDateString())->toBe('2026-10-01');
 });
+
+test('a date that is not the one in the folder name fails the sync, including an impossible one YAML rolls over', function (string $folder, string $date) {
+    File::moveDirectory("{$this->directory}/2026-10-02-second", "{$this->directory}/{$folder}");
+    File::put("{$this->directory}/{$folder}/entry.md", "---\ntitle: Second\ndate: {$date}\n---\n\nBody.\n");
+
+    $this->artisan('changelog:sync')
+        ->expectsOutputToContain($folder)
+        ->assertFailed();
+
+    expect(ChangelogEntry::count())->toBe(0);
+})->with([
+    'another day' => ['2026-10-02-second', '2026-10-05'],
+    'unquoted impossible date' => ['2026-02-30-impossible', '2026-02-30'],
+    'impossible folder date' => ['2026-13-45-impossible', '"2026-13-45"'],
+]);
 
 test('empty, null or missing tags are stored as no tags', function (string $tags) {
     File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: First entry\ndate: 2026-10-01\n{$tags}---\n\nBody.\n");

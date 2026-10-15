@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconX } from '@tabler/icons-vue';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { update as updateReaction } from '@/actions/App/Http/Controllers/App/ChangelogEntryReactionController';
@@ -46,10 +46,18 @@ const entries = computed(() => page.props.changelogEntries?.data ?? null);
 const isUnseen = (entry: ChangelogEntry): boolean =>
     !entry.seen && !openedIds.value.has(entry.id);
 
+const showLoadError = (): false => {
+    toast.error("Couldn't load What's New. Try again.");
+
+    return false;
+};
+
 const loadEntries = (): void => {
     router.reload({
         only: ['changelogEntries'],
         reset: ['changelogEntries'],
+        onHttpException: showLoadError,
+        onNetworkError: showLoadError,
     });
 };
 
@@ -117,15 +125,17 @@ watch(isOpen, (open) => {
     }
 });
 
-watch(
-    entries,
-    (list) => {
-        if (isOpen.value && list === null) {
-            void nextTick(loadEntries);
-        }
-    },
-    { immediate: true },
-);
+watch(entries, (list) => {
+    if (isOpen.value && list === null) {
+        void nextTick(loadEntries);
+    }
+});
+
+onMounted(() => {
+    if (isOpen.value) {
+        void nextTick(loadEntries);
+    }
+});
 
 watch(activeEntry, (entry) => {
     header.value?.parentElement?.scrollTo({ top: 0 });

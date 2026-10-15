@@ -100,11 +100,12 @@ class SyncChangelogEntries
             'title' => ['required', 'string', 'max:255'],
             'tags' => ['list'],
             'tags.*' => ['required', 'distinct', Rule::enum(Tag::class)],
-            'published_on' => ['required', 'date_format:Y-m-d'],
+            'published_on' => ['required', 'date_format:Y-m-d', Rule::in([Str::substr($slug, 0, 10)])],
             'body' => ['required', 'string'],
         ], [
             'slug.regex' => 'The folder name must be <YYYY-MM-DD>-<slug> in lowercase.',
             'cover.dimensions' => 'The cover.png must be 16:9 (1200x675).',
+            'published_on.in' => 'The date must be the one in the folder name.',
         ], ['published_on' => 'date']);
 
         $errors = collect($validator->errors()->all())->implode(' ');

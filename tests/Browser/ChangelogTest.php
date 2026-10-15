@@ -391,3 +391,42 @@ test('the open list still loads after a browser Back to the previous page', func
         ->assertPresent('@changelog-item-2026-10-13-back')
         ->assertNoJavaScriptErrors();
 });
+
+test('after a browser Back the open list is fresh, not the one saved in that page history', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    ChangelogEntry::factory()->create(['slug' => '2026-10-13-fresh', 'published_on' => today()->subYear()]);
+    $calendarPath = route('app.calendar', absolute: false);
+    $insightsPath = route('app.insights', absolute: false);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-unseen-2026-10-13-fresh');
+    $page->click('@changelog-item-title-2026-10-13-fresh');
+    waitForChangelogViews($page, $user, 1);
+    $page->click('@changelog-close');
+    waitForChangelogTestIdGone($page, 'changelog-dialog');
+
+    $page->script("document.querySelector('[data-testid=\"nav-{$insightsPath}\"]').click()");
+    waitForChangelogCondition($page, "location.pathname === '{$insightsPath}'");
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
+
+    $page->back();
+    waitForChangelogCondition($page, "location.pathname === '{$calendarPath}'");
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
+    waitForChangelogTestIdGone($page, 'changelog-unseen-2026-10-13-fresh');
+
+    $page->assertPathIs($calendarPath)
+        ->assertPresent('@changelog-item-2026-10-13-fresh')
+        ->assertMissing('@changelog-unseen-2026-10-13-fresh')
+        ->assertNoJavaScriptErrors();
+
+    expect(ChangelogEntryView::where('user_id', $user->id)->count())->toBe(1);
+});

@@ -31,7 +31,7 @@ Body in Markdown.
 ```
 
 - The folder name is the slug and never changes once synced (views and reactions are keyed to the row it creates).
-- `date` is the day users see. A future date hides the entry until that day (UTC).
+- `date` is the day users see and must be the date in the folder name. A future date hides the entry until that day (UTC).
 - The sidebar card announces only the newest entry dated on or after the user's signup day; the
   "What's New" list shows every published entry.
 - Entry content is **English only**. Never add lang keys for it.

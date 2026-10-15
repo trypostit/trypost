@@ -770,7 +770,7 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   or put them in `public/`.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
   `changelog_entries` by slug, deletes rows whose folder is gone, and fails loud without writing
-  anything when the folder itself is missing (never "no entries, delete everything") or one folder is invalid (missing `entry.md` or `cover.png`, or a cover that is not
+  anything when the folder itself is missing (never "no entries, delete everything") or one folder is invalid (its name must be `<YYYY-MM-DD>-<slug>` and its `date` that same day, which also catches an impossible unquoted date YAML would roll over) (missing `entry.md` or `cover.png`, or a cover that is not
   16:9). Never edit the rows by hand, and never rename a synced folder (its views are keyed to
   the row).
 - **The entries and the modal are English only** (owner decision 2026-10-14): the entries, the
