@@ -25,17 +25,21 @@ const openLatestEntry = (): void => {
     >
         <button
             type="button"
-            class="flex w-full flex-col gap-2 rounded-xl border border-border-strong bg-card p-2 text-start transition-control hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            class="group/changelog flex w-full flex-col gap-2 rounded-xl border border-border-strong bg-card p-2 text-start transition duration-200 ease-out hover:bg-accent hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring motion-safe:hover:-translate-y-0.5 motion-safe:active:translate-y-0 motion-safe:active:shadow-none"
             :aria-label="entry.title"
             data-testid="changelog-card"
             @click="openLatestEntry"
         >
-            <img
-                :src="entry.cover_url"
-                alt=""
-                class="aspect-video w-full rounded-lg border border-border object-cover"
-                data-testid="changelog-card-cover"
-            />
+            <span
+                class="block overflow-hidden rounded-lg border border-border"
+            >
+                <img
+                    :src="entry.cover_url"
+                    alt=""
+                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/changelog:scale-[1.08] motion-safe:group-hover/changelog:-rotate-1"
+                    data-testid="changelog-card-cover"
+                />
+            </span>
             <span
                 class="px-1 pb-0.5 text-sm leading-5 font-medium text-foreground"
                 data-testid="changelog-card-title"
