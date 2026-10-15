@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconX } from '@tabler/icons-vue';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { update as updateReaction } from '@/actions/App/Http/Controllers/App/ChangelogEntryReactionController';
@@ -37,6 +37,7 @@ const REACTION_OPTIONS: { value: ChangelogReaction; emoji: string; label: string
     { value: 'dislike', emoji: '👎', label: 'Dislike' },
 ];
 
+const header = useTemplateRef<HTMLElement>('header');
 const openedIds = ref(new Set<string>());
 const reactions = ref<Record<string, ChangelogReaction | null>>({});
 
@@ -61,7 +62,10 @@ const recordView = async (entry: ChangelogEntry): Promise<void> => {
 
     try {
         await http.post(storeView.url(entry.id));
-        router.reload({ only: ['changelog'] });
+
+        if (entry.id === page.props.changelog?.latest?.id) {
+            router.reload({ only: ['changelog'] });
+        }
     } catch {
         openedIds.value.delete(entry.id);
     }
@@ -114,6 +118,8 @@ watch(isOpen, (open) => {
 });
 
 watch(activeEntry, (entry) => {
+    header.value?.parentElement?.scrollTo({ top: 0 });
+
     if (entry) {
         void recordView(entry);
     }
@@ -128,6 +134,7 @@ watch(activeEntry, (entry) => {
             data-testid="changelog-dialog"
         >
             <div
+                ref="header"
                 class="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-2 bg-background px-6"
             >
                 <Button

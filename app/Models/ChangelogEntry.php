@@ -81,7 +81,7 @@ class ChangelogEntry extends Model
      */
     public function scopeWithReactionBy(Builder $query, User $user): void
     {
-        $query->withMax(['views as reaction' => fn (Builder $views) => $views->where('user_id', $user->id)], 'reaction');
+        $query->withAggregate(['views as reaction' => fn (Builder $views) => $views->where('user_id', $user->id)], 'reaction');
     }
 
     /**

@@ -765,7 +765,7 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
 - **Covers are Vite assets** (owner decision 2026-10-14): `vite.config.ts` lists
   `resources/changelog/**/*.png` in the plugin's `assets`, so the build versions them, and
   `ChangelogEntry::coverUrl()` reads `Vite::asset()`. A cover missing from the build gives a null
-  `cover_url` (reported) and the UI keeps the empty muted frame; factories hit this, production
+  `cover_url` (not reported) and the UI keeps the empty muted frame; factories hit this, production
   does not because the build and the sync run from the same commit. Never upload covers to a disk
   or put them in `public/`.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts

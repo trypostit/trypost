@@ -26,14 +26,12 @@ class ChangelogEntryView extends Model
     protected $fillable = [
         'changelog_entry_id',
         'user_id',
-        'viewed_at',
         'reaction',
     ];
 
     protected function casts(): array
     {
         return [
-            'viewed_at' => 'datetime',
             'reaction' => Reaction::class,
         ];
     }

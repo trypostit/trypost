@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Changelog\ShowChangelogCard;
 use App\Actions\Changelog\SyncChangelogEntries;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -115,4 +117,24 @@ test('a missing changelog folder fails the sync and keeps every entry', function
 
 test('the entries shipped in resources/changelog are valid', function () {
     expect(fn () => SyncChangelogEntries::execute(resource_path('changelog')))->not->toThrow(InvalidArgumentException::class);
+});
+
+test('a sync that changes nothing keeps the cached cards, and one that changes the entries refreshes them', function () {
+    $user = User::factory()->create(['created_at' => now()->subYear()]);
+    $this->artisan('changelog:sync')->assertSuccessful();
+
+    expect(ShowChangelogCard::cached($user)?->slug)->toBe('2026-10-02-second');
+
+    ChangelogEntryView::factory()->create([
+        'changelog_entry_id' => ChangelogEntry::where('slug', '2026-10-02-second')->value('id'),
+        'user_id' => $user->id,
+    ]);
+    $this->artisan('changelog:sync')->expectsOutputToContain('0 created, 0 updated, 0 deleted')->assertSuccessful();
+
+    expect(ShowChangelogCard::cached($user)?->slug)->toBe('2026-10-02-second');
+
+    writeSyncChangelogEntry("{$this->directory}/2026-10-03-third", "---\ntitle: Third entry\ndate: 2026-10-03\n---\n\nThe third entry.\n");
+    $this->artisan('changelog:sync')->assertSuccessful();
+
+    expect(ShowChangelogCard::cached($user)?->slug)->toBe('2026-10-03-third');
 });

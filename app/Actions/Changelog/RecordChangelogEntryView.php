@@ -17,10 +17,7 @@ class RecordChangelogEntryView
      */
     public static function execute(User $user, ChangelogEntry $entry): ChangelogEntryView
     {
-        $view = ChangelogEntryView::firstOrCreate(
-            ['changelog_entry_id' => $entry->id, 'user_id' => $user->id],
-            ['viewed_at' => now()],
-        );
+        $view = ChangelogEntryView::firstOrCreate(['changelog_entry_id' => $entry->id, 'user_id' => $user->id]);
 
         if ($view->wasRecentlyCreated) {
             ShowChangelogCard::forget($user);

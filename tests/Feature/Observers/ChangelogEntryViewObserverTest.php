@@ -25,7 +25,8 @@ test('a change to anything but the reaction queues nothing', function () {
     $view = ChangelogEntryView::factory()->create();
     Bus::fake();
 
-    $view->update(['viewed_at' => now()->addMinute()]);
+    $this->travel(1)->minute();
+    $view->touch();
 
     Bus::assertNotDispatched(TrackChangelogEntryEvent::class);
 });

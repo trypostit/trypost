@@ -253,8 +253,11 @@ test('the list loads the next page on scroll, reopens on the list and shows an e
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(7);
 
-    $page->click('@changelog-item-title-2026-09-01-paged');
+    $page->click('@changelog-item-title-2026-09-07-paged');
     waitForChangelogTestId($page, 'changelog-entry');
+    waitForChangelogCondition($page, "document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop === 0");
+
+    expect($page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop"))->toBe(0);
     $page->click('@changelog-close');
     waitForChangelogTestIdGone($page, 'changelog-dialog');
 
@@ -333,4 +336,30 @@ test('nothing of the changelog shows when it is turned off', function () {
         ->assertMissing('@sidebar-support-changelog')
         ->assertMissing('@changelog-card')
         ->assertNoJavaScriptErrors();
+});
+
+test('a second reaction click while the first is saving is ignored', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    $entry = ChangelogEntry::factory()->create(['slug' => '2026-10-13-double', 'published_on' => today()->subYear()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-title-2026-10-13-double');
+    $page->click('@changelog-item-title-2026-10-13-double');
+    waitForChangelogTestId($page, 'changelog-reaction-like');
+    waitForChangelogViews($page, $user, 1);
+
+    $page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').click(); document.querySelector('[data-testid=\"changelog-reaction-dislike\"]').click();");
+    waitForChangelogReaction($page, $entry, Reaction::Like);
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    expect(ChangelogEntryView::where('changelog_entry_id', $entry->id)->sole()->reaction)->toBe(Reaction::Like)
+        ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('true')
+        ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-dislike\"]').getAttribute('aria-pressed')"))->toBe('false');
 });

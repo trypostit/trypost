@@ -24,7 +24,6 @@ class ChangelogEntryViewFactory extends Factory
         return [
             'changelog_entry_id' => ChangelogEntry::factory(),
             'user_id' => User::factory(),
-            'viewed_at' => now(),
         ];
     }
 }

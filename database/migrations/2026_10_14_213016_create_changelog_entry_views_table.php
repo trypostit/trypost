@@ -14,7 +14,6 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('changelog_entry_id')->constrained()->cascadeOnDelete();
             $table->foreignUuid('user_id')->constrained()->cascadeOnDelete();
-            $table->timestamp('viewed_at');
             $table->string('reaction')->nullable();
             $table->timestamps();
 

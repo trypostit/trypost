@@ -44,7 +44,7 @@ class TrackChangelogEntryEvent implements ShouldQueue
             ->with(['entry', 'user.account.plan'])
             ->find($this->viewId);
 
-        if (blank($view?->entry) || blank($view->user)) {
+        if (blank($view)) {
             return;
         }
 
