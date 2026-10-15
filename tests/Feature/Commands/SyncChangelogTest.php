@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -96,6 +97,7 @@ test('an invalid entry fails the sync, names its folder and writes nothing', fun
     'unknown tag' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\ntags: [new, hot]\n---\n\nBody.\n")],
     'repeated tag' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\ntags: [new, new]\n---\n\nBody.\n")],
     'empty body' => [fn (string $folder) => File::put("{$folder}/entry.md", "---\ntitle: Second\ndate: 2026-10-02\n---\n")],
+    'cover not 16:9' => [fn (string $folder) => File::put("{$folder}/cover.png", UploadedFile::fake()->image('cover.png', 1200, 750)->getContent())],
     'missing cover' => [fn (string $folder) => File::delete("{$folder}/cover.png")],
     'missing entry file' => [fn (string $folder) => File::delete("{$folder}/entry.md")],
 ]);

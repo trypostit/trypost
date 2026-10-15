@@ -16,7 +16,7 @@
 //   --width 1200 --height 630 --scale 2 — viewport and device scale factor.
 //
 // Changelog covers (/changelog) use:
-//   --template changelog-cover.template.html --width 1200 --height 750 --scale 1
+//   --template changelog-cover.template.html --width 1200 --height 675 --scale 1
 //
 // Playwright is resolved from the repo's node_modules, so the script works
 // regardless of where it is invoked.

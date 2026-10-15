@@ -135,7 +135,7 @@ watch(activeEntry, (entry) => {
                 <img
                     :src="activeEntry.cover_url"
                     alt=""
-                    class="aspect-[8/5] w-full rounded-xl object-cover"
+                    class="aspect-video w-full rounded-xl object-cover"
                 />
                 <div class="flex flex-col gap-1">
                     <div
@@ -233,7 +233,7 @@ watch(activeEntry, (entry) => {
                             <img
                                 :src="entry.cover_url"
                                 alt=""
-                                class="aspect-[8/5] w-36 shrink-0 rounded-lg object-cover"
+                                class="aspect-video w-36 shrink-0 rounded-lg object-cover"
                             />
                         </button>
                     </div>

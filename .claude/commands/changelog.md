@@ -14,7 +14,7 @@ Feature to announce: $ARGUMENTS
 ```
 changelog/<YYYY-MM-DD>-<slug>/
   entry.md     front matter + Markdown body
-  cover.png    1200×750 cover (8:5, the card and modal slot)
+  cover.png    1200×675 cover (16:9, the card and modal slot)
 ```
 
 ```markdown
@@ -29,7 +29,8 @@ Body in Markdown.
 
 - The folder name is the slug and never changes once synced (views are keyed to the row it creates).
 - `date` is the day users see. A future date hides the entry until that day (UTC).
-- Users only see entries dated on or after the day they signed up.
+- The sidebar card announces only the newest entry dated on or after the user's signup day; the
+  "What's New" list shows every published entry.
 - Entry content is **English only**. Never add lang keys for it.
 
 ## Workflow
@@ -64,12 +65,17 @@ Run the text through the `humanizer` skill before saving.
 
 ### Step 3 — Render the cover
 
+The cover is **always 16:9, 1200×675 PNG**. The sidebar card, the list thumbnail and the detail
+all show it in a 16:9 slot (`aspect-video`), and `changelog:sync` refuses any `cover.png` that is
+not 16:9. Always render it with the command below; never hand-make, crop or resize a cover, and
+never change `--width`, `--height` or `--scale`.
+
 Pick a short headline (the title or a tighter version of it), one phrase in it to underline, and
 two or three theme chips:
 
 ```bash
 node .claude/release-assets/render-thumbnail.mjs \
-  --template changelog-cover.template.html --width 1200 --height 750 --scale 1 \
+  --template changelog-cover.template.html --width 1200 --height 675 --scale 1 \
   --badge "What's new" \
   --headline "Music, collaborators and trial reels" \
   --underline "trial reels" \
@@ -77,7 +83,12 @@ node .claude/release-assets/render-thumbnail.mjs \
   --out changelog/<YYYY-MM-DD>-<slug>/cover.png
 ```
 
-Open the PNG and check that the headline fits on two or three lines.
+Open the PNG and check it:
+
+- The size is 1200×675 (`sips -g pixelWidth -g pixelHeight <path>`).
+- The headline fits on one or two lines (about 35 characters at most) and the underlined phrase
+  sits on a single line. Shorten the headline rather than letting it run to a third line.
+- Two or three theme chips, one or two words each.
 
 ### Step 4 — Validate
 
@@ -85,7 +96,8 @@ Open the PNG and check that the headline fits on two or three lines.
 php artisan changelog:sync
 ```
 
-It fails loud, naming the folder, when the front matter is invalid or the cover is missing.
+It fails loud, naming the folder, when the front matter is invalid, the cover is missing or the
+cover is not 16:9.
 Locally it also uploads the cover to the default disk, so the entry shows in the sidebar card.
 
 ### Step 5 — Hand over

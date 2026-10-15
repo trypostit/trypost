@@ -35,7 +35,7 @@ const openLatestEntry = (): void => {
                 <img
                     :src="entry.cover_url"
                     alt=""
-                    class="aspect-[8/5] w-full object-cover transition-transform duration-300 ease-out motion-safe:group-hover/changelog:scale-105"
+                    class="aspect-video w-full object-cover transition-transform duration-300 ease-out motion-safe:group-hover/changelog:scale-105"
                     data-testid="changelog-card-cover"
                 />
                 <span

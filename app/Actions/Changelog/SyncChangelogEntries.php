@@ -19,7 +19,7 @@ use League\CommonMark\Extension\FrontMatter\FrontMatterParser;
 
 /**
  * Mirrors the Markdown entries under `changelog/<slug>/` (entry.md + cover.png)
- * into `changelog_entries`. Every folder is validated before anything is
+ * into `changelog_entries`. The cover must be 16:9. Every folder is validated before anything is
  * written, covers go to the default disk only when their hash changed, and an
  * entry whose folder is gone is deleted with its cover.
  */
@@ -85,6 +85,12 @@ class SyncChangelogEntries
 
         if (! File::exists($coverFile)) {
             throw new InvalidArgumentException("Changelog entry [{$slug}] has no cover.png.");
+        }
+
+        [$coverWidth, $coverHeight] = getimagesize($coverFile) ?: [0, 0];
+
+        if ($coverWidth === 0 || $coverWidth * 9 !== $coverHeight * 16) {
+            throw new InvalidArgumentException("Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675), got {$coverWidth}x{$coverHeight}.");
         }
 
         try {
