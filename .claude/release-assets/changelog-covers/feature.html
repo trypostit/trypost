@@ -1,41 +1,41 @@
 <!--
-  FEATURE (default scene): the post is the hero, the new options are stickers
-  stuck around it. Example: Instagram reels gain music, collaborators and a
+  FEATURE (default scene): the post is the hero, the new options are app cards
+  floating around it. Example: Instagram reels gain music, collaborators and a
   trial run with non-followers. Draw only what the entry is about.
 -->
 <div class="canvas bg-violet">
-    <svg class="confetti at" style="left: 70px; top: 70px" viewBox="0 0 40 40"><path d="M4 4 L36 4 L4 36 Z" fill="#ffcc33" /></svg>
-    <svg class="confetti at" style="left: 1090px; top: 560px; transform: rotate(40deg)" viewBox="0 0 40 40"><path d="M4 36 L36 36 L36 4 Z" fill="#3660e0" /></svg>
-    <svg class="confetti at" style="left: 610px; top: 46px; transform: rotate(-20deg)" viewBox="0 0 40 40"><path d="M4 4 L36 4 L36 36 Z" fill="#f39200" /></svg>
+    <div class="spark at" style="left: 52px; top: 470px; font-size: 64px"><i data-icon="sparkles" data-filled></i></div>
+    <div class="spark at" style="left: 1080px; top: 552px; font-size: 52px"><i data-icon="sparkles" data-filled></i></div>
 
-    <div class="sticker post at tilt-left" style="left: 150px; top: 72px">
+    <div class="card post at tilt-left" style="left: 140px; top: 70px">
+        <div class="head"><span class="dot"></span><span class="bar" style="width: 150px"></span></div>
         <div class="media" style="background: linear-gradient(160deg, #ffcc33 0%, #f39200 45%, #855ed4 100%)">
-            <div class="at" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 96px; height: 96px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; display: grid; place-items: center; font-size: 46px">
+            <div class="at" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 104px; height: 104px; border-radius: 999px; background: #ffffffe6; box-shadow: var(--float); display: grid; place-items: center; color: var(--foreground); font-size: 48px">
                 <i data-icon="player-play" data-filled></i>
             </div>
         </div>
-        <div class="caption"><span class="bar" style="width: 88%"></span><span class="bar" style="width: 56%"></span></div>
+        <div class="caption"><span class="bar" style="width: 90%"></span><span class="bar" style="width: 58%"></span></div>
     </div>
 
-    <div class="badge at" style="left: 410px; top: 46px; background: #e1306c">
+    <div class="badge at" style="left: 430px; top: 40px; background: #e1306c">
         <i data-icon="brand-instagram"></i>
     </div>
 
-    <div class="sticker feature at tilt-right" style="left: 560px; top: 112px">
-        <span class="glyph" style="background: var(--yellow)"><i data-icon="music"></i></span>
+    <div class="card option at tilt-right" style="left: 590px; top: 118px">
+        <span class="tile"><i data-icon="music"></i></span>
         Music
         <span class="wave"><i style="height: 18px"></i><i style="height: 34px"></i><i style="height: 46px"></i><i style="height: 26px"></i><i style="height: 40px"></i><i style="height: 20px"></i><i style="height: 32px"></i></span>
     </div>
 
-    <div class="sticker feature at tilt-left" style="left: 620px; top: 286px">
-        <span class="glyph" style="background: var(--orange)"><i data-icon="users"></i></span>
+    <div class="card option at tilt-left" style="left: 640px; top: 290px">
+        <span class="tile"><i data-icon="users"></i></span>
         Collaborators
-        <span class="avatars"><span class="avatar" style="background: #c9b8f3">M</span><span class="avatar" style="background: #bcd0f7">T</span><span class="avatar" style="background: #ffe08a">+1</span></span>
+        <span class="avatars"><span class="avatar" style="background: #ddd6fe">M</span><span class="avatar" style="background: #def0ff">T</span><span class="avatar" style="background: #d9f1d1">+1</span></span>
     </div>
 
-    <div class="sticker feature at tilt-right" style="left: 590px; top: 460px">
-        <span class="glyph" style="background: var(--blue); color: #fff"><i data-icon="flask"></i></span>
+    <div class="card option at tilt-right" style="left: 610px; top: 462px">
+        <span class="tile"><i data-icon="flask"></i></span>
         Trial reel
-        <span class="toggle"></span>
+        <span class="switch"></span>
     </div>
 </div>

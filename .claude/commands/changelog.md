@@ -72,34 +72,39 @@ The cover is a drawing, never a screenshot and never a headline on a background:
 title already sits right under it. It shows the product's own UI, drawn, so it looks like
 TryPost and stays true when the real screen changes.
 
-**Style rules (every cover).** This is TryPost's own look, taken from the logo and the
-marketing site; never copy another product's covers, compositions or sample content.
+**Style rules (every cover).** The cover is TryPost's own UI, taken from
+`resources/css/app.css` and the app's components, made louder to catch the eye. Never copy
+another product's covers, compositions or sample content, and never use heavy ink borders or
+hard offset shadows (the app has neither).
 
-- **Background:** a light tint of one of the four logo colors, from `cover.css`:
-  `bg-violet`, `bg-yellow`, `bg-orange`, `bg-blue` (and `bg-paper` for integrations). The ink
-  dot grid comes with every canvas. Vary the tint between consecutive entries.
-- **Stickers:** every element is a `sticker` (white card, ink border, solid offset shadow) with
-  a slight `tilt-left` / `tilt-right`. Alternate tilts so the cover feels hand-placed.
-- **The post is the hero:** when the feature lives on a post, draw the post (`post` with its
-  `media` tile and skeleton caption) and stick the new options around it as `feature` stickers.
-  Otherwise draw the screen or control the entry is about.
-- **Feature stickers:** a colored `glyph` square (logo colors) with the Tabler icon, the label
-  exactly as on screen, then a tiny drawn control: `toggle`, `wave`, `avatars`, a `bar`.
-- **Brand touches:** the network's `badge` stuck on a corner of the post, and two or three
-  `confetti` triangles in the logo colors near the edges. Nothing else decorates.
+- **Background:** saturated, from `cover.css`: `bg-violet` (the app's primary violet, default),
+  `bg-blue`, `bg-orange`, `bg-yellow` (the logo's colors), each with soft glows. Vary it between
+  consecutive entries.
+- **Cards are the app's cards:** white, thin `border-strong` border, xl radius, the app's soft
+  layered shadow scaled up so they float. Tilt them slightly (`tilt-left` / `tilt-right`,
+  alternating) and let them overlap in layers.
+- **The post is the hero:** when the feature lives on a post, draw the post (`post`: header,
+  `media`, skeleton caption) and float the new options around it as `option` cards. Otherwise
+  draw the screen or control the entry is about.
+- **Option cards:** the app's icon `tile` (primary tint, rounded-xl) with the Tabler icon, the
+  label exactly as on screen, then a tiny drawn control in the app's colors: `switch`, `wave`,
+  `avatars`, a `bar`.
+- **Accents:** the network's `badge` on a corner of the post, and one or two `spark`s (the
+  app's sparkles, the same icon as the What's New menu item). Nothing else decorates.
 - **Content is ours and generic:** initials in avatars, skeleton bars for text, never a real
-  person, handle or customer, and never sample content from someone else's material.
+  person, handle or customer.
 - **Readable small:** labels about 30px semibold, nothing under 24px; the cover also shows
-  small in the sidebar card. Keep everything inside the 1200×675 canvas.
+  small in the sidebar card. Keep everything inside the 1200×675 canvas and nothing
+  overlapping by accident.
 
 **Pick the scene**, then copy its template from `.claude/release-assets/changelog-covers/` to the
 scratchpad and edit the copy (the templates stay as they are):
 
 | Scene | Template | Use it for |
 | --- | --- | --- |
-| Feature (default) | `feature.html` | A new or improved option, control or screen: the post (or screen) as the hero with the options as stickers. |
-| Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's tile, as two stickers on `bg-paper`. |
-| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emoji stickers. |
+| Feature (default) | `feature.html` | A new or improved option, control or screen: the post (or screen) as the hero with the options floating around it. |
+| Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's app icon. |
+| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis in app cards. |
 
 A fix usually uses the Feature scene with the control that works again. Render the scene:
 
@@ -114,7 +119,7 @@ The renderer links `cover.css`, inlines Tabler icons (`<i data-icon="users"></i>
 cover at 2× (2400×1350, 16:9). Never resize or crop it afterwards.
 
 Open the PNG and check it against the style rules: nothing clipped or overlapping by accident,
-labels readable at the size of the sidebar card, stickers tilted both ways, one tint.
+labels readable at the size of the sidebar card, cards tilted both ways, one background.
 
 ### Step 4 — Validate
 
