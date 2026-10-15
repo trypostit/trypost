@@ -16,7 +16,7 @@ beforeEach(function () {
 /**
  * @param  array<string, mixed>  $params
  */
-function listMcpTools(mixed $test, array $params = []): TestResponse
+function listMcpTools(object $test, array $params = []): TestResponse
 {
     return $test->withHeaders([
         'Authorization' => "Bearer {$test->token}",
@@ -50,6 +50,6 @@ test('a client asking for a smaller page can still follow the cursor', function 
     expect($first->json('result.tools'))->toHaveCount(5)
         ->and($first->json('result.nextCursor'))->toBeString()
         ->and($second->json('result.tools'))->toHaveCount(5)
-        ->and(collect($second->json('result.tools'))->pluck('name'))
-        ->not->toContain(...collect($first->json('result.tools'))->pluck('name'));
+        ->and(collect($second->json('result.tools'))->pluck('name')->intersect(collect($first->json('result.tools'))->pluck('name')))
+        ->toBeEmpty();
 });
