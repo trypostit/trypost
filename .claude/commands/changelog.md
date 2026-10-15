@@ -81,7 +81,8 @@ never another product's composition, elements or sample content.
 - **Surfaces:** white, with the 2.5px ink border (`#292928`, the app's text color), rounded, and
   **no shadow**. Dividers inside a surface use the same ink line.
 - **Draw where the feature lives, not a device.** For new settings, one `panel has-badge` with
-  the new settings as `setting` rows and the network's `badge` centered on its top edge. No
+  the new settings as `setting` rows, all the same height, and the network's `badge` centered
+  above the panel, outside it. No
   header, phones, browser frames or mockups of hardware.
 - **One icon per idea, everywhere:** a reel is always `movie`, people are always `users` (the
   `@` already lives in the handles). Never two icons for the same thing.

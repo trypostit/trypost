@@ -54,8 +54,8 @@ body {
 
 /* A settings panel, like the composer's section for a network. */
 .panel { position: relative; width: 610px; }
-.panel.has-badge { padding-top: 46px; overflow: visible; }
-.panel.has-badge > .badge { position: absolute; left: 50%; top: 0; transform: translate(-50%, -55%); }
+/* The network's badge sits above the panel, centered, outside it. */
+.panel.has-badge > .badge { position: absolute; left: 50%; top: -28px; transform: translate(-50%, -100%); }
 .setting {
     display: flex;
     align-items: center;
