@@ -72,31 +72,34 @@ The cover is a drawing, never a screenshot and never a headline on a background:
 title already sits right under it. It shows the product's own UI, drawn, so it looks like
 TryPost and stays true when the real screen changes.
 
-**Style rules (every cover):**
+**Style rules (every cover).** This is TryPost's own look, taken from the logo and the
+marketing site; never copy another product's covers, compositions or sample content.
 
-- **One flat pastel background**, no gradient or texture. Pick from `cover.css`:
-  `bg-violet` (the brand, default for new features), `bg-sky`, `bg-mint`, `bg-butter`,
-  `bg-pink`, and `bg-sand` for integrations only. Vary it between consecutive entries.
-- **The UI is drawn in TryPost's style:** white `card`s with the ink border, Inter, Tabler
-  icons, `chip`s, `toggle`s (violet when on), `pick` boxes with skeleton `bar`s. Show only the
-  controls the entry is about, with the labels the user sees on screen.
-- **Content is generic but real-looking:** handles like `@jennymoves`, skeleton bars instead of
-  long text, never a real customer, name or private data. English, like the entry.
-- **1 to 3 cards**, staggered or overlapping, with room around them. Text is large (the cover is
-  shown small in the sidebar card): row labels about 32px, nothing under 26px.
-- **At most one accent:** a network or app `badge` (brand-colored circle) and/or one hand-drawn
-  `connector` (an SVG path with an open arrowhead) tying it to the controls.
-- **Nothing is cut by accident:** cards and connectors stay inside the 1200×675 canvas unless a
-  card deliberately bleeds off one edge.
+- **Background:** a light tint of one of the four logo colors, from `cover.css`:
+  `bg-violet`, `bg-yellow`, `bg-orange`, `bg-blue` (and `bg-paper` for integrations). The ink
+  dot grid comes with every canvas. Vary the tint between consecutive entries.
+- **Stickers:** every element is a `sticker` (white card, ink border, solid offset shadow) with
+  a slight `tilt-left` / `tilt-right`. Alternate tilts so the cover feels hand-placed.
+- **The post is the hero:** when the feature lives on a post, draw the post (`post` with its
+  `media` tile and skeleton caption) and stick the new options around it as `feature` stickers.
+  Otherwise draw the screen or control the entry is about.
+- **Feature stickers:** a colored `glyph` square (logo colors) with the Tabler icon, the label
+  exactly as on screen, then a tiny drawn control: `toggle`, `wave`, `avatars`, a `bar`.
+- **Brand touches:** the network's `badge` stuck on a corner of the post, and two or three
+  `confetti` triangles in the logo colors near the edges. Nothing else decorates.
+- **Content is ours and generic:** initials in avatars, skeleton bars for text, never a real
+  person, handle or customer, and never sample content from someone else's material.
+- **Readable small:** labels about 30px semibold, nothing under 24px; the cover also shows
+  small in the sidebar card. Keep everything inside the 1200×675 canvas.
 
 **Pick the scene**, then copy its template from `.claude/release-assets/changelog-covers/` to the
 scratchpad and edit the copy (the templates stay as they are):
 
 | Scene | Template | Use it for |
 | --- | --- | --- |
-| Feature (default) | `feature.html` | A new or improved control, option or screen: draw those controls. |
-| Integration | `integration.html` | A new network, app or service: the TryPost mark × the service's tile on `bg-sand`. |
-| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis on a tinted grid. |
+| Feature (default) | `feature.html` | A new or improved option, control or screen: the post (or screen) as the hero with the options as stickers. |
+| Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's tile, as two stickers on `bg-paper`. |
+| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emoji stickers. |
 
 A fix usually uses the Feature scene with the control that works again. Render the scene:
 
@@ -110,8 +113,8 @@ The renderer links `cover.css`, inlines Tabler icons (`<i data-icon="users"></i>
 `data-filled` for the filled set) and the TryPost mark (`{{TRYPOST_MARK}}`), and saves the
 cover at 2× (2400×1350, 16:9). Never resize or crop it afterwards.
 
-Open the PNG and check it against the style rules: nothing clipped, text readable at the size
-of the sidebar card, one background, at most one accent.
+Open the PNG and check it against the style rules: nothing clipped or overlapping by accident,
+labels readable at the size of the sidebar card, stickers tilted both ways, one tint.
 
 ### Step 4 — Validate
 

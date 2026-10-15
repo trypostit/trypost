@@ -760,8 +760,9 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
 
 - **Each entry is one folder in the repo**, `resources/changelog/<YYYY-MM-DD>-<slug>/` with
   `entry.md` (front matter `title`, `date`, optional `tags` from `App\Enums\Changelog\Tag`: `new`, `improved`, `fixed`, `beta`, shown above the title with a fixed color each in `ChangelogTagBadge.vue`)
-  and `cover.png` (16:9, rendered at 2400×1350). Covers are drawings of TryPost's own UI on a flat pastel
-  background (feature, integration and announcement scenes in `.claude/release-assets/changelog-covers/`,
+  and `cover.png` (16:9, rendered at 2400×1350). Covers are TryPost's own sticker style (logo-color tints,
+  ink dot grid, white cards with an ink border and a solid offset shadow, logo-triangle confetti;
+  never copied from another product): feature, integration and announcement scenes in `.claude/release-assets/changelog-covers/`,
   rendered by its `render.mjs`), never screenshots or headlines. The folder holds a `.gitkeep` so it exists with no entries.
   There is no admin panel. Write them with the `/changelog` command.
 - **Covers are Vite assets** (owner decision 2026-10-14): `vite.config.ts` lists

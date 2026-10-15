@@ -1,37 +1,41 @@
 <!--
-  FEATURE (default scene): the new controls drawn as TryPost UI.
-  Example: Instagram reels gain collaborators, music and trial reels.
-  Keep 1 to 3 cards, real-looking but generic content, and one connector or badge.
+  FEATURE (default scene): the post is the hero, the new options are stickers
+  stuck around it. Example: Instagram reels gain music, collaborators and a
+  trial run with non-followers. Draw only what the entry is about.
 -->
 <div class="canvas bg-violet">
-    <svg class="at" style="left: 60px; top: 64px" width="440" height="400" viewBox="0 0 440 400">
-        <path class="connector" d="M 396 60 L 150 60 C 40 60, 40 364, 170 364 L 428 364" />
-        <path class="connector" d="M 356 20 L 398 60 L 356 100" />
-    </svg>
+    <svg class="confetti at" style="left: 70px; top: 70px" viewBox="0 0 40 40"><path d="M4 4 L36 4 L4 36 Z" fill="#ffcc33" /></svg>
+    <svg class="confetti at" style="left: 1090px; top: 560px; transform: rotate(40deg)" viewBox="0 0 40 40"><path d="M4 36 L36 36 L36 4 Z" fill="#3660e0" /></svg>
+    <svg class="confetti at" style="left: 610px; top: 46px; transform: rotate(-20deg)" viewBox="0 0 40 40"><path d="M4 4 L36 4 L36 36 Z" fill="#f39200" /></svg>
 
-    <div class="badge at" style="left: 470px; top: 58px; background: #e1306c">
+    <div class="sticker post at tilt-left" style="left: 150px; top: 72px">
+        <div class="media" style="background: linear-gradient(160deg, #ffcc33 0%, #f39200 45%, #855ed4 100%)">
+            <div class="at" style="left: 50%; top: 50%; transform: translate(-50%, -50%); width: 96px; height: 96px; border: 3px solid var(--ink); border-radius: 999px; background: #fff; display: grid; place-items: center; font-size: 46px">
+                <i data-icon="player-play" data-filled></i>
+            </div>
+        </div>
+        <div class="caption"><span class="bar" style="width: 88%"></span><span class="bar" style="width: 56%"></span></div>
+    </div>
+
+    <div class="badge at" style="left: 410px; top: 46px; background: #e1306c">
         <i data-icon="brand-instagram"></i>
     </div>
 
-    <div class="card row at" style="left: 252px; top: 236px">
-        <i data-icon="users"></i>
-        <span class="label">Collaborators</span>
-        <span class="chip">@jennymoves</span>
-        <span class="chip">@fitwithkit</span>
+    <div class="sticker feature at tilt-right" style="left: 560px; top: 112px">
+        <span class="glyph" style="background: var(--yellow)"><i data-icon="music"></i></span>
+        Music
+        <span class="wave"><i style="height: 18px"></i><i style="height: 34px"></i><i style="height: 46px"></i><i style="height: 26px"></i><i style="height: 40px"></i><i style="height: 20px"></i><i style="height: 32px"></i></span>
     </div>
 
-    <div class="card row at" style="left: 486px; top: 376px">
-        <i data-icon="music"></i>
-        <span class="label">Music</span>
-        <span class="pick">
-            <span class="art"><i data-icon="player-play" data-filled></i></span>
-            <span class="bars"><span class="bar" style="width: 200px"></span><span class="bar" style="width: 130px"></span></span>
-        </span>
+    <div class="sticker feature at tilt-left" style="left: 620px; top: 286px">
+        <span class="glyph" style="background: var(--orange)"><i data-icon="users"></i></span>
+        Collaborators
+        <span class="avatars"><span class="avatar" style="background: #c9b8f3">M</span><span class="avatar" style="background: #bcd0f7">T</span><span class="avatar" style="background: #ffe08a">+1</span></span>
     </div>
 
-    <div class="card row at" style="left: 620px; top: 516px">
-        <i data-icon="movie"></i>
-        <span class="label">Trial reel</span>
+    <div class="sticker feature at tilt-right" style="left: 590px; top: 460px">
+        <span class="glyph" style="background: var(--blue); color: #fff"><i data-icon="flask"></i></span>
+        Trial reel
         <span class="toggle"></span>
     </div>
 </div>

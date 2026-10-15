@@ -1,10 +1,12 @@
 <!--
-  INTEGRATION: the TryPost mark next to the new service, on the neutral sand
-  background. Set the service tile's brand color and its Tabler brand icon
-  (or replace the <i> with the service's official SVG mark).
+  INTEGRATION: the TryPost mark and the new service as two stickers joined by
+  a plus, on paper. Set the service tile's brand color and its Tabler brand
+  icon (or the service's official SVG mark).
 -->
-<div class="canvas bg-sand" style="display: flex; align-items: center; justify-content: center; gap: 96px">
-    <div class="tile">{{TRYPOST_MARK}}</div>
-    <div class="times"><i data-icon="x"></i></div>
-    <div class="tile" style="background: #5865f2"><i data-icon="brand-discord"></i></div>
+<div class="canvas bg-paper" style="display: flex; align-items: center; justify-content: center; gap: 80px">
+    <svg class="confetti at" style="left: 120px; top: 90px" viewBox="0 0 40 40"><path d="M4 4 L36 4 L4 36 Z" fill="#ffcc33" /></svg>
+    <svg class="confetti at" style="left: 1040px; top: 520px; transform: rotate(30deg)" viewBox="0 0 40 40"><path d="M4 36 L36 36 L36 4 Z" fill="#855ed4" /></svg>
+    <div class="tile tilt-left">{{TRYPOST_MARK}}</div>
+    <div class="plus"><i data-icon="plus"></i></div>
+    <div class="tile tilt-right" style="background: #5865f2"><i data-icon="brand-discord"></i></div>
 </div>

@@ -1,22 +1,27 @@
 /*
- * TryPost "What's New" covers. One flat pastel background, the product's own
- * UI drawn as white cards with an ink border (never a screenshot), Inter, and
- * Tabler icons. No headline text: the entry's title sits right under the cover.
+ * TryPost "What's New" covers: the product drawn as stickers. A light tint of
+ * one of the four logo colors, the site's ink dot grid, white cards with an ink
+ * border and a solid offset shadow, a slight tilt, and confetti cut from the
+ * logo's triangles. No headline: the entry's title sits right under the cover.
  */
 :root {
     --ink: #292928;
     --muted: #6b6a68;
-    --chip: #f0eeeb;
+    --chip: #f3f1ec;
     --skeleton: #e6e4e0;
-    --violet: #7c3aed;
-    --violet-strong: #6d28d9;
 
-    --bg-violet: #ddd6fe;
-    --bg-sky: #bfe3fb;
-    --bg-mint: #c6efd2;
-    --bg-butter: #fde7a4;
-    --bg-pink: #fbd0e4;
-    --bg-sand: #f3f1ec;
+    /* The logo's four colors. */
+    --yellow: #ffcc33;
+    --orange: #f39200;
+    --violet: #855ed4;
+    --blue: #3660e0;
+
+    /* Backgrounds: light tints of the logo colors, plus paper for integrations. */
+    --bg-yellow: #fff1c2;
+    --bg-orange: #ffe2bf;
+    --bg-violet: #e6dcfb;
+    --bg-blue: #d9e3fb;
+    --bg-paper: #faf8f5;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -30,129 +35,147 @@ body {
 }
 
 .canvas { position: relative; width: 1200px; height: 675px; overflow: hidden; }
+.canvas::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle, rgb(41 41 40 / 0.16) 1.4px, transparent 1.6px);
+    background-size: 30px 30px;
+    pointer-events: none;
+}
+.bg-yellow { background: var(--bg-yellow); }
+.bg-orange { background: var(--bg-orange); }
 .bg-violet { background: var(--bg-violet); }
-.bg-sky { background: var(--bg-sky); }
-.bg-mint { background: var(--bg-mint); }
-.bg-butter { background: var(--bg-butter); }
-.bg-pink { background: var(--bg-pink); }
-.bg-sand { background: var(--bg-sand); }
+.bg-blue { background: var(--bg-blue); }
+.bg-paper { background: var(--bg-paper); }
 
 .at { position: absolute; }
+.tilt-left { transform: rotate(-3deg); }
+.tilt-right { transform: rotate(2.5deg); }
 
-.icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.75; }
+.icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.8; }
 
-/* A white UI card with the ink border. */
-.card {
+/* The sticker: white card, ink border, solid offset shadow. */
+.sticker {
     background: #fff;
-    border: 2.5px solid var(--ink);
-    border-radius: 20px;
+    border: 3px solid var(--ink);
+    border-radius: 22px;
+    box-shadow: 7px 7px 0 0 var(--ink);
 }
 
-/* One settings row: icon, label, then the control. */
-.row {
+/* A sticker holding one feature: icon, label, then its control. */
+.feature {
     display: flex;
     align-items: center;
-    gap: 22px;
-    height: 104px;
-    padding: 0 26px 0 30px;
-    font-size: 32px;
-    font-weight: 500;
+    gap: 18px;
+    padding: 20px 24px;
+    font-size: 30px;
+    font-weight: 600;
     letter-spacing: -0.01em;
     white-space: nowrap;
 }
-.row .icon { font-size: 40px; }
-.row .label { margin-right: 6px; }
+.feature > .icon { font-size: 38px; }
 
-.chip {
-    display: inline-flex;
-    align-items: center;
+/* A colored square behind a feature's icon. */
+.glyph {
+    display: grid;
+    place-items: center;
+    width: 60px;
     height: 60px;
-    padding: 0 22px;
-    border-radius: 14px;
-    background: var(--chip);
-    font-size: 30px;
-    font-weight: 500;
+    border: 3px solid var(--ink);
+    border-radius: 16px;
+    font-size: 32px;
 }
+
+.avatars { display: flex; }
+.avatar {
+    display: grid;
+    place-items: center;
+    width: 52px;
+    height: 52px;
+    margin-left: -12px;
+    border: 3px solid var(--ink);
+    border-radius: 999px;
+    font-size: 22px;
+    font-weight: 700;
+}
+.avatar:first-child { margin-left: 0; }
 
 .toggle {
     position: relative;
-    width: 92px;
-    height: 52px;
+    width: 88px;
+    height: 50px;
+    border: 3px solid var(--ink);
     border-radius: 999px;
     background: var(--violet);
 }
 .toggle::after {
     content: '';
     position: absolute;
-    top: 6px;
-    right: 6px;
-    width: 40px;
-    height: 40px;
+    top: 4px;
+    right: 4px;
+    width: 36px;
+    height: 36px;
+    border: 3px solid var(--ink);
     border-radius: 999px;
     background: #fff;
 }
-.toggle.off { background: var(--skeleton); }
-.toggle.off::after { right: auto; left: 6px; }
 
-/* A picked item (track, file, account) inside a row. */
-.pick {
-    display: flex;
-    align-items: center;
-    gap: 18px;
-    height: 76px;
-    padding: 0 18px 0 10px;
-    border: 2.5px solid var(--ink);
+/* A sound wave: bars of different heights. */
+.wave { display: flex; align-items: center; gap: 6px; height: 48px; }
+.wave > i { display: block; width: 7px; border-radius: 999px; background: var(--ink); }
+
+/* The post itself, as the hero: a media tile with a caption under it. */
+.post { width: 330px; padding: 14px; }
+.post .media {
+    position: relative;
+    height: 420px;
+    border: 3px solid var(--ink);
     border-radius: 14px;
+    overflow: hidden;
 }
-.pick .art {
-    display: grid;
-    place-items: center;
-    width: 56px;
-    height: 56px;
-    border-radius: 10px;
-    background: conic-gradient(from 210deg, #f59e0b, #ec4899, #7c3aed, #0ea5e9, #10b981, #f59e0b);
-    color: #fff;
-    font-size: 30px;
-}
-.bars { display: grid; gap: 10px; }
+.post .caption { display: grid; gap: 10px; padding: 16px 6px 4px; }
 .bar { height: 14px; border-radius: 999px; background: var(--skeleton); }
 
-/* A network or app in a colored circle. */
+/* A network's mark in a colored circle, stuck on a corner. */
 .badge {
     display: grid;
     place-items: center;
-    width: 132px;
-    height: 132px;
-    border: 2.5px solid var(--ink);
+    width: 92px;
+    height: 92px;
+    border: 3px solid var(--ink);
     border-radius: 999px;
+    box-shadow: 5px 5px 0 0 var(--ink);
     color: #fff;
-    font-size: 72px;
+    font-size: 50px;
 }
-.badge .icon { stroke-width: 1.6; }
 
-/* Hand-drawn connector: an SVG path with the ink stroke. */
-.connector { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+/* Confetti cut from the logo's triangles. */
+.confetti { width: 40px; height: 40px; }
+.confetti path { stroke: var(--ink); stroke-width: 3; stroke-linejoin: round; }
 
-/* Integration: two app tiles side by side. */
+/* Integration: two app tiles as stickers. */
 .tile {
     display: grid;
     place-items: center;
-    width: 248px;
-    height: 248px;
-    border-radius: 60px;
-    box-shadow: 0 24px 48px -16px rgb(41 41 40 / 0.22);
+    width: 240px;
+    height: 240px;
+    border: 3px solid var(--ink);
+    border-radius: 56px;
+    box-shadow: 9px 9px 0 0 var(--ink);
     overflow: hidden;
 }
-.tile .icon { font-size: 140px; color: #fff; stroke-width: 1.5; }
+.tile .icon { font-size: 132px; color: #fff; stroke-width: 1.6; }
 .tile .trypost-mark { width: 100%; height: 100%; }
-.times { font-size: 64px; color: var(--ink); }
-.times .icon { stroke-width: 2.2; }
+.plus { font-size: 72px; }
+.plus .icon { stroke-width: 2.6; }
 
-/* Announcement: emojis in a grid of tiles. */
-.grid { display: grid; gap: 4px; background: #fff; }
-.grid > span {
+/* Announcement: emoji stickers. */
+.emoji {
     display: grid;
     place-items: center;
-    font-size: 96px;
+    width: 220px;
+    height: 220px;
+    font-size: 116px;
     line-height: 1;
 }
