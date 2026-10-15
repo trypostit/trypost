@@ -226,7 +226,7 @@ watch(activeEntry, (entry) => {
                             @click="like(activeEntry)"
                         >
                             <span
-                                class="text-xl leading-none transition duration-200 ease-out motion-safe:group-hover/reaction:scale-125"
+                                class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
                                 :class="{
                                     'opacity-50 grayscale': isDimmed(
                                         activeEntry,
@@ -247,7 +247,7 @@ watch(activeEntry, (entry) => {
                             @click="dislike(activeEntry)"
                         >
                             <span
-                                class="text-xl leading-none transition duration-200 ease-out motion-safe:group-hover/reaction:scale-125"
+                                class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
                                 :class="{
                                     'opacity-50 grayscale': isDimmed(
                                         activeEntry,
