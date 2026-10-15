@@ -135,7 +135,7 @@ watch(activeEntry, (entry) => {
 <template>
     <Dialog :open="isOpen" @update:open="handleOpenChange">
         <DialogContent
-            class="gap-0 px-0 pt-0 pb-0 sm:max-w-lg"
+            class="gap-0 px-0 pt-0 pb-0 sm:max-h-[min(640px,80dvh)] sm:max-w-lg"
             :show-close-button="false"
             data-testid="changelog-dialog"
         >
