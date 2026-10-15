@@ -40,6 +40,7 @@ pest()->extend(TestCase::class)
     ->beforeEach(function (): void {
         Http::preventStrayRequests();
         fakePwnedPasswords();
+        fakeChatGptEgressRanges();
         Queue::fake([BootstrapAccountAnalytics::class]);
     })
     ->in('Feature', 'Unit');
@@ -127,6 +128,26 @@ function fakePwnedPasswords(): void
         'api.pwnedpasswords.com/range/*' => fn (HttpClientRequest $request) => Http::response(
             str_ends_with($request->url(), substr($hash, 0, 5)) ? substr($hash, 5).':42' : '',
         ),
+    ]);
+}
+
+/**
+ * OpenAI's published ChatGPT egress ranges, answered from the
+ * testing.chatgpt_egress_ranges config so a test can change them after the
+ * global fake is registered. null answers a failed read.
+ *
+ * @param  list<string>|null  $ranges
+ */
+function fakeChatGptEgressRanges(?array $ranges = []): void
+{
+    config(['testing.chatgpt_egress_ranges' => $ranges]);
+
+    Http::fake([
+        config('trypost.mcp_hosted_clients.chatgpt.ip_ranges_url') => fn () => config('testing.chatgpt_egress_ranges') === null
+            ? Http::response('', 500)
+            : Http::response([
+                'prefixes' => collect(config('testing.chatgpt_egress_ranges'))->map(fn (string $range): array => ['ipv4Prefix' => $range])->all(),
+            ]),
     ]);
 }
 

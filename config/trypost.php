@@ -66,6 +66,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Hosted MCP clients
+    |--------------------------------------------------------------------------
+    |
+    | ChatGPT and Claude call the MCP server from published egress ranges
+    | (https://developers.openai.com/api/docs/guides/ip-addresses,
+    | https://platform.claude.com/docs/en/api/ip-addresses).
+    | When a request comes from them without a token, the server lists its
+    | tools and answers a tool call with the sign-in prompt each one shows
+    | in the conversation. Every other client keeps the plain 401.
+    |
+    */
+
+    'mcp_hosted_clients' => [
+        'chatgpt' => [
+            'ip_ranges_url' => env('MCP_CHATGPT_IP_RANGES_URL', 'https://openai.com/chatgpt-connectors.json'),
+        ],
+        'claude' => [
+            'ip_ranges' => ['160.79.104.0/21'],
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |

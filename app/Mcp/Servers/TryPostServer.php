@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Servers;
 
+use App\Mcp\Methods\ListToolsWithSecuritySchemes;
 use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
 use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
 use App\Mcp\Tools\Analytics\GetChannelInsightsTool;
@@ -202,4 +203,9 @@ class TryPostServer extends Server
     protected array $resources = [];
 
     protected array $prompts = [];
+
+    protected function boot(): void
+    {
+        $this->addMethod('tools/list', ListToolsWithSecuritySchemes::class);
+    }
 }
