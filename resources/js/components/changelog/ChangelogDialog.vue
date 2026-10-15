@@ -154,6 +154,7 @@ watch(activeEntry, (entry) => {
                     <IconArrowLeft class="size-4" />
                 </Button>
                 <DialogTitle class="text-lg font-semibold">
+                    <span aria-hidden="true">✨</span>
                     What's New
                 </DialogTitle>
                 <DialogDescription class="sr-only">
