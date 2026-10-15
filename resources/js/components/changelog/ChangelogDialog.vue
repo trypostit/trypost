@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
-import { IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-vue';
+import { IconArrowLeft, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -299,20 +299,14 @@ watch(activeEntry, (entry) => {
                         >
                             <span
                                 class="relative block overflow-hidden rounded-lg bg-muted"
+                                :data-testid="`changelog-item-cover-${entry.slug}`"
                             >
                                 <img
                                     :src="entry.cover_url"
                                     alt=""
-                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/item:scale-[1.04]"
+                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/item:scale-[1.04] motion-safe:group-focus-visible/item:scale-[1.04]"
                                     draggable="false"
                                 />
-                                <span
-                                    class="absolute end-3 bottom-3 flex h-8 items-center gap-1 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground opacity-0 shadow-md transition duration-200 ease-out group-hover/item:opacity-100 group-focus-visible/item:opacity-100 motion-safe:translate-y-1 motion-safe:group-hover/item:translate-y-0 motion-safe:group-focus-visible/item:translate-y-0"
-                                    aria-hidden="true"
-                                >
-                                    Read more
-                                    <IconArrowRight class="size-3.5" />
-                                </span>
                             </span>
                             <span class="flex min-w-0 flex-col gap-1">
                                 <span
@@ -338,6 +332,7 @@ watch(activeEntry, (entry) => {
                                 </span>
                                 <span
                                     class="text-base leading-6 font-medium text-foreground"
+                                    :data-testid="`changelog-item-title-${entry.slug}`"
                                 >
                                     <span
                                         v-if="isUnseen(entry)"

@@ -182,3 +182,59 @@ test('the help menu item is translated and opens the list', function () {
         ->assertMissing('@changelog-card')
         ->assertNoJavaScriptErrors();
 });
+
+test('hovering anywhere on a list item zooms its cover, and the whole item opens the entry', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = User::factory()->create(['referral_source' => ReferralSource::Google->value]);
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+
+    ChangelogEntry::factory()->create([
+        'slug' => '2026-10-13-hovered',
+        'title' => 'Hovered feature',
+        'published_on' => today()->subYear(),
+    ]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+
+    $page->script(<<<'JS'
+        (async () => {
+            const find = async (testId) => {
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const element = document.querySelector(`[data-testid="${testId}"]`);
+                    if (element) return element;
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+            };
+            (await find('sidebar-workspace-menu')).click();
+            const trigger = await find('sidebar-support-trigger');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            (await find('sidebar-support-changelog')).click();
+            await find('changelog-item-cover-2026-10-13-hovered');
+        })();
+    JS);
+
+    $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-cover-2026-10-13-hovered\"] img')).scale";
+
+    expect($page->script($coverScale))->toBe('none');
+
+    $page->hover('@changelog-item-title-2026-10-13-hovered');
+    waitForChangelogCondition($page, "{$coverScale} === '1.04'");
+    expect($page->script($coverScale))->toBe('1.04');
+
+    $page->click('@changelog-item-title-2026-10-13-hovered');
+    waitForChangelogText($page, 'changelog-entry-title', 'Hovered feature');
+
+    $page->assertSeeIn('@changelog-entry-title', 'Hovered feature')
+        ->assertNoJavaScriptErrors();
+});
