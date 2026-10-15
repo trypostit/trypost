@@ -55,7 +55,7 @@ body {
 /* A settings panel, like the composer's section for a network. */
 .panel { position: relative; width: 610px; }
 /* The network's badge sits above the panel, centered, outside it. */
-.panel.has-badge > .badge { position: absolute; left: 50%; top: -28px; transform: translate(-50%, -100%); }
+.panel.has-badge > .badge { position: absolute; left: 50%; top: -52px; transform: translate(-50%, -100%); }
 .setting {
     display: flex;
     align-items: center;
@@ -93,6 +93,11 @@ body {
     font-weight: 600;
 }
 .track .art { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 9px; color: #fff; font-size: 22px; }
+.track .artist { margin-left: -6px; color: var(--muted-foreground); font-weight: 500; }
+
+/* A track playing: equalizer bars in the brand violet. */
+.eq { display: flex; align-items: flex-end; gap: 4px; height: 30px; }
+.eq > i { display: block; width: 6px; border-radius: 3px; background: var(--primary-strong); }
 
 /* The app's switch: primary-strong with the white knob. */
 .switch { position: relative; width: 84px; height: 46px; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--primary-strong); }

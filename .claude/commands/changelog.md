@@ -88,10 +88,12 @@ never another product's composition, elements or sample content.
   `@` already lives in the handles). Never two icons for the same thing.
 - **Settings are drawn the way the app shows them:** the Tabler icon of the idea (`users` for
   collaborators, `music`, `movie` for reels), the label exactly as on screen, and the real
-  control: `handle` chips with `@`, a `track` pick, the app's violet `switch`.
+  control: `handle` chips with `@`, a `track` playing (`eq` bars, title and muted artist), the
+  app's violet `switch`.
 - **Content is ours:** the first handle is `@paulocastellano` when it fits, the others a big,
   well-known brand (`@apple`), never an invented handle that may belong to a real person, and
-  never a customer's account or data. Tracks and other text are invented. Make the panel wider
+  never a customer's account or data. Tracks are songs known worldwide (e.g. Bohemian Rhapsody ·
+  Queen), never an invented one. Make the panel wider
   rather than let a chip touch its border.
 - **No decoration:** no sparkles, confetti, glows or shadows. The UI is the picture.
 - **Readable small:** labels about 28px semibold, nothing under 19px; the cover also shows small
