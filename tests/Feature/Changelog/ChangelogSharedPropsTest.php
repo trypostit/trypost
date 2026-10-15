@@ -109,6 +109,16 @@ test('nothing is shared when the changelog is turned off', function () {
             ->missing('changelogEntries'));
 });
 
+test('guests get no changelog data', function () {
+    ChangelogEntry::factory()->create();
+
+    $this->get(route('login'))
+        ->assertOk()
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('changelog')
+            ->missing('changelogEntries'));
+});
+
 test('the modal list loads every published entry, five per page, newest first, with whether the user opened and liked each one', function () {
     $this->user->forceFill(['created_at' => now()->subDays(2)])->save();
     $entries = collect(range(0, 6))->map(fn (int $daysAgo) => ChangelogEntry::factory()->create([

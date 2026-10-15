@@ -74,7 +74,7 @@ class HandleInertiaRequests extends Middleware
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            ...$this->changelog($user, $request),
+            ...($user ? $this->changelog($user, $request) : []),
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
@@ -152,9 +152,9 @@ class HandleInertiaRequests extends Middleware
      *
      * @return array<string, mixed>
      */
-    private function changelog(?User $user, Request $request): array
+    private function changelog(User $user, Request $request): array
     {
-        if (! $user instanceof User || ! config('trypost.changelog.enabled')) {
+        if (! config('trypost.changelog.enabled')) {
             return ['changelog' => null];
         }
 
