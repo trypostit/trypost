@@ -95,7 +95,7 @@ class SyncChangelogEntries
             'published_on' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
             'body' => Str::trim($document->getContent()),
         ], [
-            'slug' => ['regex:/^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$/'],
+            'slug' => ['alpha_dash:ascii', 'lowercase'],
             'cover' => [Rule::dimensions()->ratio(16 / 9)],
             'title' => ['required', 'string', 'max:255'],
             'tags' => ['list'],
@@ -103,9 +103,8 @@ class SyncChangelogEntries
             'published_on' => ['required', 'date_format:Y-m-d', Rule::in([Str::substr($slug, 0, 10)])],
             'body' => ['required', 'string'],
         ], [
-            'slug.regex' => 'The folder name must be <YYYY-MM-DD>-<slug> in lowercase.',
             'cover.dimensions' => 'The cover.png must be 16:9 (1200x675).',
-            'published_on.in' => 'The date must be the one in the folder name.',
+            'published_on.in' => 'The folder name must start with the date (<YYYY-MM-DD>-<slug>).',
         ], ['published_on' => 'date']);
 
         $errors = collect($validator->errors()->all())->implode(' ');

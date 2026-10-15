@@ -143,15 +143,19 @@ test('a sync that changes nothing keeps the cached cards, and one that changes t
     expect(ShowChangelogCard::cached($user)?->slug)->toBe('2026-10-03-third');
 });
 
-test('a folder that is not named <YYYY-MM-DD>-<slug> fails the sync and writes nothing', function () {
-    File::moveDirectory("{$this->directory}/2026-10-02-second", "{$this->directory}/Launch Day");
+test('a folder that is not named <YYYY-MM-DD>-<slug> fails the sync and writes nothing', function (string $folder) {
+    File::moveDirectory("{$this->directory}/2026-10-02-second", "{$this->directory}/{$folder}");
 
     $this->artisan('changelog:sync')
-        ->expectsOutputToContain('Launch Day')
+        ->expectsOutputToContain($folder)
         ->assertFailed();
 
     expect(ChangelogEntry::count())->toBe(0);
-});
+})->with([
+    'spaces and capitals' => ['2026-10-02-Launch Day'],
+    'accents' => ['2026-10-02-lançamento'],
+    'no date' => ['launch'],
+]);
 
 test('a quoted date is read the same as a plain one', function () {
     File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: First entry\ndate: \"2026-10-01\"\n---\n\nBody.\n");
