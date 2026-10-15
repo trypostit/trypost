@@ -364,35 +364,7 @@ test('a second reaction click while the first is saving is ignored', function ()
         ->and($page->script("document.querySelector('[data-testid=\"changelog-reaction-dislike\"]').getAttribute('aria-pressed')"))->toBe('false');
 });
 
-test('the open list still loads after a browser Back to the previous page', function () {
-    config(['trypost.changelog.enabled' => true]);
-
-    $user = createChangelogUser();
-    ChangelogEntry::factory()->create(['slug' => '2026-10-13-back', 'published_on' => today()->subYear()]);
-    $calendarPath = route('app.calendar', absolute: false);
-    $insightsPath = route('app.insights', absolute: false);
-
-    $this->actingAs($user->fresh());
-
-    $page = visit(route('app.calendar'))->navigate(route('app.calendar'))->resize(1280, 900);
-    waitForChangelogTestId($page, "nav-{$insightsPath}");
-    $page->script("document.querySelector('[data-testid=\"nav-{$insightsPath}\"]').click()");
-    waitForChangelogCondition($page, "location.pathname === '{$insightsPath}'");
-
-    openChangelogHelpMenu($page);
-    $page->click('@sidebar-support-changelog');
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-back');
-
-    $page->back();
-    waitForChangelogCondition($page, "location.pathname === '{$calendarPath}'");
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-back');
-
-    $page->assertPathIs($calendarPath)
-        ->assertPresent('@changelog-item-2026-10-13-back')
-        ->assertNoJavaScriptErrors();
-});
-
-test('after a browser Back the open list is fresh, not the one saved in that page history', function () {
+test('a browser Back closes the modal, and reopening shows a fresh list', function () {
     config(['trypost.changelog.enabled' => true]);
 
     $user = createChangelogUser();
@@ -420,12 +392,15 @@ test('after a browser Back the open list is fresh, not the one saved in that pag
 
     $page->back();
     waitForChangelogCondition($page, "location.pathname === '{$calendarPath}'");
-    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
-    waitForChangelogTestIdGone($page, 'changelog-unseen-2026-10-13-fresh');
+    waitForChangelogTestIdGone($page, 'changelog-dialog');
 
-    $page->assertPathIs($calendarPath)
-        ->assertPresent('@changelog-item-2026-10-13-fresh')
-        ->assertMissing('@changelog-unseen-2026-10-13-fresh')
+    $page->assertPathIs($calendarPath)->assertMissing('@changelog-dialog');
+
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-10-13-fresh');
+
+    $page->assertMissing('@changelog-unseen-2026-10-13-fresh')
         ->assertNoJavaScriptErrors();
 
     expect(ChangelogEntryView::where('user_id', $user->id)->count())->toBe(1);

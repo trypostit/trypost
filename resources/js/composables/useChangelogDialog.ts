@@ -1,9 +1,11 @@
+import { router } from '@inertiajs/vue3';
 import { readonly, ref, shallowReadonly, shallowRef } from 'vue';
 
 import type { ChangelogEntry } from '@/types/changelog';
 
 const isOpen = ref(false);
 const entry = shallowRef<ChangelogEntry | null>(null);
+let currentUrl: string | null = null;
 
 const openList = (): void => {
     entry.value = null;
@@ -23,6 +25,16 @@ const close = (): void => {
     isOpen.value = false;
     entry.value = null;
 };
+
+router.on('navigate', (event) => {
+    const { url } = event.detail.page;
+
+    if (currentUrl !== null && url !== currentUrl) {
+        close();
+    }
+
+    currentUrl = url;
+});
 
 export const useChangelogDialog = () => ({
     isOpen: readonly(isOpen),

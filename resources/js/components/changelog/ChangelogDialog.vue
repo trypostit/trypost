@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
 import { IconArrowLeft, IconX } from '@tabler/icons-vue';
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { update as updateReaction } from '@/actions/App/Http/Controllers/App/ChangelogEntryReactionController';
@@ -122,18 +122,6 @@ const handleOpenChange = (open: boolean): void => {
 watch(isOpen, (open) => {
     if (open) {
         loadEntries();
-    }
-});
-
-watch(entries, (list) => {
-    if (isOpen.value && list === null) {
-        void nextTick(loadEntries);
-    }
-});
-
-onMounted(() => {
-    if (isOpen.value) {
-        void nextTick(loadEntries);
     }
 });
 
