@@ -298,7 +298,7 @@ watch(activeEntry, (entry) => {
                             @click="showEntry(entry)"
                         >
                             <span
-                                class="relative block overflow-hidden rounded-lg border border-border bg-muted"
+                                class="relative block overflow-hidden rounded-lg bg-muted"
                             >
                                 <img
                                     :src="entry.cover_url"
