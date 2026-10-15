@@ -7,6 +7,7 @@ namespace App\Http\Middleware\Mcp;
 use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Mcp\Transport\JsonRpcRequest;
 use Laravel\Mcp\Transport\JsonRpcResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -24,19 +25,26 @@ class ChallengeChatGptToolCalls
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-        $id = $request->json('id');
 
-        if ($response->getStatusCode() !== Response::HTTP_UNAUTHORIZED
-            || $request->json('method') !== 'tools/call'
-            || ! (is_int($id) || is_string($id))
-            || ! ChatGptMcpClient::matches($request)) {
+        if ($response->getStatusCode() !== Response::HTTP_UNAUTHORIZED || ! ChatGptMcpClient::matches($request)) {
             return $response;
         }
 
+        $call = rescue(fn (): JsonRpcRequest => JsonRpcRequest::from($request->json()->all()), report: false);
+
+        if ($call?->method !== 'tools/call') {
+            return $response;
+        }
+
+        return response()->json($this->signInPrompt($call, $request)->toArray());
+    }
+
+    private function signInPrompt(JsonRpcRequest $call, Request $request): JsonRpcResponse
+    {
         $message = self::MESSAGE;
         $resourceMetadata = route('mcp.oauth.protected-resource.nested', ['path' => $request->path()]);
 
-        return response()->json(JsonRpcResponse::result($id, [
+        return JsonRpcResponse::result($call->id, [
             'content' => [['type' => 'text', 'text' => $message]],
             'isError' => true,
             '_meta' => [
@@ -44,6 +52,6 @@ class ChallengeChatGptToolCalls
                     "Bearer resource_metadata=\"{$resourceMetadata}\", error=\"insufficient_scope\", error_description=\"{$message}\"",
                 ],
             ],
-        ])->toArray());
+        ]);
     }
 }
