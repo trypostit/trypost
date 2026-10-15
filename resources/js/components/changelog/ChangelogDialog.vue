@@ -288,16 +288,21 @@ watch(activeEntry, (entry) => {
                     only-next
                     preserve-url
                 >
-                    <div id="changelog-list" class="flex flex-col gap-2">
+                    <div id="changelog-list" class="flex flex-col gap-4">
                         <button
                             v-for="entry in entries"
                             :key="entry.id"
                             type="button"
-                            class="-mx-2 flex items-start gap-4 rounded-lg p-2 text-start transition-control hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                            class="-mx-2 flex flex-col gap-3 rounded-xl p-2 text-start transition-control hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
                             :data-testid="`changelog-item-${entry.slug}`"
                             @click="showEntry(entry)"
                         >
-                            <span class="flex min-w-0 flex-1 flex-col gap-1">
+                            <img
+                                :src="entry.cover_url"
+                                alt=""
+                                class="aspect-video w-full rounded-lg border border-border object-cover"
+                            />
+                            <span class="flex min-w-0 flex-col gap-1">
                                 <span
                                     v-if="entry.tags.length"
                                     class="flex flex-wrap gap-1.5"
@@ -327,11 +332,6 @@ watch(activeEntry, (entry) => {
                                     {{ date.formatDateOnly(entry.published_on) }}
                                 </span>
                             </span>
-                            <img
-                                :src="entry.cover_url"
-                                alt=""
-                                class="aspect-video w-36 shrink-0 rounded-lg object-cover"
-                            />
                         </button>
                     </div>
                 </InfiniteScroll>
