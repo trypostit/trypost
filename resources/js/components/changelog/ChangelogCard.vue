@@ -31,18 +31,11 @@ const openLatestEntry = (): void => {
             data-testid="changelog-card"
             @click="openLatestEntry"
         >
-            <span class="flex flex-col gap-1">
-                <span
-                    class="line-clamp-2 text-[13px] leading-5 font-medium text-foreground"
-                    data-testid="changelog-card-title"
-                >
-                    {{ entry.title }}
-                </span>
-                <span
-                    class="line-clamp-2 text-[13px] leading-5 text-muted-foreground"
-                >
-                    {{ entry.excerpt }}
-                </span>
+            <span
+                class="line-clamp-2 text-[13px] leading-5 font-medium text-foreground"
+                data-testid="changelog-card-title"
+            >
+                {{ entry.title }}
             </span>
             <span
                 class="mt-3 block overflow-hidden rounded-lg border border-border bg-muted"
