@@ -790,11 +790,12 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   PostHog on every change. Counts are never shown in the app.
 - **The sidebar card announces one entry only** (owner decision 2026-10-14): the newest
   one dated since the user's signup day (`ChangelogEntry::scopeAnnouncedTo`), and only
-  while the user has not opened it (`ListChangelogEntries::latestForCard`). Opening it hides
+  while the user has not opened it (`ShowChangelogCard::execute`). Opening it hides
   the card; older unopened entries never take its place. A new user never gets the backlog.
-  The card prop is cached per user for 10 minutes (`HandleInertiaRequests::changelogCardCacheKey()`),
-  so a page change does not query it; recording a view or a reaction clears that key, and a newly
-  synced entry reaches a card within those 10 minutes.
+  The card is cached per user for 10 minutes (`ShowChangelogCard::cached()`), so a page change
+  does not query it. The action owns its key (private, like `ListPinterestBoards`); only
+  `RecordChangelogEntryView` clears it, through `ShowChangelogCard::forget()`, when it creates a
+  view. A newly synced entry reaches a card within those 10 minutes.
 - **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
   including those from before the user signed up, with a dot on the ones not opened yet. A
   future date schedules an entry for both.

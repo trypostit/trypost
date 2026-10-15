@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Actions\Changelog\ListChangelogEntries;
+use App\Actions\Changelog\ShowChangelogCard;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
 use App\Enums\Media\Type as MediaType;
@@ -140,14 +141,8 @@ class HandleInertiaRequests extends Middleware
         return "referral-sources.{$user->id}";
     }
 
-    public static function changelogCardCacheKey(User $user): string
-    {
-        return "changelog-card.{$user->id}";
-    }
-
     /**
-     * The sidebar card (`changelog`, cached for 10 minutes per user and cleared
-     * when the user opens an entry) and the modal list (`changelogEntries`,
+     * The sidebar card (`changelog`) and the modal list (`changelogEntries`,
      * loaded only by the partial reload the modal makes when it opens).
      *
      * @return array<string, mixed>
@@ -159,14 +154,10 @@ class HandleInertiaRequests extends Middleware
         }
 
         return [
-            'changelog' => fn (): array => Cache::remember(
-                self::changelogCardCacheKey($user),
-                now()->addMinutes(10),
-                fn (): array => ['latest' => transform(
-                    ListChangelogEntries::latestForCard($user),
-                    fn (ChangelogEntry $entry): array => ChangelogEntryResource::make($entry)->resolve($request),
-                )],
-            ),
+            'changelog' => fn (): array => ['latest' => transform(
+                ShowChangelogCard::cached($user),
+                fn (ChangelogEntry $entry): array => ChangelogEntryResource::make($entry)->resolve($request),
+            )],
             'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
                 fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
             )),

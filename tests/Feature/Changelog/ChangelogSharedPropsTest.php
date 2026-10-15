@@ -89,6 +89,22 @@ test('the card is cached for ten minutes and cleared when the user opens the ent
         ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $newer->id));
 });
 
+test('reacting to the card entry before opening it also hides the card', function () {
+    $entry = ChangelogEntry::factory()->create(['published_on' => today()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $entry->id));
+
+    $this->actingAs($this->user->fresh())
+        ->putJson(route('app.changelog.reaction.update', $entry), ['reaction' => 'like'])
+        ->assertNoContent();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+});
+
 test('a user who signed up today never gets an older entry on the card', function () {
     $this->user->forceFill(['created_at' => now()])->save();
     ChangelogEntry::factory()->create(['published_on' => today()->subDay()]);

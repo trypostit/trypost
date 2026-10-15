@@ -30,20 +30,4 @@ class ListChangelogEntries
             ->latestFirst()
             ->paginate(self::PAGE_SIZE, pageName: self::PAGE_NAME);
     }
-
-    /**
-     * The entry the sidebar card announces: the newest one dated since the
-     * user signed up, only while the user has not opened it. Older unopened
-     * entries never take its place; they stay in the list.
-     */
-    public static function latestForCard(User $user): ?ChangelogEntry
-    {
-        $latest = ChangelogEntry::query()
-            ->announcedTo($user)
-            ->withSeenBy($user)
-            ->latestFirst()
-            ->first();
-
-        return $latest?->seen ? null : $latest;
-    }
 }

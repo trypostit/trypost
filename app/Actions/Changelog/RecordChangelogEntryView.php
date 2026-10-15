@@ -14,7 +14,8 @@ class RecordChangelogEntryView
 {
     /**
      * Records that the user opened the entry and returns that view. Only the
-     * first open creates the row and is sent to PostHog.
+     * first open creates the row, clears the user's sidebar card and is sent
+     * to PostHog.
      */
     public static function execute(User $user, ChangelogEntry $entry): ChangelogEntryView
     {
@@ -26,6 +27,8 @@ class RecordChangelogEntryView
         if (! $view->wasRecentlyCreated) {
             return $view;
         }
+
+        ShowChangelogCard::forget($user);
 
         app(PostHogService::class)->capture(
             $user->id,
