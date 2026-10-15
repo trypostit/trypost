@@ -1,0 +1,158 @@
+/*
+ * TryPost "What's New" covers. One flat pastel background, the product's own
+ * UI drawn as white cards with an ink border (never a screenshot), Inter, and
+ * Tabler icons. No headline text: the entry's title sits right under the cover.
+ */
+:root {
+    --ink: #292928;
+    --muted: #6b6a68;
+    --chip: #f0eeeb;
+    --skeleton: #e6e4e0;
+    --violet: #7c3aed;
+    --violet-strong: #6d28d9;
+
+    --bg-violet: #ddd6fe;
+    --bg-sky: #bfe3fb;
+    --bg-mint: #c6efd2;
+    --bg-butter: #fde7a4;
+    --bg-pink: #fbd0e4;
+    --bg-sand: #f3f1ec;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body { width: 1200px; height: 675px; }
+
+body {
+    font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+}
+
+.canvas { position: relative; width: 1200px; height: 675px; overflow: hidden; }
+.bg-violet { background: var(--bg-violet); }
+.bg-sky { background: var(--bg-sky); }
+.bg-mint { background: var(--bg-mint); }
+.bg-butter { background: var(--bg-butter); }
+.bg-pink { background: var(--bg-pink); }
+.bg-sand { background: var(--bg-sand); }
+
+.at { position: absolute; }
+
+.icon { width: 1em; height: 1em; flex-shrink: 0; stroke-width: 1.75; }
+
+/* A white UI card with the ink border. */
+.card {
+    background: #fff;
+    border: 2.5px solid var(--ink);
+    border-radius: 20px;
+}
+
+/* One settings row: icon, label, then the control. */
+.row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    height: 104px;
+    padding: 0 26px 0 30px;
+    font-size: 32px;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+}
+.row .icon { font-size: 40px; }
+.row .label { margin-right: 6px; }
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    height: 60px;
+    padding: 0 22px;
+    border-radius: 14px;
+    background: var(--chip);
+    font-size: 30px;
+    font-weight: 500;
+}
+
+.toggle {
+    position: relative;
+    width: 92px;
+    height: 52px;
+    border-radius: 999px;
+    background: var(--violet);
+}
+.toggle::after {
+    content: '';
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    background: #fff;
+}
+.toggle.off { background: var(--skeleton); }
+.toggle.off::after { right: auto; left: 6px; }
+
+/* A picked item (track, file, account) inside a row. */
+.pick {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    height: 76px;
+    padding: 0 18px 0 10px;
+    border: 2.5px solid var(--ink);
+    border-radius: 14px;
+}
+.pick .art {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    background: conic-gradient(from 210deg, #f59e0b, #ec4899, #7c3aed, #0ea5e9, #10b981, #f59e0b);
+    color: #fff;
+    font-size: 30px;
+}
+.bars { display: grid; gap: 10px; }
+.bar { height: 14px; border-radius: 999px; background: var(--skeleton); }
+
+/* A network or app in a colored circle. */
+.badge {
+    display: grid;
+    place-items: center;
+    width: 132px;
+    height: 132px;
+    border: 2.5px solid var(--ink);
+    border-radius: 999px;
+    color: #fff;
+    font-size: 72px;
+}
+.badge .icon { stroke-width: 1.6; }
+
+/* Hand-drawn connector: an SVG path with the ink stroke. */
+.connector { fill: none; stroke: var(--ink); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Integration: two app tiles side by side. */
+.tile {
+    display: grid;
+    place-items: center;
+    width: 248px;
+    height: 248px;
+    border-radius: 60px;
+    box-shadow: 0 24px 48px -16px rgb(41 41 40 / 0.22);
+    overflow: hidden;
+}
+.tile .icon { font-size: 140px; color: #fff; stroke-width: 1.5; }
+.tile .trypost-mark { width: 100%; height: 100%; }
+.times { font-size: 64px; color: var(--ink); }
+.times .icon { stroke-width: 2.2; }
+
+/* Announcement: emojis in a grid of tiles. */
+.grid { display: grid; gap: 4px; background: #fff; }
+.grid > span {
+    display: grid;
+    place-items: center;
+    font-size: 96px;
+    line-height: 1;
+}

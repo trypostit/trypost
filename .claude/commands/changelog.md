@@ -14,7 +14,7 @@ Feature to announce: $ARGUMENTS
 ```
 resources/changelog/<YYYY-MM-DD>-<slug>/
   entry.md     front matter + Markdown body
-  cover.png    1200×675 cover (16:9, the card and modal slot)
+  cover.png    16:9 cover (rendered at 2400×1350), the card and modal slot
 ```
 
 The cover is a Vite asset: the build versions it and the app links it with `Vite::asset()`.
@@ -66,32 +66,52 @@ Load the `in-app-copy` skill first, then write:
 
 Run the text through the `humanizer` skill before saving.
 
-### Step 3 — Render the cover
+### Step 3 — Draw the cover
 
-The cover is **always 16:9, 1200×675 PNG**. The sidebar card, the list thumbnail and the detail
-all show it in a 16:9 slot (`aspect-video`), and `changelog:sync` refuses any cover that is
-not 16:9. Always render it with the command below; never hand-make, crop or resize a cover, and
-never change `--width`, `--height` or `--scale`.
+The cover is a drawing, never a screenshot and never a headline on a background: the entry's
+title already sits right under it. It shows the product's own UI, drawn, so it looks like
+TryPost and stays true when the real screen changes.
 
-Pick a short headline (the title or a tighter version of it), one phrase in it to underline, and
-two or three theme chips:
+**Style rules (every cover):**
+
+- **One flat pastel background**, no gradient or texture. Pick from `cover.css`:
+  `bg-violet` (the brand, default for new features), `bg-sky`, `bg-mint`, `bg-butter`,
+  `bg-pink`, and `bg-sand` for integrations only. Vary it between consecutive entries.
+- **The UI is drawn in TryPost's style:** white `card`s with the ink border, Inter, Tabler
+  icons, `chip`s, `toggle`s (violet when on), `pick` boxes with skeleton `bar`s. Show only the
+  controls the entry is about, with the labels the user sees on screen.
+- **Content is generic but real-looking:** handles like `@jennymoves`, skeleton bars instead of
+  long text, never a real customer, name or private data. English, like the entry.
+- **1 to 3 cards**, staggered or overlapping, with room around them. Text is large (the cover is
+  shown small in the sidebar card): row labels about 32px, nothing under 26px.
+- **At most one accent:** a network or app `badge` (brand-colored circle) and/or one hand-drawn
+  `connector` (an SVG path with an open arrowhead) tying it to the controls.
+- **Nothing is cut by accident:** cards and connectors stay inside the 1200×675 canvas unless a
+  card deliberately bleeds off one edge.
+
+**Pick the scene**, then copy its template from `.claude/release-assets/changelog-covers/` to the
+scratchpad and edit the copy (the templates stay as they are):
+
+| Scene | Template | Use it for |
+| --- | --- | --- |
+| Feature (default) | `feature.html` | A new or improved control, option or screen: draw those controls. |
+| Integration | `integration.html` | A new network, app or service: the TryPost mark × the service's tile on `bg-sand`. |
+| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis on a tinted grid. |
+
+A fix usually uses the Feature scene with the control that works again. Render the scene:
 
 ```bash
-node .claude/release-assets/render-thumbnail.mjs \
-  --template changelog-cover.template.html --width 1200 --height 675 --scale 1 \
-  --badge "What's new" \
-  --headline "Music, collaborators and trial reels" \
-  --underline "trial reels" \
-  --themes "Music,Collaborators,Trial reels" \
+node .claude/release-assets/changelog-covers/render.mjs \
+  --scene <scratchpad>/scene.html \
   --out resources/changelog/<YYYY-MM-DD>-<slug>/cover.png
 ```
 
-Open the PNG and check it:
+The renderer links `cover.css`, inlines Tabler icons (`<i data-icon="users"></i>`, add
+`data-filled` for the filled set) and the TryPost mark (`{{TRYPOST_MARK}}`), and saves the
+cover at 2× (2400×1350, 16:9). Never resize or crop it afterwards.
 
-- The size is 1200×675 (`sips -g pixelWidth -g pixelHeight <path>`).
-- The headline fits on one or two lines (about 35 characters at most) and the underlined phrase
-  sits on a single line. Shorten the headline rather than letting it run to a third line.
-- Two or three theme chips, one or two words each.
+Open the PNG and check it against the style rules: nothing clipped, text readable at the size
+of the sidebar card, one background, at most one accent.
 
 ### Step 4 — Validate
 
@@ -99,7 +119,8 @@ Open the PNG and check it:
 php artisan changelog:sync
 ```
 
-It fails loud, naming the folder, when the front matter is invalid, `entry.md` or `cover.png` is
+It fails loud, naming the folder, when the folder name is not `<YYYY-MM-DD>-<slug>`, the `date`
+is not that same day, the front matter or tags are invalid, `entry.md` or `cover.png` is
 missing, or the cover is not 16:9. Locally it also writes the entry to the database, so it shows in the sidebar
 card and the "What's New" list.
 
