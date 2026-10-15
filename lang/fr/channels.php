@@ -57,6 +57,7 @@ return [
         'telegram' => 'Canal ou groupe',
         'discord' => 'Serveur',
         'google_business' => 'Fiche d’établissement',
+        'vk' => 'Profil ou communauté',
     ],
 
     'details' => [

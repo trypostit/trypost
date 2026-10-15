@@ -8,6 +8,7 @@ use App\Models\SocialAccount;
 use App\Services\Analytics\Collectors\Publications\BlueskyPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\MastodonPublicationCollector;
 use App\Services\Analytics\Collectors\Publications\PublicationHistoryCollectorFactory;
+use App\Services\Analytics\Collectors\Publications\VkPublicationCollector;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Bus;
@@ -312,4 +313,94 @@ test('bluesky stops at the cutoff even when the older records are replies', func
     expect($page->publications)->toBe([])
         ->and($page->nextCursor)->toBeNull()
         ->and($page->providerExhausted)->toBeTrue();
+});
+
+test('vk pages the wall by offset, skips reposts and keeps a pinned post out of the cutoff decision', function () {
+    $now = CarbonImmutable::parse('2026-09-25 12:00:00', 'UTC');
+    Http::fake(['*' => Http::response(['response' => [
+        'count' => 250,
+        'items' => [
+            [
+                // Pinned and ancient: floats above the date order, must not end the window.
+                'id' => 1, 'date' => $now->subYears(2)->unix(), 'is_pinned' => 1,
+                'text' => 'Pinned', 'post_type' => 'post',
+            ],
+            [
+                'id' => 90, 'date' => $now->subDay()->unix(), 'text' => 'Repost',
+                'post_type' => 'post', 'copy_history' => [['id' => 5]],
+            ],
+            [
+                'id' => 89, 'date' => $now->subDays(2)->unix(), 'text' => 'Own photo post',
+                'post_type' => 'post',
+                'attachments' => [['type' => 'photo', 'photo' => ['sizes' => [
+                    ['type' => 'm', 'url' => 'https://img.example/m.jpg'],
+                    ['type' => 'x', 'url' => 'https://img.example/x.jpg'],
+                ]]]],
+                'views' => ['count' => 10], 'likes' => ['count' => 2],
+                'reposts' => ['count' => 1], 'comments' => ['count' => 0],
+            ],
+            [
+                'id' => 70, 'date' => $now->subYears(3)->unix(), 'text' => 'Beyond the window',
+                'post_type' => 'post',
+            ],
+        ],
+    ]])]);
+    $account = SocialAccount::factory()->vk()->create();
+
+    $page = app(VkPublicationCollector::class)->page(
+        $account,
+        null,
+        $now->subYear(),
+    );
+
+    expect($page->publications)->toHaveCount(1)
+        ->and($page->publications[0]->providerPostId)->toBe('89')
+        ->and($page->publications[0]->contentType)->toBe(PublicationContentType::Image)
+        ->and($page->publications[0]->permalink)->toBe('https://vk.com/wall-123456_89')
+        ->and($page->publications[0]->previewMetadata)->toBe(['thumbnail_url' => 'https://img.example/x.jpg'])
+        ->and($page->publications[0]->providerMetadata)->toMatchArray([
+            'views_count' => 10, 'likes_count' => 2, 'reposts_count' => 1, 'comments_count' => 0,
+        ])
+        ->and($page->nextCursor)->toBeNull()
+        ->and($page->providerExhausted)->toBeTrue();
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/wall.get')
+        && $request['owner_id'] == -123456
+        && $request['filter'] === 'owner'
+        && ! isset($request['offset']));
+});
+
+test('vk hands the next offset as the cursor while the window stays open', function () {
+    $now = CarbonImmutable::parse('2026-09-25 12:00:00', 'UTC');
+    $items = [];
+    for ($i = 0; $i < 100; $i++) {
+        $items[] = ['id' => 1000 - $i, 'date' => $now->subHours($i + 1)->unix(), 'text' => "Post {$i}", 'post_type' => 'post'];
+    }
+    Http::fake(['*' => Http::response(['response' => ['count' => 250, 'items' => $items]])]);
+    $account = SocialAccount::factory()->vk()->create();
+
+    $page = app(VkPublicationCollector::class)->page($account, '100', $now->subYear());
+
+    expect($page->publications)->toHaveCount(100)
+        ->and($page->nextCursor)->toBe('200')
+        ->and($page->providerExhausted)->toBeFalse();
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/wall.get')
+        && $request['offset'] == 100);
+});
+
+test('vk skips history for a community token without spending a request', function () {
+    Http::fake();
+    $account = SocialAccount::factory()->vk()->create([
+        'meta' => ['owner_id' => -123456, 'is_group' => true, 'community_token' => true],
+    ]);
+
+    $page = app(VkPublicationCollector::class)->page(
+        $account,
+        null,
+        CarbonImmutable::parse('2026-01-01', 'UTC'),
+    );
+
+    expect($page->publications)->toBe([])
+        ->and($page->providerExhausted)->toBeTrue()
+        ->and($page->partialReason)->toBe('vk_reconnect_with_user_token_for_history');
+    Http::assertNothingSent();
 });

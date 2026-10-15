@@ -26,6 +26,7 @@ class FollowerCollectorFactory
             Platform::TikTok => app(TikTokFollowerCollector::class),
             Platform::Bluesky => app(BlueskyFollowerCollector::class),
             Platform::Mastodon => app(MastodonFollowerCollector::class),
+            Platform::Vk => app(VkFollowerCollector::class),
             default => throw AnalyticsCollectionException::unsupported("{$platform->value} follower analytics is excluded"),
         };
     }

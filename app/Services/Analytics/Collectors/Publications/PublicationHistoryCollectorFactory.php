@@ -27,6 +27,7 @@ class PublicationHistoryCollectorFactory
             Platform::TikTok => app(TikTokPublicationCollector::class),
             Platform::Bluesky => app(BlueskyPublicationCollector::class),
             Platform::Mastodon => app(MastodonPublicationCollector::class),
+            Platform::Vk => app(VkPublicationCollector::class),
             default => throw AnalyticsCollectionException::unsupported("{$account->platform->value} publication history is not supported"),
         };
     }
