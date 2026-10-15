@@ -17,14 +17,16 @@ import {
 } from '@/components/ui/dialog';
 import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
 import date from '@/date';
-import type {
-    ChangelogEntry,
-    ChangelogReaction,
-    ScrollChangelogEntries,
-} from '@/types/changelog';
+import type { ChangelogEntry, ChangelogReaction } from '@/types/changelog';
 
 const page = usePage();
-const { state, openEntry, backToList, close } = useChangelogDialog();
+const {
+    isOpen,
+    entry: activeEntry,
+    openEntry,
+    backToList,
+    close,
+} = useChangelogDialog();
 const http = useHttp<Record<string, never>, null>({});
 const reactionHttp = useHttp<{ reaction: ChangelogReaction | null }, null>({
     reaction: null,
@@ -33,13 +35,7 @@ const reactionHttp = useHttp<{ reaction: ChangelogReaction | null }, null>({
 const openedIds = ref(new Set<string>());
 const reactions = ref<Record<string, ChangelogReaction | null>>({});
 
-const entries = computed(
-    () =>
-        (page.props.changelogEntries as ScrollChangelogEntries | undefined)
-            ?.data ?? null,
-);
-const activeEntry = computed(() => state.value?.entry ?? null);
-const isOpen = computed(() => state.value !== null);
+const entries = computed(() => page.props.changelogEntries?.data ?? null);
 
 const isUnseen = (entry: ChangelogEntry): boolean =>
     !entry.seen && !openedIds.value.has(entry.id);
@@ -56,15 +52,13 @@ const recordView = async (entry: ChangelogEntry): Promise<void> => {
         return;
     }
 
-    openedIds.value = new Set(openedIds.value).add(entry.id);
+    openedIds.value.add(entry.id);
 
     try {
         await http.post(storeView.url(entry.id));
         router.reload({ only: ['changelog'] });
     } catch {
-        const next = new Set(openedIds.value);
-        next.delete(entry.id);
-        openedIds.value = next;
+        openedIds.value.delete(entry.id);
     }
 };
 
@@ -98,32 +92,17 @@ const isDimmed = (
     return current !== null && current !== reaction;
 };
 
-const like = (entry: ChangelogEntry): void => {
-    void react(entry, 'like');
-};
-
-const dislike = (entry: ChangelogEntry): void => {
-    void react(entry, 'dislike');
-};
-
-const showEntry = (entry: ChangelogEntry): void => {
-    openEntry(entry);
-};
-
 const handleOpenChange = (open: boolean): void => {
     if (!open) {
         close();
     }
 };
 
-watch(
-    () => state.value?.id,
-    (id, previousId) => {
-        if (id !== undefined && id !== previousId) {
-            loadEntries();
-        }
-    },
-);
+watch(isOpen, (open) => {
+    if (open) {
+        loadEntries();
+    }
+});
 
 watch(activeEntry, (entry) => {
     if (entry) {
@@ -229,7 +208,7 @@ watch(activeEntry, (entry) => {
                             :aria-pressed="reactionOf(activeEntry) === 'like'"
                             class="group/reaction size-auto p-1 hover:bg-transparent"
                             data-testid="changelog-reaction-like"
-                            @click="like(activeEntry)"
+                            @click="react(activeEntry, 'like')"
                         >
                             <span
                                 class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
@@ -250,7 +229,7 @@ watch(activeEntry, (entry) => {
                             :aria-pressed="reactionOf(activeEntry) === 'dislike'"
                             class="group/reaction size-auto p-1 hover:bg-transparent"
                             data-testid="changelog-reaction-dislike"
-                            @click="dislike(activeEntry)"
+                            @click="react(activeEntry, 'dislike')"
                         >
                             <span
                                 class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
@@ -301,7 +280,7 @@ watch(activeEntry, (entry) => {
                             type="button"
                             class="-mx-3 flex flex-col gap-3 rounded-xl p-3 text-start transition-control hover:bg-sidebar focus-visible:bg-sidebar focus-visible:outline-2 dark:hover:bg-accent dark:focus-visible:bg-accent focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :data-testid="`changelog-item-${entry.slug}`"
-                            @click="showEntry(entry)"
+                            @click="openEntry(entry)"
                         >
                             <span
                                 class="group/cover relative block aspect-video overflow-hidden rounded-lg bg-muted"

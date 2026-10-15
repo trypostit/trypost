@@ -1,36 +1,32 @@
-import { shallowReadonly, shallowRef } from 'vue';
+import { readonly, ref, shallowReadonly, shallowRef } from 'vue';
 
 import type { ChangelogEntry } from '@/types/changelog';
 
-export interface ChangelogDialogState {
-    id: number;
-    entry: ChangelogEntry | null;
-}
-
-let nextId = 0;
-
-const state = shallowRef<ChangelogDialogState | null>(null);
+const isOpen = ref(false);
+const entry = shallowRef<ChangelogEntry | null>(null);
 
 const openList = (): void => {
-    state.value = { id: ++nextId, entry: null };
+    entry.value = null;
+    isOpen.value = true;
 };
 
-const openEntry = (entry: ChangelogEntry): void => {
-    state.value = { id: state.value?.id ?? ++nextId, entry };
+const openEntry = (selected: ChangelogEntry): void => {
+    entry.value = selected;
+    isOpen.value = true;
 };
 
 const backToList = (): void => {
-    if (!state.value) return;
-
-    state.value = { ...state.value, entry: null };
+    entry.value = null;
 };
 
 const close = (): void => {
-    state.value = null;
+    isOpen.value = false;
+    entry.value = null;
 };
 
 export const useChangelogDialog = () => ({
-    state: shallowReadonly(state),
+    isOpen: readonly(isOpen),
+    entry: shallowReadonly(entry),
     openList,
     openEntry,
     backToList,

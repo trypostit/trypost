@@ -96,6 +96,11 @@ class ChangelogEntry extends Model
         $query->orderByDesc('published_on')->orderByDesc('slug');
     }
 
+    public function isPublished(): bool
+    {
+        return $this->published_on->lte(today());
+    }
+
     /**
      * The cover's versioned URL from the Vite build, or null (reported) when the
      * build has no such file, as with entries made by a factory.
@@ -115,6 +120,6 @@ class ChangelogEntry extends Model
 
     public function excerpt(): string
     {
-        return Str::limit(Str::squish(strip_tags($this->bodyHtml())), 160);
+        return Str::of($this->bodyHtml())->stripTags()->squish()->limit(160)->toString();
     }
 }

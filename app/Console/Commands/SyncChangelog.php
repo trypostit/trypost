@@ -10,14 +10,14 @@ use InvalidArgumentException;
 
 class SyncChangelog extends Command
 {
-    protected $signature = 'changelog:sync {--path= : Folder holding the entries (defaults to resources/changelog/)}';
+    protected $signature = 'changelog:sync';
 
     protected $description = 'Sync the "What\'s New" entries under resources/changelog/ into the database';
 
     public function handle(): int
     {
         try {
-            $result = SyncChangelogEntries::execute($this->option('path') ?: resource_path('changelog'));
+            $result = SyncChangelogEntries::execute(config('trypost.changelog.path'));
         } catch (InvalidArgumentException $exception) {
             $this->error($exception->getMessage());
 

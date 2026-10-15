@@ -7,9 +7,11 @@ namespace App\Actions\Changelog;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use InvalidArgumentException;
 use League\CommonMark\Exception\CommonMarkException;
@@ -17,9 +19,9 @@ use League\CommonMark\Extension\FrontMatter\Data\SymfonyYamlFrontMatterParser;
 use League\CommonMark\Extension\FrontMatter\FrontMatterParser;
 
 /**
- * Mirrors the entries under `resources/changelog/<slug>/` (entry.md plus a 16:9
- * cover.png, served by Vite) into `changelog_entries`. Every folder is validated
- * before anything is written, and a row whose folder is gone is deleted.
+ * Mirrors the entry folders (`<slug>/entry.md` plus a 16:9 `<slug>/cover.png`)
+ * into `changelog_entries`. Every folder is read and validated before anything
+ * is written, and a row whose folder is gone is deleted.
  */
 class SyncChangelogEntries
 {
@@ -29,75 +31,60 @@ class SyncChangelogEntries
     public static function execute(string $directory): array
     {
         $entries = collect(File::isDirectory($directory) ? File::directories($directory) : [])
-            ->sort()
-            ->map(fn (string $folder): array => self::parse($folder))
-            ->values();
+            ->map(fn (string $folder): array => self::read($folder));
 
-        $result = ['created' => 0, 'updated' => 0, 'deleted' => 0];
+        return DB::transaction(fn (): array => [
+            ...self::save($entries),
+            'deleted' => ChangelogEntry::query()->whereNotIn('slug', $entries->pluck('slug'))->delete(),
+        ]);
+    }
 
-        DB::transaction(function () use ($entries, &$result): void {
-            foreach ($entries as $entry) {
-                $model = ChangelogEntry::firstOrNew(['slug' => data_get($entry, 'slug')])->fill($entry);
+    /**
+     * @param  Collection<int, array<string, mixed>>  $entries
+     * @return array{created: int, updated: int}
+     */
+    private static function save(Collection $entries): array
+    {
+        $models = $entries->map(
+            fn (array $entry): ChangelogEntry => ChangelogEntry::firstOrNew(['slug' => data_get($entry, 'slug')])->fill($entry),
+        );
 
-                if (! $model->exists) {
-                    $result['created']++;
-                } elseif ($model->isDirty()) {
-                    $result['updated']++;
-                }
+        $counts = [
+            'created' => $models->reject->exists->count(),
+            'updated' => $models->filter(fn (ChangelogEntry $model): bool => $model->exists && $model->isDirty())->count(),
+        ];
 
-                $model->save();
-            }
+        $models->each->save();
 
-            $result['deleted'] = ChangelogEntry::query()
-                ->whereNotIn('slug', $entries->pluck('slug')->all())
-                ->get()
-                ->each->delete()
-                ->count();
-        });
-
-        return $result;
+        return $counts;
     }
 
     /**
      * @return array{slug: string, title: string, tags: list<string>, body: string, published_on: string}
      */
-    private static function parse(string $folder): array
+    private static function read(string $folder): array
     {
-        $slug = basename($folder);
-        $entryFile = "{$folder}/entry.md";
-        $coverFile = "{$folder}/cover.png";
+        $slug = File::basename($folder);
 
-        if (! File::exists($entryFile)) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] has no entry.md.");
-        }
-
-        if (! File::exists($coverFile)) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] has no cover.png.");
-        }
-
-        [$coverWidth, $coverHeight] = getimagesize($coverFile) ?: [0, 0];
-
-        if ($coverWidth === 0 || $coverWidth * 9 !== $coverHeight * 16) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675), got {$coverWidth}x{$coverHeight}.");
-        }
+        throw_unless(File::exists("{$folder}/entry.md"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no entry.md.");
+        throw_unless(File::exists("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no cover.png.");
+        throw_unless(self::isWideCover("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675).");
 
         try {
-            $document = (new FrontMatterParser(new SymfonyYamlFrontMatterParser))->parse(File::get($entryFile));
+            $document = (new FrontMatterParser(new SymfonyYamlFrontMatterParser))->parse(File::get("{$folder}/entry.md"));
         } catch (CommonMarkException $exception) {
             throw new InvalidArgumentException("Changelog entry [{$slug}] has invalid front matter: {$exception->getMessage()}");
         }
 
-        $frontMatter = (array) ($document->getFrontMatter() ?? []);
+        $frontMatter = $document->getFrontMatter();
         $date = data_get($frontMatter, 'date');
 
-        $data = [
+        $validator = Validator::make([
             'title' => data_get($frontMatter, 'title'),
             'tags' => data_get($frontMatter, 'tags', []),
             'date' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
-            'body' => trim($document->getContent()),
-        ];
-
-        $validator = Validator::make($data, [
+            'body' => Str::trim($document->getContent()),
+        ], [
             'title' => ['required', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['distinct', Rule::enum(Tag::class)],
@@ -105,16 +92,23 @@ class SyncChangelogEntries
             'body' => ['required', 'string'],
         ]);
 
-        if ($validator->fails()) {
-            throw new InvalidArgumentException("Changelog entry [{$slug}] is invalid: ".implode(' ', $validator->errors()->all()));
-        }
+        throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: ".collect($validator->errors()->all())->implode(' '));
+
+        $entry = $validator->validated();
 
         return [
             'slug' => $slug,
-            'title' => (string) data_get($data, 'title'),
-            'tags' => array_values((array) data_get($data, 'tags', [])),
-            'body' => (string) data_get($data, 'body'),
-            'published_on' => (string) data_get($data, 'date'),
+            'title' => data_get($entry, 'title'),
+            'tags' => collect(data_get($entry, 'tags'))->values()->all(),
+            'body' => data_get($entry, 'body'),
+            'published_on' => data_get($entry, 'date'),
         ];
+    }
+
+    private static function isWideCover(string $cover): bool
+    {
+        [$width, $height] = getimagesize($cover) ?: [0, 0];
+
+        return $width > 0 && $width * 9 === $height * 16;
     }
 }

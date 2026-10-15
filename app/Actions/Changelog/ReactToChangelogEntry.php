@@ -7,7 +7,6 @@ namespace App\Actions\Changelog;
 use App\Enums\Changelog\Reaction;
 use App\Enums\PostHog\ChangelogEvent;
 use App\Models\ChangelogEntry;
-use App\Models\ChangelogEntryView;
 use App\Models\User;
 use App\Services\PostHogService;
 
@@ -19,12 +18,7 @@ class ReactToChangelogEntry
      */
     public static function execute(User $user, ChangelogEntry $entry, ?Reaction $reaction): void
     {
-        RecordChangelogEntryView::execute($user, $entry);
-
-        $view = ChangelogEntryView::query()
-            ->where('changelog_entry_id', $entry->id)
-            ->where('user_id', $user->id)
-            ->firstOrFail();
+        $view = RecordChangelogEntryView::execute($user, $entry);
 
         if ($view->reaction === $reaction) {
             return;

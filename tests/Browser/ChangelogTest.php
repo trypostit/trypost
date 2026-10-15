@@ -52,13 +52,9 @@ function waitForChangelogReaction(mixed $page, ChangelogEntry $entry, ?Reaction 
     }
 }
 
-test('opening the sidebar card shows the newest entry, records the view, hides the card and takes a reaction', function () {
-    config(['trypost.changelog.enabled' => true]);
-
-    $user = User::factory()->create([
-        'referral_source' => ReferralSource::Google->value,
-        'created_at' => now()->subDays(30),
-    ]);
+function createChangelogUser(array $attributes = []): User
+{
+    $user = User::factory()->create(['referral_source' => ReferralSource::Google->value, ...$attributes]);
     $workspace = Workspace::factory()->create([
         'account_id' => $user->account_id,
         'user_id' => $user->id,
@@ -66,6 +62,39 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
     subscribeAccount($user->account);
+
+    return $user;
+}
+
+/**
+ * The Help item is a Radix sub-trigger, which opens on a pointer move before the click.
+ */
+function openChangelogHelpMenu(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (async () => {
+            const find = async (testId) => {
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const element = document.querySelector(`[data-testid="${testId}"]`);
+                    if (element) return element;
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+            };
+            (await find('sidebar-workspace-menu')).click();
+            const trigger = await find('sidebar-support-trigger');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await find('sidebar-support-changelog');
+        })();
+    JS);
+}
+
+test('opening the sidebar card shows the newest entry, records the view, hides the card and takes a reaction', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser([
+        'created_at' => now()->subDays(30),
+    ]);
 
     $newest = ChangelogEntry::factory()->create([
         'slug' => '2026-10-14-newest',
@@ -136,17 +165,9 @@ test('opening the sidebar card shows the newest entry, records the view, hides t
 test('the help menu item is translated and opens the list', function () {
     config(['trypost.changelog.enabled' => true]);
 
-    $user = User::factory()->create([
+    $user = createChangelogUser([
         'locale' => Locale::PortugueseBrazil,
-        'referral_source' => ReferralSource::Google->value,
     ]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
 
     ChangelogEntry::factory()->create(['slug' => '2026-10-13-listed', 'published_on' => today()->subYear()]);
 
@@ -155,22 +176,7 @@ test('the help menu item is translated and opens the list', function () {
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitForChangelogTestId($page, 'sidebar-workspace-menu');
 
-    $page->script(<<<'JS'
-        (async () => {
-            const find = async (testId) => {
-                for (let attempt = 0; attempt < 100; attempt++) {
-                    const element = document.querySelector(`[data-testid="${testId}"]`);
-                    if (element) return element;
-                    await new Promise((resolve) => setTimeout(resolve, 50));
-                }
-            };
-            (await find('sidebar-workspace-menu')).click();
-            const trigger = await find('sidebar-support-trigger');
-            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
-            trigger.click();
-            await find('sidebar-support-changelog');
-        })();
-    JS);
+    openChangelogHelpMenu($page);
 
     $page->assertSeeIn('@sidebar-support-changelog', __('sidebar.support.changelog', [], 'pt-BR'));
     expect(__('sidebar.support.changelog', [], 'pt-BR'))->toBe('Novidades');
@@ -186,14 +192,7 @@ test('the help menu item is translated and opens the list', function () {
 test('hovering a list item highlights it, only hovering its cover zooms the cover, and the whole item opens the entry', function () {
     config(['trypost.changelog.enabled' => true]);
 
-    $user = User::factory()->create(['referral_source' => ReferralSource::Google->value]);
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
+    $user = createChangelogUser();
 
     ChangelogEntry::factory()->create([
         'slug' => '2026-10-13-hovered',
@@ -206,23 +205,9 @@ test('hovering a list item highlights it, only hovering its cover zooms the cove
     $page = visit(route('app.calendar'))->resize(1280, 900);
     waitForChangelogTestId($page, 'sidebar-workspace-menu');
 
-    $page->script(<<<'JS'
-        (async () => {
-            const find = async (testId) => {
-                for (let attempt = 0; attempt < 100; attempt++) {
-                    const element = document.querySelector(`[data-testid="${testId}"]`);
-                    if (element) return element;
-                    await new Promise((resolve) => setTimeout(resolve, 50));
-                }
-            };
-            (await find('sidebar-workspace-menu')).click();
-            const trigger = await find('sidebar-support-trigger');
-            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
-            trigger.click();
-            (await find('sidebar-support-changelog')).click();
-            await find('changelog-item-cover-2026-10-13-hovered');
-        })();
-    JS);
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-cover-2026-10-13-hovered');
 
     $coverScale = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-cover-2026-10-13-hovered\"] img')).scale";
     $itemBackground = "getComputedStyle(document.querySelector('[data-testid=\"changelog-item-2026-10-13-hovered\"]')).backgroundColor";

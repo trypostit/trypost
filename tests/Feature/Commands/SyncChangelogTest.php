@@ -13,7 +13,8 @@ beforeEach(function () {
     $this->directory = storage_path('framework/testing/changelog-'.Str::random(8));
     File::copyDirectory(base_path('tests/fixtures/changelog'), $this->directory);
 
-    $this->sync = fn () => $this->artisan('changelog:sync', ['--path' => $this->directory]);
+    config(['trypost.changelog.path' => $this->directory]);
+    $this->sync = fn () => $this->artisan('changelog:sync');
 });
 
 afterEach(function () {
