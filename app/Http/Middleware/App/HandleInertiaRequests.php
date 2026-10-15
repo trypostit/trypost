@@ -21,6 +21,7 @@ use App\Http\Resources\App\HandleInertiaRequests\ComposerResource;
 use App\Http\Resources\App\HandleInertiaRequests\SidebarChannelResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Account;
+use App\Models\ChangelogEntry;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -73,17 +74,7 @@ class HandleInertiaRequests extends Middleware
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
-            'changelog' => fn (): ?array => $user && config('trypost.changelog.enabled')
-                ? ['latest' => transform(
-                    ListChangelogEntries::latestForCard($user),
-                    fn ($entry) => ChangelogEntryResource::make($entry)->resolve($request),
-                )]
-                : null,
-            ...($user && config('trypost.changelog.enabled') ? [
-                'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
-                    fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
-                )),
-            ] : []),
+            ...$this->changelog($user, $request),
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),
             'env' => config('app.env'),
@@ -147,6 +138,39 @@ class HandleInertiaRequests extends Middleware
     public static function referralSourcesCacheKey(User $user): string
     {
         return "referral-sources.{$user->id}";
+    }
+
+    public static function changelogCardCacheKey(User $user): string
+    {
+        return "changelog-card.{$user->id}";
+    }
+
+    /**
+     * The sidebar card (`changelog`, cached for 10 minutes per user and cleared
+     * when the user opens an entry) and the modal list (`changelogEntries`,
+     * loaded only by the partial reload the modal makes when it opens).
+     *
+     * @return array<string, mixed>
+     */
+    private function changelog(?User $user, Request $request): array
+    {
+        if (blank($user) || ! config('trypost.changelog.enabled')) {
+            return ['changelog' => null];
+        }
+
+        return [
+            'changelog' => fn (): array => Cache::remember(
+                self::changelogCardCacheKey($user),
+                now()->addMinutes(10),
+                fn (): array => ['latest' => transform(
+                    ListChangelogEntries::latestForCard($user),
+                    fn (ChangelogEntry $entry): array => ChangelogEntryResource::make($entry)->resolve($request),
+                )],
+            ),
+            'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
+                fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
+            )),
+        ];
     }
 
     private function showsReferralSources(?User $user, ?Account $account, bool $isSelfHosted): bool

@@ -786,6 +786,9 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   one dated since the user's signup day (`ChangelogEntry::scopeAnnouncedTo`), and only
   while the user has not opened it (`ListChangelogEntries::latestForCard`). Opening it hides
   the card; older unopened entries never take its place. A new user never gets the backlog.
+  The card prop is cached per user for 10 minutes (`HandleInertiaRequests::changelogCardCacheKey()`),
+  so a page change does not query it; recording a view or a reaction clears that key, and a newly
+  synced entry reaches a card within those 10 minutes.
 - **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
   including those from before the user signed up, with a dot on the ones not opened yet. A
   future date schedules an entry for both.

@@ -8,6 +8,7 @@ use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\DB;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -54,6 +55,38 @@ test('the card is empty once the newest entry was opened, even with older ones u
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
         ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+});
+
+test('the card is cached for ten minutes and cleared when the user opens the entry', function () {
+    $first = ChangelogEntry::factory()->create(['published_on' => today()->subDay()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $first->id));
+
+    $newer = ChangelogEntry::factory()->create(['published_on' => today()]);
+    DB::enableQueryLog();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $first->id));
+
+    expect(collect(DB::getQueryLog())->pluck('query')->filter(fn (string $query): bool => str_contains($query, 'changelog_entries')))->toBeEmpty();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.changelog.views.store', $newer))
+        ->assertNoContent();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+
+    $newer->views()->delete();
+    $this->travel(11)->minutes();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $newer->id));
 });
 
 test('a user who signed up today never gets an older entry on the card', function () {
