@@ -2,7 +2,8 @@
 
 declare(strict_types=1);
 
-use App\Jobs\PostHog\TrackChangelogEntryViewed;
+use App\Enums\PostHog\ChangelogEvent;
+use App\Jobs\PostHog\TrackChangelogEntryEvent;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
@@ -32,8 +33,9 @@ test('opening an entry records the view once and queues its PostHog event once',
     expect(ChangelogEntryView::where('user_id', $this->user->id)->pluck('changelog_entry_id')->all())
         ->toBe([$this->entry->id]);
 
-    Bus::assertDispatchedTimes(TrackChangelogEntryViewed::class, 1);
-    Bus::assertDispatched(TrackChangelogEntryViewed::class, fn (TrackChangelogEntryViewed $job): bool => $job->viewId === ChangelogEntryView::sole()->id);
+    Bus::assertDispatchedTimes(TrackChangelogEntryEvent::class, 1);
+    Bus::assertDispatched(TrackChangelogEntryEvent::class, fn (TrackChangelogEntryEvent $job): bool => $job->viewId === ChangelogEntryView::sole()->id
+        && $job->event === ChangelogEvent::EntryViewed);
 });
 
 test('an entry the user cannot see is not found', function (Closure $setup) {
@@ -44,7 +46,7 @@ test('an entry the user cannot see is not found', function (Closure $setup) {
         ->assertNotFound();
 
     expect(ChangelogEntryView::count())->toBe(0);
-    Bus::assertNotDispatched(TrackChangelogEntryViewed::class);
+    Bus::assertNotDispatched(TrackChangelogEntryEvent::class);
 })->with([
     'changelog turned off' => [fn () => config(['trypost.changelog.enabled' => false])],
     'published in the future' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->addDay()])],

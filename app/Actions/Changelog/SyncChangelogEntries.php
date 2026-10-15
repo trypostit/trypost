@@ -21,7 +21,8 @@ use League\CommonMark\Extension\FrontMatter\FrontMatterParser;
 /**
  * Mirrors the entry folders (`<slug>/entry.md` plus a 16:9 `<slug>/cover.png`)
  * into `changelog_entries`. Every folder is read and validated before anything
- * is written, and a row whose folder is gone is deleted.
+ * is written, a row whose folder is gone is deleted, and any change drops the
+ * cached sidebar cards.
  */
 class SyncChangelogEntries
 {
@@ -30,13 +31,20 @@ class SyncChangelogEntries
      */
     public static function execute(string $directory): array
     {
-        $entries = collect(File::isDirectory($directory) ? File::directories($directory) : [])
-            ->map(fn (string $folder): array => self::read($folder));
+        throw_unless(File::isDirectory($directory), InvalidArgumentException::class, "The changelog folder [{$directory}] does not exist.");
 
-        return DB::transaction(fn (): array => [
+        $entries = collect(File::directories($directory))->map(fn (string $folder): array => self::read($folder));
+
+        $result = DB::transaction(fn (): array => [
             ...self::save($entries),
             'deleted' => ChangelogEntry::query()->whereNotIn('slug', $entries->pluck('slug'))->delete(),
         ]);
+
+        if (array_sum($result) > 0) {
+            ShowChangelogCard::forgetAll();
+        }
+
+        return $result;
     }
 
     /**
@@ -66,8 +74,8 @@ class SyncChangelogEntries
     {
         $slug = File::basename($folder);
 
-        throw_unless(File::exists("{$folder}/entry.md"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no entry.md.");
-        throw_unless(File::exists("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no cover.png.");
+        throw_if(File::missing("{$folder}/entry.md"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no entry.md.");
+        throw_if(File::missing("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] has no cover.png.");
         throw_unless(self::isWideCover("{$folder}/cover.png"), InvalidArgumentException::class, "Changelog entry [{$slug}] needs a 16:9 cover.png (1200x675).");
 
         try {
@@ -82,26 +90,26 @@ class SyncChangelogEntries
         $validator = Validator::make([
             'title' => data_get($frontMatter, 'title'),
             'tags' => data_get($frontMatter, 'tags', []),
-            'date' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
+            'published_on' => is_int($date) ? CarbonImmutable::createFromTimestampUTC($date)->toDateString() : $date,
             'body' => Str::trim($document->getContent()),
         ], [
             'title' => ['required', 'string', 'max:255'],
             'tags' => ['nullable', 'array'],
             'tags.*' => ['distinct', Rule::enum(Tag::class)],
-            'date' => ['required', 'date_format:Y-m-d'],
+            'published_on' => ['required', 'date_format:Y-m-d'],
             'body' => ['required', 'string'],
-        ]);
+        ], attributes: ['published_on' => 'date']);
 
-        throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: ".collect($validator->errors()->all())->implode(' '));
+        $errors = collect($validator->errors()->all())->implode(' ');
+
+        throw_if($validator->fails(), InvalidArgumentException::class, "Changelog entry [{$slug}] is invalid: {$errors}");
 
         $entry = $validator->validated();
 
         return [
             'slug' => $slug,
-            'title' => data_get($entry, 'title'),
+            ...$entry,
             'tags' => collect(data_get($entry, 'tags'))->values()->all(),
-            'body' => data_get($entry, 'body'),
-            'published_on' => data_get($entry, 'date'),
         ];
     }
 

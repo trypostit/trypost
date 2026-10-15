@@ -8,21 +8,15 @@ use App\Actions\Changelog\RecordChangelogEntryView;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Changelog\StoreChangelogEntryViewRequest;
 use App\Models\ChangelogEntry;
-use Illuminate\Http\Response as HttpResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChangelogEntryViewController extends Controller
 {
-    public function store(StoreChangelogEntryViewRequest $request, ChangelogEntry $changelogEntry): HttpResponse
+    public function store(StoreChangelogEntryViewRequest $request, ChangelogEntry $changelogEntry): Response
     {
-        $user = $request->user();
+        abort_unless($changelogEntry->isVisible(), Response::HTTP_NOT_FOUND);
 
-        abort_unless(
-            config('trypost.changelog.enabled') && $changelogEntry->isPublished(),
-            Response::HTTP_NOT_FOUND,
-        );
-
-        RecordChangelogEntryView::execute($user, $changelogEntry);
+        RecordChangelogEntryView::execute($request->user(), $changelogEntry);
 
         return response()->noContent();
     }

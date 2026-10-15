@@ -3,7 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import { IconArrowRight } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
-import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
+import { useChangelogDialog } from '@/composables/useChangelogDialog';
 
 const page = usePage();
 const { openEntry } = useChangelogDialog();

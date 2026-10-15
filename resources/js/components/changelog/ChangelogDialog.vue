@@ -15,7 +15,7 @@ import {
     DialogDescription,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
+import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import date from '@/date';
 import type { ChangelogEntry, ChangelogReaction } from '@/types/changelog';
 
@@ -31,6 +31,11 @@ const http = useHttp<Record<string, never>, null>({});
 const reactionHttp = useHttp<{ reaction: ChangelogReaction | null }, null>({
     reaction: null,
 });
+
+const REACTION_OPTIONS: { value: ChangelogReaction; emoji: string; label: string }[] = [
+    { value: 'like', emoji: '👍', label: 'Like' },
+    { value: 'dislike', emoji: '👎', label: 'Dislike' },
+];
 
 const openedIds = ref(new Set<string>());
 const reactions = ref<Record<string, ChangelogReaction | null>>({});
@@ -69,16 +74,20 @@ const react = async (
     entry: ChangelogEntry,
     reaction: ChangelogReaction,
 ): Promise<void> => {
+    if (reactionHttp.processing) {
+        return;
+    }
+
     const previous = reactionOf(entry);
     const next = previous === reaction ? null : reaction;
 
-    reactions.value = { ...reactions.value, [entry.id]: next };
+    reactions.value[entry.id] = next;
     reactionHttp.reaction = next;
 
     try {
         await reactionHttp.put(updateReaction.url(entry.id));
     } catch {
-        reactions.value = { ...reactions.value, [entry.id]: previous };
+        reactions.value[entry.id] = previous;
         toast.error("Couldn't save your answer. Try again.");
     }
 };
@@ -202,45 +211,26 @@ watch(activeEntry, (entry) => {
                     </p>
                     <div class="-me-1 flex items-center gap-1">
                         <Button
+                            v-for="option in REACTION_OPTIONS"
+                            :key="option.value"
                             variant="ghost"
                             size="icon"
-                            aria-label="Like"
-                            :aria-pressed="reactionOf(activeEntry) === 'like'"
+                            :aria-label="option.label"
+                            :aria-pressed="reactionOf(activeEntry) === option.value"
                             class="group/reaction size-auto p-1 hover:bg-transparent"
-                            data-testid="changelog-reaction-like"
-                            @click="react(activeEntry, 'like')"
+                            :data-testid="`changelog-reaction-${option.value}`"
+                            @click="react(activeEntry, option.value)"
                         >
                             <span
                                 class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
                                 :class="{
                                     'opacity-50 grayscale': isDimmed(
                                         activeEntry,
-                                        'like',
+                                        option.value,
                                     ),
                                 }"
                                 aria-hidden="true"
-                                >👍</span
-                            >
-                        </Button>
-                        <Button
-                            variant="ghost"
-                            size="icon"
-                            aria-label="Dislike"
-                            :aria-pressed="reactionOf(activeEntry) === 'dislike'"
-                            class="group/reaction size-auto p-1 hover:bg-transparent"
-                            data-testid="changelog-reaction-dislike"
-                            @click="react(activeEntry, 'dislike')"
-                        >
-                            <span
-                                class="block text-xl leading-none transition duration-200 ease-out will-change-transform motion-safe:group-hover/reaction:scale-125"
-                                :class="{
-                                    'opacity-50 grayscale': isDimmed(
-                                        activeEntry,
-                                        'dislike',
-                                    ),
-                                }"
-                                aria-hidden="true"
-                                >👎</span
+                                >{{ option.emoji }}</span
                             >
                         </Button>
                     </div>

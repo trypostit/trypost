@@ -770,25 +770,26 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   or put them in `public/`.
 - **`php artisan changelog:sync` runs on every deploy** (after `migrate`). It upserts
   `changelog_entries` by slug, deletes rows whose folder is gone, and fails loud without writing
-  anything when one folder is invalid (missing `entry.md` or `cover.png`, or a cover that is not
+  anything when the folder itself is missing (never "no entries, delete everything") or one folder is invalid (missing `entry.md` or `cover.png`, or a cover that is not
   16:9). Never edit the rows by hand, and never rename a synced folder (its views are keyed to
   the row).
 - **The entries and the modal are English only** (owner decision 2026-10-14): the entries, the
-  tag labels (`Tag::label()`), the modal title, its empty state and the "Do you like it?" block
-  are hard-coded English, never lang keys. The exception is the Help menu item, which is part
+  tag labels (`Tag::label()`), the modal title, its empty state, the "Do you like it?" block (its
+  `Like` / `Dislike` labels and its error toast) and the card's "Read more" are hard-coded English,
+  never lang keys. The exception is the Help menu item, which is part
   of the app menu and is translated (`sidebar.support.changelog`, all 16 locales). The back and
   close buttons' `aria-label`s reuse `common.back` / `common.close`.
 - **"Viewed" means the user opened the entry's detail**, never that it was shown in the
   card or the list. `changelog_entry_views` holds one row per user and entry, and
-  `ChangelogEntryViewObserver` queues `TrackChangelogEntryViewed` (`posthog` queue) when the row
+  `ChangelogEntryViewObserver` queues `TrackChangelogEntryEvent` (`posthog` queue) when the row
   is created, so `changelog.entry_viewed` goes to PostHog on the first open only.
 - **"Do you like it?"** sits at the end of an entry's detail with 👍 / 👎
   (`App\Enums\Changelog\Reaction`: `like`, `dislike`), shown as emoji that grow on hover; once
   one is picked, the other turns grayscale. The answer is the `reaction` column on the
   user's view row (owner decision 2026-10-14: no separate reactions table); clicking the chosen
   one again clears it. `ReactToChangelogEntry` (`PUT app.changelog.reaction.update`) records the
-  view if needed and stores the reaction; the observer queues `TrackChangelogEntryReacted` on every
-  change, carrying the reaction picked (null when cleared). Counts are never shown in the app.
+  view if needed and stores the reaction; the observer queues `TrackChangelogEntryEvent` with
+  `changelog.entry_reacted` on every change, carrying the reaction picked (null when cleared). Counts are never shown in the app.
 - **PostHog events go through queued jobs**, like the rest of the app: actions never call
   `PostHogService::capture()`; the observer dispatches `app/Jobs/PostHog` jobs on the `posthog` queue.
 - **The sidebar card announces one entry only** (owner decision 2026-10-14): the newest
@@ -796,9 +797,11 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   while the user has not opened it (`ShowChangelogCard::execute`). Opening it hides
   the card; older unopened entries never take its place. A new user never gets the backlog.
   The card is cached per user for 10 minutes (`ShowChangelogCard::cached()`), so a page change
-  does not query it. The action owns its key (private, like `ListPinterestBoards`); only
-  `RecordChangelogEntryView` clears it, through `ShowChangelogCard::forget()`, when it creates a
-  view. A newly synced entry reaches a card within those 10 minutes.
+  does not query it. The cache holds the entry's raw attributes, never the model:
+  `cache.serializable_classes` is off, so a cached object comes back as `__PHP_Incomplete_Class`.
+  The action owns its keys (private, like `ListPinterestBoards`). `RecordChangelogEntryView`
+  clears one user's card when it creates a view, and a sync that changed anything bumps the cards'
+  version (`ShowChangelogCard::forgetAll()`), so a new, removed or re-dated entry shows at once.
 - **The modal list shows every published entry** (`scopePublished`, dated today or earlier),
   including those from before the user signed up, with a dot on the ones not opened yet. A
   future date schedules an entry for both.

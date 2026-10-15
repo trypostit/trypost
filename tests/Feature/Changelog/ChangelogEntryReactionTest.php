@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Changelog\Reaction;
-use App\Jobs\PostHog\TrackChangelogEntryReacted;
-use App\Jobs\PostHog\TrackChangelogEntryViewed;
+use App\Enums\PostHog\ChangelogEvent;
+use App\Jobs\PostHog\TrackChangelogEntryEvent;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
@@ -25,8 +25,8 @@ beforeEach(function () {
 
 function queuedChangelogReactions(): array
 {
-    return Bus::dispatched(TrackChangelogEntryReacted::class)
-        ->map(fn (TrackChangelogEntryReacted $job): ?string => $job->reaction)
+    return Bus::dispatched(TrackChangelogEntryEvent::class, fn (TrackChangelogEntryEvent $job): bool => $job->event === ChangelogEvent::EntryReacted)
+        ->map(fn (TrackChangelogEntryEvent $job): ?string => $job->reaction?->value)
         ->values()
         ->all();
 }
@@ -52,7 +52,8 @@ test('reacting to an entry the user has not opened records the view too', functi
     expect(ChangelogEntryView::sole())
         ->user_id->toBe($this->user->id)
         ->reaction->toBe(Reaction::Like);
-    Bus::assertDispatched(TrackChangelogEntryViewed::class, fn (TrackChangelogEntryViewed $job): bool => $job->viewId === ChangelogEntryView::sole()->id);
+    Bus::assertDispatched(TrackChangelogEntryEvent::class, fn (TrackChangelogEntryEvent $job): bool => $job->viewId === ChangelogEntryView::sole()->id
+        && $job->event === ChangelogEvent::EntryViewed);
 });
 
 test('an unknown or missing reaction is rejected', function (array $payload) {
@@ -80,3 +81,9 @@ test('an entry the user cannot see is not found', function (Closure $setup) {
     'changelog turned off' => [fn () => config(['trypost.changelog.enabled' => false])],
     'published in the future' => [fn (ChangelogEntry $entry) => $entry->update(['published_on' => today()->addDay()])],
 ]);
+
+test('guests cannot react', function () {
+    $this->putJson(route('app.changelog.reaction.update', $this->entry), ['reaction' => 'like'])->assertUnauthorized();
+
+    expect(ChangelogEntryView::sole()->reaction)->toBeNull();
+});

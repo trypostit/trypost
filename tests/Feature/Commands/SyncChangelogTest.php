@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Changelog\SyncChangelogEntries;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
@@ -17,12 +18,12 @@ function writeSyncChangelogEntry(string $folder, string $markdown): void
 }
 
 beforeEach(function () {
-    $this->directory = storage_path('framework/testing/changelog-'.Str::random(8));
+    $random = Str::random(8);
+    $this->directory = storage_path("framework/testing/changelog-{$random}");
     writeSyncChangelogEntry("{$this->directory}/2026-10-01-first", "---\ntitle: First entry\ndate: 2026-10-01\n---\n\nThe first **entry**.\n");
     writeSyncChangelogEntry("{$this->directory}/2026-10-02-second", "---\ntitle: Second entry\ndate: 2026-10-02\ntags: [new, beta]\n---\n\nThe second entry.\n");
 
     config(['trypost.changelog.path' => $this->directory]);
-    $this->sync = fn () => $this->artisan('changelog:sync');
 });
 
 afterEach(function () {
@@ -30,7 +31,7 @@ afterEach(function () {
 });
 
 test('it stores every entry', function () {
-    ($this->sync)()->assertSuccessful();
+    $this->artisan('changelog:sync')->assertSuccessful();
 
     $first = ChangelogEntry::where('slug', '2026-10-01-first')->firstOrFail();
     $second = ChangelogEntry::where('slug', '2026-10-02-second')->firstOrFail();
@@ -43,34 +44,37 @@ test('it stores every entry', function () {
 });
 
 test('running it again changes nothing', function () {
-    ($this->sync)()->assertSuccessful();
+    $this->artisan('changelog:sync')->assertSuccessful();
     $updatedAt = ChangelogEntry::pluck('updated_at', 'slug');
 
     $this->travel(1)->minute();
-    ($this->sync)()->expectsOutputToContain('0 created, 0 updated, 0 deleted')->assertSuccessful();
+    $this->artisan('changelog:sync')->expectsOutputToContain('0 created, 0 updated, 0 deleted')->assertSuccessful();
 
     expect(ChangelogEntry::pluck('updated_at', 'slug')->map->toIso8601String()->all())
         ->toEqual($updatedAt->map->toIso8601String()->all());
 });
 
-test('a new title is updated', function () {
-    ($this->sync)()->assertSuccessful();
+test('a changed title, tags or body is counted and saved as an update', function () {
+    $this->artisan('changelog:sync')->expectsOutputToContain('2 created, 0 updated, 0 deleted')->assertSuccessful();
 
-    File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: Renamed entry\ndate: 2026-10-01\n---\n\nBody.\n");
+    File::put("{$this->directory}/2026-10-01-first/entry.md", "---\ntitle: Renamed entry\ndate: 2026-10-01\ntags: [fixed]\n---\n\nNew body.\n");
 
-    ($this->sync)()->assertSuccessful();
+    $this->artisan('changelog:sync')->expectsOutputToContain('0 created, 1 updated, 0 deleted')->assertSuccessful();
 
-    expect(ChangelogEntry::where('slug', '2026-10-01-first')->value('title'))->toBe('Renamed entry');
+    expect(ChangelogEntry::where('slug', '2026-10-01-first')->sole())
+        ->title->toBe('Renamed entry')
+        ->body->toBe('New body.')
+        ->tags->all()->toBe([Tag::Fixed]);
 });
 
 test('an entry whose folder is gone is deleted with its views', function () {
-    ($this->sync)()->assertSuccessful();
+    $this->artisan('changelog:sync')->assertSuccessful();
     ChangelogEntryView::factory()->create([
         'changelog_entry_id' => ChangelogEntry::where('slug', '2026-10-01-first')->value('id'),
     ]);
 
     File::deleteDirectory("{$this->directory}/2026-10-01-first");
-    ($this->sync)()->assertSuccessful();
+    $this->artisan('changelog:sync')->assertSuccessful();
 
     expect(ChangelogEntry::pluck('slug')->all())->toBe(['2026-10-02-second'])
         ->and(ChangelogEntryView::count())->toBe(0);
@@ -79,7 +83,7 @@ test('an entry whose folder is gone is deleted with its views', function () {
 test('an invalid entry fails the sync, names it and writes nothing', function (Closure $break) {
     $break("{$this->directory}/2026-10-02-second/entry.md", "{$this->directory}/2026-10-02-second/cover.png");
 
-    ($this->sync)()
+    $this->artisan('changelog:sync')
         ->expectsOutputToContain('2026-10-02-second')
         ->assertFailed();
 
@@ -93,4 +97,22 @@ test('an invalid entry fails the sync, names it and writes nothing', function (C
     'cover not 16:9' => [fn (string $entry, string $cover) => File::put($cover, UploadedFile::fake()->image('cover.png', 1200, 750)->getContent())],
     'missing cover' => [fn (string $entry, string $cover) => File::delete($cover)],
     'missing entry file' => [fn (string $entry) => File::delete($entry)],
+    'missing date' => [fn (string $entry) => File::put($entry, "---\ntitle: Second\n---\n\nBody.\n")],
+    'title too long' => [fn (string $entry) => File::put($entry, Str::replace('LONG', Str::repeat('a', 256), "---\ntitle: LONG\ndate: 2026-10-02\n---\n\nBody.\n"))],
+    'malformed front matter' => [fn (string $entry) => File::put($entry, "---\ntitle: [unclosed\ndate: 2026-10-02\n---\n\nBody.\n")],
 ]);
+
+test('a missing changelog folder fails the sync and keeps every entry', function () {
+    $this->artisan('changelog:sync')->assertSuccessful();
+    File::deleteDirectory($this->directory);
+
+    $this->artisan('changelog:sync')
+        ->expectsOutputToContain('does not exist')
+        ->assertFailed();
+
+    expect(ChangelogEntry::count())->toBe(2);
+});
+
+test('the entries shipped in resources/changelog are valid', function () {
+    expect(fn () => SyncChangelogEntries::execute(resource_path('changelog')))->not->toThrow(InvalidArgumentException::class);
+});

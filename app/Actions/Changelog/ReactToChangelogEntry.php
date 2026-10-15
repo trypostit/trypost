@@ -16,8 +16,6 @@ class ReactToChangelogEntry
      */
     public static function execute(User $user, ChangelogEntry $entry, ?Reaction $reaction): void
     {
-        $view = RecordChangelogEntryView::execute($user, $entry);
-
-        $view->update(['reaction' => $reaction]);
+        RecordChangelogEntryView::execute($user, $entry)->update(['reaction' => $reaction]);
     }
 }

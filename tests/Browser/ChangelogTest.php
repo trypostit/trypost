@@ -228,3 +228,109 @@ test('hovering a list item highlights it, only hovering its cover zooms the cove
     $page->assertSeeIn('@changelog-entry-title', 'Hovered feature')
         ->assertNoJavaScriptErrors();
 });
+
+test('the list loads the next page on scroll, reopens on the list and shows an empty state when there is nothing', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    collect(range(1, 7))->each(fn (int $daysAgo) => ChangelogEntry::factory()->create([
+        'slug' => "2026-09-0{$daysAgo}-paged",
+        'published_on' => today()->subDays($daysAgo),
+    ]));
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-09-01-paged');
+
+    expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(5);
+
+    $page->script("document.querySelector('[data-testid=\"changelog-dialog\"]').scrollTop = 100000");
+    waitForChangelogTestId($page, 'changelog-item-2026-09-07-paged');
+
+    expect($page->script("document.querySelectorAll('[data-testid^=\"changelog-item-cover-\"]').length"))->toBe(7);
+
+    $page->click('@changelog-item-title-2026-09-01-paged');
+    waitForChangelogTestId($page, 'changelog-entry');
+    $page->click('@changelog-close');
+    waitForChangelogTestIdGone($page, 'changelog-dialog');
+
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-2026-09-01-paged');
+
+    $page->assertMissing('@changelog-entry')
+        ->assertNoJavaScriptErrors();
+
+    ChangelogEntry::query()->delete();
+
+    $empty = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($empty, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($empty);
+    $empty->click('@sidebar-support-changelog');
+    waitForChangelogTestId($empty, 'changelog-empty');
+
+    $empty->assertSeeIn('@changelog-empty', 'Nothing new yet')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a reaction that fails to save is undone and explained', function () {
+    config(['trypost.changelog.enabled' => true]);
+
+    $user = createChangelogUser();
+    $entry = ChangelogEntry::factory()->create(['slug' => '2026-10-13-failing', 'published_on' => today()->subYear()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    openChangelogHelpMenu($page);
+    $page->click('@sidebar-support-changelog');
+    waitForChangelogTestId($page, 'changelog-item-title-2026-10-13-failing');
+    $page->click('@changelog-item-title-2026-10-13-failing');
+    waitForChangelogTestId($page, 'changelog-reaction-like');
+    waitForChangelogViews($page, $user, 1);
+
+    $entry->delete();
+    $page->click('@changelog-reaction-like');
+    waitForChangelogCondition($page, "document.body.innerText.includes(\"Couldn't save your answer\")");
+
+    expect($page->script("document.querySelector('[data-testid=\"changelog-reaction-like\"]').getAttribute('aria-pressed')"))->toBe('false');
+    $page->assertSee("Couldn't save your answer. Try again.");
+});
+
+test('nothing of the changelog shows when it is turned off', function () {
+    config(['trypost.changelog.enabled' => false]);
+
+    $user = createChangelogUser(['created_at' => now()->subDays(30)]);
+    ChangelogEntry::factory()->create(['published_on' => today()]);
+
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitForChangelogTestId($page, 'sidebar-workspace-menu');
+    $page->script(<<<'JS'
+        (async () => {
+            const find = async (testId) => {
+                for (let attempt = 0; attempt < 100; attempt++) {
+                    const element = document.querySelector(`[data-testid="${testId}"]`);
+                    if (element) return element;
+                    await new Promise((resolve) => setTimeout(resolve, 50));
+                }
+            };
+            (await find('sidebar-workspace-menu')).click();
+            const trigger = await find('sidebar-support-trigger');
+            trigger.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+            trigger.click();
+            await find('sidebar-support-community-title');
+        })();
+    JS);
+
+    $page->assertPresent('@sidebar-support-community-title')
+        ->assertMissing('@sidebar-support-changelog')
+        ->assertMissing('@changelog-card')
+        ->assertNoJavaScriptErrors();
+});

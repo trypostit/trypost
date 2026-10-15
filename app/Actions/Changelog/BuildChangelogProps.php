@@ -7,7 +7,9 @@ namespace App\Actions\Changelog;
 use App\Http\Resources\App\Changelog\ChangelogEntryResource;
 use App\Models\ChangelogEntry;
 use App\Models\User;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Inertia\Inertia;
+use Inertia\ScrollProp;
 
 /**
  * The shared Inertia props of the "What's New" feature: the sidebar card
@@ -30,8 +32,8 @@ class BuildChangelogProps
                 ShowChangelogCard::cached($user),
                 fn (ChangelogEntry $entry): array => ChangelogEntryResource::make($entry)->resolve(),
             )],
-            'changelogEntries' => Inertia::optional(fn () => Inertia::scroll(
-                fn () => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
+            'changelogEntries' => Inertia::optional(fn (): ScrollProp => Inertia::scroll(
+                fn (): AnonymousResourceCollection => ChangelogEntryResource::collection(ListChangelogEntries::execute($user)),
             )),
         ];
     }

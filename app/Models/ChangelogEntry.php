@@ -52,7 +52,7 @@ class ChangelogEntry extends Model
      */
     public function scopePublished(Builder $query): void
     {
-        $query->whereDate('published_on', '<=', today());
+        $query->where('published_on', '<=', today()->toDateString());
     }
 
     /**
@@ -63,7 +63,7 @@ class ChangelogEntry extends Model
      */
     public function scopeAnnouncedTo(Builder $query, User $user): void
     {
-        $query->published()->whereDate('published_on', '>=', $user->created_at->toDateString());
+        $query->published()->where('published_on', '>=', $user->created_at->toDateString());
     }
 
     /**
@@ -81,11 +81,7 @@ class ChangelogEntry extends Model
      */
     public function scopeWithReactionBy(Builder $query, User $user): void
     {
-        $query->addSelect(['reaction' => ChangelogEntryView::query()
-            ->select('reaction')
-            ->whereColumn('changelog_entry_id', 'changelog_entries.id')
-            ->where('user_id', $user->id)
-            ->limit(1)]);
+        $query->withMax(['views as reaction' => fn (Builder $views) => $views->where('user_id', $user->id)], 'reaction');
     }
 
     /**
@@ -96,26 +92,29 @@ class ChangelogEntry extends Model
         $query->orderByDesc('published_on')->orderByDesc('slug');
     }
 
-    public function isPublished(): bool
+    /**
+     * Whether a user may open the entry: the changelog is on and its date has come.
+     */
+    public function isVisible(): bool
     {
-        return $this->published_on->lte(today());
+        return config('trypost.changelog.enabled') && $this->published_on->lte(today());
     }
 
     /**
-     * The cover's versioned URL from the Vite build, or null (reported) when the
-     * build has no such file, as with entries made by a factory.
+     * The cover's versioned URL from the Vite build, or null when the build has
+     * no such file, as with entries made by a factory.
      */
     public function coverUrl(): ?string
     {
-        return rescue(fn (): string => Vite::asset("resources/changelog/{$this->slug}/cover.png"));
+        return rescue(fn (): string => Vite::asset("resources/changelog/{$this->slug}/cover.png"), report: false);
     }
 
     public function bodyHtml(): string
     {
-        return Str::markdown($this->body, [
+        return once(fn (): string => Str::markdown($this->body, [
             'html_input' => 'strip',
             'allow_unsafe_links' => false,
-        ]);
+        ]));
     }
 
     public function excerpt(): string

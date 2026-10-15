@@ -9,22 +9,16 @@ use App\Enums\Changelog\Reaction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\App\Changelog\UpdateChangelogEntryReactionRequest;
 use App\Models\ChangelogEntry;
-use Illuminate\Http\Response as HttpResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 class ChangelogEntryReactionController extends Controller
 {
-    public function update(UpdateChangelogEntryReactionRequest $request, ChangelogEntry $changelogEntry): HttpResponse
+    public function update(UpdateChangelogEntryReactionRequest $request, ChangelogEntry $changelogEntry): Response
     {
-        $user = $request->user();
-
-        abort_unless(
-            config('trypost.changelog.enabled') && $changelogEntry->isPublished(),
-            Response::HTTP_NOT_FOUND,
-        );
+        abort_unless($changelogEntry->isVisible(), Response::HTTP_NOT_FOUND);
 
         ReactToChangelogEntry::execute(
-            $user,
+            $request->user(),
             $changelogEntry,
             $request->enum('reaction', Reaction::class),
         );

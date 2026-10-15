@@ -36,7 +36,7 @@ import {
     DropdownMenuSubContent,
     DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useChangelogDialog } from '@/composables/changelog/useChangelogDialog';
+import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';

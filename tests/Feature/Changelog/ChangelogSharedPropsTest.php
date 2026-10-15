@@ -2,13 +2,16 @@
 
 declare(strict_types=1);
 
+use App\Actions\Changelog\ShowChangelogCard;
 use App\Enums\Changelog\Reaction;
 use App\Enums\Changelog\Tag;
 use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -71,7 +74,7 @@ test('the card is cached for ten minutes and cleared when the user opens the ent
         ->get(route('app.calendar'))
         ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $first->id));
 
-    expect(collect(DB::getQueryLog())->pluck('query')->filter(fn (string $query): bool => str_contains($query, 'changelog_entries')))->toBeEmpty();
+    expect(collect(DB::getQueryLog())->pluck('query')->filter(fn (string $query): bool => Str::contains($query, 'changelog_entries')))->toBeEmpty();
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.changelog.views.store', $newer))
@@ -103,6 +106,36 @@ test('reacting to the card entry before opening it also hides the card', functio
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
         ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+});
+
+test('the card works with a cache store that serializes its values', function () {
+    config(['cache.stores.array.serialize' => true]);
+    Cache::forgetDriver('array');
+    $entry = ChangelogEntry::factory()->create(['published_on' => today(), 'body' => 'Some <b>bold</b> **news** here.']);
+
+    foreach ([1, 2] as $visit) {
+        $this->actingAs($this->user->fresh())
+            ->get(route('app.calendar'))
+            ->assertOk()
+            ->assertInertia(fn (AssertableInertia $page) => $page
+                ->where('changelog.latest.id', $entry->id)
+                ->where('changelog.latest.published_on', today()->toDateString())
+                ->where('changelog.latest.excerpt', 'Some bold news here.')
+                ->where('changelog.latest.body_html', "<p>Some bold <strong>news</strong> here.</p>\n"));
+    }
+});
+
+test('a sync that changes the entries refreshes every cached card at once', function () {
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest', null));
+
+    $newest = ChangelogEntry::factory()->create(['published_on' => today()]);
+    ShowChangelogCard::forgetAll();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertInertia(fn (AssertableInertia $page) => $page->where('changelog.latest.id', $newest->id));
 });
 
 test('a user who signed up today never gets an older entry on the card', function () {

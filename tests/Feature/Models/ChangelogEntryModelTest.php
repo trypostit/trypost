@@ -75,7 +75,8 @@ test('views go with the user and with the entry', function () {
 });
 
 test('the cover url is the versioned file from the Vite build, or null when the build has no cover', function () {
-    $buildDirectory = 'changelog-test-build-'.Str::lower(Str::random(8));
+    $random = Str::lower(Str::random(8));
+    $buildDirectory = "changelog-test-build-{$random}";
     $built = ChangelogEntry::factory()->create(['slug' => '2026-10-01-built']);
     $missing = ChangelogEntry::factory()->create(['slug' => '2026-10-02-missing']);
 

@@ -21,9 +21,10 @@ class ChangelogEntryFactory extends Factory
     public function definition(): array
     {
         $publishedOn = now()->subDay()->toDateString();
+        $name = Str::slug(fake()->unique()->words(3, true));
 
         return [
-            'slug' => "{$publishedOn}-".Str::slug(fake()->unique()->words(3, true)),
+            'slug' => "{$publishedOn}-{$name}",
             'title' => fake()->sentence(5),
             'tags' => [],
             'body' => fake()->paragraph(),

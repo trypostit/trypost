@@ -27,15 +27,19 @@ class ShowChangelogCard
     }
 
     /**
-     * Cached for 10 minutes so changing pages does not query it; recording a
-     * view clears it through forget().
+     * Cached for 10 minutes so changing pages does not query it. The cache
+     * holds the raw attributes, never the model: the cache store refuses to
+     * unserialize objects (`cache.serializable_classes`).
      */
     public static function cached(User $user): ?ChangelogEntry
     {
-        return data_get(
-            Cache::remember(self::cacheKey($user), now()->addMinutes(10), fn (): array => ['entry' => self::execute($user)]),
-            'entry',
+        $attributes = Cache::remember(
+            self::cacheKey($user),
+            now()->addMinutes(10),
+            fn (): array => self::execute($user)?->getAttributes() ?? [],
         );
+
+        return filled($attributes) ? (new ChangelogEntry)->newFromBuilder($attributes) : null;
     }
 
     public static function forget(User $user): void
@@ -43,8 +47,24 @@ class ShowChangelogCard
         Cache::forget(self::cacheKey($user));
     }
 
+    /**
+     * Drops every user's cached card at once, after a sync changed the entries.
+     */
+    public static function forgetAll(): void
+    {
+        Cache::add(self::versionKey(), 0);
+        Cache::increment(self::versionKey());
+    }
+
     private static function cacheKey(User $user): string
     {
-        return "changelog-card.{$user->id}";
+        $version = Cache::get(self::versionKey(), 0);
+
+        return "changelog-card.{$version}.{$user->id}";
+    }
+
+    private static function versionKey(): string
+    {
+        return 'changelog-card:version';
     }
 }
