@@ -763,7 +763,7 @@ entry, and a "What's New" modal (Help menu) listing every published entry.
   and `cover.png` (16:9, rendered at 2400×1350). Covers use flat colors, a firm ink border and the content inside:
   one app tint (violet by default) with the home hero's dot grid fading in from the bottom-left and top-right corners, white surfaces with a 2.5px ink border and no shadow, a composer-like
   settings panel with the network's badge (no phones or device mockups), one icon per idea, no decoration; the style only, never another
-  product's composition or sample content: feature, integration and announcement scenes in `.claude/release-assets/changelog-covers/`,
+  product's composition or sample content: numbered templates in `.claude/release-assets/changelog-covers/` (1 settings panel, 2 integration, 3 announcement; the shared pattern lives in `cover.css`, an entry only swaps the content),
   rendered by its `render.mjs`), never screenshots or headlines. The folder holds a `.gitkeep` so it exists with no entries.
   There is no admin panel. Write them with the `/changelog` command.
 - **Covers are Vite assets** (owner decision 2026-10-14): `vite.config.ts` lists

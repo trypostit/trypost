@@ -101,16 +101,31 @@ never another product's composition, elements or sample content.
   in the sidebar card. Keep everything inside the 1200×675 canvas, nothing overlapping by
   accident.
 
-**Pick the scene**, then copy its template from `.claude/release-assets/changelog-covers/` to the
-scratchpad and edit the copy (the templates stay as they are):
+**Pick the template.** Every cover is one of the numbered templates in
+`.claude/release-assets/changelog-covers/`. The pattern is shared and never changes per entry:
+`cover.css` draws the tinted background with the corner dots, the 2.5px ink borders, the white
+surfaces, the badge, the switch and the chips. A template fixes the layout; an entry only swaps
+the content inside it. Copy the template to the scratchpad and edit the copy (the templates stay
+as they are), then compare your render with the template's example.
 
-| Scene | Template | Use it for |
-| --- | --- | --- |
-| Feature (default) | `feature.html` | A new or improved option, control or screen: the composer-like panel with the new settings and the network's badge. |
-| Integration | `integration.html` | A new network, app or service: the TryPost mark + the service's app icon. |
-| Announcement | `announcement.html` | Broad news with nothing to draw (a milestone, a round-up, a policy change): three emojis on white surfaces. |
+| # | Template | File | Example | Use it for |
+| --- | --- | --- | --- | --- |
+| 1 | Settings panel (default) | `settings-panel.html` | `examples/settings-panel.png` | A new or improved option, control or screen of a network. |
+| 2 | Integration | `integration.html` | not approved yet | A new network, app or service: the TryPost mark + the service's app icon. |
+| 3 | Announcement | `announcement.html` | not approved yet | Broad news with nothing to draw (a milestone, a round-up, a policy change). |
 
-A fix usually uses the Feature scene with the control that works again. Render the scene:
+A template without an approved example is still being designed: use it only when the owner asks,
+and show them the render.
+
+**Template 1 · Settings panel.**
+- Fixed: the panel's place and width (`left: 190px; top: 252px; width: 820px`), the network's
+  `badge` centered above it, rows of equal height, the background tint unless the previous entry
+  used it.
+- Swap: the badge (brand color + Tabler brand icon), the 2–4 `setting` rows (the idea's icon, the
+  label exactly as on screen, the real control: `handle` chips, a `track`, a `switch`).
+- Keep 3 rows when you can; with 2 or 4, move the panel's `top` so it stays centered.
+
+A fix usually uses Template 1 with the control that works again. Render the copy:
 
 ```bash
 node .claude/release-assets/changelog-covers/render.mjs \
