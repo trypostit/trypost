@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { InfiniteScroll, router, useHttp, usePage } from '@inertiajs/vue3';
-import { IconArrowLeft, IconX } from '@tabler/icons-vue';
+import { IconArrowLeft, IconArrowRight, IconX } from '@tabler/icons-vue';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -293,25 +293,48 @@ watch(activeEntry, (entry) => {
                             v-for="entry in entries"
                             :key="entry.id"
                             type="button"
-                            class="-mx-2 flex flex-col gap-3 rounded-xl p-2 text-start transition-control hover:bg-secondary focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-hidden"
+                            class="group/item -mx-2 flex flex-col gap-3 rounded-xl p-2 text-start focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :data-testid="`changelog-item-${entry.slug}`"
                             @click="showEntry(entry)"
                         >
-                            <img
-                                :src="entry.cover_url"
-                                alt=""
-                                class="aspect-video w-full rounded-lg border border-border object-cover"
-                            />
+                            <span
+                                class="relative block overflow-hidden rounded-lg border border-border bg-muted"
+                            >
+                                <img
+                                    :src="entry.cover_url"
+                                    alt=""
+                                    class="aspect-video w-full object-cover transition-transform duration-500 ease-out motion-safe:group-hover/item:scale-[1.04]"
+                                    draggable="false"
+                                />
+                                <span
+                                    class="absolute end-3 bottom-3 flex h-8 items-center gap-1 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground opacity-0 shadow-md transition duration-200 ease-out group-hover/item:opacity-100 group-focus-visible/item:opacity-100 motion-safe:translate-y-1 motion-safe:group-hover/item:translate-y-0 motion-safe:group-focus-visible/item:translate-y-0"
+                                    aria-hidden="true"
+                                >
+                                    Read more
+                                    <IconArrowRight class="size-3.5" />
+                                </span>
+                            </span>
                             <span class="flex min-w-0 flex-col gap-1">
                                 <span
-                                    v-if="entry.tags.length"
-                                    class="flex flex-wrap gap-1.5"
+                                    class="flex flex-wrap items-center gap-1.5"
                                 >
                                     <ChangelogTagBadge
                                         v-for="tag in entry.tags"
                                         :key="tag.value"
                                         :tag="tag"
                                     />
+                                    <span
+                                        v-if="entry.tags.length"
+                                        class="size-1 rounded-full bg-muted-foreground/50"
+                                        aria-hidden="true"
+                                    />
+                                    <span class="text-xs text-muted-foreground">
+                                        {{
+                                            date.formatDateOnly(
+                                                entry.published_on,
+                                            )
+                                        }}
+                                    </span>
                                 </span>
                                 <span
                                     class="text-base leading-6 font-medium text-foreground"
@@ -327,9 +350,6 @@ watch(activeEntry, (entry) => {
                                     class="line-clamp-2 text-sm text-muted-foreground"
                                 >
                                     {{ entry.excerpt }}
-                                </span>
-                                <span class="text-xs text-muted-foreground">
-                                    {{ date.formatDateOnly(entry.published_on) }}
                                 </span>
                             </span>
                         </button>
