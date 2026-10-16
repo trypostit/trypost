@@ -19,11 +19,11 @@ interface ComposerUnsavedChangesOptions {
 }
 
 /**
- * The parts of a picked Instagram track the person chooses: the track and its
- * volumes. Its name, cover and preview come with the id and are filled in or
- * renewed by the composer on its own, so they never count as a change.
+ * The meta with only what the person chooses of an Instagram track: the track
+ * and its volumes. Its name, cover and preview come with the id and are filled
+ * in or renewed by the composer on its own, so they never count as a change.
  */
-const chosenTrack = (meta: Record<string, any>): Record<string, any> => {
+const withoutTrackDetails = (meta: Record<string, any>): Record<string, any> => {
     const audio = meta.audio as InstagramAudio | null | undefined;
 
     if (!audio) return meta;
@@ -53,7 +53,7 @@ export const useComposerUnsavedChanges = (
 ) => {
     const { composition, scheduleMode } = options;
 
-    /** What saving would send, so any change the person makes counts. */
+    /** What saving would send, a track's details aside, so any change the person makes counts. */
     const snapshot = (): string => {
         const mode = scheduleMode();
         const submission = composition.materialize(
@@ -66,7 +66,7 @@ export const useComposerUnsavedChanges = (
                 ...submission,
                 destinations: submission.destinations.map((destination) => ({
                     ...destination,
-                    meta: chosenTrack(destination.meta ?? {}),
+                    meta: withoutTrackDetails(destination.meta),
                 })),
             },
             scheduleMode: mode,

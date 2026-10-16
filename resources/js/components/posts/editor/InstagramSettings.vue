@@ -215,7 +215,7 @@ const refreshSelectedAudio = async (): Promise<boolean> => {
         );
         const current = selectedAudio.value;
 
-        if (!fresh || fresh.id !== audio.id || current?.id !== audio.id) {
+        if (!fresh || current?.id !== audio.id) {
             return false;
         }
 
@@ -240,9 +240,9 @@ const missesTrackDetails = (audio: InstagramAudio | null): boolean =>
     (!audio?.title || !audio.cover_url || !audio.preview_url);
 
 watch(
-    () => [selectedAudio.value?.id, isReel.value] as const,
-    () => {
-        if (isReel.value && missesTrackDetails(selectedAudio.value)) {
+    isReel,
+    (reel) => {
+        if (reel && missesTrackDetails(selectedAudio.value)) {
             void refreshSelectedAudio();
         }
     },

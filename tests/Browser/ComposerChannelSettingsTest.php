@@ -793,6 +793,16 @@ test('the instagram reel card picks music for an account connected through Faceb
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitForChannelSettingsTestId($page, 'instagram-music-add');
+    $page->script(<<<'JS'
+        (() => {
+            window.__trackLookups = 0;
+            const open = XMLHttpRequest.prototype.open;
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                if (/\/instagram\/accounts\/[^/]+\/audio\/\d+/.test(String(url))) window.__trackLookups++;
+                return open.call(this, method, url, ...rest);
+            };
+        })()
+    JS);
 
     $page->click('@instagram-music-add');
     waitForChannelSettingsTestId($page, 'instagram-music-track-1234567890');
@@ -826,7 +836,7 @@ test('the instagram reel card picks music for an account connected through Faceb
         'cover_url' => null,
         'preview_url' => null,
         'video_volume' => 30,
-    ]);
+    ])->and($page->script('window.__trackLookups'))->toBe(0);
 });
 
 test('the instagram card counts hashtags down to five and warns past the limit', function () {
