@@ -31,30 +31,13 @@ function seedUnsavedChangesReel(): Post
     return $post;
 }
 
-function waitForUnsavedChangesCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 300; i++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForUnsavedChangesTestId(mixed $page, string $testId): void
-{
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0");
-}
-
 test('closing an edited post without changes asks nothing', function () {
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
@@ -65,18 +48,18 @@ test('closing an edited post with unsaved changes asks first, keeps it open on c
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed')
         ->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->assertVisible('@post-composer-dialog')
         ->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
@@ -86,10 +69,10 @@ test('saving an edited post closes it without asking', function () {
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
@@ -101,12 +84,14 @@ test('after saving an edited post the list shows the saved post and one back lea
 
     $page->fill("@composer-caption-{$post->social_account_id}", 'Saved from the composer')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=') && document.querySelector('[data-testid=\"post-card-{$post->id}\"]')?.textContent.includes('Saved from the composer')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
+    waitForTestIdState($page, "post-card-{$post->id}", "element.textContent.includes('Saved from the composer')");
 
     $page->assertPathIs(unsavedChangesListPath())
         ->assertSeeIn("@post-card-{$post->id}", 'Saved from the composer');
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
@@ -120,9 +105,11 @@ test('a query parameter added to the edit entry after it opened still lets one b
 
     $page->fill("@composer-caption-{$post->social_account_id}", 'Saved after a partial reload')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=') && document.querySelector('[data-testid=\"post-card-{$post->id}\"]')?.textContent.includes('Saved after a partial reload')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
+    waitForTestIdState($page, "post-card-{$post->id}", "element.textContent.includes('Saved after a partial reload')");
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
@@ -133,11 +120,12 @@ test('closing an untouched post with X then one back leaves the list for the pag
     $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
 
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->assertPathIs(unsavedChangesListPath())->assertMissing('@unsaved-changes-dialog');
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
@@ -147,7 +135,7 @@ test('a post opened by its edit link saves and closes onto the list without step
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->script(<<<'JS'
         (() => {
             window.__backs = 0;
@@ -158,7 +146,8 @@ test('a post opened by its edit link saves and closes onto the list without step
     JS);
 
     $page->click($leave === 'save' ? '@composer-save-draft' : '@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
 
     $page->assertPathIs(unsavedChangesListPath())
@@ -187,22 +176,23 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
     if ($from === 'calendar') {
-        waitForUnsavedChangesTestId($page, "calendar-post-{$post->id}");
+        waitForTestId($page, "calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");
     }
-    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    waitForTestId($page, "post-edit-{$post->id}");
     $page->click("@post-edit-{$post->id}");
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
 
     $page->click('@instagram-share-to-feed')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
-    waitForUnsavedChangesCondition($page, "location.pathname === '{$listPath}' && !location.search.includes('edit=')");
+    waitForPath($page, $listPath);
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->assertPathIs($listPath)->assertMissing('@unsaved-changes-dialog');
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '{$before}'");
+    waitForPath($page, $before);
 
     $page->assertPathIs($before)->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'share_to_feed'))->toBeFalse();
@@ -232,7 +222,7 @@ test('saving an edited post never moves through history before the saved page la
 
     $page->click('@instagram-share-to-feed')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
 
     expect($page->script('window.__saved'))->toBeTrue()
@@ -268,7 +258,7 @@ test('closing an untouched post of any network asks nothing, even when its setti
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     if ($clickTextFirst) {
-        waitForUnsavedChangesTestId($page, 'composer-editor-column');
+        waitForTestId($page, 'composer-editor-column');
         $page->script(<<<'JS'
             (() => {
                 const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
@@ -279,10 +269,10 @@ test('closing an untouched post of any network asks nothing, even when its setti
             })()
         JS);
     }
-    waitForUnsavedChangesTestId($page, 'channel-settings-rows');
+    waitForTestId($page, 'channel-settings-rows');
     $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGoneOrShown($page, gone: 'post-composer-dialog', shown: 'unsaved-changes-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -303,10 +293,10 @@ test('closing an untouched post with media, a time or a queue slot asks nothing'
     $post->forceFill(['content_type' => $contentType, 'media' => $media, ...$schedule])->save();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'channel-settings-rows');
+    waitForTestId($page, 'channel-settings-rows');
     $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
 })->with([
@@ -325,16 +315,16 @@ test('switching only the schedule of an edited post asks before closing', functi
     $post->forceFill(['status' => PostStatus::Scheduled, 'scheduled_at' => now()->addDay()])->save();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'composer-schedule-trigger');
+    waitForTestId($page, 'composer-schedule-trigger');
     $page->click('@composer-schedule-trigger');
-    waitForUnsavedChangesTestId($page, 'composer-schedule-more-actions');
+    waitForTestId($page, 'composer-schedule-more-actions');
     $page->click('@composer-schedule-more-actions');
-    waitForUnsavedChangesTestId($page, 'composer-schedule-now');
+    waitForTestId($page, 'composer-schedule-now');
     $page->click('@composer-schedule-now');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"composer-submit\"]')?.dataset.scheduleMode === 'now'");
+    waitForTestIdState($page, 'composer-submit', "element.dataset.scheduleMode === 'now'");
 
     $page->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@unsaved-changes-dialog')->assertNoJavaScriptErrors();
 });
@@ -358,15 +348,15 @@ test('picking a discord channel stores its name for the preview', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]:not([disabled])')");
+    waitForCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]:not([disabled])')");
     $page->assertNoJavaScriptErrors()
         ->script("document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]').click()");
-    waitForUnsavedChangesCondition($page, "[...document.querySelectorAll('[role=\"option\"]')].some((option) => option.textContent.includes('general'))");
+    waitForCondition($page, "[...document.querySelectorAll('[role=\"option\"]')].some((option) => option.textContent.includes('general'))");
     $page->script("[...document.querySelectorAll('[role=\"option\"]')].find((option) => option.textContent.includes('general')).click()");
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]')?.textContent.includes('general')");
+    waitForCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]')?.textContent.includes('general')");
 
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     expect($post->fresh()->meta)->toMatchArray(['channel_id' => '111', 'channel_name' => 'general']);
 });
@@ -375,19 +365,19 @@ test('following an app link away from an edited post asks first and leaves only 
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed')
         ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@post-composer-dialog')
         ->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->assertVisible('@post-composer-dialog')
         ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toBe([]);
@@ -404,9 +394,9 @@ function openUnsavedChangesFromList(Post $post, ?string $from = null, string $re
     $page = $from === null
         ? visit($list)->resize(1280, 900)
         : visit($from)->resize(1280, 900)->navigate($list);
-    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    waitForTestId($page, "post-edit-{$post->id}");
     $page->click("@post-edit-{$post->id}");
-    waitForUnsavedChangesTestId($page, $readyTestId);
+    waitForTestId($page, $readyTestId);
 
     return $page;
 }
@@ -416,20 +406,20 @@ test('the browser back button on an edited post asks first, keeps the edit on ca
     $page = openUnsavedChangesFromList($post);
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@post-composer-dialog')
         ->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->assertVisible('@post-composer-dialog')
         ->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'false');
 
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertPathIs(unsavedChangesListPath())
@@ -442,7 +432,7 @@ test('the browser back button on an untouched post closes it without asking', fu
     $page = openUnsavedChangesFromList($post);
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
@@ -457,7 +447,8 @@ test('after saving an edited post the browser back button does not reopen it or 
 
     $page->click('@instagram-share-to-feed')
         ->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->back();
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
@@ -474,9 +465,9 @@ test('after discarding an edited post the browser back button does not reopen it
 
     $page->click('@instagram-share-to-feed')
         ->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->back();
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
@@ -517,10 +508,10 @@ test('closing an untouched tiktok post asks nothing when the creator settings tu
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'channel-settings-rows');
-    waitForUnsavedChangesCondition($page, $settledCondition);
+    waitForTestId($page, 'channel-settings-rows');
+    waitForCondition($page, $settledCondition);
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -550,13 +541,13 @@ test('a music cover renewed after the post opened does not count as an unsaved c
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-music-selected-cover');
+    waitForTestId($page, 'instagram-music-selected-cover');
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
     $page->script("document.querySelector('[data-testid=\"instagram-music-selected-cover\"]').dispatchEvent(new Event('error'))");
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+    waitForTestIdState($page, 'instagram-music-selected-cover', "element.getAttribute('src')?.endsWith('#fresh')");
     $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
         ->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -595,7 +586,7 @@ test('a reel whose track was saved with only its id shows the track name and cov
     $post = seedUnsavedChangesReelWithBareTrack();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+    waitForTestIdState($page, 'instagram-music-selected-cover', "element.getAttribute('src')?.endsWith('#fresh')");
 
     $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
         ->assertSeeIn('@instagram-music-selected', 'Summer Song')
@@ -608,7 +599,7 @@ test('track details that arrive after the first click do not count as an unsaved
     $post = seedUnsavedChangesReelWithBareTrack();
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    waitForTestId($page, "post-edit-{$post->id}");
     $page->script(<<<'JS'
         (() => {
             const open = XMLHttpRequest.prototype.open;
@@ -627,7 +618,7 @@ test('track details that arrive after the first click do not count as an unsaved
         })()
     JS);
     $page->click("@post-edit-{$post->id}");
-    waitForUnsavedChangesTestId($page, 'composer-editor-column');
+    waitForTestId($page, 'composer-editor-column');
     $page->script(<<<'JS'
         (() => {
             const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
@@ -636,11 +627,11 @@ test('track details that arrive after the first click do not count as an unsaved
             target.dispatchEvent(new PointerEvent('pointerup', options));
         })()
     JS);
-    expect($page->script("Boolean(document.querySelector('[data-testid=\"instagram-music-selected-cover\"]'))"))->toBeFalse();
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+    $page->assertMissing('@instagram-music-selected-cover');
+    waitForTestIdState($page, 'instagram-music-selected-cover', "element.getAttribute('src')?.endsWith('#fresh')");
     $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
         ->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGoneOrShown($page, gone: 'post-composer-dialog', shown: 'unsaved-changes-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -653,16 +644,16 @@ test('after leaving an edited post through an app link the browser back button r
 
     $page->click('@instagram-share-to-feed')
         ->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->back();
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'true');
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
@@ -675,23 +666,23 @@ test('after keeping an edited post on back and then leaving through an app link 
     $page = openUnsavedChangesFromList($post);
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    waitForTestId($page, 'unsaved-changes-keep');
     $page->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->back();
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->assertVisible('@post-composer-dialog')
         ->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'true');
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertMissing('@unsaved-changes-dialog')
@@ -705,18 +696,18 @@ test('saving an edited post after keeping it on back leaves the list page restor
     $listPath = unsavedChangesListPath();
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    waitForTestId($page, 'unsaved-changes-keep');
     $page->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesCondition($page, "location.pathname !== '{$listPath}'");
+    waitForCondition($page, "location.pathname !== '{$listPath}'");
 
     $page->back();
-    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    waitForTestId($page, "post-edit-{$post->id}");
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertPathIs($listPath);
@@ -728,10 +719,10 @@ test('pressing escape on an edited post asks first', function () {
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed')
         ->keys('@instagram-share-to-feed', 'Escape');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->assertVisible('@post-composer-dialog')
@@ -743,14 +734,14 @@ test('closing a new post with text never asks, since it is kept as an autosaved 
     $account = $post->socialAccount;
 
     $page = visit(route('app.posts.index'))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'posts-new-post');
+    waitForTestId($page, 'posts-new-post');
     $page->click('@posts-new-post');
-    waitForUnsavedChangesTestId($page, 'composer-add-account');
+    waitForTestId($page, 'composer-add-account');
     $page->click('@composer-add-account')
         ->click("@composer-account-option-{$account->id}")
         ->fill("@composer-caption-{$account->id}", 'A new idea')
         ->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -776,11 +767,11 @@ test('a discord channel missing from the list shows its stored name and keeps on
     $this->actingAs($user);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]:not([disabled])')?.textContent.includes('announcements')");
+    waitForCondition($page, "document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]:not([disabled])')?.textContent.includes('announcements')");
 
     expect($page->script("document.querySelector('[data-testid=\"channel-settings-rows\"] [role=\"combobox\"]').textContent.trim()"))->toBe('#announcements');
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertNoJavaScriptErrors();
     expect($post->fresh()->meta)->toHaveKey('channel_id', '999')
@@ -792,15 +783,15 @@ test('pressing back again while the unsaved changes question is open keeps the e
     $page = openUnsavedChangesFromList($post);
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
     $page->back();
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@post-composer-dialog')
         ->assertAttribute('@instagram-share-to-feed', 'aria-checked', 'false')
@@ -811,13 +802,13 @@ test('discarding after back closes a post opened straight from a link, with no p
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertVisible('@sidebar-logo')
         ->assertMissing('@post-composer-dialog')
@@ -831,7 +822,7 @@ test('the command palette shortcut and the workspace switcher cannot leave an ed
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed');
     $page->script("window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true, bubbles: true, cancelable: true }))");
     $page->assertMissing('@command-palette')
@@ -856,7 +847,7 @@ test('clicking outside an edited post asks first', function () {
     $post = seedUnsavedChangesReel();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->click('@instagram-share-to-feed');
     $page->script(<<<'JS'
         (() => {
@@ -867,7 +858,7 @@ test('clicking outside an edited post asks first', function () {
             outside.dispatchEvent(new MouseEvent('click', options));
         })()
     JS);
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->assertVisible('@post-composer-dialog')
@@ -879,28 +870,28 @@ test('the list behind an edited post keeps what a reload brought in after backs,
     $page = openUnsavedChangesFromList($post);
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $arrived = Post::factory()->forAccount($post->socialAccount, ContentType::InstagramReel)->create([
         'user_id' => $post->user_id,
         'content' => 'Arrived while editing',
         'meta' => [],
     ]);
     $page->script("document.getElementById('app').__vue_app__.config.globalProperties.\$inertia.reload({ only: ['queue', 'posts', 'counts', 'hasData', 'channels'], reset: ['posts'] })");
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"post-edit-{$arrived->id}\"]')");
+    waitForTestId($page, "post-edit-{$arrived->id}");
 
     foreach (range(1, 2) as $attempt) {
         $page->back();
-        waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+        waitForTestId($page, 'unsaved-changes-keep');
         $page->click('@unsaved-changes-keep');
-        waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+        waitForTestIdGone($page, 'unsaved-changes-dialog');
     }
     $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-discard');
+    waitForTestId($page, 'unsaved-changes-discard');
     $page->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->back();
-    waitForUnsavedChangesTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
 
     expect($page->script("Boolean(document.querySelector('[data-testid=\"post-edit-{$arrived->id}\"]'))"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -911,10 +902,10 @@ test('jumping further back in history from an edited post leaves without asking 
     $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $length = $page->script('window.history.length');
     $page->script('window.history.go(-2)');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
     $page->assertMissing('@post-composer-dialog')
@@ -924,7 +915,7 @@ test('jumping further back in history from an edited post leaves without asking 
         ->and($page->script('window.history.state !== null'))->toBeTrue();
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
@@ -936,25 +927,25 @@ test('a save that fails validation keeps the edited post open and still asks bef
 
     $page->type('@instagram-collaborator-input', 'bad-name!')
         ->click('@instagram-collaborator-add');
-    waitForUnsavedChangesTestId($page, 'instagram-collaborators-notice');
+    waitForTestId($page, 'instagram-collaborators-notice');
     $page->click('@instagram-collaborators-notice-dismiss');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"instagram-collaborators-notice\"]')");
+    waitForTestIdGone($page, 'instagram-collaborators-notice');
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, 'document.body.textContent.includes('.json_encode(__('posts.form.instagram.collaborators.invalid')).')');
+    waitForCondition($page, 'document.body.textContent.includes('.json_encode(__('posts.form.instagram.collaborators.invalid')).')');
 
     $page->assertSee(__('posts.form.instagram.collaborators.invalid'))
         ->assertVisible('@post-composer-dialog')
         ->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    waitForTestId($page, 'unsaved-changes-keep');
     $page->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
 
     $page->click('@instagram-collaborator-remove-bad-name!')
         ->type('@instagram-collaborator-input', 'alice')
         ->click('@instagram-collaborator-add');
-    waitForUnsavedChangesTestId($page, 'instagram-collaborator-alice');
+    waitForTestId($page, 'instagram-collaborator-alice');
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
     $page->back();
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
@@ -970,22 +961,23 @@ test('undoing the edit after keeping it on back closes without asking and back l
     $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $page->back();
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-keep');
+    waitForTestId($page, 'unsaved-changes-keep');
     $page->click('@unsaved-changes-keep');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGone($page, 'unsaved-changes-dialog');
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'true'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'true'");
     $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
 
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertPathIs(unsavedChangesListPath());
 
     $page->back();
-    waitForUnsavedChangesCondition($page, "location.pathname === '".parse_url(route('app.settings.preferences'), PHP_URL_PATH)."'");
+    waitForPath($page, parse_url(route('app.settings.preferences'), PHP_URL_PATH));
 
     $page->assertPathIs((string) parse_url(route('app.settings.preferences'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
@@ -997,10 +989,11 @@ test('saving an edited post that was published meanwhile closes it and back does
     $page = openUnsavedChangesFromList($post, route('app.settings.preferences'));
 
     $page->click('@instagram-share-to-feed');
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-share-to-feed\"]')?.getAttribute('aria-checked') === 'false'");
+    waitForTestIdState($page, 'instagram-share-to-feed', "element.getAttribute('aria-checked') === 'false'");
     $post->forceFill(['status' => PostStatus::Published, 'published_at' => now()])->save();
     $page->click('@composer-save-draft');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') && !location.search.includes('edit=')");
+    waitForTestIdGone($page, 'post-composer-dialog');
+    waitForCondition($page, "!location.search.includes('edit=')");
     $page->back();
     $page->script('new Promise((resolve) => setTimeout(resolve, 800))');
 
@@ -1042,7 +1035,7 @@ test('a tiktok post clicked before its creator settings load asks nothing on clo
     $this->actingAs($user);
 
     $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1280, 900);
-    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    waitForTestId($page, "post-edit-{$post->id}");
     $page->script(<<<'JS'
         (() => {
             const open = XMLHttpRequest.prototype.open;
@@ -1061,7 +1054,7 @@ test('a tiktok post clicked before its creator settings load asks nothing on clo
         })()
     JS);
     $page->click("@post-edit-{$post->id}");
-    waitForUnsavedChangesTestId($page, 'composer-editor-column');
+    waitForTestId($page, 'composer-editor-column');
     $page->script(<<<'JS'
         (() => {
             const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
@@ -1071,9 +1064,9 @@ test('a tiktok post clicked before its creator settings load asks nothing on clo
         })()
     JS);
     expect($page->script("document.querySelector('[data-testid=\"tiktok-allow-comments\"]')?.disabled === true"))->toBeFalse();
-    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"tiktok-allow-comments\"]')?.disabled === true");
+    waitForTestIdState($page, 'tiktok-allow-comments', 'element.disabled === true');
     $page->click('@composer-close');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
+    waitForTestIdGoneOrShown($page, gone: 'post-composer-dialog', shown: 'unsaved-changes-dialog');
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')
@@ -1121,13 +1114,13 @@ test('closing an edited post while a file is still uploading asks first', functi
             input.dispatchEvent(new Event('change', { bubbles: true }));
         })()
     JS);
-    waitForUnsavedChangesTestId($page, "composer-{$account->id}-upload-item");
+    waitForTestId($page, "composer-{$account->id}-upload-item");
     $page->click('@composer-close');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->click('@unsaved-changes-discard');
-    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
@@ -1150,9 +1143,9 @@ test('manage posting times in the schedule menu of an edited post asks first ins
     $page->click("@composer-caption-{$account->id}")
         ->type("@composer-caption-{$account->id}", ' later')
         ->click('@composer-schedule-trigger');
-    waitForUnsavedChangesTestId($page, 'composer-queue-manage-slots');
+    waitForTestId($page, 'composer-queue-manage-slots');
     $page->click('@composer-queue-manage-slots');
-    waitForUnsavedChangesTestId($page, 'unsaved-changes-dialog');
+    waitForTestId($page, 'unsaved-changes-dialog');
 
     $page->assertVisible('@unsaved-changes-dialog')
         ->assertVisible('@post-composer-dialog')

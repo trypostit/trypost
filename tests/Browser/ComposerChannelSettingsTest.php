@@ -47,26 +47,6 @@ function seedChannelSettingsPost(Platform $platform, ContentType $contentType, a
     return $post;
 }
 
-function waitForChannelSettingsCondition(mixed $page, string $condition): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 300; i++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function waitForChannelSettingsTestId(mixed $page, string $testId): void
-{
-    waitForChannelSettingsCondition(
-        $page,
-        "document.querySelector('[data-testid=\"{$testId}\"]')?.getBoundingClientRect().height > 0",
-    );
-}
-
 function channelSettingsEventDay(int $daysAfterStart): string
 {
     return now()->addYear()->startOfDay()->addDays($daysAfterStart)->toDateString();
@@ -74,7 +54,7 @@ function channelSettingsEventDay(int $daysAfterStart): string
 
 function waitForChannelSettingsClosedMenu(mixed $page): void
 {
-    waitForChannelSettingsCondition($page, "!document.querySelector('[role=\"listbox\"]')");
+    waitForCondition($page, "!document.querySelector('[role=\"listbox\"]')");
 }
 
 function fakeChannelSettingsApis(): void
@@ -106,7 +86,7 @@ test('every network with settings renders them as label and control rows under t
     $post = seedChannelSettingsPost($platform, $contentType, $media);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'channel-settings-rows');
+    waitForTestId($page, 'channel-settings-rows');
 
     $layout = $page->script(<<<'JS'
         (() => {
@@ -164,7 +144,7 @@ test('the instagram channel card picks its content type from a radio row above t
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-type-{$id}-instagram_feed");
+    waitForTestId($page, "composer-type-{$id}-instagram_feed");
 
     $page->assertAttribute("@composer-type-{$id}-instagram_feed", 'aria-checked', 'true')
         ->assertAttribute("@composer-type-{$id}-instagram_reel", 'aria-checked', 'false')
@@ -180,7 +160,7 @@ test('the instagram channel card picks its content type from a radio row above t
     JS))->toBeTrue();
 
     $page->click("@composer-type-{$id}-instagram_reel");
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"composer-type-{$id}-instagram_reel\"]')?.getAttribute('aria-checked') === 'true'");
+    waitForTestIdState($page, "composer-type-{$id}-instagram_reel", "element.getAttribute('aria-checked') === 'true'");
     $page->assertAttribute("@composer-type-{$id}-instagram_reel", 'aria-checked', 'true')
         ->assertNoJavaScriptErrors();
 
@@ -196,7 +176,7 @@ test('a pinterest pin takes its type from the media', function () {
     $post->update(['media' => $images->map(fn (Media $media): array => MediaItem::fromMedia($media)->toArray())->all()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'pinterest-board-trigger');
+    waitForTestId($page, 'pinterest-board-trigger');
 
     $page->assertMissing("@composer-type-{$id}")
         ->assertNoJavaScriptErrors()
@@ -211,27 +191,27 @@ test('the pinterest board picker searches, refreshes and creates boards', functi
     $post = seedChannelSettingsPost(Platform::Pinterest, ContentType::PinterestPin);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'pinterest-board-trigger');
+    waitForTestId($page, 'pinterest-board-trigger');
 
     $page->click('@pinterest-board-trigger');
-    waitForChannelSettingsTestId($page, 'pinterest-board-option-board_1');
+    waitForTestId($page, 'pinterest-board-option-board_1');
     $page->assertSeeIn('@pinterest-board-picker', '@trypostit')
         ->assertVisible('@pinterest-board-option-board_2');
     expect($page->script("!!document.querySelector('[data-testid=\"pinterest-board-option-board_1\"] img')"))->toBeTrue();
 
     $page->fill('@pinterest-board-search', 'DÍS');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"pinterest-board-option-board_2\"]')");
+    waitForTestIdGone($page, 'pinterest-board-option-board_2');
     $page->assertMissing('@pinterest-board-option-board_2')
         ->assertVisible('@pinterest-board-option-board_1')
         ->fill('@pinterest-board-search', '');
 
     $page->click('@pinterest-boards-refresh');
-    waitForChannelSettingsTestId($page, 'pinterest-board-option-board_3');
+    waitForTestId($page, 'pinterest-board-option-board_3');
     $page->assertSeeIn('@pinterest-board-option-board_3', 'Universal');
 
     $page->fill('@pinterest-board-new-name', 'Recipes')
         ->click('@pinterest-board-create');
-    waitForChannelSettingsTestId($page, 'pinterest-board-selected');
+    waitForTestId($page, 'pinterest-board-selected');
     $page->assertSeeIn('@pinterest-board-selected', 'Recipes')
         ->assertMissing('@pinterest-board-picker')
         ->assertNoJavaScriptErrors();
@@ -241,15 +221,15 @@ test('the pinterest board picker searches, refreshes and creates boards', functi
         && $request->data() === ['name' => 'Recipes']);
 
     $page->click('@pinterest-board-trigger');
-    waitForChannelSettingsTestId($page, 'pinterest-board-new-name');
+    waitForTestId($page, 'pinterest-board-new-name');
     expect($page->script("document.querySelector('[data-testid=\"pinterest-board-new-name\"]').value"))->toBe('');
 
     $page->click('@pinterest-boards-refresh');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"pinterest-board-option-board_new\"]')");
+    waitForTestIdGone($page, 'pinterest-board-option-board_new');
     $page->assertMissing('@pinterest-board-option-board_new')
         ->assertVisible('@pinterest-board-option-board_3');
     $page->click('@pinterest-board-option-board_3');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"pinterest-board-picker\"]')");
+    waitForTestIdGone($page, 'pinterest-board-picker');
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
     expect(data_get($post->fresh()->meta, 'board_id'))->toBe('board_3');
@@ -260,7 +240,7 @@ test('the google business card picks its type in the header and lists the fields
     $post = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'google-business-topic-STANDARD');
+    waitForTestId($page, 'google-business-topic-STANDARD');
     $fields = <<<'JS'
         [...document.querySelectorAll('[data-testid="composer-customization"] [data-testid^="google-business-"]')]
             .map((node) => node.dataset.testid)
@@ -274,29 +254,29 @@ test('the google business card picks its type in the header and lists the fields
         ->and($page->script($fields))->toBe(['google-business-cta']);
 
     $page->click('@google-business-topic-OFFER');
-    waitForChannelSettingsTestId($page, 'google-business-add-details');
+    waitForTestId($page, 'google-business-add-details');
     expect($page->script($fields))->toBe(['google-business-title', 'google-business-start', 'google-business-end', 'google-business-add-details'])
         ->and($page->script("document.querySelector('[data-testid=\"google-business-add-details\"]').getAttribute('aria-checked')"))->toBe('false');
 
     $page->click('@google-business-topic-STANDARD');
-    waitForChannelSettingsTestId($page, 'google-business-cta');
+    waitForTestId($page, 'google-business-cta');
     $page->click('@google-business-cta');
-    waitForChannelSettingsTestId($page, 'google-business-cta-option-BOOK');
+    waitForTestId($page, 'google-business-cta-option-BOOK');
     $page->click('@google-business-cta-option-BOOK');
-    waitForChannelSettingsTestId($page, 'google-business-cta-url');
+    waitForTestId($page, 'google-business-cta-url');
     $page->fill('@google-business-cta-url', 'https://trypost.it/book')
         ->click('@google-business-topic-OFFER');
-    waitForChannelSettingsTestId($page, 'google-business-redeem');
+    waitForTestId($page, 'google-business-redeem');
 
     expect($page->script($fields))->toBe(['google-business-title', 'google-business-start', 'google-business-end',
         'google-business-add-details', 'google-business-coupon', 'google-business-redeem', 'google-business-terms']);
     $page->assertValue('@google-business-redeem', 'https://trypost.it/book')
         ->click('@google-business-add-details');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"google-business-coupon\"]')");
+    waitForTestIdGone($page, 'google-business-coupon');
     $page->assertMissing('@google-business-redeem');
 
     $page->click('@google-business-topic-EVENT');
-    waitForChannelSettingsTestId($page, 'google-business-add-time');
+    waitForTestId($page, 'google-business-add-time');
     expect($page->script($fields))->toBe(['google-business-title', 'google-business-add-time', 'google-business-start',
         'google-business-end', 'google-business-cta']);
 
@@ -320,14 +300,14 @@ test('the google business panel shows a server validation error under its field'
     $post = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'google-business-cta');
+    waitForTestId($page, 'google-business-cta');
     $page->click('@google-business-cta');
-    waitForChannelSettingsTestId($page, 'google-business-cta-option-BOOK');
+    waitForTestId($page, 'google-business-cta-option-BOOK');
     $page->click('@google-business-cta-option-BOOK');
-    waitForChannelSettingsTestId($page, 'google-business-cta-url');
+    waitForTestId($page, 'google-business-cta-url');
     $page->fill('@google-business-cta-url', 'not a link')
         ->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"google-business-cta-url\"]')?.getAttribute('aria-invalid') === 'true'");
+    waitForTestIdState($page, 'google-business-cta-url', "element.getAttribute('aria-invalid') === 'true'");
 
     expect($page->script("document.querySelector('[data-testid=\"google-business-cta-url\"]').getAttribute('aria-invalid')"))->toBe('true')
         ->and($page->script("document.querySelector('[data-testid=\"google-business-cta-url\"]').closest('[data-testid=\"channel-settings-row\"]').textContent"))
@@ -343,11 +323,11 @@ test('the google business event shows start and end time fields beside the dates
     $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => channelSettingsEventDay(0), 'end_date' => channelSettingsEventDay(2)]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'google-business-add-time');
+    waitForTestId($page, 'google-business-add-time');
     $page->assertMissing('@google-business-start-time')
         ->assertMissing('@google-business-end-time')
         ->click('@google-business-add-time');
-    waitForChannelSettingsTestId($page, 'google-business-start-time');
+    waitForTestId($page, 'google-business-start-time');
 
     $layout = $page->script(<<<'JS'
         (() => {
@@ -383,7 +363,7 @@ test('the youtube card saves its fields in the reference order with the AI label
     $post = seedChannelSettingsPost(Platform::YouTube, ContentType::YouTubeShort);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'youtube-title');
+    waitForTestId($page, 'youtube-title');
 
     $order = ['youtube-title', 'youtube-category', 'youtube-privacy', 'youtube-license',
         'youtube-notify-subscribers', 'youtube-embeddable', 'youtube-made-for-kids', 'youtube-ai-generated'];
@@ -404,15 +384,15 @@ test('the youtube card saves its fields in the reference order with the AI label
         ->assertValue('@youtube-title', 'Channel settings')
         ->fill('@youtube-title', 'Explicit title')
         ->click('@youtube-category');
-    waitForChannelSettingsTestId($page, 'youtube-category-27');
+    waitForTestId($page, 'youtube-category-27');
     $page->click('@youtube-category-27');
     waitForChannelSettingsClosedMenu($page);
     $page->click('@youtube-privacy');
-    waitForChannelSettingsTestId($page, 'youtube-privacy-unlisted');
+    waitForTestId($page, 'youtube-privacy-unlisted');
     $page->click('@youtube-privacy-unlisted');
     waitForChannelSettingsClosedMenu($page);
     $page->click('@youtube-license');
-    waitForChannelSettingsTestId($page, 'youtube-license-creativeCommon');
+    waitForTestId($page, 'youtube-license-creativeCommon');
     $page->click('@youtube-license-creativeCommon');
     waitForChannelSettingsClosedMenu($page);
     $page->click('@youtube-notify-subscribers')
@@ -439,7 +419,7 @@ test('the tiktok AI label is the last row and saves is_aigc', function () {
     $post = seedChannelSettingsPost(Platform::TikTok, ContentType::TikTokVideo);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'tiktok-ai-generated');
+    waitForTestId($page, 'tiktok-ai-generated');
 
     expect($page->script(<<<'JS'
         (() => {
@@ -467,16 +447,16 @@ test('google business seeds event dates in the user time zone and an offer drops
     expect($today->format('Y-m-d'))->not->toBe(now('UTC')->format('Y-m-d'));
 
     $page = visit(route('app.posts.edit', $post))->withTimezone('UTC')->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'google-business-topic-EVENT');
+    waitForTestId($page, 'google-business-topic-EVENT');
     $page->click('@google-business-topic-EVENT');
-    waitForChannelSettingsTestId($page, 'google-business-add-time');
+    waitForTestId($page, 'google-business-add-time');
     $page->fill('@google-business-title', 'Launch night')
         ->click('@google-business-add-time');
-    waitForChannelSettingsTestId($page, 'google-business-start-time');
+    waitForTestId($page, 'google-business-start-time');
     $page->fill('@google-business-start-time', '18:30')
         ->fill('@google-business-end-time', '21:00')
         ->click('@google-business-topic-OFFER');
-    waitForChannelSettingsTestId($page, 'google-business-add-details');
+    waitForTestId($page, 'google-business-add-details');
 
     $page->assertMissing('@google-business-start-time')
         ->assertNoJavaScriptErrors()
@@ -500,7 +480,7 @@ test('the instagram card shows share to feed on reels, the AI label last and on 
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
 
     expect($page->script("document.querySelector('[data-testid=\"instagram-share-to-feed\"]').getAttribute('aria-checked')"))->toBe('true')
         ->and($page->script(<<<'JS'
@@ -523,13 +503,13 @@ test('the instagram card shows share to feed on reels, the AI label last and on 
     $page->click('@instagram-share-to-feed')
         ->click('@instagram-ai-generated')
         ->click("@composer-type-{$id}-instagram_story");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-share-to-feed\"]')");
-    waitForChannelSettingsTestId($page, 'instagram-ai-generated');
+    waitForTestIdGone($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-ai-generated');
     $page->click("@composer-type-{$id}-instagram_feed");
-    waitForChannelSettingsTestId($page, 'instagram-ai-generated');
+    waitForTestId($page, 'instagram-ai-generated');
     $page->assertMissing('@instagram-share-to-feed')
         ->click("@composer-type-{$id}-instagram_reel");
-    waitForChannelSettingsTestId($page, 'instagram-share-to-feed');
+    waitForTestId($page, 'instagram-share-to-feed');
     $page->assertNoJavaScriptErrors();
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
@@ -545,39 +525,39 @@ test('the instagram reel card adds collaborators and a checked trial reel, and a
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-link-facebook');
+    waitForTestId($page, 'instagram-music-link-facebook');
     $page->assertPresent('@instagram-music-save-and-link')
         ->click('@instagram-music-maybe-later');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-music-link-facebook\"]')");
+    waitForTestIdGone($page, 'instagram-music-link-facebook');
 
     $page->type('@instagram-collaborator-input', '@alice')
         ->keys('@instagram-collaborator-input', 'Enter');
-    waitForChannelSettingsTestId($page, 'instagram-collaborators-notice');
+    waitForTestId($page, 'instagram-collaborators-notice');
     $page->assertPresent('@instagram-collaborator-alice')
         ->assertPresent('@instagram-trial-reel-unavailable')
         ->click('@instagram-collaborators-notice-dismiss');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-collaborators-notice\"]')");
+    waitForTestIdGone($page, 'instagram-collaborators-notice');
 
     $page->type('@instagram-collaborator-input', 'bob')
         ->click('@instagram-collaborator-add');
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-bob');
+    waitForTestId($page, 'instagram-collaborator-bob');
 
     $page->click('@instagram-collaborator-remove-alice')
         ->click('@instagram-collaborator-remove-bob');
-    waitForChannelSettingsTestId($page, 'instagram-trial-reel-MANUAL');
+    waitForTestId($page, 'instagram-trial-reel-MANUAL');
     $page->click('@instagram-trial-reel-MANUAL');
-    waitForChannelSettingsTestId($page, 'instagram-trial-reel-check');
+    waitForTestId($page, 'instagram-trial-reel-check');
     $page->assertVisible('@instagram-trial-reel-illustration')
         ->click('@instagram-trial-reel-check-no');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-trial-reel-check\"]')");
+    waitForTestIdGone($page, 'instagram-trial-reel-check');
     $page->assertAttribute('@instagram-trial-reel-off', 'aria-checked', 'true')
         ->click('@instagram-trial-reel-MANUAL');
-    waitForChannelSettingsTestId($page, 'instagram-trial-reel-check');
+    waitForTestId($page, 'instagram-trial-reel-check');
     $page->click('@instagram-trial-reel-check-yes');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-trial-reel-MANUAL\"]')?.getAttribute('aria-checked') === 'true'");
+    waitForTestIdState($page, 'instagram-trial-reel-MANUAL', "element.getAttribute('aria-checked') === 'true'");
     $page->assertNoJavaScriptErrors();
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
@@ -593,12 +573,12 @@ test('save and link keeps a scheduled reel scheduled and opens the Facebook requ
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-facebook-requirements');
+    waitForTestId($page, 'instagram-facebook-requirements');
 
     $page->assertMissing('@post-composer-dialog')
         ->assertPresent('@instagram-facebook-requirements-connect')
@@ -612,7 +592,7 @@ test('save and link keeps a scheduled reel scheduled and opens the Facebook requ
         });
     JS);
     $page->click('@instagram-facebook-requirements-connect');
-    waitForChannelSettingsCondition($page, 'window.__connectUrl !== undefined');
+    waitForCondition($page, 'window.__connectUrl !== undefined');
 
     expect($page->script('window.__connectUrl'))->toContain("reconnect={$post->social_account_id}");
 });
@@ -624,18 +604,18 @@ test('save and link never publishes a scheduled reel switched to share now', fun
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'composer-schedule-trigger');
+    waitForTestId($page, 'composer-schedule-trigger');
     $page->click('@composer-schedule-trigger');
-    waitForChannelSettingsTestId($page, 'composer-schedule-more-actions');
+    waitForTestId($page, 'composer-schedule-more-actions');
     $page->click('@composer-schedule-more-actions');
-    waitForChannelSettingsTestId($page, 'composer-schedule-now');
+    waitForTestId($page, 'composer-schedule-now');
     $page->click('@composer-schedule-now');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"composer-submit\"]')?.dataset.scheduleMode === 'now'");
+    waitForTestIdState($page, 'composer-submit', "element.dataset.scheduleMode === 'now'");
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-facebook-requirements');
+    waitForTestId($page, 'instagram-facebook-requirements');
 
     $page->assertNoJavaScriptErrors();
     expect($post->fresh()->status)->toBe(Status::Draft);
@@ -647,12 +627,12 @@ test('save and link explains why a scheduled reel that cannot be saved stays ope
     $post->update(['status' => Status::Scheduled, 'scheduled_at' => now()->addDay()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link-blocked');
+    waitForTestId($page, 'instagram-music-save-and-link-blocked');
 
     $page->assertSee(__('posts.form.instagram.music.save_and_link_blocked'))
         ->assertVisible('@post-composer-dialog')
@@ -669,11 +649,11 @@ test('save and link keeps a pending reel pending for a member who needs approval
     $post->update(['status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-facebook-requirements');
+    waitForTestId($page, 'instagram-facebook-requirements');
 
     $page->assertNoJavaScriptErrors();
     expect($post->fresh()->status)->toBe(Status::PendingApproval);
@@ -686,11 +666,11 @@ test('save and link asks an approver to decide on a pending reel first', functio
     $post->update(['status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link-pending');
+    waitForTestId($page, 'instagram-music-save-and-link-pending');
 
     $page->assertSee(__('posts.form.instagram.music.save_and_link_pending'))
         ->assertVisible('@post-composer-dialog')
@@ -703,12 +683,12 @@ test('save and link saves a draft reel as a draft before linking Facebook', func
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-save-and-link');
+    waitForTestId($page, 'instagram-music-save-and-link');
     $page->click('@instagram-music-save-and-link');
-    waitForChannelSettingsTestId($page, 'instagram-facebook-requirements');
+    waitForTestId($page, 'instagram-facebook-requirements');
 
     $page->assertMissing('@post-composer-dialog')->assertNoJavaScriptErrors();
     expect($post->fresh()->status)->toBe(Status::Draft);
@@ -719,18 +699,19 @@ test('an invalid collaborator in any position shows its error', function () {
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-input');
+    waitForTestId($page, 'instagram-collaborator-input');
 
     $page->type('@instagram-collaborator-input', 'good_user')
         ->keys('@instagram-collaborator-input', 'Enter');
-    waitForChannelSettingsTestId($page, 'instagram-collaborators-notice');
+    waitForTestId($page, 'instagram-collaborators-notice');
     $page->click('@instagram-collaborators-notice-dismiss')
         ->type('@instagram-collaborator-input', 'bad-name!')
         ->click('@instagram-collaborator-add');
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-bad-name!');
+    waitForTestId($page, 'instagram-collaborator-bad-name!');
 
     $page->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-collaborators\"]')?.closest('[data-testid=\"channel-settings-row\"]')?.textContent.includes(".json_encode(__('posts.form.instagram.collaborators.invalid')).')');
+    $invalid = json_encode(__('posts.form.instagram.collaborators.invalid'));
+    waitForTestIdState($page, 'instagram-collaborators', "element.closest('[data-testid=\"channel-settings-row\"]')?.textContent.includes({$invalid})");
 
     $page->assertSee(__('posts.form.instagram.collaborators.invalid'))->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'collaborators'))->toBeNull();
@@ -754,8 +735,8 @@ test('a picked track whose cover link expired gets a fresh cover from instagram'
     ]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-selected');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.startsWith('data:image/gif')");
+    waitForTestId($page, 'instagram-music-selected');
+    waitForTestIdState($page, 'instagram-music-selected-cover', "element.getAttribute('src')?.startsWith('data:image/gif')");
 
     expect($page->script("document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')"))->toBe($freshCover);
     $page->assertNoJavaScriptErrors();
@@ -773,8 +754,8 @@ test('a picked track whose cover cannot be refreshed shows the music icon instea
     ]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-selected');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')");
+    waitForTestId($page, 'instagram-music-selected');
+    waitForTestIdGone($page, 'instagram-music-selected-cover');
 
     $page->assertMissing('@instagram-music-selected-cover')
         ->assertSeeIn('@instagram-music-selected', 'Summer Song');
@@ -792,7 +773,7 @@ test('the instagram reel card picks music for an account connected through Faceb
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
     $page->script(<<<'JS'
         (() => {
             window.__trackLookups = 0;
@@ -805,16 +786,16 @@ test('the instagram reel card picks music for an account connected through Faceb
     JS);
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-track-1234567890');
+    waitForTestId($page, 'instagram-music-track-1234567890');
     $page->click('@instagram-music-track-1234567890');
-    waitForChannelSettingsTestId($page, 'instagram-music-selected');
+    waitForTestId($page, 'instagram-music-selected');
     $page->assertSeeIn('@instagram-music-selected', 'Summer Song')
         ->assertSeeIn('@instagram-preview-audio', 'Summer Song')
         ->assertPresent('@instagram-music-part-hint')
         ->assertNoJavaScriptErrors();
 
     $page->click('@instagram-music-volume');
-    waitForChannelSettingsTestId($page, 'instagram-music-video_volume');
+    waitForTestId($page, 'instagram-music-video_volume');
     $page->script(<<<'JS'
         (() => {
             const slider = document.querySelector('[data-testid="instagram-music-video_volume"]');
@@ -822,10 +803,10 @@ test('the instagram reel card picks music for an account connected through Faceb
             slider.dispatchEvent(new Event('input', { bubbles: true }));
         })()
     JS);
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-volume-panel\"]')?.textContent.includes('30%')");
+    waitForTestIdState($page, 'instagram-music-volume-panel', "element.textContent.includes('30%')");
     $page->assertSeeIn('@instagram-music-volume-panel', '30%')
         ->keys('@instagram-music-video_volume', 'Escape');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-music-volume-panel\"]')");
+    waitForTestIdGone($page, 'instagram-music-volume-panel');
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
 
@@ -845,7 +826,7 @@ test('the instagram card counts hashtags down to five and warns past the limit',
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-hashtags-remaining-{$id}");
+    waitForTestId($page, "composer-hashtags-remaining-{$id}");
 
     expect($page->script(<<<JS
         (() => {
@@ -862,12 +843,12 @@ test('the instagram card counts hashtags down to five and warns past the limit',
         ->assertSeeIn("@composer-hashtags-remaining-{$id}", '2')
         ->assertMissing("@composer-hashtag-warning-{$id}")
         ->fill("@composer-caption-{$id}", 'Launch #a #b #c #d #e #f');
-    waitForChannelSettingsTestId($page, "composer-hashtag-warning-{$id}");
+    waitForTestId($page, "composer-hashtag-warning-{$id}");
 
     $page->assertMissing("@composer-hashtags-remaining-{$id}")
         ->assertSeeIn("@composer-hashtag-warning-{$id}", 'Instagram only allows 5 hashtags per post.')
         ->fill("@composer-caption-{$id}", 'Launch #a #b #c #d #e');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"composer-hashtag-warning-{$id}\"]')");
+    waitForTestIdGone($page, "composer-hashtag-warning-{$id}");
 
     $page->assertSeeIn("@composer-hashtags-remaining-{$id}", '0')
         ->assertNoJavaScriptErrors();
@@ -880,7 +861,7 @@ test('the mastodon content warning counts against the post', function () {
     $limit = Platform::Mastodon->maxContentLength();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'mastodon-content-warning');
+    waitForTestId($page, 'mastodon-content-warning');
 
     $page->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - mb_strlen('Channel settings')))
         ->fill('@mastodon-content-warning', 'Spoilers')
@@ -899,19 +880,19 @@ test('the threads card offers a topic and a ghost post drops the topic and the m
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'threads-topic-tag');
+    waitForTestId($page, 'threads-topic-tag');
 
     $page->fill('@threads-topic-tag', '#laravel')
         ->assertPresent("@composer-{$id}-dropzone")
         ->click("@composer-type-{$id}-threads_ghost_post");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"threads-topic-tag\"]')");
+    waitForTestIdGone($page, 'threads-topic-tag');
     $page->assertMissing("@composer-{$id}-dropzone")
         ->assertMissing("@composer-{$id}-media-source-menu")
         ->assertVisible("@composer-{$id}-media-source-disabled")
         ->hover("@composer-{$id}-media-source-disabled");
-    waitForChannelSettingsCondition($page, 'document.body.innerText.includes('.json_encode(__('posts.composer.media_not_supported')).')');
+    waitForCondition($page, 'document.body.innerText.includes('.json_encode(__('posts.composer.media_not_supported')).')');
     $page->click("@composer-type-{$id}-threads_post");
-    waitForChannelSettingsTestId($page, 'threads-topic-tag');
+    waitForTestId($page, 'threads-topic-tag');
     $page->assertVisible("@composer-{$id}-media-source-menu")
         ->assertMissing("@composer-{$id}-media-source-disabled")
         ->assertNoJavaScriptErrors();
@@ -933,12 +914,12 @@ test('a threads card with a link card can switch to a ghost post, which keeps th
     $post->update(['content' => "Read {$url}"]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-link-card-{$id}");
+    waitForTestId($page, "composer-link-card-{$id}");
 
     expect($page->script("document.querySelector('[data-testid=\"{$ghost}\"]').disabled"))->toBeFalse();
 
     $page->click("@{$ghost}");
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"composer-link-card-{$id}\"]')");
+    waitForTestIdGone($page, "composer-link-card-{$id}");
     $page->assertMissing("@composer-text-only-warning-{$id}")
         ->assertNoJavaScriptErrors();
 
@@ -954,24 +935,25 @@ test('a bluesky thread starts from the toolbar and stacks its replies under the 
     $limit = Platform::Bluesky->maxContentLength();
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
+    waitForTestId($page, 'thread-start');
 
     expect($page->script("!!document.querySelector('[data-testid=\"composer-{$id}-toolbar\"] [data-testid=\"thread-start\"]')"))->toBeTrue();
 
     $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->assertVisible("@composer-{$id}-caption-collapsed")
         ->fill('@thread-reply-0', 'Second post')
         ->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - mb_strlen('Second post')))
         ->click('@thread-add-reply');
-    waitForChannelSettingsTestId($page, 'thread-reply-1');
+    waitForTestId($page, 'thread-reply-1');
     $page->fill('@thread-reply-1', 'Third post')
         ->assertVisible('@thread-reply-collapsed-0')
         ->assertSeeIn('@preview-thread-reply-1', 'Third post')
         ->click('@thread-reply-remove-0');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"thread-reply-1\"], [data-testid=\"thread-reply-collapsed-1\"]')");
+    waitForTestIdGone($page, 'thread-reply-1');
+    waitForTestIdGone($page, 'thread-reply-collapsed-1');
     $page->click("@composer-{$id}-caption-collapsed");
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
+    waitForTestId($page, "composer-caption-{$id}");
     $page->assertNoJavaScriptErrors();
 
     $page->click('@composer-save-draft')->assertMissing('@post-composer-dialog');
@@ -984,11 +966,11 @@ test('a thread reply of invisible characters is empty like on the server', funct
     $post = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
+    waitForTestId($page, 'thread-start');
     $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->fill('@thread-reply-0', "\u{200B}\u{00A0}");
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"composer-submit\"]')?.getAttribute('aria-disabled') === 'true'");
+    waitForTestIdState($page, 'composer-submit', "element.getAttribute('aria-disabled') === 'true'");
 
     expect($page->script('document.querySelector(\'[data-testid="composer-submit"]\').getAttribute(\'aria-disabled\')'))->toBe('true');
     $page->assertNoJavaScriptErrors();
@@ -1006,13 +988,13 @@ test('a server error on a thread reply shows under that reply', function () {
     $post = seedChannelSettingsPost(Platform::Bluesky, ContentType::BlueskyPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
+    waitForTestId($page, 'thread-start');
     $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->fill('@thread-reply-0', 'Fine')->click('@thread-add-reply');
-    waitForChannelSettingsTestId($page, 'thread-reply-1');
+    waitForTestId($page, 'thread-reply-1');
     $page->fill('@thread-reply-1', 'Too long for the server')->click('@composer-submit');
-    waitForChannelSettingsTestId($page, 'thread-reply-error-1');
+    waitForTestId($page, 'thread-reply-error-1');
 
     $page->assertSeeIn('@thread-reply-error-1', __('posts.form.thread.reply_too_long', ['limit' => 300, 'over' => 100]))
         ->assertMissing('@thread-reply-error-0')
@@ -1027,7 +1009,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
     $post->update(['meta' => ['thread_replies' => [['text' => 'With a photo', 'media' => [MediaItem::fromMedia($image)->toArray()]], 'Plain reply']]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-{$id}-reply-0-media-item-0");
+    waitForTestId($page, "composer-{$id}-reply-0-media-item-0");
 
     $page->assertMissing("@composer-{$id}-media-item-0")
         ->assertMissing("@composer-{$id}-reply-0-dropzone")
@@ -1036,7 +1018,7 @@ test('a thread reply shows its own media under it and keeps it on save', functio
         ->assertPresent("@composer-{$id}-media-source-menu")
         ->assertNotPresent("@composer-{$id}-add-media")
         ->click('@thread-reply-collapsed-0');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->assertPresent("@composer-{$id}-reply-0-media-item-0")
         ->assertPresent("@composer-{$id}-reply-0-dropzone")
         ->assertMissing("@composer-{$id}-dropzone");
@@ -1063,7 +1045,7 @@ test('the mastodon preview hides the post behind its content warning on every po
     $post->update(['meta' => ['spoiler_text' => 'Spoilers', 'thread_replies' => ['Hidden reply']]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'mastodon-preview-content-warning');
+    waitForTestId($page, 'mastodon-preview-content-warning');
 
     expect($page->script("[...document.querySelectorAll('[data-testid=\"preview-thread\"] [data-testid=\"mastodon-preview-content-warning\"]')].map((warning) => warning.innerText.replace(/\\s+/g, ' ').trim())"))
         ->toBe(array_fill(0, 2, 'Spoilers '.__('posts.composer.preview.tap_to_reveal')));
@@ -1080,13 +1062,13 @@ test('an x thread starts from the toolbar and counts each reply against the acco
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'thread-start');
+    waitForTestId($page, 'thread-start');
 
     $page->click('@thread-start');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->fill('@thread-reply-0', 'Second tweet')
         ->assertSeeIn("@composer-char-count-{$id}", (string) ($limit - mb_strlen('Second tweet')));
-    waitForChannelSettingsTestId($page, 'preview-thread-reply-0');
+    waitForTestId($page, 'preview-thread-reply-0');
     $page->assertSeeIn('@preview-thread-reply-0', 'Second tweet')
         ->assertNoJavaScriptErrors();
 
@@ -1103,7 +1085,7 @@ test('the x card offers the ai-generated switch with its explanation and saves i
     $post = seedChannelSettingsPost(Platform::X, ContentType::XPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'x-ai-generated');
+    waitForTestId($page, 'x-ai-generated');
 
     $page->assertVisible('@x-ai-generated-info')
         ->click('@x-ai-generated')
@@ -1120,25 +1102,25 @@ test('shift enter opens the next post of an x thread and backspace on an empty p
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
+    waitForTestId($page, "composer-caption-{$id}");
 
     $page->keys("@composer-caption-{$id}", 'Shift+Enter');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
     $page->fill('@thread-reply-0', 'Second tweet')
         ->keys('@thread-reply-0', 'Shift+Enter');
-    waitForChannelSettingsTestId($page, 'thread-reply-1');
+    waitForTestId($page, 'thread-reply-1');
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe('thread-reply-1');
 
     $page->keys('@thread-reply-1', 'Backspace');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
 
     expect($page->script("document.querySelectorAll('[data-testid^=\"thread-reply-collapsed-\"], [data-testid^=\"thread-reply-\"]:not([data-testid*=\"remove\"]):not([data-testid*=\"error\"]):not([data-testid*=\"collapsed\"])').length"))->toBe(1)
         ->and($page->script('document.activeElement?.dataset.testid'))->toBe('thread-reply-0');
 
     $page->fill('@thread-reply-0', '')
         ->keys('@thread-reply-0', 'Backspace');
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
+    waitForTestId($page, "composer-caption-{$id}");
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe("composer-caption-{$id}");
     $page->assertMissing('@thread-reply-0')
@@ -1154,28 +1136,28 @@ test('arrow keys move between the posts of a thread from the end and the start o
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
+    waitForTestId($page, "composer-caption-{$id}");
 
     $page->script("(() => { const c = document.querySelector('[data-testid=\"composer-caption-{$id}\"]'); c.focus(); c.setSelectionRange(c.value.length, c.value.length); })()");
     $page->keys("@composer-caption-{$id}", 'ArrowDown');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
 
     expect($page->script('[document.activeElement?.dataset.testid, document.activeElement?.selectionStart]'))->toBe(['thread-reply-0', 0]);
 
     $page->script("(() => { const r = document.querySelector('[data-testid=\"thread-reply-0\"]'); r.setSelectionRange(r.value.length, r.value.length); })()");
     $page->keys('@thread-reply-0', 'ArrowDown');
-    waitForChannelSettingsTestId($page, 'thread-reply-1');
+    waitForTestId($page, 'thread-reply-1');
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe('thread-reply-1');
 
     $page->keys('@thread-reply-1', 'ArrowUp');
-    waitForChannelSettingsTestId($page, 'thread-reply-0');
+    waitForTestId($page, 'thread-reply-0');
 
     expect($page->script('[document.activeElement?.dataset.testid, document.activeElement?.selectionStart === document.activeElement?.value.length]'))->toBe(['thread-reply-0', true]);
 
     $page->script("document.querySelector('[data-testid=\"thread-reply-0\"]').setSelectionRange(0, 0)");
     $page->keys('@thread-reply-0', 'ArrowUp');
-    waitForChannelSettingsTestId($page, "composer-caption-{$id}");
+    waitForTestId($page, "composer-caption-{$id}");
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe("composer-caption-{$id}");
     $page->assertNoJavaScriptErrors();
@@ -1189,10 +1171,10 @@ test('the preview scrolls to the thread post being edited', function () {
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 700);
-    waitForChannelSettingsTestId($page, 'thread-reply-collapsed-2');
+    waitForTestId($page, 'thread-reply-collapsed-2');
 
     $page->click('@thread-reply-collapsed-2');
-    waitForChannelSettingsCondition($page, <<<'JS'
+    waitForCondition($page, <<<'JS'
         (() => {
             const reply = document.querySelector('[data-testid="preview-thread-reply-2"]').getBoundingClientRect();
             return reply.top >= 0 && reply.bottom <= window.innerHeight;
@@ -1208,11 +1190,11 @@ test('editing a scheduled post offers to move it back to drafts', function () {
     $post->update(['content' => 'Scheduled post', 'status' => Status::Scheduled, 'scheduled_at' => now()->addDays(2)]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'composer-save-draft');
+    waitForTestId($page, 'composer-save-draft');
 
     $page->assertSeeIn('@composer-save-draft', __('posts.publish.actions.move_to_drafts'))
         ->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"composer-save-draft\"]')");
+    waitForTestIdGone($page, 'composer-save-draft');
 
     expect($post->fresh()->status)->toBe(Status::Draft);
     $page->assertNoJavaScriptErrors();
@@ -1223,7 +1205,7 @@ test('the google business preview shows no verified badge', function () {
     $post = seedChannelSettingsPost(Platform::GoogleBusiness, ContentType::GoogleBusinessPost);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'google-business-preview');
+    waitForTestId($page, 'google-business-preview');
 
     expect($page->script("document.querySelector('[data-testid=\"google-business-preview\"] .text-info.rounded-full, [data-testid=\"google-business-preview\"] [data-testid=\"preview-verified\"]') === null"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -1237,11 +1219,11 @@ test('a youtube video with neither text nor a title warns in its card until a ti
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, "composer-meta-warning-{$id}");
+    waitForTestId($page, "composer-meta-warning-{$id}");
 
     $page->assertSeeIn("@composer-meta-warning-{$id}", __('posts.form.youtube.title_required'))
         ->fill('@youtube-title', 'My short');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"composer-meta-warning-{$id}\"]')");
+    waitForTestIdGone($page, "composer-meta-warning-{$id}");
 
     $page->assertMissing("@composer-meta-warning-{$id}")
         ->assertNoJavaScriptErrors();
@@ -1252,7 +1234,7 @@ test('the tiktok interactions read as full sentences and the compliance text lin
     $post = seedChannelSettingsPost(Platform::TikTok, ContentType::TikTokVideo);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'tiktok-privacy-level');
+    waitForTestId($page, 'tiktok-privacy-level');
 
     $page->assertMissing('@tiktok-posting-to')
         ->assertVisible('@tiktok-disclose')
@@ -1279,7 +1261,7 @@ test('tiktok has no post type choice: photos make a photo post and a video a vid
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'tiktok-privacy-level');
+    waitForTestId($page, 'tiktok-privacy-level');
 
     $page->assertMissing("@composer-type-{$id}-tiktok_video")
         ->assertMissing("@composer-type-{$id}-tiktok_photo")
@@ -1288,9 +1270,9 @@ test('tiktok has no post type choice: photos make a photo post and a video a vid
     $page->assertVisible('@tiktok-auto-add-music')
         ->assertAttribute('@tiktok-auto-add-music', 'data-state', 'unchecked')
         ->click('@tiktok-auto-add-music');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"tiktok-auto-add-music\"]')?.dataset.state === 'checked'");
+    waitForTestIdState($page, 'tiktok-auto-add-music', "element.dataset.state === 'checked'");
     $page->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     expect($post->fresh()->meta['auto_add_music'] ?? null)->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -1305,7 +1287,7 @@ test('tiktok takes photos or a single video, never both, and says so in its card
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, "composer-media-warning-{$id}");
+    waitForTestId($page, "composer-media-warning-{$id}");
 
     $page->assertSeeIn("@composer-media-warning-{$id}", __("posts.form.warnings.{$warning}", $params))
         ->assertNoJavaScriptErrors();
@@ -1321,7 +1303,7 @@ test('every action on a media tile shows its name in a tooltip', function () {
     $id = $post->social_account_id;
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, "composer-{$id}-media-item-1");
+    waitForTestId($page, "composer-{$id}-media-item-1");
 
     foreach ([
         "composer-{$id}-drag-handle-0" => 'reorder',
@@ -1331,9 +1313,9 @@ test('every action on a media tile shows its name in a tooltip', function () {
         "composer-{$id}-edit-0" => 'edit',
     ] as $testId => $key) {
         $page->hover('@composer-save-draft');
-        waitForChannelSettingsCondition($page, "!document.querySelector('[data-slot=\"tooltip-content\"]')");
+        waitForCondition($page, "!document.querySelector('[data-slot=\"tooltip-content\"]')");
         $page->hover("@composer-{$id}-media-item-0")->hover("@{$testId}");
-        waitForChannelSettingsCondition($page, "[...document.querySelectorAll('[data-slot=\"tooltip-content\"]')].some((tip) => tip.textContent.includes(".json_encode(__("posts.composer.media_actions.{$key}")).'))');
+        waitForCondition($page, "[...document.querySelectorAll('[data-slot=\"tooltip-content\"]')].some((tip) => tip.textContent.includes(".json_encode(__("posts.composer.media_actions.{$key}")).'))');
 
         expect($page->script("[...document.querySelectorAll('[data-slot=\"tooltip-content\"]')].map((tip) => tip.textContent.trim()).join('|')"))
             ->toContain(__("posts.composer.media_actions.{$key}"));
@@ -1348,7 +1330,7 @@ test('the tiktok preview shows a photo on black, with no blurred fill around it'
     $post = seedChannelSettingsPost(Platform::TikTok, ContentType::TikTokPhoto, $photo);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'tiktok-preview');
+    waitForTestId($page, 'tiktok-preview');
 
     expect($page->script("document.querySelectorAll('[data-testid=\"tiktok-preview\"] img[aria-hidden=\"true\"]').length"))->toBe(0)
         ->and($page->script("document.querySelectorAll('[data-testid=\"tiktok-preview\"] img').length"))->toBeGreaterThan(0);
@@ -1362,12 +1344,12 @@ test('the google business event times follow the user clock and pick from a list
     $post->update(['meta' => ['topic_type' => 'EVENT', 'event' => ['title' => 'Launch night', 'start_date' => channelSettingsEventDay(0), 'end_date' => channelSettingsEventDay(2), 'start_time' => '09:00']]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'google-business-start-time');
+    waitForTestId($page, 'google-business-start-time');
 
     expect($page->script("document.querySelector('[data-testid=\"google-business-start-time\"]').type"))->toBe('text');
 
     $page->click('@google-business-start-time');
-    waitForChannelSettingsTestId($page, 'time-field-option-0900');
+    waitForTestId($page, 'time-field-option-0900');
     expect($page->script("document.querySelector('[data-testid=\"time-field-option-1830\"]').textContent.trim()"))->toBe($shown);
     $page->assertAttribute('@time-field-option-0900', 'aria-selected', 'true')
         ->click('@time-field-option-1830');
@@ -1396,7 +1378,7 @@ test('the facebook preview lays several photos out as the feed collage, not stac
     $post->update(['media' => $images->map(fn (Media $media): array => MediaItem::fromMedia($media)->toArray())->all()]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, 'preview-media-collage');
+    waitForTestId($page, 'preview-media-collage');
 
     $layout = $page->script(<<<'JS'
         (() => {
@@ -1422,7 +1404,7 @@ test('every character counter in the composer shares one design', function (Plat
     $testId = str_replace('{id}', $post->social_account_id, $counter);
 
     $page = visit(route('app.posts.edit', $post))->resize(1440, 1000);
-    waitForChannelSettingsTestId($page, $testId);
+    waitForTestId($page, $testId);
 
     $look = $page->script(<<<JS
         new Promise((resolve) => {
@@ -1465,14 +1447,14 @@ test('a failed instagram music search says so and lets the picker close', functi
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
 
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-failed');
+    waitForTestId($page, 'instagram-music-failed');
 
     $page->assertSeeIn('@instagram-music-failed', __('posts.form.instagram.music.search_failed'))
         ->keys('@instagram-music-search', 'Escape');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"instagram-music-picker\"]')");
+    waitForTestIdGone($page, 'instagram-music-picker');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -1486,12 +1468,12 @@ test('searching instagram music asks instagram once the typing stops', function 
     $post = seedChannelSettingsPost(Platform::InstagramFacebook, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
     $page->click('@instagram-music-add');
-    waitForChannelSettingsTestId($page, 'instagram-music-track-audio-trending');
+    waitForTestId($page, 'instagram-music-track-audio-trending');
 
     $page->type('@instagram-music-search', 'grudge');
-    waitForChannelSettingsTestId($page, 'instagram-music-track-audio-grudge');
+    waitForTestId($page, 'instagram-music-track-audio-grudge');
 
     $page->assertMissing('@instagram-music-track-audio-trending')->assertNoJavaScriptErrors();
     $musicSearches = collect(Http::recorded())
@@ -1513,22 +1495,22 @@ test('the picked track plays and pauses from its card and can be removed', funct
     ]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-selected-preview');
+    waitForTestId($page, 'instagram-music-selected-preview');
     $page->script('HTMLMediaElement.prototype.play = function () { return Promise.resolve(); }; HTMLMediaElement.prototype.pause = function () {};');
 
     $page->click('@instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-preview\"]')?.getAttribute('aria-label') === '".__('posts.form.instagram.music.pause')."'");
+    waitForTestIdState($page, 'instagram-music-selected-preview', "element.getAttribute('aria-label') === '".__('posts.form.instagram.music.pause')."'");
     $page->assertAttribute('@instagram-music-selected-preview', 'aria-label', __('posts.form.instagram.music.pause'));
 
     $page->click('@instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-preview\"]')?.getAttribute('aria-label') === '".__('posts.form.instagram.music.play')."'");
+    waitForTestIdState($page, 'instagram-music-selected-preview', "element.getAttribute('aria-label') === '".__('posts.form.instagram.music.play')."'");
     $page->assertAttribute('@instagram-music-selected-preview', 'aria-label', __('posts.form.instagram.music.play'));
 
     $page->click('@instagram-music-remove');
-    waitForChannelSettingsTestId($page, 'instagram-music-add');
+    waitForTestId($page, 'instagram-music-add');
     $page->assertMissing('@instagram-music-selected')
         ->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'audio'))->toBeNull();
@@ -1540,7 +1522,7 @@ test('a trial reel shows its explanation under the options and its badge on the 
     $post->update(['meta' => ['trial_graduation' => 'MANUAL']]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-trial-reel-hint');
+    waitForTestId($page, 'instagram-trial-reel-hint');
 
     $page->assertSeeIn('@instagram-trial-reel-hint', __('posts.form.instagram.trial_reel.manual_hint'))
         ->assertSeeIn('@instagram-preview-trial', __('posts.form.instagram.trial_reel.badge'))
@@ -1552,17 +1534,17 @@ test('collaborators added on the instagram card are saved with the post', functi
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-input');
+    waitForTestId($page, 'instagram-collaborator-input');
     $page->type('@instagram-collaborator-input', '@alice')
         ->keys('@instagram-collaborator-input', 'Enter');
-    waitForChannelSettingsTestId($page, 'instagram-collaborators-notice');
+    waitForTestId($page, 'instagram-collaborators-notice');
     $page->click('@instagram-collaborators-notice-dismiss')
         ->type('@instagram-collaborator-input', 'bob')
         ->click('@instagram-collaborator-add');
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-bob');
+    waitForTestId($page, 'instagram-collaborator-bob');
 
     $page->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice', 'bob']);
@@ -1573,10 +1555,10 @@ test('a collaborator typed without pressing Enter is added when the field loses 
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-input');
+    waitForTestId($page, 'instagram-collaborator-input');
     $page->type('@instagram-collaborator-input', '@alice')
         ->click('@composer-save-draft');
-    waitForChannelSettingsCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+    waitForTestIdGone($page, 'post-composer-dialog');
 
     $page->assertNoJavaScriptErrors();
     expect(data_get($post->fresh()->meta, 'collaborators'))->toBe(['alice']);
@@ -1596,8 +1578,8 @@ test('playing the reel preview video plays the picked track at the chosen music 
     ]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-reel-preview\"] video')");
+    waitForTestId($page, 'instagram-music-selected-preview');
+    waitForTestIdState($page, 'instagram-reel-preview', "element.querySelector('video')");
     $page->script(<<<'JS'
         (() => {
             const where = (media, suffix = '') => `${media.closest?.('[data-testid="instagram-reel-preview"]') ? 'PREVIEW' : media.tagName}${suffix}`;
@@ -1620,14 +1602,14 @@ test('playing the reel preview video plays the picked track at the chosen music 
     JS);
 
     $page->script("document.querySelector('[data-testid=\"instagram-reel-preview\"] video').parentElement.click()");
-    waitForChannelSettingsCondition($page, "window.__played.includes('AUDIO')");
+    waitForCondition($page, "window.__played.includes('AUDIO')");
 
     expect($page->script('window.__played'))->toBe(['PREVIEW', 'AUDIO'])
         ->and($page->script('window.__audioVolume'))->toBe(40)
         ->and($page->script("Math.round(document.querySelector('[data-testid=\"instagram-reel-preview\"] video').volume * 100)"))->toBe(30);
 
     $page->script("document.querySelector('[data-testid=\"instagram-reel-preview\"] video').parentElement.click()");
-    waitForChannelSettingsCondition($page, "window.__played.includes('AUDIO:paused')");
+    waitForCondition($page, "window.__played.includes('AUDIO:paused')");
 
     expect($page->script("window.__played.includes('PREVIEW:paused') && window.__played.includes('AUDIO:paused')"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -1646,8 +1628,8 @@ test('playing the picked track from its card plays the music only and leaves the
     ]]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "document.querySelector('[data-testid=\"instagram-reel-preview\"] video')");
+    waitForTestId($page, 'instagram-music-selected-preview');
+    waitForTestIdState($page, 'instagram-reel-preview', "element.querySelector('video')");
     $page->script(<<<'JS'
         (() => {
             const where = (media, suffix = '') => `${media.closest?.('[data-testid="instagram-reel-preview"]') ? 'PREVIEW' : media.tagName}${suffix}`;
@@ -1660,7 +1642,7 @@ test('playing the picked track from its card plays the music only and leaves the
 
     $page->assertSeeIn('@instagram-preview-audio', 'Summer Song · The Band')
         ->click('@instagram-music-selected-preview');
-    waitForChannelSettingsCondition($page, "window.__played.includes('AUDIO')");
+    waitForCondition($page, "window.__played.includes('AUDIO')");
     $page->script('new Promise((resolve) => setTimeout(resolve, 300))');
 
     expect($page->script('window.__played'))->not->toContain('PREVIEW');
@@ -1673,7 +1655,7 @@ test('a collaborator link shows the link cursor of a link that opens a new tab',
     $post->update(['meta' => ['collaborators' => ['alice']]]);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
-    waitForChannelSettingsTestId($page, 'instagram-collaborator-alice');
+    waitForTestId($page, 'instagram-collaborator-alice');
 
     expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"instagram-collaborator-alice\"]')).cursor"))->toBe('alias')
         ->and($page->script("document.querySelector('[data-testid=\"instagram-collaborator-alice\"]').target"))->toBe('_blank');

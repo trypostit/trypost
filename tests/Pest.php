@@ -562,3 +562,84 @@ function waitForWebFonts(mixed $page): void
         })();
     JS);
 }
+
+/**
+ * Wait until a JavaScript expression is true in the page, for up to 15
+ * seconds. Assertions do not wait for the SPA to paint, and a blocking
+ * sleep() would starve the server that serves the page, so the page polls.
+ */
+function waitForCondition(mixed $page, string $condition): void
+{
+    $page->script(<<<JS
+        (async () => {
+            for (let i = 0; i < 300; i++) {
+                if ({$condition}) return;
+                await new Promise((resolve) => setTimeout(resolve, 50));
+            }
+        })();
+    JS);
+}
+
+/**
+ * The JavaScript that finds the element with this data-testid.
+ */
+function testIdQuery(string $testId): string
+{
+    $selector = json_encode("[data-testid=\"{$testId}\"]");
+
+    return "document.querySelector({$selector})";
+}
+
+/**
+ * Wait until the element with this data-testid is mounted and laid out.
+ */
+function waitForTestId(mixed $page, string $testId): void
+{
+    $element = testIdQuery($testId);
+
+    waitForCondition($page, "{$element}?.getBoundingClientRect().height > 0");
+}
+
+/**
+ * Wait until no element with this data-testid is left in the page.
+ */
+function waitForTestIdGone(mixed $page, string $testId): void
+{
+    $element = testIdQuery($testId);
+
+    waitForCondition($page, "!{$element}");
+}
+
+/**
+ * Wait until the element with this data-testid exists and the expression,
+ * written about `element`, is true: "element.getAttribute('aria-checked') === 'true'".
+ */
+function waitForTestIdState(mixed $page, string $testId, string $expression): void
+{
+    $element = testIdQuery($testId);
+
+    waitForCondition($page, "((element) => Boolean(element) && ({$expression}))({$element})");
+}
+
+/**
+ * Wait until one element is gone or another is shown, whichever happens
+ * first: a test can then assert the outcome it expects without waiting out
+ * the timeout when the other one happens.
+ */
+function waitForTestIdGoneOrShown(mixed $page, string $gone, string $shown): void
+{
+    $goneElement = testIdQuery($gone);
+    $shownElement = testIdQuery($shown);
+
+    waitForCondition($page, "!{$goneElement} || {$shownElement}");
+}
+
+/**
+ * Wait until the page is at this path.
+ */
+function waitForPath(mixed $page, string $path): void
+{
+    $expected = json_encode($path);
+
+    waitForCondition($page, "location.pathname === {$expected}");
+}
