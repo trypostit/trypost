@@ -581,57 +581,66 @@ function waitForCondition(mixed $page, string $condition): void
 }
 
 /**
- * The JavaScript that finds the element with this data-testid.
+ * The selector as a JavaScript string, with `@name` standing for
+ * `[data-testid="name"]` as in `$page->click('@name')`, anywhere in it:
+ * `@channel-settings-rows [role="combobox"]`.
  */
-function testIdQuery(string $testId): string
+function jsSelector(string $selector): string
 {
-    $selector = json_encode("[data-testid=\"{$testId}\"]");
-
-    return "document.querySelector({$selector})";
+    return json_encode(preg_replace('/@([\w-]+)/', '[data-testid="$1"]', $selector));
 }
 
 /**
- * Wait until the element with this data-testid is mounted and laid out.
- */
-function waitForTestId(mixed $page, string $testId): void
-{
-    $element = testIdQuery($testId);
-
-    waitForCondition($page, "{$element}?.getBoundingClientRect().height > 0");
-}
-
-/**
- * Wait until no element with this data-testid is left in the page.
- */
-function waitForTestIdGone(mixed $page, string $testId): void
-{
-    $element = testIdQuery($testId);
-
-    waitForCondition($page, "!{$element}");
-}
-
-/**
- * Wait until the element with this data-testid exists and the expression,
+ * Wait until an element matching the selector exists and the expression,
  * written about `element`, is true: "element.getAttribute('aria-checked') === 'true'".
  */
-function waitForTestIdState(mixed $page, string $testId, string $expression): void
+function waitForState(mixed $page, string $selector, string $expression): void
 {
-    $element = testIdQuery($testId);
+    $selector = jsSelector($selector);
 
-    waitForCondition($page, "((element) => Boolean(element) && ({$expression}))({$element})");
+    waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))");
+}
+
+/**
+ * Wait until an element matching the selector is mounted and laid out.
+ */
+function waitFor(mixed $page, string $selector): void
+{
+    waitForState($page, $selector, 'element.getBoundingClientRect().height > 0');
+}
+
+/**
+ * Wait until no element matches the selector.
+ */
+function waitForGone(mixed $page, string $selector): void
+{
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "!document.querySelector({$selector})");
+}
+
+/**
+ * Wait until any element matching the selector contains the text.
+ */
+function waitForText(mixed $page, string $selector, string $text): void
+{
+    $selector = jsSelector($selector);
+    $text = json_encode($text);
+
+    waitForCondition($page, "[...document.querySelectorAll({$selector})].some((element) => element.textContent.includes({$text}))");
 }
 
 /**
  * Wait until one element is gone or another is shown, whichever happens
- * first: a test can then assert the outcome it expects without waiting out
- * the timeout when the other one happens.
+ * first, so the assertion after it fails at once on the other outcome
+ * instead of waiting out the timeout.
  */
-function waitForTestIdGoneOrShown(mixed $page, string $gone, string $shown): void
+function waitForGoneOrShown(mixed $page, string $gone, string $shown): void
 {
-    $goneElement = testIdQuery($gone);
-    $shownElement = testIdQuery($shown);
+    $gone = jsSelector($gone);
+    $shown = jsSelector($shown);
 
-    waitForCondition($page, "!{$goneElement} || {$shownElement}");
+    waitForCondition($page, "!document.querySelector({$gone}) || document.querySelector({$shown})");
 }
 
 /**
@@ -639,7 +648,7 @@ function waitForTestIdGoneOrShown(mixed $page, string $gone, string $shown): voi
  */
 function waitForPath(mixed $page, string $path): void
 {
-    $expected = json_encode($path);
+    $path = json_encode($path);
 
-    waitForCondition($page, "location.pathname === {$expected}");
+    waitForCondition($page, "location.pathname === {$path}");
 }

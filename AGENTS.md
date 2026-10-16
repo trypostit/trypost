@@ -1026,13 +1026,15 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
     - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
 - Assertions do NOT auto-wait on SPA paint (`assertMissing`/`assertVisible` check once; only actions like `click()` wait). **Every wait goes through the shared helpers in `tests/Pest.php`** (owner decision October 2026), never through a helper of your own:
-    - `waitForTestId($page, 'id')`: the element is mounted and laid out.
-    - `waitForTestIdGone($page, 'id')`: no element with that test id is left.
-    - `waitForTestIdState($page, 'id', "element.getAttribute('aria-checked') === 'true'")`: the element exists and the expression about `element` is true (attributes, text, `dataset`, a child).
-    - `waitForTestIdGoneOrShown($page, gone: 'post-composer-dialog', shown: 'unsaved-changes-dialog')`: whichever happens first, so the assertion after it fails at once instead of waiting out the timeout.
+    - Every helper takes a CSS selector where `@name` stands for `[data-testid="name"]`, as in `$page->click('@name')`, anywhere in it: `'@channel-settings-rows [role="combobox"]'`, `'@channel-settings-row:has(@instagram-collaborators)'`. Prefer `@` test ids; reach for a `role` or `data-slot` only when the element has no test id, and never a CSS class.
+    - `waitFor($page, '@id')`: an element is mounted and laid out.
+    - `waitForGone($page, '@id')`: no element matches.
+    - `waitForState($page, '@id', "element.getAttribute('aria-checked') === 'true'")`: an element exists and the expression about `element` is true (attributes, `dataset`, `disabled`, position).
+    - `waitForText($page, '[role="option"]', 'general')`: any matching element contains the text.
+    - `waitForGoneOrShown($page, gone: '@post-composer-dialog', shown: '@unsaved-changes-dialog')`: whichever happens first, so the assertion after it fails at once instead of waiting out the timeout.
     - `waitForPath($page, $path)`: the page is at that path.
-    - `waitForCondition($page, $js)`: only for what no test id can express (a `role`, `location.search`, a `window.__` spy).
-    - Never write `document.querySelector('[data-testid=…]')` inside a wait, and never define a per-file `waitFor*` helper. Pest's `Webpage` is `final readonly` and not macroable, which is why these are global functions. Files that still have their own `waitFor*` helpers predate this rule; move them to the shared helpers when touching them, and the sweep is tracked in #435. If a wait needs something the helpers cannot express, add a helper to `tests/Pest.php` instead of inlining it.
+    - `waitForCondition($page, $js)`: only for what is not about an element (`location.search`, a `window.__` spy).
+    - Never write `document.querySelector(...)` inside a wait, and never define a per-file `waitFor*` helper. Pest's `Webpage` is `final readonly` and not macroable, which is why these are global functions. Files that still have their own `waitFor*` helpers predate this rule; move them to the shared helpers when touching them (the sweep is tracked in #435). If a wait needs something the helpers cannot express, add a helper to `tests/Pest.php` instead of inlining it.
 - **Never `sleep()` in a browser test.** The HTTP server that serves the page runs inside the same PHP process (an Amp loop that only ticks while Pest awaits Playwright), so a blocking `sleep()` starves every asset request: the page stays blank, the Vue app never mounts, and screenshots come out empty. The helpers above poll from the page with `$page->script(...)`, which keeps the loop running.
 - `BrowserTestCase` sets `$fakesVite = false` on purpose: these tests load real built assets, so faking Vite blanks the app.
 - End page assertions with `->assertNoJavaScriptErrors()`.
