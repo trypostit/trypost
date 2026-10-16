@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Actions\Mcp\ListChatGptEgressRanges;
 use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -42,7 +43,6 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use App\Support\Auth\PasswordRequirements;
-use App\Support\Mcp\ChatGptMcpClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -172,8 +172,7 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for(
             'mcp-oauth',
             fn (Request $request): Limit => $request->isMethodCacheable()
-                || ChatGptMcpClient::matches($request)
-                || IpUtils::checkIp((string) $request->ip(), config()->array('trypost.mcp_claude_ip_ranges'))
+                || IpUtils::checkIp((string) $request->ip(), [...ListChatGptEgressRanges::execute(), ...config()->array('trypost.mcp_claude_ip_ranges')])
                     ? Limit::none()
                     : Limit::perMinute(30)->by($request->ip()),
         );
