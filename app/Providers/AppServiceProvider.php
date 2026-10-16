@@ -42,7 +42,7 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use App\Support\Auth\PasswordRequirements;
-use App\Support\Mcp\HostedMcpClient;
+use App\Support\Mcp\ChatGptMcpClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -70,6 +70,7 @@ use SocialiteProviders\LinkedIn\LinkedInExtendSocialite;
 use SocialiteProviders\Manager\SocialiteWasCalled;
 use SocialiteProviders\Pinterest\PinterestExtendSocialite;
 use SocialiteProviders\TikTok\TikTokExtendSocialite;
+use Symfony\Component\HttpFoundation\IpUtils;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -169,10 +170,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         RateLimiter::for(
-            'mcp-oauth-registration',
-            fn (Request $request): Limit => HostedMcpClient::matches($request)
-                ? Limit::none()
-                : Limit::perMinute(30)->by($request->ip()),
+            'mcp-oauth',
+            fn (Request $request): Limit => $request->isMethodCacheable()
+                || ChatGptMcpClient::matches($request)
+                || IpUtils::checkIp((string) $request->ip(), config()->array('trypost.mcp_claude_ip_ranges'))
+                    ? Limit::none()
+                    : Limit::perMinute(30)->by($request->ip()),
         );
 
         RateLimiter::for(
