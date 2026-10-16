@@ -235,14 +235,13 @@ const refreshSelectedAudio = async (): Promise<boolean> => {
     }
 };
 
-const missesTrackDetails = (audio: InstagramAudio | null): boolean =>
-    Boolean(audio?.id) &&
-    (!audio?.title || !audio.cover_url || !audio.preview_url);
+const isMissingTrackDetails = (audio: InstagramAudio | null): boolean =>
+    Boolean(audio?.id && (!audio.title || !audio.cover_url || !audio.preview_url));
 
 watch(
     isReel,
     (reel) => {
-        if (reel && missesTrackDetails(selectedAudio.value)) {
+        if (reel && isMissingTrackDetails(selectedAudio.value)) {
             void refreshSelectedAudio();
         }
     },

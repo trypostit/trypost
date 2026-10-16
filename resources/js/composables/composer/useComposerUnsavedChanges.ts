@@ -19,9 +19,9 @@ interface ComposerUnsavedChangesOptions {
 }
 
 /**
- * The meta with only what the person chooses of an Instagram track: the track
- * and its volumes. Its name, cover and preview come with the id and are filled
- * in or renewed by the composer on its own, so they never count as a change.
+ * The meta as the guard compares it: an Instagram track counts by its id and
+ * volumes only. Its name, cover and preview come with the id, and the composer
+ * fills them in or renews them on its own, so they never count as a change.
  */
 const withoutTrackDetails = (meta: Record<string, any>): Record<string, any> => {
     const audio = meta.audio as InstagramAudio | null | undefined;
