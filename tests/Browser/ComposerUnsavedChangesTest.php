@@ -545,7 +545,7 @@ test('a music cover renewed after the post opened does not count as an unsaved c
     $post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
         'user_id' => $user->id,
         'content' => 'Reel with music',
-        'meta' => ['audio' => ['id' => '846373660299207', 'title' => 'Summer Song', 'cover_url' => $pixel]],
+        'meta' => ['audio' => ['id' => '846373660299207', 'title' => 'Summer Song', 'cover_url' => $pixel, 'preview_url' => 'https://example.com/summer-song.m4a']],
     ]);
     $this->actingAs($user);
 
@@ -557,6 +557,90 @@ test('a music cover renewed after the post opened does not count as an unsaved c
     $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
         ->click('@composer-close');
     waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]')");
+
+    $page->assertMissing('@unsaved-changes-dialog')
+        ->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+function seedUnsavedChangesReelWithBareTrack(): Post
+{
+    $pixel = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+    Http::fake([
+        config('trypost.platforms.instagram-facebook.graph_api').'/846373660299207*' => Http::response([
+            'audio_id' => '846373660299207',
+            'title' => 'Summer Song',
+            'display_artist' => 'The Band',
+            'cover_artwork_thumbnail_uri' => "{$pixel}#fresh",
+            'download_url' => 'https://example.com/summer-song.m4a',
+        ]),
+        '*' => Http::response([], 200),
+    ]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::InstagramFacebook]);
+    $post = Post::factory()->forAccount($account, ContentType::InstagramReel)->create([
+        'user_id' => $user->id,
+        'content' => 'Reel with music',
+        'meta' => ['audio' => ['id' => '846373660299207', 'audio_volume' => 40]],
+    ]);
+    test()->actingAs($user);
+
+    return $post;
+}
+
+test('a reel whose track was saved with only its id shows the track name and cover', function () {
+    $post = seedUnsavedChangesReelWithBareTrack();
+
+    $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+
+    $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
+        ->assertSeeIn('@instagram-music-selected', 'Summer Song')
+        ->assertSeeIn('@instagram-music-selected', 'The Band')
+        ->assertSeeIn('@instagram-preview-audio', 'Summer Song · The Band')
+        ->assertNoJavaScriptErrors();
+});
+
+test('track details that arrive after the first click do not count as an unsaved change', function () {
+    $post = seedUnsavedChangesReelWithBareTrack();
+
+    $page = visit(route('app.posts.index', ['tab' => 'drafts']))->resize(1280, 900);
+    waitForUnsavedChangesTestId($page, "post-edit-{$post->id}");
+    $page->script(<<<'JS'
+        (() => {
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+                this.__url = String(url);
+                return open.call(this, method, url, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (/\/instagram\/accounts\/[^/]+\/audio\/\d+/.test(this.__url)) {
+                    setTimeout(() => send.call(this, body), 1500);
+                    return;
+                }
+                return send.call(this, body);
+            };
+        })()
+    JS);
+    $page->click("@post-edit-{$post->id}");
+    waitForUnsavedChangesTestId($page, 'composer-editor-column');
+    $page->script(<<<'JS'
+        (() => {
+            const target = document.querySelector('[data-testid="composer-editor-column"] [contenteditable="true"]') ?? document.querySelector('[data-testid="composer-editor-column"]');
+            const options = { bubbles: true, cancelable: true, pointerType: 'mouse', button: 0 };
+            target.dispatchEvent(new PointerEvent('pointerdown', options));
+            target.dispatchEvent(new PointerEvent('pointerup', options));
+        })()
+    JS);
+    expect($page->script("Boolean(document.querySelector('[data-testid=\"instagram-music-selected-cover\"]'))"))->toBeFalse();
+    waitForUnsavedChangesCondition($page, "document.querySelector('[data-testid=\"instagram-music-selected-cover\"]')?.getAttribute('src')?.endsWith('#fresh')");
+    $page->assertAttributeContains('@instagram-music-selected-cover', 'src', '#fresh')
+        ->click('@composer-close');
+    waitForUnsavedChangesCondition($page, "!document.querySelector('[data-testid=\"post-composer-dialog\"]') || document.querySelector('[data-testid=\"unsaved-changes-dialog\"]')");
 
     $page->assertMissing('@unsaved-changes-dialog')
         ->assertMissing('@post-composer-dialog')

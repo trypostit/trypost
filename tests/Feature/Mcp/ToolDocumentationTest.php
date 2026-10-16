@@ -21,10 +21,12 @@ use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
 use App\Mcp\Tools\Signature\CreateSignatureTool;
 use App\Mcp\Tools\Signature\ListSignaturesTool;
 use App\Mcp\Tools\SocialAccount\GeneratePostingScheduleTool;
+use App\Mcp\Tools\SocialAccount\GetInstagramAudioTool;
 use App\Mcp\Tools\SocialAccount\GetTikTokCreatorInfoTool;
 use App\Mcp\Tools\SocialAccount\ListFreeSlotsTool;
 use App\Mcp\Tools\SocialAccount\ListSocialAccountsTool;
 use App\Mcp\Tools\SocialAccount\ReorderQueueTool;
+use App\Mcp\Tools\SocialAccount\SearchInstagramAudioTool;
 use App\Mcp\Tools\SocialAccount\UpdatePostingScheduleTool;
 use App\Mcp\Tools\Webhook\CreateWebhookTool;
 use App\Support\PostPlatformMetaRules;
@@ -180,3 +182,21 @@ test('the account listing and post text explain the x long post limit', function
     'create-posts' => [CreatePostsTool::class],
     'update-post' => [UpdatePostTool::class],
 ]);
+
+test('the instagram audio tools name the platform that takes music', function (string $tool) {
+    expect(mcpToolDescription($tool))->toContain('instagram-facebook');
+})->with([
+    'search' => [SearchInstagramAudioTool::class],
+    'get' => [GetInstagramAudioTool::class],
+]);
+
+test('the instagram audio search says which fields let the app show the track', function () {
+    expect(mcpToolDescription(SearchInstagramAudioTool::class))->toContain('title, artist, cover_url and preview_url into meta.audio');
+});
+
+test('the meta documentation explains how instagram music and collaborators behave', function () {
+    expect(PostPlatformMetaRules::documentation())
+        ->toContain('platform instagram-facebook')
+        ->toContain('only after they accept the invite in the Instagram app')
+        ->toContain('only refused when the post publishes');
+});
