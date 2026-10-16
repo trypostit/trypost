@@ -42,6 +42,7 @@ use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
 use App\Support\Auth\PasswordRequirements;
+use App\Support\Mcp\HostedMcpClient;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -169,7 +170,9 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for(
             'mcp-oauth-registration',
-            fn (Request $request): Limit => Limit::perMinute(30)->by($request->ip()),
+            fn (Request $request): Limit => HostedMcpClient::matches($request)
+                ? Limit::none()
+                : Limit::perMinute(30)->by($request->ip()),
         );
 
         RateLimiter::for(

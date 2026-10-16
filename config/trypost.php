@@ -81,6 +81,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Claude MCP egress ranges
+    |--------------------------------------------------------------------------
+    |
+    | Claude calls MCP servers from the outbound ranges Anthropic publishes
+    | (https://platform.claude.com/docs/en/api/ip-addresses). Anthropic has
+    | no machine-readable list, so the ranges live here.
+    |
+    */
+
+    'mcp_claude_ip_ranges' => explode(',', env('MCP_CLAUDE_IP_RANGES', '160.79.104.0/21')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Meta page walk budget
     |--------------------------------------------------------------------------
     |

@@ -862,6 +862,22 @@ ChatGPT offers sign-in inside the conversation when a user who never connected (
 - **Every tool declares `securitySchemes`** (`oauth2`, `mcp:use`) through `ListToolsWithSecuritySchemes`; ChatGPT offers sign-in only for tools that declare it, other clients ignore it.
 - `tests/Feature/Mcp/ChatGptSignInTest.php` covers ChatGPT, Claude and other clients with no token, an invalid token and a valid one, and the cached ranges; every guard there fails its test when removed.
 
+## MCP OAuth rate limit
+
+Only `POST /oauth/register` (dynamic client registration, which writes a client row) goes through `throttle:mcp-oauth-registration`, attached in `routes/ai.php`: 30 a minute per IP, and no limit for ChatGPT and Claude (`App\Support\Mcp\HostedMcpClient`, by the egress ranges OpenAI and Anthropic publish: `chatgpt-connectors.json` and `trypost.mcp_claude_ip_ranges`). Each of them registers for all of its users from a few shared addresses, so a per-IP limit would hold every user to one budget (owner decision October 2026: we trust their ranges).
+
+- The `/.well-known/oauth-protected-resource*` and `/.well-known/oauth-authorization-server*` GETs are static JSON and are never throttled. Clients fetch them before every connection, even with a stored token (Codex desktop does it for each thread, from the user's own IP), and a 429 there makes the client drop the server, so its tools never appear.
+- The exemption reads `$request->ip()`, so it holds as long as only real proxies are trusted (see "Trusted proxies"). With `TRUSTED_PROXIES=*` a client can fake an OpenAI or Anthropic address with `X-Forwarded-For`.
+- `tests/Feature/Mcp/OAuthRegistrationTest.php` covers the limit, the exemption and the metadata.
+
+## Trusted proxies (`config/trustedproxy.php`)
+
+The client IP (`$request->ip()`, used by every per-IP rate limit and by the ChatGPT/Claude ranges) is only as good as the proxies Laravel trusts. There is one setting, `trustedproxy.proxies`, the key Laravel's `TrustProxies` reads; `bootstrap/app.php` does not call `trustProxies()` (owner decision October 2026).
+
+- It defaults to the ranges Cloudflare publishes (https://www.cloudflare.com/ips-v4 and https://www.cloudflare.com/ips-v6), written in the config file. TryPost Cloud runs on one machine behind Cloudflare, so the IP is the one Cloudflare appended and a client cannot fake it. When Cloudflare changes its lists (rarely), update the config.
+- Another install sets `TRUSTED_PROXIES` to its proxy's IPs or ranges (comma-separated), or `*` to trust any proxy, which lets a client fake its IP with `X-Forwarded-For`. Never `trustProxies(at: '*')` in code: that was the bug.
+- `tests/Feature/TrustedProxiesTest.php` covers Cloudflare (IPv4 and IPv6), a direct request, a listed proxy and `*`.
+
 ## MCP tool annotations
 
 **Every MCP tool declares all three annotations explicitly, `false` included** (owner decision October 2026): `#[IsReadOnly(bool)]`, `#[IsDestructive(bool)]` and `#[IsOpenWorld(bool)]`, above its `#[Description]`. The OpenAI plugin directory refuses ("Not live") any tool without three explicit booleans, and the Claude directory requires `readOnlyHint` or `destructiveHint`. Annotations only describe the tool to the AI client (when to ask the user for confirmation); they never change what it does and are not rate limits.
