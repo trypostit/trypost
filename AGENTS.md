@@ -726,6 +726,7 @@ view turns a forgotten variable into a runtime-only failure.
 ## Icons (@tabler/icons-vue)
 
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
+- Brand logos come from `@thesvg/vue`, one import per logo (`import Canva from '@thesvg/vue/canva'`). A one-color logo that must follow the theme goes through `inTextColor()` (`resources/js/lib/brandLogos.ts`).
 - All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.
 - Import icons from `@tabler/icons-vue`: `import { IconCheck, IconX } from '@tabler/icons-vue'`.
 - Browse available icons at https://tabler.io/icons

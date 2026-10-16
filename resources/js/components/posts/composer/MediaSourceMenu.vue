@@ -6,14 +6,7 @@ import GoogleDrive from '@thesvg/vue/google-drive-2026';
 import GooglePhotos from '@thesvg/vue/google-photos';
 import Unsplash from '@thesvg/vue/unsplash';
 import { getActiveLanguage, trans } from 'laravel-vue-i18n';
-import {
-    computed,
-    h,
-    onBeforeUnmount,
-    ref,
-    type Component,
-    type FunctionalComponent,
-} from 'vue';
+import { computed, onBeforeUnmount, ref, type Component } from 'vue';
 import { toast } from 'vue-sonner';
 
 import {
@@ -36,6 +29,7 @@ import {
     type MediaImportPayload,
     useMediaImport,
 } from '@/composables/useMediaImport';
+import { inTextColor } from '@/lib/brandLogos';
 import { defaultCanvaPreset, openCanva } from '@/lib/mediaSources/canva';
 import {
     type GoogleDrivePick,
@@ -65,15 +59,11 @@ const emit = defineEmits<{
     (event: 'upload'): void;
 }>();
 
-/** Unsplash's logo is black; drawn in the text color so it shows in dark mode. */
-const UnsplashLogo: FunctionalComponent = (_, { attrs }) =>
-    h(Unsplash, { ...attrs, fill: 'currentColor' });
-
 const ICONS: Record<SourceKey, Component> = {
     canva: Canva,
     google_drive: GoogleDrive,
     google_photos: GooglePhotos,
-    unsplash: UnsplashLogo,
+    unsplash: inTextColor(Unsplash),
 };
 
 const page = usePage();

@@ -177,6 +177,8 @@ test('the toolbar has one media button whose menu lists the upload first, then t
     expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"composer-base-media-source-list\"] [data-testid^=\"media-source-\"]')).map((item) => item.dataset.testid)"))
         ->toBe(['media-source-upload', 'media-source-canva', 'media-source-unsplash']);
 
+    $page->assertPresent('[data-testid="media-source-unsplash"] svg[fill="currentColor"]');
+
     $page->click('@media-source-unsplash');
     waitForComposerMediaSourcesTestId($page, 'unsplash-dialog');
 
