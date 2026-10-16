@@ -78,12 +78,22 @@ test('the Canva submenu lists the five presets with their sizes, Square first an
         ->toBe(['canva-preset-square', 'canva-preset-portrait_4_5', 'canva-preset-portrait_3_4', 'canva-preset-landscape', 'canva-preset-story']);
 
     $page->assertSeeIn('@canva-preset-square', 'Square 1:1')
-        ->assertSeeIn('@canva-preset-square', '1200 × 1200')
+        ->assertSeeIn('@canva-preset-square', '(1200×1200)')
         ->assertPresent('@canva-preset-square-default')
-        ->assertSeeIn('@canva-preset-portrait_4_5', '1080 × 1350')
-        ->assertSeeIn('@canva-preset-landscape', '1200 × 627')
-        ->assertSeeIn('@canva-preset-story', '1080 × 1920')
+        ->assertSeeIn('@canva-preset-portrait_4_5', '(1080×1350)')
+        ->assertSeeIn('@canva-preset-landscape', '(1200×627)')
+        ->assertSeeIn('@canva-preset-story', '(1080×1920)')
         ->assertNotPresent('@canva-preset-story-default')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the Canva entry shows the official Canva logo', function () {
+    ['page' => $page] = openComposerWithOnlyCanva($this);
+
+    $page->click('@composer-base-media-source-menu');
+    waitForComposerCanvaTestId($page, 'media-source-canva');
+
+    $page->assertPresent('[data-testid="media-source-canva"] svg path[fill="#7D2AE7"]')
         ->assertNoJavaScriptErrors();
 });
 
