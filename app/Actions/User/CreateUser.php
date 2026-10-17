@@ -21,7 +21,7 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, oidc_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User
@@ -49,6 +49,7 @@ class CreateUser
                 'password' => data_get($data, 'password'),
                 'google_id' => data_get($data, 'google_id'),
                 'github_id' => data_get($data, 'github_id'),
+                'oidc_id' => data_get($data, 'oidc_id'),
                 'email_verified_at' => data_get($data, 'email_verified_at', $isInviteRegistration ? now() : null),
                 'account_id' => $account->id,
                 'registration_ip' => data_get($data, 'registration_ip'),
@@ -74,6 +75,7 @@ class CreateUser
                 $authProvider = match (true) {
                     (bool) $user->google_id => 'google',
                     (bool) $user->github_id => 'github',
+                    (bool) $user->oidc_id => 'oidc',
                     default => 'email',
                 };
 

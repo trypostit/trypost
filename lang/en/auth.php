@@ -55,6 +55,12 @@ return [
     'google_signup' => 'Sign up with Google',
     'github_login' => 'Log in with GitHub',
     'github_signup' => 'Sign up with GitHub',
+    'oidc_login' => 'Log in with :provider',
+    'oidc_signup' => 'Sign up with :provider',
+    'oidc_group_denied' => 'Your account is not in a group that may use this application.',
+    'oidc_email_missing' => 'Your identity provider did not return an email address.',
+    'oidc_email_unverified' => 'Your email address is not verified with your identity provider.',
+    'oidc_failed' => 'Single sign-on failed. Please try again.',
     'github_email_unavailable' => 'Unable to retrieve your email from GitHub. Make your GitHub email public or grant the email scope, then try again.',
 
     'login' => [

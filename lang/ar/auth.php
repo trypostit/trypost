@@ -55,6 +55,12 @@ return [
     'google_signup' => 'التسجيل عبر Google',
     'github_login' => 'تسجيل الدخول عبر GitHub',
     'github_signup' => 'التسجيل عبر GitHub',
+    'oidc_login' => 'تسجيل الدخول عبر :provider',
+    'oidc_signup' => 'التسجيل عبر :provider',
+    'oidc_group_denied' => 'حسابك ليس ضمن أي مجموعة مسموح لها باستخدام هذا التطبيق.',
+    'oidc_email_missing' => 'لم يرسل مزوّد الهوية الخاص بك أي عنوان بريد إلكتروني.',
+    'oidc_email_unverified' => 'عنوان بريدك الإلكتروني غير موثّق لدى مزوّد الهوية الخاص بك.',
+    'oidc_failed' => 'فشل تسجيل الدخول الموحّد. يرجى المحاولة مرة أخرى.',
     'github_email_unavailable' => 'تعذر جلب بريدك الإلكتروني من GitHub. اجعل بريدك على GitHub عامًا أو امنح نطاق الوصول إلى البريد، ثم حاول مرة أخرى.',
 
     'login' => [

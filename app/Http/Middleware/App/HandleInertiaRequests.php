@@ -23,6 +23,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Auth\LoginMethods;
 use App\Support\HeicConverter;
 use App\Support\LinkTlds;
 use Illuminate\Http\Request;
@@ -110,6 +111,9 @@ class HandleInertiaRequests extends Middleware
             'aiEnabled' => fn (): bool => filled(config('ai.providers.'.config('ai.default').'.key')),
             'googleAuthEnabled' => fn (): bool => SocialAuthProvider::Google->isEnabled(),
             'githubAuthEnabled' => fn (): bool => SocialAuthProvider::GitHub->isEnabled(),
+            'oidcAuthEnabled' => fn (): bool => SocialAuthProvider::Oidc->isEnabled(),
+            'oidcDisplayName' => fn (): string => SocialAuthProvider::Oidc->label(),
+            'passwordLoginEnabled' => fn (): bool => LoginMethods::passwordEnabled(),
             ...(filled($user) ? [
                 'mediaSources' => fn (): array => ['menu' => MediaSource::menu()],
                 'mediaUploadLimits' => fn (): array => [

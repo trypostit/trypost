@@ -55,6 +55,12 @@ return [
     'google_signup' => 'Εγγραφή με Google',
     'github_login' => 'Σύνδεση με GitHub',
     'github_signup' => 'Εγγραφή με GitHub',
+    'oidc_login' => 'Σύνδεση με :provider',
+    'oidc_signup' => 'Εγγραφή με :provider',
+    'oidc_group_denied' => 'Ο λογαριασμός σας δεν ανήκει σε ομάδα που επιτρέπεται να χρησιμοποιεί αυτήν την εφαρμογή.',
+    'oidc_email_missing' => 'Ο πάροχος ταυτότητάς σας δεν επέστρεψε διεύθυνση email.',
+    'oidc_email_unverified' => 'Η διεύθυνση email σας δεν είναι επαληθευμένη στον πάροχο ταυτότητάς σας.',
+    'oidc_failed' => 'Η σύνδεση απέτυχε. Δοκιμάστε ξανά.',
     'github_email_unavailable' => 'Δεν ήταν δυνατή η ανάκτηση του email σας από το GitHub. Κάντε δημόσιο το email σας στο GitHub ή παραχωρήστε το scope email και δοκιμάστε ξανά.',
 
     'login' => [
