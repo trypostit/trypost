@@ -5,6 +5,7 @@ import {
     IconTrendingUp,
     IconChevronDown,
     IconGripVertical,
+    IconMessages,
     IconPlus,
     IconSearch,
     IconSettings,
@@ -45,9 +46,10 @@ import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useNetworkConnect } from '@/composables/useNetworkConnect';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { insights, publish } from '@/routes/app/channels';
+import { inbox, insights, publish } from '@/routes/app/channels';
 import { channels as channelsSettings } from '@/routes/app/workspace';
 import { channelName, type SidebarChannel } from '@/types/channel';
+import type { InboxCounts } from '@/types/inbox';
 import type { AvailablePlatform } from '@/types/social-account';
 import { isConnectionLost } from '@/types/social-account';
 
@@ -122,6 +124,10 @@ const suggestedPlatforms = computed(() => {
 
     return SUGGESTED_PLATFORMS.filter((platform) => connectable.has(platform));
 });
+
+const inboxCounts = computed(() => page.props.inbox as InboxCounts | undefined);
+
+const openInboxCount = (channel: SidebarChannel): number => inboxCounts.value?.channels[channel.id] ?? 0;
 
 const isCurrentChannel = (channel: SidebarChannel): boolean =>
     page.url.startsWith(`/channels/${channel.id}/`);
@@ -429,6 +435,15 @@ const reconnect = (channel: SidebarChannel): void => {
                                 {{ $t('channels.publish') }}
                             </Link>
                             <Link
+                                v-if="channel.has_inbox"
+                                :href="inbox.url(channel.id)"
+                                :class="channelCardItemClass"
+                                :data-testid="`sidebar-channel-${channel.id}-card-inbox`"
+                            >
+                                <IconMessages />
+                                {{ $t('sidebar.inbox') }}
+                            </Link>
+                            <Link
                                 :href="insights.url(channel.id)"
                                 :class="channelCardItemClass"
                                 :data-testid="`sidebar-channel-${channel.id}-card-insights`"
@@ -518,6 +533,25 @@ const reconnect = (channel: SidebarChannel): void => {
                                                 class="flex w-6 shrink-0 justify-center tabular-nums"
                                                 :data-testid="`sidebar-channel-${channel.id}-publish-count`"
                                             >{{ channel.scheduled_posts_count }}</span>
+                                        </Link>
+                                    </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                                <SidebarMenuSubItem v-if="channel.has_inbox">
+                                    <SidebarMenuSubButton
+                                        as-child
+                                        :is-active="urlIsActive(inbox.url(channel.id))"
+                                    >
+                                        <Link
+                                            :href="inbox.url(channel.id)"
+                                            :data-testid="`sidebar-channel-${channel.id}-inbox`"
+                                        >
+                                            <IconMessages />
+                                            <span class="min-w-0 flex-1 truncate">{{ $t('sidebar.inbox') }}</span>
+                                            <span
+                                                v-if="openInboxCount(channel) > 0"
+                                                class="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-primary-subtle px-1.5 text-xs font-medium text-primary-text tabular-nums"
+                                                :data-testid="`sidebar-channel-${channel.id}-inbox-count`"
+                                            >{{ openInboxCount(channel) }}</span>
                                         </Link>
                                     </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>

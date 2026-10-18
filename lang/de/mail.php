@@ -34,6 +34,25 @@ return [
         'ignore' => 'Wenn du kein Konto erstellt hast, kannst du diese E-Mail ignorieren.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count Person hat deinen :network-Beitrag kommentiert|[0,*] :count Personen haben deinen :network-Beitrag kommentiert',
+        'title' => 'Neue Kommentare zu deinem Beitrag',
+        'heading' => '{1} :count Person hat deinen Beitrag kommentiert|[0,*] :count Personen haben deinen Beitrag kommentiert',
+        'subtitle' => 'Antworte, solange es frisch ist, damit das Gespräch weitergeht.',
+        'published_at' => 'Veröffentlicht am :time (:timezone)',
+        'post_without_text' => 'Beitrag ohne Text',
+        'button' => 'Kommentare ansehen',
+        'review_subject_rated' => 'Neue Bewertung :stars für :channel',
+        'review_subject' => 'Neue Bewertung für :channel',
+        'review_title' => 'Neue Bewertung',
+        'review_heading_rated' => 'Neue Bewertung :stars',
+        'review_heading' => 'Neue Bewertung',
+        'review_subtitle' => 'Bedanke dich oder antworte, solange die Bewertung frisch ist.',
+        'reviewed_at' => 'Bewertet am :time (:timezone)',
+        'review_without_text' => 'Sterne ohne geschriebene Bewertung',
+        'review_button' => 'Bewertung ansehen',
+    ],
+
     'password_reset' => [
         'subject' => 'Setze dein Passwort zurück',
         'preview' => 'Setze dein Passwort zurück.',

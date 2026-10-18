@@ -11,6 +11,7 @@ return [
         'app_password' => 'Uygulama Parolası',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Güvenlik için bir <strong>Uygulama Parolası</strong> kullanın. <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a> adresinden oluşturun.',
+        'message_access_hint' => "TryPost'tan mesajları yanıtlamak için uygulama şifresini oluştururken “Doğrudan mesajlarına erişime izin ver” seçeneğini aç.",
         'submit' => 'Bluesky\'i Bağla',
         'submitting' => 'Bağlanıyor...',
         'invalid_credentials' => 'Geçersiz kimlik bilgileri.',

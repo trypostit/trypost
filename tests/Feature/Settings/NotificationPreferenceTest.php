@@ -194,3 +194,37 @@ test('the legacy queued notification types are not offered or accepted as prefer
         ->and($this->user->wantsEmailFor(Type::PostReady))->toBeFalse()
         ->and($this->user->wantsEmailFor(Type::MentionedInComment))->toBeFalse();
 });
+
+test('the comments and reviews email is on by default and follows its preference', function () {
+    expect($this->user->wantsEmailFor(Type::InboxActivity))->toBeTrue();
+
+    $this->actingAs($this->user)->get(route('app.notifications.preferences'));
+
+    expect(NotificationPreference::query()->where('user_id', $this->user->id)->sole()->inbox_activity)->toBeTrue();
+
+    $this->actingAs($this->user)
+        ->patchJson(route('app.notifications.preferences.update'), ['inbox_activity' => false])
+        ->assertNoContent();
+
+    $preference = NotificationPreference::query()->where('user_id', $this->user->id)->sole();
+
+    expect($preference->inbox_activity)->toBeFalse()
+        ->and($preference->post_published)->toBeTrue()
+        ->and($this->user->fresh()->wantsEmailFor(Type::InboxActivity))->toBeFalse();
+});
+
+test('the comments and reviews switch is offered only while the inbox is on', function () {
+    $this->actingAs($this->user)->get(route('app.notifications.preferences'))
+        ->assertInertia(fn ($page) => $page->where('showsInboxActivity', false));
+
+    config()->set('trypost.inbox.enabled', true);
+
+    $this->actingAs($this->user)->get(route('app.notifications.preferences'))
+        ->assertInertia(fn ($page) => $page->where('showsInboxActivity', true)->where('preferences.inbox_activity', true));
+});
+
+test('the comments and reviews preference must be a boolean', function () {
+    $this->actingAs($this->user)
+        ->patchJson(route('app.notifications.preferences.update'), ['inbox_activity' => 'nope'])
+        ->assertJsonValidationErrors(['inbox_activity']);
+});

@@ -34,7 +34,7 @@ test('facebook connect redirects to oauth provider', function () {
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
     $driverMock->shouldReceive('reRequest')->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
-        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+        'getTargetUrl' => 'https://www.facebook.com/v26.0/dialog/oauth?test=1',
     ]));
 
     Socialite::shouldReceive('driver')
@@ -44,7 +44,7 @@ test('facebook connect redirects to oauth provider', function () {
     $response = $this->actingAs($this->user)
         ->get(route('app.social.facebook.connect'));
 
-    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+    $response->assertRedirect('https://www.facebook.com/v26.0/dialog/oauth?test=1');
 
     expect(PendingConnection::current()?->workspaceId())->toBe($this->workspace->id);
 });
@@ -469,7 +469,7 @@ test('facebook connect remembers the reconnect account from the query string', f
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
     $driverMock->shouldReceive('reRequest')->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
-        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+        'getTargetUrl' => 'https://www.facebook.com/v26.0/dialog/oauth?test=1',
     ]));
 
     Socialite::shouldReceive('driver')
@@ -479,7 +479,7 @@ test('facebook connect remembers the reconnect account from the query string', f
     $response = $this->actingAs($this->user)
         ->get(route('app.social.facebook.connect', ['reconnect' => $account->id]));
 
-    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+    $response->assertRedirect('https://www.facebook.com/v26.0/dialog/oauth?test=1');
 
     expect(PendingConnection::current()?->workspaceId())->toBe($this->workspace->id)
         ->and(PendingConnection::current()?->reconnectId())->toBe($account->id);
@@ -496,7 +496,7 @@ test('facebook connect ignores a reconnect id from another workspace', function 
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
     $driverMock->shouldReceive('reRequest')->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
-        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+        'getTargetUrl' => 'https://www.facebook.com/v26.0/dialog/oauth?test=1',
     ]));
 
     Socialite::shouldReceive('driver')
@@ -505,7 +505,7 @@ test('facebook connect ignores a reconnect id from another workspace', function 
 
     $this->actingAs($this->user)
         ->get(route('app.social.facebook.connect', ['reconnect' => $foreign->id]))
-        ->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+        ->assertRedirect('https://www.facebook.com/v26.0/dialog/oauth?test=1');
 
     expect(PendingConnection::current()?->reconnectId())->toBeNull();
 });
@@ -522,7 +522,7 @@ test('facebook connect ignores a reconnect id from another network', function ()
     $driverMock->shouldReceive('setScopes')->andReturnSelf();
     $driverMock->shouldReceive('reRequest')->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
-        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+        'getTargetUrl' => 'https://www.facebook.com/v26.0/dialog/oauth?test=1',
     ]));
 
     Socialite::shouldReceive('driver')
@@ -531,7 +531,7 @@ test('facebook connect ignores a reconnect id from another network', function ()
 
     $this->actingAs($this->user)
         ->get(route('app.social.facebook.connect', ['reconnect' => $linkedin->id]))
-        ->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+        ->assertRedirect('https://www.facebook.com/v26.0/dialog/oauth?test=1');
 
     expect(PendingConnection::current()?->reconnectId())->toBeNull();
 });

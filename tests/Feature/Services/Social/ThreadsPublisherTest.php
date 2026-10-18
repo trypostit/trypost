@@ -1077,3 +1077,21 @@ test('a text post waits for its container before publishing and recreates it whe
         ->and($publicationAttempts)->toBe(2)
         ->and(array_slice($requestOrder, 0, 3))->toBe(['create', 'status', 'publish']);
 });
+
+test('threads publisher replies to a reply through a text container', function () {
+    $graph = config('trypost.platforms.threads.graph_api');
+    Http::fake([
+        "{$graph}/123456789/threads" => Http::response(['id' => 'container-9']),
+        "{$graph}/container-9*" => Http::response(['status' => 'FINISHED']),
+        "{$graph}/123456789/threads_publish" => Http::response(['id' => 'reply-9']),
+        "{$graph}/reply-9*" => Http::response(['permalink' => 'https://www.threads.net/@testuser/post/x']),
+    ]);
+
+    $result = $this->publisher->replyTo($this->socialAccount, 'reply-1', 'Thanks!');
+
+    expect($result)->toBe(['id' => 'reply-9', 'url' => 'https://www.threads.net/@testuser/post/x']);
+    Http::assertSent(fn ($request): bool => $request->url() === "{$graph}/123456789/threads"
+        && $request['reply_to_id'] === 'reply-1'
+        && $request['media_type'] === 'TEXT'
+        && $request['text'] === 'Thanks!');
+});

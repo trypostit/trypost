@@ -4,22 +4,30 @@ Before planning or editing, find the row whose globs match the file's path and r
 
 | Applies to | Rule file |
 | --- | --- |
+| app/Actions/Inbox/** | .ai/rules/actions-inbox.md |
 | app/Actions/Analytics/** | .ai/rules/analytics.md |
 | app/** | .ai/rules/app.md |
 | app/Http/Controllers/Auth/GoogleBusinessController.php, app/Http/Controllers/Auth/** | .ai/rules/auth.md |
 | app/Services/Analytics/Collectors/** | .ai/rules/collectors.md |
+| app/Console/Commands/Inbox/** | .ai/rules/commands-inbox.md |
+| app/Http/Controllers/App/InboxConversationController.php | .ai/rules/controllers-app.md |
 | resources/js/components/posts/editor/** | .ai/rules/editor.md |
 | app/Enums/GoogleBusiness/**, app/Jobs/PublishToSocialPlatform.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/ReconcileGoogleBusinessPosts.php, app/Services/Social/GoogleBusinessPublisher.php, app/Support/PostPlatformMetaRules.php | .ai/rules/google-business.md |
+| app/Services/Inbox/**, app/Services/Inbox/Drivers/GoogleBusinessInboxDriver.php, resources/js/components/inbox/**, app/Services/Inbox/Drivers/MastodonInboxDriver.php | .ai/rules/inbox.md |
+| app/Jobs/Inbox/** | .ai/rules/jobs-inbox.md |
 | app/Listeners/StripeEventListener.php, app/Jobs/PostHog/TrackBilling.php, app/Jobs/PostHog/SyncAccountUsage.php | .ai/rules/jobs-post-hog.md |
 | app/Jobs/SendNotification.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/RecoverStuckPosts.php | .ai/rules/jobs.md |
 | resources/js/** | .ai/rules/js.md |
+| resources/js/lib/inbox.ts | .ai/rules/lib.md |
 | app/Actions/Media/**, app/Models/Media.php | .ai/rules/media.md |
 | app/Http/Middleware/App/HandleInertiaRequests.php | .ai/rules/middleware-app.md |
 | app/Jobs/PostHog/**, app/Models/Post.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
 | app/Jobs/PostHog/** | .ai/rules/post-hog.md |
 | app/Enums/PostPlatform/ContentType.php | .ai/rules/post-platform.md |
 | app/Actions/Post/FinalizePostPublication.php, app/Jobs/PublishPost.php, app/Actions/Post/UpdatePost.php, app/Actions/Post/** | .ai/rules/post.md |
-| routes/well-known.php, app/Http/Controllers/WellKnownController.php | .ai/rules/routes.md |
+| app/Http/Requests/** | .ai/rules/requests.md |
+| routes/well-known.php, app/Http/Controllers/WellKnownController.php, routes/stateless-webhook.php | .ai/rules/routes.md |
+| app/Actions/SavedReply/** | .ai/rules/saved-reply.md |
 | app/Enums/SocialAccount/Platform.php | .ai/rules/social-account.md |
 | app/Services/Social/GoogleBusinessPublisher.php, app/Support/Social/GoogleBusinessDerivativeCleaner.php, app/Actions/Post/DeletePost.php, app/Actions/Post/UpdatePost.php, app/Actions/Workspace/PurgeWorkspace.php, app/Http/Controllers/Auth/SocialController.php, app/Support/Social/ThreadProgress.php, app/Support/ThreadReplies.php, app/Services/Social/Concerns/PublishesThreads.php, app/Services/Social/FacebookPublisher.php, app/Services/Social/InstagramPublisher.php | .ai/rules/social.md |
 | app/Support/PostPlatformMetaRules.php | .ai/rules/support.md |

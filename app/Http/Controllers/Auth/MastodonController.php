@@ -22,7 +22,8 @@ class MastodonController extends SocialController
 {
     protected SocialPlatform $platform = SocialPlatform::Mastodon;
 
-    private const SCOPES = 'read:accounts read:statuses write:statuses write:media';
+    /** @var list<string> */
+    protected array $scopes = ['read:accounts', 'read:statuses', 'write:statuses', 'write:media'];
 
     /**
      * The instance step, before the redirect to the instance's consent screen.
@@ -71,7 +72,7 @@ class MastodonController extends SocialController
             $appResponse = Http::post("{$instance}/api/v1/apps", [
                 'client_name' => config('app.name'),
                 'redirect_uris' => route('app.social.mastodon.callback'),
-                'scopes' => self::SCOPES,
+                'scopes' => $this->scopes(),
                 'website' => config('app.url'),
             ]);
 
@@ -105,7 +106,7 @@ class MastodonController extends SocialController
                 'client_id' => $app['client_id'],
                 'response_type' => 'code',
                 'redirect_uri' => route('app.social.mastodon.callback'),
-                'scope' => self::SCOPES,
+                'scope' => $this->scopes(),
                 'state' => $state,
                 'force_login' => PendingConnection::current()?->isSwitchingAccount() ? 'true' : null,
             ]);
@@ -178,7 +179,7 @@ class MastodonController extends SocialController
 
             $profile = $profileResponse->json();
 
-            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), explode(' ', self::SCOPES));
+            $grantedScopes = $this->reportedScopes(data_get($tokenData, 'scope'), $this->requestedScopes());
 
             return $this->refusalForMissingPublishScopes($grantedScopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(
@@ -224,5 +225,10 @@ class MastodonController extends SocialController
             'mastodon_client_secret',
             'mastodon_oauth_state',
         ]);
+    }
+
+    private function scopes(): string
+    {
+        return implode(' ', $this->requestedScopes());
     }
 }

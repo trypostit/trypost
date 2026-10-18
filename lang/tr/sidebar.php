@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'Gezinme',
     'mobile_description' => 'Uygulamanın ana gezinmesi.',
     'repurposes' => 'Repurpose',
+    'inbox' => 'Gelen kutusu',
     'posts' => [
         'all' => 'Tümü',
     ],

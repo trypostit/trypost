@@ -9,6 +9,7 @@ return [
         'app_password' => 'Пароль додатка',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'З міркувань безпеки використовуйте <strong>пароль додатка</strong>. Створіть його на <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'Щоб відповідати на повідомлення з TryPost, увімкни «Дозволити доступ до особистих повідомлень» під час створення пароля застосунку.',
         'submit' => 'Підключити Bluesky',
         'submitting' => 'Підключення...',
         'invalid_credentials' => 'Недійсні облікові дані.',

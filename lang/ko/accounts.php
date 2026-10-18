@@ -9,6 +9,7 @@ return [
         'app_password' => '앱 비밀번호',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => '보안을 위해 <strong>앱 비밀번호</strong>를 사용하세요. <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>에서 생성할 수 있습니다.',
+        'message_access_hint' => 'TryPost에서 메시지에 답장하려면 앱 비밀번호를 만들 때 ‘다이렉트 메시지 접근 허용’을 켜세요.',
         'submit' => 'Bluesky 연결',
         'submitting' => '연결 중...',
         'invalid_credentials' => '자격 증명이 올바르지 않습니다.',

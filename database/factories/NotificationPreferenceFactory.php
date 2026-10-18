@@ -27,6 +27,7 @@ class NotificationPreferenceFactory extends Factory
             'account_disconnected' => true,
             'post_note_added' => true,
             'collaboration' => true,
+            'inbox_activity' => true,
         ];
     }
 }

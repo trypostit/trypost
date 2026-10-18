@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Enums\SocialAccount;
 
+use App\Enums\Inbox\ConversationKind;
 use App\Enums\Media\Type as MediaType;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Enums\YouTube\Category;
+use App\Services\Inbox\InboxDrivers;
 use App\Support\Hashtags;
 use Illuminate\Support\Str;
 
@@ -57,6 +59,127 @@ enum Platform: string
         return match ($this) {
             self::Instagram, self::InstagramFacebook => true,
             default => false,
+        };
+    }
+
+    public static function inboxModuleEnabled(): bool
+    {
+        return (bool) config('trypost.inbox.enabled');
+    }
+
+    public function inboxEnabled(): bool
+    {
+        return self::inboxModuleEnabled() && app(InboxDrivers::class)->supports($this);
+    }
+
+    public function inboxKindEnabled(ConversationKind $kind): bool
+    {
+        return match ($kind) {
+            ConversationKind::Mention, ConversationKind::DirectMessage => $this->inboxEnabled()
+                && in_array($kind, app(InboxDrivers::class)->for($this)?->kinds() ?? [], true),
+            default => $this->inboxEnabled(),
+        };
+    }
+
+    /** @return list<string> */
+    public static function inboxValues(): array
+    {
+        return array_values(array_map(
+            fn (self $platform): string => $platform->value,
+            array_filter(self::cases(), fn (self $platform): bool => $platform->inboxEnabled()),
+        ));
+    }
+
+    /**
+     * What the inbox needs granted on this platform, each item being a scope
+     * or a list of alternative spellings of one scope.
+     *
+     * @return list<string|list<string>>
+     */
+    public function inboxScopes(): array
+    {
+        return match ($this) {
+            self::Instagram => ['instagram_business_manage_comments'],
+            self::InstagramFacebook => ['instagram_manage_comments', 'pages_manage_metadata', 'pages_read_engagement'],
+            self::Facebook => ['pages_read_user_content', 'pages_manage_engagement', 'pages_manage_metadata'],
+            self::Threads => ['threads_read_replies', 'threads_manage_replies'],
+            self::YouTube => ['https://www.googleapis.com/auth/youtube.force-ssl'],
+            self::GoogleBusiness => ['https://www.googleapis.com/auth/business.manage'],
+            self::Mastodon => [['read:notifications', 'read']],
+            default => [],
+        };
+    }
+
+    /**
+     * Every inbox scope this platform's connect flow asks for while the inbox
+     * is on: comments, mentions and direct messages alike.
+     *
+     * @return list<string>
+     */
+    public function inboxConnectScopes(): array
+    {
+        if (! $this->inboxEnabled()) {
+            return [];
+        }
+
+        return array_values(array_unique(array_map(
+            fn (string|array $scope): string => is_array($scope) ? $scope[0] : $scope,
+            [...$this->inboxScopes(), ...$this->inboxMentionScopes(), ...$this->inboxDirectMessageScopes(), ...$this->inboxRemovalScopes()],
+        )));
+    }
+
+    /**
+     * What the network needs granted to tell the inbox a post was deleted.
+     * Asked on connect but never required: a channel without it still syncs,
+     * and its deleted posts are only missed.
+     *
+     * @see https://developers.facebook.com/docs/threads/webhooks
+     *
+     * @return list<string>
+     */
+    public function inboxRemovalScopes(): array
+    {
+        return match ($this) {
+            self::Threads => ['threads_delete'],
+            default => [],
+        };
+    }
+
+    /**
+     * What mentions need granted on top of the inbox scopes.
+     *
+     * @see https://developers.facebook.com/documentation/threads/threads-mentions.md
+     *
+     * @return list<string>
+     */
+    public function inboxMentionScopes(): array
+    {
+        return match ($this) {
+            self::Threads => ['threads_manage_mentions'],
+            default => [],
+        };
+    }
+
+    /**
+     * What direct messages need granted on top of the inbox scopes, in the
+     * same shape as inboxScopes(). Bluesky's DM access is not a scope: it is
+     * read from the session token (BlueskyTokenScope).
+     *
+     * @see https://developers.facebook.com/docs/instagram-platform/instagram-api-with-instagram-login/messaging-api
+     * @see https://developers.facebook.com/docs/messenger-platform/instagram/get-started
+     * @see https://developers.facebook.com/docs/messenger-platform/conversations
+     * @see https://docs.joinmastodon.org/methods/conversations/
+     *
+     * @return list<string|list<string>>
+     */
+    public function inboxDirectMessageScopes(): array
+    {
+        return match ($this) {
+            self::Instagram => ['instagram_business_manage_messages'],
+            self::InstagramFacebook => ['instagram_manage_messages', 'pages_manage_metadata'],
+            self::Facebook => ['pages_messaging', 'pages_manage_metadata'],
+            self::Mastodon => [['read:statuses', 'read']],
+            default => [],
         };
     }
 

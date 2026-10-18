@@ -21,6 +21,7 @@ return [
             'members' => 'Członkowie',
             'signatures' => 'Sygnatury',
             'labels' => 'Etykiety',
+            'saved_replies' => 'Zapisane odpowiedzi',
             'webhooks' => 'Webhooki',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'Otrzymuj e-mail, gdy członek zespołu doda notatkę do posta',
         'collaboration' => 'Współpraca',
         'collaboration_description' => 'Otrzymuj e-maile o prośbach o zatwierdzenie oraz zatwierdzonych lub odrzuconych postach',
+        'inbox_activity' => 'Komentarze i opinie',
+        'inbox_activity_description' => 'Otrzymuj e-mail, gdy ktoś skomentuje Twoje ostatnie posty lub zostawi opinię',
         'save_failed' => 'Nie udało się zapisać preferencji powiadomień. Spróbuj ponownie.',
     ],
 

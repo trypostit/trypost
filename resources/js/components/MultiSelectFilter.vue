@@ -12,6 +12,12 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { filterBySearch } from '@/lib/search';
 
@@ -20,6 +26,8 @@ interface FilterOption {
     label: string;
     searchText?: string;
     ariaLabel?: string;
+    disabled?: boolean;
+    disabledReason?: string;
 }
 
 const props = withDefaults(
@@ -38,6 +46,7 @@ const props = withDefaults(
         align?: 'start' | 'center' | 'end';
         compact?: boolean;
         iconOnlyOnMobile?: boolean;
+        bareOnMobile?: boolean;
         sheetBelowSm?: boolean;
     }>(),
     {
@@ -48,11 +57,15 @@ const props = withDefaults(
         align: 'end',
         compact: false,
         iconOnlyOnMobile: false,
+        bareOnMobile: false,
         sheetBelowSm: false,
     },
 );
 
 const [DefinePanel, ReusePanel] = createReusableTemplate();
+const [DefineOption, ReuseOption] = createReusableTemplate<{
+    option: FilterOption;
+}>();
 const belowSm = useBelowBreakpoint('sm');
 const asSheet = computed(() => props.sheetBelowSm && belowSm.value);
 
@@ -75,7 +88,27 @@ const visibleOptions = computed(() =>
     ]),
 );
 
+/** A disabled option says why on hover and focus; a sheet has no hover, so it shows the reason under the label. */
+const showsReasonTooltip = (option: FilterOption): boolean =>
+    Boolean(option.disabled && option.disabledReason) && !asSheet.value;
+
+const reasonId = (option: FilterOption): string =>
+    `${props.testId}-reason-text-${option.id}`;
+
+const disabledIds = computed(
+    () =>
+        new Set(
+            props.options
+                .filter((option) => option.disabled)
+                .map((option) => option.id),
+        ),
+);
+
 const toggle = (id: string): void => {
+    if (disabledIds.value.has(id)) {
+        return;
+    }
+
     selectedIds.value = selectedIds.value.includes(id)
         ? selectedIds.value.filter((selected) => selected !== id)
         : [...selectedIds.value, id];
@@ -97,11 +130,65 @@ const toggleAll = (): void => {
         return;
     }
 
-    selectedIds.value = props.options.map((option) => option.id);
+    selectedIds.value = props.options
+        .filter((option) => !option.disabled)
+        .map((option) => option.id);
 };
 </script>
 
 <template>
+    <DefineOption v-slot="{ option }">
+        <div
+            class="flex items-center gap-3 rounded-lg text-sm transition-control"
+            :class="[
+                compact ? 'min-h-8 px-2 py-1.5 leading-5' : 'min-h-12 p-2',
+                option.disabled
+                    ? 'cursor-not-allowed opacity-60'
+                    : 'cursor-pointer hover:bg-accent',
+            ]"
+            :aria-disabled="option.disabled ? 'true' : undefined"
+            :data-disabled="option.disabled ? '' : undefined"
+            :data-testid="`${testId}-option-${option.id}`"
+            @click="toggle(option.id)"
+        >
+            <Checkbox
+                v-if="checkboxPosition === 'start'"
+                :model-value="selectedIds.includes(option.id)"
+                :aria-label="option.ariaLabel ?? option.label"
+                :disabled="option.disabled"
+                :aria-describedby="option.disabledReason ? reasonId(option) : undefined"
+                :data-testid="`${testId}-checkbox-${option.id}`"
+                @click.stop
+                @update:model-value="toggle(option.id)"
+            />
+            <span class="min-w-0 flex-1">
+                <slot name="option" :option="option">{{
+                    option.label
+                }}</slot>
+                <span
+                    v-if="option.disabled && option.disabledReason"
+                    :id="reasonId(option)"
+                    :class="
+                        asSheet
+                            ? 'mt-0.5 block text-xs leading-[18px] text-muted-foreground'
+                            : 'sr-only'
+                    "
+                    :data-testid="`${testId}-unavailable-${option.id}`"
+                    >{{ option.disabledReason }}</span
+                >
+            </span>
+            <Checkbox
+                v-if="checkboxPosition === 'end'"
+                :model-value="selectedIds.includes(option.id)"
+                :aria-label="option.ariaLabel ?? option.label"
+                :disabled="option.disabled"
+                :aria-describedby="option.disabledReason ? reasonId(option) : undefined"
+                :data-testid="`${testId}-checkbox-${option.id}`"
+                @click.stop
+                @update:model-value="toggle(option.id)"
+            />
+        </div>
+    </DefineOption>
     <DefinePanel>
         <slot v-if="$slots.panel" name="panel" />
         <template v-else>
@@ -151,36 +238,27 @@ const toggleAll = (): void => {
                     </p>
                 </slot>
             </template>
-            <div
-                v-for="option in visibleOptions"
-                :key="option.id"
-                class="flex cursor-pointer items-center gap-3 rounded-lg text-sm transition-control hover:bg-accent"
-                :class="compact ? 'min-h-8 px-2 py-1.5 leading-5' : 'min-h-12 p-2'"
-                :data-testid="`${testId}-option-${option.id}`"
-                @click="toggle(option.id)"
-            >
-                <Checkbox
-                    v-if="checkboxPosition === 'start'"
-                    :model-value="selectedIds.includes(option.id)"
-                    :aria-label="option.ariaLabel ?? option.label"
-                    :data-testid="`${testId}-checkbox-${option.id}`"
-                    @click.stop
-                    @update:model-value="toggle(option.id)"
-                />
-                <span class="min-w-0 flex-1">
-                    <slot name="option" :option="option">{{
-                        option.label
-                    }}</slot>
-                </span>
-                <Checkbox
-                    v-if="checkboxPosition === 'end'"
-                    :model-value="selectedIds.includes(option.id)"
-                    :aria-label="option.ariaLabel ?? option.label"
-                    :data-testid="`${testId}-checkbox-${option.id}`"
-                    @click.stop
-                    @update:model-value="toggle(option.id)"
-                />
-            </div>
+            <TooltipProvider :delay-duration="0">
+                <template v-for="option in visibleOptions" :key="option.id">
+                    <Tooltip v-if="showsReasonTooltip(option)">
+                        <TooltipTrigger
+                            as="div"
+                            tabindex="0"
+                            class="rounded-lg focus-visible:outline-2 focus-visible:outline-ring"
+                            :data-testid="`${testId}-reason-trigger-${option.id}`"
+                        >
+                            <ReuseOption :option="option" />
+                        </TooltipTrigger>
+                        <TooltipContent
+                            side="top"
+                            :data-testid="`${testId}-reason-${option.id}`"
+                        >
+                            {{ option.disabledReason }}
+                        </TooltipContent>
+                    </Tooltip>
+                    <ReuseOption v-else :option="option" />
+                </template>
+            </TooltipProvider>
         </div>
 
         <slot name="footer" />
@@ -197,7 +275,8 @@ const toggleAll = (): void => {
                     :aria-label="iconOnlyOnMobile ? label : undefined"
                     :class="[
                         'shrink-0 data-[state=open]:bg-accent',
-                        { 'max-sm:border max-sm:border-border-strong': iconOnlyOnMobile },
+                        { 'max-sm:border max-sm:border-border-strong': iconOnlyOnMobile && !bareOnMobile },
+                        { 'max-sm:px-2': bareOnMobile },
                     ]"
                     :data-testid="`${testId}-filter`"
                 >
@@ -217,6 +296,7 @@ const toggleAll = (): void => {
                     >
                     <IconChevronDown
                         class="size-4 shrink-0 text-muted-foreground"
+                        :class="{ 'max-sm:hidden': bareOnMobile }"
                     />
                 </Button>
             </slot>

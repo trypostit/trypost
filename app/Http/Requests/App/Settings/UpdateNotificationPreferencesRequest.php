@@ -21,6 +21,7 @@ class UpdateNotificationPreferencesRequest extends FormRequest
             'account_disconnected' => ['sometimes', 'required', 'boolean'],
             'post_note_added' => ['sometimes', 'required', 'boolean'],
             'collaboration' => ['sometimes', 'required', 'boolean'],
+            'inbox_activity' => ['sometimes', 'required', 'boolean'],
         ];
     }
 }

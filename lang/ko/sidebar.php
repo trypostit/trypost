@@ -38,6 +38,7 @@ return [
     'mobile_title' => '내비게이션',
     'mobile_description' => '앱 기본 내비게이션.',
     'repurposes' => 'Repurpose',
+    'inbox' => '받은 편지함',
     'posts' => [
         'all' => '전체',
     ],

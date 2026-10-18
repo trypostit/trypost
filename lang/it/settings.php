@@ -21,6 +21,7 @@ return [
             'members' => 'Membri',
             'signatures' => 'Firme',
             'labels' => 'Etichette',
+            'saved_replies' => 'Risposte salvate',
             'webhooks' => 'Webhook',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'Ricevi un\'email quando un membro del team aggiunge una nota a un post',
         'collaboration' => 'Collaborazione',
         'collaboration_description' => 'Ricevi email sulle richieste di approvazione e sui post approvati o rifiutati',
+        'inbox_activity' => 'Commenti e recensioni',
+        'inbox_activity_description' => 'Ricevi un’email quando qualcuno commenta i tuoi post recenti o lascia una recensione',
         'save_failed' => 'Impossibile salvare le preferenze di notifica. Riprova.',
     ],
 

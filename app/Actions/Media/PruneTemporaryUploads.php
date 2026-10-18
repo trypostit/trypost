@@ -41,7 +41,7 @@ class PruneTemporaryUploads
     {
         $cutoff = $now->copy()->subHours((int) config('trypost.media.upload_retention_hours'));
         $expired = fn (Builder $query) => $query->temporaryUploads()
-            ->whereNull(['post_id', 'idea_id', 'rss_feed_item_id'])
+            ->whereNull(['post_id', 'idea_id', 'rss_feed_item_id', 'inbox_message_id', 'inbox_conversation_id'])
             ->where('created_at', '<', $cutoff);
 
         if ($dryRun) {

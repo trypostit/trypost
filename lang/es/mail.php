@@ -34,6 +34,25 @@ return [
         'ignore' => 'Si no creaste una cuenta, puedes ignorar este correo sin problema.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count persona comentó tu publicación en :network|[0,*] :count personas comentaron tu publicación en :network',
+        'title' => 'Nuevos comentarios en tu publicación',
+        'heading' => '{1} :count persona comentó tu publicación|[0,*] :count personas comentaron tu publicación',
+        'subtitle' => 'Responde mientras está reciente para mantener viva la conversación.',
+        'published_at' => 'Publicado el :time (:timezone)',
+        'post_without_text' => 'Publicación sin texto',
+        'button' => 'Ver comentarios',
+        'review_subject_rated' => 'Nueva reseña :stars en :channel',
+        'review_subject' => 'Nueva reseña en :channel',
+        'review_title' => 'Nueva reseña',
+        'review_heading_rated' => 'Nueva reseña :stars',
+        'review_heading' => 'Nueva reseña',
+        'review_subtitle' => 'Agradece o responde mientras la reseña es reciente.',
+        'reviewed_at' => 'Reseña del :time (:timezone)',
+        'review_without_text' => 'Valoración sin reseña escrita',
+        'review_button' => 'Ver reseña',
+    ],
+
     'password_reset' => [
         'subject' => 'Restablece tu contraseña',
         'preview' => 'Restablece tu contraseña.',

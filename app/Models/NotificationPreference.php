@@ -22,6 +22,7 @@ class NotificationPreference extends Model
         'account_disconnected',
         'post_note_added',
         'collaboration',
+        'inbox_activity',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class NotificationPreference extends Model
             'account_disconnected' => 'boolean',
             'post_note_added' => 'boolean',
             'collaboration' => 'boolean',
+            'inbox_activity' => 'boolean',
         ];
     }
 

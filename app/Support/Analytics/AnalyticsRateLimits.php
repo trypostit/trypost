@@ -26,11 +26,18 @@ use Illuminate\Cache\RateLimiting\Limit;
  * - Bluesky: a PDS allows 3,000 requests per 5 minutes per IP over all endpoints (600/min,
  *   docs.bsky.app "Rate Limits", `global-ip` in @atproto/pds rate-limits.ts), shared with publishing
  *   through the same host; guard 500/min per PDS host. The public AppView documents no number.
- * - Mastodon: 300 requests per 5 minutes per IP on each instance (60/min); guard 50/min per instance.
+ * - Mastodon: each instance allows 300 requests per 5 minutes per account and, separately, 300 per
+ *   5 minutes per IP (60/min, docs.joinmastodon.org/api/rate-limits); every channel of an instance
+ *   shares our IP, so guard 50/min per instance.
+ *
+ * The inbox sync spends the same per-host guards (sharedHostGuard), so inbox polls and analytics
+ * jobs never add up past a host's ceiling.
  */
 class AnalyticsRateLimits
 {
     public const int PER_ACCOUNT_PER_MINUTE = 30;
+
+    public const string LIMITER = 'analytics-publications';
 
     /** @return list<Limit> */
     public static function for(?SocialAccount $account): array
@@ -48,6 +55,20 @@ class AnalyticsRateLimits
         }
 
         return $limits;
+    }
+
+    /**
+     * The per-host guard of the channel's network, keyed exactly as the
+     * analytics jobs' RateLimited middleware stores it, so other jobs can
+     * spend from the same counter.
+     *
+     * @return array{key: string, limit: Limit}|null
+     */
+    public static function sharedHostGuard(SocialAccount $account): ?array
+    {
+        $limit = in_array($account->platform, [Platform::Bluesky, Platform::Mastodon], true) ? self::shared($account) : null;
+
+        return $limit ? ['key' => md5(self::LIMITER.$limit->key), 'limit' => $limit] : null;
     }
 
     private static function shared(SocialAccount $account): ?Limit

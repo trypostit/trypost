@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App\Settings;
 
+use App\Enums\SocialAccount\Platform;
 use App\Http\Controllers\App\Controller;
 use App\Http\Requests\App\Settings\UpdateNotificationPreferencesRequest;
 use App\Models\NotificationPreference;
@@ -24,11 +25,13 @@ class NotificationPreferenceController extends Controller
                 'account_disconnected' => true,
                 'post_note_added' => true,
                 'collaboration' => true,
+                'inbox_activity' => true,
             ],
         );
 
         return Inertia::render('settings/profile/Notifications', [
             'preferences' => $preferences,
+            'showsInboxActivity' => Platform::inboxModuleEnabled(),
         ]);
     }
 

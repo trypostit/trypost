@@ -21,6 +21,7 @@ return [
             'members' => 'メンバー',
             'signatures' => '署名',
             'labels' => 'ラベル',
+            'saved_replies' => '保存済みの返信',
             'webhooks' => 'ウェブフック',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'チームメンバーが投稿にメモを追加したときにメールを受け取ります',
         'collaboration' => 'コラボレーション',
         'collaboration_description' => '承認リクエストや、承認・却下された投稿についてメールを受け取る',
+        'inbox_activity' => 'コメントとレビュー',
+        'inbox_activity_description' => '最近の投稿へのコメントやレビューが届いたときにメールを受け取る',
         'save_failed' => '通知設定を保存できませんでした。もう一度お試しください。',
     ],
 

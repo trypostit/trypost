@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Analytics\DispatchAccountAnalytics;
+use App\Actions\Inbox\DispatchInboxBackfill;
 use App\Actions\SocialAccount\ListPinterestBoards;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Models\InboxSyncState;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
@@ -33,6 +35,7 @@ class SocialAccountObserver
     {
         $this->syncUsageAndIdentify($socialAccount);
         app(DispatchAccountAnalytics::class)->handle($socialAccount);
+        app(DispatchInboxBackfill::class)->handle($socialAccount);
     }
 
     public function deleted(SocialAccount $socialAccount): void
@@ -64,6 +67,9 @@ class SocialAccountObserver
 
         if ($connectionChanged && $isConnected) {
             app(DispatchAccountAnalytics::class)->handle($socialAccount);
+            app(DispatchInboxBackfill::class)->handle($socialAccount);
+        } elseif ($socialAccount->wasChanged('scopes')) {
+            InboxSyncState::clearWaits($socialAccount->id);
         }
     }
 

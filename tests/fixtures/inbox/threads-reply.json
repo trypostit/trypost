@@ -1,0 +1,22 @@
+{
+  "app_id": "123456",
+  "topic": "moderate",
+  "target_id": "threads-user-1",
+  "time": 1760600000,
+  "subscription_id": "234567",
+  "has_uid_field": false,
+  "values": {
+    "value": {
+      "id": "reply-1",
+      "username": "fan",
+      "text": "Reply",
+      "media_type": "TEXT_POST",
+      "permalink": "https://www.threads.net/@fan/post/Pp",
+      "replied_to": { "id": "root-1" },
+      "root_post": { "id": "root-1", "owner_id": "threads-user-1", "username": "brand" },
+      "shortcode": "Pp",
+      "timestamp": "2026-10-16T10:33:16+0000"
+    },
+    "field": "replies"
+  }
+}

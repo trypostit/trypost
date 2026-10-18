@@ -21,6 +21,7 @@ return [
             'members' => 'Leden',
             'signatures' => 'Handtekeningen',
             'labels' => 'Labels',
+            'saved_replies' => 'Opgeslagen antwoorden',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'Ontvang een e-mail wanneer een teamlid een notitie aan een bericht toevoegt',
         'collaboration' => 'Samenwerking',
         'collaboration_description' => 'Ontvang e-mails over goedkeuringsverzoeken en goedgekeurde of afgewezen berichten',
+        'inbox_activity' => 'Reacties en reviews',
+        'inbox_activity_description' => 'Ontvang een e-mail wanneer iemand reageert op je recente posts of een review achterlaat',
         'save_failed' => 'De meldingsvoorkeuren konden niet worden opgeslagen. Probeer het opnieuw.',
     ],
 

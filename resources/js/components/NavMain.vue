@@ -40,6 +40,7 @@ const { urlIsActive } = useActiveUrl();
                 </SidebarMenuButton>
                 <SidebarMenuBadge
                     v-if="item.count !== undefined"
+                    :class="{ 'min-w-5 bg-primary-subtle px-1.5 text-primary-text': item.countHighlighted && item.count > 0 }"
                     :data-testid="item.countTestId"
                 >
                     {{ item.count }}

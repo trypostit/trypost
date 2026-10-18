@@ -19,7 +19,7 @@ use Carbon\CarbonImmutable;
  *
  * @see https://developers.facebook.com/docs/instagram-platform/instagram-graph-api/reference/ig-user/stories
  */
-class InstagramPublicationCollector extends AbstractMetaPublicationCollector
+class InstagramPublicationCollector extends AbstractMetaPublicationCollector implements FindsPublication
 {
     private const PAGE_SIZE = 50;
 
@@ -62,6 +62,23 @@ class InstagramPublicationCollector extends AbstractMetaPublicationCollector
         }
 
         return $this->result($publications, $response, $crossedCutoff, $providerLimited);
+    }
+
+    /**
+     * @see https://developers.facebook.com/docs/instagram-platform/reference/instagram-media/
+     */
+    public function find(SocialAccount $account, string $remoteId): ?DiscoveredPublication
+    {
+        $row = (array) $this->get(
+            $account,
+            "{$account->platform->instagramGraphBaseUrl()}/{$remoteId}",
+            ['fields' => $this->fields($account)],
+        )->json();
+        $publishedAt = $this->publishedAt(data_get($row, 'timestamp'));
+
+        return $publishedAt && filled(data_get($row, 'id'))
+            ? $this->publication($row, $publishedAt, $this->contentType($row, $account->platform))
+            : null;
     }
 
     /**

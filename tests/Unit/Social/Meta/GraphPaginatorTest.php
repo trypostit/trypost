@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 test('graph paginator returns a single page when there is no paging.next', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response([
@@ -33,7 +33,7 @@ test('graph paginator returns a single page when there is no paging.next', funct
 });
 
 test('graph paginator follows paging.next until exhausted', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $nextUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor1&limit=100";
     $thirdUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor2&limit=100";
 
@@ -77,7 +77,7 @@ test('graph paginator follows paging.next until exhausted', function () {
 });
 
 test('graph paginator collects authorized page when first response is empty', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $nextUrl = "{$graphApi}/me/accounts?access_token=token&after=cursor1&limit=100";
 
     Http::fake([
@@ -105,7 +105,7 @@ test('graph paginator collects authorized page when first response is empty', fu
 });
 
 test('graph paginator throws when a later request fails after earlier pages succeeded', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $nextUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor1&limit=100";
 
     Log::shouldReceive('warning')->once()->withArgs(function (string $message, array $context) {
@@ -139,10 +139,10 @@ test('graph paginator throws when the first request fails', function () {
     });
 
     Http::fake([
-        'https://graph.facebook.com/v25.0/me/accounts*' => Http::response(['error' => ['message' => 'fail']], 400),
+        config('trypost.platforms.facebook.graph_api').'/me/accounts*' => Http::response(['error' => ['message' => 'fail']], 400),
     ]);
 
-    GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
+    GraphPaginator::all(config('trypost.platforms.facebook.graph_api').'/me/accounts', [
         'access_token' => 'token',
     ]);
 })->throws(IncompleteMetaGraphPaginationException::class);
@@ -153,15 +153,15 @@ test('graph paginator throws when the first request cannot connect', function ()
     });
 
     Http::fake([
-        'https://graph.facebook.com/v25.0/me/accounts*' => Http::failedConnection(),
+        config('trypost.platforms.facebook.graph_api').'/me/accounts*' => Http::failedConnection(),
     ]);
 
-    GraphPaginator::all('https://graph.facebook.com/v25.0/me/accounts', [
+    GraphPaginator::all(config('trypost.platforms.facebook.graph_api').'/me/accounts', [
         'access_token' => 'token',
     ]);
 })->throws(IncompleteMetaGraphPaginationException::class);
 test('graph paginator throws when a later request cannot connect', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $nextUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor1&limit=100";
     $requestCount = 0;
 
@@ -193,7 +193,7 @@ test('graph paginator throws when a later request cannot connect', function () {
 })->throws(IncompleteMetaGraphPaginationException::class);
 
 test('graph paginator stops when paging.next is not a usable string', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Http::fake([
         "{$graphApi}/me/accounts*" => Http::response([
@@ -215,7 +215,7 @@ test('graph paginator stops when paging.next is not a usable string', function (
 });
 
 test('graph paginator throws when paging.next repeats after pages were fetched', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $loopUrl = "{$graphApi}/me/accounts?access_token=secret-token&after=cursor&limit=100";
 
     Log::shouldReceive('error')->once()->withArgs(function (string $message, array $context) {
@@ -250,7 +250,7 @@ test('graph paginator throws when paging.next repeats after pages were fetched',
 })->throws(IncompleteMetaGraphPaginationException::class);
 
 test('graph paginator throws when paging.next points to another host', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
 
     Log::shouldReceive('error')->once()->withArgs(function (string $message) {
         return $message === 'Meta Graph pagination stopped: unexpected paging host';
@@ -273,7 +273,7 @@ test('graph paginator throws when paging.next points to another host', function 
 })->throws(IncompleteMetaGraphPaginationException::class);
 
 test('graph paginator throws when the safety page ceiling is reached', function () {
-    $graphApi = 'https://graph.facebook.com/v25.0';
+    $graphApi = config('trypost.platforms.facebook.graph_api');
     $requestCount = 0;
 
     Log::shouldReceive('error')->once()->withArgs(function (string $message) {

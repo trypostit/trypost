@@ -2,18 +2,36 @@
 
 declare(strict_types=1);
 
+use App\Actions\Inbox\RecountInboxConversation;
+use App\Actions\Inbox\StoreInboxMedia;
+use App\Dto\Inbox\IncomingMessage;
+use App\Dto\Inbox\IncomingSubject;
+use App\Dto\Inbox\MessageLimit;
+use App\Dto\Inbox\PollResult;
+use App\Dto\Inbox\SentReply;
+use App\Enums\Inbox\ConversationKind;
+use App\Enums\Inbox\MessageDirection;
+use App\Enums\Inbox\ReplyLengthUnit;
 use App\Enums\Plan\Slug;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\Inbox\StoreInboxMediaJob;
+use App\Jobs\Media\ImportRemoteMedia;
 use App\Models\AccessToken;
 use App\Models\Account;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Services\Http\HostResolver;
+use App\Services\Inbox\Contracts\DirectMessageDriver;
+use App\Services\Inbox\Contracts\InboxDriver;
+use App\Services\Inbox\InboxDrivers;
 use App\Support\Social\PendingConnection;
+use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +39,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Assert;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -41,7 +60,7 @@ pest()->extend(TestCase::class)
         Http::preventStrayRequests();
         fakePwnedPasswords();
         fakeChatGptEgressRanges();
-        Queue::fake([BootstrapAccountAnalytics::class]);
+        Queue::fake([BootstrapAccountAnalytics::class, StoreInboxMediaJob::class]);
     })
     ->in('Feature', 'Unit');
 
@@ -104,6 +123,168 @@ expect()->extend('toBeOne', function () {
 | global functions to help you to reduce the number of lines of code in your test files.
 |
 */
+
+/**
+ * Runs the copy of every inbox file still waiting, as the queued
+ * StoreInboxMediaJob would (it is faked in every feature test).
+ */
+function storeAllInboxMedia(): void
+{
+    InboxMessage::query()->get()->each(fn (InboxMessage $message): bool => StoreInboxMedia::execute($message, true, ImportRemoteMedia::timeoutSeconds()));
+    InboxConversation::query()->get()->each(fn (InboxConversation $conversation): bool => StoreInboxMedia::execute($conversation, true, ImportRemoteMedia::timeoutSeconds()));
+}
+
+function inboxIncoming(string $id, ?string $parent = null, MessageDirection $direction = MessageDirection::Inbound, string $at = '2026-10-16 10:00:00'): IncomingMessage
+{
+    return new IncomingMessage(
+        kind: ConversationKind::Comment,
+        subject: new IncomingSubject('at://did:plc:me/app.bsky.feed.post/root1', 'My post', [], 'https://bsky.app/profile/me/post/root1', CarbonImmutable::parse('2026-10-15'), 'root1'),
+        platformMessageId: $id,
+        platformParentId: $parent,
+        direction: $direction,
+        authorPlatformId: $direction === MessageDirection::Outbound ? 'did:plc:me' : 'did:plc:fan',
+        authorName: 'Fan',
+        authorUsername: 'fan.bsky.social',
+        authorAvatarUrl: null,
+        body: 'Nice post',
+        media: [],
+        platformUrl: null,
+        platformCreatedAt: CarbonImmutable::parse($at),
+    );
+}
+
+function inboxMention(string $id, ?string $parent = null, MessageDirection $direction = MessageDirection::Inbound, string $subjectId = 'at://did:plc:fan/app.bsky.feed.post/m1', string $at = '2026-10-16 10:00:00'): IncomingMessage
+{
+    return new IncomingMessage(
+        kind: ConversationKind::Mention,
+        subject: new IncomingSubject($subjectId, 'Hey @me look', [], 'https://bsky.app/profile/fan/post/m1', CarbonImmutable::parse('2026-10-16'), null, [], 'Fan', 'fan.bsky.social', null),
+        platformMessageId: $id,
+        platformParentId: $parent,
+        direction: $direction,
+        authorPlatformId: $direction === MessageDirection::Outbound ? 'did:plc:me' : 'did:plc:fan',
+        authorName: 'Fan',
+        authorUsername: 'fan.bsky.social',
+        authorAvatarUrl: null,
+        body: 'Hey @me look',
+        media: [],
+        platformUrl: null,
+        platformCreatedAt: CarbonImmutable::parse($at),
+    );
+}
+
+function inboxBlueskyJwt(string $scope): string
+{
+    $encode = fn (array $part): string => rtrim(strtr(base64_encode((string) json_encode($part)), '+/', '-_'), '=');
+
+    return "{$encode(['alg' => 'ES256K', 'typ' => 'at+jwt'])}.{$encode(['scope' => $scope, 'sub' => 'did:plc:me'])}.signature";
+}
+
+function fakeInboxDriver(InboxDriver $driver): void
+{
+    app()->instance(InboxDrivers::class, new class($driver) extends InboxDrivers
+    {
+        public function __construct(private InboxDriver $driver) {}
+
+        public function for(Platform $platform): ?InboxDriver
+        {
+            return $this->driver;
+        }
+    });
+}
+
+function fakeDirectMessageDriver(?int $windowHours = 24, int $max = 1000, ReplyLengthUnit $unit = ReplyLengthUnit::Bytes): InboxDriver&DirectMessageDriver
+{
+    $driver = new class($windowHours, $max, $unit) implements DirectMessageDriver, InboxDriver
+    {
+        /** @var list<array{conversation: string, text: string}> */
+        public array $sent = [];
+
+        public function __construct(private ?int $windowHours, private int $max, private ReplyLengthUnit $unit) {}
+
+        public function kinds(): array
+        {
+            return [ConversationKind::Comment, ConversationKind::DirectMessage];
+        }
+
+        public function poll(SocialAccount $account, ConversationKind $kind, ?string $cursor, CarbonImmutable $since): PollResult
+        {
+            return new PollResult([], $cursor);
+        }
+
+        public function reply(SocialAccount $account, InboxMessage $parent, string $text): SentReply
+        {
+            return new SentReply('reply-'.Str::random(6), null, CarbonImmutable::now());
+        }
+
+        public function replyLength(SocialAccount $account): int
+        {
+            return 1000;
+        }
+
+        public function replyLengthUnit(): ReplyLengthUnit
+        {
+            return ReplyLengthUnit::Characters;
+        }
+
+        public function prefillsMention(): bool
+        {
+            return false;
+        }
+
+        public function sendDirectMessage(SocialAccount $account, InboxConversation $conversation, string $text): SentReply
+        {
+            $this->sent[] = ['conversation' => $conversation->id, 'text' => $text];
+
+            return new SentReply('mid-'.count($this->sent), null, CarbonImmutable::now());
+        }
+
+        public function directMessageText(InboxConversation $conversation, string $text): string
+        {
+            return $text;
+        }
+
+        public function directMessageLimit(SocialAccount $account): MessageLimit
+        {
+            return new MessageLimit($this->max, $this->unit);
+        }
+
+        public function hasReplyWindow(): bool
+        {
+            return $this->windowHours !== null;
+        }
+
+        public function replyWindowEndsAt(?CarbonImmutable $lastInboundAt): ?CarbonImmutable
+        {
+            return $this->windowHours === null ? null : $lastInboundAt?->addHours($this->windowHours);
+        }
+    };
+
+    fakeInboxDriver($driver);
+
+    return $driver;
+}
+
+function inboxDirectIncoming(string $id, MessageDirection $direction = MessageDirection::Inbound, string $at = '2026-10-16 10:00:00', string $participant = 'igsid-1', bool $removed = false): IncomingMessage
+{
+    $isOutbound = $direction === MessageDirection::Outbound;
+
+    return new IncomingMessage(
+        kind: ConversationKind::DirectMessage,
+        subject: new IncomingSubject($participant, null, [], null, null, null, [], 'Ana Fan', 'ana.fan', 'https://cdn.example/ana.jpg'),
+        platformMessageId: $id,
+        platformParentId: null,
+        direction: $direction,
+        authorPlatformId: $isOutbound ? 'ig-me' : $participant,
+        authorName: $isOutbound ? 'Me' : 'Ana Fan',
+        authorUsername: $isOutbound ? 'me' : 'ana.fan',
+        authorAvatarUrl: null,
+        body: 'Hi there',
+        media: [],
+        platformUrl: null,
+        platformCreatedAt: CarbonImmutable::parse($at),
+        removed: $removed,
+    );
+}
 
 /**
  * Issue a real Passport personal access token bound to a workspace and return
@@ -565,19 +746,50 @@ function waitForWebFonts(mixed $page): void
 
 /**
  * Wait until a JavaScript expression is true in the page, for up to 15
- * seconds. Assertions do not wait for the SPA to paint, and a blocking
- * sleep() would starve the server that serves the page, so the page polls.
+ * seconds, and fail the test when it never is. Assertions do not wait for
+ * the SPA to paint, and a blocking sleep() would starve the server that
+ * serves the page, so the page polls and reports whether it got there. A
+ * full page load during the wait restarts the poll on the new page.
  */
-function waitForCondition(mixed $page, string $condition): void
+function waitForCondition(mixed $page, string $condition, ?string $description = null): void
 {
-    $page->script(<<<JS
-        (async () => {
-            for (let i = 0; i < 300; i++) {
-                if ({$condition}) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
+    $deadline = microtime(true) + 15;
+
+    do {
+        $remaining = max(0, (int) (($deadline - microtime(true)) * 1000));
+
+        try {
+            $met = $page->script(<<<JS
+                (async () => {
+                    const deadline = Date.now() + {$remaining};
+                    while (Date.now() < deadline) {
+                        if ({$condition}) return true;
+                        await new Promise((resolve) => setTimeout(resolve, 50));
+                    }
+                    return Boolean({$condition});
+                })();
+            JS);
+        } catch (Throwable $exception) {
+            if (! str_contains($exception->getMessage(), 'Execution context was destroyed') || microtime(true) >= $deadline) {
+                throw $exception;
             }
-        })();
-    JS);
+
+            $met = null;
+        }
+    } while ($met === null);
+
+    if ($met !== true) {
+        $description ??= $condition;
+        $caller = collect(debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS))
+            ->first(fn (array $frame): bool => str_contains($frame['file'] ?? '', '/tests/Browser/'));
+
+        if ($caller) {
+            $file = Str::after($caller['file'], base_path('/'));
+            $description .= " ({$file}:{$caller['line']})";
+        }
+
+        Assert::fail("Timed out after 15s waiting for: {$description}");
+    }
 }
 
 /**
@@ -596,9 +808,10 @@ function jsSelector(string $selector): string
  */
 function waitForState(mixed $page, string $selector, string $expression): void
 {
+    $description = $selector;
     $selector = jsSelector($selector);
 
-    waitForCondition($page, "((element) => element && ({$expression}))(document.querySelector({$selector}))");
+    waitForCondition($page, "((element) => Boolean(element && ({$expression})))(document.querySelector({$selector}))", "{$description} to match {$expression}");
 }
 
 /**
@@ -606,7 +819,10 @@ function waitForState(mixed $page, string $selector, string $expression): void
  */
 function waitFor(mixed $page, string $selector): void
 {
-    waitForState($page, $selector, 'element.getBoundingClientRect().height > 0');
+    $description = $selector;
+    $selector = jsSelector($selector);
+
+    waitForCondition($page, "((element) => Boolean(element && element.getBoundingClientRect().height > 0))(document.querySelector({$selector}))", "{$description} to be shown");
 }
 
 /**
@@ -614,9 +830,10 @@ function waitFor(mixed $page, string $selector): void
  */
 function waitForGone(mixed $page, string $selector): void
 {
+    $description = $selector;
     $selector = jsSelector($selector);
 
-    waitForCondition($page, "!document.querySelector({$selector})");
+    waitForCondition($page, "!document.querySelector({$selector})", "{$description} to be gone");
 }
 
 /**
@@ -624,10 +841,11 @@ function waitForGone(mixed $page, string $selector): void
  */
 function waitForText(mixed $page, string $selector, string $text): void
 {
+    $description = "{$selector} to contain \"{$text}\"";
     $selector = jsSelector($selector);
     $text = json_encode($text);
 
-    waitForCondition($page, "[...document.querySelectorAll({$selector})].some((element) => element.textContent.includes({$text}))");
+    waitForCondition($page, "[...document.querySelectorAll({$selector})].some((element) => element.textContent.includes({$text}))", $description);
 }
 
 /**
@@ -637,10 +855,11 @@ function waitForText(mixed $page, string $selector, string $text): void
  */
 function waitForGoneOrShown(mixed $page, string $gone, string $shown): void
 {
+    $description = "{$gone} to be gone or {$shown} to be shown";
     $gone = jsSelector($gone);
     $shown = jsSelector($shown);
 
-    waitForCondition($page, "!document.querySelector({$gone}) || document.querySelector({$shown})");
+    waitForCondition($page, "!document.querySelector({$gone}) || Boolean(document.querySelector({$shown}))", $description);
 }
 
 /**
@@ -648,7 +867,87 @@ function waitForGoneOrShown(mixed $page, string $gone, string $shown): void
  */
 function waitForPath(mixed $page, string $path): void
 {
+    $description = "the page to be at {$path}";
     $path = json_encode($path);
 
-    waitForCondition($page, "location.pathname === {$path}");
+    waitForCondition($page, "location.pathname === {$path}", $description);
+}
+
+/**
+ * A JavaScript expression, about `element`, true once the element is laid out
+ * and fully inside the viewport. Pass it to waitForState().
+ */
+function inViewport(): string
+{
+    return '(r => r.width > 0 && r.height > 0 && r.top >= 0 && r.left >= 0 && r.bottom <= window.innerHeight && r.right <= window.innerWidth)(element.getBoundingClientRect())';
+}
+
+/**
+ * Wait until both elements exist and the expression, written about their
+ * boxes `a` and `b` (DOMRect), is true: "a.bottom <= b.top".
+ */
+function waitForLayout(mixed $page, string $first, string $second, string $expression): void
+{
+    $description = "{$first} and {$second} to match {$expression}";
+    $first = jsSelector($first);
+    $second = jsSelector($second);
+
+    waitForCondition($page, "((x, y) => Boolean(x && y && ((a, b) => {$expression})(x.getBoundingClientRect(), y.getBoundingClientRect())))(document.querySelector({$first}), document.querySelector({$second}))", $description);
+}
+
+/**
+ * Deliver a broadcast to the page as if it came over the workspace channel,
+ * once the page listens on it (tests run with the null broadcaster).
+ *
+ * @param  array<string, mixed>  $payload
+ */
+function emitWorkspaceEvent(mixed $page, string $workspaceId, string $event, array $payload): void
+{
+    $channel = json_encode("private-workspace.{$workspaceId}");
+    $event = json_encode($event);
+    $payload = json_encode($payload);
+
+    waitForCondition($page, "Boolean(window.Pusher?.instances?.[0]?.channel({$channel}))");
+    $page->script("window.Pusher.instances[0].channel({$channel}).emit({$event}, {$payload}); true;");
+}
+
+/**
+ * A second post with one open comment in the same workspace, with the
+ * reorder hint already seen so it does not cover the post list.
+ */
+function inboxSecondConversation(InboxConversation $conversation, string $subject = 'Second post'): InboxConversation
+{
+    $second = InboxConversation::factory()->create([
+        'social_account_id' => $conversation->social_account_id,
+        'workspace_id' => $conversation->workspace_id,
+        'subject_text' => $subject,
+    ]);
+    InboxMessage::factory()->for($second, 'conversation')->create(['body' => 'Nice one']);
+    RecountInboxConversation::execute($second);
+    test()->user->forceFill(['inbox_reorder_hint_seen_at' => now()])->saveQuietly();
+    test()->actingAs(test()->user->fresh());
+
+    return $second;
+}
+
+/**
+ * A mention conversation of the channel with one open mention.
+ */
+function inboxMentionThread(InboxConversation $comments): InboxMessage
+{
+    $conversation = InboxConversation::factory()->create([
+        'social_account_id' => $comments->social_account_id,
+        'kind' => ConversationKind::Mention,
+        'subject_text' => 'Shoutout to @me',
+        'participant_username' => 'fan.bsky.social',
+    ]);
+    $mention = InboxMessage::factory()->for($conversation, 'conversation')->create([
+        'platform_message_id' => $conversation->platform_conversation_id,
+        'platform_message_hash' => $conversation->platform_conversation_hash,
+        'body' => 'Shoutout to @me',
+        'author_username' => 'fan.bsky.social',
+    ]);
+    RecountInboxConversation::execute($conversation);
+
+    return $mention;
 }

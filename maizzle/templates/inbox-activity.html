@@ -1,0 +1,47 @@
+<x-main>
+  <x-message authenticated="true">
+    <x-heading>
+      @if($isReview)
+        @if($stars !== '')
+          @{{ __('mail.inbox_activity.review_heading_rated', ['stars' => $stars]) }}
+        @else
+          @{{ __('mail.inbox_activity.review_heading') }}
+        @endif
+      @else
+        @{{ trans_choice('mail.inbox_activity.heading', $peopleCount, ['count' => $peopleCount]) }}
+      @endif
+    </x-heading>
+
+    <p class="m-0 leading-6">
+      @{{ $isReview ? __('mail.inbox_activity.review_subtitle') : __('mail.inbox_activity.subtitle') }}
+    </p>
+
+    <table role="presentation" class="w-full mt-6">
+      <tr>
+        <td class="rounded-xl border border-solid border-border p-5 sm:p-4">
+          <x-channel-identity platform="$channel['platform']" account-name="$channel['name']" />
+
+          @if($isReview && filled($reviewerName))
+            <p class="m-0 mt-5 text-sm leading-5 font-semibold text-foreground">@{{ $reviewerName }}</p>
+          @endif
+
+          @if($excerpt !== '')
+            <p class="m-0 mt-3 leading-6 text-foreground" style="white-space: pre-line;">@{{ $excerpt }}</p>
+          @else
+            <p class="m-0 mt-3 text-sm text-muted-foreground">@{{ $isReview ? __('mail.inbox_activity.review_without_text') : __('mail.inbox_activity.post_without_text') }}</p>
+          @endif
+
+          @if($time)
+            <p class="m-0 mt-4 text-[13px] leading-[18px] text-muted-foreground">@{{ __($isReview ? 'mail.inbox_activity.reviewed_at' : 'mail.inbox_activity.published_at', ['time' => $time, 'timezone' => $timezone]) }}</p>
+          @endif
+        </td>
+      </tr>
+    </table>
+
+    <x-spacer height="24px" />
+
+    <x-button href="@{{ $url }}">
+      @{{ $isReview ? __('mail.inbox_activity.review_button') : __('mail.inbox_activity.button') }}
+    </x-button>
+  </x-message>
+</x-main>

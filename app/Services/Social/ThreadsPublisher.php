@@ -10,6 +10,7 @@ use App\Exceptions\Social\ErrorCategory;
 use App\Exceptions\Social\ThreadsMediaContainerNotFoundException;
 use App\Exceptions\Social\ThreadsPublishException;
 use App\Models\Post;
+use App\Models\SocialAccount;
 use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use Illuminate\Http\Client\ConnectionException;
@@ -102,6 +103,26 @@ class ThreadsPublisher
         // Multiple media - carousel
         return $this->publishMediaWithRetry(
             fn (): array => $this->publishCarousel($userId, $accessToken, $content, $media),
+        );
+    }
+
+    /**
+     * Publishes a text reply to a post or to a reply.
+     *
+     * @see https://developers.facebook.com/documentation/threads/retrieve-and-manage-replies/create-replies.md
+     *
+     * @return array{id: string, url: ?string}
+     */
+    public function replyTo(SocialAccount $account, string $replyToId, string $text): array
+    {
+        if ($account->needsProactiveTokenRefresh()) {
+            app(ConnectionVerifier::class)->refreshToken($account);
+        }
+
+        $this->containerOptions = ['reply_to_id' => $replyToId];
+
+        return $this->publishMediaWithRetry(
+            fn (): array => $this->publishTextPost((string) $account->platform_user_id, (string) $account->access_token, $text),
         );
     }
 

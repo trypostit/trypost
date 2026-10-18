@@ -37,7 +37,7 @@ class InstagramController extends SocialController
         $this->rememberConnectSession($request, $workspace);
 
         $url = Socialite::driver($this->driver)
-            ->scopes($this->scopes)
+            ->scopes($this->requestedScopes())
             ->redirect()
             ->getTargetUrl();
 
@@ -51,7 +51,7 @@ class InstagramController extends SocialController
         try {
             $socialUser = Socialite::driver($this->driver)->user();
 
-            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->scopes);
+            $scopes = $this->reportedScopes($socialUser->approvedScopes, $this->requestedScopes());
 
             return $this->refusalForMissingPublishScopes($scopes) ?? $this->offerIdentities($workspace, [
                 PendingConnection::identity(

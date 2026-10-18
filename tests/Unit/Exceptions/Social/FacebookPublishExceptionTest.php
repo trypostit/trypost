@@ -203,7 +203,7 @@ test('only a Graph code caused by the Page is marked as a network rejection', fu
 
 test('no rupload failure is marked as a network rejection', function (string $type) {
     $fakeResponse = Http::fake(['*' => Http::response(['debug_info' => ['type' => $type, 'message' => 'Failed']], 400)])
-        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v25.0/1');
+        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v26.0/1');
 
     expect(FacebookPublishException::fromApiResponse($fakeResponse)->isNetworkRejection())->toBeFalse();
 })->with([
@@ -214,7 +214,7 @@ test('no rupload failure is marked as a network rejection', function (string $ty
 
 test('a rupload failure without a usable type has no platform error code', function (mixed $type) {
     $fakeResponse = Http::fake(['*' => Http::response(['debug_info' => ['type' => $type, 'message' => 'Failed']], 400)])
-        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v25.0/1');
+        ->post('https://'.config('trypost.platforms.facebook.rupload_host').'/video-upload/v26.0/1');
 
     $exception = FacebookPublishException::fromApiResponse($fakeResponse);
 

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Actions\ApiKey\CreateApiKey;
 use App\Actions\Post\CreatePosts;
+use App\Enums\Inbox\ConversationKind;
+use App\Enums\Inbox\DeliveryStatus;
 use App\Enums\Post\Status;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\SocialAccount\Platform;
@@ -27,6 +29,15 @@ use App\Mcp\Tools\Idea\MoveIdeasTool;
 use App\Mcp\Tools\Idea\ReorderIdeaStagesTool;
 use App\Mcp\Tools\Idea\UpdateIdeaStageTool;
 use App\Mcp\Tools\Idea\UpdateIdeaTool;
+use App\Mcp\Tools\Inbox\GetInboxConversationTool;
+use App\Mcp\Tools\Inbox\GetInboxScoreTool;
+use App\Mcp\Tools\Inbox\ListInboxConversationsTool;
+use App\Mcp\Tools\Inbox\ListInboxMessagesTool;
+use App\Mcp\Tools\Inbox\ReplyToInboxMessageTool;
+use App\Mcp\Tools\Inbox\ResolveInboxMessagesTool;
+use App\Mcp\Tools\Inbox\RetryInboxReplyTool;
+use App\Mcp\Tools\Inbox\SendInboxDirectMessageTool;
+use App\Mcp\Tools\Inbox\UnresolveInboxMessageTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
@@ -63,6 +74,10 @@ use App\Mcp\Tools\Repurpose\ListRepurposesTool;
 use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
 use App\Mcp\Tools\Repurpose\ResumeRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
+use App\Mcp\Tools\SavedReply\CreateSavedReplyTool;
+use App\Mcp\Tools\SavedReply\DeleteSavedReplyTool;
+use App\Mcp\Tools\SavedReply\ListSavedRepliesTool;
+use App\Mcp\Tools\SavedReply\UpdateSavedReplyTool;
 use App\Mcp\Tools\Signature\CreateSignatureTool;
 use App\Mcp\Tools\Signature\DeleteSignatureTool;
 use App\Mcp\Tools\Signature\ListSignaturesTool;
@@ -94,6 +109,8 @@ use App\Mcp\Tools\Workspace\GetWorkspaceTool;
 use App\Models\AnalyticsPublication;
 use App\Models\Idea;
 use App\Models\IdeaStage;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -104,6 +121,7 @@ use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Models\WorkspaceSavedReply;
 use App\Models\WorkspaceSignature;
 use App\Services\Http\SafeHttpFetcher;
 use App\Services\WebhookService;
@@ -170,6 +188,10 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
     $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
     $uploadToken = (string) Str::uuid();
     Media::factory()->temporaryUpload($workspace)->create(['upload_token' => $uploadToken]);
+    $inboxConversation = InboxConversation::factory()->create([
+        'social_account_id' => SocialAccount::factory()->bluesky()->create(['workspace_id' => $workspace->id, 'access_token' => inboxBlueskyJwt('com.atproto.appPassPrivileged')])->id,
+    ]);
+    $inboxMessage = InboxMessage::factory()->for($inboxConversation, 'conversation')->create();
 
     return [
         'linkedin' => $linkedin,
@@ -205,10 +227,23 @@ function mcpAuthParityFixture(Workspace $workspace, User $owner, ?User $actor = 
         'ideaStageIds' => $workspace->ideaStages()->pluck('id')->all(),
         'label' => WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]),
         'signature' => WorkspaceSignature::factory()->create(['workspace_id' => $workspace->id]),
+        'savedReply' => WorkspaceSavedReply::factory()->create(['workspace_id' => $workspace->id]),
         'discord' => SocialAccount::factory()->discord()->create(['workspace_id' => $workspace->id, 'platform_user_id' => (string) Str::uuid()]),
         'pinterest' => SocialAccount::factory()->pinterest()->create(['workspace_id' => $workspace->id, 'platform_user_id' => (string) Str::uuid()]),
         'instagramFacebook' => SocialAccount::factory()->instagram()->create(['workspace_id' => $workspace->id, 'platform' => Platform::InstagramFacebook, 'platform_user_id' => (string) Str::uuid()]),
         'uploadToken' => $uploadToken,
+        'inboxConversation' => $inboxConversation,
+        'inboxMessage' => $inboxMessage,
+        'inboxResolved' => InboxMessage::factory()->for($inboxConversation, 'conversation')->resolved()->create(),
+        'inboxFailedReply' => InboxMessage::factory()->for($inboxConversation, 'conversation')->outbound()->create([
+            'parent_id' => $inboxMessage->id,
+            'root_id' => $inboxMessage->id,
+            'delivery_status' => DeliveryStatus::Failed,
+        ]),
+        'inboxDirectConversation' => InboxConversation::factory()->create([
+            'social_account_id' => $inboxConversation->social_account_id,
+            'kind' => ConversationKind::DirectMessage,
+        ]),
         'publicationId' => (string) Str::uuid(),
         'missingId' => (string) Str::uuid(),
     ];
@@ -235,6 +270,7 @@ function mcpAuthParityTools(): array
     $publishers = ['approval', 'outsider'];
     $label = ['name' => 'Launch', 'color' => '#112233'];
     $signature = ['name' => 'Sign-off', 'content' => 'Cheers'];
+    $savedReply = ['name' => 'Thanks', 'content' => 'Thanks, {first_name}!'];
     $webhook = ['endpoint' => 'https://example.com/hook', 'events' => ['post.published']];
 
     return [
@@ -320,6 +356,19 @@ function mcpAuthParityTools(): array
         'rotate-webhook-secret-tool' => [RotateWebhookSecretTool::class, $admins, fn (TestCase $t, array $f) => $t->post(route('app.webhooks.rotate-secret', $f['webhook'])), fn (array $f) => ['webhook_id' => $f['webhook']->id]],
         'send-webhook-test-tool' => [SendWebhookTestTool::class, $admins, fn (TestCase $t, array $f) => $t->post(route('app.webhooks.send-test', $f['webhook'])), fn (array $f) => ['webhook_id' => $f['webhook']->id]],
         'update-webhook-tool' => [UpdateWebhookTool::class, $admins, fn (TestCase $t, array $f) => $t->put(route('app.webhooks.update', $f['webhook']), $webhook), fn (array $f) => ['webhook_id' => $f['webhook']->id, ...$webhook]],
+        'list-inbox-conversations-tool' => [ListInboxConversationsTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.inbox.index')), fn (array $f) => []],
+        'list-inbox-messages-tool' => [ListInboxMessagesTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.inbox.messages.index')), fn (array $f) => []],
+        'get-inbox-score-tool' => [GetInboxScoreTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.inbox.messages.index')), fn (array $f) => []],
+        'get-inbox-conversation-tool' => [GetInboxConversationTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.inbox.conversations.show', $f['inboxConversation'])), fn (array $f) => ['conversation_id' => $f['inboxConversation']->id]],
+        'reply-to-inbox-message-tool' => [ReplyToInboxMessageTool::class, $publishers, fn (TestCase $t, array $f) => $t->postJson(route('app.inbox.replies.store', $f['inboxMessage']), ['text' => 'Thanks']), fn (array $f) => ['message_id' => $f['inboxMessage']->id, 'text' => 'Thanks']],
+        'retry-inbox-reply-tool' => [RetryInboxReplyTool::class, $publishers, fn (TestCase $t, array $f) => $t->postJson(route('app.inbox.replies.retry', $f['inboxFailedReply'])), fn (array $f) => ['message_id' => $f['inboxFailedReply']->id]],
+        'resolve-inbox-messages-tool' => [ResolveInboxMessagesTool::class, $publishers, fn (TestCase $t, array $f) => $t->post(route('app.inbox.resolutions.store'), ['scope' => 'message', 'message_id' => $f['inboxMessage']->id]), fn (array $f) => ['scope' => 'message', 'message_id' => $f['inboxMessage']->id]],
+        'send-inbox-direct-message-tool' => [SendInboxDirectMessageTool::class, $publishers, fn (TestCase $t, array $f) => $t->postJson(route('app.inbox.conversations.messages.store', $f['inboxDirectConversation']), ['text' => 'Thanks']), fn (array $f) => ['conversation_id' => $f['inboxDirectConversation']->id, 'text' => 'Thanks']],
+        'list-saved-replies-tool' => [ListSavedRepliesTool::class, $publishers, fn (TestCase $t, array $f) => $t->get(route('app.saved-replies.index')), fn (array $f) => []],
+        'create-saved-reply-tool' => [CreateSavedReplyTool::class, $publishers, fn (TestCase $t, array $f) => $t->post(route('app.saved-replies.store'), $savedReply), fn (array $f) => $savedReply],
+        'update-saved-reply-tool' => [UpdateSavedReplyTool::class, $publishers, fn (TestCase $t, array $f) => $t->put(route('app.saved-replies.update', $f['savedReply']), $savedReply), fn (array $f) => ['saved_reply_id' => $f['savedReply']->id, ...$savedReply]],
+        'delete-saved-reply-tool' => [DeleteSavedReplyTool::class, $publishers, fn (TestCase $t, array $f) => $t->delete(route('app.saved-replies.destroy', $f['savedReply'])), fn (array $f) => ['saved_reply_id' => $f['savedReply']->id]],
+        'unresolve-inbox-message-tool' => [UnresolveInboxMessageTool::class, $publishers, fn (TestCase $t, array $f) => $t->delete(route('app.inbox.resolutions.destroy', $f['inboxResolved'])), fn (array $f) => ['message_id' => $f['inboxResolved']->id]],
         'get-workspace-tool' => [GetWorkspaceTool::class, $everyMember, fn (TestCase $t, array $f) => $t->get(route('app.calendar')), fn (array $f) => []],
     ];
 }
@@ -327,6 +376,7 @@ function mcpAuthParityTools(): array
 beforeEach(function () {
     Queue::fake();
     Http::fake();
+    config()->set('trypost.inbox.enabled', true);
     $webhookService = Mockery::mock(WebhookService::class, [app(SafeHttpFetcher::class)])->makePartial();
     $webhookService->shouldReceive('assertEndpointAllowed')->andReturnNull();
     $webhookService->shouldReceive('ping')->andReturnNull();
@@ -494,7 +544,7 @@ test('every mcp tool that names a record answers not found for one of another wo
     $foreignOwner = User::factory()->create(['account_id' => $foreignWorkspace->account_id]);
     $foreignWorkspace->members()->attach($foreignOwner->id, membershipPivot('admin'));
     $foreignWorkspace->update(['user_id' => $foreignOwner->id]);
-    $validatesReferences = ['create-post-tool', 'create-posts-tool', 'create-repurpose-tool', 'reorder-idea-stages-tool', 'delete-ideas-tool'];
+    $validatesReferences = ['create-post-tool', 'create-posts-tool', 'create-repurpose-tool', 'reorder-idea-stages-tool', 'delete-ideas-tool', 'reply-to-inbox-message-tool', 'resolve-inbox-messages-tool', 'send-inbox-direct-message-tool'];
     $failures = [];
 
     foreach (mcpAuthParityTools() as $name => [$tool, $refused, $web, $arguments]) {

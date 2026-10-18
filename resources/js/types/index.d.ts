@@ -72,6 +72,7 @@ export interface NavItem {
     badge?: string;
     count?: number;
     countTestId?: string;
+    countHighlighted?: boolean;
 }
 
 export interface LegalLinks {

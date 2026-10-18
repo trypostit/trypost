@@ -19,6 +19,13 @@ use App\Http\Controllers\App\GooglePhotosSessionController;
 use App\Http\Controllers\App\IdeaController;
 use App\Http\Controllers\App\IdeaGenerateController;
 use App\Http\Controllers\App\IdeaStageController;
+use App\Http\Controllers\App\InboxChannelSyncController;
+use App\Http\Controllers\App\InboxConversationController;
+use App\Http\Controllers\App\InboxConversationMessageController;
+use App\Http\Controllers\App\InboxMessageController;
+use App\Http\Controllers\App\InboxReorderHintController;
+use App\Http\Controllers\App\InboxReplyController;
+use App\Http\Controllers\App\InboxResolutionController;
 use App\Http\Controllers\App\InsightsController;
 use App\Http\Controllers\App\InstagramAudioController;
 use App\Http\Controllers\App\LibraryTemplateController;
@@ -45,6 +52,7 @@ use App\Http\Controllers\App\RepurposeController;
 use App\Http\Controllers\App\RssFeedCollectionController;
 use App\Http\Controllers\App\RssFeedController;
 use App\Http\Controllers\App\RssFeedItemController;
+use App\Http\Controllers\App\SavedReplyController;
 use App\Http\Controllers\App\Settings\ConnectedAccountController;
 use App\Http\Controllers\App\Settings\NotificationPreferenceController;
 use App\Http\Controllers\App\Settings\PasswordController;
@@ -190,6 +198,33 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->middleware('throttle:60,1')
         ->name('app.discord.mentions');
 
+    Route::get('inbox', [InboxConversationController::class, 'index'])->name('app.inbox.index');
+    Route::get('inbox/list', [InboxMessageController::class, 'index'])->name('app.inbox.messages.index');
+    Route::get('inbox/conversations/{conversation}', [InboxConversationController::class, 'show'])
+        ->whereUuid('conversation')
+        ->name('app.inbox.conversations.show');
+    Route::post('inbox/conversations/{conversation}/messages', [InboxConversationMessageController::class, 'store'])
+        ->whereUuid('conversation')
+        ->middleware('throttle:inbox-send')
+        ->name('app.inbox.conversations.messages.store');
+    Route::post('inbox/messages/{message}/replies', [InboxReplyController::class, 'store'])
+        ->whereUuid('message')
+        ->middleware('throttle:inbox-send')
+        ->name('app.inbox.replies.store');
+    Route::post('inbox/messages/{message}/retry', [InboxReplyController::class, 'retry'])
+        ->whereUuid('message')
+        ->middleware('throttle:inbox-send')
+        ->name('app.inbox.replies.retry');
+    Route::post('inbox/resolutions', [InboxResolutionController::class, 'store'])->name('app.inbox.resolutions.store');
+    Route::delete('inbox/messages/{message}/resolution', [InboxResolutionController::class, 'destroy'])
+        ->whereUuid('message')
+        ->name('app.inbox.resolutions.destroy');
+    Route::post('inbox/reorder-hint', [InboxReorderHintController::class, 'store'])->name('app.inbox.reorder-hint.store');
+    Route::post('inbox/channels/{socialAccount}/sync', [InboxChannelSyncController::class, 'store'])
+        ->whereUuid('socialAccount')
+        ->middleware('throttle:inbox-sync')
+        ->name('app.inbox.channel-sync.store');
+
     Route::get('instagram/accounts/{account}/audio', [InstagramAudioController::class, 'index'])
         ->middleware('throttle:60,1')
         ->name('app.instagram.audio.index');
@@ -226,6 +261,11 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->whereIn('format', ExportFormat::values())
         ->name('app.channels.insights.download');
     Route::get('channels/{account}/settings', [ChannelController::class, 'settings'])->name('app.channels.settings');
+    Route::get('channels/{account}/inbox', [InboxConversationController::class, 'index'])->name('app.channels.inbox');
+    Route::get('channels/{account}/inbox/list', [InboxMessageController::class, 'index'])->name('app.channels.inbox.messages');
+    Route::get('channels/{account}/inbox/conversations/{conversation}', [InboxConversationController::class, 'showInChannel'])
+        ->whereUuid('conversation')
+        ->name('app.channels.inbox.conversations');
     Route::put('channels/{account}/posting-schedule', [ChannelPostingScheduleController::class, 'update'])->name('app.channels.posting-schedule.update');
     Route::post('channels/{account}/posting-schedule/copy', [ChannelPostingScheduleController::class, 'copy'])->name('app.channels.posting-schedule.copy');
     Route::put('channels/{account}/queue/order', [ChannelQueueController::class, 'reorder'])->name('app.channels.queue.order');
@@ -289,6 +329,11 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::post('settings/workspace/signatures', [WorkspaceSignatureController::class, 'store'])->name('app.signatures.store');
     Route::put('settings/workspace/signatures/{signature}', [WorkspaceSignatureController::class, 'update'])->name('app.signatures.update');
     Route::delete('settings/workspace/signatures/{signature}', [WorkspaceSignatureController::class, 'destroy'])->name('app.signatures.destroy');
+
+    Route::get('settings/workspace/saved-replies', [SavedReplyController::class, 'index'])->name('app.saved-replies.index');
+    Route::post('settings/workspace/saved-replies', [SavedReplyController::class, 'store'])->name('app.saved-replies.store');
+    Route::put('settings/workspace/saved-replies/{savedReply}', [SavedReplyController::class, 'update'])->whereUuid('savedReply')->name('app.saved-replies.update');
+    Route::delete('settings/workspace/saved-replies/{savedReply}', [SavedReplyController::class, 'destroy'])->whereUuid('savedReply')->name('app.saved-replies.destroy');
 
     Route::post('media/chunked', [MediaUploadController::class, 'storeChunked'])->name('app.media.store-chunked');
     Route::get('media/{media}/file', [MediaFileController::class, 'show'])->whereUuid('media')->name('app.media.file');

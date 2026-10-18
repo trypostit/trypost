@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Observers;
 
 use App\Actions\Analytics\ResolveAnalyticsAccountKey;
+use App\Actions\Inbox\LinkInboxConversationPost;
 use App\Dto\Analytics\TryPostPublicationIdentity;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
@@ -33,6 +34,10 @@ class PostObserver
 
     public function saved(Post $post): void
     {
+        if (filled($post->platform_post_id) && ($post->wasRecentlyCreated || $post->wasChanged('platform_post_id'))) {
+            rescue(fn () => LinkInboxConversationPost::toPost($post));
+        }
+
         if ($post->wasChanged('status')) {
             $previousStatus = $post->getOriginal('status');
 

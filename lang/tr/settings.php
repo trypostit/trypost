@@ -23,6 +23,7 @@ return [
             'members' => 'Üyeler',
             'signatures' => 'İmzalar',
             'labels' => 'Etiketler',
+            'saved_replies' => 'Kayıtlı yanıtlar',
             'webhooks' => 'Webhooklar',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -44,6 +45,8 @@ return [
         'post_note_added_description' => 'Bir ekip üyesi bir gönderiye not eklediğinde e-posta al',
         'collaboration' => 'İş birliği',
         'collaboration_description' => 'Onay istekleri ile onaylanan veya reddedilen gönderiler hakkında e-posta alın',
+        'inbox_activity' => 'Yorumlar ve değerlendirmeler',
+        'inbox_activity_description' => 'Son gönderilerine yorum yapıldığında veya değerlendirme bırakıldığında e-posta al',
         'save_failed' => 'Bildirim tercihleri kaydedilemedi. Lütfen tekrar deneyin.',
     ],
 

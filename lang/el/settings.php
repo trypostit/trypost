@@ -21,6 +21,7 @@ return [
             'members' => 'Μέλη',
             'signatures' => 'Υπογραφές',
             'labels' => 'Ετικέτες',
+            'saved_replies' => 'Αποθηκευμένες απαντήσεις',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'Λάβετε email όταν ένα μέλος της ομάδας προσθέτει σημείωση σε μια δημοσίευση',
         'collaboration' => 'Συνεργασία',
         'collaboration_description' => 'Λάβετε email για αιτήματα έγκρισης και για αναρτήσεις που εγκρίθηκαν ή απορρίφθηκαν',
+        'inbox_activity' => 'Σχόλια και κριτικές',
+        'inbox_activity_description' => 'Λάβετε email όταν κάποιος σχολιάζει τις πρόσφατες δημοσιεύσεις σας ή αφήνει κριτική',
         'save_failed' => 'Δεν ήταν δυνατή η αποθήκευση των προτιμήσεων ειδοποιήσεων. Δοκιμάστε ξανά.',
     ],
 

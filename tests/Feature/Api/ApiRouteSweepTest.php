@@ -9,6 +9,8 @@ use App\Models\AccessToken;
 use App\Models\AnalyticsPublication;
 use App\Models\Idea;
 use App\Models\IdeaStage;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -18,6 +20,7 @@ use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Models\WorkspaceSavedReply;
 use App\Models\WorkspaceSignature;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -82,8 +85,13 @@ function apiSweepRecords(Workspace $workspace): array
         'scheduled_at' => $slots[0],
     ]);
     $webhook = Webhook::factory()->create(['workspace_id' => $workspace->id]);
+    $inboxConversation = InboxConversation::factory()->create([
+        'social_account_id' => SocialAccount::factory()->bluesky()->create(['workspace_id' => $workspace->id])->id,
+    ]);
 
     return [
+        'inboxConversation' => $inboxConversation,
+        'inboxMessage' => InboxMessage::factory()->for($inboxConversation, 'conversation')->create(),
         'post' => $post,
         'note' => PostNote::factory()->create(['post_id' => $post->id, 'user_id' => $workspace->user_id]),
         'channel' => $channel,
@@ -91,6 +99,7 @@ function apiSweepRecords(Workspace $workspace): array
         'pinterest' => $pinterest,
         'freeSlot' => $slots[1]->toIso8601ZuluString(),
         'signature' => WorkspaceSignature::factory()->create(['workspace_id' => $workspace->id]),
+        'savedReply' => WorkspaceSavedReply::factory()->create(['workspace_id' => $workspace->id]),
         'label' => WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]),
         'ideaStage' => IdeaStage::factory()->create(['workspace_id' => $workspace->id]),
         'idea' => Idea::factory()->create(['workspace_id' => $workspace->id]),
@@ -122,6 +131,7 @@ function apiSweepBody(string $name, array $own, array $foreign): array
         'api.posts.attach-media-from-url' => ['urls' => [['url' => 'https://example.com/photo.jpg']]],
         'api.posts.notes.store', 'api.posts.notes.update' => ['body' => 'Hijacked'],
         'api.signatures.update' => ['name' => 'Hijacked', 'content' => 'Hijacked'],
+        'api.saved-replies.update' => ['name' => 'Hijacked', 'content' => 'Hijacked'],
         'api.labels.update' => ['name' => 'Hijacked', 'color' => '#112233'],
         'api.ideas.update' => ['title' => 'Hijacked'],
         'api.ideas.move' => ['idea_stage_id' => $own['ideaStage']->id],
@@ -156,15 +166,19 @@ function apiSweepIds(string $name, array $records, string $apiTokenId): array
         'post' => $records['post']->id,
         'note' => $records['note']->id,
         'signature' => $records['signature']->id,
+        'savedReply' => $records['savedReply']->id,
         'idea' => $records['idea']->id,
         'ideaStage' => $records['ideaStage']->id,
         'label' => $records['label']->id,
         'account' => $account->id,
+        'socialAccount' => $account->id,
         'repurpose' => $records['repurpose']->id,
         'webhook' => $records['webhook']->id,
         'webhookLog' => $records['webhookLog']->id,
         'apiToken' => $apiTokenId,
         'publication' => $records['publication']->id,
+        'conversation' => $records['inboxConversation']->id,
+        'message' => $records['inboxMessage']->id,
     ];
 }
 
@@ -188,6 +202,7 @@ function apiSweepSnapshot(array $records, string $apiTokenId): array
 
 beforeEach(function () {
     Queue::fake();
+    config()->set('trypost.inbox.enabled', true);
 });
 
 /**

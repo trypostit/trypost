@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import ConnectLayout from '@/layouts/ConnectLayout.vue';
 import { store as storeBluesky } from '@/routes/app/social/bluesky';
 
-defineProps<{ backUrl: string }>();
+defineProps<{ backUrl: string; asksForMessageAccess: boolean }>();
 
 const form = useForm({ identifier: '', password: '' });
 
@@ -69,6 +69,13 @@ const onSubmit = (): void => {
                         data-testid="bluesky-app-password-hint"
                         v-html="$t('accounts.bluesky.app_password_hint')"
                     />
+                    <p
+                        v-if="asksForMessageAccess"
+                        class="text-sm text-muted-foreground"
+                        data-testid="bluesky-message-access-hint"
+                    >
+                        {{ $t('accounts.bluesky.message_access_hint') }}
+                    </p>
                 </div>
 
                 <Button

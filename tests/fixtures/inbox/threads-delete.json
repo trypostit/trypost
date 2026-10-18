@@ -1,0 +1,18 @@
+{
+  "app_id": "123456",
+  "topic": "moderate",
+  "target_id": "reply-1",
+  "time": 1760600100,
+  "subscription_id": "234567",
+  "has_uid_field": false,
+  "values": {
+    "value": {
+      "id": "reply-1",
+      "owner": { "owner_id": "threads-user-2" },
+      "deleted_at": "2026-10-16T10:35:00+0000",
+      "timestamp": "2026-10-16T10:33:16+0000",
+      "username": "author"
+    },
+    "field": "delete"
+  }
+}

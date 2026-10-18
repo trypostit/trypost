@@ -6,6 +6,8 @@ namespace Database\Factories;
 
 use App\Enums\Media\Type as MediaType;
 use App\Models\Idea;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\RssFeedItem;
@@ -73,6 +75,16 @@ class MediaFactory extends Factory
     public function ownedByFeedItem(RssFeedItem $item): static
     {
         return $this->ownedBy('rss_feed_item_id', $item->id, $item->feed->workspace_id);
+    }
+
+    public function ownedByInboxMessage(InboxMessage $message): static
+    {
+        return $this->ownedBy('inbox_message_id', $message->id, $message->conversation->workspace_id);
+    }
+
+    public function ownedByInboxConversation(InboxConversation $conversation): static
+    {
+        return $this->ownedBy('inbox_conversation_id', $conversation->id, $conversation->workspace_id);
     }
 
     /**

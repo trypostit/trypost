@@ -34,6 +34,52 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Inbox
+    |--------------------------------------------------------------------------
+    |
+    | Comments, reviews, mentions and direct messages, read and answered from
+    | TryPost. Off by default: the switch also decides whether every connect
+    | flow asks for the inbox scopes, which Meta refuses until the app passes
+    | App Review.
+    |
+    */
+
+    'inbox' => [
+        'enabled' => (bool) env('INBOX_ENABLED', false),
+        'backfill_days' => 30,
+        'retention_months' => 12,
+        'poll_budget_seconds' => 90,
+        'http_timeout_seconds' => 20,
+        'poll_minutes' => [
+            'bluesky' => 15,
+            'instagram' => 15,
+            'instagram-facebook' => 15,
+            'facebook' => 15,
+            'threads' => 15,
+            'youtube' => (int) env('INBOX_YOUTUBE_POLL_MINUTES', 30),
+            'mastodon' => 15,
+            'google_business' => 60,
+            'direct_message' => [
+                'bluesky' => 5,
+                'mastodon' => 5,
+                'instagram' => 5,
+                'instagram-facebook' => 5,
+                'facebook' => 5,
+            ],
+        ],
+        'webhook_reconcile_minutes' => 360,
+        'webhook_recent_hours' => 24,
+        'youtube' => [
+            'daily_units' => (int) env('INBOX_YOUTUBE_DAILY_UNITS', 5000),
+            'reply_reserve_units' => (int) env('INBOX_YOUTUBE_REPLY_RESERVE_UNITS', 1000),
+        ],
+        'webhooks' => [
+            'meta_verify_token' => env('META_WEBHOOK_VERIFY_TOKEN'),
+        ],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Legal pages
     |--------------------------------------------------------------------------
     |
@@ -523,15 +569,16 @@ return [
             'data_api' => env('YOUTUBE_DATA_API', 'https://www.googleapis.com/youtube/v3'),
             'analytics_api' => env('YOUTUBE_ANALYTICS_API', 'https://youtubeanalytics.googleapis.com/v2'),
             'oauth_api' => env('YOUTUBE_OAUTH_API', 'https://oauth2.googleapis.com'),
+            'web' => env('YOUTUBE_WEB', 'https://www.youtube.com'),
         ],
         'facebook' => [
             'enabled' => env('FACEBOOK_ENABLED', true),
-            'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            'graph_api' => env('FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v26.0'),
             'rupload_host' => env('FACEBOOK_RUPLOAD_HOST', 'rupload.facebook.com'),
         ],
         'instagram' => [
             'enabled' => env('INSTAGRAM_ENABLED', true),
-            'graph_api' => env('INSTAGRAM_GRAPH_API', 'https://graph.instagram.com/v25.0'),
+            'graph_api' => env('INSTAGRAM_GRAPH_API', 'https://graph.instagram.com/v26.0'),
             // graph.instagram.com (no version) is the auth/refresh host.
             'auth_api' => env('INSTAGRAM_AUTH_API', 'https://graph.instagram.com'),
             'oauth_url' => env('INSTAGRAM_OAUTH_URL', 'https://www.instagram.com'),
@@ -539,7 +586,7 @@ return [
         ],
         'instagram-facebook' => [
             'enabled' => env('INSTAGRAM_FACEBOOK_ENABLED', true),
-            'graph_api' => env('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v25.0'),
+            'graph_api' => env('INSTAGRAM_FACEBOOK_GRAPH_API', 'https://graph.facebook.com/v26.0'),
         ],
         'threads' => [
             'enabled' => env('THREADS_ENABLED', true),
@@ -559,6 +606,8 @@ return [
             'default_service' => env('BLUESKY_DEFAULT_SERVICE', 'https://bsky.social'),
             // Web client where published posts are viewed (profile/post URLs).
             'web_app' => env('BLUESKY_WEB_APP', 'https://bsky.app'),
+            // Chat service the PDS proxies chat.bsky.* calls to (atproto-proxy header).
+            'chat_proxy' => env('BLUESKY_CHAT_PROXY', 'did:web:api.bsky.chat#bsky_chat'),
             // Video upload service (separate from the PDS). Videos are processed
             // here, then the resulting blob is embedded in the post record.
             'video_service' => env('BLUESKY_VIDEO_SERVICE', 'https://video.bsky.app'),
@@ -609,6 +658,8 @@ return [
             'business_information_api' => env('GOOGLE_BUSINESS_BUSINESS_INFORMATION_API', 'https://mybusinessbusinessinformation.googleapis.com/v1'),
             // Legacy but still-active v4 API — the only home for Local Post create/update/delete.
             'local_posts_api' => env('GOOGLE_BUSINESS_LOCAL_POSTS_API', 'https://mybusiness.googleapis.com/v4'),
+            // Legacy v4 API — the only home for reviews and their replies.
+            'reviews_api' => env('GOOGLE_BUSINESS_REVIEWS_API', 'https://mybusiness.googleapis.com/v4'),
             // OAuth token endpoint, same host Google uses for every OAuth2 client.
             'oauth_api' => env('GOOGLE_BUSINESS_OAUTH_API', 'https://oauth2.googleapis.com'),
             // Business Profile web UI — post URL fallback and the social-account profile link.

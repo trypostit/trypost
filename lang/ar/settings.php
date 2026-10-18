@@ -21,6 +21,7 @@ return [
             'members' => 'الأعضاء',
             'signatures' => 'التوقيعات',
             'labels' => 'التسميات',
+            'saved_replies' => 'الردود المحفوظة',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'تلقَّ بريدًا إلكترونيًا عندما يضيف أحد أعضاء الفريق ملاحظة إلى منشور',
         'collaboration' => 'التعاون',
         'collaboration_description' => 'تلقَّ رسائل حول طلبات الموافقة والمنشورات المقبولة أو المرفوضة',
+        'inbox_activity' => 'التعليقات والتقييمات',
+        'inbox_activity_description' => 'تلقَّ رسالة عندما يعلّق أحد على منشوراتك الأخيرة أو يترك تقييمًا',
         'save_failed' => 'تعذّر حفظ تفضيلات الإشعارات. حاول مرة أخرى.',
     ],
 

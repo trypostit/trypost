@@ -47,6 +47,14 @@ use Illuminate\Http\Client\Response;
  */
 class GraphError
 {
+    private const int PERMISSION_DENIED_CODE = 200;
+
+    private const int LAST_PERMISSION_CODE = 299;
+
+    private const int API_PERMISSION_DENIED_CODE = 10;
+
+    private const int MESSAGES_ACCESS_DISABLED_SUBCODE = 2534041;
+
     /**
      * Codes Meta uses for rate-limit and other transient upstream problems.
      * These must never disconnect a still-valid token.
@@ -71,6 +79,33 @@ class GraphError
      * @var list<int>
      */
     public const array ACCOUNT_RATE_LIMIT_CODES = [17, 80001, 80002];
+
+    /**
+     * "The account owner has disabled access to instagram direct messages."
+     *
+     * @see https://developers.facebook.com/docs/messenger-platform/error-codes
+     */
+    public static function isMessagesAccessDisabled(Response $response): bool
+    {
+        return (int) data_get($response->json(), 'error.code') === self::PERMISSION_DENIED_CODE
+            && (int) data_get($response->json(), 'error.error_subcode') === self::MESSAGES_ACCESS_DISABLED_SUBCODE;
+    }
+
+    /**
+     * "API Permission Denied" (10) and the "API Permission" range (200-299):
+     * the token lacks a permission the call needs.
+     *
+     * @see https://developers.facebook.com/docs/graph-api/guides/error-handling/
+     *
+     * @param  array<string, mixed>|null  $body
+     */
+    public static function isPermissionDenied(?array $body): bool
+    {
+        $code = (int) data_get($body, 'error.code');
+
+        return $code === self::API_PERMISSION_DENIED_CODE
+            || ($code >= self::PERMISSION_DENIED_CODE && $code <= self::LAST_PERMISSION_CODE);
+    }
 
     /**
      * Whether the given Meta Graph error body is a known rate-limit or

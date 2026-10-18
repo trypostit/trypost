@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Actions\Analytics\UpsertAnalyticsPublication;
+use App\Actions\Inbox\LinkInboxConversationPost;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Analytics\PublicationOrigin;
 use App\Enums\Post\Origin;
@@ -70,6 +71,23 @@ class ImportExternalPosts
         }
 
         return $created;
+    }
+
+    /**
+     * Imports one publication, the post an inbox comment is under, whatever
+     * its age or the import limit: a comment is only kept under its post.
+     * The same lock and post guard as the batch import apply, so a post
+     * TryPost published is linked instead of duplicated.
+     *
+     * @return string|null the post created, null when the publication was linked, already imported or deferred
+     */
+    public static function importPublication(SocialAccount $account, string $publicationId): ?string
+    {
+        if (! $account->platform->isIncludedInAnalytics()) {
+            return null;
+        }
+
+        return self::import($account, $publicationId);
     }
 
     /**
@@ -224,6 +242,7 @@ class ImportExternalPosts
             'platform_url' => $publication->permalink ?? $target->platform_url,
             'publication_updated_at' => now(),
         ]);
+        LinkInboxConversationPost::toPost($target->forceFill(['platform_post_id' => $publication->remote_id])->setRelation('socialAccount', $account));
 
         return true;
     }

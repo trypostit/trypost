@@ -37,6 +37,14 @@ final class BlueskyLexicon
 
     public const GET_POST_THREAD = 'app.bsky.feed.getPostThread';
 
+    public const LIST_NOTIFICATIONS = 'app.bsky.notification.listNotifications';
+
+    public const CHAT_LIST_CONVOS = 'chat.bsky.convo.listConvos';
+
+    public const CHAT_GET_MESSAGES = 'chat.bsky.convo.getMessages';
+
+    public const CHAT_SEND_MESSAGE = 'chat.bsky.convo.sendMessage';
+
     public const GET_PROFILE = 'app.bsky.actor.getProfile';
 
     public const EMBED_IMAGES = 'app.bsky.embed.images';

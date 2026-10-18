@@ -6,8 +6,10 @@ namespace App\Models;
 
 use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\Analytics\MoveAnalyticsIdentity;
+use App\Actions\Inbox\DispatchInboxBackfill;
 use App\Actions\SocialAccount\ApplyChannelDefaults;
 use App\Casts\PostingScheduleCast;
+use App\Enums\Inbox\ConversationKind;
 use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\PostPlatform\ContentType;
@@ -20,6 +22,7 @@ use App\Models\Scopes\SocialAccountOrderScope;
 use App\Observers\ComposerVersionObserver;
 use App\Observers\SocialAccountObserver;
 use App\Support\GoogleBusinessResourceName;
+use App\Support\Social\BlueskyTokenScope;
 use Database\Factories\SocialAccountFactory;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Attributes\ObservedBy;
@@ -167,6 +170,7 @@ class SocialAccount extends Model
             if ((! $account->wasRecentlyCreated || $reconnect?->id === $account->id)
                 && ! $account->wasChanged('status')) {
                 app(DispatchAccountAnalytics::class)->handle($account);
+                app(DispatchInboxBackfill::class)->handle($account);
             }
 
             return $account;
@@ -270,7 +274,7 @@ class SocialAccount extends Model
      * Instagram Login (stored on connect, and filled in for older accounts by
      * the daily connection check).
      */
-    private function instagramAccountId(): ?string
+    public function instagramAccountId(): ?string
     {
         return match ($this->platform) {
             SocialPlatform::InstagramFacebook => (string) $this->platform_user_id,
@@ -602,5 +606,47 @@ class SocialAccount extends Model
     public function scopeIncludedInAnalytics(Builder $query): Builder
     {
         return $query->whereIn('platform', SocialPlatform::analyticsValues());
+    }
+
+    public function inboxSyncStates(): HasMany
+    {
+        return $this->hasMany(InboxSyncState::class);
+    }
+
+    public function inboxConversations(): HasMany
+    {
+        return $this->hasMany(InboxConversation::class);
+    }
+
+    public function hasInboxAccess(): bool
+    {
+        return match ($this->platform) {
+            SocialPlatform::Bluesky => true,
+            SocialPlatform::Instagram, SocialPlatform::InstagramFacebook, SocialPlatform::Facebook,
+            SocialPlatform::Threads, SocialPlatform::YouTube,
+            SocialPlatform::GoogleBusiness, SocialPlatform::Mastodon => filled($this->scopes)
+                && $this->missingScope(...$this->platform->inboxScopes()) === null,
+            default => false,
+        };
+    }
+
+    public function hasInboxAccessFor(ConversationKind $kind): bool
+    {
+        return match ($kind) {
+            ConversationKind::Mention => $this->hasInboxMentionAccess(),
+            ConversationKind::DirectMessage => $this->hasInboxAccess() && match ($this->platform) {
+                SocialPlatform::Bluesky => BlueskyTokenScope::allowsDirectMessages($this->access_token),
+                SocialPlatform::Instagram, SocialPlatform::InstagramFacebook, SocialPlatform::Facebook,
+                SocialPlatform::Mastodon => $this->missingScope(...$this->platform->inboxDirectMessageScopes()) === null,
+                default => false,
+            },
+            default => $this->hasInboxAccess(),
+        };
+    }
+
+    public function hasInboxMentionAccess(): bool
+    {
+        return $this->hasInboxAccess()
+            && $this->missingScope(...$this->platform->inboxMentionScopes()) === null;
     }
 }

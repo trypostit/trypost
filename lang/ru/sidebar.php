@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'Навигация',
     'mobile_description' => 'Основная навигация приложения.',
     'repurposes' => 'Repurpose',
+    'inbox' => 'Входящие',
     'posts' => [
         'all' => 'Все',
     ],

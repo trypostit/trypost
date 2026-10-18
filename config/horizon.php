@@ -315,6 +315,21 @@ return [
             'tries' => 1,
             'nice' => 0,
         ],
+
+        'inbox' => [
+            'connection' => 'redis',
+            'queue' => ['inbox-replies', 'inbox'],
+            'balance' => 'auto',
+            'autoScalingStrategy' => 'time',
+            'minProcesses' => 1,
+            'maxProcesses' => 2,
+            'timeout' => 330,
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [
@@ -360,6 +375,12 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
+
+            'inbox' => [
+                'maxProcesses' => 5,
+                'balanceMaxShift' => 1,
+                'balanceCooldown' => 3,
+            ],
         ],
 
         'local' => [
@@ -388,6 +409,10 @@ return [
             ],
 
             'rss-feeds' => [
+                'maxProcesses' => 1,
+            ],
+
+            'inbox' => [
                 'maxProcesses' => 1,
             ],
         ],

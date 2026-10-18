@@ -9,6 +9,7 @@ return [
         'app_password' => 'Mot de passe d\'application',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Utilisez un <strong>mot de passe d\'application</strong> pour plus de sécurité. Créez-en un sur <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'Pour répondre aux messages depuis TryPost, active « Autoriser l’accès à vos messages privés » en créant le mot de passe d’application.',
         'submit' => 'Connecter Bluesky',
         'submitting' => 'Connexion...',
         'invalid_credentials' => 'Identifiants invalides.',

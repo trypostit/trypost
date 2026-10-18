@@ -34,6 +34,25 @@ return [
         'ignore' => 'If you did not create an account, you can safely ignore this email.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count person commented on your :network post|[0,*] :count people commented on your :network post',
+        'title' => 'New comments on your post',
+        'heading' => '{1} :count person commented on your post|[0,*] :count people commented on your post',
+        'subtitle' => "Reply while it's fresh to keep the conversation going.",
+        'published_at' => 'Published :time (:timezone)',
+        'post_without_text' => 'Post without text',
+        'button' => 'View comments',
+        'review_subject_rated' => 'New :stars review on :channel',
+        'review_subject' => 'New review on :channel',
+        'review_title' => 'New review',
+        'review_heading_rated' => 'New review :stars',
+        'review_heading' => 'New review',
+        'review_subtitle' => 'Thank the reviewer or answer them while the review is fresh.',
+        'reviewed_at' => 'Reviewed :time (:timezone)',
+        'review_without_text' => 'Rating without a written review',
+        'review_button' => 'View review',
+    ],
+
     'password_reset' => [
         'subject' => 'Reset your password',
         'preview' => 'Reset your password.',

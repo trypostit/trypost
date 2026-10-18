@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'Nawigacja',
     'mobile_description' => 'Główna nawigacja aplikacji.',
     'repurposes' => 'Repurpose',
+    'inbox' => 'Skrzynka',
     'posts' => [
         'all' => 'Wszystkie',
     ],

@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Media;
 
 use App\Jobs\Media\DeleteMediaFiles;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Media;
+use App\Models\SocialAccount;
 use App\Models\Workspace;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -49,6 +52,36 @@ class DeleteOwnedMedia
         }
 
         self::purge(Media::query()->whereIn('rss_feed_item_id', $itemIds));
+    }
+
+    /** @param list<string> $messageIds */
+    public static function forInboxMessages(array $messageIds): void
+    {
+        if ($messageIds === []) {
+            return;
+        }
+
+        self::purge(Media::query()->whereIn('inbox_message_id', $messageIds));
+    }
+
+    /** @param list<string> $conversationIds */
+    public static function forInboxConversations(array $conversationIds): void
+    {
+        if ($conversationIds === []) {
+            return;
+        }
+
+        self::purge(Media::query()->whereIn('inbox_conversation_id', $conversationIds));
+    }
+
+    /**
+     * Every inbox row of the channel: its messages' and its conversations'.
+     */
+    public static function forInboxChannel(SocialAccount $account): void
+    {
+        self::purge(Media::query()->where(fn (Builder $query) => $query
+            ->whereIn('inbox_message_id', InboxMessage::query()->where('social_account_id', $account->id)->select('id'))
+            ->orWhereIn('inbox_conversation_id', InboxConversation::query()->where('social_account_id', $account->id)->select('id'))));
     }
 
     public static function forWorkspace(Workspace $workspace): void

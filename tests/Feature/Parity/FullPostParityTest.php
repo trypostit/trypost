@@ -67,7 +67,7 @@ function fullPostRouter(): Closure
             str_starts_with($url, "{$instagramFacebook}/igf_user/media") => Http::response(['id' => "ig-container-{$counter}"], 200),
             str_starts_with($url, "{$instagramFacebook}/ig-") => Http::response(['status_code' => 'FINISHED', 'status' => 'Finished', 'permalink' => 'https://www.instagram.com/reel/1/'], 200),
             str_contains($url, $rupload) => Http::response(['success' => true], 200),
-            str_starts_with($url, $facebook) && data_get($data, 'upload_phase') === 'start' => Http::response(['video_id' => "fb-video-{$counter}", 'upload_url' => "https://{$rupload}/video-upload/v25.0/fb-video-{$counter}"], 200),
+            str_starts_with($url, $facebook) && data_get($data, 'upload_phase') === 'start' => Http::response(['video_id' => "fb-video-{$counter}", 'upload_url' => "https://{$rupload}/video-upload/v26.0/fb-video-{$counter}"], 200),
             str_starts_with($url, $facebook) && data_get($data, 'upload_phase') === 'finish' => Http::response(['success' => true, 'id' => "fb-reel-{$counter}", 'post_id' => "fb-story-{$counter}"], 200),
             str_starts_with($url, $facebook) && str_contains($url, 'fields=status') => Http::response(['status' => ['video_status' => 'ready', 'uploading_phase' => ['status' => 'complete']]], 200),
             str_starts_with($url, $facebook) && str_ends_with(parse_url($url, PHP_URL_PATH), '/photos') => Http::response(['id' => "fb-photo-{$counter}", 'post_id' => "page_1_fb-photo-post-{$counter}"], 200),
@@ -737,7 +737,7 @@ function fullPostExpected(string $name): array
         'instagram carousel' => [
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media',
                 [
                     'is_carousel_item' => 'true',
                     'image_url' => '/storage/media/{month}/{uuid}.jpg',
@@ -747,7 +747,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media',
                 [
                     'is_carousel_item' => 'true',
                     'image_url' => '/storage/media/{month}/{uuid}.jpg',
@@ -756,7 +756,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media',
                 [
                     'media_type' => 'CAROUSEL',
                     'caption' => 'Carousel caption #one',
@@ -767,7 +767,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media_publish',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media_publish',
                 [
                     'creation_id' => 'ig-container-#',
                 ],
@@ -776,7 +776,7 @@ function fullPostExpected(string $name): array
         'instagram reel' => [
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media',
                 [
                     'video_url' => '/storage/media/{month}/{uuid}.mp4',
                     'caption' => 'Reel caption',
@@ -789,7 +789,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media_publish',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media_publish',
                 [
                     'creation_id' => 'ig-container-#',
                 ],
@@ -798,7 +798,7 @@ function fullPostExpected(string $name): array
         'instagram via facebook reel with music' => [
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/igf_user/media',
+                config('trypost.platforms.facebook.graph_api').'/igf_user/media',
                 [
                     'video_url' => '/storage/media/{month}/{uuid}.mp4',
                     'caption' => 'Reel with music',
@@ -810,7 +810,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/igf_user/media_publish',
+                config('trypost.platforms.facebook.graph_api').'/igf_user/media_publish',
                 [
                     'creation_id' => 'ig-container-#',
                 ],
@@ -819,7 +819,7 @@ function fullPostExpected(string $name): array
         'instagram story' => [
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media',
                 [
                     'media_type' => 'STORIES',
                     'image_url' => '/storage/social-crops/{uuid}.jpg',
@@ -827,7 +827,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.instagram.com/v25.0/ig_user/media_publish',
+                config('trypost.platforms.instagram.graph_api').'/ig_user/media_publish',
                 [
                     'creation_id' => 'ig-container-#',
                 ],
@@ -836,7 +836,7 @@ function fullPostExpected(string $name): array
         'facebook post' => [
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/photos',
+                config('trypost.platforms.facebook.graph_api').'/page_1/photos',
                 [
                     'url' => '/storage/media/{month}/{uuid}.jpg',
                     'message' => 'Facebook photo post',
@@ -847,7 +847,7 @@ function fullPostExpected(string $name): array
         'facebook link without preview' => [
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/feed',
+                config('trypost.platforms.facebook.graph_api').'/page_1/feed',
                 [
                     'message' => 'Read https://example.com/article',
                 ],
@@ -856,19 +856,19 @@ function fullPostExpected(string $name): array
         'facebook reel' => [
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/video_reels',
+                config('trypost.platforms.facebook.graph_api').'/page_1/video_reels',
                 [
                     'upload_phase' => 'start',
                 ],
             ],
             [
                 'POST',
-                'https://rupload.facebook.com/video-upload/v25.0/fb-video-#',
+                'https://rupload.facebook.com/video-upload/v26.0/fb-video-#',
                 '',
             ],
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/video_reels',
+                config('trypost.platforms.facebook.graph_api').'/page_1/video_reels',
                 [
                     'upload_phase' => 'finish',
                     'video_id' => 'fb-video-#',
@@ -880,7 +880,7 @@ function fullPostExpected(string $name): array
         'facebook photo story' => [
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/photos',
+                config('trypost.platforms.facebook.graph_api').'/page_1/photos',
                 [
                     'url' => '/storage/social-crops/{uuid}.jpg',
                     'published' => 'false',
@@ -888,7 +888,7 @@ function fullPostExpected(string $name): array
             ],
             [
                 'POST',
-                'https://graph.facebook.com/v25.0/page_1/photo_stories',
+                config('trypost.platforms.facebook.graph_api').'/page_1/photo_stories',
                 [
                     'photo_id' => 'fb-photo-#',
                 ],

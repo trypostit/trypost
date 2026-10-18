@@ -52,7 +52,7 @@ function facebookVideoUploadFakes(string $edge): array
         "*/page_123/{$edge}" => Http::sequence()
             ->push([
                 'video_id' => 'video_123',
-                'upload_url' => "{$rupload}/video-upload/v25.0/video_123",
+                'upload_url' => "{$rupload}/video-upload/v26.0/video_123",
             ], 200)
             ->push(['success' => true, 'id' => 'reel_456', 'post_id' => 'story_456'], 200),
         "{$rupload}/*" => Http::response(['success' => true], 200),
@@ -513,8 +513,8 @@ test('facebook publisher rejects an upload_url outside the rupload host', functi
     Http::assertSentCount(1);
 })->with('facebook resumable video formats')->with([
     'another host' => 'https://evil.example/steal-token',
-    'plain http' => 'http://rupload.facebook.com/video-upload/v25.0/video_123',
-    'userinfo trick' => 'https://rupload.facebook.com@evil.example/video-upload/v25.0/video_123',
+    'plain http' => 'http://rupload.facebook.com/video-upload/v26.0/video_123',
+    'userinfo trick' => 'https://rupload.facebook.com@evil.example/video-upload/v26.0/video_123',
     'not a url' => 'video_123',
 ]);
 
@@ -884,7 +884,7 @@ test('facebook publisher can publish single image with null content', function (
     ]);
 
     Http::fake([
-        'https://graph.facebook.com/v25.0/page_123/photos' => Http::response([
+        config('trypost.platforms.facebook.graph_api').'/page_123/photos' => Http::response([
             'id' => 'photo-123',
             'post_id' => 'post-123',
         ], 200),

@@ -34,6 +34,25 @@ return [
         'ignore' => 'Если вы не создавали аккаунт, просто проигнорируйте это письмо.',
     ],
 
+    'inbox_activity' => [
+        'subject' => ':count человек прокомментировал ваш пост в :network|:count человека прокомментировали ваш пост в :network|:count человек прокомментировали ваш пост в :network',
+        'title' => 'Новые комментарии к вашему посту',
+        'heading' => ':count человек прокомментировал ваш пост|:count человека прокомментировали ваш пост|:count человек прокомментировали ваш пост',
+        'subtitle' => 'Ответьте, пока тема свежая, чтобы разговор продолжился.',
+        'published_at' => 'Опубликовано :time (:timezone)',
+        'post_without_text' => 'Пост без текста',
+        'button' => 'Посмотреть комментарии',
+        'review_subject_rated' => 'Новый отзыв :stars о :channel',
+        'review_subject' => 'Новый отзыв о :channel',
+        'review_title' => 'Новый отзыв',
+        'review_heading_rated' => 'Новый отзыв :stars',
+        'review_heading' => 'Новый отзыв',
+        'review_subtitle' => 'Поблагодарите автора или ответьте, пока отзыв свежий.',
+        'reviewed_at' => 'Отзыв оставлен :time (:timezone)',
+        'review_without_text' => 'Оценка без текста',
+        'review_button' => 'Посмотреть отзыв',
+    ],
+
     'password_reset' => [
         'subject' => 'Сбросьте пароль',
         'preview' => 'Сбросьте пароль.',

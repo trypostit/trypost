@@ -34,6 +34,25 @@ return [
         'ignore' => '계정을 만든 적이 없다면 이 메일을 무시하셔도 됩니다.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count명이 :network 게시물에 댓글을 남겼습니다|[0,*] :count명이 :network 게시물에 댓글을 남겼습니다',
+        'title' => '게시물에 새 댓글',
+        'heading' => '{1} :count명이 게시물에 댓글을 남겼습니다|[0,*] :count명이 게시물에 댓글을 남겼습니다',
+        'subtitle' => '대화가 이어지도록 따끈할 때 답글을 남기세요.',
+        'published_at' => '게시: :time (:timezone)',
+        'post_without_text' => '텍스트 없는 게시물',
+        'button' => '댓글 보기',
+        'review_subject_rated' => ':channel에 새 리뷰 :stars',
+        'review_subject' => ':channel에 새 리뷰',
+        'review_title' => '새 리뷰',
+        'review_heading_rated' => '새 리뷰 :stars',
+        'review_heading' => '새 리뷰',
+        'review_subtitle' => '리뷰가 따끈할 때 감사 인사나 답글을 남기세요.',
+        'reviewed_at' => '리뷰: :time (:timezone)',
+        'review_without_text' => '글 없는 별점',
+        'review_button' => '리뷰 보기',
+    ],
+
     'password_reset' => [
         'subject' => '비밀번호를 재설정하세요',
         'preview' => '비밀번호를 재설정하세요.',

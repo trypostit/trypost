@@ -11,7 +11,7 @@ use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 use Throwable;
 
-class FacebookPublicationCollector extends AbstractMetaPublicationCollector
+class FacebookPublicationCollector extends AbstractMetaPublicationCollector implements FindsPublication
 {
     private const PAGE_SIZE = 50;
 
@@ -50,36 +50,57 @@ class FacebookPublicationCollector extends AbstractMetaPublicationCollector
                 break;
             }
 
-            $attachment = (array) data_get($row, 'attachments.data.0', []);
-            $previewUrl = data_get($attachment, 'media.image.src');
-            $permalink = data_get($row, 'permalink_url');
-
-            $videoId = $this->isVideo($attachment) ? data_get($attachment, 'target.id') : null;
-            $photoId = $this->isSinglePhotoPost($row, $attachment) ? data_get($attachment, 'target.id') : null;
-
-            if (filled($videoId)) {
-                $hydrated = $this->hydratePreview($account, (string) $videoId);
-                $previewUrl = data_get($hydrated, 'picture') ?: $previewUrl;
-                $permalink = $permalink ?: data_get($hydrated, 'permalink_url');
-            }
-
-            $publications[] = new DiscoveredPublication(
-                providerPostId: (string) data_get($row, 'id'),
-                publishedAt: $publishedAt,
-                contentType: $this->contentType($attachment),
-                providerContentType: data_get($attachment, 'type') ?: data_get($attachment, 'media_type') ?: data_get($row, 'status_type'),
-                permalink: $permalink,
-                excerpt: data_get($row, 'message'),
-                previewMetadata: $this->preview($previewUrl),
-                providerMetadata: match (true) {
-                    filled($videoId) => ['video_id' => (string) $videoId],
-                    filled($photoId) => ['photo_id' => (string) $photoId],
-                    default => null,
-                },
-            );
+            $publications[] = $this->publication($account, $row, $publishedAt);
         }
 
         return $this->result($publications, $response, $crossedCutoff, $providerLimited);
+    }
+
+    /**
+     * @see https://developers.facebook.com/docs/graph-api/reference/pagepost/
+     */
+    public function find(SocialAccount $account, string $remoteId): ?DiscoveredPublication
+    {
+        $row = (array) $this->get(
+            $account,
+            config('trypost.platforms.facebook.graph_api')."/{$remoteId}",
+            ['fields' => self::FIELDS],
+        )->json();
+        $publishedAt = $this->publishedAt(data_get($row, 'created_time'));
+
+        return $publishedAt && filled(data_get($row, 'id')) ? $this->publication($account, $row, $publishedAt) : null;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function publication(SocialAccount $account, array $row, CarbonImmutable $publishedAt): DiscoveredPublication
+    {
+        $attachment = (array) data_get($row, 'attachments.data.0', []);
+        $previewUrl = data_get($attachment, 'media.image.src');
+        $permalink = data_get($row, 'permalink_url');
+
+        $videoId = $this->isVideo($attachment) ? data_get($attachment, 'target.id') : null;
+        $photoId = $this->isSinglePhotoPost($row, $attachment) ? data_get($attachment, 'target.id') : null;
+
+        if (filled($videoId)) {
+            $hydrated = $this->hydratePreview($account, (string) $videoId);
+            $previewUrl = data_get($hydrated, 'picture') ?: $previewUrl;
+            $permalink = $permalink ?: data_get($hydrated, 'permalink_url');
+        }
+
+        return new DiscoveredPublication(
+            providerPostId: (string) data_get($row, 'id'),
+            publishedAt: $publishedAt,
+            contentType: $this->contentType($attachment),
+            providerContentType: data_get($attachment, 'type') ?: data_get($attachment, 'media_type') ?: data_get($row, 'status_type'),
+            permalink: $permalink,
+            excerpt: data_get($row, 'message'),
+            previewMetadata: $this->preview($previewUrl),
+            providerMetadata: match (true) {
+                filled($videoId) => ['video_id' => (string) $videoId],
+                filled($photoId) => ['photo_id' => (string) $photoId],
+                default => null,
+            },
+        );
     }
 
     /** @param array<string, mixed> $attachment */

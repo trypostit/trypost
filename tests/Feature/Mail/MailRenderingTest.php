@@ -2,11 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Enums\Inbox\ConversationKind;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
+use App\Mail\InboxActivity;
 use App\Mail\PostApprovalRequested;
 use App\Mail\PostApproved;
 use App\Mail\PostNoteAdded;
@@ -14,6 +16,8 @@ use App\Mail\PostRejected;
 use App\Mail\WorkspaceConnectionsDisconnected;
 use App\Mail\WorkspaceInvite;
 use App\Models\Account;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
 use App\Models\Invite;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -21,6 +25,7 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Mail\ApprovalEmailPost;
+use App\Support\Mail\RecipientTime;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
@@ -418,4 +423,124 @@ test('approval emails show one channel card and escape its name', function () {
     expect($document->filter('img[src="'.asset('images/accounts/instagram.png').'"]')->count())->toBe(1)
         ->and($html)->toContain('Studio &lt;Team&gt;')
         ->not->toContain('Studio <Team>');
+});
+
+function inboxActivityConversation(array $attributes = [], array $account = []): InboxConversation
+{
+    $channel = SocialAccount::factory()->bluesky()->create(['display_name' => 'Acme Studio', ...$account]);
+
+    return InboxConversation::factory()->create([
+        'social_account_id' => $channel->id,
+        'subject_text' => 'Launch day is here',
+        'subject_published_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
+        ...$attributes,
+    ]);
+}
+
+test('the comments email renders the count, the post card, the time and the link', function (Locale $locale) {
+    $recipient = User::factory()->create(['timezone' => 'America/Sao_Paulo', 'time_format' => TimeFormat::TwelveHour]);
+    $conversation = inboxActivityConversation();
+
+    $previousLocale = app()->getLocale();
+    app()->setLocale($locale->value);
+    $time = RecipientTime::dateTime(CarbonImmutable::parse('2026-10-07 15:00', 'UTC'), $recipient);
+    app()->setLocale($previousLocale);
+
+    $mailable = (new InboxActivity($conversation->id, 3, $recipient))->locale($locale->value);
+
+    $mailable->assertHasSubject(trans_choice('mail.inbox_activity.subject', 3, ['count' => 3, 'network' => 'Bluesky'], $locale->value));
+    $mailable->assertSeeInHtml(e(trans_choice('mail.inbox_activity.heading', 3, ['count' => 3], $locale->value)), false);
+    $mailable->assertSeeInHtml(e(__('mail.inbox_activity.subtitle', [], $locale->value)), false);
+    $mailable->assertSeeInHtml('Launch day is here');
+    $mailable->assertSeeInHtml('Acme Studio');
+    $mailable->assertSeeInHtml(asset('images/accounts/bluesky.png'));
+    $mailable->assertSeeInHtml(e(__('mail.inbox_activity.published_at', ['time' => $time, 'timezone' => 'America/Sao_Paulo'], $locale->value)), false);
+    $mailable->assertSeeInHtml(e(__('mail.inbox_activity.button', [], $locale->value)), false);
+    $mailable->assertSeeInHtml(route('app.inbox.conversations.show', $conversation), false);
+    $mailable->assertSeeInHtml(route('app.notifications.preferences'), false);
+})->with([Locale::English, Locale::PortugueseBrazil, Locale::Arabic]);
+
+test('the comments email shows the time on the recipient clock', function () {
+    $recipient = User::factory()->create(['timezone' => 'America/Sao_Paulo', 'time_format' => TimeFormat::TwelveHour]);
+
+    expect((new InboxActivity(inboxActivityConversation()->id, 1, $recipient))->render())
+        ->toContain('October 7, 2026 12:00 PM (America/Sao_Paulo)');
+});
+
+test('the comments email falls back when the post has no text', function () {
+    $recipient = User::factory()->create();
+
+    (new InboxActivity(inboxActivityConversation(['subject_text' => null])->id, 1, $recipient))
+        ->assertSeeInHtml(__('mail.inbox_activity.post_without_text'));
+});
+
+test('the review email shows the stars, the reviewer and the review', function () {
+    $recipient = User::factory()->create(['timezone' => 'UTC', 'time_format' => TimeFormat::TwentyFourHour]);
+    $conversation = inboxActivityConversation(
+        ['kind' => ConversationKind::Review, 'rating' => 4, 'participant_name' => 'Maria Souza', 'subject_text' => null, 'subject_published_at' => null],
+        ['platform' => Platform::GoogleBusiness, 'display_name' => 'Acme Bakery'],
+    );
+    InboxMessage::factory()->for($conversation, 'conversation')->create([
+        'author_name' => 'Maria Souza',
+        'body' => 'Best croissants in town',
+        'platform_created_at' => CarbonImmutable::parse('2026-10-07 15:00', 'UTC'),
+    ]);
+
+    $mailable = new InboxActivity($conversation->id, 1, $recipient);
+
+    $mailable->assertHasSubject(__('mail.inbox_activity.review_subject_rated', ['stars' => '★★★★☆', 'channel' => 'Acme Bakery']));
+    $mailable->assertSeeInHtml(__('mail.inbox_activity.review_heading_rated', ['stars' => '★★★★☆']));
+    $mailable->assertSeeInHtml('Maria Souza');
+    $mailable->assertSeeInHtml('Best croissants in town');
+    $mailable->assertSeeInHtml(asset('images/accounts/google_business.png'));
+    $mailable->assertSeeInHtml(__('mail.inbox_activity.review_button'));
+    $mailable->assertSeeInHtml('October 7, 2026 15:00 (UTC)');
+});
+
+test('a review without a rating has no stars', function () {
+    $recipient = User::factory()->create();
+    $conversation = inboxActivityConversation(['kind' => ConversationKind::Review, 'rating' => null], ['display_name' => 'Acme Bakery']);
+
+    (new InboxActivity($conversation->id, 1, $recipient))
+        ->assertHasSubject(__('mail.inbox_activity.review_subject', ['channel' => 'Acme Bakery']))
+        ->assertDontSeeInHtml('★');
+});
+
+test('stars are clamped to one to five', function (?int $rating, string $stars) {
+    expect(InboxActivity::stars($rating))->toBe($stars);
+})->with([
+    'none' => [null, ''],
+    'one' => [1, '★☆☆☆☆'],
+    'four' => [4, '★★★★☆'],
+    'above five' => [9, '★★★★★'],
+]);
+
+test('the comments email escapes the channel name and the post text', function () {
+    $recipient = User::factory()->create();
+    $html = (new InboxActivity(inboxActivityConversation(['subject_text' => 'Use <b>bold</b>'], ['display_name' => 'Studio <Team>'])->id, 2, $recipient))->render();
+
+    expect($html)->toContain('Studio &lt;Team&gt;')->not->toContain('Studio <Team>');
+});
+
+test('the activity heading pluralises in every locale', function (Locale $locale) {
+    foreach ([0, 1, 2, 5, 21] as $count) {
+        $heading = trans_choice('mail.inbox_activity.heading', $count, ['count' => $count], $locale->value);
+        $subject = trans_choice('mail.inbox_activity.subject', $count, ['count' => $count, 'network' => 'Bluesky'], $locale->value);
+
+        expect($heading)->not->toStartWith(' ')->not->toContain('mail.inbox_activity')->not->toContain('|')
+            ->and($subject)->not->toStartWith(' ')->toContain('Bluesky')->not->toContain('|');
+    }
+})->with(Locale::cases());
+
+test('the arabic activity heading uses the singular accusative from eleven people', function () {
+    foreach (['heading' => [], 'subject' => ['network' => 'Bluesky']] as $key => $replace) {
+        $line = fn (int $count): string => trans_choice("mail.inbox_activity.{$key}", $count, ['count' => $count, ...$replace], 'ar');
+
+        expect($line(1))->toContain('شخص واحد')
+            ->and($line(3))->toContain('3 أشخاص')
+            ->and($line(10))->toContain('10 أشخاص')
+            ->and($line(11))->toContain('11 شخصًا')
+            ->and($line(250))->toContain('250 شخصًا')
+            ->and($line(0))->toContain('0 أشخاص');
+    }
 });

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Mcp\Servers\TryPostServer;
 use App\Mcp\Tools\Idea\CreateIdeaTool;
+use App\Mcp\Tools\Inbox\ResolveInboxMessagesTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\UpdateLabelTool;
 use App\Mcp\Tools\Post\AttachMediaFromUploadTool;
@@ -199,4 +200,9 @@ test('the meta documentation explains how instagram music and collaborators beha
         ->toContain('platform instagram-facebook')
         ->toContain('only after they accept the invite in the Instagram app')
         ->toContain('only refused when the post publishes');
+});
+
+test('the server instructions and the resolve tool cover every inbox tab and the send tool', function () {
+    expect(mcpServerInstructions())->toContain('mentions')->toContain('direct messages')->toContain('send-inbox-direct-message-tool')
+        ->and(mcpToolText(ResolveInboxMessagesTool::class))->toContain('mentions')->toContain('messages (direct messages)');
 });

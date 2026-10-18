@@ -34,6 +34,25 @@ return [
         'ignore' => 'Jeśli nie zakładałeś konta, możesz zignorować tę wiadomość.',
     ],
 
+    'inbox_activity' => [
+        'subject' => ':count osoba skomentowała Twój post na :network|:count osoby skomentowały Twój post na :network|:count osób skomentowało Twój post na :network',
+        'title' => 'Nowe komentarze pod Twoim postem',
+        'heading' => ':count osoba skomentowała Twój post|:count osoby skomentowały Twój post|:count osób skomentowało Twój post',
+        'subtitle' => 'Odpowiedz, póki temat jest świeży, żeby rozmowa trwała dalej.',
+        'published_at' => 'Opublikowano :time (:timezone)',
+        'post_without_text' => 'Post bez tekstu',
+        'button' => 'Zobacz komentarze',
+        'review_subject_rated' => 'Nowa opinia :stars o :channel',
+        'review_subject' => 'Nowa opinia o :channel',
+        'review_title' => 'Nowa opinia',
+        'review_heading_rated' => 'Nowa opinia :stars',
+        'review_heading' => 'Nowa opinia',
+        'review_subtitle' => 'Podziękuj lub odpowiedz, póki opinia jest świeża.',
+        'reviewed_at' => 'Opinia z :time (:timezone)',
+        'review_without_text' => 'Ocena bez treści',
+        'review_button' => 'Zobacz opinię',
+    ],
+
     'password_reset' => [
         'subject' => 'Zresetuj hasło',
         'preview' => 'Zresetuj hasło.',

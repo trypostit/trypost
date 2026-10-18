@@ -34,6 +34,25 @@ return [
         'ignore' => 'Αν δεν δημιουργήσατε λογαριασμό, μπορείτε να αγνοήσετε αυτό το email.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count άτομο σχολίασε τη δημοσίευσή σας στο :network|[0,*] :count άτομα σχολίασαν τη δημοσίευσή σας στο :network',
+        'title' => 'Νέα σχόλια στη δημοσίευσή σας',
+        'heading' => '{1} :count άτομο σχολίασε τη δημοσίευσή σας|[0,*] :count άτομα σχολίασαν τη δημοσίευσή σας',
+        'subtitle' => 'Απαντήστε όσο είναι ακόμα επίκαιρο, για να συνεχιστεί η συζήτηση.',
+        'published_at' => 'Δημοσιεύτηκε :time (:timezone)',
+        'post_without_text' => 'Δημοσίευση χωρίς κείμενο',
+        'button' => 'Δείτε τα σχόλια',
+        'review_subject_rated' => 'Νέα κριτική :stars για :channel',
+        'review_subject' => 'Νέα κριτική για :channel',
+        'review_title' => 'Νέα κριτική',
+        'review_heading_rated' => 'Νέα κριτική :stars',
+        'review_heading' => 'Νέα κριτική',
+        'review_subtitle' => 'Ευχαριστήστε ή απαντήστε όσο η κριτική είναι πρόσφατη.',
+        'reviewed_at' => 'Κριτική στις :time (:timezone)',
+        'review_without_text' => 'Βαθμολογία χωρίς γραπτή κριτική',
+        'review_button' => 'Δείτε την κριτική',
+    ],
+
     'password_reset' => [
         'subject' => 'Επαναφέρετε τον κωδικό σας',
         'preview' => 'Επαναφέρετε τον κωδικό σας.',

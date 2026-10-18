@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Dto\BlueskySession;
+use App\Enums\Inbox\ConversationKind;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Models\SocialAccount;
@@ -36,6 +37,7 @@ class BlueskyController extends SocialController
         return Inertia::render('accounts/BlueskyConnect', [
             'errors' => session('errors')?->getBag('default')?->toArray() ?? [],
             'backUrl' => PendingConnection::current()?->returnUrl() ?? PendingConnection::defaultReturnUrl(),
+            'asksForMessageAccess' => SocialPlatform::Bluesky->inboxKindEnabled(ConversationKind::DirectMessage),
         ]);
     }
 

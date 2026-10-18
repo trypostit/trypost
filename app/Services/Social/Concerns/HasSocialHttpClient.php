@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Http;
 
 trait HasSocialHttpClient
 {
+    private const int SOCIAL_HTTP_TIMEOUT_SECONDS = 120;
+
     /**
      * Measures the sanitized content — the exact string the publisher sends —
      * rather than the stored draft. The two differ by more than markup: X
@@ -79,7 +81,12 @@ trait HasSocialHttpClient
             sleepMilliseconds: 5000,
             when: fn ($exception, $request) => ($exception->response ?? null)?->status() === 429,
             throw: false,
-        )->timeout(120);
+        )->timeout($this->socialHttpTimeout());
+    }
+
+    protected function socialHttpTimeout(): int
+    {
+        return self::SOCIAL_HTTP_TIMEOUT_SECONDS;
     }
 
     protected function redactResponseBody(string $body): string

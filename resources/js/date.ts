@@ -106,6 +106,27 @@ export default {
             .format(`LL ${timeToken()}`);
     },
 
+    /**
+     * An instant as short month + day + clock time in the user's zone
+     * ("Oct 15, 12:53 PM"), with the year only when it is not the current one.
+     */
+    formatMonthDayTime(date: string | null | undefined): string {
+        if (!date) {
+            return '—';
+        }
+
+        const instant = localized(
+            dayjs.utc(date).tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'),
+        );
+        const day = new Intl.DateTimeFormat(activeLocale.value, {
+            month: 'short',
+            day: 'numeric',
+            ...(instant.year() === userNow().year() ? {} : { year: 'numeric' }),
+        }).format(instant.toDate());
+
+        return `${day}, ${instant.format(timeToken())}`;
+    },
+
     formatDateShort(date: string | null | undefined) {
         if (!date) return '—';
         return dayjs

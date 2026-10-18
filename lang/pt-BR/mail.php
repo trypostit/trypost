@@ -34,6 +34,25 @@ return [
         'ignore' => 'Se você não criou uma conta, pode ignorar este e-mail com segurança.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count pessoa comentou sua publicação no :network|[0,*] :count pessoas comentaram sua publicação no :network',
+        'title' => 'Novos comentários na sua publicação',
+        'heading' => '{1} :count pessoa comentou sua publicação|[0,*] :count pessoas comentaram sua publicação',
+        'subtitle' => 'Responda enquanto o assunto está quente para manter a conversa.',
+        'published_at' => 'Publicado em :time (:timezone)',
+        'post_without_text' => 'Publicação sem texto',
+        'button' => 'Ver comentários',
+        'review_subject_rated' => 'Nova avaliação :stars em :channel',
+        'review_subject' => 'Nova avaliação em :channel',
+        'review_title' => 'Nova avaliação',
+        'review_heading_rated' => 'Nova avaliação :stars',
+        'review_heading' => 'Nova avaliação',
+        'review_subtitle' => 'Agradeça ou responda enquanto a avaliação é recente.',
+        'reviewed_at' => 'Avaliado em :time (:timezone)',
+        'review_without_text' => 'Nota sem comentário escrito',
+        'review_button' => 'Ver avaliação',
+    ],
+
     'password_reset' => [
         'subject' => 'Redefina sua senha',
         'preview' => 'Redefina sua senha.',

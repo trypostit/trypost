@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Head, useHttp } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { toast } from 'vue-sonner';
 
 import NotificationPreferenceController from '@/actions/App/Http/Controllers/App/Settings/NotificationPreferenceController';
@@ -15,25 +15,34 @@ type PreferenceField =
     | 'post_failed'
     | 'account_disconnected'
     | 'post_note_added'
-    | 'collaboration';
+    | 'collaboration'
+    | 'inbox_activity';
 
 type Preferences = Record<PreferenceField, boolean>;
 
 const props = defineProps<{
     preferences: Preferences;
+    showsInboxActivity: boolean;
 }>();
 
-const fields: PreferenceField[] = [
+const allFields: PreferenceField[] = [
     'post_published',
     'post_failed',
     'account_disconnected',
     'post_note_added',
     'collaboration',
+    'inbox_activity',
 ];
+
+const fields = computed<PreferenceField[]>(() =>
+    allFields.filter(
+        (field) => field !== 'inbox_activity' || props.showsInboxActivity,
+    ),
+);
 
 const values = ref<Preferences>(
     Object.fromEntries(
-        fields.map((field) => [field, Boolean(props.preferences[field])]),
+        allFields.map((field) => [field, Boolean(props.preferences[field])]),
     ) as Preferences,
 );
 const savedField = ref<PreferenceField | null>(null);

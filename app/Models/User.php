@@ -132,6 +132,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'two_factor_confirmed_at' => 'datetime',
+            'inbox_reorder_hint_seen_at' => 'datetime',
             'persona' => Persona::class,
             'goals' => 'array',
             'previous_software' => PreviousSoftware::class,
@@ -170,6 +171,7 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             NotificationType::AccountDisconnected, NotificationType::PostAtRisk => $preference->account_disconnected ?? true,
             NotificationType::PostNoteAdded => $preference->post_note_added ?? true,
             NotificationType::Collaboration => $preference->collaboration ?? true,
+            NotificationType::InboxActivity => $preference->inbox_activity ?? true,
         };
     }
 

@@ -9,6 +9,7 @@ return [
         'app_password' => '应用专用密码',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => '为保障安全，请使用<strong>应用专用密码</strong>。可前往 <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a> 创建。',
+        'message_access_hint' => '要在 TryPost 中回复私信，请在创建应用密码时开启“允许访问你的私信”。',
         'submit' => '连接 Bluesky',
         'submitting' => '连接中…',
         'invalid_credentials' => '凭据无效。',

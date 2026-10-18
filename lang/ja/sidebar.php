@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'ナビゲーション',
     'mobile_description' => 'アプリのメインナビゲーション。',
     'repurposes' => 'Repurpose',
+    'inbox' => '受信箱',
     'posts' => [
         'all' => 'すべて',
     ],

@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/vue3';
 import {
     IconLayoutGrid,
     IconBell,
+    IconClipboardText,
     IconCoin,
     IconCode,
     IconSignature,
@@ -24,6 +25,7 @@ import { index as labels } from '@/routes/app/labels';
 import { index as mcp } from '@/routes/app/mcp';
 import { preferences as notificationPreferences } from '@/routes/app/notifications';
 import { edit as profileEdit } from '@/routes/app/profile';
+import { index as savedReplies } from '@/routes/app/saved-replies';
 import { preferences } from '@/routes/app/settings';
 import { index as signatures } from '@/routes/app/signatures';
 import { index as webhooks } from '@/routes/app/webhooks';
@@ -44,12 +46,14 @@ export const useSettingsNavigation = () => {
         canManageAccounts,
         canManageWebhooks,
         canManageBilling,
+        canPublishDirectly,
     } = useWorkspaceAbilities();
 
     const hasWorkspace = computed(() =>
         Boolean(page.props.auth?.currentWorkspace),
     );
     const selfHosted = computed(() => Boolean(page.props.selfHosted));
+    const inboxEnabled = computed(() => page.props.inbox !== undefined);
     const channelCount = computed(
         () => ((page.props.channels as unknown[] | undefined) ?? []).length,
     );
@@ -141,6 +145,12 @@ export const useSettingsNavigation = () => {
                         labels.url(),
                         IconTag,
                         workspace && canCreatePost.value,
+                    ),
+                    ...item(
+                        'saved_replies',
+                        savedReplies.url(),
+                        IconClipboardText,
+                        workspace && inboxEnabled.value && canPublishDirectly.value,
                     ),
                 ],
             },

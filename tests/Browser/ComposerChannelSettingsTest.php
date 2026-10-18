@@ -640,8 +640,9 @@ test('save and link keeps a pending reel pending for a member who needs approval
     fakeChannelSettingsApis();
     $video = [['id' => (string) Str::uuid(), 'type' => 'video', 'path' => 'medias/clip.mp4', 'url' => 'https://example.com/clip.mp4', 'mime_type' => 'video/mp4', 'original_filename' => 'clip.mp4']];
     $post = seedChannelSettingsPost(Platform::Instagram, ContentType::InstagramReel, $video);
-    $post->workspace->members()->updateExistingPivot($post->user_id, membershipPivot('approval'));
-    $post->update(['status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
+    $member = workspaceMember($post->workspace, 'approval');
+    $post->update(['user_id' => $member->id, 'status' => Status::PendingApproval, 'scheduled_at' => now()->addDay()]);
+    $this->actingAs($member);
 
     $page = visit(route('app.posts.edit', $post))->resize(1280, 900);
     waitFor($page, '@instagram-music-add');

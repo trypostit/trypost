@@ -9,6 +9,7 @@ return [
         'app_password' => 'Пароль приложения',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'В целях безопасности используйте <strong>пароль приложения</strong>. Создайте его на <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'Чтобы отвечать на сообщения из TryPost, включи «Разрешить доступ к личным сообщениям» при создании пароля приложения.',
         'submit' => 'Подключить Bluesky',
         'submitting' => 'Подключение...',
         'invalid_credentials' => 'Неверные учетные данные.',

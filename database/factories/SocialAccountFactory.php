@@ -100,6 +100,44 @@ class SocialAccountFactory extends Factory
         ]);
     }
 
+    public function instagramFacebook(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'platform' => Platform::InstagramFacebook,
+            'scopes' => ['public_profile', 'pages_show_list', 'pages_read_engagement', 'business_management', 'instagram_basic', 'instagram_content_publish', 'instagram_manage_insights'],
+            'meta' => ['page_id' => (string) $this->faker->randomNumber(9)],
+        ]);
+    }
+
+    /**
+     * The inbox scopes plus the ones direct messages need.
+     */
+    public function withDirectMessageScopes(): static
+    {
+        return $this->withInboxScopes()->state(fn (array $attributes) => [
+            'scopes' => array_values(array_unique([
+                ...(array) data_get($attributes, 'scopes', []),
+                ...array_map(
+                    fn (string|array $scope): string => is_array($scope) ? $scope[0] : $scope,
+                    ($attributes['platform'] instanceof Platform ? $attributes['platform'] : Platform::from($attributes['platform']))->inboxDirectMessageScopes(),
+                ),
+            ])),
+        ]);
+    }
+
+    public function withInboxScopes(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'scopes' => array_values(array_unique([
+                ...(array) data_get($attributes, 'scopes', []),
+                ...array_map(
+                    fn (string|array $scope): string => is_array($scope) ? $scope[0] : $scope,
+                    ($attributes['platform'] instanceof Platform ? $attributes['platform'] : Platform::from($attributes['platform']))->inboxScopes(),
+                ),
+            ])),
+        ]);
+    }
+
     public function threads(): static
     {
         return $this->state(fn (array $attributes) => [

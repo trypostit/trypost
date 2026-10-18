@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
+use App\Actions\Inbox\DeleteChannelInbox;
 use App\Actions\Post\DeleteChannelPosts;
 use App\Actions\Post\Queue\ReflowChannelQueue;
 use App\Enums\Repurpose\Status as RepurposeStatus;
@@ -32,6 +33,9 @@ use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 class SocialController extends Controller
 {
     protected SocialPlatform $platform;
+
+    /** @var array<int, string> */
+    protected array $scopes = [];
 
     private const array CANCELLED_CONSENT_ERRORS = ['access_denied', 'user_cancelled_login', 'user_cancelled_authorize'];
 
@@ -65,6 +69,7 @@ class SocialController extends Controller
         try {
             ReflowChannelQueue::withLock([$account->id], fn () => DB::transaction(function () use ($account): void {
                 DeleteChannelPosts::forAccount($account);
+                DeleteChannelInbox::forAccount($account);
 
                 $account->delete();
             }));
@@ -207,6 +212,17 @@ class SocialController extends Controller
         )));
 
         return $scopes === [] ? array_values($requested) : $scopes;
+    }
+
+    /**
+     * The scopes this connect asks for: the platform's own, plus the inbox's
+     * while the inbox is on.
+     *
+     * @return list<string>
+     */
+    protected function requestedScopes(): array
+    {
+        return array_values(array_unique([...$this->scopes, ...$this->platform->inboxConnectScopes()]));
     }
 
     /**

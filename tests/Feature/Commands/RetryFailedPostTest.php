@@ -352,9 +352,9 @@ test('an Instagram retry with a workflow resumes instead of creating a container
         ->assertSuccessful();
 
     Http::fake([
-        'https://graph.instagram.com/v25.0/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
-        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-123456789'], 200),
-        'https://graph.instagram.com/v25.0/media-123456789*' => Http::response([
+        config('trypost.platforms.instagram.graph_api').'/container-123*' => Http::response(['status_code' => 'FINISHED'], 200),
+        config('trypost.platforms.instagram.graph_api').'/ig_123456789/media_publish' => Http::response(['id' => 'media-123456789'], 200),
+        config('trypost.platforms.instagram.graph_api').'/media-123456789*' => Http::response([
             'permalink' => 'https://www.instagram.com/p/ABC123/',
         ], 200),
     ]);
@@ -540,10 +540,10 @@ test('an Instagram retry after a container ERROR starts a new container', functi
     expect($failedInstagram->fresh()->error_context)->toBeNull();
 
     Http::fake([
-        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-fresh'], 200),
-        'https://graph.instagram.com/v25.0/container-fresh*' => Http::response(['status_code' => 'FINISHED'], 200),
-        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-456'], 200),
-        'https://graph.instagram.com/v25.0/media-456*' => Http::response([
+        config('trypost.platforms.instagram.graph_api').'/ig_123456789/media' => Http::response(['id' => 'container-fresh'], 200),
+        config('trypost.platforms.instagram.graph_api').'/container-fresh*' => Http::response(['status_code' => 'FINISHED'], 200),
+        config('trypost.platforms.instagram.graph_api').'/ig_123456789/media_publish' => Http::response(['id' => 'media-456'], 200),
+        config('trypost.platforms.instagram.graph_api').'/media-456*' => Http::response([
             'permalink' => 'https://www.instagram.com/p/DEF456/',
         ], 200),
     ]);
@@ -591,7 +591,7 @@ test('an Instagram retry after a container EXPIRED starts a new container', func
         ->assertSuccessful();
 
     Http::fake([
-        'https://graph.instagram.com/v25.0/container-expired*' => Http::response(['status_code' => 'EXPIRED'], 200),
+        config('trypost.platforms.instagram.graph_api').'/container-expired*' => Http::response(['status_code' => 'EXPIRED'], 200),
     ]);
 
     (new PublishToSocialPlatform($failedInstagram->fresh()))->handle();
@@ -609,10 +609,10 @@ test('an Instagram retry after a container EXPIRED starts a new container', func
     expect($failedInstagram->fresh()->error_context)->toBeNull();
 
     Http::fake([
-        'https://graph.instagram.com/v25.0/ig_123456789/media' => Http::response(['id' => 'container-fresh'], 200),
-        'https://graph.instagram.com/v25.0/container-fresh*' => Http::response(['status_code' => 'FINISHED'], 200),
-        'https://graph.instagram.com/v25.0/ig_123456789/media_publish' => Http::response(['id' => 'media-789'], 200),
-        'https://graph.instagram.com/v25.0/media-789*' => Http::response([
+        config('trypost.platforms.instagram.graph_api').'/ig_123456789/media' => Http::response(['id' => 'container-fresh'], 200),
+        config('trypost.platforms.instagram.graph_api').'/container-fresh*' => Http::response(['status_code' => 'FINISHED'], 200),
+        config('trypost.platforms.instagram.graph_api').'/ig_123456789/media_publish' => Http::response(['id' => 'media-789'], 200),
+        config('trypost.platforms.instagram.graph_api').'/media-789*' => Http::response([
             'permalink' => 'https://www.instagram.com/p/GHI789/',
         ], 200),
     ]);

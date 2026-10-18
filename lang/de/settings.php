@@ -23,6 +23,7 @@ return [
             'members' => 'Mitglieder',
             'signatures' => 'Signaturen',
             'labels' => 'Labels',
+            'saved_replies' => 'Gespeicherte Antworten',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -44,6 +45,8 @@ return [
         'post_note_added_description' => 'Erhalte eine E-Mail, wenn ein Teammitglied eine Notiz zu einem Beitrag hinzufügt',
         'collaboration' => 'Zusammenarbeit',
         'collaboration_description' => 'Erhalte E-Mails zu Freigabeanfragen und freigegebenen oder abgelehnten Beiträgen',
+        'inbox_activity' => 'Kommentare und Bewertungen',
+        'inbox_activity_description' => 'Erhalte eine E-Mail, wenn jemand deine neuen Beiträge kommentiert oder eine Bewertung hinterlässt',
         'save_failed' => 'Die Benachrichtigungseinstellungen konnten nicht gespeichert werden. Bitte versuche es erneut.',
     ],
 

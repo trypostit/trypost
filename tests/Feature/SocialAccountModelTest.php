@@ -244,3 +244,34 @@ test('hasPostingSchedule is true only when the schedule yields an upcoming slot'
     'times only on switched-off days' => [fn () => PostingSchedule::empty()->withTime(2, '09:00')->withDayEnabled(2, false), false],
     'an enabled time' => [fn () => PostingSchedule::empty()->withTime(2, '09:00'), true],
 ]);
+
+test('inbox access needs every inbox scope of the platform', function (string $state, array $granted, bool $expected) {
+    $account = SocialAccount::factory()->{$state}()->create(['workspace_id' => $this->workspace->id, 'scopes' => $granted]);
+
+    expect($account->hasInboxAccess())->toBe($expected);
+})->with([
+    'instagram without comments' => ['instagram', ['instagram_business_basic'], false],
+    'instagram with comments' => ['instagram', ['instagram_business_basic', 'instagram_business_manage_comments'], true],
+    'instagram via facebook complete' => ['instagramFacebook', ['instagram_manage_comments', 'pages_manage_metadata', 'pages_read_engagement'], true],
+    'instagram via facebook missing metadata' => ['instagramFacebook', ['instagram_manage_comments', 'pages_read_engagement'], false],
+    'facebook missing metadata' => ['facebook', ['pages_read_user_content', 'pages_manage_engagement'], false],
+    'facebook complete' => ['facebook', ['pages_read_user_content', 'pages_manage_engagement', 'pages_manage_metadata'], true],
+    'threads complete' => ['threads', ['threads_read_replies', 'threads_manage_replies'], true],
+    'threads read only' => ['threads', ['threads_read_replies'], false],
+    'linkedin page has no inbox' => ['linkedinPage', ['r_organization_social', 'w_organization_social', 'rw_organization_admin'], false],
+    'no stored grant' => ['facebook', [], false],
+]);
+
+test('the inbox scopes factory state grants what the inbox needs', function (string $state) {
+    $account = SocialAccount::factory()->{$state}()->withInboxScopes()->create(['workspace_id' => $this->workspace->id]);
+
+    expect($account->hasInboxAccess())->toBeTrue();
+})->with(['instagram', 'instagramFacebook', 'facebook', 'threads']);
+
+test('the instagram account id is public for webhook routing', function () {
+    $direct = SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id, 'meta' => ['ig_user_id' => 17841400000000001]]);
+    $viaFacebook = SocialAccount::factory()->instagramFacebook()->create(['workspace_id' => $this->workspace->id, 'platform_user_id' => '1784']);
+
+    expect($direct->instagramAccountId())->toBe('17841400000000001')
+        ->and($viaFacebook->instagramAccountId())->toBe('1784');
+});

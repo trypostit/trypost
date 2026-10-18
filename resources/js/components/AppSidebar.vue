@@ -5,6 +5,7 @@ import {
     IconCalendarEvent,
     IconTrendingUp,
     IconFileText,
+    IconMessages,
     IconLayoutGrid,
     IconPlus,
     IconRepeat,
@@ -40,9 +41,11 @@ import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { insights } from '@/routes/app';
 import { index as ideasIndex, create as createIdea } from '@/routes/app/create/ideas';
+import { index as inboxIndex } from '@/routes/app/inbox';
 import { index as repurposes } from '@/routes/app/repurposes';
 import type { NavItem } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
+import type { InboxCounts } from '@/types/inbox';
 
 const page = usePage();
 const currentWorkspace = computed(
@@ -72,6 +75,10 @@ const scheduledPostsCount = computed(() =>
     ),
 );
 
+const inboxCounts = computed(
+    () => page.props.inbox as InboxCounts | undefined,
+);
+
 const mainNavItems = computed<NavItem[]>(() => [
     ...(canCreatePost.value
         ? [
@@ -90,6 +97,18 @@ const mainNavItems = computed<NavItem[]>(() => [
         count: scheduledPostsCount.value,
         countTestId: 'sidebar-publish-count',
     },
+    ...(inboxCounts.value
+        ? [
+              {
+                  title: trans('sidebar.inbox'),
+                  href: inboxIndex.url(),
+                  icon: IconMessages,
+                  count: inboxCounts.value.total,
+                  countTestId: 'sidebar-inbox-count',
+                  countHighlighted: true,
+              },
+          ]
+        : []),
     {
         title: trans('channels.insights'),
         href: insights.url(),

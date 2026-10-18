@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'Πλοήγηση',
     'mobile_description' => 'Κύρια πλοήγηση της εφαρμογής.',
     'repurposes' => 'Repurpose',
+    'inbox' => 'Εισερχόμενα',
     'posts' => [
         'all' => 'Όλες',
     ],

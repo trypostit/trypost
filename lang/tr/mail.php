@@ -34,6 +34,25 @@ return [
         'ignore' => 'Bir hesap oluşturmadıysan bu e-postayı yok sayabilirsin.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count kişi :network gönderine yorum yaptı|[0,*] :count kişi :network gönderine yorum yaptı',
+        'title' => 'Gönderine yeni yorumlar var',
+        'heading' => '{1} :count kişi gönderine yorum yaptı|[0,*] :count kişi gönderine yorum yaptı',
+        'subtitle' => 'Sohbet sürsün diye konu tazeyken yanıtla.',
+        'published_at' => 'Paylaşıldı: :time (:timezone)',
+        'post_without_text' => 'Metinsiz gönderi',
+        'button' => 'Yorumları gör',
+        'review_subject_rated' => ':channel için yeni :stars değerlendirme',
+        'review_subject' => ':channel için yeni değerlendirme',
+        'review_title' => 'Yeni değerlendirme',
+        'review_heading_rated' => 'Yeni değerlendirme :stars',
+        'review_heading' => 'Yeni değerlendirme',
+        'review_subtitle' => 'Değerlendirme yeniyken teşekkür et ya da yanıtla.',
+        'reviewed_at' => 'Değerlendirildi: :time (:timezone)',
+        'review_without_text' => 'Yazısız puan',
+        'review_button' => 'Değerlendirmeyi gör',
+    ],
+
     'password_reset' => [
         'subject' => 'Parolanı sıfırla',
         'preview' => 'Parolanı sıfırla.',

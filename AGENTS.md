@@ -1026,6 +1026,7 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
     - `@my-element` resolves to `[data-testid="my-element"]`, so add `data-testid="my-element"` in the Vue component and use `$page->click('@my-element')`.
     - Bind it for repeated elements: `:data-testid="`connect-${platform.value}`"`.
 - Assertions do NOT auto-wait on SPA paint (`assertMissing`/`assertVisible` check once; only actions like `click()` wait). **Every wait goes through the shared helpers in `tests/Pest.php`** (owner decision October 2026), never through a helper of your own:
+    - Each wait polls inside the page for up to 15 seconds and **fails the test** when it times out (`Timed out after 15s waiting for: …`), so a wait is also its assertion: never repeat the same check with `expect($page->script(...))` after it.
     - Every helper takes a CSS selector where `@name` stands for `[data-testid="name"]`, as in `$page->click('@name')`, anywhere in it: `'@channel-settings-rows [role="combobox"]'`, `'@channel-settings-row:has(@instagram-collaborators)'`. Prefer `@` test ids; reach for a `role` or `data-slot` only when the element has no test id, and never a CSS class.
     - `waitFor($page, '@id')`: an element is mounted and laid out.
     - `waitForGone($page, '@id')`: no element matches.

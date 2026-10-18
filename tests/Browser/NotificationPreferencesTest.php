@@ -6,18 +6,6 @@ use App\Models\NotificationPreference;
 use App\Models\User;
 use App\Models\Workspace;
 
-function waitForNotificationPreferencesTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')?.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function notificationPreferencesUser(): User
 {
     $user = User::factory()->create();
@@ -33,17 +21,17 @@ test('a switch saves on its own, survives a reload, and there is no save button'
     $this->actingAs($user);
 
     $page = visit(route('app.notifications.preferences'));
-    waitForNotificationPreferencesTestId($page, 'notifications-post_failed');
+    waitFor($page, '@notifications-post_failed');
 
     expect($page->script('document.querySelectorAll(\'[data-testid="notifications-page"] button:not([role="switch"])\').length'))->toBe(0);
 
     $page->click('@notifications-post_failed');
-    waitForNotificationPreferencesTestId($page, 'notifications-saved-post_failed');
+    waitFor($page, '@notifications-saved-post_failed');
 
     expect(NotificationPreference::query()->where('user_id', $user->id)->sole()->post_failed)->toBeFalse();
 
     $page = visit(route('app.notifications.preferences'));
-    waitForNotificationPreferencesTestId($page, 'notifications-post_failed');
+    waitFor($page, '@notifications-post_failed');
     $page->assertAttribute('@notifications-post_failed', 'data-state', 'unchecked')
         ->assertAttribute('@notifications-post_published', 'data-state', 'checked')
         ->assertNoJavaScriptErrors();
@@ -54,15 +42,41 @@ test('two switches toggled quickly both persist', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.notifications.preferences'));
-    waitForNotificationPreferencesTestId($page, 'notifications-collaboration');
+    waitFor($page, '@notifications-collaboration');
     $page->script(<<<'JS'
         document.querySelector('[data-testid="notifications-post_published"]').click();
         document.querySelector('[data-testid="notifications-collaboration"]').click();
     JS);
-    waitForNotificationPreferencesTestId($page, 'notifications-saved-collaboration');
+    waitFor($page, '@notifications-saved-collaboration');
 
     $preference = NotificationPreference::query()->where('user_id', $user->id)->sole();
     expect($preference->post_published)->toBeFalse()
         ->and($preference->collaboration)->toBeFalse();
     $page->assertNoJavaScriptErrors();
+});
+
+test('the comments and reviews switch shows with the inbox on and saves on its own', function () {
+    config()->set('trypost.inbox.enabled', true);
+    $user = notificationPreferencesUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.notifications.preferences'));
+    waitFor($page, '@notifications-inbox_activity');
+    $page->assertAttribute('@notifications-inbox_activity', 'data-state', 'checked');
+
+    $page->click('@notifications-inbox_activity');
+    waitFor($page, '@notifications-saved-inbox_activity');
+
+    expect(NotificationPreference::query()->where('user_id', $user->id)->sole()->inbox_activity)->toBeFalse();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the comments and reviews switch is hidden while the inbox is off', function () {
+    $user = notificationPreferencesUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.notifications.preferences'));
+    waitFor($page, '@notifications-collaboration');
+    $page->assertMissing('@notifications-inbox_activity')
+        ->assertNoJavaScriptErrors();
 });

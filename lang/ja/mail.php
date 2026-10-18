@@ -34,6 +34,25 @@ return [
         'ignore' => 'アカウントを作成していない場合は、このメールを無視してください。',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :network の投稿に :count 人がコメントしました|[0,*] :network の投稿に :count 人がコメントしました',
+        'title' => '投稿に新しいコメント',
+        'heading' => '{1} 投稿に :count 人がコメントしました|[0,*] 投稿に :count 人がコメントしました',
+        'subtitle' => '会話が続くよう、新しいうちに返信しましょう。',
+        'published_at' => '公開日時: :time (:timezone)',
+        'post_without_text' => 'テキストのない投稿',
+        'button' => 'コメントを見る',
+        'review_subject_rated' => ':channel に新しいレビュー :stars',
+        'review_subject' => ':channel に新しいレビュー',
+        'review_title' => '新しいレビュー',
+        'review_heading_rated' => '新しいレビュー :stars',
+        'review_heading' => '新しいレビュー',
+        'review_subtitle' => 'レビューが新しいうちに、お礼や返信をしましょう。',
+        'reviewed_at' => 'レビュー日時: :time (:timezone)',
+        'review_without_text' => 'コメントなしの評価',
+        'review_button' => 'レビューを見る',
+    ],
+
     'password_reset' => [
         'subject' => 'パスワードを再設定してください',
         'preview' => 'パスワードを再設定してください。',

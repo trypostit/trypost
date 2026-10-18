@@ -703,8 +703,9 @@ test('saving an edited post after keeping it on back leaves the list page restor
     waitForGone($page, '@unsaved-changes-dialog');
     $page->click('@composer-save-draft');
     waitForGone($page, '@post-composer-dialog');
+    $listUrl = json_encode($page->script('location.pathname + location.search'));
     $page->script("document.querySelector('[data-testid=\"sidebar-logo\"]').click()");
-    waitForCondition($page, "location.pathname !== '{$listPath}'");
+    waitForCondition($page, "location.pathname + location.search !== {$listUrl}");
 
     $page->back();
     waitFor($page, "@post-edit-{$post->id}");

@@ -34,6 +34,25 @@ return [
         'ignore' => 'إذا لم تنشئ حسابًا، يمكنك تجاهل هذه الرسالة.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} علّق شخص واحد على منشورك في :network|[2,10] علّق :count أشخاص على منشورك في :network|[11,*] علّق :count شخصًا على منشورك في :network|[0,*] علّق :count أشخاص على منشورك في :network',
+        'title' => 'تعليقات جديدة على منشورك',
+        'heading' => '{1} علّق شخص واحد على منشورك|[2,10] علّق :count أشخاص على منشورك|[11,*] علّق :count شخصًا على منشورك|[0,*] علّق :count أشخاص على منشورك',
+        'subtitle' => 'ردّ ما دام الحديث جديدًا لتستمر المحادثة.',
+        'published_at' => 'نُشر في :time (:timezone)',
+        'post_without_text' => 'منشور بلا نص',
+        'button' => 'عرض التعليقات',
+        'review_subject_rated' => 'تقييم جديد :stars على :channel',
+        'review_subject' => 'تقييم جديد على :channel',
+        'review_title' => 'تقييم جديد',
+        'review_heading_rated' => 'تقييم جديد :stars',
+        'review_heading' => 'تقييم جديد',
+        'review_subtitle' => 'اشكر صاحب التقييم أو ردّ عليه ما دام التقييم جديدًا.',
+        'reviewed_at' => 'قُيّم في :time (:timezone)',
+        'review_without_text' => 'تقييم بالنجوم بلا نص',
+        'review_button' => 'عرض التقييم',
+    ],
+
     'password_reset' => [
         'subject' => 'أعد تعيين كلمة المرور',
         'preview' => 'أعد تعيين كلمة المرور.',

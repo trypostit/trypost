@@ -10,6 +10,13 @@ use App\Http\Controllers\Api\ChannelQueueController;
 use App\Http\Controllers\Api\DiscordController;
 use App\Http\Controllers\Api\IdeaController;
 use App\Http\Controllers\Api\IdeaStageController;
+use App\Http\Controllers\Api\InboxChannelSyncController;
+use App\Http\Controllers\Api\InboxConversationController;
+use App\Http\Controllers\Api\InboxConversationMessageController;
+use App\Http\Controllers\Api\InboxMessageController;
+use App\Http\Controllers\Api\InboxReplyController;
+use App\Http\Controllers\Api\InboxResolutionController;
+use App\Http\Controllers\Api\InboxScoreController;
 use App\Http\Controllers\Api\InstagramAudioController;
 use App\Http\Controllers\Api\LabelController;
 use App\Http\Controllers\Api\PinterestBoardController;
@@ -19,6 +26,7 @@ use App\Http\Controllers\Api\PostController;
 use App\Http\Controllers\Api\PostNoteController;
 use App\Http\Controllers\Api\PostRecurrenceController;
 use App\Http\Controllers\Api\RepurposeController;
+use App\Http\Controllers\Api\SavedReplyController;
 use App\Http\Controllers\Api\SignatureController;
 use App\Http\Controllers\Api\SocialAccountController;
 use App\Http\Controllers\Api\TikTokCreatorInfoController;
@@ -69,6 +77,11 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::put('/signatures/{signature}', [SignatureController::class, 'update'])->name('api.signatures.update');
     Route::delete('/signatures/{signature}', [SignatureController::class, 'destroy'])->name('api.signatures.destroy');
 
+    Route::get('/saved-replies', [SavedReplyController::class, 'index'])->name('api.saved-replies.index');
+    Route::post('/saved-replies', [SavedReplyController::class, 'store'])->name('api.saved-replies.store');
+    Route::put('/saved-replies/{savedReply}', [SavedReplyController::class, 'update'])->whereUuid('savedReply')->name('api.saved-replies.update');
+    Route::delete('/saved-replies/{savedReply}', [SavedReplyController::class, 'destroy'])->whereUuid('savedReply')->name('api.saved-replies.destroy');
+
     Route::get('/ideas', [IdeaController::class, 'index'])->name('api.ideas.index');
     Route::post('/ideas', [IdeaController::class, 'store'])->name('api.ideas.store');
     Route::delete('/ideas', [IdeaController::class, 'bulkDestroy'])->name('api.ideas.bulk-destroy');
@@ -88,6 +101,17 @@ Route::middleware(['auth:api', 'workspace.token', 'throttle:api'])->group(functi
     Route::post('/labels', [LabelController::class, 'store'])->name('api.labels.store');
     Route::put('/labels/{label}', [LabelController::class, 'update'])->name('api.labels.update');
     Route::delete('/labels/{label}', [LabelController::class, 'destroy'])->name('api.labels.destroy');
+
+    Route::get('/inbox/conversations', [InboxConversationController::class, 'index'])->name('api.inbox.conversations.index');
+    Route::get('/inbox/conversations/{conversation}', [InboxConversationController::class, 'show'])->whereUuid('conversation')->name('api.inbox.conversations.show');
+    Route::post('/inbox/conversations/{conversation}/messages', [InboxConversationMessageController::class, 'store'])->whereUuid('conversation')->middleware('throttle:inbox-send')->name('api.inbox.conversations.messages.store');
+    Route::get('/inbox/messages', [InboxMessageController::class, 'index'])->name('api.inbox.messages.index');
+    Route::post('/inbox/messages/{message}/replies', [InboxReplyController::class, 'store'])->whereUuid('message')->middleware('throttle:inbox-send')->name('api.inbox.replies.store');
+    Route::post('/inbox/messages/{message}/retry', [InboxReplyController::class, 'retry'])->whereUuid('message')->middleware('throttle:inbox-send')->name('api.inbox.replies.retry');
+    Route::post('/inbox/resolutions', [InboxResolutionController::class, 'store'])->name('api.inbox.resolutions.store');
+    Route::delete('/inbox/messages/{message}/resolution', [InboxResolutionController::class, 'destroy'])->whereUuid('message')->name('api.inbox.resolutions.destroy');
+    Route::get('/inbox/score', [InboxScoreController::class, 'show'])->name('api.inbox.score.show');
+    Route::post('/inbox/channels/{socialAccount}/sync', [InboxChannelSyncController::class, 'store'])->whereUuid('socialAccount')->middleware('throttle:inbox-sync')->name('api.inbox.channel-sync.store');
 
     Route::get('/social-accounts', [SocialAccountController::class, 'index'])->name('api.social-accounts.index');
     Route::get('/social-accounts/{account}/boards', [PinterestBoardController::class, 'index'])

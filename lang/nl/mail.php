@@ -34,6 +34,25 @@ return [
         'ignore' => 'Als je geen account hebt aangemaakt, kun je deze e-mail negeren.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count persoon reageerde op je :network-post|[0,*] :count mensen reageerden op je :network-post',
+        'title' => 'Nieuwe reacties op je post',
+        'heading' => '{1} :count persoon reageerde op je post|[0,*] :count mensen reageerden op je post',
+        'subtitle' => 'Reageer nu het nog vers is, zodat het gesprek doorgaat.',
+        'published_at' => 'Gepubliceerd op :time (:timezone)',
+        'post_without_text' => 'Post zonder tekst',
+        'button' => 'Reacties bekijken',
+        'review_subject_rated' => 'Nieuwe review :stars voor :channel',
+        'review_subject' => 'Nieuwe review voor :channel',
+        'review_title' => 'Nieuwe review',
+        'review_heading_rated' => 'Nieuwe review :stars',
+        'review_heading' => 'Nieuwe review',
+        'review_subtitle' => 'Bedank de reviewer of geef antwoord nu de review nog vers is.',
+        'reviewed_at' => 'Beoordeeld op :time (:timezone)',
+        'review_without_text' => 'Sterren zonder geschreven review',
+        'review_button' => 'Review bekijken',
+    ],
+
     'password_reset' => [
         'subject' => 'Stel je wachtwoord opnieuw in',
         'preview' => 'Stel je wachtwoord opnieuw in.',

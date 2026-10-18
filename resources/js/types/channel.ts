@@ -56,6 +56,8 @@ export interface SidebarChannel {
     status: SocialAccountStatusValue | null;
     timezone: string;
     scheduled_posts_count: number;
+    /** The channel has its own inbox page (its network has an inbox and the inbox is on). */
+    has_inbox: boolean;
 }
 
 export const channelName = (channel: {

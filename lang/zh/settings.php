@@ -21,6 +21,7 @@ return [
             'members' => '成员',
             'signatures' => '签名',
             'labels' => '标签',
+            'saved_replies' => '已保存的回复',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => '当团队成员为帖子添加备注时接收邮件',
         'collaboration' => '协作',
         'collaboration_description' => '接收关于审批请求以及已批准或已拒绝帖子的邮件',
+        'inbox_activity' => '评论和评价',
+        'inbox_activity_description' => '有人评论你最近的内容或留下评价时接收邮件',
         'save_failed' => '无法保存通知偏好，请重试。',
     ],
 

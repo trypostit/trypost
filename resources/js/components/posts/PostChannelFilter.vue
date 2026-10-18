@@ -18,11 +18,12 @@ interface Channel {
     username: string | null;
     avatar_url: string | null;
     status?: SocialAccountStatusValue | null;
+    disabled_reason?: string | null;
 }
 
 const props = withDefaults(
-    defineProps<{ channels: Channel[]; testId?: string }>(),
-    { testId: 'posts-channel' },
+    defineProps<{ channels: Channel[]; testId?: string; bareOnMobile?: boolean }>(),
+    { testId: 'posts-channel', bareOnMobile: false },
 );
 const selectedIds = defineModel<string[]>({ required: true });
 
@@ -32,6 +33,8 @@ const options = computed(() =>
         label: channel.display_label,
         searchText: `${channel.display_label} ${channel.username ?? ''} ${getPlatformLabel(channel.platform)}`,
         ariaLabel: `${channel.display_label} (${getPlatformLabel(channel.platform)})`,
+        disabled: Boolean(channel.disabled_reason),
+        disabledReason: channel.disabled_reason ?? undefined,
     })),
 );
 
@@ -57,6 +60,7 @@ const { open: openConnectDialog } = useConnectChannelDialog();
         :test-id="testId"
         content-class="w-96"
         icon-only-on-mobile
+        :bare-on-mobile="bareOnMobile"
     >
         <template #icon>
             <IconLayoutGrid class="size-4" />

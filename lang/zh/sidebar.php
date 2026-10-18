@@ -38,6 +38,7 @@ return [
     'mobile_title' => '导航',
     'mobile_description' => '应用主导航。',
     'repurposes' => 'Repurpose',
+    'inbox' => '收件箱',
     'posts' => [
         'all' => '全部',
     ],

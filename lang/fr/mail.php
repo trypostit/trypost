@@ -34,6 +34,25 @@ return [
         'ignore' => 'Si vous n’avez pas créé de compte, vous pouvez ignorer cet e-mail.',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count personne a commenté votre publication :network|[0,*] :count personnes ont commenté votre publication :network',
+        'title' => 'Nouveaux commentaires sur votre publication',
+        'heading' => '{1} :count personne a commenté votre publication|[0,*] :count personnes ont commenté votre publication',
+        'subtitle' => 'Répondez tant que c’est frais pour faire vivre la conversation.',
+        'published_at' => 'Publiée le :time (:timezone)',
+        'post_without_text' => 'Publication sans texte',
+        'button' => 'Voir les commentaires',
+        'review_subject_rated' => 'Nouvel avis :stars sur :channel',
+        'review_subject' => 'Nouvel avis sur :channel',
+        'review_title' => 'Nouvel avis',
+        'review_heading_rated' => 'Nouvel avis :stars',
+        'review_heading' => 'Nouvel avis',
+        'review_subtitle' => 'Remerciez ou répondez tant que l’avis est récent.',
+        'reviewed_at' => 'Avis du :time (:timezone)',
+        'review_without_text' => 'Note sans avis écrit',
+        'review_button' => 'Voir l’avis',
+    ],
+
     'password_reset' => [
         'subject' => 'Réinitialisez votre mot de passe',
         'preview' => 'Réinitialisez votre mot de passe.',

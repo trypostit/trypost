@@ -35,7 +35,7 @@ test('instagram-facebook connect redirects to oauth provider', function () {
     $driverMock->shouldReceive('redirectUrl')->andReturnSelf();
     $driverMock->shouldReceive('reRequest')->once()->andReturnSelf();
     $driverMock->shouldReceive('redirect')->andReturn(Mockery::mock([
-        'getTargetUrl' => 'https://www.facebook.com/v25.0/dialog/oauth?test=1',
+        'getTargetUrl' => 'https://www.facebook.com/v26.0/dialog/oauth?test=1',
     ]));
 
     Socialite::shouldReceive('driver')
@@ -45,7 +45,7 @@ test('instagram-facebook connect redirects to oauth provider', function () {
     $response = $this->actingAs($this->user)
         ->get(route('app.social.instagram-facebook.connect'));
 
-    $response->assertRedirect('https://www.facebook.com/v25.0/dialog/oauth?test=1');
+    $response->assertRedirect('https://www.facebook.com/v26.0/dialog/oauth?test=1');
 
     expect(PendingConnection::current()?->workspaceId())->toBe($this->workspace->id);
 });

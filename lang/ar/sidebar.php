@@ -38,6 +38,7 @@ return [
     'mobile_title' => 'التنقل',
     'mobile_description' => 'التنقل الرئيسي في التطبيق.',
     'repurposes' => 'Repurpose',
+    'inbox' => 'صندوق الوارد',
     'posts' => [
         'all' => 'الكل',
     ],

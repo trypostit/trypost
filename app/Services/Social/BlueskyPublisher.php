@@ -52,6 +52,18 @@ class BlueskyPublisher
 
     private const JOB_STATE_FAILED = 'JOB_STATE_FAILED';
 
+    /**
+     * @param  array{uri: string, cid: string}  $parent
+     * @param  array{uri: string, cid: string}  $root
+     * @return array{id: string, url: string, uri: string, cid: string}
+     */
+    public function replyTo(SocialAccount $account, string $text, array $parent, array $root): array
+    {
+        $service = data_get($account->meta, 'service') ?? config('trypost.platforms.bluesky.default_service');
+
+        return $this->publishReply($account, $service, $text, collect(), $parent, $root);
+    }
+
     public function publish(Post $post): array
     {
         $this->validateContentLength($post);
@@ -59,7 +71,7 @@ class BlueskyPublisher
         $content = app(ContentSanitizer::class)->forPost($post);
 
         $account = $post->socialAccount;
-        $service = $account->meta['service'] ?? config('trypost.platforms.bluesky.default_service');
+        $service = data_get($account->meta, 'service') ?? config('trypost.platforms.bluesky.default_service');
 
         // Refresh token if needed
         if ($account->needsProactiveTokenRefresh()) {
@@ -467,7 +479,7 @@ class BlueskyPublisher
                 return null;
             }
 
-            $pds = $this->resolvePdsEndpoint($account, $service);
+            $pds = app(BlueskyPdsResolver::class)->resolve($account, $service, $this->socialHttp());
             $pdsHost = parse_url($pds, PHP_URL_HOST);
 
             if (! is_string($pdsHost) || $pdsHost === '') {
@@ -709,54 +721,6 @@ class BlueskyPublisher
 
             return null;
         }
-    }
-
-    /**
-     * Resolve the account's real PDS service endpoint from its DID document.
-     * Bluesky entryway accounts store the entryway URL as `service`, but video
-     * service-auth must be scoped to the actual PDS host (e.g. *.host.bsky.network).
-     * Falls back to the stored service URL when the DID document is unavailable.
-     */
-    private function resolvePdsEndpoint(SocialAccount $account, string $service): string
-    {
-        $did = (string) $account->platform_user_id;
-
-        try {
-            $docUrl = null;
-            if (str_starts_with($did, 'did:plc:')) {
-                $directory = (string) config('trypost.platforms.bluesky.plc_directory');
-                $docUrl = "{$directory}/".rawurlencode($did);
-            } elseif (str_starts_with($did, 'did:web:')) {
-                // Per the did:web spec, colon-separated segments map to a host
-                // plus optional path; a bare host uses /.well-known/did.json.
-                $segments = array_map('rawurldecode', explode(':', substr($did, strlen('did:web:'))));
-                $host = array_shift($segments);
-                $path = $segments === [] ? '/.well-known/did.json' : '/'.implode('/', $segments).'/did.json';
-                $docUrl = "https://{$host}{$path}";
-            }
-
-            if ($docUrl !== null) {
-                $response = $this->socialHttp()->get($docUrl);
-
-                if ($response->successful()) {
-                    $services = data_get($response->json(), 'service', []);
-                    foreach ($services as $entry) {
-                        $type = data_get($entry, 'type');
-                        $id = data_get($entry, 'id');
-                        if ($type === 'AtprotoPersonalDataServer' || $id === '#atproto_pds') {
-                            $endpoint = data_get($entry, 'serviceEndpoint');
-                            if (is_string($endpoint) && $endpoint !== '') {
-                                return $endpoint;
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (Throwable $e) {
-            Log::warning('Bluesky PDS resolution failed', ['did' => $did, 'error' => $e->getMessage()]);
-        }
-
-        return $service;
     }
 
     private function parseFacets(string $text): array

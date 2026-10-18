@@ -9,6 +9,7 @@ return [
         'app_password' => 'كلمة مرور التطبيق',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'استخدم <strong>كلمة مرور التطبيق</strong> لمزيد من الأمان. أنشئ واحدة من <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'للرد على الرسائل من TryPost، فعّل «السماح بالوصول إلى رسائلك المباشرة» عند إنشاء كلمة مرور التطبيق.',
         'submit' => 'ربط Bluesky',
         'submitting' => 'جارٍ الاتصال...',
         'invalid_credentials' => 'بيانات الاعتماد غير صالحة.',

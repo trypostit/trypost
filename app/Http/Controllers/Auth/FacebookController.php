@@ -45,7 +45,7 @@ class FacebookController extends MetaController
 
         $driver = Socialite::driver($this->driver)
             ->usingGraphVersion($this->graphVersion())
-            ->setScopes($this->scopes);
+            ->setScopes($this->requestedScopes());
 
         $driver = $this->switchingAccount($request)
             ? $driver->with(['auth_type' => self::SWITCH_ACCOUNT_AUTH_TYPE])

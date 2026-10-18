@@ -92,6 +92,11 @@ class Workspace extends Model
         return $this->hasMany(WorkspaceSignature::class);
     }
 
+    public function savedReplies(): HasMany
+    {
+        return $this->hasMany(WorkspaceSavedReply::class);
+    }
+
     public function labels(): HasMany
     {
         return $this->hasMany(WorkspaceLabel::class);
@@ -125,6 +130,11 @@ class Workspace extends Model
     public function webhooks(): HasMany
     {
         return $this->hasMany(Webhook::class);
+    }
+
+    public function inboxConversations(): HasMany
+    {
+        return $this->hasMany(InboxConversation::class);
     }
 
     public function repurposes(): HasMany

@@ -3,6 +3,9 @@ import { Platform } from '@/types/platform';
 /** Characters as the server counts them (`mb_strlen`): one per code point, so an emoji is one. */
 export const characterCount = (text: string): number => Array.from(text).length;
 
+/** UTF-8 bytes, as Google counts a review reply (`strlen`). */
+export const byteLength = (text: string): number => new TextEncoder().encode(text).length;
+
 /** PHP `trim()`'s default characters. */
 const PHP_TRIM = /^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g;
 

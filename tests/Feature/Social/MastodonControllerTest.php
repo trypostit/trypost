@@ -147,7 +147,6 @@ test('mastodon callback fails with expired session', function () {
 });
 
 test('user can connect multiple mastodon accounts', function () {
-
     SocialAccount::factory()->mastodon()->create([
         'workspace_id' => $this->workspace->id,
         'platform_user_id' => '123456789',
@@ -361,3 +360,17 @@ test('mastodon connect errors are shown in the user language', function () {
         ->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.example'])
         ->assertSessionHasErrors(['instance' => 'Erro ao conectar à instância do Mastodon.']);
 });
+
+test('notifications are asked for only while the mastodon inbox is on', function (bool $inboxOn, string $scopes) {
+    config()->set('trypost.inbox.enabled', $inboxOn);
+    Http::fake([
+        'https://mastodon.social/api/v1/apps' => Http::response(['client_id' => 'id', 'client_secret' => 'secret']),
+    ]);
+
+    $this->actingAs($this->user)->post(route('app.social.mastodon.authorize'), ['instance' => 'https://mastodon.social']);
+
+    Http::assertSent(fn (ClientRequest $request): bool => $request['scopes'] === $scopes);
+})->with([
+    'inbox off' => [false, 'read:accounts read:statuses write:statuses write:media'],
+    'inbox on' => [true, 'read:accounts read:statuses write:statuses write:media read:notifications'],
+]);

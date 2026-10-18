@@ -24,6 +24,15 @@ use App\Mcp\Tools\Idea\MoveIdeasTool;
 use App\Mcp\Tools\Idea\ReorderIdeaStagesTool;
 use App\Mcp\Tools\Idea\UpdateIdeaStageTool;
 use App\Mcp\Tools\Idea\UpdateIdeaTool;
+use App\Mcp\Tools\Inbox\GetInboxConversationTool;
+use App\Mcp\Tools\Inbox\GetInboxScoreTool;
+use App\Mcp\Tools\Inbox\ListInboxConversationsTool;
+use App\Mcp\Tools\Inbox\ListInboxMessagesTool;
+use App\Mcp\Tools\Inbox\ReplyToInboxMessageTool;
+use App\Mcp\Tools\Inbox\ResolveInboxMessagesTool;
+use App\Mcp\Tools\Inbox\RetryInboxReplyTool;
+use App\Mcp\Tools\Inbox\SendInboxDirectMessageTool;
+use App\Mcp\Tools\Inbox\UnresolveInboxMessageTool;
 use App\Mcp\Tools\Label\CreateLabelTool;
 use App\Mcp\Tools\Label\DeleteLabelTool;
 use App\Mcp\Tools\Label\ListLabelsTool;
@@ -60,6 +69,10 @@ use App\Mcp\Tools\Repurpose\ListRepurposesTool;
 use App\Mcp\Tools\Repurpose\PauseRepurposeTool;
 use App\Mcp\Tools\Repurpose\ResumeRepurposeTool;
 use App\Mcp\Tools\Repurpose\UpdateRepurposeTool;
+use App\Mcp\Tools\SavedReply\CreateSavedReplyTool;
+use App\Mcp\Tools\SavedReply\DeleteSavedReplyTool;
+use App\Mcp\Tools\SavedReply\ListSavedRepliesTool;
+use App\Mcp\Tools\SavedReply\UpdateSavedReplyTool;
 use App\Mcp\Tools\Signature\CreateSignatureTool;
 use App\Mcp\Tools\Signature\DeleteSignatureTool;
 use App\Mcp\Tools\Signature\ListSignaturesTool;
@@ -97,7 +110,7 @@ use Laravel\Mcp\Server\Attributes\Version;
 #[Name('TryPost')]
 #[Version('1.0.0')]
 #[Icon('images/trypost/icon.png', mimeType: 'image/png')]
-#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, threads on X, Bluesky and Mastodon through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, social accounts and their posting times, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies.')]
+#[Instructions('TryPost is a social media scheduling platform. Use this server to manage posts (drafts, custom times, the channel queue and its free slots, recurrence, threads on X, Bluesky and Mastodon through meta.thread_replies, previews, notes and approvals), ideas, analytics, signatures, labels, the inbox (comments and reviews on the posts of the channels, mentions of the channels and direct messages, each its own tab: list, read, reply, send a direct message with send-inbox-direct-message-tool, resolve, and saved replies to insert in replies), social accounts and their posting times, workspaces, outgoing webhooks, repurposes (auto-replicating videos posted outside TryPost), and API keys. Call list-content-types-tool before choosing a content_type or attaching media: it lists the media rules, text and hashtag limits, thread support and the meta each network requires. Media is attached to a post by upload or URL; an upload is temporary, kept for 24 hours and single-use, and every post keeps its own copy of its files. Times are UTC. Members who need approval in a workspace can create and edit posts, but scheduling, queueing or publishing stores their post with status pending_approval until a member who publishes directly calls approve-post-tool or reject-post-tool; get-workspace-tool tells the caller which applies.')]
 class TryPostServer extends Server
 {
     public int $defaultPaginationLength = 200;
@@ -192,6 +205,21 @@ class TryPostServer extends Server
         RotateWebhookSecretTool::class,
         ListWebhookLogsTool::class,
         ReplayWebhookLogTool::class,
+
+        ListInboxConversationsTool::class,
+        GetInboxConversationTool::class,
+        ListInboxMessagesTool::class,
+        GetInboxScoreTool::class,
+        ReplyToInboxMessageTool::class,
+        RetryInboxReplyTool::class,
+        SendInboxDirectMessageTool::class,
+        ResolveInboxMessagesTool::class,
+        UnresolveInboxMessageTool::class,
+
+        ListSavedRepliesTool::class,
+        CreateSavedReplyTool::class,
+        UpdateSavedReplyTool::class,
+        DeleteSavedReplyTool::class,
 
         GetWorkspaceTool::class,
 

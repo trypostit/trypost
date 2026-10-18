@@ -21,6 +21,7 @@ return [
             'members' => 'Miembros',
             'signatures' => 'Firmas',
             'labels' => 'Etiquetas',
+            'saved_replies' => 'Respuestas guardadas',
             'webhooks' => 'Webhooks',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => 'Recibir un correo cuando un miembro del equipo añada una nota a una publicación',
         'collaboration' => 'Colaboración',
         'collaboration_description' => 'Recibe correos sobre solicitudes de aprobación y publicaciones aprobadas o rechazadas',
+        'inbox_activity' => 'Comentarios y reseñas',
+        'inbox_activity_description' => 'Recibe un correo cuando comenten tus publicaciones recientes o dejen una reseña',
         'save_failed' => 'No se pudieron guardar las preferencias de notificaciones. Inténtalo de nuevo.',
     ],
 

@@ -7,6 +7,8 @@ use App\Console\Commands\Analytics\DispatchPublicationDiscovery;
 use App\Console\Commands\Analytics\DispatchPublicationMetrics;
 use App\Console\Commands\CheckSocialConnections;
 use App\Console\Commands\CheckUpcomingPostConnections;
+use App\Console\Commands\Inbox\DispatchInboxSync;
+use App\Console\Commands\Inbox\PruneInbox;
 use App\Console\Commands\ProcessScheduledPosts;
 use App\Console\Commands\PruneExpiredPostHistoryCommand;
 use App\Console\Commands\PruneTemporaryUploadsCommand;
@@ -19,6 +21,7 @@ use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
+use App\Jobs\Inbox\SendInboxActivityEmails;
 use App\Support\Analytics\DiscoverySchedule;
 use Illuminate\Support\Facades\Schedule;
 
@@ -34,6 +37,13 @@ Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverla
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRssFeeds::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command(DispatchInboxSync::class)->everyMinute()->withoutOverlapping()->onOneServer();
+Schedule::command(PruneInbox::class)->dailyAt('03:30')->timezone('UTC')->withoutOverlapping()->onOneServer();
+Schedule::job(new SendInboxActivityEmails)
+    ->name('inbox:send-activity-emails')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();
 Schedule::command(DispatchAccountDailyAnalytics::class)
     ->dailyAt('02:00')
     ->timezone('UTC')

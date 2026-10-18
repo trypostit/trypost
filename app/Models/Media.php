@@ -43,6 +43,8 @@ class Media extends Model
         'post_id',
         'idea_id',
         'rss_feed_item_id',
+        'inbox_message_id',
+        'inbox_conversation_id',
         'mediable_id',
         'mediable_type',
         'group_id',
@@ -82,7 +84,7 @@ class Media extends Model
                 throw MediaOwnershipViolation::for($media);
             }
 
-            if (! $media->isDirty(['workspace_id', 'post_id', 'idea_id', 'rss_feed_item_id', 'mediable_type', 'mediable_id'])) {
+            if (! $media->isDirty(['workspace_id', 'post_id', 'idea_id', 'rss_feed_item_id', 'inbox_message_id', 'inbox_conversation_id', 'mediable_type', 'mediable_id'])) {
                 return;
             }
 
@@ -119,6 +121,16 @@ class Media extends Model
         return $this->belongsTo(RssFeedItem::class);
     }
 
+    public function inboxMessage(): BelongsTo
+    {
+        return $this->belongsTo(InboxMessage::class);
+    }
+
+    public function inboxConversation(): BelongsTo
+    {
+        return $this->belongsTo(InboxConversation::class);
+    }
+
     public function scopeTemporaryUploads(Builder $query): void
     {
         $query->where('collection', self::COLLECTION_UPLOADS);
@@ -130,6 +142,8 @@ class Media extends Model
             $this->post_id,
             $this->idea_id,
             $this->rss_feed_item_id,
+            $this->inbox_message_id,
+            $this->inbox_conversation_id,
             $this->mediable_type !== null && $this->mediable_id !== null ? $this->mediable_id : null,
         ])->filter(fn (?string $owner): bool => $owner !== null)->count();
     }
@@ -146,6 +160,10 @@ class Media extends Model
             $this->rss_feed_item_id !== null => RssFeed::query()
                 ->whereIn('id', RssFeedItem::query()->whereKey($this->rss_feed_item_id)->select('rss_feed_id'))
                 ->value('workspace_id'),
+            $this->inbox_message_id !== null => InboxConversation::query()
+                ->whereIn('id', InboxMessage::query()->whereKey($this->inbox_message_id)->select('inbox_conversation_id'))
+                ->value('workspace_id'),
+            $this->inbox_conversation_id !== null => InboxConversation::query()->whereKey($this->inbox_conversation_id)->value('workspace_id'),
             $this->mediable_type === Relation::getMorphAlias(Workspace::class) => $this->mediable_id,
             default => null,
         };

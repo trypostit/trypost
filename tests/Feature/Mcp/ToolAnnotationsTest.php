@@ -116,6 +116,21 @@ function mcpExpectedToolAnnotations(): array
         'list-webhook-logs-tool' => [true, false, false],
         'replay-webhook-log-tool' => [false, true, true],
 
+        // Inbox
+        'list-inbox-conversations-tool' => [true, false, false],
+        'get-inbox-conversation-tool' => [true, false, false],
+        'list-inbox-messages-tool' => [true, false, false],
+        'get-inbox-score-tool' => [true, false, false],
+        'reply-to-inbox-message-tool' => [false, true, true],
+        'retry-inbox-reply-tool' => [false, true, true],
+        'send-inbox-direct-message-tool' => [false, true, true],
+        'resolve-inbox-messages-tool' => [false, true, false],
+        'unresolve-inbox-message-tool' => [false, true, false],
+        'list-saved-replies-tool' => [true, false, false],
+        'create-saved-reply-tool' => [false, false, false],
+        'update-saved-reply-tool' => [false, true, false],
+        'delete-saved-reply-tool' => [false, true, false],
+
         // Workspace and API keys
         'get-workspace-tool' => [true, false, false],
         'list-api-keys-tool' => [true, false, false],

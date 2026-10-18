@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Middleware\App;
 
 use App\Actions\Changelog\BuildChangelogProps;
+use App\Actions\Inbox\CountOpenInboxMessages;
 use App\Enums\Auth\SocialAuthProvider;
 use App\Enums\Media\Source as MediaSource;
 use App\Enums\Media\Type as MediaType;
@@ -71,6 +72,9 @@ class HandleInertiaRequests extends Middleware
                     : null,
             'usage' => fn (): ?array => $account && ! $isSelfHosted ? $account->usage() : null,
             'features' => fn (): ?array => $account && ! $isSelfHosted ? $account->featureLimits() : null,
+            ...($user?->currentWorkspace && SocialPlatform::inboxModuleEnabled() ? [
+                'inbox' => fn (): array => CountOpenInboxMessages::execute($user->currentWorkspace),
+            ] : []),
             ...($user ? BuildChangelogProps::execute($user) : []),
             'flash' => $request->session()->get('flash', []),
             'applicationUrl' => config('app.url'),

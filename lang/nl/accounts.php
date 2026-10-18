@@ -9,6 +9,7 @@ return [
         'app_password' => 'App-wachtwoord',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Gebruik voor de veiligheid een <strong>App-wachtwoord</strong>. Maak er een aan op <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'Zet „Toegang tot je privéberichten toestaan” aan wanneer je het app-wachtwoord maakt, zodat je berichten vanuit TryPost kunt beantwoorden.',
         'submit' => 'Bluesky koppelen',
         'submitting' => 'Koppelen...',
         'invalid_credentials' => 'Ongeldige inloggegevens.',

@@ -34,6 +34,25 @@ return [
         'ignore' => '如果你没有创建账号，可以忽略这封邮件。',
     ],
 
+    'inbox_activity' => [
+        'subject' => '{1} :count 人评论了你在 :network 上的内容|[0,*] :count 人评论了你在 :network 上的内容',
+        'title' => '你的内容有新评论',
+        'heading' => '{1} :count 人评论了你的内容|[0,*] :count 人评论了你的内容',
+        'subtitle' => '趁热回复，让对话继续下去。',
+        'published_at' => '发布于 :time（:timezone）',
+        'post_without_text' => '无文字内容',
+        'button' => '查看评论',
+        'review_subject_rated' => ':channel 收到新评价 :stars',
+        'review_subject' => ':channel 收到新评价',
+        'review_title' => '新评价',
+        'review_heading_rated' => '新评价 :stars',
+        'review_heading' => '新评价',
+        'review_subtitle' => '趁评价还新，表示感谢或回复对方。',
+        'reviewed_at' => '评价于 :time（:timezone）',
+        'review_without_text' => '仅评分，无文字评价',
+        'review_button' => '查看评价',
+    ],
+
     'password_reset' => [
         'subject' => '重置你的密码',
         'preview' => '重置你的密码。',

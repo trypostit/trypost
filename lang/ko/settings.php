@@ -21,6 +21,7 @@ return [
             'members' => '멤버',
             'signatures' => '서명',
             'labels' => '라벨',
+            'saved_replies' => '저장된 답글',
             'webhooks' => '웹훅',
             'api_keys' => 'API',
             'mcp' => 'MCP',
@@ -42,6 +43,8 @@ return [
         'post_note_added_description' => '팀원이 게시물에 메모를 추가하면 이메일을 받습니다',
         'collaboration' => '협업',
         'collaboration_description' => '승인 요청과 승인 또는 거절된 게시물에 대한 이메일 받기',
+        'inbox_activity' => '댓글 및 리뷰',
+        'inbox_activity_description' => '최근 게시물에 댓글이 달리거나 리뷰가 남겨지면 이메일 받기',
         'save_failed' => '알림 설정을 저장하지 못했습니다. 다시 시도해 주세요.',
     ],
 

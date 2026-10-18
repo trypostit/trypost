@@ -10,7 +10,7 @@ use App\Enums\Analytics\PublicationContentType;
 use App\Models\SocialAccount;
 use Carbon\CarbonImmutable;
 
-class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
+class ThreadsPublicationCollector extends AbstractMetaPublicationCollector implements FindsPublication
 {
     private const PAGE_SIZE = 50;
 
@@ -49,19 +49,40 @@ class ThreadsPublicationCollector extends AbstractMetaPublicationCollector
                 break;
             }
 
-            $publications[] = new DiscoveredPublication(
-                providerPostId: (string) data_get($row, 'id'),
-                publishedAt: $publishedAt,
-                contentType: $this->contentType($row),
-                providerContentType: data_get($row, 'media_product_type') ?: data_get($row, 'media_type'),
-                permalink: data_get($row, 'permalink'),
-                excerpt: data_get($row, 'text'),
-                previewMetadata: $this->preview(data_get($row, 'thumbnail_url') ?: data_get($row, 'media_url')),
-                providerMetadata: ['is_quote_post' => (bool) data_get($row, 'is_quote_post', false)],
-            );
+            $publications[] = $this->publication($row, $publishedAt);
         }
 
         return $this->result($publications, $response, $crossedCutoff, $providerLimited);
+    }
+
+    /**
+     * @see https://developers.facebook.com/docs/threads/threads-media
+     */
+    public function find(SocialAccount $account, string $remoteId): ?DiscoveredPublication
+    {
+        $row = (array) $this->get(
+            $account,
+            config('trypost.platforms.threads.graph_api')."/{$remoteId}",
+            ['fields' => self::FIELDS],
+        )->json();
+        $publishedAt = $this->publishedAt(data_get($row, 'timestamp'));
+
+        return $publishedAt && filled(data_get($row, 'id')) ? $this->publication($row, $publishedAt) : null;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function publication(array $row, CarbonImmutable $publishedAt): DiscoveredPublication
+    {
+        return new DiscoveredPublication(
+            providerPostId: (string) data_get($row, 'id'),
+            publishedAt: $publishedAt,
+            contentType: $this->contentType($row),
+            providerContentType: data_get($row, 'media_product_type') ?: data_get($row, 'media_type'),
+            permalink: data_get($row, 'permalink'),
+            excerpt: data_get($row, 'text'),
+            previewMetadata: $this->preview(data_get($row, 'thumbnail_url') ?: data_get($row, 'media_url')),
+            providerMetadata: ['is_quote_post' => (bool) data_get($row, 'is_quote_post', false)],
+        );
     }
 
     /** @param array<string, mixed> $row */

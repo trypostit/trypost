@@ -9,6 +9,7 @@ return [
         'app_password' => 'App Password',
         'app_password_placeholder' => 'xxxx-xxxx-xxxx-xxxx',
         'app_password_hint' => 'Use an <strong>App Password</strong> for security. Create one at <a href="https://bsky.app/settings/app-passwords" target="_blank" class="underline">bsky.app/settings</a>.',
+        'message_access_hint' => 'To answer messages from TryPost, turn on “Allow access to your direct messages” when you create the app password.',
         'submit' => 'Connect Bluesky',
         'submitting' => 'Connecting...',
         'invalid_credentials' => 'Invalid credentials.',

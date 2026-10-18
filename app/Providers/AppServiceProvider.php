@@ -16,6 +16,10 @@ use App\Models\ChangelogEntry;
 use App\Models\ChangelogEntryView;
 use App\Models\Idea;
 use App\Models\IdeaStage;
+use App\Models\InboxConversation;
+use App\Models\InboxMessage;
+use App\Models\InboxPendingMessage;
+use App\Models\InboxSyncState;
 use App\Models\Invite;
 use App\Models\Media;
 use App\Models\MediaSourceConnection;
@@ -37,11 +41,14 @@ use App\Models\Webhook;
 use App\Models\WebhookLog;
 use App\Models\Workspace;
 use App\Models\WorkspaceLabel;
+use App\Models\WorkspaceSavedReply;
 use App\Models\WorkspaceSignature;
+use App\Services\Inbox\PollBudget;
 use App\Services\PostHogService;
 use App\Socialite\DiscordProvider;
 use App\Socialite\InstagramProvider;
 use App\Socialite\LinkedInPageExtendSocialite;
+use App\Support\Analytics\AnalyticsRateLimits;
 use App\Support\Auth\PasswordRequirements;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -83,6 +90,8 @@ class AppServiceProvider extends ServiceProvider
             $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
             $this->app->register(TelescopeServiceProvider::class);
         }
+
+        $this->app->scoped(PollBudget::class, fn (): PollBudget => PollBudget::start());
     }
 
     /**
@@ -116,6 +125,10 @@ class AppServiceProvider extends ServiceProvider
             'changelogEntryView' => ChangelogEntryView::class,
             'idea' => Idea::class,
             'ideaStage' => IdeaStage::class,
+            'inboxConversation' => InboxConversation::class,
+            'inboxMessage' => InboxMessage::class,
+            'inboxPendingMessage' => InboxPendingMessage::class,
+            'inboxSyncState' => InboxSyncState::class,
             'invite' => Invite::class,
             'media' => Media::class,
             'mediaSourceConnection' => MediaSourceConnection::class,
@@ -137,6 +150,7 @@ class AppServiceProvider extends ServiceProvider
             'webhookLog' => WebhookLog::class,
             'workspace' => Workspace::class,
             'workspaceLabel' => WorkspaceLabel::class,
+            'workspaceSavedReply' => WorkspaceSavedReply::class,
             'workspaceSignature' => WorkspaceSignature::class,
         ]);
     }
@@ -196,7 +210,17 @@ class AppServiceProvider extends ServiceProvider
         );
 
         RateLimiter::for(
-            'analytics-publications',
+            'inbox-send',
+            fn (Request $request): Limit => Limit::perMinute(30)->by("user:{$request->user()?->id}"),
+        );
+
+        RateLimiter::for(
+            'inbox-sync',
+            fn (Request $request): Limit => Limit::perMinute(6)->by("user:{$request->user()?->id}:channel:{$request->route()?->originalParameter('socialAccount')}"),
+        );
+
+        RateLimiter::for(
+            AnalyticsRateLimits::LIMITER,
             fn (object $job): array => $job->analyticsRateLimits(),
         );
 

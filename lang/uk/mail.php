@@ -34,6 +34,25 @@ return [
         'ignore' => 'Якщо ви не створювали обліковий запис, просто проігноруйте цей лист.',
     ],
 
+    'inbox_activity' => [
+        'subject' => ':count людина прокоментувала ваш допис у :network|:count людини прокоментували ваш допис у :network|:count людей прокоментували ваш допис у :network',
+        'title' => 'Нові коментарі до вашого допису',
+        'heading' => ':count людина прокоментувала ваш допис|:count людини прокоментували ваш допис|:count людей прокоментували ваш допис',
+        'subtitle' => 'Відповідайте, поки тема свіжа, щоб розмова тривала.',
+        'published_at' => 'Опубліковано :time (:timezone)',
+        'post_without_text' => 'Допис без тексту',
+        'button' => 'Переглянути коментарі',
+        'review_subject_rated' => 'Новий відгук :stars про :channel',
+        'review_subject' => 'Новий відгук про :channel',
+        'review_title' => 'Новий відгук',
+        'review_heading_rated' => 'Новий відгук :stars',
+        'review_heading' => 'Новий відгук',
+        'review_subtitle' => 'Подякуйте автору або відповідайте, поки відгук свіжий.',
+        'reviewed_at' => 'Відгук залишено :time (:timezone)',
+        'review_without_text' => 'Оцінка без тексту',
+        'review_button' => 'Переглянути відгук',
+    ],
+
     'password_reset' => [
         'subject' => 'Скиньте свій пароль',
         'preview' => 'Скиньте свій пароль.',
