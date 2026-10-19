@@ -20,6 +20,7 @@ use App\Console\Commands\RssFeed\PollRssFeeds;
 use App\Console\Commands\SyncPostHogLifecycleStages;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
+use App\Services\PostHogService;
 use App\Support\Analytics\DiscoverySchedule;
 use Illuminate\Support\Facades\Schedule;
 
@@ -35,7 +36,7 @@ Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverla
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRssFeeds::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(SyncPostHogLifecycleStages::class)->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command(SyncPostHogLifecycleStages::class)->hourly()->when(fn (): bool => PostHogService::isEnabled())->withoutOverlapping()->onOneServer();
 Schedule::command(DispatchAccountDailyAnalytics::class)
     ->dailyAt('02:00')
     ->timezone('UTC')

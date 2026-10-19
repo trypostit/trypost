@@ -18,7 +18,7 @@ class SyncPostHogLifecycleStages extends Command
 
     public function handle(): int
     {
-        if (! PostHogService::shouldTrack()) {
+        if (! PostHogService::isEnabled()) {
             return self::SUCCESS;
         }
 

@@ -229,6 +229,17 @@ test('command is scheduled hourly', function () {
         ->and((new SyncPostHogLifecycleStages)->getName())->toBe('posthog:sync-lifecycle-stages');
 });
 
+test('the schedule only runs the command when PostHog is enabled', function () {
+    $event = collect(app(Schedule::class)->events())
+        ->first(fn (Event $event): bool => str_contains((string) $event->command, 'posthog:sync-lifecycle-stages'));
+
+    expect($event->filtersPass(app()))->toBeTrue();
+
+    config(['services.posthog.enabled' => false]);
+
+    expect($event->filtersPass(app()))->toBeFalse();
+});
+
 test('an account whose only channel expired is not onboarding', function () {
     Queue::fake([SendEvent::class]);
     $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Active])->saveQuietly();

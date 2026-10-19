@@ -40,11 +40,12 @@ class CreateUser
                 $accountAttributes['trial_ends_at'] = now()->addDays(config('cashier.trial_days'));
             }
 
-            $account = Account::query()->forceCreate([
-                ...$accountAttributes,
-                'lifecycle_stage' => LifecycleStage::SignedUp,
-                'lifecycle_stage_changed_at' => now(),
-            ]);
+            if (PostHogService::isEnabled()) {
+                $accountAttributes['lifecycle_stage'] = LifecycleStage::SignedUp;
+                $accountAttributes['lifecycle_stage_changed_at'] = now();
+            }
+
+            $account = Account::query()->forceCreate($accountAttributes);
 
             $locale = Locale::from(data_get($data, 'locale', Locale::DEFAULT->value));
 
