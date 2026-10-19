@@ -233,3 +233,18 @@ test('a status change does not dispatch disconnected when PostHog is disabled', 
 
     Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
 });
+
+test('a failure while tracking a disconnect does not break the status save', function () {
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Bus::fake();
+    Account::retrieved(fn () => throw new RuntimeException('database down'));
+
+    $socialAccount->update(['status' => Status::TokenExpired]);
+
+    expect(SocialAccount::query()->find($socialAccount->id)->status)->toBe(Status::TokenExpired);
+    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+});

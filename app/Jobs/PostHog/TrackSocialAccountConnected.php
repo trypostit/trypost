@@ -9,6 +9,7 @@ use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
@@ -47,7 +48,11 @@ class TrackSocialAccountConnected implements ShouldQueue
 
         $nthChannel = SocialAccount::query()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
-            ->where('created_at', '<=', $socialAccount->created_at)
+            ->where(fn (Builder $query) => $query
+                ->where('created_at', '<', $socialAccount->created_at)
+                ->orWhere(fn (Builder $tied) => $tied
+                    ->where('created_at', $socialAccount->created_at)
+                    ->where('id', '<=', $socialAccount->id)))
             ->count();
 
         $postHog->capture(

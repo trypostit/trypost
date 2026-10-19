@@ -79,18 +79,20 @@ class SocialAccountObserver
             return;
         }
 
-        $account = Account::query()->whereRelation('workspaces', 'id', $socialAccount->workspace_id)->first();
+        rescue(function () use ($socialAccount): void {
+            $account = Account::query()->whereRelation('workspaces', 'id', $socialAccount->workspace_id)->first();
 
-        if (blank($account?->owner_id)) {
-            return;
-        }
+            if (blank($account?->owner_id)) {
+                return;
+            }
 
-        TrackSocialAccountDisconnected::dispatch(
-            (string) $socialAccount->id,
-            (string) $account->id,
-            (string) $account->owner_id,
-            TrackSocialAccountDisconnected::snapshotOf($socialAccount, $socialAccount->status->value, withErrorType: true),
-        )->afterCommit();
+            TrackSocialAccountDisconnected::dispatch(
+                (string) $socialAccount->id,
+                (string) $account->id,
+                (string) $account->owner_id,
+                TrackSocialAccountDisconnected::snapshotOf($socialAccount, $socialAccount->status->value, withErrorType: true),
+            )->afterCommit();
+        });
     }
 
     private function forgetPinterestBoards(SocialAccount $socialAccount): void

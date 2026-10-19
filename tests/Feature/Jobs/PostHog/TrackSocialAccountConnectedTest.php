@@ -94,3 +94,23 @@ test('handle returns silently when PostHog is disabled', function () {
 
     Queue::assertNothingPushed();
 });
+
+test('nth_channel breaks a created_at tie by id', function () {
+    Queue::fake();
+
+    $at = now()->startOfSecond();
+    $first = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'created_at' => $at]);
+    $second = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'created_at' => $at]);
+
+    [$lower, $higher] = strcmp((string) $first->id, (string) $second->id) < 0 ? [$first, $second] : [$second, $first];
+
+    (new TrackSocialAccountConnected((string) $lower->id, (string) $this->user->id, 'app.workspace.channels'))
+        ->handle(app(PostHogService::class));
+    (new TrackSocialAccountConnected((string) $higher->id, (string) $this->user->id, 'app.workspace.channels'))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['social_account_id'] === (string) $lower->id
+        && $job->payload['properties']['nth_channel'] === 1);
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['social_account_id'] === (string) $higher->id
+        && $job->payload['properties']['nth_channel'] === 2);
+});
