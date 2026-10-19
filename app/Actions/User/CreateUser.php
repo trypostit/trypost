@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\User;
 
 use App\Actions\Workspace\CreateWorkspace;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\UserEvent;
 use App\Enums\User\Locale;
@@ -39,7 +40,11 @@ class CreateUser
                 $accountAttributes['trial_ends_at'] = now()->addDays(config('cashier.trial_days'));
             }
 
-            $account = Account::create($accountAttributes);
+            $account = Account::query()->forceCreate([
+                ...$accountAttributes,
+                'lifecycle_stage' => LifecycleStage::SignedUp,
+                'lifecycle_stage_changed_at' => now(),
+            ]);
 
             $locale = Locale::from(data_get($data, 'locale', Locale::DEFAULT->value));
 

@@ -52,7 +52,7 @@ class SyncLifecycleStages extends Command
             $account->activated_at = $account->first_published_at;
         }
 
-        $account->saveQuietly();
+        Account::withoutTimestamps(fn (): bool => $account->saveQuietly());
 
         TrackLifecycleChange::dispatch((string) $account->id, $previousStage, $stage, $activatedNow);
     }

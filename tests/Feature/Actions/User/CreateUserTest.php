@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\User\CreateUser;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\PostHog\UserEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncUser;
@@ -37,6 +38,20 @@ test('CreateUser sets account owner_id to the new user', function () {
     ]);
 
     expect($user->account->owner_id)->toBe($user->id);
+});
+
+test('CreateUser starts the account at the signed_up lifecycle stage', function () {
+    $this->freezeTime();
+
+    $user = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane-stage@example.com',
+        'password' => 'secret123',
+    ]);
+
+    expect($user->account->lifecycle_stage)->toBe(LifecycleStage::SignedUp)
+        ->and($user->account->lifecycle_stage_changed_at?->toIso8601String())->toBe(now()->toIso8601String())
+        ->and($user->account->activated_at)->toBeNull();
 });
 
 test('CreateUser invite-style still creates user without workspace (workspace assignment happens via invite acceptance)', function () {

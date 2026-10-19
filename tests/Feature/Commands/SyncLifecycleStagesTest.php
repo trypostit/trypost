@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\User\CreateUser;
 use App\Console\Commands\SyncLifecycleStages;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\PostHog\LifecycleEvent;
@@ -48,6 +49,7 @@ function pushedLifecycleCaptures(): array
 test('first run sets properties without capturing events', function () {
     $this->freezeTime();
     Queue::fake([SendEvent::class]);
+    $this->account->forceFill(['lifecycle_stage' => null, 'lifecycle_stage_changed_at' => null])->saveQuietly();
     $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
     Post::factory()->forAccount($channel)->published()->create(['published_at' => now()->subDays(3)]);
 
@@ -117,6 +119,43 @@ test('activation keeps the first published post when the account already has an 
 
     expect($this->account->refresh()->activated_at?->toIso8601String())->toBe($activatedAt->toIso8601String());
     Bus::assertNotDispatched(TrackLifecycleChange::class, fn (TrackLifecycleChange $job): bool => $job->accountId === (string) $this->account->id);
+});
+
+test('a new account that publishes before its first sync captures its activation and stage change', function () {
+    Queue::fake([SendEvent::class]);
+    $owner = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane-lifecycle@example.com',
+        'password' => 'secret123',
+    ]);
+    subscribeAccount($owner->account);
+    $channel = SocialAccount::factory()->create(['workspace_id' => $owner->current_workspace_id]);
+    Post::factory()->forAccount($channel)->published()->create(['published_at' => now()->subMinutes(10)]);
+
+    $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
+
+    $captures = collect(pushedLifecycleCaptures())
+        ->filter(fn (SendEvent $job): bool => $job->payload['properties']['account_id'] === (string) $owner->account_id);
+
+    expect($captures->firstWhere(fn (SendEvent $job): bool => $job->payload['event'] === LifecycleEvent::ActivationReached->value))->not->toBeNull()
+        ->and($captures->firstWhere(fn (SendEvent $job): bool => $job->payload['event'] === LifecycleEvent::StageChanged->value)?->payload['properties'])
+        ->toMatchArray([
+            'stage' => LifecycleStage::Active->value,
+            'previous_stage' => LifecycleStage::SignedUp->value,
+        ]);
+});
+
+test('the lifecycle write does not move the account updated_at', function () {
+    Bus::fake([TrackLifecycleChange::class]);
+    $updatedAt = now()->subWeek()->startOfSecond();
+    $this->account->forceFill(['updated_at' => $updatedAt])->saveQuietly();
+
+    $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
+
+    $this->account->refresh();
+
+    expect($this->account->lifecycle_stage)->toBe(LifecycleStage::Onboarding)
+        ->and($this->account->updated_at?->toIso8601String())->toBe($updatedAt->toIso8601String());
 });
 
 test('unchanged stage dispatches nothing', function () {
