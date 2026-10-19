@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Jobs\PostHog\TrackCheckoutExpired;
+use App\Jobs\PostHog\TrackInvoicePaymentFailed;
 use App\Listeners\StripeBillingSignalListener;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
@@ -106,4 +107,20 @@ test('subscription webhooks still reach StripeEventListener after WebhookReceive
     (new StripeEventListener)->handle(new WebhookHandled($payload));
 
     expect($this->account->fresh()->plan_id)->toBe($plan->id);
+});
+
+test('failed invoice payment dispatches TrackInvoicePaymentFailed', function () {
+    Queue::fake();
+
+    (new StripeBillingSignalListener)->handle(new WebhookReceived([
+        'id' => 'evt_failed_1',
+        'type' => 'invoice.payment_failed',
+        'data' => ['object' => ['id' => 'in_test_1', 'customer' => 'cus_signal', 'attempt_count' => 1]],
+    ]));
+
+    Queue::assertPushed(
+        TrackInvoicePaymentFailed::class,
+        fn (TrackInvoicePaymentFailed $job): bool => $job->accountId === (string) $this->account->id
+            && data_get($job->payload, 'data.object.id') === 'in_test_1',
+    );
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Jobs\PostHog\TrackCheckoutExpired;
+use App\Jobs\PostHog\TrackInvoicePaymentFailed;
 use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Cache;
@@ -16,6 +17,7 @@ class StripeBillingSignalListener
 {
     public const HANDLED_TYPES = [
         'checkout.session.expired',
+        'invoice.payment_failed',
     ];
 
     public function handle(WebhookReceived $event): void
@@ -45,6 +47,7 @@ class StripeBillingSignalListener
 
             match ($type) {
                 'checkout.session.expired' => $this->handleCheckoutExpired($account, $event->payload),
+                'invoice.payment_failed' => $this->handleInvoicePaymentFailed($account, $event->payload),
             };
         } catch (Throwable $e) {
             Log::error("Stripe billing signal error: {$e->getMessage()}", [
@@ -68,6 +71,18 @@ class StripeBillingSignalListener
         }
 
         TrackCheckoutExpired::dispatch((string) $account->id, $payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function handleInvoicePaymentFailed(Account $account, array $payload): void
+    {
+        if (! PostHogService::shouldTrack()) {
+            return;
+        }
+
+        TrackInvoicePaymentFailed::dispatch((string) $account->id, $payload);
     }
 
     private function alreadyProcessed(?string $eventId): bool
