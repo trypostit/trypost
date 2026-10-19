@@ -323,14 +323,22 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
   an account may do. A **missing** `plan_id` is not unlimited: it may create
   only the signup workspace (`count === 0`).
-- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
-  `/workspaces/create` still renders at the cap. The server decides the cap, never
-  the browser (owner decision October 2026): every "new workspace" entry point
-  only visits `app.workspaces.create` (never prefetched), which at the cap sends
-  `upgradeRequired` (the page opens the upgrade dialog on mount and on submit) and
-  tracks `workspace.limit_hit`. POST is redirected back to create with
-  `workspaces.limit_reached`, not 403'd, and that redirect is what counts the
-  refusal, so `store` does not track it again.
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission and the
+  server decides it, never the browser's shared props (owner decision October
+  2026), through `User::atWorkspaceLimit()` (`workspaceLimitApplies()`: never
+  self-hosted, never the first workspace).
+  - Every "new workspace" entry point (sidebar workspace menu, workspaces list)
+    asks first with a non-navigating `useHttp` POST to
+    `app.workspaces.creation-check.store` (`useWorkspaceLimit().createOrUpgrade`).
+    `{ allowed: false }` opens the `WorkspaceUpgradeDialog` in place, on the page
+    the user is on; `allowed: true` (or a failed check) visits
+    `app.workspaces.create`. A refused check tracks `workspace.limit_hit`.
+  - GET `/workspaces/create` is never shown at the cap: it tracks
+    `workspace.limit_hit` and redirects back with `workspaces.limit_reached`
+    (to `app.workspaces.index` when the previous page is the create page or
+    unknown). Without a subscription it still goes to billing.
+  - POST at the cap is refused the same way (back, not 403'd, never to create),
+    tracked once by `store` itself after its transaction.
 - First-month coupon qualification is card required + first-time subscriber +
   that plan's monthly price. Workspace count is not part of it.
   (`incomplete` / `incomplete_expired` still qualify; coupon +

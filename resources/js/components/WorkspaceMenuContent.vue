@@ -48,10 +48,7 @@ import { members } from '@/routes/app';
 import { index as billingIndex } from '@/routes/app/billing';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { channels as channelsSettings } from '@/routes/app/workspace';
-import {
-    create as createWorkspaceRoute,
-    switchMethod,
-} from '@/routes/app/workspaces';
+import { switchMethod } from '@/routes/app/workspaces';
 import type { Language, User } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
 
@@ -66,6 +63,10 @@ const props = defineProps<{
     currentWorkspace: Workspace | null;
     workspaces: Workspace[];
     canCreateWorkspace: boolean;
+}>();
+
+const emit = defineEmits<{
+    createWorkspace: [];
 }>();
 
 const page = usePage();
@@ -134,7 +135,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    router.visit(createWorkspaceRoute.url());
+    emit('createWorkspace');
 };
 
 const handleLogout = (): void => {

@@ -1,47 +1,20 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { onMounted, ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store as storeWorkspace } from '@/routes/app/workspaces';
-
-const props = defineProps<{
-    upgradeRequired: boolean;
-}>();
-
-const upgradeDialogOpen = ref(false);
 
 const form = useForm({
     name: '',
 });
 
-const openUpgradeDialog = (): void => {
-    upgradeDialogOpen.value = true;
-};
-
-const openUpgradeDialogWhenRequired = (): void => {
-    if (props.upgradeRequired) {
-        openUpgradeDialog();
-    }
-};
-
 const submit = (): void => {
-    if (props.upgradeRequired) {
-        openUpgradeDialog();
-
-        return;
-    }
-
     form.post(storeWorkspace.url());
 };
-
-onMounted(openUpgradeDialogWhenRequired);
 </script>
 
 <template>
@@ -70,13 +43,10 @@ onMounted(openUpgradeDialogWhenRequired);
                 type="submit"
                 class="w-full"
                 data-testid="workspaces-create-submit"
-                :disabled="form.processing"
+                :loading="form.processing"
             >
-                <Spinner v-if="form.processing" />
                 {{ $t('workspaces.create.submit') }}
             </Button>
         </form>
-
-        <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
     </AuthLayout>
 </template>

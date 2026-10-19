@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
 import { IconCheck, IconPlus } from '@tabler/icons-vue';
+import { ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
-import {
-    create as createWorkspaceRoute,
-    switchMethod,
-} from '@/routes/app/workspaces';
+import { switchMethod } from '@/routes/app/workspaces';
 
 interface Workspace {
     id: string;
@@ -28,6 +28,9 @@ interface Props {
 defineProps<Props>();
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
+const { checking, createOrUpgrade } = useWorkspaceLimit();
+
+const upgradeDialogOpen = ref(false);
 
 const switchToWorkspace = (workspace: Workspace): void => {
     router.post(
@@ -39,8 +42,12 @@ const switchToWorkspace = (workspace: Workspace): void => {
     );
 };
 
+const openUpgradeDialog = (): void => {
+    upgradeDialogOpen.value = true;
+};
+
 const handleCreateWorkspace = (): void => {
-    router.visit(createWorkspaceRoute.url());
+    createOrUpgrade(openUpgradeDialog);
 };
 </script>
 
@@ -110,11 +117,13 @@ const handleCreateWorkspace = (): void => {
             size="lg"
             class="w-full bg-card text-base"
             data-testid="workspaces-create"
+            :loading="checking"
             @click="handleCreateWorkspace"
         >
             <IconPlus aria-hidden="true" />
             {{ $t('workspaces.create.submit') }}
         </Button>
 
+        <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
     </AuthLayout>
 </template>

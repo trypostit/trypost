@@ -6,23 +6,24 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Enums\PostHog\WorkspaceEvent;
+use App\Http\Controllers\App\Concerns\TracksWorkspaceLimitHit;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class WorkspaceController extends Controller
 {
+    use TracksWorkspaceLimitHit;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -49,15 +50,13 @@ class WorkspaceController extends Controller
             return $redirect;
         }
 
-        $upgradeRequired = $this->reachedWorkspaceLimit($user);
-
-        if ($upgradeRequired) {
+        if ($user->atWorkspaceLimit() && $user->currentWorkspace) {
             $this->trackLimitHit($user);
+
+            return $this->leaveAtWorkspaceLimit();
         }
 
-        return Inertia::render('workspaces/Create', [
-            'upgradeRequired' => $upgradeRequired,
-        ]);
+        return Inertia::render('workspaces/Create');
     }
 
     private function denyAdditionalWorkspace(User $user): ?RedirectResponse
@@ -67,7 +66,7 @@ class WorkspaceController extends Controller
             abort(403);
         }
 
-        if (! $this->workspaceLimitApplies($user)) {
+        if (! $user->workspaceLimitApplies()) {
             return null;
         }
 
@@ -79,32 +78,39 @@ class WorkspaceController extends Controller
         return null;
     }
 
-    private function workspaceLimitApplies(User $user): bool
+    /**
+     * Back to where the user came from, never to the create page itself, which
+     * would send them away again.
+     */
+    private function leaveAtWorkspaceLimit(): RedirectResponse
     {
-        return ! config('trypost.self_hosted') && $user->ownedWorkspacesCount() > 0;
-    }
+        $previous = url()->previous(route('app.workspaces.index'));
 
-    private function reachedWorkspaceLimit(User $user): bool
-    {
-        return $this->workspaceLimitApplies($user)
-            && $user->account?->hasActiveSubscription()
-            && ! $user->account->canCreateWorkspace();
+        $target = Str::before($previous, '?') === route('app.workspaces.create')
+            ? route('app.workspaces.index')
+            : $previous;
+
+        return redirect()->to($target)
+            ->with('flash.error', __('workspaces.limit_reached'));
     }
 
     public function store(StoreWorkspaceRequest $request): RedirectResponse
     {
         $user = $request->user();
 
-        $redirect = DB::transaction(function () use ($user, $request): ?RedirectResponse {
+        $limitReached = false;
+
+        $redirect = DB::transaction(function () use ($user, $request, &$limitReached): ?RedirectResponse {
             Account::query()->whereKey($user->account_id)->lockForUpdate()->first();
 
             if ($redirect = $this->denyAdditionalWorkspace($user)) {
                 return $redirect;
             }
 
-            if ($this->reachedWorkspaceLimit($user)) {
-                return redirect()->route('app.workspaces.create')
-                    ->with('flash.error', __('workspaces.limit_reached'));
+            if ($user->atWorkspaceLimit()) {
+                $limitReached = true;
+
+                return $this->leaveAtWorkspaceLimit();
             }
 
             CreateWorkspace::execute($user, $request->validated());
@@ -113,6 +119,10 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
+            if ($limitReached) {
+                $this->trackLimitHit($user);
+            }
+
             return $redirect;
         }
 
@@ -227,27 +237,5 @@ class WorkspaceController extends Controller
         // Fallback workspace already set — back into the app, not the picker.
         return redirect()->route('app.calendar')
             ->with('flash.success', __('workspaces.flash.deleted'));
-    }
-
-    private function trackLimitHit(User $user): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($user): void {
-            $account = $user->account->loadMissing('plan');
-
-            CaptureAccountEvent::dispatch(
-                (string) $user->id,
-                (string) $account->id,
-                WorkspaceEvent::LimitHit,
-                [
-                    'plan_slug' => $account->plan?->slug?->value,
-                    'workspaces_count' => $account->workspaces()->count(),
-                    'workspace_limit' => $account->workspaceLimit(),
-                ],
-            );
-        });
     }
 }
