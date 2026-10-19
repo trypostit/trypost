@@ -946,3 +946,78 @@ test('a renewal whose previous items keep the same price does not dispatch Track
 
     Bus::assertNotDispatched(TrackPlanChanged::class);
 });
+
+// ========================================
+// A failing tracking dispatch never undoes the plan sync
+// ========================================
+
+test('subscription updated still syncs plan_id when TrackBilling dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+    failDispatchOf(TrackBilling::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription updated still syncs plan_id when TrackPlanChanged dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->socials->id]);
+    failDispatchOf(TrackPlanChanged::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
+});
+
+test('subscription created still syncs plan_id and clears trial_ends_at when the start tracking dispatch fails', function (string $status, string $job) {
+    $this->account->update(['plan_id' => null, 'trial_ends_at' => now()->addDays(3)]);
+    failDispatchOf($job);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => $status,
+            'trial_end' => now()->addDays(8)->timestamp,
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    $account = $this->account->fresh();
+
+    expect($account->plan_id)->toBe($this->socials->id)
+        ->and($account->trial_ends_at)->toBeNull();
+})->with([
+    'trialing' => ['trialing', TrackTrialStarted::class],
+    'active' => ['active', TrackCheckoutCompleted::class],
+]);
+
+test('subscription deleted still clears plan_id when TrackBilling dispatch fails', function () {
+    $this->account->update(['plan_id' => $this->plan->id]);
+    failDispatchOf(TrackBilling::class);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'status' => 'canceled']],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBeNull();
+});

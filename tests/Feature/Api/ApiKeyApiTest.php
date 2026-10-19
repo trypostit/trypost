@@ -262,3 +262,16 @@ test('creating an api key through the api tracks api_key.created', function () {
         && $job->accountId === (string) $result['workspace']->account_id
         && $job->properties === ['workspace_id' => (string) $result['workspace']->id]);
 });
+
+test('creating an api key through the api still returns the plain token when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $result = createApiKeyApiToken();
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->withHeaders(['Authorization' => "Bearer {$result['plain_token']}"])
+        ->postJson(route('api.api-keys.store'), ['name' => 'CI/CD Token'], ['HTTP_HOST' => 'api.trypost.test'])
+        ->assertCreated()
+        ->assertJsonStructure(['plain_token']);
+
+    expect(AccessToken::where('workspace_id', $result['workspace']->id)->where('name', 'CI/CD Token')->exists())->toBeTrue();
+});

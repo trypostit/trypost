@@ -16,6 +16,7 @@ use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
 use App\Support\PostHog\SocialAccountSnapshot;
+use Illuminate\Support\Facades\DB;
 
 class SocialAccountObserver
 {
@@ -80,19 +81,23 @@ class SocialAccountObserver
             return;
         }
 
-        rescue(function () use ($socialAccount): void {
-            $account = $socialAccount->loadMissing('workspace.account')->workspace?->account;
+        $status = $socialAccount->status->value;
 
-            if (blank($account?->owner_id)) {
-                return;
-            }
+        DB::afterCommit(function () use ($socialAccount, $status): void {
+            rescue(function () use ($socialAccount, $status): void {
+                $account = $socialAccount->loadMissing('workspace.account')->workspace?->account;
 
-            CaptureAccountEvent::dispatch(
-                (string) $account->owner_id,
-                (string) $account->id,
-                SocialAccountEvent::Disconnected,
-                SocialAccountSnapshot::of($socialAccount, $socialAccount->status->value, withErrorType: true),
-            )->afterCommit();
+                if (blank($account?->owner_id)) {
+                    return;
+                }
+
+                CaptureAccountEvent::dispatch(
+                    (string) $account->owner_id,
+                    (string) $account->id,
+                    SocialAccountEvent::Disconnected,
+                    SocialAccountSnapshot::of($socialAccount, $status, withErrorType: true),
+                );
+            });
         });
     }
 

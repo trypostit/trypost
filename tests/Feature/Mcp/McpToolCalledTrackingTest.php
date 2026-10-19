@@ -111,3 +111,14 @@ test('a tracking failure never fails the tool call', function () {
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
+
+test('a tool call still runs when the tracking dispatch fails', function () {
+    failDispatchOf(CaptureAccountEvent::class);
+
+    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())
+        ->assertOk()
+        ->assertJsonPath('result.isError', false)
+        ->assertSee((string) $this->workspace->id);
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});

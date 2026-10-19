@@ -352,15 +352,20 @@ function subscribeAccount(Account $account): void
 
 /**
  * Make dispatching the given job throw, as when the queue is down, while every
- * other job dispatches as usual.
+ * other job dispatches as usual. `$when` narrows the failure to the jobs it
+ * accepts.
  *
  * @param  class-string  $jobClass
+ * @param  (Closure(object): bool)|null  $when
  */
-function failDispatchOf(string $jobClass): void
+function failDispatchOf(string $jobClass, ?Closure $when = null): void
 {
-    $bus = Mockery::mock(Bus::getFacadeRoot());
-    $bus->shouldReceive('dispatch')->with(Mockery::type($jobClass))->andThrow(new RuntimeException('Queue is down.'));
-    $bus->shouldReceive('dispatch')->passthru();
+    $dispatcher = Bus::getFacadeRoot();
+    $bus = Mockery::mock($dispatcher);
+    $bus->shouldReceive('dispatch')
+        ->with(Mockery::on(fn (mixed $job): bool => $job instanceof $jobClass && ($when === null || $when($job))))
+        ->andThrow(new RuntimeException('Queue is down.'));
+    $bus->shouldReceive('dispatch')->andReturnUsing(fn (mixed $job, mixed $handler = null): mixed => $dispatcher->dispatch($job, $handler));
 
     Bus::swap($bus);
 }

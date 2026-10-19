@@ -15,6 +15,7 @@ use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -271,4 +272,35 @@ test('a token expiry rolled back with its transaction sends no disconnected even
     $socialAccount->fresh()->markAsTokenExpired('Token revoked', notify: false);
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => data_get($job->payload, 'event') === SocialAccountEvent::Disconnected->value);
+});
+
+test('a status save survives a failing disconnected dispatch', function () {
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $socialAccount->update(['status' => Status::TokenExpired]);
+
+    expect(SocialAccount::query()->find($socialAccount->id)->status)->toBe(Status::TokenExpired);
+});
+
+test('a status saved inside a transaction survives a disconnected push that fails at commit', function () {
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Queue::fake([SyncAccountUsage::class, IdentifyConnectedPlatforms::class]);
+    Queue::before(function (JobProcessing $event): void {
+        if ($event->job->resolveName() === CaptureAccountEvent::class) {
+            throw new RuntimeException('Queue is down.');
+        }
+    });
+
+    DB::transaction(fn () => $socialAccount->update(['status' => Status::TokenExpired]));
+
+    expect(SocialAccount::query()->find($socialAccount->id)->status)->toBe(Status::TokenExpired);
 });

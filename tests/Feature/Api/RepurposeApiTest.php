@@ -407,3 +407,20 @@ test('google business is rejected as a destination', function () {
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['destinations.0.social_account_id' => __('repurposes.errors.destination_not_supported')]);
 });
+
+test('activating returns the same body when PostHog is enabled', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationPayload($this->tiktok)],
+    ]);
+
+    $this->withHeaders(apiHeaders($this->token))
+        ->postJson(route('api.repurposes.activate', $repurpose))
+        ->assertOk()
+        ->assertJsonPath('status', Status::Active->value)
+        ->assertJsonMissingPath('source_account');
+});

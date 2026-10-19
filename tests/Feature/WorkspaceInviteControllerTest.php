@@ -437,3 +437,24 @@ test('inviting a member tracks admin and approval flags', function () {
             'requires_approval' => true,
         ]);
 });
+
+test('inviting a member still creates and mails the invite when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)
+        ->from(route('app.members'))
+        ->post(route('app.invites.store'), [
+            'email' => 'newmember@example.com',
+            ...membershipPivot('member'),
+        ])
+        ->assertRedirect(route('app.members'))
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.banner', __('settings.members.flash.invite_sent'));
+
+    $this->assertDatabaseHas('invites', [
+        'account_id' => $this->account->id,
+        'email' => 'newmember@example.com',
+    ]);
+    Mail::assertQueued(WorkspaceInviteMail::class);
+});

@@ -327,3 +327,17 @@ test('a failed ai assist is not tracked', function () {
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
+
+test('ai assist still returns the content when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    PostWritingAssistant::fake(['A fresh caption']);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertOk()
+        ->assertJsonPath('content', 'A fresh caption');
+});

@@ -12,6 +12,7 @@ use App\Listeners\StripeEventListener;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Queue;
 use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Cashier\Events\WebhookReceived;
@@ -168,4 +169,18 @@ test('a dispatched WebhookHandled reaches the subscription listener once', funct
     ]));
 
     Queue::assertPushedOnce(TrackBilling::class);
+});
+
+test('a failing dispatch is swallowed and Cashier still handles the webhook', function () {
+    config(['cashier.webhook.secret' => null]);
+    failDispatchOf(TrackInvoicePaymentFailed::class);
+    Log::spy();
+
+    $this->postJson(route('cashier.webhook'), [
+        'id' => 'evt_payment_failed_dispatch',
+        'type' => 'invoice.payment_failed',
+        'data' => ['object' => ['id' => 'in_failed', 'customer' => 'cus_signal']],
+    ])->assertOk();
+
+    Log::shouldHaveReceived('error')->withArgs(fn (string $message): bool => str_contains($message, 'Queue is down.'))->once();
 });

@@ -349,3 +349,15 @@ it('creating an api key does not track when posthog is disabled', function () {
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
+
+it('creating an api key still returns the plain token when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)
+        ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
+        ->assertRedirect()
+        ->assertSessionHas('flash.plainToken');
+
+    expect(AccessToken::where('user_id', $this->user->id)->where('workspace_id', $this->workspace->id)->where('name', 'My API Key')->exists())->toBeTrue();
+});

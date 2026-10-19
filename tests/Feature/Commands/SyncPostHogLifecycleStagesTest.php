@@ -265,3 +265,24 @@ test('a stage going backwards captures the previous stage', function () {
         && data_get($job->payload, 'properties.previous_stage') === LifecycleStage::Active->value
         && data_get($job->payload, 'properties.stage') === LifecycleStage::Dormant->value);
 });
+
+test('an account whose change cannot be queued keeps its stage and the run goes on', function () {
+    Queue::fake([SendEvent::class]);
+    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Onboarding])->saveQuietly();
+    SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    $otherAccount = Account::factory()->create(['trial_ends_at' => null, 'lifecycle_stage' => LifecycleStage::Onboarding]);
+    $otherOwner = User::factory()->create(['account_id' => $otherAccount->id]);
+    $otherAccount->update(['owner_id' => $otherOwner->id]);
+    $otherWorkspace = Workspace::factory()->create(['account_id' => $otherAccount->id, 'user_id' => $otherOwner->id]);
+    subscribeAccount($otherAccount);
+    SocialAccount::factory()->create(['workspace_id' => $otherWorkspace->id]);
+
+    failDispatchOf(TrackLifecycleChange::class, fn (TrackLifecycleChange $job): bool => $job->accountId === (string) $this->account->id);
+
+    $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
+
+    expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Onboarding)
+        ->and($this->account->lifecycle_stage_changed_at)->toBeNull()
+        ->and($otherAccount->refresh()->lifecycle_stage)->toBe(LifecycleStage::Connected);
+});

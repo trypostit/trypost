@@ -263,3 +263,28 @@ test('finalize does not dispatch tracking when PostHog is disabled', function ()
     Queue::assertNotPushed(TrackPostPublished::class);
     Queue::assertNotPushed(TrackPostFailed::class);
 });
+
+test('a post still settles and notifies when tracking its publication fails', function (PublishStatus $publishStatus, PostStatus $settled, Type $notification, string $trackingJob) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $member = workspaceMember($workspace, 'member');
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => $publishStatus,
+        'platform_post_id' => 'fb-1',
+        'error_message' => 'Failed to publish',
+    ]);
+    failDispatchOf($trackingJob);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe($settled)
+        ->and(Queue::pushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === $notification)
+            ->map(fn (SendNotification $job): string => $job->user->id)->sort()->values()->all())
+        ->toBe(collect([$owner->id, $member->id])->sort()->values()->all());
+    Queue::assertNotPushed($trackingJob);
+})->with([
+    'published' => [PublishStatus::Published, PostStatus::Published, Type::PostPublished, TrackPostPublished::class],
+    'failed' => [PublishStatus::Failed, PostStatus::Failed, Type::PostFailed, TrackPostFailed::class],
+]);

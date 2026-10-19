@@ -51,16 +51,16 @@ class ActivateRepurpose
         }
 
         rescue(function () use ($repurpose): void {
-            $repurpose->loadMissing(['sourceAccount', 'workspace']);
+            $tracked = $repurpose->withoutRelations()->load(['sourceAccount', 'workspace']);
 
             CaptureAccountEvent::dispatch(
-                (string) $repurpose->user_id,
-                (string) $repurpose->workspace->account_id,
+                (string) $tracked->user_id,
+                (string) $tracked->workspace->account_id,
                 RepurposeEvent::Activated,
                 [
-                    'repurpose_id' => (string) $repurpose->id,
-                    'source' => $repurpose->sourceAccount->platform->value,
-                    'destinations_count' => count($repurpose->destinations),
+                    'repurpose_id' => (string) $tracked->id,
+                    'source' => $tracked->sourceAccount->platform->value,
+                    'destinations_count' => count($tracked->destinations),
                 ],
             );
         });

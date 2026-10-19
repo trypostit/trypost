@@ -244,3 +244,15 @@ test('creating an api key through mcp tracks api_key.created', function () {
         && $job->distinctId === (string) $this->user->id
         && $job->properties === ['workspace_id' => (string) $this->workspace->id]);
 });
+
+test('creating an api key through mcp still returns the plain token when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json->has('plain_token')->etc());
+
+    expect(AccessToken::where('workspace_id', $this->workspace->id)->where('name', 'My Key')->exists())->toBeTrue();
+});

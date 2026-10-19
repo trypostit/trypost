@@ -489,3 +489,26 @@ test('a rejected activation is not tracked', function () {
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
+
+test('a repurpose still activates when tracking it fails', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
+
+    enableRepurposeTracking();
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $activated = ActivateRepurpose::execute($repurpose);
+
+    $fresh = $repurpose->fresh();
+
+    expect($activated->status)->toBe(Status::Active)
+        ->and($fresh->status)->toBe(Status::Active)
+        ->and($fresh->activated_at)->not->toBeNull();
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});

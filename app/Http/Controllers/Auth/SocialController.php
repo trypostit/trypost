@@ -66,7 +66,7 @@ class SocialController extends Controller
         }
 
         $before = $this->repurposeStatesFor($account);
-        $snapshot = SocialAccountSnapshot::of($account, SocialAccountSnapshot::REASON_REMOVED);
+        $snapshot = $this->disconnectedSnapshot($account);
 
         try {
             ReflowChannelQueue::withLock([$account->id], fn () => DB::transaction(function () use ($account): void {
@@ -542,11 +542,27 @@ class SocialController extends Controller
     }
 
     /**
-     * @param  array<string, mixed>  $snapshot
+     * The channel as tracking needs it, taken before the delete removes it.
+     *
+     * @return array<string, mixed>|null
      */
-    private function trackDisconnected(string $billingAccountId, string $userId, array $snapshot): void
+    private function disconnectedSnapshot(SocialAccount $account): ?array
     {
         if (! PostHogService::isEnabled()) {
+            return null;
+        }
+
+        return rescue(function () use ($account): array {
+            return SocialAccountSnapshot::of($account, SocialAccountSnapshot::REASON_REMOVED);
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $snapshot
+     */
+    private function trackDisconnected(string $billingAccountId, string $userId, ?array $snapshot): void
+    {
+        if (! PostHogService::isEnabled() || blank($snapshot)) {
             return;
         }
 

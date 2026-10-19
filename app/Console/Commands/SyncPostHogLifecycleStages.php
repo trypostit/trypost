@@ -9,6 +9,7 @@ use App\Jobs\PostHog\TrackLifecycleChange;
 use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class SyncPostHogLifecycleStages extends Command
 {
@@ -50,8 +51,12 @@ class SyncPostHogLifecycleStages extends Command
             $account->activated_at = $account->first_published_at;
         }
 
-        Account::withoutTimestamps(fn (): bool => $account->saveQuietly());
+        rescue(function () use ($account, $previousStage, $stage, $activatedNow): void {
+            DB::transaction(function () use ($account, $previousStage, $stage, $activatedNow): void {
+                Account::withoutTimestamps(fn (): bool => $account->saveQuietly());
 
-        TrackLifecycleChange::dispatch((string) $account->id, $previousStage, $stage, $activatedNow);
+                TrackLifecycleChange::dispatch((string) $account->id, $previousStage, $stage, $activatedNow);
+            });
+        });
     }
 }
