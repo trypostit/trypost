@@ -8,6 +8,7 @@ use App\Enums\PostHog\WorkspaceEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\Invite;
+use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Mail;
@@ -31,19 +32,19 @@ class CreateInvite
             ->locale($inviter->preferredLocale())
             ->send(new WorkspaceInviteMail($invite));
 
-        rescue(fn () => self::trackInvited($workspace, $invite));
+        rescue(fn () => self::trackInvited($workspace, $invite, $inviter));
 
         return $invite;
     }
 
-    private static function trackInvited(Workspace $workspace, Invite $invite): void
+    private static function trackInvited(Workspace $workspace, Invite $invite, ?User $inviter): void
     {
         if (! PostHogService::isEnabled()) {
             return;
         }
 
         CaptureAccountEvent::dispatch(
-            (string) $workspace->account->owner_id,
+            (string) ($inviter?->id ?? $workspace->account->owner_id),
             (string) $workspace->account_id,
             WorkspaceEvent::MemberInvited->value,
             [

@@ -421,8 +421,9 @@ test('update member of a user outside the workspace is not found and revokes not
 test('inviting a member tracks admin and approval flags', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
     Queue::fake([CaptureAccountEvent::class]);
+    $admin = workspaceMember($this->workspace, 'admin');
 
-    $this->actingAs($this->user)->post(route('app.invites.store'), [
+    $this->actingAs($admin)->post(route('app.invites.store'), [
         'email' => 'approval@example.com',
         'is_admin' => '0',
         'requires_approval' => '1',
@@ -430,7 +431,7 @@ test('inviting a member tracks admin and approval flags', function () {
 
     Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
     Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::MemberInvited->value
-        && $job->distinctId === (string) $this->account->owner_id
+        && $job->distinctId === (string) $admin->id
         && $job->accountId === (string) $this->account->id
         && $job->properties === [
             'is_admin' => false,
