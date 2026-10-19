@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Carbon;
 
 class TrackBilling implements ShouldQueue
 {
@@ -53,6 +54,8 @@ class TrackBilling implements ShouldQueue
                 'stripe_status' => data_get($this->payload, 'data.object.status'),
                 'plan_slug' => $account->plan?->slug->value,
                 'previous_plan' => $this->previousPlan,
+                ...$this->cancellationProperties(),
+                ...$this->cancelReasonProperties(),
             ],
             $account,
         );
@@ -60,10 +63,39 @@ class TrackBilling implements ShouldQueue
         $postHog->groupIdentify('account', (string) $account->id, [
             'subscription_status' => $account->subscriptionStatus(),
             'has_active_subscription' => $account->hasActiveSubscription(),
+            ...$this->cancellationProperties(),
             ...$this->firstMonthOfferProperties(),
         ]);
 
         SyncUser::dispatch((string) $account->owner_id);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cancellationProperties(): array
+    {
+        $cancelAt = data_get($this->payload, 'data.object.cancel_at');
+
+        return [
+            'cancel_at_period_end' => (bool) data_get($this->payload, 'data.object.cancel_at_period_end', false),
+            'cancel_at' => filled($cancelAt) ? Carbon::createFromTimestamp((int) $cancelAt)->toIso8601String() : null,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function cancelReasonProperties(): array
+    {
+        if ($this->event !== BillingEvent::Cancelled) {
+            return [];
+        }
+
+        return [
+            'cancel_reason' => data_get($this->payload, 'data.object.cancellation_details.reason'),
+            'cancel_feedback' => data_get($this->payload, 'data.object.cancellation_details.feedback'),
+        ];
     }
 
     /**
