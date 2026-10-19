@@ -61,6 +61,6 @@ class CreateApiKey
             (string) $workspace->account_id,
             ApiKeyEvent::Created->value,
             ['workspace_id' => (string) $workspace->id],
-        )->afterCommit();
+        );
     }
 }

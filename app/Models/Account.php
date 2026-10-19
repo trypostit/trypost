@@ -83,19 +83,19 @@ class Account extends Model
     }
 
     /**
-     * The aggregates the lifecycle stage is resolved from: whether a channel is
-     * connected, and the first and last posts TryPost published.
+     * The aggregates the lifecycle stage is resolved from: whether any channel
+     * exists, whatever its status, and the first and last posts TryPost published.
      */
     public function scopeWithLifecycleActivity(Builder $query): Builder
     {
         $publishedByTryPost = fn (Builder $posts): Builder => $posts->createdInTryPost()->publicationPublished();
 
         return $query
-            ->withExists(['socialAccounts as has_connected_channel' => fn (Builder $channels): Builder => $channels->connected()])
+            ->withExists('socialAccounts as has_social_account')
             ->withMin(['posts as first_published_at' => $publishedByTryPost], 'published_at')
             ->withMax(['posts as last_published_at' => $publishedByTryPost], 'published_at')
             ->withCasts([
-                'has_connected_channel' => 'boolean',
+                'has_social_account' => 'boolean',
                 'first_published_at' => 'datetime',
                 'last_published_at' => 'datetime',
             ]);
@@ -108,6 +108,15 @@ class Account extends Model
             StripeSubscription::STATUS_INCOMPLETE,
             StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
         ], true));
+    }
+
+    /** Billable, and not a trial that ended before its first charge. */
+    public function hasPaidSubscription(): bool
+    {
+        return $this->subscriptions->contains(fn (Subscription $subscription): bool => ! in_array($subscription->stripe_status, [
+            StripeSubscription::STATUS_INCOMPLETE,
+            StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
+        ], true) && ! $subscription->endedBeforeFirstCharge());
     }
 
     public function hasActiveSubscription(): bool

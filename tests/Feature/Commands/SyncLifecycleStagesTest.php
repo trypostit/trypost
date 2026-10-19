@@ -2,10 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Actions\Account\ResolveLifecycleStage;
 use App\Actions\User\CreateUser;
 use App\Console\Commands\SyncLifecycleStages;
 use App\Enums\Account\LifecycleStage;
 use App\Enums\PostHog\LifecycleEvent;
+use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackLifecycleChange;
 use App\Models\Account;
@@ -189,14 +191,14 @@ test('imported network posts do not activate', function () {
         && $job->activatedNow === false);
 });
 
-test('disconnected channels and other accounts posts do not count', function () {
+test('a disconnected channel leaves onboarding and other accounts posts do not count', function () {
     Bus::fake([TrackLifecycleChange::class]);
     SocialAccount::factory()->disconnected()->create(['workspace_id' => $this->workspace->id]);
     Post::factory()->published()->create();
 
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
 
-    expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Onboarding);
+    expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Connected);
 });
 
 test('an account that lost access after subscribing is churned', function () {
@@ -227,4 +229,30 @@ test('command is scheduled hourly', function () {
         ->and($event->withoutOverlapping)->toBeTrue()
         ->and($event->onOneServer)->toBeTrue()
         ->and((new SyncLifecycleStages)->getName())->toBe('posthog:sync-lifecycle-stages');
+});
+
+test('an account whose only channel expired is not onboarding', function () {
+    Queue::fake([SendEvent::class]);
+    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Active])->saveQuietly();
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'status' => Status::TokenExpired]);
+    Post::factory()->forAccount($channel)->published()->create(['published_at' => now()->subDay()]);
+
+    $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
+
+    expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Active);
+});
+
+test('a stage going backwards captures the previous stage', function () {
+    Queue::fake([SendEvent::class]);
+    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Active, 'activated_at' => now()->subMonths(2)])->saveQuietly();
+    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+    Post::factory()->forAccount($channel)->published()->create(['published_at' => now()->subDays(ResolveLifecycleStage::AT_RISK_WITHIN_DAYS + 5)]);
+
+    $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
+
+    expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Dormant);
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
+        && $job->payload['event'] === LifecycleEvent::StageChanged->value
+        && data_get($job->payload, 'properties.previous_stage') === LifecycleStage::Active->value
+        && data_get($job->payload, 'properties.stage') === LifecycleStage::Dormant->value);
 });

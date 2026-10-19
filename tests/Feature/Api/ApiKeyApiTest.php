@@ -2,9 +2,12 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\ApiKeyEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\AccessToken;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Queue;
 
 function createApiKeyApiToken(array $overrides = []): array
 {
@@ -243,4 +246,19 @@ it('validates api key name max length', function () {
         ])
         ->assertUnprocessable()
         ->assertJsonValidationErrors(['name']);
+});
+
+test('creating an api key through the api tracks api_key.created', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $result = createApiKeyApiToken();
+
+    $this->withHeaders(['Authorization' => "Bearer {$result['plain_token']}"])
+        ->postJson(route('api.api-keys.store'), ['name' => 'CI/CD Token'], ['HTTP_HOST' => 'api.trypost.test'])
+        ->assertCreated();
+
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created->value
+        && $job->distinctId === (string) $result['user']->id
+        && $job->accountId === (string) $result['workspace']->account_id
+        && $job->properties === ['workspace_id' => (string) $result['workspace']->id]);
 });

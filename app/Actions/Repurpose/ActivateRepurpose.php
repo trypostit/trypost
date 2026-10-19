@@ -20,7 +20,7 @@ class ActivateRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        return RepurposeTransition::apply(
+        $activated = RepurposeTransition::apply(
             $repurpose,
             [Status::Draft, Status::Disabled],
             __('repurposes.errors.only_idle_activates'),
@@ -36,10 +36,12 @@ class ActivateRepurpose
                     'next_poll_at' => null,
                     'last_error' => null,
                 ]);
-
-                rescue(fn () => self::trackActivated($locked));
             },
         );
+
+        rescue(fn () => self::trackActivated($activated));
+
+        return $activated;
     }
 
     private static function trackActivated(Repurpose $repurpose): void
@@ -59,7 +61,7 @@ class ActivateRepurpose
                 'source' => $repurpose->sourceAccount->platform->value,
                 'destinations_count' => count($repurpose->destinations),
             ],
-        )->afterCommit();
+        );
     }
 
     public static function assertSourceUsable(Repurpose $repurpose): void

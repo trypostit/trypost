@@ -37,20 +37,20 @@ class CreateInvite
         return $invite;
     }
 
-    private static function trackInvited(Workspace $workspace, Invite $invite, ?User $inviter): void
+    private static function trackInvited(Workspace $workspace, Invite $invite, User $inviter): void
     {
         if (! PostHogService::isEnabled()) {
             return;
         }
 
         CaptureAccountEvent::dispatch(
-            (string) ($inviter?->id ?? $workspace->account->owner_id),
+            (string) $inviter->id,
             (string) $workspace->account_id,
             WorkspaceEvent::MemberInvited->value,
             [
                 'is_admin' => $invite->is_admin,
                 'requires_approval' => $invite->requires_approval,
             ],
-        )->afterCommit();
+        );
     }
 }

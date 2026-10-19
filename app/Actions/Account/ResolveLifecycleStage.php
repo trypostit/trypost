@@ -14,13 +14,13 @@ class ResolveLifecycleStage
 
     public const AT_RISK_WITHIN_DAYS = 21;
 
-    public static function for(Account $account, ?CarbonInterface $lastPublishedAt, bool $hasConnectedChannel): LifecycleStage
+    public static function for(Account $account, ?CarbonInterface $lastPublishedAt, bool $hasSocialAccount): LifecycleStage
     {
         if (! $account->hasAppAccess()) {
-            return $account->hasHadBillableSubscription() ? LifecycleStage::Churned : LifecycleStage::SignedUp;
+            return $account->hasPaidSubscription() ? LifecycleStage::Churned : LifecycleStage::SignedUp;
         }
 
-        if (! $hasConnectedChannel) {
+        if (! $hasSocialAccount) {
             return LifecycleStage::Onboarding;
         }
 

@@ -71,6 +71,6 @@ class PostAiAssistantController extends Controller
                 'mode' => $mode->value,
                 'workspace_id' => (string) $workspace->id,
             ],
-        )->afterCommit();
+        );
     }
 }

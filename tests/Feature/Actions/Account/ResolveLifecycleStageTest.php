@@ -40,3 +40,46 @@ test('each stage is resolved from access, channels and the last published post',
     'at risk when the last post went out 21 days ago' => ['trialing', true, ResolveLifecycleStage::AT_RISK_WITHIN_DAYS, LifecycleStage::AtRisk],
     'dormant when the last post went out 22 days ago' => ['active', true, ResolveLifecycleStage::AT_RISK_WITHIN_DAYS + 1, LifecycleStage::Dormant],
 ]);
+
+test('a card trial cancelled before its first charge is signed up, not churned', function () {
+    $this->freezeTime();
+
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_trial_cancelled',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_123',
+        'trial_ends_at' => now()->subDays(2),
+        'ends_at' => now()->subDays(4),
+    ]);
+
+    expect(ResolveLifecycleStage::for($account->load('subscriptions'), null, true))->toBe(LifecycleStage::SignedUp)
+        ->and($account->hasHadBillableSubscription())->toBeTrue();
+});
+
+test('a paying account keeps its stage while past due or cancelled on its grace period', function (string $status, bool $onGracePeriod) {
+    $this->freezeTime();
+
+    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_'.fake()->uuid(),
+        'stripe_status' => $status,
+        'stripe_price' => 'price_123',
+        'ends_at' => $onGracePeriod ? now()->addDay() : null,
+    ]);
+
+    expect(ResolveLifecycleStage::for($account->load('subscriptions'), now()->subDay(), true))->toBe(LifecycleStage::Active);
+})->with([
+    'past due' => ['past_due', false],
+    'cancelled on its grace period' => ['active', true],
+]);
+
+test('a generic trial without a card and without channels is onboarding', function () {
+    config(['trypost.billing.require_card_for_trial' => false]);
+
+    $account = Account::factory()->create(['trial_ends_at' => now()->addDays(5)]);
+
+    expect(ResolveLifecycleStage::for($account->load('subscriptions'), null, false))->toBe(LifecycleStage::Onboarding);
+});

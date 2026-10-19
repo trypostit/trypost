@@ -641,14 +641,19 @@ rolls the switch back and toasts.
 
 ## PostHog person properties
 
-`App\Jobs\PostHog\SyncUser` is the only place that writes person properties, and
-the distinction between its two buckets is load-bearing:
+`App\Jobs\PostHog\SyncUser` writes the user's person properties (two narrower
+jobs below add one each), and the distinction between its two buckets is
+load-bearing:
 
 - **`$set_once`** — first-touch facts that must never be rewritten: `signed_up_at`
   and the attribution keys (`utm_*`, `gclid`, `fbclid`, …). A later sync must not
   overwrite where a user originally came from.
 - **Top level** — current state, overwritten on every sync: `$email`, `$name`, and
   `locale`.
+
+The only other jobs that write person properties are `IdentifyConnectedPlatforms`
+(`connected_platforms`) and `TrackLifecycleChange` (`lifecycle_stage`), both
+current state at the top level.
 
 `locale` mirrors `users.locale` and is what the PostHog email automations (the
 onboarding cadence and friends) read to decide which translation to send, so it
