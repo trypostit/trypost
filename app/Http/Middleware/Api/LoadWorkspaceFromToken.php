@@ -80,13 +80,13 @@ class LoadWorkspaceFromToken
         $token->forceFill(['last_used_at' => now()])->saveQuietly();
 
         if ($context === 'mcp') {
-            rescue(fn () => $this->trackFirstToolCallOfTheDay($request, $user, $token, $workspace));
+            rescue(fn () => $this->trackToolCalled($request, $user, $token, $workspace));
         }
 
         return $next($request);
     }
 
-    private function trackFirstToolCallOfTheDay(Request $request, User $user, AccessToken $token, Workspace $workspace): void
+    private function trackToolCalled(Request $request, User $user, AccessToken $token, Workspace $workspace): void
     {
         if (! PostHogService::isEnabled() || $request->input('method') !== 'tools/call') {
             return;

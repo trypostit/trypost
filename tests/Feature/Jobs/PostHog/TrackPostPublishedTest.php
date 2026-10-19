@@ -6,7 +6,7 @@ use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
 use App\Jobs\PostHog\SendEvent;
-use App\Jobs\PostHog\TrackPostGroupPublished;
+use App\Jobs\PostHog\TrackPostPublished;
 use App\Models\Account;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -29,7 +29,7 @@ beforeEach(function () {
 });
 
 test('job is queued on the posthog queue', function () {
-    expect((new TrackPostGroupPublished((string) Str::uuid()))->queue)->toBe('posthog');
+    expect((new TrackPostPublished((string) Str::uuid()))->queue)->toBe('posthog');
 });
 
 test('group of three publishes one event', function () {
@@ -48,7 +48,7 @@ test('group of three publishes one event', function () {
             'published_at' => $publishedAt,
         ]));
 
-    $posts->shuffle()->each(fn (Post $post) => (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class)));
+    $posts->shuffle()->each(fn (Post $post) => (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class)));
 
     Queue::assertPushed(SendEvent::class, 1);
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['event'] === PostEvent::Published->value
@@ -73,10 +73,10 @@ test('posts of a group settling in the same second emit one event', function () 
     $settledAt = now()->startOfSecond();
 
     $second->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
-    (new TrackPostGroupPublished((string) $second->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $second->id))->handle(app(PostHogService::class));
 
     $first->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
-    (new TrackPostGroupPublished((string) $first->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $first->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, 1);
 });
@@ -95,7 +95,7 @@ test('platforms lists every network the group targeted', function () {
     Post::factory()->forAccount($page)->published()->create([...$attributes, 'published_at' => now()->subMinutes(2)]);
     Post::factory()->x()->failed()->create($attributes);
 
-    (new TrackPostGroupPublished((string) $first->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $first->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['platforms'] === ['linkedin', 'x']
         && $job->payload['properties']['channels_count'] === 3);
@@ -112,7 +112,7 @@ test('is_first is true for the account first group and false after', function ()
         'post_group_id' => (string) Str::uuid(),
     ]);
 
-    (new TrackPostGroupPublished((string) $firstGroup->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $firstGroup->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === true);
 
@@ -128,7 +128,7 @@ test('is_first is true for the account first group and false after', function ()
         'post_group_id' => (string) Str::uuid(),
     ]);
 
-    (new TrackPostGroupPublished((string) $secondGroup->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $secondGroup->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === false);
 });
@@ -142,7 +142,7 @@ test('handle falls back to the account owner when the post has no user', functio
         'post_group_id' => (string) Str::uuid(),
     ]);
 
-    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['distinctId'] === (string) $this->user->id);
 });
@@ -150,7 +150,7 @@ test('handle falls back to the account owner when the post has no user', functio
 test('handle does not push when the post is missing or PostHog is disabled', function () {
     Queue::fake();
 
-    (new TrackPostGroupPublished((string) Str::uuid()))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) Str::uuid()))->handle(app(PostHogService::class));
 
     config(['services.posthog.api_key' => null]);
 
@@ -159,7 +159,7 @@ test('handle does not push when the post is missing or PostHog is disabled', fun
         'user_id' => $this->user->id,
     ]);
 
-    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class);
 });
@@ -173,7 +173,7 @@ test('a post without a group publishes once, keyed by its own id', function () {
         'post_group_id' => null,
     ]);
 
-    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, 1);
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['post_group_id'] === null
@@ -182,7 +182,7 @@ test('a post without a group publishes once, keyed by its own id', function () {
 
     Queue::fake();
 
-    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertNothingPushed();
 });
@@ -203,7 +203,7 @@ test('is_first ignores failed posts and posts published by other accounts', func
         'post_group_id' => (string) Str::uuid(),
     ]);
 
-    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === true);
 });

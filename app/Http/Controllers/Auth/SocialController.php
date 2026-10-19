@@ -76,16 +76,7 @@ class SocialController extends Controller
             return back()->with('flash.error', $exception->getMessage());
         }
 
-        if (PostHogService::isEnabled()) {
-            rescue(function () use ($account, $workspace, $request, $snapshot): void {
-                TrackSocialAccountDisconnected::dispatch(
-                    (string) $account->id,
-                    (string) $workspace->account_id,
-                    (string) $request->user()->id,
-                    $snapshot,
-                );
-            });
-        }
+        $this->trackDisconnected($account, (string) $workspace->account_id, (string) $request->user()->id, $snapshot);
 
         $this->flashAccountChange($before);
 
@@ -545,6 +536,20 @@ class SocialController extends Controller
                 ->each(function (SocialAccount $account) use ($userId, $source): void {
                     TrackSocialAccountConnected::dispatch((string) $account->id, $userId, $source);
                 });
+        });
+    }
+
+    /**
+     * @param  array<string, mixed>  $snapshot
+     */
+    private function trackDisconnected(SocialAccount $account, string $accountId, string $userId, array $snapshot): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        rescue(function () use ($account, $accountId, $userId, $snapshot): void {
+            TrackSocialAccountDisconnected::dispatch((string) $account->id, $accountId, $userId, $snapshot);
         });
     }
 

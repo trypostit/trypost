@@ -63,7 +63,7 @@ class StripeEventListener
 
         $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
 
-        $this->trackPlanChange($account, BillingEvent::Created, $previousPlan, $payload);
+        $this->trackBilling($account, BillingEvent::Created, $previousPlan, $payload);
         $this->trackSubscriptionStart($account, $payload);
     }
 
@@ -76,9 +76,9 @@ class StripeEventListener
 
         $this->syncPlanFromSubscription($account, $payload);
 
-        $this->trackPlanChange($account, BillingEvent::Updated, $previousPlan, $payload);
+        $this->trackBilling($account, BillingEvent::Updated, $previousPlan, $payload);
         $this->trackTrialConversion($account, $payload);
-        $this->trackPlanSwitch($account, $payload);
+        $this->trackPlanChange($account, $payload);
     }
 
     /**
@@ -94,7 +94,7 @@ class StripeEventListener
 
         $account->update(['plan_id' => null]);
 
-        $this->trackPlanChange($account, BillingEvent::Cancelled, $previousPlan, $payload);
+        $this->trackBilling($account, BillingEvent::Cancelled, $previousPlan, $payload);
     }
 
     /**
@@ -172,7 +172,7 @@ class StripeEventListener
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function trackPlanChange(Account $account, BillingEvent $event, ?string $previousPlan, array $payload): void
+    private function trackBilling(Account $account, BillingEvent $event, ?string $previousPlan, array $payload): void
     {
         if (! PostHogService::shouldTrack()) {
             return;
@@ -228,7 +228,7 @@ class StripeEventListener
      *
      * @param  array<string, mixed>  $payload
      */
-    private function trackPlanSwitch(Account $account, array $payload): void
+    private function trackPlanChange(Account $account, array $payload): void
     {
         if (! PostHogService::shouldTrack()) {
             return;

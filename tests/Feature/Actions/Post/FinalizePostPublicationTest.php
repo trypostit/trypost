@@ -8,7 +8,7 @@ use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
 use App\Jobs\PostHog\TrackPostFailed;
-use App\Jobs\PostHog\TrackPostGroupPublished;
+use App\Jobs\PostHog\TrackPostPublished;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -233,8 +233,8 @@ test('finalize dispatches published or failed tracking once per settlement', fun
     $finalize->handle($failed);
     $finalize->handle($failed->fresh());
 
-    Queue::assertPushedTimes(TrackPostGroupPublished::class, 1);
-    Queue::assertPushed(TrackPostGroupPublished::class, fn (TrackPostGroupPublished $job) => $job->postId === (string) $published->id);
+    Queue::assertPushedTimes(TrackPostPublished::class, 1);
+    Queue::assertPushed(TrackPostPublished::class, fn (TrackPostPublished $job) => $job->postId === (string) $published->id);
     Queue::assertPushedTimes(TrackPostFailed::class, 1);
     Queue::assertPushed(TrackPostFailed::class, fn (TrackPostFailed $job) => $job->postId === (string) $failed->id);
 });
@@ -260,6 +260,6 @@ test('finalize does not dispatch tracking when PostHog is disabled', function ()
 
     expect($post->fresh()->status)->toBe(PostStatus::Published)
         ->and($failed->fresh()->status)->toBe(PostStatus::Failed);
-    Queue::assertNotPushed(TrackPostGroupPublished::class);
+    Queue::assertNotPushed(TrackPostPublished::class);
     Queue::assertNotPushed(TrackPostFailed::class);
 });

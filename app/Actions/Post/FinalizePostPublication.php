@@ -8,7 +8,7 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Jobs\PostHog\TrackPostFailed;
-use App\Jobs\PostHog\TrackPostGroupPublished;
+use App\Jobs\PostHog\TrackPostPublished;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -71,10 +71,10 @@ class FinalizePostPublication
         }
 
         $this->notify($outcome['post'], $outcome['successful']);
-        $this->track($outcome['post'], $outcome['successful']);
+        $this->trackPublication($outcome['post'], $outcome['successful']);
     }
 
-    private function track(Post $post, bool $successful): void
+    private function trackPublication(Post $post, bool $successful): void
     {
         if (! PostHogService::isEnabled()) {
             return;
@@ -82,7 +82,7 @@ class FinalizePostPublication
 
         rescue(function () use ($post, $successful): void {
             if ($successful) {
-                TrackPostGroupPublished::dispatch((string) $post->id);
+                TrackPostPublished::dispatch((string) $post->id);
 
                 return;
             }

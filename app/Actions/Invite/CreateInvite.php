@@ -32,12 +32,12 @@ class CreateInvite
             ->locale($inviter->preferredLocale())
             ->send(new WorkspaceInviteMail($invite));
 
-        rescue(fn () => self::trackInvited($workspace, $invite, $inviter));
+        rescue(fn () => self::trackMemberInvited($workspace, $invite, $inviter));
 
         return $invite;
     }
 
-    private static function trackInvited(Workspace $workspace, Invite $invite, User $inviter): void
+    private static function trackMemberInvited(Workspace $workspace, Invite $invite, User $inviter): void
     {
         if (! PostHogService::isEnabled()) {
             return;

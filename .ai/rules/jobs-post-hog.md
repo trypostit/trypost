@@ -20,9 +20,14 @@ New Cashier-handled types (`customer.subscription.*`, ...) stay in `StripeEventL
 ## Lifecycle stage first sync is silent; post.published is claimed atomically
 `accounts.lifecycle_stage` null means a pre-deploy account: the first sync writes properties only, no `lifecycle_stage.changed` / `activation.reached`, so workflows do not all fire at once. `CreateUser` seeds `signed_up`, so new accounts emit real transitions.
 Stage definitions and thresholds live in `LifecycleStage` and the `ResolveLifecycleStage` constants (`ACTIVE_WITHIN_DAYS`, `AT_RISK_WITHIN_DAYS`); provisional, pending partner sign-off.
-`post.published` fires once per post group: `TrackPostGroupPublished` claims it with an atomic `Cache::add("posthog:post_group_published:{group}")`. Never a read-then-decide guard, which races between the group's jobs.
+`post.published` fires once per post group: `TrackPostPublished` claims it with an atomic `Cache::add("posthog:post_group_published:{group}")`. Never a read-then-decide guard, which races between the group's jobs.
 
 ## Tracking from domain code must never break the user's action
 Domain code (actions, observers, controllers, middleware) only dispatches PostHog jobs, gated by `PostHogService::isEnabled()`. Building the properties and the dispatch run inside `rescue()` with a block closure (or a void method), never `rescue(fn () => X::dispatch())`: a returned `PendingDispatch` is pushed when it is destroyed, after `rescue()` has returned.
 Run the tracking after the transaction when the action has one (`WorkspaceController::store`, `ActivateRepurpose`), so no tracking query runs inside it: a failed statement aborts a PostgreSQL transaction even when `rescue()` swallows the exception. Where the dispatch must sit inside a transaction (model observers such as `SocialAccountObserver::trackDisconnected`), use `->afterCommit()` so a rolled-back transaction never emits an event; that deferred queue push happens at commit, outside `rescue()`. Outside a transaction, no `afterCommit()`.
 Stripe-driven jobs use `shouldTrack()` instead, like the existing billing jobs.
+
+## Naming tracking code
+
+- A private method that dispatches PostHog tracking is named `track` + the event's enum case (`WorkspaceEvent::MemberInvited` => `trackMemberInvited`). When the method chooses between two events, it is named after the decision (`trackSubscriptionStart`, `trackTrialConversion`).
+- A dedicated job exists only when it has its own logic; otherwise use `CaptureAccountEvent`. Dedicated jobs are named `Track<Subject><EnumCase>` (`TrackPostPublished`).

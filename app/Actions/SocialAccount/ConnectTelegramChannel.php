@@ -88,17 +88,26 @@ class ConnectTelegramChannel
 
         TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $created);
 
-        if ($created && PostHogService::isEnabled()) {
-            rescue(function () use ($workspace, $account): void {
-                $ownerId = $workspace->account?->owner_id;
-
-                if (filled($ownerId)) {
-                    TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, 'telegram');
-                }
-            });
+        if ($created) {
+            self::trackConnected($workspace, $account);
         }
 
         return $account;
+    }
+
+    private static function trackConnected(Workspace $workspace, SocialAccount $account): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        rescue(function () use ($workspace, $account): void {
+            $ownerId = $workspace->account?->owner_id;
+
+            if (filled($ownerId)) {
+                TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, 'telegram');
+            }
+        });
     }
 
     /**

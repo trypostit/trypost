@@ -21,7 +21,7 @@ class CreateApiKey
     {
         $created = self::issue($user, $workspace, $data);
 
-        rescue(fn () => self::track($user, $workspace));
+        rescue(fn () => self::trackCreated($user, $workspace));
 
         return $created;
     }
@@ -50,7 +50,7 @@ class CreateApiKey
         ];
     }
 
-    private static function track(User $user, Workspace $workspace): void
+    private static function trackCreated(User $user, Workspace $workspace): void
     {
         if (! PostHogService::isEnabled()) {
             return;
