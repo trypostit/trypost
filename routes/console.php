@@ -17,7 +17,7 @@ use App\Console\Commands\RefreshExpiringTokens;
 use App\Console\Commands\Repurpose\PollRepurposes;
 use App\Console\Commands\ResolveTikTokVideoIds;
 use App\Console\Commands\RssFeed\PollRssFeeds;
-use App\Console\Commands\SyncLifecycleStages;
+use App\Console\Commands\SyncPostHogLifecycleStages;
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\FinalizeAccountDailySnapshots;
 use App\Support\Analytics\DiscoverySchedule;
@@ -35,7 +35,7 @@ Schedule::command(PruneExpiredPostHistoryCommand::class)->daily()->withoutOverla
 Schedule::command(PruneTemporaryUploadsCommand::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRepurposes::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::command(PollRssFeeds::class)->everyFiveMinutes()->withoutOverlapping()->onOneServer();
-Schedule::command(SyncLifecycleStages::class)->hourly()->withoutOverlapping()->onOneServer();
+Schedule::command(SyncPostHogLifecycleStages::class)->hourly()->withoutOverlapping()->onOneServer();
 Schedule::command(DispatchAccountDailyAnalytics::class)
     ->dailyAt('02:00')
     ->timezone('UTC')

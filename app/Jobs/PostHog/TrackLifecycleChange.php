@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\PostHog;
 
 use App\Enums\Account\LifecycleStage;
+use App\Enums\PostHog\ActivationEvent;
 use App\Enums\PostHog\LifecycleEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
@@ -37,7 +38,7 @@ class TrackLifecycleChange implements ShouldQueue
             return;
         }
 
-        $account = Account::query()->with('plan')->find($this->accountId);
+        $account = Account::with('plan')->find($this->accountId);
 
         if (blank($account)) {
             return;
@@ -70,7 +71,7 @@ class TrackLifecycleChange implements ShouldQueue
         }
 
         if ($this->activatedNow && filled($account->activated_at)) {
-            $postHog->capture($ownerId, LifecycleEvent::ActivationReached->value, [
+            $postHog->capture($ownerId, ActivationEvent::Reached->value, [
                 'reached_at' => $account->activated_at->toIso8601String(),
                 'days_since_signup' => (int) $account->created_at->diffInDays($account->activated_at),
                 'channels_count' => $account->socialAccounts()->connected()->count(),

@@ -9,9 +9,8 @@ use App\Jobs\PostHog\TrackLifecycleChange;
 use App\Models\Account;
 use App\Services\PostHogService;
 use Illuminate\Console\Command;
-use Illuminate\Database\Eloquent\Collection;
 
-class SyncLifecycleStages extends Command
+class SyncPostHogLifecycleStages extends Command
 {
     protected $signature = 'posthog:sync-lifecycle-stages';
 
@@ -26,9 +25,8 @@ class SyncLifecycleStages extends Command
         Account::query()
             ->with('subscriptions')
             ->withLifecycleActivity()
-            ->chunkById(200, function (Collection $accounts): void {
-                $accounts->each(fn (Account $account) => $this->sync($account));
-            });
+            ->lazyById(200)
+            ->each(fn (Account $account) => $this->sync($account));
 
         return self::SUCCESS;
     }
@@ -36,7 +34,7 @@ class SyncLifecycleStages extends Command
     private function sync(Account $account): void
     {
         $previousStage = $account->lifecycle_stage;
-        $stage = ResolveLifecycleStage::for($account, $account->last_published_at, $account->has_social_account);
+        $stage = ResolveLifecycleStage::execute($account, $account->last_published_at, $account->has_social_account);
         $activatedNow = blank($account->activated_at) && filled($account->first_published_at);
 
         if ($stage === $previousStage && ! $activatedNow) {

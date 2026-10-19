@@ -7,5 +7,4 @@ namespace App\Enums\PostHog;
 enum LifecycleEvent: string
 {
     case StageChanged = 'lifecycle_stage.changed';
-    case ActivationReached = 'activation.reached';
 }

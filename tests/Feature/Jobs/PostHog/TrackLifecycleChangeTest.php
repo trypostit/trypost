@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Account\LifecycleStage;
+use App\Enums\PostHog\ActivationEvent;
 use App\Enums\PostHog\LifecycleEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackLifecycleChange;
@@ -76,7 +77,7 @@ test('a stage change captures lifecycle_stage.changed for the owner', function (
         && $job->payload['properties']['reached_at'] === now()->toIso8601String()
         && $job->payload['properties']['account_id'] === (string) $this->account->id);
     Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
-        && $job->payload['event'] === LifecycleEvent::ActivationReached->value);
+        && $job->payload['event'] === ActivationEvent::Reached->value);
 });
 
 test('an activation captures activation.reached with signup age and connected channels', function () {
@@ -93,7 +94,7 @@ test('an activation captures activation.reached with signup age and connected ch
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
-        && $job->payload['event'] === LifecycleEvent::ActivationReached->value
+        && $job->payload['event'] === ActivationEvent::Reached->value
         && $job->payload['distinctId'] === (string) $this->owner->id
         && $job->payload['properties']['reached_at'] === now()->subDay()->toIso8601String()
         && $job->payload['properties']['days_since_signup'] === 4
@@ -108,7 +109,7 @@ test('an activation without a stage change captures only activation.reached', fu
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
-        && $job->payload['event'] === LifecycleEvent::ActivationReached->value);
+        && $job->payload['event'] === ActivationEvent::Reached->value);
     Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
         && $job->payload['event'] === LifecycleEvent::StageChanged->value);
 });

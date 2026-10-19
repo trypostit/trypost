@@ -27,7 +27,7 @@ test('each stage is resolved from access, channels and the last published post',
 
     $lastPublishedAt = filled($daysSinceLastPublish) ? now()->subDays($daysSinceLastPublish) : null;
 
-    expect(ResolveLifecycleStage::for($account->load('subscriptions'), $lastPublishedAt, $hasConnectedChannel))->toBe($expected);
+    expect(ResolveLifecycleStage::execute($account->load('subscriptions'), $lastPublishedAt, $hasConnectedChannel))->toBe($expected);
 })->with([
     'churned after a real subscription' => ['canceled', true, 1, LifecycleStage::Churned],
     'signed up without a subscription' => [null, true, 1, LifecycleStage::SignedUp],
@@ -54,7 +54,7 @@ test('a card trial cancelled before its first charge is signed up, not churned',
         'ends_at' => now()->subDays(4),
     ]);
 
-    expect(ResolveLifecycleStage::for($account->load('subscriptions'), null, true))->toBe(LifecycleStage::SignedUp)
+    expect(ResolveLifecycleStage::execute($account->load('subscriptions'), null, true))->toBe(LifecycleStage::SignedUp)
         ->and($account->hasHadBillableSubscription())->toBeTrue();
 });
 
@@ -70,7 +70,7 @@ test('a paying account keeps its stage while past due or cancelled on its grace 
         'ends_at' => $onGracePeriod ? now()->addDay() : null,
     ]);
 
-    expect(ResolveLifecycleStage::for($account->load('subscriptions'), now()->subDay(), true))->toBe(LifecycleStage::Active);
+    expect(ResolveLifecycleStage::execute($account->load('subscriptions'), now()->subDay(), true))->toBe(LifecycleStage::Active);
 })->with([
     'past due' => ['past_due', false],
     'cancelled on its grace period' => ['active', true],
@@ -81,5 +81,5 @@ test('a generic trial without a card and without channels is onboarding', functi
 
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(5)]);
 
-    expect(ResolveLifecycleStage::for($account->load('subscriptions'), null, false))->toBe(LifecycleStage::Onboarding);
+    expect(ResolveLifecycleStage::execute($account->load('subscriptions'), null, false))->toBe(LifecycleStage::Onboarding);
 });

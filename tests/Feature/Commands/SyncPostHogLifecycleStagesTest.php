@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 use App\Actions\Account\ResolveLifecycleStage;
 use App\Actions\User\CreateUser;
-use App\Console\Commands\SyncLifecycleStages;
+use App\Console\Commands\SyncPostHogLifecycleStages;
 use App\Enums\Account\LifecycleStage;
+use App\Enums\PostHog\ActivationEvent;
 use App\Enums\PostHog\LifecycleEvent;
-use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackLifecycleChange;
 use App\Models\Account;
@@ -42,7 +42,7 @@ beforeEach(function () {
  */
 function pushedLifecycleCaptures(): array
 {
-    $lifecycleEvents = array_column(LifecycleEvent::cases(), 'value');
+    $lifecycleEvents = array_column([...LifecycleEvent::cases(), ...ActivationEvent::cases()], 'value');
 
     return Queue::pushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
         && in_array($job->payload['event'], $lifecycleEvents, true))->all();
@@ -89,7 +89,7 @@ test('stage change captures previous and new stage', function () {
         && $job->payload['properties']['previous_stage'] === LifecycleStage::Onboarding->value
         && $job->payload['properties']['$groups']['account'] === (string) $this->account->id);
     Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
-        && $job->payload['event'] === LifecycleEvent::ActivationReached->value);
+        && $job->payload['event'] === ActivationEvent::Reached->value);
 });
 
 test('first publish captures activation.reached once', function () {
@@ -101,8 +101,7 @@ test('first publish captures activation.reached once', function () {
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
 
-    $activations = collect(pushedLifecycleCaptures())
-        ->filter(fn (SendEvent $job): bool => $job->payload['event'] === LifecycleEvent::ActivationReached->value);
+    $activations = collect(pushedLifecycleCaptures())->whereStrict('payload.event', ActivationEvent::Reached->value);
 
     expect($activations)->toHaveCount(1)
         ->and($activations->first()->payload['properties']['channels_count'])->toBe(1)
@@ -136,11 +135,10 @@ test('a new account that publishes before its first sync captures its activation
 
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
 
-    $captures = collect(pushedLifecycleCaptures())
-        ->filter(fn (SendEvent $job): bool => $job->payload['properties']['account_id'] === (string) $owner->account_id);
+    $captures = collect(pushedLifecycleCaptures())->whereStrict('payload.properties.account_id', (string) $owner->account_id);
 
-    expect($captures->firstWhere(fn (SendEvent $job): bool => $job->payload['event'] === LifecycleEvent::ActivationReached->value))->not->toBeNull()
-        ->and($captures->firstWhere(fn (SendEvent $job): bool => $job->payload['event'] === LifecycleEvent::StageChanged->value)?->payload['properties'])
+    expect($captures->firstWhere('payload.event', ActivationEvent::Reached->value))->not->toBeNull()
+        ->and($captures->firstWhere('payload.event', LifecycleEvent::StageChanged->value)?->payload['properties'])
         ->toMatchArray([
             'stage' => LifecycleStage::Active->value,
             'previous_stage' => LifecycleStage::SignedUp->value,
@@ -228,13 +226,13 @@ test('command is scheduled hourly', function () {
         ->and($event->expression)->toBe('0 * * * *')
         ->and($event->withoutOverlapping)->toBeTrue()
         ->and($event->onOneServer)->toBeTrue()
-        ->and((new SyncLifecycleStages)->getName())->toBe('posthog:sync-lifecycle-stages');
+        ->and((new SyncPostHogLifecycleStages)->getName())->toBe('posthog:sync-lifecycle-stages');
 });
 
 test('an account whose only channel expired is not onboarding', function () {
     Queue::fake([SendEvent::class]);
     $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Active])->saveQuietly();
-    $channel = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'status' => Status::TokenExpired]);
+    $channel = SocialAccount::factory()->tokenExpired()->create(['workspace_id' => $this->workspace->id]);
     Post::factory()->forAccount($channel)->published()->create(['published_at' => now()->subDay()]);
 
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();
