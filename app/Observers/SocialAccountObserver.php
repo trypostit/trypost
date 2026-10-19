@@ -10,6 +10,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\TrackSocialAccountDisconnected;
+use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
@@ -65,6 +67,30 @@ class SocialAccountObserver
         if ($connectionChanged && $isConnected) {
             app(DispatchAccountAnalytics::class)->handle($socialAccount);
         }
+
+        if ($connectionChanged && $wasConnected) {
+            $this->trackDisconnected($socialAccount);
+        }
+    }
+
+    private function trackDisconnected(SocialAccount $socialAccount): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $account = Account::query()->whereRelation('workspaces', 'id', $socialAccount->workspace_id)->first();
+
+        if (blank($account?->owner_id)) {
+            return;
+        }
+
+        TrackSocialAccountDisconnected::dispatch(
+            (string) $socialAccount->id,
+            (string) $account->id,
+            (string) $account->owner_id,
+            TrackSocialAccountDisconnected::snapshotOf($socialAccount, $socialAccount->status->value, withErrorType: true),
+        )->afterCommit();
     }
 
     private function forgetPinterestBoards(SocialAccount $socialAccount): void

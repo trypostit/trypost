@@ -14,9 +14,12 @@ use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\FinishSocialConnectionRequest;
+use App\Jobs\PostHog\TrackSocialAccountConnected;
+use App\Jobs\PostHog\TrackSocialAccountDisconnected;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -61,6 +64,7 @@ class SocialController extends Controller
         }
 
         $before = $this->repurposeStatesFor($account);
+        $snapshot = TrackSocialAccountDisconnected::snapshotOf($account, 'removed');
 
         try {
             ReflowChannelQueue::withLock([$account->id], fn () => DB::transaction(function () use ($account): void {
@@ -70,6 +74,15 @@ class SocialController extends Controller
             }));
         } catch (QueueBusyException $exception) {
             return back()->with('flash.error', $exception->getMessage());
+        }
+
+        if (PostHogService::isEnabled()) {
+            TrackSocialAccountDisconnected::dispatch(
+                (string) $account->id,
+                (string) $workspace->account_id,
+                (string) $request->user()->id,
+                $snapshot,
+            );
         }
 
         $this->flashAccountChange($before);
@@ -137,6 +150,8 @@ class SocialController extends Controller
 
             return $this->failConnection('error_connecting');
         }
+
+        $this->trackConnected($accounts, $reconnect, $request->user()->id, $pending->returnRouteName());
 
         PendingConnection::forget();
 
@@ -511,6 +526,20 @@ class SocialController extends Controller
         $accounts->each(fn (SocialAccount $account) => $this->afterConnected($account));
 
         return $accounts;
+    }
+
+    /**
+     * @param  Collection<int, SocialAccount>  $accounts
+     */
+    private function trackConnected(Collection $accounts, ?SocialAccount $reconnect, string $userId, string $source): void
+    {
+        if ($reconnect !== null || ! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $accounts
+            ->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)
+            ->each(fn (SocialAccount $account) => TrackSocialAccountConnected::dispatch((string) $account->id, $userId, $source));
     }
 
     /**

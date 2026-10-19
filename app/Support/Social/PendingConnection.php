@@ -172,6 +172,14 @@ final class PendingConnection
         ));
     }
 
+    /**
+     * The route name of the page the flow returns to.
+     */
+    public function returnRouteName(): string
+    {
+        return (string) data_get($this->data, 'return.name', self::DEFAULT_RETURN_ROUTE);
+    }
+
     public function returnUrl(): string
     {
         return self::urlFor(data_get($this->data, 'return'));

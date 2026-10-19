@@ -8,6 +8,7 @@ use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\TrackSocialAccountDisconnected;
 use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -165,4 +166,70 @@ test('connecting an excluded account does not dispatch follower collection', fun
 
     Bus::assertNotDispatched(CollectAccountDailySnapshot::class);
     Bus::assertNotDispatched(BootstrapAccountAnalytics::class);
+});
+
+test('token expiry dispatches disconnected with reason token_expired', function () {
+    $socialAccount = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Bus::fake([TrackSocialAccountDisconnected::class]);
+
+    $socialAccount->markAsTokenExpired('Token revoked', notify: false);
+
+    Bus::assertDispatchedTimes(TrackSocialAccountDisconnected::class, 1);
+    Bus::assertDispatched(TrackSocialAccountDisconnected::class, fn (TrackSocialAccountDisconnected $job): bool => $job->socialAccountId === (string) $socialAccount->id
+        && $job->accountId === (string) $this->account->id
+        && $job->userId === (string) $this->user->id
+        && $job->snapshot === [
+            'platform' => 'x',
+            'network' => 'x',
+            'workspace_id' => (string) $this->workspace->id,
+            'reason' => 'token_expired',
+            'error_type' => 'token_expired',
+        ]);
+});
+
+test('a status change to disconnected dispatches disconnected with reason disconnected', function () {
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Bus::fake([TrackSocialAccountDisconnected::class]);
+
+    $socialAccount->update(['status' => Status::Disconnected]);
+
+    Bus::assertDispatched(TrackSocialAccountDisconnected::class, fn (TrackSocialAccountDisconnected $job): bool => $job->snapshot['reason'] === 'disconnected'
+        && $job->snapshot['error_type'] === 'disconnected');
+});
+
+test('a channel that was not connected does not dispatch disconnected again', function () {
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::TokenExpired,
+    ]);
+
+    Bus::fake([TrackSocialAccountDisconnected::class]);
+
+    $socialAccount->update(['status' => Status::Disconnected]);
+    $socialAccount->update(['status' => Status::Connected]);
+
+    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+});
+
+test('a status change does not dispatch disconnected when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+
+    $socialAccount = SocialAccount::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Bus::fake([TrackSocialAccountDisconnected::class]);
+
+    $socialAccount->update(['status' => Status::TokenExpired]);
+
+    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
 });

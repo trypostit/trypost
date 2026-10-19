@@ -9,8 +9,10 @@ use App\Enums\SocialAccount\Status;
 use App\Events\TelegramChannelConnected;
 use App\Events\TelegramConnectFailed;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
+use App\Jobs\PostHog\TrackSocialAccountConnected;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use App\Services\Social\Telegram\TelegramApi;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -82,7 +84,15 @@ class ConnectTelegramChannel
             return null;
         }
 
-        TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $account->wasRecentlyCreated && $reconnect === null);
+        $created = $account->wasRecentlyCreated && $reconnect === null;
+
+        TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $created);
+
+        $ownerId = $workspace->account?->owner_id;
+
+        if ($created && filled($ownerId) && PostHogService::isEnabled()) {
+            TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, 'telegram');
+        }
 
         return $account;
     }
