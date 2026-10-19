@@ -7,6 +7,8 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
+use App\Jobs\PostHog\TrackPostFailed;
+use App\Jobs\PostHog\TrackPostGroupPublished;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -208,4 +210,47 @@ test('a google review whose channel is gone is left to the review ceiling', func
         ->status->toBe(PostStatus::Publishing)
         ->publish_status->toBe(PublishStatus::PendingReview)
         ->platform_post_id->toBe('accounts/1/locations/1/localPosts/9');
+});
+
+test('finalize dispatches published or failed tracking once per settlement', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $published = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
+    ]);
+    $failed = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Failed,
+        'error_message' => 'Failed to publish',
+    ]);
+
+    $finalize = app(FinalizePostPublication::class);
+    $finalize->handle($published);
+    $finalize->handle($published->fresh());
+    $finalize->handle($failed);
+    $finalize->handle($failed->fresh());
+
+    Queue::assertPushedTimes(TrackPostGroupPublished::class, 1);
+    Queue::assertPushed(TrackPostGroupPublished::class, fn (TrackPostGroupPublished $job) => $job->postId === (string) $published->id);
+    Queue::assertPushedTimes(TrackPostFailed::class, 1);
+    Queue::assertPushed(TrackPostFailed::class, fn (TrackPostFailed $job) => $job->postId === (string) $failed->id);
+});
+
+test('finalize does not dispatch tracking when PostHog is disabled', function () {
+    config(['services.posthog.api_key' => null]);
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published);
+    Queue::assertNotPushed(TrackPostGroupPublished::class);
 });
