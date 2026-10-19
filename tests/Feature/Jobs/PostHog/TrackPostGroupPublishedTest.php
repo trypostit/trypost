@@ -78,11 +78,10 @@ test('posts of a group settling in the same second emit one event', function () 
     $first->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
     (new TrackPostGroupPublished((string) $first->id))->handle(app(PostHogService::class));
 
-    expect(strcmp((string) $first->id, (string) $second->id))->toBeLessThan(0);
     Queue::assertPushed(SendEvent::class, 1);
 });
 
-test('platforms lists the networks that published', function () {
+test('platforms lists every network the group targeted', function () {
     Queue::fake();
 
     $groupId = (string) Str::uuid();
@@ -98,7 +97,7 @@ test('platforms lists the networks that published', function () {
 
     (new TrackPostGroupPublished((string) $first->id))->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['platforms'] === ['linkedin']
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['platforms'] === ['linkedin', 'x']
         && $job->payload['properties']['channels_count'] === 3);
 });
 
@@ -163,4 +162,48 @@ test('handle does not push when the post is missing or PostHog is disabled', fun
     (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class);
+});
+
+test('a post without a group publishes once, keyed by its own id', function () {
+    Queue::fake();
+
+    $post = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'post_group_id' => null,
+    ]);
+
+    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, 1);
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['post_group_id'] === null
+        && $job->payload['properties']['channels_count'] === 1
+        && $job->payload['properties']['platforms'] === ['linkedin']);
+
+    Queue::fake();
+
+    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertNothingPushed();
+});
+
+test('is_first ignores failed posts and posts published by other accounts', function () {
+    Queue::fake();
+
+    Post::factory()->x()->failed()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'post_group_id' => (string) Str::uuid(),
+    ]);
+    Post::factory()->x()->published()->create(['post_group_id' => (string) Str::uuid()]);
+
+    $post = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'post_group_id' => (string) Str::uuid(),
+    ]);
+
+    (new TrackPostGroupPublished((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === true);
 });

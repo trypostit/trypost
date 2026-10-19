@@ -16,6 +16,7 @@ use App\Services\Http\HostResolver;
 use App\Support\Social\PendingConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -347,6 +348,21 @@ function subscribeAccount(Account $account): void
         'stripe_status' => 'active',
         'stripe_price' => 'price_123',
     ]);
+}
+
+/**
+ * Make dispatching the given job throw, as when the queue is down, while every
+ * other job dispatches as usual.
+ *
+ * @param  class-string  $jobClass
+ */
+function failDispatchOf(string $jobClass): void
+{
+    $bus = Mockery::mock(Bus::getFacadeRoot());
+    $bus->shouldReceive('dispatch')->with(Mockery::type($jobClass))->andThrow(new RuntimeException('Queue is down.'));
+    $bus->shouldReceive('dispatch')->with(Mockery::not(Mockery::type($jobClass)))->passthru();
+
+    Bus::swap($bus);
 }
 
 /**

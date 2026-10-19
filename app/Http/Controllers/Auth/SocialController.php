@@ -77,12 +77,14 @@ class SocialController extends Controller
         }
 
         if (PostHogService::isEnabled()) {
-            TrackSocialAccountDisconnected::dispatch(
-                (string) $account->id,
-                (string) $workspace->account_id,
-                (string) $request->user()->id,
-                $snapshot,
-            );
+            rescue(function () use ($account, $workspace, $request, $snapshot): void {
+                TrackSocialAccountDisconnected::dispatch(
+                    (string) $account->id,
+                    (string) $workspace->account_id,
+                    (string) $request->user()->id,
+                    $snapshot,
+                );
+            });
         }
 
         $this->flashAccountChange($before);
@@ -537,9 +539,13 @@ class SocialController extends Controller
             return;
         }
 
-        $accounts
-            ->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)
-            ->each(fn (SocialAccount $account) => TrackSocialAccountConnected::dispatch((string) $account->id, $userId, $source));
+        rescue(function () use ($accounts, $userId, $source): void {
+            $accounts
+                ->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)
+                ->each(function (SocialAccount $account) use ($userId, $source): void {
+                    TrackSocialAccountConnected::dispatch((string) $account->id, $userId, $source);
+                });
+        });
     }
 
     /**

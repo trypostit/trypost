@@ -42,7 +42,7 @@ class TrackSocialAccountConnected implements ShouldQueue
 
         $account = $socialAccount?->workspace?->account;
 
-        if ($account === null) {
+        if (blank($account)) {
             return;
         }
 

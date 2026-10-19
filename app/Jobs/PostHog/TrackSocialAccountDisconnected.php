@@ -58,7 +58,7 @@ class TrackSocialAccountDisconnected implements ShouldQueue
 
         $account = Account::query()->with('plan')->find($this->accountId);
 
-        if ($account === null) {
+        if (blank($account)) {
             return;
         }
 

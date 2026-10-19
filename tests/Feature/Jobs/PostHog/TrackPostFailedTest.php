@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\FinalizePostPublication;
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\Social\ErrorCategory;
@@ -85,4 +87,24 @@ test('handle does not push when PostHog is disabled', function () {
     (new TrackPostFailed((string) $post->id))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class);
+});
+
+test('a post failed for having no channel reports no platform or network', function () {
+    Queue::fake();
+
+    $post = Post::factory()->publishing()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe(Status::Failed);
+
+    (new TrackPostFailed((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['event'] === PostEvent::Failed->value
+        && $job->payload['properties']['post_id'] === (string) $post->id
+        && $job->payload['properties']['platform'] === null
+        && $job->payload['properties']['network'] === null);
 });

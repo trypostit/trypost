@@ -491,3 +491,17 @@ test('finishing a connection does not dispatch connected when PostHog is disable
 
     Bus::assertNotDispatched(TrackSocialAccountConnected::class);
 });
+
+test('finishing a connection still lands on the channel when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    failDispatchOf(TrackSocialAccountConnected::class);
+
+    startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
+
+    assertFinishedOnChannel($this->actingAs($this->user)->post(route('app.social.connect.finish', Platform::Facebook), [
+        'identities' => ['facebook:p1'],
+    ]));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and(PendingConnection::current())->toBeNull();
+});

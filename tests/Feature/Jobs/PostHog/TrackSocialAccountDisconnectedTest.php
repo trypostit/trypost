@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Actions\Workspace\PurgeWorkspace;
 use App\Enums\PostHog\SocialAccountEvent;
+use App\Exceptions\Post\QueueBusyException;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackSocialAccountDisconnected;
 use App\Models\Account;
@@ -12,6 +13,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
@@ -112,5 +114,31 @@ test('deleting a workspace does not dispatch disconnected', function () {
 
     expect(SocialAccount::query()->where('workspace_id', $this->workspace->id)->exists())->toBeFalse();
 
+    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+});
+
+test('user disconnect still succeeds when tracking it fails', function () {
+    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    failDispatchOf(TrackSocialAccountDisconnected::class);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $socialAccount))->assertRedirect();
+
+    expect(SocialAccount::find($socialAccount->id))->toBeNull();
+});
+
+test('a disconnect refused by a busy queue dispatches nothing and shows the error', function () {
+    $socialAccount = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $lock = Cache::lock("queue:{$socialAccount->id}", 10);
+    $lock->get();
+
+    Bus::fake([TrackSocialAccountDisconnected::class]);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $socialAccount))
+        ->assertRedirect()
+        ->assertSessionHas('flash.error', (new QueueBusyException)->getMessage());
+
+    $lock->release();
+
+    expect(SocialAccount::find($socialAccount->id))->not->toBeNull();
     Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
 });

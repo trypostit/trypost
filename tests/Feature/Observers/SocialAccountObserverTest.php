@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\SocialAccountEvent;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -14,6 +15,8 @@ use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
@@ -247,4 +250,26 @@ test('a failure while tracking a disconnect does not break the status save', fun
 
     expect(SocialAccount::query()->find($socialAccount->id)->status)->toBe(Status::TokenExpired);
     Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+});
+
+test('a token expiry rolled back with its transaction sends no disconnected event', function () {
+    $socialAccount = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'status' => Status::Connected,
+    ]);
+
+    Queue::fake([SendEvent::class]);
+
+    rescue(fn () => DB::transaction(function () use ($socialAccount): void {
+        $socialAccount->markAsTokenExpired('Token revoked', notify: false);
+
+        throw new RuntimeException('Rolled back.');
+    }), report: false);
+
+    expect($socialAccount->fresh()->status)->toBe(Status::Connected);
+    Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => data_get($job->payload, 'event') === SocialAccountEvent::Disconnected->value);
+
+    $socialAccount->fresh()->markAsTokenExpired('Token revoked', notify: false);
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => data_get($job->payload, 'event') === SocialAccountEvent::Disconnected->value);
 });

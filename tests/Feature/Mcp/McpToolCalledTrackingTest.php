@@ -84,8 +84,12 @@ test('tools/list is not tracked', function () {
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
 
-test('api key requests are not tracked', function () {
+test('api key requests are not tracked, even with a tool call body', function () {
     $this->withToken($this->apiToken)->getJson(route('api.workspace.show'))->assertOk();
+    $this->withToken($this->apiToken)->postJson(route('api.labels.store'), [
+        'method' => 'tools/call',
+        'params' => ['name' => 'x'],
+    ]);
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });

@@ -80,9 +80,15 @@ class FinalizePostPublication
             return;
         }
 
-        rescue(fn () => $successful
-            ? TrackPostGroupPublished::dispatch((string) $post->id)
-            : TrackPostFailed::dispatch((string) $post->id));
+        rescue(function () use ($post, $successful): void {
+            if ($successful) {
+                TrackPostGroupPublished::dispatch((string) $post->id);
+
+                return;
+            }
+
+            TrackPostFailed::dispatch((string) $post->id);
+        });
     }
 
     /**

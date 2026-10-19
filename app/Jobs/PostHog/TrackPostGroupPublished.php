@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
-use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
 use App\Models\Post;
 use App\Services\PostHogService;
@@ -53,19 +52,12 @@ class TrackPostGroupPublished implements ShouldQueue
 
         $publishedBefore = Post::query()
             ->createdInTryPost()
-            ->where('status', Status::Published)
+            ->published()
             ->whereIn('workspace_id', $account->workspaces()->select('id'))
             ->whereNotIn('id', $this->groupQuery($post)->select('id'))
             ->exists();
 
-        $publishedNetworks = $this->groupQuery($post)
-            ->where('status', Status::Published)
-            ->get()
-            ->map(fn (Post $published): ?string => $published->platform?->network())
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
+        $groupPosts = $this->groupQuery($post)->get(['id', 'platform']);
 
         $groupKey = filled($post->post_group_id) ? $post->post_group_id : $post->id;
 
@@ -79,8 +71,14 @@ class TrackPostGroupPublished implements ShouldQueue
             [
                 'post_group_id' => filled($post->post_group_id) ? (string) $post->post_group_id : null,
                 'created_via' => $post->created_via?->value,
-                'platforms' => $publishedNetworks,
-                'channels_count' => $this->groupQuery($post)->count(),
+                'platforms' => $groupPosts
+                    ->map(fn (Post $groupPost): ?string => $groupPost->platform?->network())
+                    ->filter()
+                    ->unique()
+                    ->sort()
+                    ->values()
+                    ->all(),
+                'channels_count' => $groupPosts->count(),
                 'is_first' => ! $publishedBefore,
             ],
             $account,

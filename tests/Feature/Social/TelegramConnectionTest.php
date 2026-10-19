@@ -542,3 +542,35 @@ it('a telegram reconnect does not dispatch connected', function () {
 
     Bus::assertNotDispatched(TrackSocialAccountConnected::class);
 });
+
+it('a telegram connection still succeeds when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Http::fake();
+    failDispatchOf(TrackSocialAccountConnected::class);
+
+    $owner = User::factory()->create(['account_id' => $this->workspace->account_id]);
+    $this->workspace->account->update(['owner_id' => $owner->id]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    expect(SocialAccount::where('platform', Platform::Telegram)->exists())->toBeTrue();
+});
+
+it('a telegram connection does not dispatch connected when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Http::fake();
+    Bus::fake([TrackSocialAccountConnected::class]);
+
+    $code = TelegramConnectCode::issue($this->workspace->id, now()->addMinutes(15));
+
+    $this->withHeader('X-Telegram-Bot-Api-Secret-Token', 'shh-secret')
+        ->postJson(route('telegram.webhook'), telegramUpdate($code))
+        ->assertNoContent();
+
+    expect(SocialAccount::where('platform', Platform::Telegram)->exists())->toBeTrue();
+    Bus::assertNotDispatched(TrackSocialAccountConnected::class);
+});
