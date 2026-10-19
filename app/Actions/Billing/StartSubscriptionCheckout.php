@@ -33,6 +33,11 @@ class StartSubscriptionCheckout
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
+            'metadata' => array_filter([
+                ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
+                ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => $plan?->stripe_yearly_price_id === $priceId ? 'yearly' : 'monthly',
+                ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY => filled($subscription->couponId) ? '1' : '0',
+            ], filled(...)),
         ]);
 
         return Inertia::location($session->url);

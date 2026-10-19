@@ -14,6 +14,12 @@ final class ConfigureSubscriptionCheckout
 {
     public const FIRST_MONTH_COUPON_METADATA_KEY = 'trypost_first_month_coupon_id';
 
+    public const PLAN_METADATA_KEY = 'trypost_plan_slug';
+
+    public const INTERVAL_METADATA_KEY = 'trypost_interval';
+
+    public const FIRST_MONTH_OFFER_METADATA_KEY = 'trypost_first_month_offer';
+
     /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
      */

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Actions\Mcp\ListChatGptEgressRanges;
+use App\Listeners\StripeBillingSignalListener;
 use App\Listeners\StripeEventListener;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -60,6 +61,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
+use Laravel\Cashier\Events\WebhookReceived;
 use Laravel\Nightwatch\Facades\Nightwatch;
 use Laravel\Nightwatch\Records\CacheEvent;
 use Laravel\Socialite\Facades\Socialite;
@@ -232,6 +234,7 @@ class AppServiceProvider extends ServiceProvider
     protected function configureStripeWebhooks(): void
     {
         Event::listen(WebhookHandled::class, StripeEventListener::class);
+        Event::listen(WebhookReceived::class, StripeBillingSignalListener::class);
     }
 
     protected function configureSocialite(): void
