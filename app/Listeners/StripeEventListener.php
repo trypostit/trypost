@@ -7,6 +7,7 @@ namespace App\Listeners;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
@@ -77,6 +78,7 @@ class StripeEventListener
 
         $this->trackPlanChange($account, BillingEvent::Updated, $previousPlan, $payload);
         $this->trackTrialConversion($account, $payload);
+        $this->trackPlanSwitch($account, $payload);
     }
 
     /**
@@ -155,12 +157,7 @@ class StripeEventListener
             return null;
         }
 
-        $plan = Plan::query()
-            ->where(function ($query) use ($priceIds): void {
-                $query->whereIn('stripe_monthly_price_id', $priceIds)
-                    ->orWhereIn('stripe_yearly_price_id', $priceIds);
-            })
-            ->first();
+        $plan = Plan::forStripePrices($priceIds)->first();
 
         if (! $plan) {
             Log::warning('Stripe webhook: no matching plan found in subscription items', [
@@ -221,6 +218,24 @@ class StripeEventListener
 
         if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
             TrackTrialConverted::dispatch((string) $account->id, $payload);
+        }
+    }
+
+    /**
+     * The direction comes from Stripe's `previous_attributes.items`, never
+     * from the local plan, which `changePlan` already updated before the
+     * webhook arrives.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function trackPlanSwitch(Account $account, array $payload): void
+    {
+        if (! PostHogService::shouldTrack()) {
+            return;
+        }
+
+        if (data_get($payload, 'data.previous_attributes.items') !== null) {
+            TrackPlanChanged::dispatch((string) $account->id, $payload);
         }
     }
 

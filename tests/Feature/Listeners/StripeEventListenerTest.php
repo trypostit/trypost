@@ -6,6 +6,7 @@ use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
+use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Listeners\StripeEventListener;
@@ -889,4 +890,41 @@ test('an event without an id is still processed (no idempotency key available)',
     ]));
 
     Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+// ========================================
+// plan.upgraded / plan.downgraded dispatch
+// ========================================
+
+test('subscription updated with previous items dispatches TrackPlanChanged even when the local plan is already the new one', function () {
+    Bus::fake([TrackPlanChanged::class]);
+    $this->account->update(['plan_id' => $this->workspaces->id]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_workspaces_monthly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    Bus::assertDispatched(TrackPlanChanged::class, fn ($job) => $job->accountId === (string) $this->account->id);
+});
+
+test('subscription updated without previous items does not dispatch TrackPlanChanged', function () {
+    Bus::fake([TrackPlanChanged::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => ['customer' => 'cus_test123', 'status' => 'active'],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackPlanChanged::class);
 });
