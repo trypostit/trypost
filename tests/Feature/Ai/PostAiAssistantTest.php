@@ -304,8 +304,7 @@ test('ai assist tracks the mode', function () {
         ])
         ->assertOk();
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === AiEvent::AssistUsed->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === AiEvent::AssistUsed
         && $job->distinctId === (string) $this->user->id
         && $job->accountId === (string) $this->workspace->account_id
         && $job->properties === [

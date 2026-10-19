@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\CreatedVia;
 use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackPostPublished;
 use App\Models\Account;
@@ -50,7 +51,7 @@ test('group of three publishes one event', function () {
 
     $posts->shuffle()->each(fn (Post $post) => (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class)));
 
-    Queue::assertPushed(SendEvent::class, 1);
+    Queue::assertPushedOnce(SendEvent::class);
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['event'] === PostEvent::Published->value
         && $job->payload['distinctId'] === (string) $this->user->id
         && $job->payload['properties']['post_group_id'] === $groupId
@@ -78,7 +79,7 @@ test('posts of a group settling in the same second emit one event', function () 
     $first->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
     (new TrackPostPublished((string) $first->id))->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, 1);
+    Queue::assertPushedOnce(SendEvent::class);
 });
 
 test('platforms lists every network the group targeted', function () {
@@ -97,7 +98,7 @@ test('platforms lists every network the group targeted', function () {
 
     (new TrackPostPublished((string) $first->id))->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['platforms'] === ['linkedin', 'x']
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['platforms'] === [Platform::LinkedIn->network(), Platform::X->network()]
         && $job->payload['properties']['channels_count'] === 3);
 });
 
@@ -175,10 +176,10 @@ test('a post without a group publishes once, keyed by its own id', function () {
 
     (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, 1);
+    Queue::assertPushedOnce(SendEvent::class);
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['post_group_id'] === null
         && $job->payload['properties']['channels_count'] === 1
-        && $job->payload['properties']['platforms'] === ['linkedin']);
+        && $job->payload['properties']['platforms'] === [Platform::LinkedIn->network()]);
 
     Queue::fake();
 

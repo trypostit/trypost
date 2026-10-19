@@ -3,13 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\PostHog\SocialAccountEvent;
+use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncAccountUsage;
-use App\Jobs\PostHog\TrackSocialAccountDisconnected;
 use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -177,17 +178,18 @@ test('token expiry dispatches disconnected with reason token_expired', function 
         'status' => Status::Connected,
     ]);
 
-    Bus::fake([TrackSocialAccountDisconnected::class]);
+    Bus::fake([CaptureAccountEvent::class]);
 
     $socialAccount->markAsTokenExpired('Token revoked', notify: false);
 
-    Bus::assertDispatchedTimes(TrackSocialAccountDisconnected::class, 1);
-    Bus::assertDispatched(TrackSocialAccountDisconnected::class, fn (TrackSocialAccountDisconnected $job): bool => $job->socialAccountId === (string) $socialAccount->id
+    Bus::assertDispatchedOnce(CaptureAccountEvent::class);
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === SocialAccountEvent::Disconnected
         && $job->accountId === (string) $this->account->id
-        && $job->userId === (string) $this->user->id
-        && $job->snapshot === [
-            'platform' => 'x',
-            'network' => 'x',
+        && $job->distinctId === (string) $this->user->id
+        && $job->properties === [
+            'social_account_id' => (string) $socialAccount->id,
+            'platform' => Platform::X->value,
+            'network' => Platform::X->network(),
             'workspace_id' => (string) $this->workspace->id,
             'reason' => 'token_expired',
             'error_type' => 'token_expired',
@@ -200,26 +202,23 @@ test('a status change to disconnected dispatches disconnected with reason discon
         'status' => Status::Connected,
     ]);
 
-    Bus::fake([TrackSocialAccountDisconnected::class]);
+    Bus::fake([CaptureAccountEvent::class]);
 
     $socialAccount->update(['status' => Status::Disconnected]);
 
-    Bus::assertDispatched(TrackSocialAccountDisconnected::class, fn (TrackSocialAccountDisconnected $job): bool => $job->snapshot['reason'] === 'disconnected'
-        && $job->snapshot['error_type'] === 'disconnected');
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->properties['reason'] === 'disconnected'
+        && $job->properties['error_type'] === 'disconnected');
 });
 
 test('a channel that was not connected does not dispatch disconnected again', function () {
-    $socialAccount = SocialAccount::factory()->create([
-        'workspace_id' => $this->workspace->id,
-        'status' => Status::TokenExpired,
-    ]);
+    $socialAccount = SocialAccount::factory()->tokenExpired()->create(['workspace_id' => $this->workspace->id]);
 
-    Bus::fake([TrackSocialAccountDisconnected::class]);
+    Bus::fake([CaptureAccountEvent::class]);
 
     $socialAccount->update(['status' => Status::Disconnected]);
     $socialAccount->update(['status' => Status::Connected]);
 
-    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
 });
 
 test('a status change does not dispatch disconnected when PostHog is disabled', function () {
@@ -230,11 +229,11 @@ test('a status change does not dispatch disconnected when PostHog is disabled', 
         'status' => Status::Connected,
     ]);
 
-    Bus::fake([TrackSocialAccountDisconnected::class]);
+    Bus::fake([CaptureAccountEvent::class]);
 
     $socialAccount->update(['status' => Status::TokenExpired]);
 
-    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
 });
 
 test('a failure while tracking a disconnect does not break the status save', function () {
@@ -249,7 +248,7 @@ test('a failure while tracking a disconnect does not break the status save', fun
     $socialAccount->update(['status' => Status::TokenExpired]);
 
     expect(SocialAccount::query()->find($socialAccount->id)->status)->toBe(Status::TokenExpired);
-    Bus::assertNotDispatched(TrackSocialAccountDisconnected::class);
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
 });
 
 test('a token expiry rolled back with its transaction sends no disconnected event', function () {

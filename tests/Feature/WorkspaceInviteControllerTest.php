@@ -429,8 +429,7 @@ test('inviting a member tracks admin and approval flags', function () {
         'requires_approval' => '1',
     ])->assertSessionHasNoErrors();
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::MemberInvited->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::MemberInvited
         && $job->distinctId === (string) $admin->id
         && $job->accountId === (string) $this->account->id
         && $job->properties === [

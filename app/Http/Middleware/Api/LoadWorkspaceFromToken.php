@@ -4,16 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Api;
 
-use App\Enums\AccessToken\McpClient;
-use App\Enums\PostHog\McpEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\AccessToken;
-use App\Models\User;
 use App\Models\Workspace;
-use App\Services\PostHogService;
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Laravel\Passport\AccessToken as PassportAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -79,36 +73,6 @@ class LoadWorkspaceFromToken
 
         $token->forceFill(['last_used_at' => now()])->saveQuietly();
 
-        if ($context === 'mcp') {
-            rescue(fn () => $this->trackToolCalled($request, $user, $token, $workspace));
-        }
-
         return $next($request);
-    }
-
-    private function trackToolCalled(Request $request, User $user, AccessToken $token, Workspace $workspace): void
-    {
-        if (! PostHogService::isEnabled() || $request->input('method') !== 'tools/call') {
-            return;
-        }
-
-        $today = now()->utc();
-
-        if (! Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay())) {
-            return;
-        }
-
-        $token->loadMissing('client');
-
-        CaptureAccountEvent::dispatch(
-            (string) $user->id,
-            (string) $workspace->account_id,
-            McpEvent::ToolCalled->value,
-            [
-                'tool' => $request->input('params.name'),
-                'client' => McpClient::fromClientName($token->client->name)->value,
-                'workspace_id' => (string) $workspace->id,
-            ],
-        );
     }
 }

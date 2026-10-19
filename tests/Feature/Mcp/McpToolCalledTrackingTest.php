@@ -6,7 +6,6 @@ use App\Enums\AccessToken\McpClient;
 use App\Enums\PostHog\McpEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 
@@ -21,9 +20,7 @@ beforeEach(function () {
     $this->workspace = $result['workspace'];
     $this->apiToken = $result['plain_token'];
 
-    $issued = mcpBearerToken($this->user, $this->workspace);
-    DB::table('oauth_clients')->where('id', $issued['token']->client_id)->update(['name' => 'Claude']);
-    $this->mcpToken = $issued['plain_token'];
+    $this->mcpToken = mcpBearerToken($this->user, $this->workspace, clientName: 'Claude')['plain_token'];
 });
 
 /**
@@ -42,6 +39,9 @@ function mcpToolCalledRequest(object $test, string $token, string $method, array
     ]);
 }
 
+/**
+ * @return array{name: string, arguments: object}
+ */
 function mcpToolCalledGetWorkspace(): array
 {
     return ['name' => 'get-workspace-tool', 'arguments' => (object) []];
@@ -50,8 +50,7 @@ function mcpToolCalledGetWorkspace(): array
 test('first tool call of the day is tracked with tool and client', function () {
     mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === McpEvent::ToolCalled->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === McpEvent::ToolCalled
         && $job->distinctId === (string) $this->user->id
         && $job->accountId === (string) $this->workspace->account_id
         && $job->properties === [
@@ -65,7 +64,7 @@ test('second call the same day is not tracked', function () {
     mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
     mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', ['name' => 'list-labels-tool', 'arguments' => (object) []])->assertOk();
 
-    Queue::assertPushed(CaptureAccountEvent::class, 1);
+    Queue::assertPushedOnce(CaptureAccountEvent::class);
 });
 
 test('the first call of the next day is tracked again', function () {
@@ -75,7 +74,7 @@ test('the first call of the next day is tracked again', function () {
     $this->travelTo(now()->utc()->addDay()->setTime(1, 0));
     mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
 
-    Queue::assertPushed(CaptureAccountEvent::class, 2);
+    Queue::assertPushedTimes(CaptureAccountEvent::class, 2);
 });
 
 test('tools/list is not tracked', function () {
@@ -99,8 +98,10 @@ test('nothing is tracked or cached when PostHog is disabled', function () {
 
     mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
 
+    $today = now()->utc()->toDateString();
+
     Queue::assertNotPushed(CaptureAccountEvent::class);
-    expect(Cache::has("posthog:mcp_tool_called:{$this->user->id}:".now()->utc()->toDateString()))->toBeFalse();
+    expect(Cache::has("posthog:mcp_tool_called:{$this->user->id}:{$today}"))->toBeFalse();
 });
 
 test('a tracking failure never fails the tool call', function () {

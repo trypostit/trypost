@@ -233,9 +233,9 @@ test('finalize dispatches published or failed tracking once per settlement', fun
     $finalize->handle($failed);
     $finalize->handle($failed->fresh());
 
-    Queue::assertPushedTimes(TrackPostPublished::class, 1);
+    Queue::assertPushedOnce(TrackPostPublished::class);
     Queue::assertPushed(TrackPostPublished::class, fn (TrackPostPublished $job) => $job->postId === (string) $published->id);
-    Queue::assertPushedTimes(TrackPostFailed::class, 1);
+    Queue::assertPushedOnce(TrackPostFailed::class);
     Queue::assertPushed(TrackPostFailed::class, fn (TrackPostFailed $job) => $job->postId === (string) $failed->id);
 });
 

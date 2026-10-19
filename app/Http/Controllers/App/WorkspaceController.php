@@ -6,21 +6,18 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Enums\PostHog\WorkspaceEvent;
+use App\Actions\Workspace\TrackWorkspaceLimitHit;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
-use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
-use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class WorkspaceController extends Controller
 {
@@ -77,41 +74,6 @@ class WorkspaceController extends Controller
         return null;
     }
 
-    public function limitHit(Request $request): HttpResponse
-    {
-        $this->authorize('create', Workspace::class);
-
-        $this->trackLimitHit($request->user());
-
-        return response()->noContent(HttpResponse::HTTP_NO_CONTENT);
-    }
-
-    private function trackLimitHit(User $user): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($user): void {
-            $account = $user->account;
-
-            if (config('trypost.self_hosted') || ! $account?->hasActiveSubscription() || $account->canCreateWorkspace()) {
-                return;
-            }
-
-            CaptureAccountEvent::dispatch(
-                (string) $user->id,
-                (string) $account->id,
-                WorkspaceEvent::LimitHit->value,
-                [
-                    'plan_slug' => $account->plan?->slug?->value,
-                    'workspaces_count' => $account->workspaces()->count(),
-                    'workspace_limit' => $account->workspaceLimit(),
-                ],
-            );
-        });
-    }
-
     public function store(StoreWorkspaceRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -129,7 +91,7 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
-            $this->trackLimitHit($user);
+            TrackWorkspaceLimitHit::execute($user);
 
             return $redirect;
         }

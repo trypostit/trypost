@@ -39,7 +39,7 @@ class ActivateRepurpose
             },
         );
 
-        rescue(fn () => self::trackActivated($activated));
+        self::trackActivated($activated);
 
         return $activated;
     }
@@ -50,18 +50,20 @@ class ActivateRepurpose
             return;
         }
 
-        $repurpose->loadMissing(['sourceAccount', 'workspace.account']);
+        rescue(function () use ($repurpose): void {
+            $repurpose->loadMissing(['sourceAccount', 'workspace.account']);
 
-        CaptureAccountEvent::dispatch(
-            (string) ($repurpose->user_id ?? $repurpose->workspace->account->owner_id),
-            (string) $repurpose->workspace->account_id,
-            RepurposeEvent::Activated->value,
-            [
-                'repurpose_id' => (string) $repurpose->id,
-                'source' => $repurpose->sourceAccount->platform->value,
-                'destinations_count' => count($repurpose->destinations),
-            ],
-        );
+            CaptureAccountEvent::dispatch(
+                (string) ($repurpose->user_id ?? $repurpose->workspace->account->owner_id),
+                (string) $repurpose->workspace->account_id,
+                RepurposeEvent::Activated,
+                [
+                    'repurpose_id' => (string) $repurpose->id,
+                    'source' => $repurpose->sourceAccount->platform->value,
+                    'destinations_count' => count($repurpose->destinations),
+                ],
+            );
+        });
     }
 
     public static function assertSourceUsable(Repurpose $repurpose): void

@@ -191,8 +191,7 @@ test('creating a workspace at the limit tracks limit_hit', function () use ($onP
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit
         && $job->distinctId === (string) $user->id
         && $job->accountId === (string) $user->account_id
         && $job->properties === [
@@ -217,9 +216,9 @@ test('the upgrade dialog at the limit tracks limit_hit', function () use ($onPla
     Queue::fake([CaptureAccountEvent::class]);
     $user = $onPlan(Slug::Socials);
 
-    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit'))->assertNoContent();
+    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
 
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit->value
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit
         && $job->distinctId === (string) $user->id
         && $job->properties === [
             'plan_slug' => Slug::Socials->value,
@@ -233,7 +232,7 @@ test('limit_hit below the limit sends nothing', function () use ($onPlan) {
     Queue::fake([CaptureAccountEvent::class]);
     $user = $onPlan(Slug::Workspaces);
 
-    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit'))->assertNoContent();
+    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
@@ -244,7 +243,7 @@ test('limit_hit is refused to a member who is not the owner', function () use ($
     $owner = $onPlan(Slug::Socials);
     $member = workspaceMember($owner->account->workspaces()->first(), 'admin');
 
-    $this->actingAs($member)->postJson(route('app.workspaces.limit-hit'))->assertForbidden();
+    $this->actingAs($member)->postJson(route('app.workspaces.limit-hit.store'))->assertForbidden();
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });

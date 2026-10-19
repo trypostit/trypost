@@ -360,7 +360,7 @@ function failDispatchOf(string $jobClass): void
 {
     $bus = Mockery::mock(Bus::getFacadeRoot());
     $bus->shouldReceive('dispatch')->with(Mockery::type($jobClass))->andThrow(new RuntimeException('Queue is down.'));
-    $bus->shouldReceive('dispatch')->with(Mockery::not(Mockery::type($jobClass)))->passthru();
+    $bus->shouldReceive('dispatch')->passthru();
 
     Bus::swap($bus);
 }
@@ -443,7 +443,7 @@ function mcpAccessToken(
  * @param  list<string>  $scopes
  * @return array{token: AccessToken, plain_token: string}
  */
-function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use']): array
+function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use'], string $clientName = 'My Agent'): array
 {
     $result = $user->createToken('MCP', $scopes);
     $token = AccessToken::query()->findOrFail($result->token->id);
@@ -451,7 +451,7 @@ function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:
     // Reassign to a dedicated MCP client so we never mutate Passport's shared
     // personal-access client (which would poison PAT fixtures in the same run).
     $token->forceFill([
-        'client_id' => mcpOauthClient(),
+        'client_id' => mcpOauthClient($clientName),
         'workspace_id' => $workspace->id,
     ])->saveQuietly();
 

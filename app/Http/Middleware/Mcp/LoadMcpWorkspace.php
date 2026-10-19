@@ -4,10 +4,16 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Mcp;
 
+use App\Enums\AccessToken\McpClient;
+use App\Enums\PostHog\McpEvent;
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
+use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\AccessToken;
+use App\Services\PostHogService;
 use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Symfony\Component\HttpFoundation\Response;
 
 class LoadMcpWorkspace
@@ -25,6 +31,40 @@ class LoadMcpWorkspace
             return $next($request);
         }
 
-        return $this->loadWorkspace->handle($request, $next, 'mcp');
+        return $this->loadWorkspace->handle($request, function (Request $request) use ($next): Response {
+            $this->trackToolCalled($request);
+
+            return $next($request);
+        }, 'mcp');
+    }
+
+    private function trackToolCalled(Request $request): void
+    {
+        if (! PostHogService::isEnabled() || $request->input('method') !== 'tools/call') {
+            return;
+        }
+
+        rescue(function () use ($request): void {
+            $user = $request->user();
+            $workspace = $user->currentWorkspace;
+            $today = now()->utc();
+
+            if (! Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay())) {
+                return;
+            }
+
+            $client = AccessToken::query()->find($user->token()->oauth_access_token_id)?->client;
+
+            CaptureAccountEvent::dispatch(
+                (string) $user->id,
+                (string) $workspace->account_id,
+                McpEvent::ToolCalled,
+                [
+                    'tool' => $request->input('params.name'),
+                    'client' => McpClient::fromClientName((string) $client?->name)->value,
+                    'workspace_id' => (string) $workspace->id,
+                ],
+            );
+        });
     }
 }

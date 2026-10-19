@@ -240,7 +240,7 @@ test('creating an api key through mcp tracks api_key.created', function () {
         ->tool(CreateApiKeyTool::class, ['name' => 'My Key'])
         ->assertOk();
 
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created->value
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
         && $job->distinctId === (string) $this->user->id
         && $job->properties === ['workspace_id' => (string) $this->workspace->id]);
 });

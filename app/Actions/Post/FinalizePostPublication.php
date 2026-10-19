@@ -81,13 +81,7 @@ class FinalizePostPublication
         }
 
         rescue(function () use ($post, $successful): void {
-            if ($successful) {
-                TrackPostPublished::dispatch((string) $post->id);
-
-                return;
-            }
-
-            TrackPostFailed::dispatch((string) $post->id);
+            ($successful ? TrackPostPublished::class : TrackPostFailed::class)::dispatch((string) $post->id);
         });
     }
 

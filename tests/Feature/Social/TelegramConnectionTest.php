@@ -518,7 +518,7 @@ it('telegram connection uses source telegram', function () {
 
     $account = SocialAccount::where('platform', Platform::Telegram)->firstOrFail();
 
-    Bus::assertDispatchedTimes(TrackSocialAccountConnected::class, 1);
+    Bus::assertDispatchedOnce(TrackSocialAccountConnected::class);
     Bus::assertDispatched(TrackSocialAccountConnected::class, fn (TrackSocialAccountConnected $job): bool => $job->socialAccountId === (string) $account->id
         && $job->userId === (string) $owner->id
         && $job->source === 'telegram');

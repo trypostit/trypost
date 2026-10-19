@@ -52,6 +52,12 @@ function tiktokDestination(Workspace $workspace): array
     ];
 }
 
+function enableRepurposeTracking(): void
+{
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, CaptureAccountEvent::class]);
+}
+
 test('a repurpose is created as a draft with its source account', function () {
     [$workspace, $user, $account] = repurposeWorkspace();
 
@@ -450,12 +456,6 @@ test('an update that repeats the current source and format leaves the watermark 
         ->and($fresh->publish_mode)->toBe(PublishMode::Draft);
 });
 
-function trackRepurposeEvents(): void
-{
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, CaptureAccountEvent::class]);
-}
-
 test('activating a repurpose tracks source and destinations', function () {
     [$workspace, $user, $account] = repurposeWorkspace();
 
@@ -466,12 +466,11 @@ test('activating a repurpose tracks source and destinations', function () {
         'destinations' => [tiktokDestination($workspace), tiktokDestination($workspace)],
     ]);
 
-    trackRepurposeEvents();
+    enableRepurposeTracking();
 
     ActivateRepurpose::execute($repurpose);
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated
         && $job->distinctId === (string) $user->id
         && $job->accountId === (string) $workspace->account_id
         && $job->properties === [
@@ -491,18 +490,18 @@ test('activating a repurpose without a creator tracks it as the account owner', 
         'destinations' => [tiktokDestination($workspace)],
     ]);
 
-    trackRepurposeEvents();
+    enableRepurposeTracking();
 
     ActivateRepurpose::execute($repurpose);
 
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated->value
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated
         && $job->distinctId === (string) $workspace->account->owner_id);
 });
 
 test('a rejected activation is not tracked', function () {
     $repurpose = Repurpose::factory()->create();
 
-    trackRepurposeEvents();
+    enableRepurposeTracking();
 
     expect(fn () => ActivateRepurpose::execute($repurpose))->toThrow(ValidationException::class);
 

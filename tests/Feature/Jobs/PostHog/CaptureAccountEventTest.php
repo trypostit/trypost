@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\WorkspaceEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
@@ -14,7 +15,7 @@ beforeEach(function () {
 });
 
 test('job is queued on the posthog queue', function () {
-    $job = new CaptureAccountEvent('1', (string) Str::uuid(), 'some.event', []);
+    $job = new CaptureAccountEvent('1', (string) Str::uuid(), WorkspaceEvent::MemberInvited, []);
 
     expect($job->queue)->toBe('posthog')
         ->and($job->tries)->toBe(3)
@@ -25,9 +26,9 @@ test('captures the event with the account group', function () {
     Queue::fake();
     $account = Account::factory()->create();
 
-    (new CaptureAccountEvent('user-1', (string) $account->id, 'some.event', ['foo' => 'bar']))->handle(app(PostHogService::class));
+    (new CaptureAccountEvent('user-1', (string) $account->id, WorkspaceEvent::MemberInvited, ['foo' => 'bar']))->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['event'] === 'some.event'
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['event'] === WorkspaceEvent::MemberInvited->value
         && $job->payload['distinctId'] === 'user-1'
         && $job->payload['properties']['foo'] === 'bar'
         && $job->payload['properties']['account_id'] === (string) $account->id
@@ -37,7 +38,7 @@ test('captures the event with the account group', function () {
 test('does nothing when the account is gone', function () {
     Queue::fake();
 
-    (new CaptureAccountEvent('user-1', (string) Str::uuid(), 'some.event', []))->handle(app(PostHogService::class));
+    (new CaptureAccountEvent('user-1', (string) Str::uuid(), WorkspaceEvent::MemberInvited, []))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class);
 });
@@ -47,7 +48,7 @@ test('does nothing when PostHog is disabled', function () {
     Queue::fake();
     $account = Account::factory()->create();
 
-    (new CaptureAccountEvent('user-1', (string) $account->id, 'some.event', []))->handle(app(PostHogService::class));
+    (new CaptureAccountEvent('user-1', (string) $account->id, WorkspaceEvent::MemberInvited, []))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class);
 });

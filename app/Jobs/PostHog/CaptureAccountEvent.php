@@ -6,6 +6,7 @@ namespace App\Jobs\PostHog;
 
 use App\Models\Account;
 use App\Services\PostHogService;
+use BackedEnum;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,7 +27,7 @@ class CaptureAccountEvent implements ShouldQueue
     public function __construct(
         public string $distinctId,
         public string $accountId,
-        public string $event,
+        public BackedEnum $event,
         public array $properties = [],
     ) {
         $this->onQueue('posthog');
@@ -38,12 +39,12 @@ class CaptureAccountEvent implements ShouldQueue
             return;
         }
 
-        $account = Account::query()->with('plan')->find($this->accountId);
+        $account = Account::with('plan')->find($this->accountId);
 
         if (blank($account)) {
             return;
         }
 
-        $postHog->capture($this->distinctId, $this->event, $this->properties, $account);
+        $postHog->capture($this->distinctId, (string) $this->event->value, $this->properties, $account);
     }
 }

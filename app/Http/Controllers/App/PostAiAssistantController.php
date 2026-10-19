@@ -52,7 +52,7 @@ class PostAiAssistantController extends Controller
             return response()->json(['message' => __('posts.composer.assistant_error')], Response::HTTP_BAD_GATEWAY);
         }
 
-        rescue(fn () => $this->trackAssistUsed($request->user(), $workspace, $mode));
+        $this->trackAssistUsed($request->user(), $workspace, $mode);
 
         return response()->json(['content' => $content]);
     }
@@ -63,14 +63,16 @@ class PostAiAssistantController extends Controller
             return;
         }
 
-        CaptureAccountEvent::dispatch(
-            (string) $user->id,
-            (string) $workspace->account_id,
-            AiEvent::AssistUsed->value,
-            [
-                'mode' => $mode->value,
-                'workspace_id' => (string) $workspace->id,
-            ],
-        );
+        rescue(function () use ($user, $workspace, $mode): void {
+            CaptureAccountEvent::dispatch(
+                (string) $user->id,
+                (string) $workspace->account_id,
+                AiEvent::AssistUsed,
+                [
+                    'mode' => $mode->value,
+                    'workspace_id' => (string) $workspace->id,
+                ],
+            );
+        });
     }
 }

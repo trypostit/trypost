@@ -14,6 +14,7 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Services\Social\Telegram\TelegramApi;
+use App\Support\PostHog\SocialAccountSnapshot;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -84,7 +85,7 @@ class ConnectTelegramChannel
             return null;
         }
 
-        $created = $account->wasRecentlyCreated && $reconnect === null;
+        $created = $account->wasRecentlyCreated && blank($reconnect);
 
         TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $created);
 
@@ -105,7 +106,7 @@ class ConnectTelegramChannel
             $ownerId = $workspace->account?->owner_id;
 
             if (filled($ownerId)) {
-                TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, 'telegram');
+                TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, SocialAccountSnapshot::SOURCE_TELEGRAM);
             }
         });
     }

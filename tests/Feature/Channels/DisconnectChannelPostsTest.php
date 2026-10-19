@@ -7,9 +7,13 @@ use App\Actions\Post\ImportExternalPosts;
 use App\Dto\Analytics\DiscoveredPublication;
 use App\Enums\Analytics\PublicationContentType;
 use App\Enums\Post\PublishStatus;
+use App\Enums\PostHog\SocialAccountEvent;
+use App\Enums\SocialAccount\Platform;
 use App\Events\PostDeleted;
+use App\Exceptions\Post\QueueBusyException;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\SendNotification;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
@@ -20,6 +24,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Queue;
@@ -201,4 +206,66 @@ test('a disconnect waits for the channel queue lock and changes nothing while a 
 
     expect(SocialAccount::query()->find($account->id))->not->toBeNull()
         ->and(Post::query()->find($post->id))->not->toBeNull();
+});
+
+test('disconnecting tracks social_account.disconnected with reason removed', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+
+    Bus::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
+
+    expect(SocialAccount::find($account->id))->toBeNull();
+
+    Bus::assertDispatchedOnce(CaptureAccountEvent::class);
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === SocialAccountEvent::Disconnected
+        && $job->distinctId === (string) $this->user->id
+        && $job->accountId === (string) $this->workspace->account_id
+        && $job->properties === [
+            'social_account_id' => (string) $account->id,
+            'platform' => Platform::LinkedIn->value,
+            'network' => Platform::LinkedIn->network(),
+            'workspace_id' => (string) $this->workspace->id,
+            'reason' => 'removed',
+        ]);
+});
+
+test('disconnecting tracks nothing when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    Bus::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
+
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
+});
+
+test('disconnecting still succeeds when tracking it fails', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    failDispatchOf(CaptureAccountEvent::class);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
+
+    expect(SocialAccount::find($account->id))->toBeNull();
+});
+
+test('a disconnect refused by a busy queue tracks nothing and shows the error', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
+    $lock = Cache::lock("queue:{$account->id}", 10);
+    $lock->get();
+
+    Bus::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))
+        ->assertRedirect()
+        ->assertSessionHas('flash.error', (new QueueBusyException)->getMessage());
+
+    $lock->release();
+
+    expect(SocialAccount::find($account->id))->not->toBeNull();
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
 });

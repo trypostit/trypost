@@ -6,15 +6,16 @@ namespace App\Observers;
 
 use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\SocialAccount\ListPinterestBoards;
+use App\Enums\PostHog\SocialAccountEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
-use App\Jobs\PostHog\TrackSocialAccountDisconnected;
-use App\Models\Account;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
+use App\Support\PostHog\SocialAccountSnapshot;
 
 class SocialAccountObserver
 {
@@ -80,17 +81,17 @@ class SocialAccountObserver
         }
 
         rescue(function () use ($socialAccount): void {
-            $account = Account::query()->whereRelation('workspaces', 'id', $socialAccount->workspace_id)->first();
+            $account = $socialAccount->loadMissing('workspace.account')->workspace?->account;
 
             if (blank($account?->owner_id)) {
                 return;
             }
 
-            TrackSocialAccountDisconnected::dispatch(
-                (string) $socialAccount->id,
-                (string) $account->id,
+            CaptureAccountEvent::dispatch(
                 (string) $account->owner_id,
-                TrackSocialAccountDisconnected::snapshotOf($socialAccount, $socialAccount->status->value, withErrorType: true),
+                (string) $account->id,
+                SocialAccountEvent::Disconnected,
+                SocialAccountSnapshot::of($socialAccount, $socialAccount->status->value, withErrorType: true),
             )->afterCommit();
         });
     }

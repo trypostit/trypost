@@ -321,8 +321,7 @@ it('creating an api key tracks api_key.created', function () {
         ->post(route('app.api-keys.store'), ['name' => 'My API Key'])
         ->assertRedirect();
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created->value
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
         && $job->distinctId === (string) $this->user->id
         && $job->accountId === (string) $this->workspace->account_id
         && $job->properties === ['workspace_id' => (string) $this->workspace->id]);

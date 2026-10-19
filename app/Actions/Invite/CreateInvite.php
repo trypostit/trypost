@@ -32,7 +32,7 @@ class CreateInvite
             ->locale($inviter->preferredLocale())
             ->send(new WorkspaceInviteMail($invite));
 
-        rescue(fn () => self::trackMemberInvited($workspace, $invite, $inviter));
+        self::trackMemberInvited($workspace, $invite, $inviter);
 
         return $invite;
     }
@@ -43,14 +43,16 @@ class CreateInvite
             return;
         }
 
-        CaptureAccountEvent::dispatch(
-            (string) $inviter->id,
-            (string) $workspace->account_id,
-            WorkspaceEvent::MemberInvited->value,
-            [
-                'is_admin' => $invite->is_admin,
-                'requires_approval' => $invite->requires_approval,
-            ],
-        );
+        rescue(function () use ($workspace, $invite, $inviter): void {
+            CaptureAccountEvent::dispatch(
+                (string) $inviter->id,
+                (string) $workspace->account_id,
+                WorkspaceEvent::MemberInvited,
+                [
+                    'is_admin' => $invite->is_admin,
+                    'requires_approval' => $invite->requires_approval,
+                ],
+            );
+        });
     }
 }

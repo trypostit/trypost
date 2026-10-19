@@ -257,7 +257,7 @@ test('creating an api key through the api tracks api_key.created', function () {
         ->postJson(route('api.api-keys.store'), ['name' => 'CI/CD Token'], ['HTTP_HOST' => 'api.trypost.test'])
         ->assertCreated();
 
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created->value
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === ApiKeyEvent::Created
         && $job->distinctId === (string) $result['user']->id
         && $job->accountId === (string) $result['workspace']->account_id
         && $job->properties === ['workspace_id' => (string) $result['workspace']->id]);

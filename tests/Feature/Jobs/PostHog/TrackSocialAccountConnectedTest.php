@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\PostHog\SocialAccountEvent;
+use App\Enums\SocialAccount\Platform;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackSocialAccountConnected;
 use App\Models\Account;
@@ -45,8 +46,8 @@ test('handle captures social_account.connected with the channel properties', fun
         && $job->payload['event'] === SocialAccountEvent::Connected->value
         && $job->payload['distinctId'] === (string) $this->user->id
         && $job->payload['properties']['social_account_id'] === (string) $socialAccount->id
-        && $job->payload['properties']['platform'] === 'linkedin-page'
-        && $job->payload['properties']['network'] === 'linkedin'
+        && $job->payload['properties']['platform'] === Platform::LinkedInPage->value
+        && $job->payload['properties']['network'] === Platform::LinkedInPage->network()
         && $job->payload['properties']['workspace_id'] === (string) $this->workspace->id
         && $job->payload['properties']['source'] === 'app.calendar'
         && $job->payload['properties']['nth_channel'] === 1

@@ -21,7 +21,7 @@ class CreateApiKey
     {
         $created = IssueApiKey::execute($user, $workspace, $data);
 
-        rescue(fn () => self::trackCreated($user, $workspace));
+        self::trackCreated($user, $workspace);
 
         return $created;
     }
@@ -32,11 +32,13 @@ class CreateApiKey
             return;
         }
 
-        CaptureAccountEvent::dispatch(
-            (string) $user->id,
-            (string) $workspace->account_id,
-            ApiKeyEvent::Created->value,
-            ['workspace_id' => (string) $workspace->id],
-        );
+        rescue(function () use ($user, $workspace): void {
+            CaptureAccountEvent::dispatch(
+                (string) $user->id,
+                (string) $workspace->account_id,
+                ApiKeyEvent::Created,
+                ['workspace_id' => (string) $workspace->id],
+            );
+        });
     }
 }

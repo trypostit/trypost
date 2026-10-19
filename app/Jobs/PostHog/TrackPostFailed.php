@@ -54,7 +54,7 @@ class TrackPostFailed implements ShouldQueue
             PostEvent::Failed->value,
             [
                 'post_id' => (string) $post->id,
-                'post_group_id' => filled($post->post_group_id) ? (string) $post->post_group_id : null,
+                'post_group_id' => $post->post_group_id,
                 'platform' => $post->platform?->value,
                 'network' => $post->platform?->network(),
                 'created_via' => $post->created_via?->value,

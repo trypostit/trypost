@@ -55,7 +55,7 @@ test('failed post captures error_type from the error category', function () {
         && $job->payload['properties']['post_id'] === (string) $post->id
         && $job->payload['properties']['post_group_id'] === $groupId
         && $job->payload['properties']['platform'] === Platform::LinkedInPage->value
-        && $job->payload['properties']['network'] === 'linkedin'
+        && $job->payload['properties']['network'] === Platform::LinkedInPage->network()
         && $job->payload['properties']['created_via'] === CreatedVia::Api->value
         && $job->payload['properties']['error_type'] === ErrorCategory::RateLimit->value
         && $job->payload['properties']['$groups']['account'] === (string) $this->account->id);

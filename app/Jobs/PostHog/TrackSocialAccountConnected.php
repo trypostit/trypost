@@ -46,13 +46,12 @@ class TrackSocialAccountConnected implements ShouldQueue
             return;
         }
 
-        $nthChannel = SocialAccount::query()
-            ->whereIn('workspace_id', $account->workspaces()->select('id'))
+        $nthChannel = $account->socialAccounts()
             ->where(fn (Builder $query) => $query
-                ->where('created_at', '<', $socialAccount->created_at)
+                ->where('social_accounts.created_at', '<', $socialAccount->created_at)
                 ->orWhere(fn (Builder $tied) => $tied
-                    ->where('created_at', $socialAccount->created_at)
-                    ->where('id', '<=', $socialAccount->id)))
+                    ->where('social_accounts.created_at', $socialAccount->created_at)
+                    ->where('social_accounts.id', '<=', $socialAccount->id)))
             ->count();
 
         $postHog->capture(
