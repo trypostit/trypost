@@ -44,12 +44,6 @@ class TrackPostPublished implements ShouldQueue
             return;
         }
 
-        $distinctId = (string) ($post->user_id ?? $account->owner_id);
-
-        if (blank($distinctId)) {
-            return;
-        }
-
         $groupPosts = filled($post->post_group_id)
             ? $post->groupPosts()->get(['id', 'platform'])
             : new Collection([$post]);
@@ -67,7 +61,7 @@ class TrackPostPublished implements ShouldQueue
         }
 
         $postHog->capture(
-            $distinctId,
+            (string) $post->user_id,
             PostEvent::Published->value,
             [
                 'post_group_id' => $post->post_group_id,

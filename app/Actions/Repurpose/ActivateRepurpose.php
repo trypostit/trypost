@@ -51,10 +51,10 @@ class ActivateRepurpose
         }
 
         rescue(function () use ($repurpose): void {
-            $repurpose->loadMissing(['sourceAccount', 'workspace.account']);
+            $repurpose->loadMissing(['sourceAccount', 'workspace']);
 
             CaptureAccountEvent::dispatch(
-                (string) ($repurpose->user_id ?? $repurpose->workspace->account->owner_id),
+                (string) $repurpose->user_id,
                 (string) $repurpose->workspace->account_id,
                 RepurposeEvent::Activated,
                 [

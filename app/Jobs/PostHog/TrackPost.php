@@ -46,14 +46,8 @@ class TrackPost implements ShouldQueue
             return;
         }
 
-        $distinctId = (string) ($post->user_id ?? $account->owner_id);
-
-        if ($distinctId === '') {
-            return;
-        }
-
         $postHog->capture(
-            $distinctId,
+            (string) $post->user_id,
             PostEvent::Created->value,
             [
                 'post_id' => (string) $post->id,

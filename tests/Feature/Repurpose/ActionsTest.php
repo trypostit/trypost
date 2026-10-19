@@ -480,24 +480,6 @@ test('activating a repurpose tracks source and destinations', function () {
         ]);
 });
 
-test('activating a repurpose without a creator tracks it as the account owner', function () {
-    [$workspace, $user, $account] = repurposeWorkspace();
-
-    $repurpose = Repurpose::factory()->create([
-        'workspace_id' => $workspace->id,
-        'user_id' => null,
-        'source_social_account_id' => $account->id,
-        'destinations' => [tiktokDestination($workspace)],
-    ]);
-
-    enableRepurposeTracking();
-
-    ActivateRepurpose::execute($repurpose);
-
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated
-        && $job->distinctId === (string) $workspace->account->owner_id);
-});
-
 test('a rejected activation is not tracked', function () {
     $repurpose = Repurpose::factory()->create();
 

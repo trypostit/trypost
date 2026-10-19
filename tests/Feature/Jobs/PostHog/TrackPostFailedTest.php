@@ -66,7 +66,7 @@ test('failed post without a category reports unknown', function () {
 
     $post = Post::factory()->x()->failed()->create([
         'workspace_id' => $this->workspace->id,
-        'user_id' => null,
+        'user_id' => $this->user->id,
     ]);
 
     (new TrackPostFailed((string) $post->id))->handle(app(PostHogService::class));

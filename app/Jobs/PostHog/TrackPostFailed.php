@@ -43,14 +43,8 @@ class TrackPostFailed implements ShouldQueue
             return;
         }
 
-        $distinctId = (string) ($post->user_id ?? $account->owner_id);
-
-        if (blank($distinctId)) {
-            return;
-        }
-
         $postHog->capture(
-            $distinctId,
+            (string) $post->user_id,
             PostEvent::Failed->value,
             [
                 'post_id' => (string) $post->id,

@@ -134,20 +134,6 @@ test('is_first is true for the account first group and false after', function ()
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === false);
 });
 
-test('handle falls back to the account owner when the post has no user', function () {
-    Queue::fake();
-
-    $post = Post::factory()->linkedin()->published()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => null,
-        'post_group_id' => (string) Str::uuid(),
-    ]);
-
-    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
-
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['distinctId'] === (string) $this->user->id);
-});
-
 test('handle does not push when the post is missing or PostHog is disabled', function () {
     Queue::fake();
 
