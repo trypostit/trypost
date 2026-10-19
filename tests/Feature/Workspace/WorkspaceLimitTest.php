@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\WorkspaceEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -184,66 +183,53 @@ test('storing a workspace checks the cap under a lock on the account row', funct
 
 test('creating a workspace at the limit tracks limit_hit', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit
-        && $job->distinctId === (string) $user->id
-        && $job->accountId === (string) $user->account_id
-        && $job->properties === [
-            'plan_slug' => Slug::Socials->value,
-            'workspaces_count' => 1,
-            'workspace_limit' => 1,
-        ]);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, fn (TrackWorkspaceLimitHit $job) => $job->userId === (string) $user->id);
 });
 
 test('opening the create form at the limit does not track limit_hit', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)->get(route('app.workspaces.create'))->assertOk();
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('the upgrade dialog at the limit tracks limit_hit', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
 
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit
-        && $job->distinctId === (string) $user->id
-        && $job->properties === [
-            'plan_slug' => Slug::Socials->value,
-            'workspaces_count' => 1,
-            'workspace_limit' => 1,
-        ]);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, fn (TrackWorkspaceLimitHit $job) => $job->userId === (string) $user->id);
 });
 
-test('limit_hit below the limit sends nothing', function () use ($onPlan) {
+test('limit_hit below the limit queues a job that sends nothing', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
     $user = $onPlan(Slug::Workspaces);
 
     $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class);
 });
 
 test('limit_hit is refused to a member who is not the owner', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
     $owner = $onPlan(Slug::Socials);
     $member = workspaceMember($owner->account->workspaces()->first(), 'admin');
 
     $this->actingAs($member)->postJson(route('app.workspaces.limit-hit.store'))->assertForbidden();
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });

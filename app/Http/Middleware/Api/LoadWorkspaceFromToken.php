@@ -73,6 +73,8 @@ class LoadWorkspaceFromToken
 
         $token->forceFill(['last_used_at' => now()])->saveQuietly();
 
+        $request->attributes->set('access_token', $token);
+
         return $next($request);
     }
 }

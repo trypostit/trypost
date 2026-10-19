@@ -144,3 +144,13 @@ test('sends null amounts when the payload has no unit amount', function () {
             && $job->payload['properties']['monthly_amount_to'] === null,
     );
 });
+
+test('the direction does not depend on the price currency', function () {
+    Queue::fake();
+    $payload = planChangePayload('price_socials_monthly', 1900, 'month', 'price_workspaces_monthly', 9900, 'month');
+    unset($payload['data']['object']['items']['data'][0]['price']['currency'], $payload['data']['previous_attributes']['items']['data'][0]['price']['currency']);
+
+    runPlanChanged($this->account, $payload);
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['event'] === PlanEvent::Upgraded->value);
+});

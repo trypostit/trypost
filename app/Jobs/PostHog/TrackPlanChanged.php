@@ -36,7 +36,7 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
 
     protected function event(): string
     {
-        return $this->monthlyAmount(self::TO_ITEM) > $this->monthlyAmount(self::FROM_ITEM)
+        return $this->monthlyMinorUnits(self::TO_ITEM) > $this->monthlyMinorUnits(self::FROM_ITEM)
             ? PlanEvent::Upgraded->value
             : PlanEvent::Downgraded->value;
     }
@@ -70,6 +70,15 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
     private function interval(string $itemPath): Interval
     {
         return Interval::forPrice($this->plan($itemPath), data_get($this->payload, "{$itemPath}.price.id"));
+    }
+
+    private function monthlyMinorUnits(string $itemPath): float
+    {
+        $unitAmount = data_get($this->payload, "{$itemPath}.price.unit_amount");
+        $quantity = (int) data_get($this->payload, "{$itemPath}.quantity", 1);
+        $amount = is_int($unitAmount) ? $unitAmount * $quantity : 0;
+
+        return $this->interval($itemPath) === Interval::Yearly ? $amount / 12 : (float) $amount;
     }
 
     private function monthlyAmount(string $itemPath): ?float

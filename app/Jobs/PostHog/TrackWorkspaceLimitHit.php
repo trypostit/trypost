@@ -1,0 +1,54 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Jobs\PostHog;
+
+use App\Enums\PostHog\WorkspaceEvent;
+use App\Models\Account;
+use App\Models\User;
+use App\Services\PostHogService;
+use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Foundation\Bus\Dispatchable;
+use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\SerializesModels;
+
+class TrackWorkspaceLimitHit implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
+
+    public function __construct(public string $userId)
+    {
+        $this->onQueue('posthog');
+    }
+
+    public function handle(PostHogService $postHog): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $user = User::query()->find($this->userId);
+        $account = Account::with('plan')->find($user?->account_id);
+
+        if (blank($account) || ! $account->hasActiveSubscription() || $account->canCreateWorkspace()) {
+            return;
+        }
+
+        $postHog->capture(
+            $this->userId,
+            WorkspaceEvent::LimitHit->value,
+            [
+                'plan_slug' => $account->plan?->slug?->value,
+                'workspaces_count' => $account->workspaces()->count(),
+                'workspace_limit' => $account->workspaceLimit(),
+            ],
+            $account,
+        );
+    }
+}

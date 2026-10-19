@@ -6,13 +6,14 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Actions\Workspace\TrackWorkspaceLimitHit;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -91,7 +92,7 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
-            TrackWorkspaceLimitHit::execute($user);
+            $this->trackLimitHit($user);
 
             return $redirect;
         }
@@ -207,5 +208,16 @@ class WorkspaceController extends Controller
         // Fallback workspace already set — back into the app, not the picker.
         return redirect()->route('app.calendar')
             ->with('flash.success', __('workspaces.flash.deleted'));
+    }
+
+    private function trackLimitHit(User $user): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        rescue(function () use ($user): void {
+            TrackWorkspaceLimitHit::dispatch((string) $user->id);
+        });
     }
 }

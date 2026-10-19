@@ -8,7 +8,6 @@ use App\Enums\AccessToken\McpClient;
 use App\Enums\PostHog\McpEvent;
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
 use App\Jobs\PostHog\CaptureAccountEvent;
-use App\Models\AccessToken;
 use App\Services\PostHogService;
 use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
@@ -53,7 +52,7 @@ class LoadMcpWorkspace
                 return;
             }
 
-            $client = AccessToken::query()->find($user->token()->oauth_access_token_id)?->client;
+            $client = $request->attributes->get('access_token')?->loadMissing('client')->client;
 
             CaptureAccountEvent::dispatch(
                 (string) $user->id,
