@@ -14,7 +14,7 @@ import { store as storeWorkspace } from '@/routes/app/workspaces';
 import type { SharedData } from '@/types';
 
 const page = usePage<SharedData>();
-const { atWorkspaceLimit } = useWorkspaceLimit(
+const { atWorkspaceLimit, requireUpgrade } = useWorkspaceLimit(
     () => page.props.auth.workspaces.length,
 );
 const upgradeDialogOpen = ref(false);
@@ -23,9 +23,13 @@ const form = useForm({
     name: '',
 });
 
+const openUpgradeDialog = (): void => {
+    upgradeDialogOpen.value = true;
+};
+
 const submit = (): void => {
     if (atWorkspaceLimit.value) {
-        upgradeDialogOpen.value = true;
+        requireUpgrade(openUpgradeDialog);
 
         return;
     }

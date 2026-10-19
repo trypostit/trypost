@@ -20,6 +20,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class WorkspaceController extends Controller
 {
@@ -69,8 +70,6 @@ class WorkspaceController extends Controller
         }
 
         if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
-            rescue(fn () => $this->trackLimitHit($user, $user->account));
-
             return redirect()->route('app.workspaces.create')
                 ->with('flash.error', __('workspaces.limit_reached'));
         }
@@ -78,22 +77,39 @@ class WorkspaceController extends Controller
         return null;
     }
 
-    private function trackLimitHit(User $user, Account $account): void
+    public function limitHit(Request $request): HttpResponse
+    {
+        $this->authorize('create', Workspace::class);
+
+        $this->trackLimitHit($request->user());
+
+        return response()->noContent(HttpResponse::HTTP_NO_CONTENT);
+    }
+
+    private function trackLimitHit(User $user): void
     {
         if (! PostHogService::isEnabled()) {
             return;
         }
 
-        CaptureAccountEvent::dispatch(
-            (string) $user->id,
-            (string) $account->id,
-            WorkspaceEvent::LimitHit->value,
-            [
-                'plan_slug' => $account->plan?->slug?->value,
-                'workspaces_count' => $account->workspaces()->count(),
-                'workspace_limit' => $account->workspaceLimit(),
-            ],
-        )->afterCommit();
+        rescue(function () use ($user): void {
+            $account = $user->account;
+
+            if (config('trypost.self_hosted') || ! $account?->hasActiveSubscription() || $account->canCreateWorkspace()) {
+                return;
+            }
+
+            CaptureAccountEvent::dispatch(
+                (string) $user->id,
+                (string) $account->id,
+                WorkspaceEvent::LimitHit->value,
+                [
+                    'plan_slug' => $account->plan?->slug?->value,
+                    'workspaces_count' => $account->workspaces()->count(),
+                    'workspace_limit' => $account->workspaceLimit(),
+                ],
+            );
+        });
     }
 
     public function store(StoreWorkspaceRequest $request): RedirectResponse
@@ -113,6 +129,8 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
+            $this->trackLimitHit($user);
+
             return $redirect;
         }
 

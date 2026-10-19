@@ -1,13 +1,17 @@
-import { router, usePage } from '@inertiajs/vue3';
+import { router, useHttp, usePage } from '@inertiajs/vue3';
 import { computed, toValue, type MaybeRefOrGetter } from 'vue';
 
-import { create as createWorkspaceRoute } from '@/routes/app/workspaces';
+import {
+    create as createWorkspaceRoute,
+    limitHit as limitHitRoute,
+} from '@/routes/app/workspaces';
 import type { SharedData } from '@/types';
 
 export const useWorkspaceLimit = (
     workspaceCount: MaybeRefOrGetter<number>,
 ) => {
     const page = usePage<SharedData>();
+    const limitHitHttp = useHttp<Record<string, never>, null>({});
 
     const workspaceLimit = computed(
         (): number | null => page.props.features?.workspaceLimit ?? null,
@@ -24,9 +28,15 @@ export const useWorkspaceLimit = (
         return limit !== null && resolvedCount.value >= limit;
     });
 
+    const requireUpgrade = (onUpgradeRequired: () => void): void => {
+        limitHitHttp.post(limitHitRoute.url()).catch(() => undefined);
+
+        onUpgradeRequired();
+    };
+
     const createOrUpgrade = (onUpgradeRequired: () => void): void => {
         if (atWorkspaceLimit.value) {
-            onUpgradeRequired();
+            requireUpgrade(onUpgradeRequired);
 
             return;
         }
@@ -38,5 +48,6 @@ export const useWorkspaceLimit = (
         workspaceLimit,
         atWorkspaceLimit,
         createOrUpgrade,
+        requireUpgrade,
     };
 };

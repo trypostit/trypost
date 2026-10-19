@@ -117,6 +117,7 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
+    Route::post('workspaces/limit-hit', [WorkspaceController::class, 'limitHit'])->name('app.workspaces.limit-hit');
 });
 
 Route::middleware(['auth'])->group(function () {

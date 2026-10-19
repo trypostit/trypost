@@ -211,3 +211,40 @@ test('opening the create form at the limit does not track limit_hit', function (
 
     Queue::assertNotPushed(CaptureAccountEvent::class);
 });
+
+test('the upgrade dialog at the limit tracks limit_hit', function () use ($onPlan) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit'))->assertNoContent();
+
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit->value
+        && $job->distinctId === (string) $user->id
+        && $job->properties === [
+            'plan_slug' => Slug::Socials->value,
+            'workspaces_count' => 1,
+            'workspace_limit' => 1,
+        ]);
+});
+
+test('limit_hit below the limit sends nothing', function () use ($onPlan) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $user = $onPlan(Slug::Workspaces);
+
+    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit'))->assertNoContent();
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('limit_hit is refused to a member who is not the owner', function () use ($onPlan) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $owner = $onPlan(Slug::Socials);
+    $member = workspaceMember($owner->account->workspaces()->first(), 'admin');
+
+    $this->actingAs($member)->postJson(route('app.workspaces.limit-hit'))->assertForbidden();
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
