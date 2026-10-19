@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Origin;
 use App\Enums\PostHog\PostEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackPost;
@@ -76,3 +77,20 @@ test('handle does not push when PostHog is disabled', function () {
 
     Queue::assertNotPushed(SendEvent::class);
 });
+
+test('handle tracks nothing for an imported network post or a post without an author', function (array $attributes) {
+    Queue::fake();
+
+    $post = Post::factory()->imported()->create([
+        'workspace_id' => $this->workspace->id,
+        ...$attributes,
+    ]);
+
+    (new TrackPost((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+})->with([
+    'imported without an author' => fn () => [],
+    'imported with an author' => fn () => ['user_id' => $this->user->id],
+    'TryPost post without an author' => fn () => ['origin' => Origin::TryPost, 'user_id' => null],
+]);

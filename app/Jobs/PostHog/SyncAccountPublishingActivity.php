@@ -69,6 +69,7 @@ class SyncAccountPublishingActivity implements ShouldBeUniqueUntilProcessing, Sh
 
         $latestPublication = Post::query()
             ->whereIn('workspace_id', Workspace::query()->select('id')->where('account_id', $account->id))
+            ->createdInTryPost()
             ->publicationPublished()
             ->whereNotNull('published_at')
             ->latest('published_at')

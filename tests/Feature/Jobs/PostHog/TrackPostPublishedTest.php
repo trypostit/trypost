@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Origin;
 use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
 use App\Enums\SocialAccount\Platform;
@@ -194,3 +195,20 @@ test('is_first ignores failed posts and posts published by other accounts', func
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === true);
 });
+
+test('a post without an author or imported from the network publishes no event', function (array $attributes) {
+    Queue::fake();
+
+    $post = Post::factory()->linkedin()->published()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        ...$attributes,
+    ]);
+
+    (new TrackPostPublished((string) $post->id))->handle(app(PostHogService::class));
+
+    Queue::assertNotPushed(SendEvent::class);
+})->with([
+    'without an author' => [['user_id' => null]],
+    'imported' => [['origin' => Origin::Network]],
+]);
