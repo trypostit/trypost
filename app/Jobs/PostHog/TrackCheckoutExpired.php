@@ -7,29 +7,18 @@ namespace App\Jobs\PostHog;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Models\Account;
 use App\Models\Plan;
-use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 
 class TrackCheckoutExpired extends AbstractTrackStripeSubscriptionEvent
 {
-    public function handle(PostHogService $postHog): void
+    protected function requiresPlan(): bool
     {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
+        return false;
+    }
 
-        $account = Account::find($this->accountId);
-
-        if (! $account?->owner_id || $account->subscribed(Account::SUBSCRIPTION_NAME)) {
-            return;
-        }
-
-        $postHog->capture(
-            (string) $account->owner_id,
-            $this->event(),
-            $this->properties($account),
-            $account,
-        );
+    protected function shouldCapture(Account $account): bool
+    {
+        return ! $account->subscribed(Account::SUBSCRIPTION_NAME);
     }
 
     protected function event(): string

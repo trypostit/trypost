@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Plan\Slug;
 use App\Jobs\PostHog\TrackCheckoutExpired;
 use App\Jobs\PostHog\TrackInvoicePaymentFailed;
+use App\Jobs\PostHog\TrackInvoiceUpcoming;
 use App\Listeners\StripeBillingSignalListener;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
@@ -122,5 +123,20 @@ test('failed invoice payment dispatches TrackInvoicePaymentFailed', function () 
         TrackInvoicePaymentFailed::class,
         fn (TrackInvoicePaymentFailed $job): bool => $job->accountId === (string) $this->account->id
             && data_get($job->payload, 'data.object.id') === 'in_test_1',
+    );
+});
+
+test('upcoming invoice dispatches TrackInvoiceUpcoming', function () {
+    Queue::fake();
+
+    (new StripeBillingSignalListener)->handle(new WebhookReceived([
+        'id' => 'evt_upcoming_1',
+        'type' => 'invoice.upcoming',
+        'data' => ['object' => ['customer' => 'cus_signal', 'amount_due' => 1900]],
+    ]));
+
+    Queue::assertPushed(
+        TrackInvoiceUpcoming::class,
+        fn (TrackInvoiceUpcoming $job): bool => $job->accountId === (string) $this->account->id,
     );
 });

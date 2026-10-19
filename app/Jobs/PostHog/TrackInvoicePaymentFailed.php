@@ -6,29 +6,13 @@ namespace App\Jobs\PostHog;
 
 use App\Enums\PostHog\InvoiceEvent;
 use App\Models\Account;
-use App\Services\PostHogService;
 use Carbon\CarbonImmutable;
 
 class TrackInvoicePaymentFailed extends AbstractTrackStripeSubscriptionEvent
 {
-    public function handle(PostHogService $postHog): void
+    protected function requiresPlan(): bool
     {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        $account = Account::find($this->accountId);
-
-        if (! $account?->owner_id) {
-            return;
-        }
-
-        $postHog->capture(
-            (string) $account->owner_id,
-            $this->event(),
-            $this->properties($account),
-            $account,
-        );
+        return false;
     }
 
     protected function event(): string
