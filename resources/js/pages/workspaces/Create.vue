@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, useForm, usePage } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm } from '@inertiajs/vue3';
+import { onMounted, ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
@@ -8,15 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Spinner } from '@/components/ui/spinner';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store as storeWorkspace } from '@/routes/app/workspaces';
-import type { SharedData } from '@/types';
 
-const page = usePage<SharedData>();
-const { atWorkspaceLimit, requireUpgrade } = useWorkspaceLimit(
-    () => page.props.auth.workspaces.length,
-);
+const props = defineProps<{
+    upgradeRequired: boolean;
+}>();
+
 const upgradeDialogOpen = ref(false);
 
 const form = useForm({
@@ -27,15 +25,23 @@ const openUpgradeDialog = (): void => {
     upgradeDialogOpen.value = true;
 };
 
+const openUpgradeDialogWhenRequired = (): void => {
+    if (props.upgradeRequired) {
+        openUpgradeDialog();
+    }
+};
+
 const submit = (): void => {
-    if (atWorkspaceLimit.value) {
-        requireUpgrade(openUpgradeDialog);
+    if (props.upgradeRequired) {
+        openUpgradeDialog();
 
         return;
     }
 
     form.post(storeWorkspace.url());
 };
+
+onMounted(openUpgradeDialogWhenRequired);
 </script>
 
 <template>

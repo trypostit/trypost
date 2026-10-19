@@ -3,7 +3,8 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Jobs\PostHog\TrackWorkspaceLimitHit;
+use App\Enums\PostHog\WorkspaceEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -181,55 +182,117 @@ test('storing a workspace checks the cap under a lock on the account row', funct
         ->and($lock)->toBeLessThan($insert);
 });
 
-test('creating a workspace at the limit tracks limit_hit', function () use ($onPlan) {
+$enablePostHog = function (): void {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([TrackWorkspaceLimitHit::class]);
+    Queue::fake([CaptureAccountEvent::class]);
+};
+
+test('opening the create form at the limit asks for an upgrade and tracks limit_hit', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('workspaces/Create', false)
+            ->where('upgradeRequired', true)
+        );
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit
+        && $job->distinctId === (string) $user->id
+        && $job->accountId === (string) $user->account_id
+        && $job->properties === [
+            'plan_slug' => Slug::Socials->value,
+            'workspaces_count' => 1,
+            'workspace_limit' => 1,
+        ]);
+    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+});
+
+test('opening the create form below the limit neither asks for an upgrade nor tracks', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Workspaces);
+
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('upgradeRequired', false));
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('self-hosted never asks for an upgrade nor tracks limit_hit', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
+    $user = $onPlan(Slug::Socials);
+    config(['trypost.self_hosted' => true]);
+
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('upgradeRequired', false));
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('the first workspace never asks for an upgrade nor tracks limit_hit', function () use ($enablePostHog) {
+    $enablePostHog();
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    subscribeAccount($user->account);
+
+    $this->actingAs($user->fresh())
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('upgradeRequired', false));
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('a store refused at the limit is tracked once, by the create page it lands on', function () use ($onPlan, $enablePostHog) {
+    $enablePostHog();
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertRedirect(route('app.workspaces.create'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
-    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, fn (TrackWorkspaceLimitHit $job) => $job->userId === (string) $user->id);
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+
+    $this->actingAs($user)
+        ->followingRedirects()
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('workspaces/Create', false)
+            ->where('upgradeRequired', true)
+        );
+
+    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+    expect($user->account->workspaces()->count())->toBe(1);
 });
 
-test('opening the create form at the limit does not track limit_hit', function () use ($onPlan) {
+test('a store refused for a missing subscription does not track limit_hit', function () use ($enablePostHog) {
+    $enablePostHog();
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+
+    $this->actingAs($user->fresh())
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertRedirect(route('app.billing.index'));
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
+});
+
+test('a failed limit_hit dispatch still renders the create form', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([TrackWorkspaceLimitHit::class]);
+    failDispatchOf(CaptureAccountEvent::class);
     $user = $onPlan(Slug::Socials);
 
-    $this->actingAs($user)->get(route('app.workspaces.create'))->assertOk();
-
-    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
-});
-
-test('the upgrade dialog at the limit tracks limit_hit', function () use ($onPlan) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([TrackWorkspaceLimitHit::class]);
-    $user = $onPlan(Slug::Socials);
-
-    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
-
-    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, fn (TrackWorkspaceLimitHit $job) => $job->userId === (string) $user->id);
-});
-
-test('limit_hit below the limit queues a job that sends nothing', function () use ($onPlan) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([TrackWorkspaceLimitHit::class]);
-    $user = $onPlan(Slug::Workspaces);
-
-    $this->actingAs($user)->postJson(route('app.workspaces.limit-hit.store'))->assertNoContent();
-
-    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class);
-});
-
-test('limit_hit is refused to a member who is not the owner', function () use ($onPlan) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([TrackWorkspaceLimitHit::class]);
-    $owner = $onPlan(Slug::Socials);
-    $member = workspaceMember($owner->account->workspaces()->first(), 'admin');
-
-    $this->actingAs($member)->postJson(route('app.workspaces.limit-hit.store'))->assertForbidden();
-
-    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
+    $this->actingAs($user)
+        ->get(route('app.workspaces.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('upgradeRequired', true));
 });

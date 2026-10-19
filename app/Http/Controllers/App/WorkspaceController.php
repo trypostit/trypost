@@ -6,9 +6,10 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
+use App\Enums\PostHog\WorkspaceEvent;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
-use App\Jobs\PostHog\TrackWorkspaceLimitHit;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
@@ -44,21 +45,29 @@ class WorkspaceController extends Controller
 
         $user = $request->user();
 
-        if ($redirect = $this->denyAdditionalWorkspace($user, redirectWhenAtLimit: false)) {
+        if ($redirect = $this->denyAdditionalWorkspace($user)) {
             return $redirect;
         }
 
-        return Inertia::render('workspaces/Create');
+        $upgradeRequired = $this->reachedWorkspaceLimit($user);
+
+        if ($upgradeRequired) {
+            $this->trackLimitHit($user);
+        }
+
+        return Inertia::render('workspaces/Create', [
+            'upgradeRequired' => $upgradeRequired,
+        ]);
     }
 
-    private function denyAdditionalWorkspace(User $user, bool $redirectWhenAtLimit = true): ?RedirectResponse
+    private function denyAdditionalWorkspace(User $user): ?RedirectResponse
     {
         // Invitee signup shells must stay empty until accept — otherwise they become billable.
         if (Invite::query()->forEmail($user->email)->whereNull('accepted_at')->exists()) {
             abort(403);
         }
 
-        if (config('trypost.self_hosted') || $user->ownedWorkspacesCount() === 0) {
+        if (! $this->workspaceLimitApplies($user)) {
             return null;
         }
 
@@ -67,12 +76,19 @@ class WorkspaceController extends Controller
                 ->with('flash.error', __('workspaces.subscription_required'));
         }
 
-        if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
-            return redirect()->route('app.workspaces.create')
-                ->with('flash.error', __('workspaces.limit_reached'));
-        }
-
         return null;
+    }
+
+    private function workspaceLimitApplies(User $user): bool
+    {
+        return ! config('trypost.self_hosted') && $user->ownedWorkspacesCount() > 0;
+    }
+
+    private function reachedWorkspaceLimit(User $user): bool
+    {
+        return $this->workspaceLimitApplies($user)
+            && $user->account?->hasActiveSubscription()
+            && ! $user->account->canCreateWorkspace();
     }
 
     public function store(StoreWorkspaceRequest $request): RedirectResponse
@@ -86,14 +102,17 @@ class WorkspaceController extends Controller
                 return $redirect;
             }
 
+            if ($this->reachedWorkspaceLimit($user)) {
+                return redirect()->route('app.workspaces.create')
+                    ->with('flash.error', __('workspaces.limit_reached'));
+            }
+
             CreateWorkspace::execute($user, $request->validated());
 
             return null;
         });
 
         if ($redirect) {
-            $this->trackLimitHit($user);
-
             return $redirect;
         }
 
@@ -217,7 +236,18 @@ class WorkspaceController extends Controller
         }
 
         rescue(function () use ($user): void {
-            TrackWorkspaceLimitHit::dispatch((string) $user->id);
+            $account = $user->account->loadMissing('plan');
+
+            CaptureAccountEvent::dispatch(
+                (string) $user->id,
+                (string) $account->id,
+                WorkspaceEvent::LimitHit,
+                [
+                    'plan_slug' => $account->plan?->slug?->value,
+                    'workspaces_count' => $account->workspaces()->count(),
+                    'workspace_limit' => $account->workspaceLimit(),
+                ],
+            );
         });
     }
 }

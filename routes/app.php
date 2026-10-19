@@ -57,7 +57,6 @@ use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
 use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\App\WorkspaceLabelController;
-use App\Http\Controllers\App\WorkspaceLimitHitController;
 use App\Http\Controllers\App\WorkspaceSignatureController;
 use App\Http\Controllers\Auth\BlueskyController;
 use App\Http\Controllers\Auth\DiscordController;
@@ -118,9 +117,6 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
-    Route::post('workspaces/limit-hit', [WorkspaceLimitHitController::class, 'store'])
-        ->middleware('throttle:30,1')
-        ->name('app.workspaces.limit-hit.store');
 });
 
 Route::middleware(['auth'])->group(function () {

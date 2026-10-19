@@ -39,7 +39,6 @@ import {
 import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { openSupportChat } from '@/lib/supportChat';
 import { cn } from '@/lib/utils';
 import posthog from '@/posthog';
@@ -49,7 +48,10 @@ import { members } from '@/routes/app';
 import { index as billingIndex } from '@/routes/app/billing';
 import { edit as profileEdit } from '@/routes/app/profile';
 import { channels as channelsSettings } from '@/routes/app/workspace';
-import { switchMethod } from '@/routes/app/workspaces';
+import {
+    create as createWorkspaceRoute,
+    switchMethod,
+} from '@/routes/app/workspaces';
 import type { Language, User } from '@/types';
 import type { SidebarChannel } from '@/types/channel';
 
@@ -66,14 +68,9 @@ const props = defineProps<{
     canCreateWorkspace: boolean;
 }>();
 
-const emit = defineEmits<{
-    upgradeRequired: [];
-}>();
-
 const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
-const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(
     () => canManageBilling.value && !selfHosted.value,
@@ -137,7 +134,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    createOrUpgrade(() => emit('upgradeRequired'));
+    router.visit(createWorkspaceRoute.url());
 };
 
 const handleLogout = (): void => {

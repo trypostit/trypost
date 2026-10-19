@@ -324,9 +324,13 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   an account may do. A **missing** `plan_id` is not unlimited: it may create
   only the signup workspace (`count === 0`).
 - `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
-  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
-  submit). POST is redirected back to create with `workspaces.limit_reached`,
-  not 403'd.
+  `/workspaces/create` still renders at the cap. The server decides the cap, never
+  the browser (owner decision October 2026): every "new workspace" entry point
+  only visits `app.workspaces.create` (never prefetched), which at the cap sends
+  `upgradeRequired` (the page opens the upgrade dialog on mount and on submit) and
+  tracks `workspace.limit_hit`. POST is redirected back to create with
+  `workspaces.limit_reached`, not 403'd, and that redirect is what counts the
+  refusal, so `store` does not track it again.
 - First-month coupon qualification is card required + first-time subscriber +
   that plan's monthly price. Workspace count is not part of it.
   (`incomplete` / `incomplete_expired` still qualify; coupon +

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { IconAlertTriangle } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import SidebarCollapseToggle from '@/components/SidebarCollapseToggle.vue';
 import { Avatar } from '@/components/ui/avatar';
@@ -12,7 +12,6 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
-import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { portal } from '@/routes/app/billing';
 import type { User } from '@/types';
@@ -36,12 +35,6 @@ const subscriptionPastDue = computed<boolean>(() =>
 );
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
-
-const workspaceUpgradeDialogOpen = ref(false);
-
-const openWorkspaceUpgradeDialog = (): void => {
-    workspaceUpgradeDialogOpen.value = true;
-};
 </script>
 
 <template>
@@ -116,12 +109,10 @@ const openWorkspaceUpgradeDialog = (): void => {
                         :current-workspace="currentWorkspace"
                         :workspaces="workspaces"
                         :can-create-workspace="canCreateWorkspace"
-                        @upgrade-required="openWorkspaceUpgradeDialog"
                     />
                 </DropdownMenuContent>
             </DropdownMenu>
             <SidebarCollapseToggle />
         </div>
-        <WorkspaceUpgradeDialog v-model:open="workspaceUpgradeDialogOpen" />
     </div>
 </template>
