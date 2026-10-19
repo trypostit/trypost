@@ -25,14 +25,14 @@ beforeEach(function () {
     $this->account->update(['owner_id' => $this->user->id]);
 });
 
-function planChangePayload(string $fromId, int $fromAmount, string $fromInterval, string $toId, int $toAmount, string $toInterval): array
+function planChangePayload(string $fromId, int $fromAmount, string $fromInterval, string $toId, int $toAmount, string $toInterval, int $fromQuantity = 1): array
 {
     return [
         'id' => 'evt_plan',
         'type' => 'customer.subscription.updated',
         'data' => [
-            'object' => ['items' => ['data' => [['price' => ['id' => $toId, 'unit_amount' => $toAmount, 'recurring' => ['interval' => $toInterval]]]]]],
-            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => $fromId, 'unit_amount' => $fromAmount, 'recurring' => ['interval' => $fromInterval]]]]]],
+            'object' => ['items' => ['data' => [['quantity' => 1, 'price' => ['id' => $toId, 'unit_amount' => $toAmount, 'recurring' => ['interval' => $toInterval]]]]]],
+            'previous_attributes' => ['items' => ['data' => [['quantity' => $fromQuantity, 'price' => ['id' => $fromId, 'unit_amount' => $fromAmount, 'recurring' => ['interval' => $fromInterval]]]]]],
         ],
     ];
 }
@@ -60,8 +60,8 @@ test('socials to workspaces is an upgrade even with the local plan already updat
             && $job->payload['distinctId'] === (string) $this->user->id
             && $properties['plan_from'] === 'socials'
             && $properties['plan_to'] === 'workspaces'
-            && $properties['interval_from'] === 'month'
-            && $properties['interval_to'] === 'month'
+            && $properties['interval_from'] === 'monthly'
+            && $properties['interval_to'] === 'monthly'
             && $properties['monthly_amount_from'] === 19.0
             && $properties['monthly_amount_to'] === 99.0;
     });
@@ -88,7 +88,7 @@ test('legacy workspace to socials yearly is an upgrade', function () {
     Queue::assertPushed(
         SendEvent::class,
         fn (SendEvent $job): bool => $job->payload['event'] === PlanEvent::Upgraded->value
-            && $job->payload['properties']['interval_to'] === 'year'
+            && $job->payload['properties']['interval_to'] === 'yearly'
             && round($job->payload['properties']['monthly_amount_to'], 2) === 15.83,
     );
 });
@@ -107,4 +107,17 @@ test('sends nothing when a price is unknown', function () {
     runPlanChanged($this->account, planChangePayload('price_unknown', 1900, 'month', 'price_workspaces_monthly', 9900, 'month'));
 
     Queue::assertNotPushed(SendEvent::class);
+});
+
+test('a legacy plan billed for three workspaces moving to socials is a downgrade', function () {
+    Queue::fake();
+
+    runPlanChanged($this->account, planChangePayload('price_legacy_monthly', 1200, 'month', 'price_socials_monthly', 1900, 'month', fromQuantity: 3));
+
+    Queue::assertPushed(
+        SendEvent::class,
+        fn (SendEvent $job): bool => $job->payload['event'] === PlanEvent::Downgraded->value
+            && $job->payload['properties']['monthly_amount_from'] === 36.0
+            && $job->payload['properties']['monthly_amount_to'] === 19.0,
+    );
 });

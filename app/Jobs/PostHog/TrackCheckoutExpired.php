@@ -27,7 +27,7 @@ class TrackCheckoutExpired extends AbstractTrackStripeSubscriptionEvent
     }
 
     /**
-     * @return array{plan: string|null, interval: string|null, is_first_month_offer: bool, checkout_session_id: string|null}
+     * @return array{plan_name: string|null, interval: string|null, is_first_month_offer: bool, checkout_session_id: string|null}
      */
     protected function properties(Account $account): array
     {
@@ -35,7 +35,7 @@ class TrackCheckoutExpired extends AbstractTrackStripeSubscriptionEvent
         $planSlug = data_get($metadata, ConfigureSubscriptionCheckout::PLAN_METADATA_KEY);
 
         return [
-            'plan' => filled($planSlug) ? Plan::where('slug', $planSlug)->value('name') : null,
+            'plan_name' => filled($planSlug) ? Plan::where('slug', $planSlug)->value('name') : null,
             'interval' => data_get($metadata, ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY),
             'is_first_month_offer' => data_get($metadata, ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY) === '1',
             'checkout_session_id' => data_get($this->payload, 'data.object.id'),

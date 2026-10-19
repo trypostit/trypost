@@ -928,3 +928,21 @@ test('subscription updated without previous items does not dispatch TrackPlanCha
 
     Bus::assertNotDispatched(TrackPlanChanged::class);
 });
+
+test('a renewal whose previous items keep the same price does not dispatch TrackPlanChanged', function () {
+    Bus::fake([TrackPlanChanged::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly'], 'current_period_start' => 1792000000]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly'], 'current_period_start' => 1789000000]]]],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackPlanChanged::class);
+});

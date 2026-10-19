@@ -234,7 +234,9 @@ class StripeEventListener
             return;
         }
 
-        if (data_get($payload, 'data.previous_attributes.items') !== null) {
+        $previousPriceId = data_get($payload, 'data.previous_attributes.items.data.0.price.id');
+
+        if (filled($previousPriceId) && $previousPriceId !== data_get($payload, 'data.object.items.data.0.price.id')) {
             TrackPlanChanged::dispatch((string) $account->id, $payload);
         }
     }

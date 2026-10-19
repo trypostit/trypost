@@ -37,7 +37,11 @@ class StripeBillingSignalListener
 
             $stripeCustomerId = data_get($event->payload, 'data.object.customer');
 
-            if (blank($stripeCustomerId)) {
+            if (blank($stripeCustomerId) || ! PostHogService::shouldTrack()) {
+                return;
+            }
+
+            if ($type === 'checkout.session.expired' && data_get($event->payload, 'data.object.mode') !== 'subscription') {
                 return;
             }
 
@@ -47,57 +51,19 @@ class StripeBillingSignalListener
                 return;
             }
 
-            match ($type) {
-                'checkout.session.expired' => $this->handleCheckoutExpired($account, $event->payload),
-                'invoice.payment_failed' => $this->handleInvoicePaymentFailed($account, $event->payload),
-                'invoice.upcoming' => $this->handleInvoiceUpcoming($account, $event->payload),
+            $job = match ($type) {
+                'checkout.session.expired' => TrackCheckoutExpired::class,
+                'invoice.payment_failed' => TrackInvoicePaymentFailed::class,
+                'invoice.upcoming' => TrackInvoiceUpcoming::class,
             };
+
+            $job::dispatch((string) $account->id, $event->payload);
         } catch (Throwable $e) {
             Log::error("Stripe billing signal error: {$e->getMessage()}", [
                 'exception' => $e,
                 'payload' => $event->payload,
             ]);
         }
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function handleCheckoutExpired(Account $account, array $payload): void
-    {
-        if (data_get($payload, 'data.object.mode') !== 'subscription') {
-            return;
-        }
-
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        TrackCheckoutExpired::dispatch((string) $account->id, $payload);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function handleInvoicePaymentFailed(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        TrackInvoicePaymentFailed::dispatch((string) $account->id, $payload);
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function handleInvoiceUpcoming(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        TrackInvoiceUpcoming::dispatch((string) $account->id, $payload);
     }
 
     private function alreadyProcessed(?string $eventId): bool

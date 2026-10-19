@@ -8,12 +8,12 @@ use App\Enums\PostHog\BillingEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
 use App\Support\StripeSubscriptionConversion;
+use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Illuminate\Support\Carbon;
 
 class TrackBilling implements ShouldQueue
 {
@@ -63,7 +63,7 @@ class TrackBilling implements ShouldQueue
         $postHog->groupIdentify('account', (string) $account->id, [
             'subscription_status' => $account->subscriptionStatus(),
             'has_active_subscription' => $account->hasActiveSubscription(),
-            ...$this->cancellationProperties(),
+            ...$this->currentCancellationProperties($account),
             ...$this->firstMonthOfferProperties(),
         ]);
 
@@ -79,7 +79,24 @@ class TrackBilling implements ShouldQueue
 
         return [
             'cancel_at_period_end' => (bool) data_get($this->payload, 'data.object.cancel_at_period_end', false),
-            'cancel_at' => filled($cancelAt) ? Carbon::createFromTimestamp((int) $cancelAt)->toIso8601String() : null,
+            'cancel_at' => filled($cancelAt) ? CarbonImmutable::createFromTimestampUTC((int) $cancelAt)->toIso8601String() : null,
+        ];
+    }
+
+    /**
+     * Webhooks arrive out of order, so the group snapshot reads the
+     * subscription Cashier stored instead of this event's payload.
+     *
+     * @return array{cancel_at_period_end: bool, cancel_at: string|null}
+     */
+    private function currentCancellationProperties(Account $account): array
+    {
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+        $onGracePeriod = (bool) $subscription?->onGracePeriod();
+
+        return [
+            'cancel_at_period_end' => $onGracePeriod,
+            'cancel_at' => $onGracePeriod ? $subscription->ends_at->toIso8601String() : null,
         ];
     }
 

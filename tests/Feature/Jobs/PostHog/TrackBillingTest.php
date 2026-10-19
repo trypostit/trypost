@@ -151,10 +151,11 @@ test('updated event carries the scheduled cancellation', function () {
     });
 });
 
-test('account group exposes cancel_at_period_end and cancel_at', function () {
+test('account group exposes cancel_at_period_end and cancel_at from the stored subscription', function () {
     $cancelAt = now()->addWeek()->startOfSecond();
-    $this->payload['data']['object']['cancel_at_period_end'] = true;
-    $this->payload['data']['object']['cancel_at'] = $cancelAt->timestamp;
+    $this->account->subscriptions()->update(['ends_at' => $cancelAt]);
+    $this->payload['data']['object']['cancel_at_period_end'] = false;
+    $this->payload['data']['object']['cancel_at'] = null;
     Queue::fake();
 
     (new TrackBilling((string) $this->account->id, BillingEvent::Updated, $this->payload))
@@ -182,6 +183,25 @@ test('cancelled event carries reason and feedback', function () {
         return $job->method === 'capture'
             && $job->payload['properties']['cancel_reason'] === 'cancellation_requested'
             && $job->payload['properties']['cancel_feedback'] === 'too_expensive';
+    });
+});
+
+test('a stale scheduled cancellation in the payload does not reach the group', function () {
+    $this->payload['data']['object']['cancel_at_period_end'] = true;
+    $this->payload['data']['object']['cancel_at'] = now()->addWeek()->timestamp;
+    Queue::fake();
+
+    (new TrackBilling((string) $this->account->id, BillingEvent::Updated, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
+        return $job->method === 'groupIdentify'
+            && $job->payload['properties']['cancel_at_period_end'] === false
+            && $job->payload['properties']['cancel_at'] === null;
+    });
+    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
+        return $job->method === 'capture'
+            && $job->payload['properties']['cancel_at_period_end'] === true;
     });
 });
 

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutExpired;
 use App\Jobs\PostHog\TrackInvoicePaymentFailed;
 use App\Jobs\PostHog\TrackInvoiceUpcoming;
@@ -139,4 +140,32 @@ test('upcoming invoice dispatches TrackInvoiceUpcoming', function () {
         TrackInvoiceUpcoming::class,
         fn (TrackInvoiceUpcoming $job): bool => $job->accountId === (string) $this->account->id,
     );
+});
+
+test('a dispatched WebhookReceived reaches the billing signal listener once', function () {
+    Queue::fake();
+    unset($this->expiredPayload['id']);
+
+    event(new WebhookReceived($this->expiredPayload));
+
+    Queue::assertPushedTimes(TrackCheckoutExpired::class, 1);
+});
+
+test('a dispatched WebhookHandled reaches the subscription listener once', function () {
+    Queue::fake();
+
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly_signal']);
+
+    event(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'id' => 'sub_signal',
+            'customer' => 'cus_signal',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly_signal']]]],
+        ]],
+    ]));
+
+    Queue::assertPushedTimes(TrackBilling::class, 1);
 });

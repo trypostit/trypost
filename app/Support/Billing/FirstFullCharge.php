@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace App\Support\Billing;
 
+use App\Enums\Billing\Interval;
 use Carbon\CarbonInterface;
 
-class FirstFullCharge
+final class FirstFullCharge
 {
     private const GRACE_DAYS = 2;
 
-    public static function isFirst(CarbonInterface $subscriptionStartedAt, CarbonInterface $chargeAt, string $interval): bool
+    public static function isFirst(CarbonInterface $subscriptionStartedAt, CarbonInterface $chargeAt, Interval $interval): bool
     {
-        $previousCharge = $interval === 'year'
+        $previousCharge = $interval === Interval::Yearly
             ? $chargeAt->copy()->subYearsNoOverflow(1)
             : $chargeAt->copy()->subMonthsNoOverflow(1);
 

@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
+use App\Enums\Billing\Interval;
 use App\Enums\PostHog\InvoiceEvent;
 use App\Models\Account;
+use App\Models\Plan;
 use App\Support\Billing\FirstFullCharge;
 use Carbon\CarbonImmutable;
 
@@ -26,24 +28,48 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
      */
     protected function properties(Account $account): array
     {
-        $chargeTimestamp = data_get($this->payload, 'data.object.next_payment_attempt');
-        $periodEndTimestamp = data_get($this->payload, 'data.object.lines.data.0.period.end');
-        $interval = data_get($this->payload, 'data.object.lines.data.0.price.recurring.interval');
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+        $line = $this->subscriptionLine();
         $currency = data_get($this->payload, 'data.object.currency');
-        $startedAt = $account->subscription(Account::SUBSCRIPTION_NAME)?->created_at;
 
-        $chargeAt = filled($chargeTimestamp) ? CarbonImmutable::createFromTimestampUTC((int) $chargeTimestamp) : null;
-        $periodEnd = filled($periodEndTimestamp) ? CarbonImmutable::createFromTimestampUTC((int) $periodEndTimestamp) : null;
+        $chargeAt = $this->timestamp(data_get($this->payload, 'data.object.next_payment_attempt') ?? data_get($line, 'period.start'));
+        $periodEnd = $this->timestamp(data_get($line, 'period.end'));
+        $interval = $this->interval(data_get($line, 'pricing.price_details.price') ?? $subscription?->stripe_price);
 
         return [
             'amount' => (float) data_get($this->payload, 'data.object.amount_due', 0) / 100,
             'currency' => filled($currency) ? strtoupper($currency) : null,
             'charge_at' => $chargeAt?->toIso8601String(),
             'period_end' => $periodEnd?->toIso8601String(),
-            'interval' => $interval,
-            'is_first_full_charge' => filled($startedAt) && $chargeAt && filled($interval)
-                ? FirstFullCharge::isFirst($startedAt, $chargeAt, $interval)
+            'interval' => $interval?->value,
+            'is_first_full_charge' => filled($subscription?->created_at) && $chargeAt && $interval
+                ? FirstFullCharge::isFirst($subscription->created_at, $chargeAt, $interval)
                 : null,
         ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function subscriptionLine(): ?array
+    {
+        return collect(data_get($this->payload, 'data.object.lines.data', []))
+            ->first(fn (mixed $line): bool => data_get($line, 'parent.subscription_item_details.proration') === false);
+    }
+
+    private function interval(?string $priceId): ?Interval
+    {
+        if (blank($priceId)) {
+            return null;
+        }
+
+        $plan = Plan::forStripePrices([$priceId])->first();
+
+        return $plan ? Interval::forPrice($plan, $priceId) : null;
+    }
+
+    private function timestamp(mixed $timestamp): ?CarbonImmutable
+    {
+        return filled($timestamp) ? CarbonImmutable::createFromTimestampUTC((int) $timestamp) : null;
     }
 }

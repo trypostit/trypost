@@ -137,20 +137,6 @@ test('capture auto-attaches account groups when account is supplied', function (
     });
 });
 
-test('capture keeps a plan the event already carries', function () {
-    Queue::fake();
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-
-    $account = Account::factory()->create(['plan_id' => null]);
-
-    (new PostHogService)->capture('user-123', 'checkout.expired', ['plan' => 'Socials'], $account);
-
-    Queue::assertPushed(
-        SendEvent::class,
-        fn (SendEvent $job): bool => $job->payload['properties']['plan'] === 'Socials',
-    );
-});
-
 test('capture without account does not attach group properties', function () {
     Queue::fake();
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
