@@ -39,13 +39,13 @@ class TrackPostFailed implements ShouldQueue
 
         $account = $post?->workspace?->account;
 
-        if ($account === null) {
+        if (blank($account)) {
             return;
         }
 
         $distinctId = (string) ($post->user_id ?? $account->owner_id);
 
-        if ($distinctId === '') {
+        if (blank($distinctId)) {
             return;
         }
 

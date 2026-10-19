@@ -249,8 +249,17 @@ test('finalize does not dispatch tracking when PostHog is disabled', function ()
         'platform_post_id' => 'fb-1',
     ]);
 
-    app(FinalizePostPublication::class)->handle($post);
+    $failed = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Failed,
+        'error_message' => 'Failed to publish',
+    ]);
 
-    expect($post->fresh()->status)->toBe(PostStatus::Published);
+    app(FinalizePostPublication::class)->handle($post);
+    app(FinalizePostPublication::class)->handle($failed);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published)
+        ->and($failed->fresh()->status)->toBe(PostStatus::Failed);
     Queue::assertNotPushed(TrackPostGroupPublished::class);
+    Queue::assertNotPushed(TrackPostFailed::class);
 });

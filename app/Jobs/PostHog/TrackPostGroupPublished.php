@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
 
 class TrackPostGroupPublished implements ShouldQueue
 {
@@ -40,23 +41,13 @@ class TrackPostGroupPublished implements ShouldQueue
 
         $account = $post?->workspace?->account;
 
-        if ($account === null) {
-            return;
-        }
-
-        $publishedPosts = $this->groupQuery($post)
-            ->where('status', Status::Published)
-            ->orderBy('published_at')
-            ->orderBy('id')
-            ->get();
-
-        if ((string) $publishedPosts->first()?->id !== (string) $post->id) {
+        if (blank($account)) {
             return;
         }
 
         $distinctId = (string) ($post->user_id ?? $account->owner_id);
 
-        if ($distinctId === '') {
+        if (blank($distinctId)) {
             return;
         }
 
@@ -67,18 +58,28 @@ class TrackPostGroupPublished implements ShouldQueue
             ->whereNotIn('id', $this->groupQuery($post)->select('id'))
             ->exists();
 
+        $publishedNetworks = $this->groupQuery($post)
+            ->where('status', Status::Published)
+            ->get()
+            ->map(fn (Post $published): ?string => $published->platform?->network())
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $groupKey = filled($post->post_group_id) ? $post->post_group_id : $post->id;
+
+        if (! Cache::add("posthog:post_group_published:{$groupKey}", true, now()->addDays(90))) {
+            return;
+        }
+
         $postHog->capture(
             $distinctId,
             PostEvent::Published->value,
             [
                 'post_group_id' => filled($post->post_group_id) ? (string) $post->post_group_id : null,
                 'created_via' => $post->created_via?->value,
-                'platforms' => $publishedPosts
-                    ->map(fn (Post $published): ?string => $published->platform?->network())
-                    ->filter()
-                    ->unique()
-                    ->values()
-                    ->all(),
+                'platforms' => $publishedNetworks,
                 'channels_count' => $this->groupQuery($post)->count(),
                 'is_first' => ! $publishedBefore,
             ],

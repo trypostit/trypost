@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Post\CreatedVia;
+use App\Enums\Post\Status;
 use App\Enums\PostHog\PostEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackPostGroupPublished;
@@ -58,29 +59,26 @@ test('group of three publishes one event', function () {
         && $job->payload['properties']['$groups']['account'] === (string) $this->account->id);
 });
 
-test('only the first published post of the group emits the event', function () {
+test('posts of a group settling in the same second emit one event', function () {
     Queue::fake();
 
     $groupId = (string) Str::uuid();
-    $first = Post::factory()->linkedin()->published()->create([
+    $attributes = [
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
         'post_group_id' => $groupId,
-        'published_at' => now()->subMinutes(2),
-    ]);
-    $second = Post::factory()->x()->published()->create([
-        'workspace_id' => $this->workspace->id,
-        'user_id' => $this->user->id,
-        'post_group_id' => $groupId,
-        'published_at' => now()->subMinute(),
-    ]);
+    ];
+    $first = Post::factory()->linkedin()->publishing()->create($attributes);
+    $second = Post::factory()->x()->publishing()->create($attributes);
+    $settledAt = now()->startOfSecond();
 
+    $second->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
     (new TrackPostGroupPublished((string) $second->id))->handle(app(PostHogService::class));
 
-    Queue::assertNotPushed(SendEvent::class);
-
+    $first->forceFill(['status' => Status::Published, 'published_at' => $settledAt])->save();
     (new TrackPostGroupPublished((string) $first->id))->handle(app(PostHogService::class));
 
+    expect(strcmp((string) $first->id, (string) $second->id))->toBeLessThan(0);
     Queue::assertPushed(SendEvent::class, 1);
 });
 
