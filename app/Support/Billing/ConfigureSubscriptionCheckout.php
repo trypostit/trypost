@@ -8,7 +8,6 @@ use App\Models\Account;
 use App\Models\Plan;
 use Laravel\Cashier\SubscriptionBuilder;
 use RuntimeException;
-use Stripe\Subscription as StripeSubscription;
 
 final class ConfigureSubscriptionCheckout
 {
@@ -88,11 +87,6 @@ final class ConfigureSubscriptionCheckout
     /** Incomplete / incomplete_expired never became billable, so retries still count as first-time. */
     private static function isFirstTimeSubscriber(Account $account): bool
     {
-        return ! $account->subscriptions()
-            ->whereNotIn('stripe_status', [
-                StripeSubscription::STATUS_INCOMPLETE,
-                StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
-            ])
-            ->exists();
+        return ! $account->hasHadBillableSubscription();
     }
 }

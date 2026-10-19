@@ -4,15 +4,19 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\Account\LifecycleStage;
 use App\Models\Traits\BillsOwnerAsStripeCustomer;
 use App\Models\Traits\HasUsage;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Stripe\Subscription as StripeSubscription;
 
 class Account extends Model
 {
@@ -38,6 +42,9 @@ class Account extends Model
         'onboarding_completed_at' => 'datetime',
         'onboarding_dismissed_at' => 'datetime',
         'onboarding_skipped_steps' => 'array',
+        'lifecycle_stage' => LifecycleStage::class,
+        'lifecycle_stage_changed_at' => 'datetime',
+        'activated_at' => 'datetime',
     ];
 
     public function owner(): BelongsTo
@@ -63,6 +70,44 @@ class Account extends Model
     public function invites(): HasMany
     {
         return $this->hasMany(Invite::class);
+    }
+
+    public function posts(): HasManyThrough
+    {
+        return $this->hasManyThrough(Post::class, Workspace::class);
+    }
+
+    public function socialAccounts(): HasManyThrough
+    {
+        return $this->hasManyThrough(SocialAccount::class, Workspace::class);
+    }
+
+    /**
+     * The aggregates the lifecycle stage is resolved from: whether a channel is
+     * connected, and the first and last posts TryPost published.
+     */
+    public function scopeWithLifecycleActivity(Builder $query): Builder
+    {
+        $publishedByTryPost = fn (Builder $posts): Builder => $posts->createdInTryPost()->publicationPublished();
+
+        return $query
+            ->withExists(['socialAccounts as has_connected_channel' => fn (Builder $channels): Builder => $channels->connected()])
+            ->withMin(['posts as first_published_at' => $publishedByTryPost], 'published_at')
+            ->withMax(['posts as last_published_at' => $publishedByTryPost], 'published_at')
+            ->withCasts([
+                'has_connected_channel' => 'boolean',
+                'first_published_at' => 'datetime',
+                'last_published_at' => 'datetime',
+            ]);
+    }
+
+    /** Incomplete / incomplete_expired never became billable. */
+    public function hasHadBillableSubscription(): bool
+    {
+        return $this->subscriptions->contains(fn (Subscription $subscription): bool => ! in_array($subscription->stripe_status, [
+            StripeSubscription::STATUS_INCOMPLETE,
+            StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
+        ], true));
     }
 
     public function hasActiveSubscription(): bool
