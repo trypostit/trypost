@@ -37,7 +37,9 @@ const subscriptionPastDue = computed<boolean>(() =>
 );
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
-const { createOrUpgrade } = useWorkspaceLimit();
+const { createOrUpgrade } = useWorkspaceLimit(
+    () => workspaces.value.length,
+);
 
 const workspaceUpgradeDialogOpen = ref(false);
 

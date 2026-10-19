@@ -1,18 +1,35 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, usePage } from '@inertiajs/vue3';
+import { ref } from 'vue';
 
 import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
 import { store as storeWorkspace } from '@/routes/app/workspaces';
+import type { SharedData } from '@/types';
+
+const page = usePage<SharedData>();
+const { atWorkspaceLimit } = useWorkspaceLimit(
+    () => page.props.auth.workspaces.length,
+);
+const upgradeDialogOpen = ref(false);
 
 const form = useForm({
     name: '',
 });
 
 const submit = (): void => {
+    if (atWorkspaceLimit.value) {
+        upgradeDialogOpen.value = true;
+
+        return;
+    }
+
     form.post(storeWorkspace.url());
 };
 </script>
@@ -43,10 +60,13 @@ const submit = (): void => {
                 type="submit"
                 class="w-full"
                 data-testid="workspaces-create-submit"
-                :loading="form.processing"
+                :disabled="form.processing"
             >
+                <Spinner v-if="form.processing" />
                 {{ $t('workspaces.create.submit') }}
             </Button>
         </form>
+
+        <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
     </AuthLayout>
 </template>

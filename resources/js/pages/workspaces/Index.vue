@@ -25,10 +25,10 @@ interface Props {
     currentWorkspaceId: string | null;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
-const { checking, createOrUpgrade } = useWorkspaceLimit();
+const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 
 const upgradeDialogOpen = ref(false);
 
@@ -117,7 +117,6 @@ const handleCreateWorkspace = (): void => {
             size="lg"
             class="w-full bg-card text-base"
             data-testid="workspaces-create"
-            :loading="checking"
             @click="handleCreateWorkspace"
         >
             <IconPlus aria-hidden="true" />

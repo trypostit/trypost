@@ -280,6 +280,25 @@ test('the creation check refuses an account without a plan at one workspace, as 
         ->assertExactJson(['allowed' => false]);
 });
 
+test('the creation check counts the account workspaces, not the ones the owner created, as the props did on main', function () use ($enablePostHog, $limitHitPushed) {
+    $enablePostHog();
+    $owner = User::factory()->create();
+    $owner->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id')]);
+    subscribeAccount($owner->account);
+    $creator = User::factory()->create(['account_id' => $owner->account_id]);
+    Workspace::factory()->create(['account_id' => $owner->account_id, 'user_id' => $creator->id]);
+
+    expect($owner->fresh()->ownedWorkspacesCount())->toBe(0);
+
+    $this->actingAs($owner->fresh())
+        ->postJson(route('app.workspaces.creation-check.store'))
+        ->assertOk()
+        ->assertExactJson(['allowed' => false]);
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($owner));
+    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+});
+
 test('the creation check is for the account owner only', function () use ($onPlan) {
     $owner = $onPlan(Slug::Socials);
     $member = User::factory()->create(['account_id' => $owner->account_id]);

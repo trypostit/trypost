@@ -15,7 +15,10 @@ class AuthPlanResource
      */
     public static function make(Account $account, Plan $plan): array
     {
-        $interval = Interval::forPrice($plan, $account->subscription(Account::SUBSCRIPTION_NAME)?->stripe_price);
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+        $interval = ($subscription && $subscription->stripe_price === $plan->stripe_yearly_price_id)
+            ? Interval::Yearly
+            : Interval::Monthly;
 
         return [
             'id' => $plan->id,

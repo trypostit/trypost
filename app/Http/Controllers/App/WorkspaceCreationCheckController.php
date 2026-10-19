@@ -19,7 +19,7 @@ class WorkspaceCreationCheckController extends Controller
         $this->authorize('create', Workspace::class);
 
         $user = $request->user();
-        $allowed = ! $user->atWorkspaceLimit();
+        $allowed = config('trypost.self_hosted') || $user->account?->canCreateWorkspace() !== false;
 
         if (! $allowed) {
             $this->trackLimitHit($user);

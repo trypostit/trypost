@@ -76,3 +76,22 @@ test('below the cap, new workspace in the sidebar opens the create page and crea
     Queue::assertNotPushed(CaptureAccountEvent::class);
     expect(Workspace::where('name', 'Second')->where('account_id', $user->account_id)->exists())->toBeTrue();
 });
+
+test('at the cap without a current workspace, submitting the create page opens the upgrade dialog in place', function () use ($ownerOn) {
+    $user = $ownerOn(Slug::Socials);
+    $user->update(['current_workspace_id' => null]);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.workspaces.create'));
+    waitFor($page, '@workspaces-create-name');
+
+    $page->fill('@workspaces-create-name', 'Second')
+        ->click('@workspaces-create-submit');
+
+    waitFor($page, '@workspace-upgrade-dialog');
+    $page->assertVisible('@workspace-upgrade-dialog')
+        ->assertPathIs(parse_url(route('app.workspaces.create'), PHP_URL_PATH))
+        ->assertNoJavaScriptErrors();
+
+    expect($user->account->workspaces()->count())->toBe(1);
+});
