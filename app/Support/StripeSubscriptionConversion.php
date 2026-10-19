@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 namespace App\Support;
 
+use App\Enums\Billing\Interval;
 use App\Models\Account;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
+use App\Support\Billing\StripeAmount;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 final class StripeSubscriptionConversion
 {
@@ -22,13 +25,9 @@ final class StripeSubscriptionConversion
      */
     public static function baseProperties(Account $account, array $payload): array
     {
-        $priceId = data_get($payload, 'data.object.items.data.0.price.id');
-        $yearlyPriceId = $account->plan->stripe_yearly_price_id;
-        $isYearly = $yearlyPriceId !== null && $priceId === $yearlyPriceId;
-
         return [
             'plan_name' => $account->plan->name,
-            'interval' => $isYearly ? 'yearly' : 'monthly',
+            'interval' => Interval::forPrice($account->plan, data_get($payload, 'data.object.items.data.0.price.id'))->value,
         ];
     }
 
@@ -43,12 +42,12 @@ final class StripeSubscriptionConversion
     {
         $properties = self::baseProperties($account, $payload);
 
-        $unitAmount = data_get($payload, 'data.object.items.data.0.price.unit_amount');
         $currency = data_get($payload, 'data.object.items.data.0.price.currency');
+        $conversionValue = StripeAmount::toDecimal(data_get($payload, 'data.object.items.data.0.price.unit_amount'), $currency);
 
-        if (is_int($unitAmount) && is_string($currency)) {
-            $properties['conversion_value'] = (float) ($unitAmount / 100);
-            $properties['conversion_currency'] = strtoupper($currency);
+        if (filled($conversionValue)) {
+            $properties['conversion_value'] = $conversionValue;
+            $properties['conversion_currency'] = Str::upper($currency);
             $properties['conversion_transaction_id'] = data_get($payload, 'data.object.id');
         }
 

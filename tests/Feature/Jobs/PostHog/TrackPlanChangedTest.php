@@ -25,18 +25,24 @@ beforeEach(function () {
     $this->account->update(['owner_id' => $this->user->id]);
 });
 
+/**
+ * @return array{id: string, type: string, data: array{object: array<string, mixed>, previous_attributes: array<string, mixed>}}
+ */
 function planChangePayload(string $fromId, int $fromAmount, string $fromInterval, string $toId, int $toAmount, string $toInterval, int $fromQuantity = 1): array
 {
     return [
         'id' => 'evt_plan',
         'type' => 'customer.subscription.updated',
         'data' => [
-            'object' => ['items' => ['data' => [['quantity' => 1, 'price' => ['id' => $toId, 'unit_amount' => $toAmount, 'recurring' => ['interval' => $toInterval]]]]]],
-            'previous_attributes' => ['items' => ['data' => [['quantity' => $fromQuantity, 'price' => ['id' => $fromId, 'unit_amount' => $fromAmount, 'recurring' => ['interval' => $fromInterval]]]]]],
+            'object' => ['items' => ['data' => [['quantity' => 1, 'price' => ['id' => $toId, 'unit_amount' => $toAmount, 'currency' => 'usd', 'recurring' => ['interval' => $toInterval]]]]]],
+            'previous_attributes' => ['items' => ['data' => [['quantity' => $fromQuantity, 'price' => ['id' => $fromId, 'unit_amount' => $fromAmount, 'currency' => 'usd', 'recurring' => ['interval' => $fromInterval]]]]]],
         ],
     ];
 }
 
+/**
+ * @param  array<string, mixed>  $payload
+ */
 function runPlanChanged(Account $account, array $payload): void
 {
     (new TrackPlanChanged((string) $account->id, $payload))->handle(app(PostHogService::class));
@@ -119,5 +125,22 @@ test('a legacy plan billed for three workspaces moving to socials is a downgrade
         fn (SendEvent $job): bool => $job->payload['event'] === PlanEvent::Downgraded->value
             && $job->payload['properties']['monthly_amount_from'] === 36.0
             && $job->payload['properties']['monthly_amount_to'] === 19.0,
+    );
+});
+
+test('sends null amounts when the payload has no unit amount', function () {
+    Queue::fake();
+
+    $payload = planChangePayload('price_socials_monthly', 1900, 'month', 'price_workspaces_monthly', 9900, 'month');
+    data_forget($payload, 'data.object.items.data.0.price.unit_amount');
+    data_forget($payload, 'data.previous_attributes.items.data.0.price.unit_amount');
+
+    runPlanChanged($this->account, $payload);
+
+    Queue::assertPushed(
+        SendEvent::class,
+        fn (SendEvent $job): bool => $job->payload['event'] === PlanEvent::Downgraded->value
+            && $job->payload['properties']['monthly_amount_from'] === null
+            && $job->payload['properties']['monthly_amount_to'] === null,
     );
 });

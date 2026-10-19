@@ -176,7 +176,7 @@ test('sends nulls when lines, currency and the next attempt are missing', functi
     Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
         $properties = $job->payload['properties'];
 
-        return $properties['amount'] === 0.0
+        return $properties['amount'] === null
             && $properties['currency'] === null
             && $properties['charge_at'] === null
             && $properties['period_end'] === null

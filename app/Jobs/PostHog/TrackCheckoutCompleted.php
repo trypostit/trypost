@@ -8,7 +8,7 @@ use App\Enums\PostHog\CheckoutEvent;
 use App\Models\Account;
 use App\Support\StripeSubscriptionConversion;
 
-class TrackCheckoutCompleted extends AbstractTrackStripeSubscriptionEvent
+class TrackCheckoutCompleted extends AbstractTrackStripeEvent
 {
     protected function event(): string
     {

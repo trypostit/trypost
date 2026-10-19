@@ -9,7 +9,7 @@ use App\Models\Account;
 use App\Support\StripeSubscriptionConversion;
 use Illuminate\Support\Carbon;
 
-class TrackTrialStarted extends AbstractTrackStripeSubscriptionEvent
+class TrackTrialStarted extends AbstractTrackStripeEvent
 {
     protected function event(): string
     {

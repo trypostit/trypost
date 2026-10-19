@@ -16,6 +16,7 @@ use App\Services\PostHogService;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
 
 class StripeEventListener
@@ -34,7 +35,8 @@ class StripeEventListener
                 return;
             }
 
-            $account = Account::where('stripe_id', $stripeCustomerId)->first();
+            /** @var Account|null $account */
+            $account = Cashier::findBillable($stripeCustomerId);
 
             if (! $account) {
                 return;
@@ -222,10 +224,6 @@ class StripeEventListener
     }
 
     /**
-     * The direction comes from Stripe's `previous_attributes.items`, never
-     * from the local plan, which `changePlan` already updated before the
-     * webhook arrives.
-     *
      * @param  array<string, mixed>  $payload
      */
     private function trackPlanChange(Account $account, array $payload): void

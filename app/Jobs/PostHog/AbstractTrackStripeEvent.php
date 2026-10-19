@@ -13,10 +13,10 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Shared PostHog capture pipeline for jobs backed by a Stripe subscription
- * webhook payload. Subclasses provide the event name and its properties.
+ * Shared PostHog capture pipeline for jobs backed by a Stripe webhook
+ * payload. Subclasses provide the event name and its properties.
  */
-abstract class AbstractTrackStripeSubscriptionEvent implements ShouldQueue
+abstract class AbstractTrackStripeEvent implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 

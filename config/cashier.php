@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Listeners\StripeBillingSignalListener;
 use Laravel\Cashier\Console\WebhookCommand;
 use Laravel\Cashier\Invoices\DompdfInvoiceRenderer;
 
@@ -51,9 +52,7 @@ return [
         'tolerance' => env('STRIPE_WEBHOOK_TOLERANCE', 300),
         'events' => [
             ...WebhookCommand::DEFAULT_EVENTS,
-            'checkout.session.expired',
-            'invoice.payment_failed',
-            'invoice.upcoming',
+            ...array_keys(StripeBillingSignalListener::JOBS),
         ],
     ],
 

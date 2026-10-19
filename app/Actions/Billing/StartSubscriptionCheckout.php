@@ -36,7 +36,7 @@ class StartSubscriptionCheckout
             'cancel_url' => $cancelUrl,
             'metadata' => array_filter([
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
-                ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => $plan?->stripe_yearly_price_id === $priceId ? Interval::Yearly->value : Interval::Monthly->value,
+                ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => (filled($plan) ? Interval::forPrice($plan, $priceId) : Interval::Monthly)->value,
                 ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY => filled($subscription->couponId) ? '1' : '0',
             ], filled(...)),
         ]);

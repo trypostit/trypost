@@ -76,6 +76,28 @@ test('marks the final attempt when Stripe schedules no retry', function () {
     });
 });
 
+test('sends a zero-decimal currency amount as is', function () {
+    $this->payload['data']['object']['amount_due'] = 2500;
+    $this->payload['data']['object']['currency'] = 'jpy';
+    Queue::fake();
+
+    (new TrackInvoicePaymentFailed((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['amount'] === 2500.0
+        && $job->payload['properties']['currency'] === 'JPY');
+});
+
+test('sends a null amount when the invoice has none', function () {
+    unset($this->payload['data']['object']['amount_due']);
+    Queue::fake();
+
+    (new TrackInvoicePaymentFailed((string) $this->account->id, $this->payload))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['amount'] === null);
+});
+
 test('returns silently when the account has no owner', function () {
     $this->account->update(['owner_id' => null]);
     Queue::fake();

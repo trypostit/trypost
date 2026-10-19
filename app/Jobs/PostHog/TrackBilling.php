@@ -71,22 +71,20 @@ class TrackBilling implements ShouldQueue
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{cancel_at_period_end: bool, cancel_at: string|null}
      */
     private function cancellationProperties(): array
     {
-        $cancelAt = data_get($this->payload, 'data.object.cancel_at');
-
         return [
             'cancel_at_period_end' => (bool) data_get($this->payload, 'data.object.cancel_at_period_end', false),
-            'cancel_at' => filled($cancelAt) ? CarbonImmutable::createFromTimestampUTC((int) $cancelAt)->toIso8601String() : null,
+            'cancel_at' => transform(
+                data_get($this->payload, 'data.object.cancel_at'),
+                fn (mixed $at): string => CarbonImmutable::createFromTimestampUTC((int) $at)->toIso8601String(),
+            ),
         ];
     }
 
     /**
-     * Webhooks arrive out of order, so the group snapshot reads the
-     * subscription Cashier stored instead of this event's payload.
-     *
      * @return array{cancel_at_period_end: bool, cancel_at: string|null}
      */
     private function currentCancellationProperties(Account $account): array
@@ -101,7 +99,7 @@ class TrackBilling implements ShouldQueue
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{}|array{cancel_reason: string|null, cancel_feedback: string|null}
      */
     private function cancelReasonProperties(): array
     {

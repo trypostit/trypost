@@ -9,9 +9,11 @@ use App\Enums\PostHog\InvoiceEvent;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\FirstFullCharge;
+use App\Support\Billing\StripeAmount;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Str;
 
-class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
+class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
 {
     protected function requiresPlan(): bool
     {
@@ -24,7 +26,7 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
     }
 
     /**
-     * @return array{amount: float, currency: string|null, charge_at: string|null, period_end: string|null, interval: string|null, is_first_full_charge: bool|null}
+     * @return array{amount: float|null, currency: string|null, charge_at: string|null, period_end: string|null, interval: string|null, is_first_full_charge: bool|null}
      */
     protected function properties(Account $account): array
     {
@@ -32,15 +34,18 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
         $line = $this->subscriptionLine();
         $currency = data_get($this->payload, 'data.object.currency');
 
-        $chargeAt = $this->timestamp(data_get($this->payload, 'data.object.next_payment_attempt') ?? data_get($line, 'period.start'));
-        $periodEnd = $this->timestamp(data_get($line, 'period.end'));
+        $chargeAt = transform(
+            data_get($this->payload, 'data.object.next_payment_attempt') ?? data_get($line, 'period.start'),
+            fn (mixed $at): CarbonImmutable => CarbonImmutable::createFromTimestampUTC((int) $at),
+        );
+        $periodEnd = transform(data_get($line, 'period.end'), fn (mixed $at): string => CarbonImmutable::createFromTimestampUTC((int) $at)->toIso8601String());
         $interval = $this->interval(data_get($line, 'pricing.price_details.price') ?? $subscription?->stripe_price);
 
         return [
-            'amount' => (float) data_get($this->payload, 'data.object.amount_due', 0) / 100,
-            'currency' => filled($currency) ? strtoupper($currency) : null,
+            'amount' => StripeAmount::toDecimal(data_get($this->payload, 'data.object.amount_due'), $currency),
+            'currency' => transform($currency, Str::upper(...)),
             'charge_at' => $chargeAt?->toIso8601String(),
-            'period_end' => $periodEnd?->toIso8601String(),
+            'period_end' => $periodEnd,
             'interval' => $interval?->value,
             'is_first_full_charge' => filled($subscription?->created_at) && $chargeAt && $interval
                 ? FirstFullCharge::isFirst($subscription->created_at, $chargeAt, $interval)
@@ -54,7 +59,7 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
     private function subscriptionLine(): ?array
     {
         return collect(data_get($this->payload, 'data.object.lines.data', []))
-            ->first(fn (mixed $line): bool => data_get($line, 'parent.subscription_item_details.proration') === false);
+            ->firstWhere('parent.subscription_item_details.proration', '===', false);
     }
 
     private function interval(?string $priceId): ?Interval
@@ -66,10 +71,5 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeSubscriptionEvent
         $plan = Plan::forStripePrices([$priceId])->first();
 
         return $plan ? Interval::forPrice($plan, $priceId) : null;
-    }
-
-    private function timestamp(mixed $timestamp): ?CarbonImmutable
-    {
-        return filled($timestamp) ? CarbonImmutable::createFromTimestampUTC((int) $timestamp) : null;
     }
 }

@@ -58,7 +58,7 @@ test('same event id is handled once', function () {
     $listener->handle(new WebhookReceived($this->expiredPayload));
     $listener->handle(new WebhookReceived($this->expiredPayload));
 
-    Queue::assertPushed(TrackCheckoutExpired::class, 1);
+    Queue::assertPushedOnce(TrackCheckoutExpired::class);
 });
 
 test('payment mode sessions are ignored', function () {
@@ -148,7 +148,7 @@ test('a dispatched WebhookReceived reaches the billing signal listener once', fu
 
     event(new WebhookReceived($this->expiredPayload));
 
-    Queue::assertPushedTimes(TrackCheckoutExpired::class, 1);
+    Queue::assertPushedOnce(TrackCheckoutExpired::class);
 });
 
 test('a dispatched WebhookHandled reaches the subscription listener once', function () {
@@ -167,5 +167,5 @@ test('a dispatched WebhookHandled reaches the subscription listener once', funct
         ]],
     ]));
 
-    Queue::assertPushedTimes(TrackBilling::class, 1);
+    Queue::assertPushedOnce(TrackBilling::class);
 });

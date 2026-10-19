@@ -8,7 +8,7 @@ use App\Enums\PostHog\TrialEvent;
 use App\Models\Account;
 use App\Support\StripeSubscriptionConversion;
 
-class TrackTrialConverted extends AbstractTrackStripeSubscriptionEvent
+class TrackTrialConverted extends AbstractTrackStripeEvent
 {
     protected function event(): string
     {

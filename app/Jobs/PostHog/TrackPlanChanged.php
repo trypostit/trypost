@@ -8,16 +8,18 @@ use App\Enums\Billing\Interval;
 use App\Enums\PostHog\PlanEvent;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Support\Billing\StripeAmount;
 
-class TrackPlanChanged extends AbstractTrackStripeSubscriptionEvent
+class TrackPlanChanged extends AbstractTrackStripeEvent
 {
     private const FROM_ITEM = 'data.previous_attributes.items.data.0';
 
     private const TO_ITEM = 'data.object.items.data.0';
 
-    private ?Plan $fromPlan = null;
-
-    private ?Plan $toPlan = null;
+    /**
+     * @var array<string, Plan|null>
+     */
+    private array $plans = [];
 
     protected function requiresPlan(): bool
     {
@@ -26,51 +28,64 @@ class TrackPlanChanged extends AbstractTrackStripeSubscriptionEvent
 
     protected function shouldCapture(Account $account): bool
     {
-        $this->fromPlan = $this->planFor(self::FROM_ITEM);
-        $this->toPlan = $this->planFor(self::TO_ITEM);
+        $fromPlan = $this->plan(self::FROM_ITEM);
+        $toPlan = $this->plan(self::TO_ITEM);
 
-        return $this->fromPlan !== null && $this->toPlan !== null && $this->fromPlan->isNot($this->toPlan);
+        return filled($fromPlan) && filled($toPlan) && $fromPlan->isNot($toPlan);
     }
 
     protected function event(): string
     {
-        return $this->monthlyAmount(self::TO_ITEM, $this->toPlan) > $this->monthlyAmount(self::FROM_ITEM, $this->fromPlan)
+        return $this->monthlyAmount(self::TO_ITEM) > $this->monthlyAmount(self::FROM_ITEM)
             ? PlanEvent::Upgraded->value
             : PlanEvent::Downgraded->value;
     }
 
     /**
-     * @return array{plan_from: string, plan_to: string, interval_from: string, interval_to: string, monthly_amount_from: float, monthly_amount_to: float}
+     * @return array{plan_from: string, plan_to: string, interval_from: string, interval_to: string, monthly_amount_from: float|null, monthly_amount_to: float|null}
      */
     protected function properties(Account $account): array
     {
         return [
-            'plan_from' => $this->fromPlan->slug->value,
-            'plan_to' => $this->toPlan->slug->value,
-            'interval_from' => $this->interval(self::FROM_ITEM, $this->fromPlan)->value,
-            'interval_to' => $this->interval(self::TO_ITEM, $this->toPlan)->value,
-            'monthly_amount_from' => $this->monthlyAmount(self::FROM_ITEM, $this->fromPlan) / 100,
-            'monthly_amount_to' => $this->monthlyAmount(self::TO_ITEM, $this->toPlan) / 100,
+            'plan_from' => $this->plan(self::FROM_ITEM)->slug->value,
+            'plan_to' => $this->plan(self::TO_ITEM)->slug->value,
+            'interval_from' => $this->interval(self::FROM_ITEM)->value,
+            'interval_to' => $this->interval(self::TO_ITEM)->value,
+            'monthly_amount_from' => $this->monthlyAmount(self::FROM_ITEM),
+            'monthly_amount_to' => $this->monthlyAmount(self::TO_ITEM),
         ];
     }
 
-    private function planFor(string $itemPath): ?Plan
+    private function plan(string $itemPath): ?Plan
     {
-        $priceId = data_get($this->payload, "{$itemPath}.price.id");
+        if (! array_key_exists($itemPath, $this->plans)) {
+            $priceId = data_get($this->payload, "{$itemPath}.price.id");
 
-        return filled($priceId) ? Plan::forStripePrices([$priceId])->first() : null;
+            $this->plans[$itemPath] = filled($priceId) ? Plan::forStripePrices([$priceId])->first() : null;
+        }
+
+        return $this->plans[$itemPath];
     }
 
-    private function interval(string $itemPath, Plan $plan): Interval
+    private function interval(string $itemPath): Interval
     {
-        return Interval::forPrice($plan, data_get($this->payload, "{$itemPath}.price.id"));
+        return Interval::forPrice($this->plan($itemPath), data_get($this->payload, "{$itemPath}.price.id"));
     }
 
-    private function monthlyAmount(string $itemPath, Plan $plan): float
+    private function monthlyAmount(string $itemPath): ?float
     {
-        $amount = (float) data_get($this->payload, "{$itemPath}.price.unit_amount", 0)
-            * (int) data_get($this->payload, "{$itemPath}.quantity", 1);
+        $unitAmount = data_get($this->payload, "{$itemPath}.price.unit_amount");
+        $quantity = (int) data_get($this->payload, "{$itemPath}.quantity", 1);
 
-        return $this->interval($itemPath, $plan) === Interval::Yearly ? $amount / 12 : $amount;
+        $amount = StripeAmount::toDecimal(
+            is_int($unitAmount) ? $unitAmount * $quantity : null,
+            data_get($this->payload, "{$itemPath}.price.currency"),
+        );
+
+        if (blank($amount)) {
+            return null;
+        }
+
+        return $this->interval($itemPath) === Interval::Yearly ? $amount / 12 : $amount;
     }
 }

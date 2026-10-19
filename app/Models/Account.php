@@ -16,7 +16,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
-use Stripe\Subscription as StripeSubscription;
 
 class Account extends Model
 {
@@ -101,22 +100,17 @@ class Account extends Model
             ]);
     }
 
-    /** Incomplete / incomplete_expired never became billable. */
     public function hasHadBillableSubscription(): bool
     {
-        return $this->subscriptions->contains(fn (Subscription $subscription): bool => ! in_array($subscription->stripe_status, [
-            StripeSubscription::STATUS_INCOMPLETE,
-            StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
-        ], true));
+        return $this->subscriptions->contains(fn (Subscription $subscription): bool => $subscription->becameBillable());
     }
 
     /** Billable, and not a trial that ended before its first charge. */
     public function hasPaidSubscription(): bool
     {
-        return $this->subscriptions->contains(fn (Subscription $subscription): bool => ! in_array($subscription->stripe_status, [
-            StripeSubscription::STATUS_INCOMPLETE,
-            StripeSubscription::STATUS_INCOMPLETE_EXPIRED,
-        ], true) && ! $subscription->endedBeforeFirstCharge());
+        return $this->subscriptions->contains(
+            fn (Subscription $subscription): bool => $subscription->becameBillable() && ! $subscription->endedBeforeFirstCharge(),
+        );
     }
 
     public function hasActiveSubscription(): bool

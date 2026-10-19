@@ -9,7 +9,7 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 
-class TrackCheckoutExpired extends AbstractTrackStripeSubscriptionEvent
+class TrackCheckoutExpired extends AbstractTrackStripeEvent
 {
     protected function requiresPlan(): bool
     {
