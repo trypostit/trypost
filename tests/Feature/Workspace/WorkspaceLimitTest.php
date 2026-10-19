@@ -3,11 +3,14 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\WorkspaceEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -177,4 +180,34 @@ test('storing a workspace checks the cap under a lock on the account row', funct
     expect($lock)->toBeInt()
         ->and($insert)->toBeInt()
         ->and($lock)->toBeLessThan($insert);
+});
+
+test('creating a workspace at the limit tracks limit_hit', function () use ($onPlan) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)
+        ->post(route('app.workspaces.store'), ['name' => 'Second'])
+        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit->value
+        && $job->distinctId === (string) $user->id
+        && $job->accountId === (string) $user->account_id
+        && $job->properties === [
+            'plan_slug' => Slug::Socials->value,
+            'workspaces_count' => 1,
+            'workspace_limit' => 1,
+        ]);
+});
+
+test('opening the create form at the limit does not track limit_hit', function () use ($onPlan) {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    $user = $onPlan(Slug::Socials);
+
+    $this->actingAs($user)->get(route('app.workspaces.create'))->assertOk();
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
 });

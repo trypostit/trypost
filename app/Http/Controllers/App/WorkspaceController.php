@@ -6,12 +6,15 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
+use App\Enums\PostHog\WorkspaceEvent;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -66,11 +69,31 @@ class WorkspaceController extends Controller
         }
 
         if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
+            rescue(fn () => $this->trackLimitHit($user, $user->account));
+
             return redirect()->route('app.workspaces.create')
                 ->with('flash.error', __('workspaces.limit_reached'));
         }
 
         return null;
+    }
+
+    private function trackLimitHit(User $user, Account $account): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        CaptureAccountEvent::dispatch(
+            (string) $user->id,
+            (string) $account->id,
+            WorkspaceEvent::LimitHit->value,
+            [
+                'plan_slug' => $account->plan?->slug?->value,
+                'workspaces_count' => $account->workspaces()->count(),
+                'workspace_limit' => $account->workspaceLimit(),
+            ],
+        )->afterCommit();
     }
 
     public function store(StoreWorkspaceRequest $request): RedirectResponse

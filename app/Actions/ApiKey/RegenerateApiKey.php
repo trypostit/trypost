@@ -22,7 +22,7 @@ class RegenerateApiKey
         return DB::transaction(function () use ($user, $workspace, $token): array {
             $token->forceFill(['revoked' => true])->saveQuietly();
 
-            return CreateApiKey::execute($user, $workspace, [
+            return CreateApiKey::issue($user, $workspace, [
                 'name' => $token->name,
                 'expires_at' => $token->expires_at?->isFuture()
                     ? $token->expires_at->toDateString()

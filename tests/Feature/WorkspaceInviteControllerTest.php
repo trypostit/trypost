@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\PostHog\WorkspaceEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Mail\WorkspaceInvite as WorkspaceInviteMail;
 use App\Models\AccessToken;
 use App\Models\Account;
@@ -10,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
@@ -413,4 +416,24 @@ test('update member of a user outside the workspace is not found and revokes not
         ->assertNotFound();
 
     expect($token->fresh()->revoked)->toBeFalse();
+});
+
+test('inviting a member tracks admin and approval flags', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+
+    $this->actingAs($this->user)->post(route('app.invites.store'), [
+        'email' => 'approval@example.com',
+        'is_admin' => '0',
+        'requires_approval' => '1',
+    ])->assertSessionHasNoErrors();
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::MemberInvited->value
+        && $job->distinctId === (string) $this->account->owner_id
+        && $job->accountId === (string) $this->account->id
+        && $job->properties === [
+            'is_admin' => false,
+            'requires_approval' => true,
+        ]);
 });

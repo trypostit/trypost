@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
+use App\Enums\PostHog\RepurposeEvent;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Services\PostHogService;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Database\Eloquent\Collection;
@@ -33,8 +36,30 @@ class ActivateRepurpose
                     'next_poll_at' => null,
                     'last_error' => null,
                 ]);
+
+                rescue(fn () => self::trackActivated($locked));
             },
         );
+    }
+
+    private static function trackActivated(Repurpose $repurpose): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        $repurpose->loadMissing(['sourceAccount', 'workspace.account']);
+
+        CaptureAccountEvent::dispatch(
+            (string) ($repurpose->user_id ?? $repurpose->workspace->account->owner_id),
+            (string) $repurpose->workspace->account_id,
+            RepurposeEvent::Activated->value,
+            [
+                'repurpose_id' => (string) $repurpose->id,
+                'source' => $repurpose->sourceAccount->platform->value,
+                'destinations_count' => count($repurpose->destinations),
+            ],
+        )->afterCommit();
     }
 
     public static function assertSourceUsable(Repurpose $repurpose): void

@@ -6,8 +6,13 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Ai\AssistPostContent;
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostHog\AiEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
+use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -28,11 +33,13 @@ class PostAiAssistantController extends Controller
             return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
         }
 
+        $mode = PostAssistantMode::from($request->string('mode')->toString());
+
         try {
             $content = AssistPostContent::execute(
                 workspace: $workspace,
                 user: $request->user(),
-                mode: PostAssistantMode::from($request->string('mode')->toString()),
+                mode: $mode,
                 currentContent: $request->string('current_content')->toString(),
                 prompt: $request->input('prompt'),
                 previousContent: $request->input('previous_content'),
@@ -45,6 +52,25 @@ class PostAiAssistantController extends Controller
             return response()->json(['message' => __('posts.composer.assistant_error')], Response::HTTP_BAD_GATEWAY);
         }
 
+        rescue(fn () => $this->trackAssistUsed($request->user(), $workspace, $mode));
+
         return response()->json(['content' => $content]);
+    }
+
+    private function trackAssistUsed(User $user, Workspace $workspace, PostAssistantMode $mode): void
+    {
+        if (! PostHogService::isEnabled()) {
+            return;
+        }
+
+        CaptureAccountEvent::dispatch(
+            (string) $user->id,
+            (string) $workspace->account_id,
+            AiEvent::AssistUsed->value,
+            [
+                'mode' => $mode->value,
+                'workspace_id' => (string) $workspace->id,
+            ],
+        )->afterCommit();
     }
 }

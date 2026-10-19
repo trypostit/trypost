@@ -5,8 +5,10 @@ declare(strict_types=1);
 use App\Ai\Agents\PostContentShortener;
 use App\Ai\Agents\PostWritingAssistant;
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostHog\AiEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -15,6 +17,7 @@ use App\Support\AiPromptRules;
 use Illuminate\Auth\Access\Response as AuthResponse;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Laravel\Ai\Prompts\AgentPrompt;
 use Symfony\Component\HttpFoundation\Response;
@@ -287,4 +290,41 @@ test('a failing provider returns a translated bad gateway', function () {
         ->postJson(route('app.posts.ai.assist'), ['mode' => PostAssistantMode::Generate->value, 'current_content' => '', 'prompt' => 'Write a short post please'])
         ->assertStatus(Response::HTTP_BAD_GATEWAY)
         ->assertJsonPath('message', __('posts.composer.assistant_error'));
+});
+
+test('ai assist tracks the mode', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    PostWritingAssistant::fake(['A fresh caption']);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertOk();
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === AiEvent::AssistUsed->value
+        && $job->distinctId === (string) $this->user->id
+        && $job->accountId === (string) $this->workspace->account_id
+        && $job->properties === [
+            'mode' => PostAssistantMode::Generate->value,
+            'workspace_id' => (string) $this->workspace->id,
+        ]);
+});
+
+test('a failed ai assist is not tracked', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([CaptureAccountEvent::class]);
+    PostWritingAssistant::fake([fn () => throw new ConnectionException('timeout')]);
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.posts.ai.assist'), [
+            'mode' => PostAssistantMode::Generate->value,
+            'prompt' => 'Introduce our new product',
+        ])
+        ->assertStatus(Response::HTTP_BAD_GATEWAY);
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
 });

@@ -9,6 +9,7 @@ use App\Actions\Repurpose\DisableRepurpose;
 use App\Actions\Repurpose\PauseRepurpose;
 use App\Actions\Repurpose\ResumeRepurpose;
 use App\Actions\Repurpose\UpdateRepurpose;
+use App\Enums\PostHog\RepurposeEvent;
 use App\Enums\PostPlatform\ContentType;
 use App\Enums\Repurpose\PublishMode;
 use App\Enums\Repurpose\SourceFormat;
@@ -17,6 +18,7 @@ use App\Enums\SocialAccount\Platform;
 use App\Enums\TikTok\PrivacyLevel;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Post;
 use App\Models\Repurpose;
 use App\Models\RepurposeItem;
@@ -446,4 +448,63 @@ test('an update that repeats the current source and format leaves the watermark 
 
     expect($fresh->activated_at->equalTo($watermark))->toBeTrue()
         ->and($fresh->publish_mode)->toBe(PublishMode::Draft);
+});
+
+function trackRepurposeEvents(): void
+{
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, CaptureAccountEvent::class]);
+}
+
+test('activating a repurpose tracks source and destinations', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => $user->id,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace), tiktokDestination($workspace)],
+    ]);
+
+    trackRepurposeEvents();
+
+    ActivateRepurpose::execute($repurpose);
+
+    Queue::assertPushedOn('posthog', CaptureAccountEvent::class);
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated->value
+        && $job->distinctId === (string) $user->id
+        && $job->accountId === (string) $workspace->account_id
+        && $job->properties === [
+            'repurpose_id' => (string) $repurpose->id,
+            'source' => Platform::Instagram->value,
+            'destinations_count' => 2,
+        ]);
+});
+
+test('activating a repurpose without a creator tracks it as the account owner', function () {
+    [$workspace, $user, $account] = repurposeWorkspace();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $workspace->id,
+        'user_id' => null,
+        'source_social_account_id' => $account->id,
+        'destinations' => [tiktokDestination($workspace)],
+    ]);
+
+    trackRepurposeEvents();
+
+    ActivateRepurpose::execute($repurpose);
+
+    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === RepurposeEvent::Activated->value
+        && $job->distinctId === (string) $workspace->account->owner_id);
+});
+
+test('a rejected activation is not tracked', function () {
+    $repurpose = Repurpose::factory()->create();
+
+    trackRepurposeEvents();
+
+    expect(fn () => ActivateRepurpose::execute($repurpose))->toThrow(ValidationException::class);
+
+    Queue::assertNotPushed(CaptureAccountEvent::class);
 });
