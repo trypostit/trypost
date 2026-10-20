@@ -8,10 +8,12 @@ use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -42,32 +44,36 @@ class WorkspaceController extends Controller
 
         $user = $request->user();
 
-        if ($redirect = $this->denyAdditionalWorkspace($user, redirectWhenAtLimit: false)) {
+        if ($redirect = $this->denyAdditionalWorkspace($user)) {
             return $redirect;
+        }
+
+        if ($user->atWorkspaceLimit() && $user->currentWorkspace) {
+            rescue(function () use ($user): void {
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled(), (string) $user->id, $user->account?->plan?->slug->value, $user->account?->workspaceLimit(), now());
+            });
+
+            return redirect()->route('app.workspaces.index')
+                ->with('flash.error', __('workspaces.limit_reached'));
         }
 
         return Inertia::render('workspaces/Create');
     }
 
-    private function denyAdditionalWorkspace(User $user, bool $redirectWhenAtLimit = true): ?RedirectResponse
+    private function denyAdditionalWorkspace(User $user): ?RedirectResponse
     {
         // Invitee signup shells must stay empty until accept — otherwise they become billable.
         if (Invite::query()->forEmail($user->email)->whereNull('accepted_at')->exists()) {
             abort(403);
         }
 
-        if (config('trypost.self_hosted') || $user->ownedWorkspacesCount() === 0) {
+        if (! $user->workspaceLimitApplies()) {
             return null;
         }
 
         if (! $user->account?->hasActiveSubscription()) {
             return redirect()->route('app.billing.index')
                 ->with('flash.error', __('workspaces.subscription_required'));
-        }
-
-        if ($redirectWhenAtLimit && ! $user->account->canCreateWorkspace()) {
-            return redirect()->route('app.workspaces.create')
-                ->with('flash.error', __('workspaces.limit_reached'));
         }
 
         return null;
@@ -77,11 +83,20 @@ class WorkspaceController extends Controller
     {
         $user = $request->user();
 
-        $redirect = DB::transaction(function () use ($user, $request): ?RedirectResponse {
+        $limitReached = false;
+
+        $redirect = DB::transaction(function () use ($user, $request, &$limitReached): ?RedirectResponse {
             Account::query()->whereKey($user->account_id)->lockForUpdate()->first();
 
             if ($redirect = $this->denyAdditionalWorkspace($user)) {
                 return $redirect;
+            }
+
+            if ($user->atWorkspaceLimit()) {
+                $limitReached = true;
+
+                return redirect()->route('app.workspaces.index')
+                    ->with('flash.error', __('workspaces.limit_reached'));
             }
 
             CreateWorkspace::execute($user, $request->validated());
@@ -90,6 +105,10 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
+            rescue(function () use ($user, $limitReached): void {
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && $limitReached, (string) $user->id, $user->account?->plan?->slug->value, $user->account?->workspaceLimit(), now());
+            });
+
             return $redirect;
         }
 

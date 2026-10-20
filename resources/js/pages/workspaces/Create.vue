@@ -6,7 +6,6 @@ import InputError from '@/components/InputError.vue';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
@@ -60,9 +59,8 @@ const submit = (): void => {
                 type="submit"
                 class="w-full"
                 data-testid="workspaces-create-submit"
-                :disabled="form.processing"
+                :loading="form.processing"
             >
-                <Spinner v-if="form.processing" />
                 {{ $t('workspaces.create.submit') }}
             </Button>
         </form>

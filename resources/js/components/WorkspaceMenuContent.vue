@@ -39,7 +39,6 @@ import {
 import { useChangelogDialog } from '@/composables/useChangelogDialog';
 import { clearAllComposerAutosaves } from '@/composables/useComposerAutosave';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
-import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { openSupportChat } from '@/lib/supportChat';
 import { cn } from '@/lib/utils';
 import posthog from '@/posthog';
@@ -67,13 +66,12 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-    upgradeRequired: [];
+    createWorkspace: [];
 }>();
 
 const page = usePage();
 const { canManageBilling, canManageTeam, canManageWorkspace } =
     useWorkspaceAbilities();
-const { createOrUpgrade } = useWorkspaceLimit(() => props.workspaces.length);
 const selfHosted = computed(() => Boolean(page.props.selfHosted));
 const showBilling = computed(
     () => canManageBilling.value && !selfHosted.value,
@@ -137,7 +135,7 @@ const switchWorkspace = (workspaceId: string): void => {
 };
 
 const handleCreateWorkspace = (): void => {
-    createOrUpgrade(() => emit('upgradeRequired'));
+    emit('createWorkspace');
 };
 
 const handleLogout = (): void => {

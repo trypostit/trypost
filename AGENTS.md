@@ -323,10 +323,21 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `Account::canCreateWorkspace()` — never compare `plan->slug` to decide what
   an account may do. A **missing** `plan_id` is not unlimited: it may create
   only the signup workspace (`count === 0`).
-- `WorkspacePolicy::create()` is owner-only. The cap is not a permission: GET
-  `/workspaces/create` still renders at the cap (the upgrade dialog opens on
-  submit). POST is redirected back to create with `workspaces.limit_reached`,
-  not 403'd.
+- `WorkspacePolicy::create()` is owner-only. The cap is not a permission and the
+  server decides it, never the browser's shared props (owner decision October
+  2026), through `User::atWorkspaceLimit()` (`workspaceLimitApplies()`: never
+  self-hosted, never the first workspace).
+  - Every "new workspace" entry point (sidebar workspace menu, workspaces list)
+    asks first with a non-navigating `useHttp` POST to
+    `app.workspaces.creation-check.store` (`useWorkspaceLimit().createOrUpgrade`).
+    `{ allowed: false }` opens the `WorkspaceUpgradeDialog` in place, on the page
+    the user is on; `allowed: true` (or a failed check) visits
+    `app.workspaces.create`. A refused check tracks `workspace.limit_hit`.
+  - GET `/workspaces/create` is never shown at the cap: it tracks
+    `workspace.limit_hit` and redirects to `app.workspaces.index` with
+    `workspaces.limit_reached`. Without a subscription it still goes to billing.
+  - POST at the cap is refused the same way (to the list, not 403'd, never to create),
+    tracked once by `store` itself after its transaction.
 - First-month coupon qualification is card required + first-time subscriber +
   that plan's monthly price. Workspace count is not part of it.
   (`incomplete` / `incomplete_expired` still qualify; coupon +
@@ -641,14 +652,19 @@ rolls the switch back and toasts.
 
 ## PostHog person properties
 
-`App\Jobs\PostHog\SyncUser` is the only place that writes person properties, and
-the distinction between its two buckets is load-bearing:
+`App\Jobs\PostHog\SyncUser` writes the user's person properties (two narrower
+jobs below add one each), and the distinction between its two buckets is
+load-bearing:
 
 - **`$set_once`** — first-touch facts that must never be rewritten: `signed_up_at`
   and the attribution keys (`utm_*`, `gclid`, `fbclid`, …). A later sync must not
   overwrite where a user originally came from.
 - **Top level** — current state, overwritten on every sync: `$email`, `$name`, and
   `locale`.
+
+The only other jobs that write person properties are `IdentifyConnectedPlatforms`
+(`connected_platforms`) and `TrackLifecycleChange` (`lifecycle_stage`), both
+current state at the top level.
 
 `locale` mirrors `users.locale` and is what the PostHog email automations (the
 onboarding cadence and friends) read to decide which translation to send, so it

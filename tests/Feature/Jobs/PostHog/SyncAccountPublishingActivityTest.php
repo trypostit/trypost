@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create();
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
@@ -171,3 +171,35 @@ test('overlap lock serializes processing for the same account', function () {
 
     expect($handled)->toBeTrue();
 });
+
+test('an imported network post never becomes the account latest publication', function (bool $hasTryPostPost) {
+    $workspace = Workspace::factory()->create([
+        'account_id' => $this->account->id,
+        'user_id' => $this->user->id,
+    ]);
+    $tryPostPublication = $hasTryPostPost
+        ? Post::factory()->x()->published()->create([
+            'workspace_id' => $workspace->id,
+            'user_id' => $this->user->id,
+            'published_at' => now()->subDay(),
+        ])
+        : null;
+    Post::factory()->linkedin()->imported()->create([
+        'workspace_id' => $workspace->id,
+        'published_at' => now(),
+    ]);
+
+    $postHog = Mockery::mock(PostHogService::class);
+    $postHog->shouldReceive('groupIdentifyNow')
+        ->once()
+        ->withArgs(fn (string $groupType, string $groupKey, array $properties): bool => $properties === [
+            'last_post_published_at' => $tryPostPublication?->published_at?->toIso8601String(),
+            'last_post_published_network' => $tryPostPublication?->platform?->network(),
+            'last_published_post_id' => $tryPostPublication?->id,
+        ]);
+
+    (new SyncAccountPublishingActivity((string) $this->account->id))->handle($postHog);
+})->with([
+    'older TryPost post' => [true],
+    'no TryPost post' => [false],
+]);

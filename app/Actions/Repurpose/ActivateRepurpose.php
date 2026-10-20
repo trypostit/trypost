@@ -6,8 +6,10 @@ namespace App\Actions\Repurpose;
 
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Status as AccountStatus;
+use App\Jobs\PostHog\TrackRepurposeActivated;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
+use App\Services\PostHogService;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Repurpose\RepurposeTransition;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,7 +19,7 @@ class ActivateRepurpose
 {
     public static function execute(Repurpose $repurpose): Repurpose
     {
-        return RepurposeTransition::apply(
+        $activated = RepurposeTransition::apply(
             $repurpose,
             [Status::Draft, Status::Disabled],
             __('repurposes.errors.only_idle_activates'),
@@ -35,6 +37,12 @@ class ActivateRepurpose
                 ]);
             },
         );
+
+        rescue(function () use ($activated): void {
+            TrackRepurposeActivated::dispatchIf(PostHogService::isEnabled(), (string) $activated->id, auth()->id());
+        });
+
+        return $activated;
     }
 
     public static function assertSourceUsable(Repurpose $repurpose): void

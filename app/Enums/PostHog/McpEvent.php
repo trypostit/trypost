@@ -7,4 +7,5 @@ namespace App\Enums\PostHog;
 enum McpEvent: string
 {
     case Connected = 'mcp.connected';
+    case ToolCalled = 'mcp.tool_called';
 }

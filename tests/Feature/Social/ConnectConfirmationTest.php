@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Enums\Plan\Slug;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
+use App\Jobs\PostHog\TrackSocialAccountConnected;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\PendingConnection;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia;
@@ -435,4 +437,71 @@ test('several channels connect at once on any plan, since channels have no cap',
     assertFinishedOnChannel(finishSocialConnect(Platform::Facebook));
 
     expect($this->workspace->socialAccounts()->count())->toBe(3);
+});
+
+test('finishing a new connection dispatches social_account.connected with source', function () {
+    enablePostHog();
+    Bus::fake([TrackSocialAccountConnected::class]);
+
+    startSocialConnect($this->workspace, Platform::Facebook, null, route('app.calendar', ['view' => 'week'], false))->offer([
+        offeredFacebookPage('p1', 'One'),
+        offeredFacebookPage('p2', 'Two'),
+    ]);
+
+    assertFinishedOnChannel($this->actingAs($this->user)->post(route('app.social.connect.finish', Platform::Facebook), [
+        'identities' => ['facebook:p1', 'facebook:p2'],
+    ]));
+
+    $accountIds = $this->workspace->socialAccounts()->pluck('id')->map(strval(...))->sort()->values()->all();
+
+    Bus::assertDispatchedTimes(TrackSocialAccountConnected::class, 2);
+    Bus::assertDispatched(TrackSocialAccountConnected::class, fn (TrackSocialAccountConnected $job): bool => in_array($job->socialAccountId, $accountIds, true)
+        && $job->userId === (string) $this->user->id
+        && $job->source === 'app.calendar');
+});
+
+test('reconnecting does not dispatch connected', function () {
+    enablePostHog();
+    Bus::fake([TrackSocialAccountConnected::class]);
+
+    $account = SocialAccount::factory()->x()->create([
+        'workspace_id' => $this->workspace->id,
+        'platform_user_id' => 'x-1',
+    ]);
+
+    startSocialConnect($this->workspace, Platform::X, $account);
+    fakeXLogin();
+
+    $this->actingAs($this->user)->get(route('app.social.x.callback'))->assertRedirect();
+
+    finishSocialConnect(Platform::X)->assertInertiaFlash('connectedChannel.created', false);
+
+    Bus::assertNotDispatched(TrackSocialAccountConnected::class);
+});
+
+test('finishing a connection does not dispatch connected when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+    Bus::fake([TrackSocialAccountConnected::class]);
+
+    startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
+
+    assertFinishedOnChannel($this->actingAs($this->user)->post(route('app.social.connect.finish', Platform::Facebook), [
+        'identities' => ['facebook:p1'],
+    ]));
+
+    Bus::assertNotDispatched(TrackSocialAccountConnected::class);
+});
+
+test('finishing a connection still lands on the channel when tracking it fails', function () {
+    enablePostHog();
+    failDispatchOf(TrackSocialAccountConnected::class);
+
+    startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);
+
+    assertFinishedOnChannel($this->actingAs($this->user)->post(route('app.social.connect.finish', Platform::Facebook), [
+        'identities' => ['facebook:p1'],
+    ]));
+
+    expect($this->workspace->socialAccounts()->count())->toBe(1)
+        ->and(PendingConnection::current())->toBeNull();
 });

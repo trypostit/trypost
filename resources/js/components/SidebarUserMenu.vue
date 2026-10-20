@@ -14,6 +14,7 @@ import {
 import WorkspaceMenuContent from '@/components/WorkspaceMenuContent.vue';
 import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDialog.vue';
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
+import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import { portal } from '@/routes/app/billing';
 import type { User } from '@/types';
 
@@ -36,11 +37,18 @@ const subscriptionPastDue = computed<boolean>(() =>
 );
 
 const { canCreateWorkspace } = useWorkspaceAbilities();
+const { createOrUpgrade } = useWorkspaceLimit(
+    () => workspaces.value.length,
+);
 
 const workspaceUpgradeDialogOpen = ref(false);
 
 const openWorkspaceUpgradeDialog = (): void => {
     workspaceUpgradeDialogOpen.value = true;
+};
+
+const handleCreateWorkspace = (): void => {
+    createOrUpgrade(openWorkspaceUpgradeDialog);
 };
 </script>
 
@@ -116,7 +124,7 @@ const openWorkspaceUpgradeDialog = (): void => {
                         :current-workspace="currentWorkspace"
                         :workspaces="workspaces"
                         :can-create-workspace="canCreateWorkspace"
-                        @upgrade-required="openWorkspaceUpgradeDialog"
+                        @create-workspace="handleCreateWorkspace"
                     />
                 </DropdownMenuContent>
             </DropdownMenu>

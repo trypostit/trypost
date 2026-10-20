@@ -6,8 +6,11 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Ai\AssistPostContent;
 use App\Enums\Ai\PostAssistantMode;
+use App\Enums\PostHog\AiEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
+use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Services\PostHogService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\JsonResponse;
@@ -28,11 +31,13 @@ class PostAiAssistantController extends Controller
             return response()->json(['message' => $gate->message()], Response::HTTP_PAYMENT_REQUIRED);
         }
 
+        $mode = PostAssistantMode::from($request->string('mode')->toString());
+
         try {
             $content = AssistPostContent::execute(
                 workspace: $workspace,
                 user: $request->user(),
-                mode: PostAssistantMode::from($request->string('mode')->toString()),
+                mode: $mode,
                 currentContent: $request->string('current_content')->toString(),
                 prompt: $request->input('prompt'),
                 previousContent: $request->input('previous_content'),
@@ -44,6 +49,19 @@ class PostAiAssistantController extends Controller
         } catch (AiException|RequestException|ConnectionException) {
             return response()->json(['message' => __('posts.composer.assistant_error')], Response::HTTP_BAD_GATEWAY);
         }
+
+        rescue(function () use ($request, $workspace, $mode): void {
+            CaptureAccountEvent::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $request->user()->id,
+                (string) $workspace->account_id,
+                AiEvent::AssistUsed,
+                [
+                    'mode' => $mode->value,
+                    'workspace_id' => (string) $workspace->id,
+                ],
+            );
+        });
 
         return response()->json(['content' => $content]);
     }

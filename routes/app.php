@@ -55,6 +55,7 @@ use App\Http\Controllers\App\UnsplashController;
 use App\Http\Controllers\App\WebhookController;
 use App\Http\Controllers\App\WelcomeController;
 use App\Http\Controllers\App\WorkspaceController;
+use App\Http\Controllers\App\WorkspaceCreationCheckController;
 use App\Http\Controllers\App\WorkspaceInviteController;
 use App\Http\Controllers\App\WorkspaceLabelController;
 use App\Http\Controllers\App\WorkspaceSignatureController;
@@ -117,6 +118,9 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('workspaces/create', [WorkspaceController::class, 'create'])->name('app.workspaces.create');
     Route::post('workspaces', [WorkspaceController::class, 'store'])->name('app.workspaces.store');
+    Route::post('workspaces/creation-check', [WorkspaceCreationCheckController::class, 'store'])
+        ->middleware('throttle:30,1')
+        ->name('app.workspaces.creation-check.store');
 });
 
 Route::middleware(['auth'])->group(function () {

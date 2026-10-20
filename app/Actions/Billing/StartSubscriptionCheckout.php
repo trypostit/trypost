@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
+use App\Enums\Billing\Interval;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
@@ -33,6 +34,11 @@ class StartSubscriptionCheckout
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
+            'metadata' => array_filter([
+                ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
+                ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => (filled($plan) ? Interval::forPrice($plan, $priceId) : Interval::Monthly)->value,
+                ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY => filled($subscription->couponId) ? 'true' : 'false',
+            ], filled(...)),
         ]);
 
         return Inertia::location($session->url);

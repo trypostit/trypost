@@ -16,6 +16,7 @@ use App\Services\Http\HostResolver;
 use App\Support\Social\PendingConnection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request as HttpClientRequest;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
@@ -350,6 +351,34 @@ function subscribeAccount(Account $account): void
 }
 
 /**
+ * Turns PostHog on for the test, as on an install with an API key.
+ */
+function enablePostHog(): void
+{
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+}
+
+/**
+ * Make dispatching the given job throw, as when the queue is down, while every
+ * other job dispatches as usual. `$when` narrows the failure to the jobs it
+ * accepts.
+ *
+ * @param  class-string  $jobClass
+ * @param  (Closure(object): bool)|null  $when
+ */
+function failDispatchOf(string $jobClass, ?Closure $when = null): void
+{
+    $dispatcher = Bus::getFacadeRoot();
+    $bus = Mockery::mock($dispatcher);
+    $bus->shouldReceive('dispatch')
+        ->with(Mockery::on(fn (mixed $job): bool => $job instanceof $jobClass && ($when === null || $when($job))))
+        ->andThrow(new RuntimeException('Queue is down.'));
+    $bus->shouldReceive('dispatch')->andReturnUsing(fn (mixed $job, mixed $handler = null): mixed => $dispatcher->dispatch($job, $handler));
+
+    Bus::swap($bus);
+}
+
+/**
  * Insert an OAuth client suitable for MCP connection tests.
  */
 function mcpOauthClient(string $name = 'My Agent'): string
@@ -427,7 +456,7 @@ function mcpAccessToken(
  * @param  list<string>  $scopes
  * @return array{token: AccessToken, plain_token: string}
  */
-function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use']): array
+function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:use'], string $clientName = 'My Agent'): array
 {
     $result = $user->createToken('MCP', $scopes);
     $token = AccessToken::query()->findOrFail($result->token->id);
@@ -435,7 +464,7 @@ function mcpBearerToken(User $user, Workspace $workspace, array $scopes = ['mcp:
     // Reassign to a dedicated MCP client so we never mutate Passport's shared
     // personal-access client (which would poison PAT fixtures in the same run).
     $token->forceFill([
-        'client_id' => mcpOauthClient(),
+        'client_id' => mcpOauthClient($clientName),
         'workspace_id' => $workspace->id,
     ])->saveQuietly();
 

@@ -401,3 +401,22 @@ test('google business is rejected as a destination', function () {
 
     expect(Repurpose::count())->toBe(0);
 });
+
+test('activating through the tool returns the same body when PostHog is enabled', function () {
+    enablePostHog();
+    Queue::fake();
+
+    $repurpose = Repurpose::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'source_social_account_id' => $this->source->id,
+        'destinations' => [tiktokDestinationForMcp($this->tiktok)],
+    ]);
+
+    TryPostServer::actingAs($this->user)
+        ->tool(ActivateRepurposeTool::class, ['repurpose_id' => $repurpose->id])
+        ->assertOk()
+        ->assertStructuredContent(fn (AssertableJson $json) => $json
+            ->where('status', Status::Active->value)
+            ->missing('source_account')
+            ->etc());
+});

@@ -33,6 +33,8 @@ class TrackPost implements ShouldQueue
         }
 
         $post = Post::query()
+            ->createdInTryPost()
+            ->whereNotNull('user_id')
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
@@ -46,14 +48,8 @@ class TrackPost implements ShouldQueue
             return;
         }
 
-        $distinctId = (string) ($post->user_id ?? $account->owner_id);
-
-        if ($distinctId === '') {
-            return;
-        }
-
         $postHog->capture(
-            $distinctId,
+            (string) $post->user_id,
             PostEvent::Created->value,
             [
                 'post_id' => (string) $post->id,

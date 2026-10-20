@@ -10,9 +10,10 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Services/Analytics/Collectors/** | .ai/rules/collectors.md |
 | resources/js/components/posts/editor/** | .ai/rules/editor.md |
 | app/Enums/GoogleBusiness/**, app/Jobs/PublishToSocialPlatform.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/ReconcileGoogleBusinessPosts.php, app/Services/Social/GoogleBusinessPublisher.php, app/Support/PostPlatformMetaRules.php | .ai/rules/google-business.md |
-| app/Listeners/StripeEventListener.php, app/Jobs/PostHog/TrackBilling.php, app/Jobs/PostHog/SyncAccountUsage.php | .ai/rules/jobs-post-hog.md |
+| app/Listeners/Stripe*.php, app/Jobs/PostHog/** | .ai/rules/jobs-post-hog.md |
 | app/Jobs/SendNotification.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/RecoverStuckPosts.php | .ai/rules/jobs.md |
 | resources/js/** | .ai/rules/js.md |
+| app/Http/Middleware/Mcp/**, app/Support/Mcp/**, app/Mcp/Servers/**, app/Enums/Mcp/** | .ai/rules/mcp.md |
 | app/Actions/Media/**, app/Models/Media.php | .ai/rules/media.md |
 | app/Http/Middleware/App/HandleInertiaRequests.php | .ai/rules/middleware-app.md |
 | app/Jobs/PostHog/**, app/Models/Post.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |

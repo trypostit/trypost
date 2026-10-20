@@ -7,11 +7,14 @@ namespace App\Actions\Post;
 use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
+use App\Jobs\PostHog\TrackPostFailed;
+use App\Jobs\PostHog\TrackPostPublished;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
 use App\Models\Post;
 use App\Models\User;
+use App\Services\PostHogService;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -67,7 +70,17 @@ class FinalizePostPublication
             return;
         }
 
-        $this->notify($outcome['post'], $outcome['successful']);
+        $settled = data_get($outcome, 'post');
+        $successful = data_get($outcome, 'successful');
+
+        $this->notify($settled, $successful);
+
+        rescue(function () use ($settled, $successful): void {
+            ($successful ? TrackPostPublished::class : TrackPostFailed::class)::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $settled->id,
+            );
+        });
     }
 
     /**

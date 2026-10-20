@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Workspace\PurgeWorkspace;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Media;
 use App\Models\Post;
 use App\Models\SocialAccount;
@@ -10,6 +11,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -59,4 +61,21 @@ test('purge workspace prunes google business jpegs before the cascade', function
 
     expect(Workspace::find($workspace->id))->toBeNull();
     Storage::assertMissing($path);
+});
+
+test('purge workspace does not track its channels as disconnected', function () {
+    enablePostHog();
+    $owner = User::factory()->create();
+    $workspace = Workspace::factory()->create([
+        'account_id' => $owner->account_id,
+        'user_id' => $owner->id,
+    ]);
+    SocialAccount::factory()->count(2)->create(['workspace_id' => $workspace->id]);
+
+    Bus::fake([CaptureAccountEvent::class]);
+
+    PurgeWorkspace::execute($workspace);
+
+    expect(SocialAccount::query()->where('workspace_id', $workspace->id)->exists())->toBeFalse();
+    Bus::assertNotDispatched(CaptureAccountEvent::class);
 });

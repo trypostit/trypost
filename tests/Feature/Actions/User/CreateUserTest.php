@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\User\CreateUser;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\PostHog\UserEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\SyncUser;
@@ -39,6 +40,34 @@ test('CreateUser sets account owner_id to the new user', function () {
     expect($user->account->owner_id)->toBe($user->id);
 });
 
+test('CreateUser starts the account at the signed_up lifecycle stage', function () {
+    enablePostHog();
+    $this->freezeTime();
+
+    $user = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane-stage@example.com',
+        'password' => 'secret123',
+    ]);
+
+    expect($user->account->lifecycle_stage)->toBe(LifecycleStage::SignedUp)
+        ->and($user->account->lifecycle_stage_changed_at?->toIso8601String())->toBe(now()->toIso8601String())
+        ->and($user->account->activated_at)->toBeNull();
+});
+
+test('CreateUser leaves the lifecycle stage empty when PostHog is disabled', function () {
+    config(['services.posthog.enabled' => false]);
+
+    $user = CreateUser::execute([
+        'name' => 'Jane Doe',
+        'email' => 'jane-no-posthog@example.com',
+        'password' => 'secret123',
+    ]);
+
+    expect($user->account->lifecycle_stage)->toBeNull()
+        ->and($user->account->lifecycle_stage_changed_at)->toBeNull();
+});
+
 test('CreateUser invite-style still creates user without workspace (workspace assignment happens via invite acceptance)', function () {
     $user = CreateUser::execute([
         'name' => 'Invited',
@@ -52,7 +81,7 @@ test('CreateUser invite-style still creates user without workspace (workspace as
 });
 
 test('CreateUser dispatches SyncUser with the new user id when PostHog is enabled', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SyncUser::class]);
 
     $user = CreateUser::execute([
@@ -109,7 +138,7 @@ test('CreateUser dispatches SyncUser in the local environment even when PostHog 
 });
 
 test('CreateUser captures user.signed_up with the auth provider when PostHog is enabled', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     $user = CreateUser::execute([
@@ -126,7 +155,7 @@ test('CreateUser captures user.signed_up with the auth provider when PostHog is 
 });
 
 test('CreateUser defaults the auth provider to email when no OAuth id is present', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     CreateUser::execute([
@@ -142,7 +171,7 @@ test('CreateUser defaults the auth provider to email when no OAuth id is present
 });
 
 test('CreateUser does not capture user.signed_up for invite registrations', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     CreateUser::execute([

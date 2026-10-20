@@ -7,6 +7,8 @@ use App\Enums\Notification\Type;
 use App\Enums\Post\PublishStatus;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
+use App\Jobs\PostHog\TrackPostFailed;
+use App\Jobs\PostHog\TrackPostPublished;
 use App\Jobs\SendNotification;
 use App\Mail\PostPublished;
 use App\Mail\PostPublishFailed;
@@ -209,3 +211,80 @@ test('a google review whose channel is gone is left to the review ceiling', func
         ->publish_status->toBe(PublishStatus::PendingReview)
         ->platform_post_id->toBe('accounts/1/locations/1/localPosts/9');
 });
+
+test('finalize dispatches published or failed tracking once per settlement', function () {
+    enablePostHog();
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $published = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
+    ]);
+    $failed = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Failed,
+        'error_message' => 'Failed to publish',
+    ]);
+
+    $finalize = app(FinalizePostPublication::class);
+    $finalize->handle($published);
+    $finalize->handle($published->fresh());
+    $finalize->handle($failed);
+    $finalize->handle($failed->fresh());
+
+    Queue::assertPushedOnce(TrackPostPublished::class);
+    Queue::assertPushed(TrackPostPublished::class, fn (TrackPostPublished $job) => $job->postId === (string) $published->id);
+    Queue::assertPushedOnce(TrackPostFailed::class);
+    Queue::assertPushed(TrackPostFailed::class, fn (TrackPostFailed $job) => $job->postId === (string) $failed->id);
+});
+
+test('finalize does not dispatch tracking when PostHog is disabled', function () {
+    config(['services.posthog.api_key' => null]);
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Published,
+        'platform_post_id' => 'fb-1',
+    ]);
+
+    $failed = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => PublishStatus::Failed,
+        'error_message' => 'Failed to publish',
+    ]);
+
+    app(FinalizePostPublication::class)->handle($post);
+    app(FinalizePostPublication::class)->handle($failed);
+
+    expect($post->fresh()->status)->toBe(PostStatus::Published)
+        ->and($failed->fresh()->status)->toBe(PostStatus::Failed);
+    Queue::assertNotPushed(TrackPostPublished::class);
+    Queue::assertNotPushed(TrackPostFailed::class);
+});
+
+test('a post still settles and notifies when tracking its publication fails', function (PublishStatus $publishStatus, PostStatus $settled, Type $notification, string $trackingJob) {
+    enablePostHog();
+    $owner = User::factory()->create();
+    $workspace = finalizeWorkspaceOf($owner);
+    $member = workspaceMember($workspace, 'member');
+    $post = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
+        'user_id' => $owner->id,
+        'publish_status' => $publishStatus,
+        'platform_post_id' => 'fb-1',
+        'error_message' => 'Failed to publish',
+    ]);
+    failDispatchOf($trackingJob);
+
+    app(FinalizePostPublication::class)->handle($post);
+
+    expect($post->fresh()->status)->toBe($settled)
+        ->and(Queue::pushed(SendNotification::class, fn (SendNotification $job): bool => $job->type === $notification)
+            ->map(fn (SendNotification $job): string => $job->user->id)->sort()->values()->all())
+        ->toBe(collect([$owner->id, $member->id])->sort()->values()->all());
+    Queue::assertNotPushed($trackingJob);
+})->with([
+    'published' => [PublishStatus::Published, PostStatus::Published, Type::PostPublished, TrackPostPublished::class],
+    'failed' => [PublishStatus::Failed, PostStatus::Failed, Type::PostFailed, TrackPostFailed::class],
+]);

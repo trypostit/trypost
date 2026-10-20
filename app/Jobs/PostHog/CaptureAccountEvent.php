@@ -6,17 +6,14 @@ namespace App\Jobs\PostHog;
 
 use App\Models\Account;
 use App\Services\PostHogService;
+use BackedEnum;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-/**
- * Shared PostHog capture pipeline for jobs backed by a Stripe subscription
- * webhook payload. Subclasses provide the event name and its properties.
- */
-abstract class AbstractTrackStripeSubscriptionEvent implements ShouldQueue
+class CaptureAccountEvent implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
@@ -25,39 +22,29 @@ abstract class AbstractTrackStripeSubscriptionEvent implements ShouldQueue
     public int $timeout = 30;
 
     /**
-     * @param  array<string, mixed>  $payload
+     * @param  array<string, mixed>  $properties
      */
     public function __construct(
+        public string $distinctId,
         public string $accountId,
-        public array $payload,
+        public BackedEnum $event,
+        public array $properties = [],
     ) {
         $this->onQueue('posthog');
     }
 
     public function handle(PostHogService $postHog): void
     {
-        if (! PostHogService::shouldTrack()) {
+        if (! PostHogService::isEnabled()) {
             return;
         }
 
         $account = Account::with('plan')->find($this->accountId);
 
-        if (! $account?->owner_id || ! $account->plan) {
+        if (blank($account)) {
             return;
         }
 
-        $postHog->capture(
-            (string) $account->owner_id,
-            $this->event(),
-            $this->properties($account),
-            $account,
-        );
+        $postHog->capture($this->distinctId, (string) $this->event->value, $this->properties, $account);
     }
-
-    abstract protected function event(): string;
-
-    /**
-     * @return array<string, mixed>
-     */
-    abstract protected function properties(Account $account): array;
 }
