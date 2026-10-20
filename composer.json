@@ -42,7 +42,7 @@
         "laravel/cashier": "^16.2",
         "laravel/framework": "^13.0",
         "laravel/horizon": "^5.45",
-        "laravel/mcp": "^0.9.1",
+        "laravel/mcp": "^1.1",
         "laravel/nightwatch": "^1.22",
         "laravel/passport": "^13.7",
         "laravel/reverb": "^1.0",

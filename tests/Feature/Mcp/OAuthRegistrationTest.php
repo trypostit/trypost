@@ -93,6 +93,28 @@ test('oauth discovery metadata is never rate limited', function (string $routeNa
     'nested authorization server' => ['mcp.oauth.authorization-server.nested', ['path' => 'mcp/trypost']],
 ]);
 
+test('oauth discovery advertises the authentication method used by public clients', function (string $routeName, array $parameters) {
+    $registration = $this->postJson(route('mcp.oauth.register'), [
+        'client_name' => 'Discovery Test Client',
+        'redirect_uris' => ['https://client.example/callback'],
+        'grant_types' => ['authorization_code'],
+        'response_types' => ['code'],
+        'token_endpoint_auth_method' => 'none',
+    ])->assertCreated()->assertJsonPath('token_endpoint_auth_method', 'none');
+
+    $metadata = $this->getJson(route($routeName, $parameters))
+        ->assertOk()
+        ->assertJsonPath('token_endpoint', route('passport.token'))
+        ->assertJsonPath('registration_endpoint', route('mcp.oauth.register'));
+
+    expect($metadata->json('token_endpoint_auth_methods_supported'))
+        ->toBeArray()
+        ->toContain($registration->json('token_endpoint_auth_method'));
+})->with([
+    'authorization server' => ['mcp.oauth.authorization-server', []],
+    'nested authorization server' => ['mcp.oauth.authorization-server.nested', ['path' => 'mcp/trypost']],
+]);
+
 test('mcp custom schemes config lists every supported native agent', function () {
     expect(config('mcp.custom_schemes'))->toEqual(mcpNativeAgentSchemes());
 });
