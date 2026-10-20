@@ -50,7 +50,7 @@ class WorkspaceController extends Controller
 
         if ($user->atWorkspaceLimit() && $user->currentWorkspace) {
             rescue(function () use ($user): void {
-                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled(), (string) $user->id);
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled(), (string) $user->id, $user->account?->plan?->slug->value, $user->account?->workspaceLimit(), now());
             });
 
             return redirect()->route('app.workspaces.index')
@@ -106,7 +106,7 @@ class WorkspaceController extends Controller
 
         if ($redirect) {
             rescue(function () use ($user, $limitReached): void {
-                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && $limitReached, (string) $user->id);
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && $limitReached, (string) $user->id, $user->account?->plan?->slug->value, $user->account?->workspaceLimit(), now());
             });
 
             return $redirect;

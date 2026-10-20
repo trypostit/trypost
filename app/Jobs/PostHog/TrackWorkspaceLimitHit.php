@@ -7,6 +7,7 @@ namespace App\Jobs\PostHog;
 use App\Enums\PostHog\WorkspaceEvent;
 use App\Models\User;
 use App\Services\PostHogService;
+use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,8 +22,16 @@ class TrackWorkspaceLimitHit implements ShouldQueue
 
     public int $timeout = 30;
 
-    public function __construct(public string $userId)
-    {
+    /**
+     * The plan and the limit are the ones the refusal saw: an upgrade right
+     * after it must not make the event read as a hit on the new plan.
+     */
+    public function __construct(
+        public string $userId,
+        public ?string $planSlug,
+        public ?int $workspaceLimit,
+        public CarbonInterface $hitAt,
+    ) {
         $this->onQueue('posthog');
     }
 
@@ -42,9 +51,9 @@ class TrackWorkspaceLimitHit implements ShouldQueue
             $this->userId,
             WorkspaceEvent::LimitHit->value,
             [
-                'plan_slug' => $account->plan?->slug->value,
-                'workspaces_count' => $account->workspaces()->count(),
-                'workspace_limit' => $account->workspaceLimit(),
+                'plan_slug' => $this->planSlug,
+                'workspaces_count' => $account->workspaces()->where('workspaces.created_at', '<=', $this->hitAt)->count(),
+                'workspace_limit' => $this->workspaceLimit,
             ],
             $account,
         );

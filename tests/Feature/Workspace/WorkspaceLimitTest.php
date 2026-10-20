@@ -200,7 +200,9 @@ $enablePostHog = function (): void {
     Queue::fake([TrackWorkspaceLimitHit::class]);
 };
 
-$limitHitPushed = fn (User $user) => fn (TrackWorkspaceLimitHit $job): bool => $job->userId === (string) $user->id;
+$limitHitPushed = fn (User $user) => fn (TrackWorkspaceLimitHit $job): bool => $job->userId === (string) $user->id
+    && $job->planSlug === $user->account->plan?->slug->value
+    && $job->workspaceLimit === $user->account->workspaceLimit();
 
 test('the creation check at the limit refuses and tracks limit_hit', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
     $enablePostHog();

@@ -21,7 +21,7 @@ class WorkspaceCreationCheckController extends Controller
         $allowed = $user->account?->canCreateWorkspace() !== false;
 
         rescue(function () use ($user, $allowed): void {
-            TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && ! $allowed, (string) $user->id);
+            TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && ! $allowed, (string) $user->id, $user->account?->plan?->slug->value, $user->account?->workspaceLimit(), now());
         });
 
         return new WorkspaceCreationCheckResource($allowed);
