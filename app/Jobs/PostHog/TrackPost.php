@@ -36,7 +36,7 @@ class TrackPost implements ShouldQueue
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
-        if (! $post || ! $post->isAuthoredInTryPost()) {
+        if (! $post || blank($post->user_id) || ! $post->isCreatedInTryPost()) {
             return;
         }
 

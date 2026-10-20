@@ -39,7 +39,7 @@ class TrackPostFailed implements ShouldQueue
 
         $account = $post?->workspace?->account;
 
-        if (blank($account) || ! $post->isAuthoredInTryPost()) {
+        if (blank($account) || blank($post->user_id) || ! $post->isCreatedInTryPost()) {
             return;
         }
 

@@ -193,12 +193,10 @@ test('the cover media is the first image or video, skipping documents', function
     'no media' => [[], null],
 ]);
 
-test('only a post written in TryPost by a user is authored in TryPost', function () {
-    $authored = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
+test('a post written in TryPost is created in TryPost, an imported one is not', function () {
+    $written = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
     $imported = Post::factory()->imported()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $authorless = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => null]);
 
-    expect($authored->isAuthoredInTryPost())->toBeTrue()
-        ->and($imported->isAuthoredInTryPost())->toBeFalse()
-        ->and($authorless->isAuthoredInTryPost())->toBeFalse();
+    expect($written->isCreatedInTryPost())->toBeTrue()
+        ->and($imported->isCreatedInTryPost())->toBeFalse();
 });

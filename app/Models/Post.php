@@ -411,12 +411,12 @@ class Post extends Model
     }
 
     /**
-     * Written in TryPost by a user: not imported from the network, and with an
-     * author. Only these posts feed PostHog.
+     * The post was written in TryPost, not imported from the network (the
+     * instance form of `scopeCreatedInTryPost`).
      */
-    public function isAuthoredInTryPost(): bool
+    public function isCreatedInTryPost(): bool
     {
-        return filled($this->user_id) && $this->origin === Origin::TryPost;
+        return $this->origin === Origin::TryPost;
     }
 
     /**
