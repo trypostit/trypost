@@ -213,7 +213,7 @@ test('a google review whose channel is gone is left to the review ceiling', func
 });
 
 test('finalize dispatches published or failed tracking once per settlement', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $owner = User::factory()->create();
     $workspace = finalizeWorkspaceOf($owner);
     $published = Post::factory()->state(['workspace_id' => $workspace->id])->facebook()->publishing()->create([
@@ -265,7 +265,7 @@ test('finalize does not dispatch tracking when PostHog is disabled', function ()
 });
 
 test('a post still settles and notifies when tracking its publication fails', function (PublishStatus $publishStatus, PostStatus $settled, Type $notification, string $trackingJob) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $owner = User::factory()->create();
     $workspace = finalizeWorkspaceOf($owner);
     $member = workspaceMember($workspace, 'member');

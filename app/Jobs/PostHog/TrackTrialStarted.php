@@ -11,6 +11,11 @@ use Illuminate\Support\Carbon;
 
 class TrackTrialStarted extends AbstractTrackStripeEvent
 {
+    protected function shouldCapture(Account $account): bool
+    {
+        return filled($account->plan);
+    }
+
     protected function event(): string
     {
         return TrialEvent::Started->value;

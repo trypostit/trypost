@@ -11,11 +11,6 @@ use App\Support\Billing\ConfigureSubscriptionCheckout;
 
 class TrackCheckoutExpired extends AbstractTrackStripeEvent
 {
-    protected function requiresPlan(): bool
-    {
-        return false;
-    }
-
     protected function shouldCapture(Account $account): bool
     {
         return ! $account->subscribed(Account::SUBSCRIPTION_NAME);

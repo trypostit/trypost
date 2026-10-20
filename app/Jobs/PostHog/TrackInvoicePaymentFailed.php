@@ -6,17 +6,10 @@ namespace App\Jobs\PostHog;
 
 use App\Enums\PostHog\InvoiceEvent;
 use App\Models\Account;
-use App\Support\Billing\StripeAmount;
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use App\Support\Billing\StripeValue;
 
 class TrackInvoicePaymentFailed extends AbstractTrackStripeEvent
 {
-    protected function requiresPlan(): bool
-    {
-        return false;
-    }
-
     protected function event(): string
     {
         return InvoiceEvent::PaymentFailed->value;
@@ -28,13 +21,12 @@ class TrackInvoicePaymentFailed extends AbstractTrackStripeEvent
     protected function properties(Account $account): array
     {
         $nextAttempt = data_get($this->payload, 'data.object.next_payment_attempt');
-        $currency = data_get($this->payload, 'data.object.currency');
 
         return [
             'attempt_count' => (int) data_get($this->payload, 'data.object.attempt_count', 0),
-            'amount' => StripeAmount::toDecimal(data_get($this->payload, 'data.object.amount_due'), $currency),
-            'currency' => transform($currency, Str::upper(...)),
-            'next_attempt_at' => transform($nextAttempt, fn (mixed $at): string => CarbonImmutable::createFromTimestampUTC((int) $at)->toIso8601String()),
+            'amount' => StripeValue::amount(data_get($this->payload, 'data.object.amount_due')),
+            'currency' => StripeValue::currency(data_get($this->payload, 'data.object.currency')),
+            'next_attempt_at' => StripeValue::timestamp($nextAttempt)?->toIso8601String(),
             'is_final_attempt' => blank($nextAttempt),
             'billing_reason' => data_get($this->payload, 'data.object.billing_reason'),
             'invoice_id' => data_get($this->payload, 'data.object.id'),

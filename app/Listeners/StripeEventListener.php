@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
 use Stripe\Event as StripeEvent;
+use Stripe\Subscription as StripeSubscription;
 use Throwable;
 
 class StripeEventListener
@@ -70,10 +71,11 @@ class StripeEventListener
         $previousPlan = $account->plan?->name;
 
         $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
+        $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
-        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === 'trialing', (string) $account->id, $payload);
-        TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === 'active', (string) $account->id, $payload);
+        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
+        TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }
 
     /**
@@ -84,6 +86,7 @@ class StripeEventListener
         $previousPlan = $account->plan?->name;
 
         $this->syncPlanFromSubscription($account, $payload);
+        $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Updated, $payload, $previousPlan);
         TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $this->convertedFromTrial($payload) && $this->isNowActive($payload), (string) $account->id, $payload);
@@ -120,6 +123,21 @@ class StripeEventListener
         }
 
         return ! Cache::add("stripe_webhook_event:{$eventId}", true, now()->addDay());
+    }
+
+    /**
+     * The first time a subscription is active the account has been charged:
+     * kept on the account because Cashier clears `trial_ends_at` on delete.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function recordFirstPayment(Account $account, array $payload): void
+    {
+        if (! $this->isNowActive($payload) || filled($account->first_paid_at)) {
+            return;
+        }
+
+        Account::withoutTimestamps(fn (): bool => $account->forceFill(['first_paid_at' => now()])->saveQuietly());
     }
 
     /**
@@ -203,11 +221,11 @@ class StripeEventListener
     {
         $previousStatus = data_get($payload, 'data.previous_attributes.status');
 
-        if ($previousStatus === 'trialing') {
+        if ($previousStatus === StripeSubscription::STATUS_TRIALING) {
             return true;
         }
 
-        if ($previousStatus !== 'past_due') {
+        if ($previousStatus !== StripeSubscription::STATUS_PAST_DUE) {
             return false;
         }
 
@@ -232,6 +250,6 @@ class StripeEventListener
      */
     private function isNowActive(array $payload): bool
     {
-        return $this->currentStatus($payload) === 'active';
+        return $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE;
     }
 }

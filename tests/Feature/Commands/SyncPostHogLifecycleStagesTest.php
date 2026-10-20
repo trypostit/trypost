@@ -199,8 +199,9 @@ test('a disconnected channel leaves onboarding and other accounts posts do not c
     expect($this->account->refresh()->lifecycle_stage)->toBe(LifecycleStage::Connected);
 });
 
-test('an account that lost access after subscribing is churned', function () {
+test('an account that lost access after paying is churned', function () {
     Bus::fake([TrackLifecycleChange::class]);
+    $this->account->forceFill(['first_paid_at' => now()->subMonth()])->save();
     $this->account->subscriptions()->update(['stripe_status' => 'canceled', 'ends_at' => now()->subDay()]);
 
     $this->artisan('posthog:sync-lifecycle-stages')->assertSuccessful();

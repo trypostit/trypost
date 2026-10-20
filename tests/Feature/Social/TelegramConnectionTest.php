@@ -503,7 +503,7 @@ it('reports a busy connect instead of letting the webhook fail', function () {
 });
 
 it('telegram connection uses source telegram', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Http::fake();
     Bus::fake([TrackSocialAccountConnected::class]);
 
@@ -525,7 +525,7 @@ it('telegram connection uses source telegram', function () {
 });
 
 it('a telegram reconnect does not dispatch connected', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Http::fake();
     Bus::fake([TrackSocialAccountConnected::class]);
 
@@ -544,7 +544,7 @@ it('a telegram reconnect does not dispatch connected', function () {
 });
 
 it('a telegram connection still succeeds when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Http::fake();
     failDispatchOf(TrackSocialAccountConnected::class);
 

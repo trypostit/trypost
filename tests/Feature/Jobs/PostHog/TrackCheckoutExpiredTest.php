@@ -13,7 +13,7 @@ use App\Services\PostHogService;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create(['plan_id' => null]);
     $this->user = User::factory()->create(['account_id' => $this->account->id]);

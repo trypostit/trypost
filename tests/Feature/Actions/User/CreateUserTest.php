@@ -41,7 +41,7 @@ test('CreateUser sets account owner_id to the new user', function () {
 });
 
 test('CreateUser starts the account at the signed_up lifecycle stage', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $this->freezeTime();
 
     $user = CreateUser::execute([
@@ -81,7 +81,7 @@ test('CreateUser invite-style still creates user without workspace (workspace as
 });
 
 test('CreateUser dispatches SyncUser with the new user id when PostHog is enabled', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SyncUser::class]);
 
     $user = CreateUser::execute([
@@ -138,7 +138,7 @@ test('CreateUser dispatches SyncUser in the local environment even when PostHog 
 });
 
 test('CreateUser captures user.signed_up with the auth provider when PostHog is enabled', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     $user = CreateUser::execute([
@@ -155,7 +155,7 @@ test('CreateUser captures user.signed_up with the auth provider when PostHog is 
 });
 
 test('CreateUser defaults the auth provider to email when no OAuth id is present', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     CreateUser::execute([
@@ -171,7 +171,7 @@ test('CreateUser defaults the auth provider to email when no OAuth id is present
 });
 
 test('CreateUser does not capture user.signed_up for invite registrations', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([SendEvent::class]);
 
     CreateUser::execute([

@@ -42,7 +42,7 @@ class TrackWorkspaceLimitHit implements ShouldQueue
             $this->userId,
             WorkspaceEvent::LimitHit->value,
             [
-                'plan_slug' => $account->plan?->slug?->value,
+                'plan_slug' => $account->plan?->slug->value,
                 'workspaces_count' => $account->workspaces()->count(),
                 'workspace_limit' => $account->workspaceLimit(),
             ],

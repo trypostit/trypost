@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Jobs\PostHog;
 
 use App\Enums\PostHog\PostEvent;
+use App\Models\Account;
 use App\Models\Post;
 use App\Services\PostHogService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
@@ -35,24 +37,22 @@ class TrackPostPublished implements ShouldQueue
         }
 
         $post = Post::query()
+            ->createdInTryPost()
+            ->whereNotNull('user_id')
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
         $account = $post?->workspace?->account;
 
-        if (blank($account) || blank($post->user_id) || ! $post->isCreatedInTryPost()) {
+        if (blank($account)) {
             return;
         }
 
         $groupPosts = filled($post->post_group_id)
-            ? $post->groupPosts()->get(['id', 'platform'])
+            ? $post->groupPosts()->get(['id', 'platform', 'published_at'])
             : new Collection([$post]);
 
-        $publishedBefore = $account->posts()
-            ->createdInTryPost()
-            ->published()
-            ->whereNotIn('posts.id', $groupPosts->modelKeys())
-            ->exists();
+        $publishedBefore = $this->publishedBefore($account, $groupPosts);
 
         $groupKey = $post->post_group_id ?: $post->id;
 
@@ -78,5 +78,34 @@ class TrackPostPublished implements ShouldQueue
             ],
             $account,
         );
+    }
+
+    /**
+     * Whether the account published in TryPost before this group, decided by
+     * time (then id) rather than by status: two groups settling together
+     * would each see the other already published.
+     *
+     * @param  Collection<int, Post>  $groupPosts
+     */
+    private function publishedBefore(Account $account, Collection $groupPosts): bool
+    {
+        $first = $groupPosts
+            ->filter(fn (Post $groupPost): bool => filled($groupPost->published_at))
+            ->sortBy([['published_at', 'asc'], ['id', 'asc']])
+            ->first();
+
+        if (blank($first)) {
+            return true;
+        }
+
+        return $account->posts()
+            ->createdInTryPost()
+            ->published()
+            ->where(fn (Builder $query) => $query
+                ->where('posts.published_at', '<', $first->published_at)
+                ->orWhere(fn (Builder $tied) => $tied
+                    ->where('posts.published_at', $first->published_at)
+                    ->where('posts.id', '<', $first->id)))
+            ->exists();
     }
 }

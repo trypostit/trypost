@@ -44,6 +44,7 @@ class Account extends Model
         'lifecycle_stage' => LifecycleStage::class,
         'lifecycle_stage_changed_at' => 'datetime',
         'activated_at' => 'datetime',
+        'first_paid_at' => 'datetime',
     ];
 
     public function owner(): BelongsTo
@@ -105,12 +106,14 @@ class Account extends Model
         return $this->subscriptions->contains(fn (Subscription $subscription): bool => $subscription->becameBillable());
     }
 
-    /** Billable, and not a trial that ended before its first charge. */
+    /**
+     * Charged at least once. Cashier clears `trial_ends_at` when a subscription
+     * is deleted, so a trial cancelled before its first charge cannot be told
+     * apart from a paid one afterwards; `first_paid_at` keeps that fact.
+     */
     public function hasPaidSubscription(): bool
     {
-        return $this->subscriptions->contains(
-            fn (Subscription $subscription): bool => $subscription->becameBillable() && ! $subscription->endedBeforeFirstCharge(),
-        );
+        return filled($this->first_paid_at);
     }
 
     public function hasActiveSubscription(): bool

@@ -8,18 +8,13 @@ use App\Enums\Billing\Interval;
 use App\Enums\PostHog\PlanEvent;
 use App\Models\Account;
 use App\Models\Plan;
-use App\Support\Billing\StripeAmount;
+use App\Support\Billing\StripeValue;
 
 class TrackPlanChanged extends AbstractTrackStripeEvent
 {
     private const FROM_ITEM = 'data.previous_attributes.items.data.0';
 
     private const TO_ITEM = 'data.object.items.data.0';
-
-    protected function requiresPlan(): bool
-    {
-        return false;
-    }
 
     protected function shouldCapture(Account $account): bool
     {
@@ -87,7 +82,7 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
     private function monthlyAmount(string $itemPath): ?float
     {
         return transform(
-            StripeAmount::toDecimal($this->itemAmount($itemPath), data_get($this->payload, "{$itemPath}.price.currency")),
+            StripeValue::amount($this->itemAmount($itemPath)),
             fn (float $amount): float => $this->perMonth($itemPath, $amount),
         );
     }

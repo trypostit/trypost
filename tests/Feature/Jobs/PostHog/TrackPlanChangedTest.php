@@ -13,7 +13,7 @@ use App\Services\PostHogService;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     Plan::query()->delete();
     $this->legacy = Plan::factory()->create(['slug' => Slug::Workspace, 'name' => 'Workspace', 'stripe_monthly_price_id' => 'price_legacy_monthly']);

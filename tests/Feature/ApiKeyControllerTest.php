@@ -314,7 +314,7 @@ it('marks each api key as active, expiring soon or expired', function () {
 });
 
 it('creating an api key tracks api_key.created', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
 
     $this->actingAs($this->user)
@@ -328,7 +328,7 @@ it('creating an api key tracks api_key.created', function () {
 });
 
 it('regenerating an api key does not track api_key.created', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
     $token = makeWorkspaceToken($this->user, $this->workspace);
 
@@ -351,7 +351,7 @@ it('creating an api key does not track when posthog is disabled', function () {
 });
 
 it('creating an api key still returns the plain token when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(CaptureAccountEvent::class);
 
     $this->actingAs($this->user)

@@ -18,7 +18,7 @@ use Laravel\Cashier\Events\WebhookHandled;
 use Laravel\Cashier\Events\WebhookReceived;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create(['stripe_id' => 'cus_signal']);
     $this->user = User::factory()->create(['account_id' => $this->account->id]);

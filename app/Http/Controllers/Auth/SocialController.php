@@ -151,16 +151,16 @@ class SocialController extends Controller
             return $this->failConnection('error_connecting');
         }
 
-        rescue(function () use ($accounts, $reconnect, $request, $pending): void {
-            foreach ($accounts as $account) {
+        foreach ($accounts as $account) {
+            rescue(function () use ($account, $reconnect, $request, $pending): void {
                 TrackSocialAccountConnected::dispatchIf(
                     PostHogService::isEnabled() && blank($reconnect) && $account->wasRecentlyCreated,
                     (string) $account->id,
                     (string) $request->user()->id,
                     $pending->returnRouteName(),
                 );
-            }
-        });
+            });
+        }
 
         PendingConnection::forget();
 

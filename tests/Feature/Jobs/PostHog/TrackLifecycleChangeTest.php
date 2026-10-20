@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->freezeTime();
     $this->account = Account::factory()->create();
@@ -30,7 +30,7 @@ beforeEach(function () {
 });
 
 test('job is queued on the posthog queue with retries and a timeout', function () {
-    $job = new TrackLifecycleChange((string) Str::uuid(), null, LifecycleStage::SignedUp, false);
+    $job = new TrackLifecycleChange((string) Str::uuid(), null, LifecycleStage::SignedUp, null, null, false);
 
     expect($job->queue)->toBe('posthog')
         ->and($job->tries)->toBe(3)
@@ -39,13 +39,8 @@ test('job is queued on the posthog queue with retries and a timeout', function (
 
 test('a first stage only identifies the account and its owner', function () {
     Queue::fake();
-    $this->account->forceFill([
-        'lifecycle_stage' => LifecycleStage::Active,
-        'lifecycle_stage_changed_at' => now(),
-        'activated_at' => now()->subDay(),
-    ])->saveQuietly();
 
-    (new TrackLifecycleChange((string) $this->account->id, null, LifecycleStage::Active, true))
+    (new TrackLifecycleChange((string) $this->account->id, null, LifecycleStage::Active, now(), now()->subDay(), true))
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify'
@@ -64,9 +59,8 @@ test('a first stage only identifies the account and its owner', function () {
 
 test('a stage change captures lifecycle_stage.changed for the owner', function () {
     Queue::fake();
-    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::AtRisk, 'lifecycle_stage_changed_at' => now()])->saveQuietly();
 
-    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Active, LifecycleStage::AtRisk, false))
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Active, LifecycleStage::AtRisk, now(), null, false))
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
@@ -84,13 +78,8 @@ test('an activation captures activation.reached with signup age and connected ch
     Queue::fake();
     SocialAccount::factory()->count(2)->create(['workspace_id' => $this->workspace->id]);
     SocialAccount::factory()->disconnected()->create(['workspace_id' => $this->workspace->id]);
-    $this->account->forceFill([
-        'lifecycle_stage' => LifecycleStage::Active,
-        'lifecycle_stage_changed_at' => now(),
-        'activated_at' => now()->subDay(),
-    ])->saveQuietly();
 
-    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Connected, LifecycleStage::Active, true))
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Connected, LifecycleStage::Active, now(), now()->subDay(), true))
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
@@ -103,9 +92,8 @@ test('an activation captures activation.reached with signup age and connected ch
 
 test('an activation without a stage change captures only activation.reached', function () {
     Queue::fake();
-    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Churned, 'activated_at' => now()])->saveQuietly();
 
-    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Churned, LifecycleStage::Churned, true))
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Churned, LifecycleStage::Churned, null, now(), true))
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
@@ -116,19 +104,32 @@ test('an activation without a stage change captures only activation.reached', fu
 
 test('an account without an owner only updates the account group', function () {
     Queue::fake();
-    $this->account->forceFill(['owner_id' => null, 'lifecycle_stage' => LifecycleStage::Dormant])->saveQuietly();
+    $this->account->forceFill(['owner_id' => null])->saveQuietly();
 
-    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::AtRisk, LifecycleStage::Dormant, false))
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::AtRisk, LifecycleStage::Dormant, now(), null, false))
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify');
     Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method !== 'groupIdentify');
 });
 
+test('handle sends the values it was given, not what the account row holds when it runs', function () {
+    Queue::fake();
+    $this->account->forceFill(['lifecycle_stage' => LifecycleStage::Active, 'lifecycle_stage_changed_at' => now()->subWeek()])->saveQuietly();
+
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Active, LifecycleStage::AtRisk, now(), null, false))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'identify'
+        && $job->payload['properties'] === ['lifecycle_stage' => LifecycleStage::AtRisk->value]);
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture'
+        && $job->payload['properties']['reached_at'] === now()->toIso8601String());
+});
+
 test('handle returns silently when the account is gone', function () {
     Queue::fake();
 
-    (new TrackLifecycleChange((string) Str::uuid(), LifecycleStage::Active, LifecycleStage::AtRisk, false))
+    (new TrackLifecycleChange((string) Str::uuid(), LifecycleStage::Active, LifecycleStage::AtRisk, now(), null, false))
         ->handle(app(PostHogService::class));
 
     Queue::assertNothingPushed();
@@ -138,7 +139,7 @@ test('handle does nothing when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
     Queue::fake();
 
-    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Active, LifecycleStage::AtRisk, false))
+    (new TrackLifecycleChange((string) $this->account->id, LifecycleStage::Active, LifecycleStage::AtRisk, now(), null, false))
         ->handle(app(PostHogService::class));
 
     Queue::assertNothingPushed();

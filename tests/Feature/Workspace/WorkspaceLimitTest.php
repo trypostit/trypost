@@ -196,7 +196,7 @@ test('storing a workspace checks the cap under a lock on the account row', funct
 });
 
 $enablePostHog = function (): void {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([TrackWorkspaceLimitHit::class]);
 };
 
@@ -295,7 +295,7 @@ test('the creation check is for the account owner only', function () use ($onPla
 });
 
 test('a failed limit_hit dispatch still refuses the creation check', function () use ($onPlan) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(TrackWorkspaceLimitHit::class);
     $user = $onPlan(Slug::Socials);
 
@@ -372,7 +372,7 @@ test('a store refused for a missing subscription does not track limit_hit', func
 });
 
 test('a failed limit_hit dispatch still sends the user away from the create page', function () use ($onPlan) {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(TrackWorkspaceLimitHit::class);
     $user = $onPlan(Slug::Socials);
 

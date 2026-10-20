@@ -10,6 +10,11 @@ use App\Support\StripeSubscriptionConversion;
 
 class TrackTrialConverted extends AbstractTrackStripeEvent
 {
+    protected function shouldCapture(Account $account): bool
+    {
+        return filled($account->plan);
+    }
+
     protected function event(): string
     {
         return TrialEvent::Converted->value;

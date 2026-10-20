@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Account\ResolveLifecycleStage;
+use App\Enums\Account\LifecycleStage;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
@@ -17,7 +19,7 @@ use Illuminate\Support\Facades\Bus;
 use Laravel\Cashier\Events\WebhookHandled;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     // Use the seeded Workspace plan; set deterministic price ids so the
     // assertions don't depend on `.env.testing`.
@@ -1021,3 +1023,98 @@ test('subscription deleted still clears plan_id when TrackBilling dispatch fails
 
     expect($this->account->fresh()->plan_id)->toBeNull();
 });
+
+// ========================================
+// first payment
+// ========================================
+
+test('a subscription born active records the first payment on the account', function () {
+    $this->freezeTime();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_created',
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at?->toIso8601String())->toBe(now()->toIso8601String());
+});
+
+test('a trial records no payment until it converts, and a later activation keeps the first one', function () {
+    $this->freezeTime();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_trial',
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'trialing',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at)->toBeNull();
+
+    $convertedAt = now();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_converted',
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'trialing'],
+        ],
+    ]));
+
+    $this->travel(1)->month();
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_first_paid_renewed',
+        'type' => 'customer.subscription.updated',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    expect($this->account->fresh()->first_paid_at?->toIso8601String())->toBe($convertedAt->toIso8601String());
+});
+
+test('a trial cancelled through the real Cashier webhook is signed up, a paid subscription cancelled the same way is churned', function (bool $paid, LifecycleStage $expected) {
+    config(['cashier.webhook.secret' => null, 'trypost.self_hosted' => false, 'trypost.billing.require_card_for_trial' => true]);
+    $this->account->forceFill(['trial_ends_at' => null, 'first_paid_at' => $paid ? now()->subMonth() : null])->save();
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_cancelled',
+        'stripe_status' => $paid ? 'active' : 'trialing',
+        'stripe_price' => 'price_socials_monthly',
+        'trial_ends_at' => $paid ? null : now()->addDays(5),
+    ]);
+
+    $this->postJson(route('cashier.webhook'), [
+        'id' => "evt_cancelled_{$expected->value}",
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['id' => 'sub_cancelled', 'customer' => 'cus_test123', 'status' => 'canceled']],
+    ])->assertOk();
+
+    $account = $this->account->fresh()->load('subscriptions');
+
+    expect($account->subscriptions->first()->trial_ends_at)->toBeNull()
+        ->and(ResolveLifecycleStage::execute($account, null, true))->toBe($expected);
+})->with([
+    'trial' => [false, LifecycleStage::SignedUp],
+    'paid' => [true, LifecycleStage::Churned],
+]);

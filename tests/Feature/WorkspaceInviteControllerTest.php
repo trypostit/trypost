@@ -419,7 +419,7 @@ test('update member of a user outside the workspace is not found and revokes not
 });
 
 test('inviting a member tracks admin and approval flags', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
     $admin = workspaceMember($this->workspace, 'admin');
 
@@ -439,7 +439,7 @@ test('inviting a member tracks admin and approval flags', function () {
 });
 
 test('inviting a member still creates and mails the invite when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(CaptureAccountEvent::class);
 
     $this->actingAs($this->user)

@@ -293,7 +293,7 @@ test('a failing provider returns a translated bad gateway', function () {
 });
 
 test('ai assist tracks the mode', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
     PostWritingAssistant::fake(['A fresh caption']);
 
@@ -314,7 +314,7 @@ test('ai assist tracks the mode', function () {
 });
 
 test('a failed ai assist is not tracked', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
     PostWritingAssistant::fake([fn () => throw new ConnectionException('timeout')]);
 
@@ -329,7 +329,7 @@ test('a failed ai assist is not tracked', function () {
 });
 
 test('ai assist still returns the content when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     PostWritingAssistant::fake(['A fresh caption']);
     failDispatchOf(CaptureAccountEvent::class);
 

@@ -249,7 +249,7 @@ it('validates api key name max length', function () {
 });
 
 test('creating an api key through the api tracks api_key.created', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
     $result = createApiKeyApiToken();
 
@@ -264,7 +264,7 @@ test('creating an api key through the api tracks api_key.created', function () {
 });
 
 test('creating an api key through the api still returns the plain token when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $result = createApiKeyApiToken();
     failDispatchOf(CaptureAccountEvent::class);
 

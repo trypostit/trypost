@@ -55,7 +55,7 @@ class SyncPostHogLifecycleStages extends Command
             DB::transaction(function () use ($account, $previousStage, $stage, $activatedNow): void {
                 Account::withoutTimestamps(fn (): bool => $account->saveQuietly());
 
-                TrackLifecycleChange::dispatch((string) $account->id, $previousStage, $stage, $activatedNow);
+                TrackLifecycleChange::dispatch((string) $account->id, $previousStage, $stage, $account->lifecycle_stage_changed_at, $account->activated_at, $activatedNow);
             });
         });
     }

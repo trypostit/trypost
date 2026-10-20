@@ -41,20 +41,21 @@ class LoadMcpWorkspace
      */
     private function trackToolCalled(Request $request): void
     {
-        if ($request->enum('method', Method::class) !== Method::ToolsCall) {
+        if ($request->json('method') !== Method::ToolsCall->value) {
             return;
         }
 
         rescue(function () use ($request): void {
             $user = $request->user();
             $today = now()->utc();
+            $tool = $request->json('params.name');
 
             TrackMcpToolCalled::dispatchIf(
                 PostHogService::isEnabled() && Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay()),
                 (string) $user->id,
                 (string) $user->current_workspace_id,
                 $user->token()?->oauth_access_token_id,
-                $request->input('params.name'),
+                is_string($tool) ? $tool : null,
             );
         });
     }

@@ -91,9 +91,9 @@ class ConnectTelegramChannel
         rescue(function () use ($created, $account): void {
             TrackSocialAccountConnected::dispatchIf(
                 $created && PostHogService::isEnabled(),
-                (string) $account->id,
-                null,
-                TrackSocialAccountConnected::SOURCE_TELEGRAM,
+                socialAccountId: (string) $account->id,
+                userId: null,
+                source: TrackSocialAccountConnected::SOURCE_TELEGRAM,
             );
         });
 

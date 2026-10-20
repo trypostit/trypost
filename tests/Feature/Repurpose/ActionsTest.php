@@ -53,7 +53,7 @@ function tiktokDestination(Workspace $workspace): array
 
 function enableRepurposeTracking(): void
 {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, TrackRepurposeActivated::class]);
 }
 

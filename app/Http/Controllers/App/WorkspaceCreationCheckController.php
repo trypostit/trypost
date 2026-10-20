@@ -18,7 +18,7 @@ class WorkspaceCreationCheckController extends Controller
         $this->authorize('create', Workspace::class);
 
         $user = $request->user();
-        $allowed = config('trypost.self_hosted') || $user->account?->canCreateWorkspace() !== false;
+        $allowed = $user->account?->canCreateWorkspace() !== false;
 
         rescue(function () use ($user, $allowed): void {
             TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && ! $allowed, (string) $user->id);

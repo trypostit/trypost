@@ -11,7 +11,7 @@ use App\Services\PostHogService;
 use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create(['plan_id' => null]);
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
@@ -74,18 +74,6 @@ test('marks the final attempt when Stripe schedules no retry', function () {
 
         return $properties['is_final_attempt'] === true && $properties['next_attempt_at'] === null;
     });
-});
-
-test('sends a zero-decimal currency amount as is', function () {
-    $this->payload['data']['object']['amount_due'] = 2500;
-    $this->payload['data']['object']['currency'] = 'jpy';
-    Queue::fake();
-
-    (new TrackInvoicePaymentFailed((string) $this->account->id, $this->payload))
-        ->handle(app(PostHogService::class));
-
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['amount'] === 2500.0
-        && $job->payload['properties']['currency'] === 'JPY');
 });
 
 test('sends a null amount when the invoice has none', function () {

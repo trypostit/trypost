@@ -7,9 +7,8 @@ namespace App\Support;
 use App\Enums\Billing\Interval;
 use App\Models\Account;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
-use App\Support\Billing\StripeAmount;
+use App\Support\Billing\StripeValue;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 final class StripeSubscriptionConversion
 {
@@ -42,12 +41,12 @@ final class StripeSubscriptionConversion
     {
         $properties = self::baseProperties($account, $payload);
 
-        $currency = data_get($payload, 'data.object.items.data.0.price.currency');
-        $conversionValue = StripeAmount::toDecimal(data_get($payload, 'data.object.items.data.0.price.unit_amount'), $currency);
+        $currency = StripeValue::currency(data_get($payload, 'data.object.items.data.0.price.currency'));
+        $conversionValue = StripeValue::amount(data_get($payload, 'data.object.items.data.0.price.unit_amount'));
 
-        if (filled($conversionValue)) {
+        if (filled($conversionValue) && filled($currency)) {
             $properties['conversion_value'] = $conversionValue;
-            $properties['conversion_currency'] = Str::upper($currency);
+            $properties['conversion_currency'] = $currency;
             $properties['conversion_transaction_id'] = data_get($payload, 'data.object.id');
         }
 

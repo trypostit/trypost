@@ -351,6 +351,14 @@ function subscribeAccount(Account $account): void
 }
 
 /**
+ * Turns PostHog on for the test, as on an install with an API key.
+ */
+function enablePostHog(): void
+{
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+}
+
+/**
  * Make dispatching the given job throw, as when the queue is down, while every
  * other job dispatches as usual. `$when` narrows the failure to the jobs it
  * accepts.

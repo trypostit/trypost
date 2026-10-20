@@ -33,10 +33,12 @@ class TrackPost implements ShouldQueue
         }
 
         $post = Post::query()
+            ->createdInTryPost()
+            ->whereNotNull('user_id')
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
-        if (! $post || blank($post->user_id) || ! $post->isCreatedInTryPost()) {
+        if (! $post) {
             return;
         }
 

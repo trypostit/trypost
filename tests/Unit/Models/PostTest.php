@@ -192,11 +192,3 @@ test('the cover media is the first image or video, skipping documents', function
     ], null],
     'no media' => [[], null],
 ]);
-
-test('a post written in TryPost is created in TryPost, an imported one is not', function () {
-    $written = Post::factory()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-    $imported = Post::factory()->imported()->create(['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id]);
-
-    expect($written->isCreatedInTryPost())->toBeTrue()
-        ->and($imported->isCreatedInTryPost())->toBeFalse();
-});

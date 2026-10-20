@@ -440,7 +440,7 @@ test('several channels connect at once on any plan, since channels have no cap',
 });
 
 test('finishing a new connection dispatches social_account.connected with source', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([TrackSocialAccountConnected::class]);
 
     startSocialConnect($this->workspace, Platform::Facebook, null, route('app.calendar', ['view' => 'week'], false))->offer([
@@ -461,7 +461,7 @@ test('finishing a new connection dispatches social_account.connected with source
 });
 
 test('reconnecting does not dispatch connected', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Bus::fake([TrackSocialAccountConnected::class]);
 
     $account = SocialAccount::factory()->x()->create([
@@ -493,7 +493,7 @@ test('finishing a connection does not dispatch connected when PostHog is disable
 });
 
 test('finishing a connection still lands on the channel when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(TrackSocialAccountConnected::class);
 
     startSocialConnect($this->workspace, Platform::Facebook)->offer([offeredFacebookPage('p1', 'One')]);

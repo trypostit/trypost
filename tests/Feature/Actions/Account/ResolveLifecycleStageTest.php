@@ -13,7 +13,7 @@ beforeEach(function () {
 test('each stage is resolved from access, channels and the last published post', function (?string $subscriptionStatus, bool $hasConnectedChannel, ?int $daysSinceLastPublish, LifecycleStage $expected) {
     $this->freezeTime();
 
-    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account = Account::factory()->create(['trial_ends_at' => null, 'first_paid_at' => $subscriptionStatus === 'canceled' ? now()->subMonth() : null]);
 
     if (filled($subscriptionStatus)) {
         $account->subscriptions()->create([
@@ -44,13 +44,13 @@ test('each stage is resolved from access, channels and the last published post',
 test('a card trial cancelled before its first charge is signed up, not churned', function () {
     $this->freezeTime();
 
-    $account = Account::factory()->create(['trial_ends_at' => null]);
+    $account = Account::factory()->create(['trial_ends_at' => null, 'first_paid_at' => null]);
     $account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_trial_cancelled',
         'stripe_status' => 'canceled',
         'stripe_price' => 'price_123',
-        'trial_ends_at' => now()->subDays(2),
+        'trial_ends_at' => null,
         'ends_at' => now()->subDays(4),
     ]);
 

@@ -42,11 +42,7 @@ abstract class AbstractTrackStripeEvent implements ShouldQueue
 
         $account = Account::with('plan')->find($this->accountId);
 
-        if (! $account?->owner_id || ($this->requiresPlan() && ! $account->plan)) {
-            return;
-        }
-
-        if (! $this->shouldCapture($account)) {
+        if (blank($account?->owner_id) || ! $this->shouldCapture($account)) {
             return;
         }
 
@@ -56,11 +52,6 @@ abstract class AbstractTrackStripeEvent implements ShouldQueue
             $this->properties($account),
             $account,
         );
-    }
-
-    protected function requiresPlan(): bool
-    {
-        return true;
     }
 
     protected function shouldCapture(Account $account): bool

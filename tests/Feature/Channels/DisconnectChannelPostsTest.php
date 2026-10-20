@@ -211,7 +211,7 @@ test('a disconnect waits for the channel queue lock and changes nothing while a 
 });
 
 test('disconnecting tracks social_account.disconnected with reason removed', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
     Bus::fake([TrackSocialAccountRemoved::class]);
@@ -251,7 +251,7 @@ test('disconnecting tracks nothing when PostHog is disabled', function () {
 });
 
 test('disconnecting still succeeds when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
     failDispatchOf(TrackSocialAccountRemoved::class);
 
@@ -261,7 +261,7 @@ test('disconnecting still succeeds when tracking it fails', function () {
 });
 
 test('a disconnect refused by a busy queue tracks nothing and shows the error', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
     $lock = Cache::lock("queue:{$account->id}", 10);
     $lock->get();

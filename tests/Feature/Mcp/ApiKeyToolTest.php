@@ -233,7 +233,7 @@ test('delete api key validates api_key_id required', function () {
 });
 
 test('creating an api key through mcp tracks api_key.created', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([CaptureAccountEvent::class]);
 
     TryPostServer::actingAs($this->user)
@@ -246,7 +246,7 @@ test('creating an api key through mcp tracks api_key.created', function () {
 });
 
 test('creating an api key through mcp still returns the plain token when tracking it fails', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     failDispatchOf(CaptureAccountEvent::class);
 
     TryPostServer::actingAs($this->user)

@@ -9,6 +9,7 @@ use App\Enums\PostHog\ActivationEvent;
 use App\Enums\PostHog\LifecycleEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
+use Carbon\CarbonInterface;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -27,6 +28,8 @@ class TrackLifecycleChange implements ShouldQueue
         public string $accountId,
         public ?LifecycleStage $previousStage,
         public LifecycleStage $stage,
+        public ?CarbonInterface $stageChangedAt,
+        public ?CarbonInterface $activatedAt,
         public bool $activatedNow,
     ) {
         $this->onQueue('posthog');
@@ -45,9 +48,9 @@ class TrackLifecycleChange implements ShouldQueue
         }
 
         $postHog->groupIdentify('account', (string) $account->id, [
-            'lifecycle_stage' => $account->lifecycle_stage?->value,
-            'lifecycle_stage_changed_at' => $account->lifecycle_stage_changed_at?->toIso8601String(),
-            'activated_at' => $account->activated_at?->toIso8601String(),
+            'lifecycle_stage' => $this->stage->value,
+            'lifecycle_stage_changed_at' => $this->stageChangedAt?->toIso8601String(),
+            'activated_at' => $this->activatedAt?->toIso8601String(),
         ]);
 
         if (blank($account->owner_id)) {
@@ -56,7 +59,7 @@ class TrackLifecycleChange implements ShouldQueue
 
         $ownerId = (string) $account->owner_id;
 
-        $postHog->identify($ownerId, ['lifecycle_stage' => $account->lifecycle_stage?->value]);
+        $postHog->identify($ownerId, ['lifecycle_stage' => $this->stage->value]);
 
         if (blank($this->previousStage)) {
             return;
@@ -66,14 +69,14 @@ class TrackLifecycleChange implements ShouldQueue
             $postHog->capture($ownerId, LifecycleEvent::StageChanged->value, [
                 'stage' => $this->stage->value,
                 'previous_stage' => $this->previousStage->value,
-                'reached_at' => $account->lifecycle_stage_changed_at?->toIso8601String(),
+                'reached_at' => $this->stageChangedAt?->toIso8601String(),
             ], $account);
         }
 
-        if ($this->activatedNow && filled($account->activated_at)) {
+        if ($this->activatedNow && filled($this->activatedAt)) {
             $postHog->capture($ownerId, ActivationEvent::Reached->value, [
-                'reached_at' => $account->activated_at->toIso8601String(),
-                'days_since_signup' => (int) $account->created_at->diffInDays($account->activated_at),
+                'reached_at' => $this->activatedAt->toIso8601String(),
+                'days_since_signup' => (int) $account->created_at->diffInDays($this->activatedAt),
                 'channels_count' => $account->socialAccounts()->connected()->count(),
             ], $account);
         }

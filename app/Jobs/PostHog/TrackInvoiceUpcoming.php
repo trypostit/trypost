@@ -9,17 +9,10 @@ use App\Enums\PostHog\InvoiceEvent;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\FirstFullCharge;
-use App\Support\Billing\StripeAmount;
-use Carbon\CarbonImmutable;
-use Illuminate\Support\Str;
+use App\Support\Billing\StripeValue;
 
 class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
 {
-    protected function requiresPlan(): bool
-    {
-        return false;
-    }
-
     protected function event(): string
     {
         return InvoiceEvent::Upcoming->value;
@@ -33,16 +26,15 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
         $invoice = data_get($this->payload, 'data.object');
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
         $line = $this->subscriptionLine($invoice);
-        $currency = data_get($invoice, 'currency');
 
-        $chargeAt = $this->timestamp(data_get($invoice, 'next_payment_attempt') ?? data_get($line, 'period.start'));
+        $chargeAt = StripeValue::timestamp(data_get($invoice, 'next_payment_attempt') ?? data_get($line, 'period.start'));
         $interval = $this->interval(data_get($line, 'pricing.price_details.price') ?? $subscription?->stripe_price);
 
         return [
-            'amount' => StripeAmount::toDecimal(data_get($invoice, 'amount_due'), $currency),
-            'currency' => transform($currency, Str::upper(...)),
+            'amount' => StripeValue::amount(data_get($invoice, 'amount_due')),
+            'currency' => StripeValue::currency(data_get($invoice, 'currency')),
             'charge_at' => $chargeAt?->toIso8601String(),
-            'period_end' => $this->timestamp(data_get($line, 'period.end'))?->toIso8601String(),
+            'period_end' => StripeValue::timestamp(data_get($line, 'period.end'))?->toIso8601String(),
             'interval' => $interval?->value,
             'is_first_full_charge' => filled($subscription?->created_at) && filled($chargeAt) && filled($interval)
                 ? FirstFullCharge::isFirst($subscription->created_at, $chargeAt, $interval)
@@ -61,11 +53,6 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
     {
         return collect(data_get($invoice, 'lines.data', []))
             ->first(fn (array $line): bool => data_get($line, 'parent.subscription_item_details.proration') === false);
-    }
-
-    private function timestamp(mixed $at): ?CarbonImmutable
-    {
-        return transform($at, fn (mixed $at): CarbonImmutable => CarbonImmutable::createFromTimestampUTC((int) $at));
     }
 
     private function interval(?string $priceId): ?Interval

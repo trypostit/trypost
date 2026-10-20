@@ -17,6 +17,7 @@ New Cashier-handled types (`customer.subscription.*`, ...) stay in `StripeEventL
 ## Lifecycle stage first sync is silent; post.published is claimed atomically
 `accounts.lifecycle_stage` null means a pre-deploy account: the first sync writes properties only, no `lifecycle_stage.changed` / `activation.reached`, so workflows do not all fire at once. `CreateUser` seeds `signed_up`, so new accounts emit real transitions.
 Stage definitions and thresholds live in `LifecycleStage` and the `ResolveLifecycleStage` constants (`ACTIVE_WITHIN_DAYS`, `AT_RISK_WITHIN_DAYS`).
+`churned` means the account was charged at least once: `accounts.first_paid_at`, written by `StripeEventListener` the first time a subscription webhook says `active` (backfilled from local subscriptions by its migration). Never decide it from the subscription dates: Cashier's `customer.subscription.deleted` handler runs `skipTrial()` and clears `trial_ends_at`, so a trial cancelled before its first charge looks paid afterwards.
 `post.published` fires once per post group: `TrackPostPublished` claims it with an atomic `Cache::add("posthog:post_group_published:{group}")`. Never a read-then-decide guard, which races between the group's jobs.
 
 ## Tracking from domain code must never break the user's action
@@ -25,7 +26,7 @@ Dispatch after the action's transaction, never inside it (`ActivateRepurpose`, `
 A system command that saves state and then announces it (`SyncPostHogLifecycleStages`) does both per item in `rescue(function () { DB::transaction(function () { save; dispatch; }); })`, the dispatch without `afterCommit()`: a failed push rolls the save back so the next run retries it, and the loop goes on.
 
 ## Imported network posts never feed PostHog
-Only posts written in TryPost by a user count. Every post query behind a PostHog event or property filters `createdInTryPost()` (`SyncAccountPublishingActivity`, `Account::scopeWithLifecycleActivity`, `TrackPostPublished` `is_first`, `HasUsage::cachedPostCount`), and the post jobs (`TrackPost`, `TrackPostPublished`, `TrackPostFailed`) return early for a post without an author (`user_id` null) or not `Post::isCreatedInTryPost()`, with no fallback to the owner.
+Only posts written in TryPost by a user count. Every post query behind a PostHog event or property filters `createdInTryPost()` (`SyncAccountPublishingActivity`, `Account::scopeWithLifecycleActivity`, `TrackPostPublished` `is_first`, `HasUsage::cachedPostCount`), and the post jobs (`TrackPost`, `TrackPostPublished`, `TrackPostFailed`) load the post with `->createdInTryPost()->whereNotNull('user_id')`, so a post imported from the network or without an author is never found, with no fallback to the owner.
 
 ## Naming tracking code
 A dedicated job exists only when it has its own logic (it loads models or decides something); otherwise dispatch `CaptureAccountEvent` with the enum case. Dedicated jobs are named `Track<Subject><EnumCase>` (`TrackPostPublished`, `TrackWorkspaceLimitHit`). When one event has two causes, each cause gets its job, named after it: `social_account.disconnected` is `TrackSocialAccountRemoved` (a member removed it) and `TrackSocialAccountConnectionLost` (the system lost the connection). A job that picks between two events is named after the decision (`TrackPlanChanged`, `TrackLifecycleChange`).

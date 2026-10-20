@@ -34,12 +34,14 @@ class TrackPostFailed implements ShouldQueue
         }
 
         $post = Post::query()
+            ->createdInTryPost()
+            ->whereNotNull('user_id')
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
         $account = $post?->workspace?->account;
 
-        if (blank($account) || blank($post->user_id) || ! $post->isCreatedInTryPost()) {
+        if (blank($account)) {
             return;
         }
 

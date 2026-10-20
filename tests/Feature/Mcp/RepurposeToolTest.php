@@ -403,7 +403,7 @@ test('google business is rejected as a destination', function () {
 });
 
 test('activating through the tool returns the same body when PostHog is enabled', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake();
 
     $repurpose = Repurpose::factory()->create([

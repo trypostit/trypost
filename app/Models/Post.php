@@ -411,15 +411,6 @@ class Post extends Model
     }
 
     /**
-     * The post was written in TryPost, not imported from the network (the
-     * instance form of `scopeCreatedInTryPost`).
-     */
-    public function isCreatedInTryPost(): bool
-    {
-        return $this->origin === Origin::TryPost;
-    }
-
-    /**
      * The post has a destination: a channel, or the snapshot of one that was deleted.
      */
     public function hasDestination(): bool

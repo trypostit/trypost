@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\AccessToken\McpClient;
+use App\Enums\Mcp\Method;
 use App\Enums\PostHog\McpEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Jobs\PostHog\TrackMcpToolCalled;
@@ -12,7 +13,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     Queue::fake([TrackMcpToolCalled::class, SendEvent::class]);
 
     $result = createApiTestToken();
@@ -50,7 +51,7 @@ function mcpToolCalledGetWorkspace(): array
 }
 
 test('first tool call of the day is tracked with tool and client', function () {
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
 
     Queue::assertPushedOn('posthog', TrackMcpToolCalled::class, fn (TrackMcpToolCalled $job) => $job->userId === (string) $this->user->id
         && $job->workspaceId === (string) $this->workspace->id
@@ -68,24 +69,24 @@ test('first tool call of the day is tracked with tool and client', function () {
 });
 
 test('second call the same day is not tracked', function () {
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', ['name' => 'list-labels-tool', 'arguments' => (object) []])->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, ['name' => 'list-labels-tool', 'arguments' => (object) []])->assertOk();
 
     Queue::assertPushedOnce(TrackMcpToolCalled::class);
 });
 
 test('the first call of the next day is tracked again', function () {
     $this->travelTo(now()->utc()->setTime(23, 0));
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
 
     $this->travelTo(now()->utc()->addDay()->setTime(1, 0));
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
 
     Queue::assertPushedTimes(TrackMcpToolCalled::class, 2);
 });
 
 test('tools/list is not tracked', function () {
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/list')->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsList->value)->assertOk();
 
     Queue::assertNotPushed(TrackMcpToolCalled::class);
 });
@@ -93,7 +94,7 @@ test('tools/list is not tracked', function () {
 test('api key requests are not tracked, even with a tool call body', function () {
     $this->withToken($this->apiToken)->getJson(route('api.workspace.show'))->assertOk();
     $this->withToken($this->apiToken)->postJson(route('api.labels.store'), [
-        'method' => 'tools/call',
+        'method' => Method::ToolsCall->value,
         'params' => ['name' => 'x'],
     ]);
 
@@ -103,7 +104,7 @@ test('api key requests are not tracked, even with a tool call body', function ()
 test('nothing is tracked or cached when PostHog is disabled', function () {
     config(['services.posthog.api_key' => null]);
 
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
 
     $today = now()->utc()->toDateString();
 
@@ -114,7 +115,7 @@ test('nothing is tracked or cached when PostHog is disabled', function () {
 test('a tracking failure never fails the tool call', function () {
     Cache::shouldReceive('add')->andThrow(new RuntimeException('cache down'));
 
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())->assertOk();
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())->assertOk();
 
     Queue::assertNotPushed(TrackMcpToolCalled::class);
 });
@@ -122,10 +123,30 @@ test('a tracking failure never fails the tool call', function () {
 test('a tool call still runs when the tracking dispatch fails', function () {
     failDispatchOf(TrackMcpToolCalled::class);
 
-    mcpToolCalledRequest($this, $this->mcpToken, 'tools/call', mcpToolCalledGetWorkspace())
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, mcpToolCalledGetWorkspace())
         ->assertOk()
         ->assertJsonPath('result.isError', false)
         ->assertSee((string) $this->workspace->id);
 
     Queue::assertNotPushed(TrackMcpToolCalled::class);
+});
+
+test('a method that is not a string still gets the JSON-RPC error, not a server error', function (mixed $method) {
+    $this->withHeaders([
+        'Authorization' => "Bearer {$this->mcpToken}",
+        'Accept' => 'application/json, text/event-stream',
+    ])->postJson(route('mcp.trypost'), ['jsonrpc' => '2.0', 'id' => 1, 'method' => $method])
+        ->assertOk()
+        ->assertJsonPath('error.code', -32600);
+
+    Queue::assertNotPushed(TrackMcpToolCalled::class);
+})->with([
+    'array' => [[Method::ToolsCall->value]],
+    'object' => [['name' => Method::ToolsCall->value]],
+]);
+
+test('a tool name that is not a string is tracked without it', function () {
+    mcpToolCalledRequest($this, $this->mcpToken, Method::ToolsCall->value, ['name' => ['get-workspace-tool'], 'arguments' => (object) []]);
+
+    Queue::assertPushedOn('posthog', TrackMcpToolCalled::class, fn (TrackMcpToolCalled $job) => $job->tool === null);
 });

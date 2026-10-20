@@ -7,8 +7,8 @@ namespace App\Jobs\PostHog;
 use App\Enums\PostHog\BillingEvent;
 use App\Models\Account;
 use App\Services\PostHogService;
+use App\Support\Billing\StripeValue;
 use App\Support\StripeSubscriptionConversion;
-use Carbon\CarbonImmutable;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -77,10 +77,7 @@ class TrackBilling implements ShouldQueue
     {
         return [
             'cancel_at_period_end' => (bool) data_get($this->payload, 'data.object.cancel_at_period_end', false),
-            'cancel_at' => transform(
-                data_get($this->payload, 'data.object.cancel_at'),
-                fn (mixed $at): string => CarbonImmutable::createFromTimestampUTC((int) $at)->toIso8601String(),
-            ),
+            'cancel_at' => StripeValue::timestamp(data_get($this->payload, 'data.object.cancel_at'))?->toIso8601String(),
         ];
     }
 

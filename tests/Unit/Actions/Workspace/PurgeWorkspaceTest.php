@@ -64,7 +64,7 @@ test('purge workspace prunes google business jpegs before the cascade', function
 });
 
 test('purge workspace does not track its channels as disconnected', function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
     $owner = User::factory()->create();
     $workspace = Workspace::factory()->create([
         'account_id' => $owner->account_id,

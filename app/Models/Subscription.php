@@ -17,11 +17,4 @@ class Subscription extends CashierSubscription
     {
         return ! $this->incomplete() && $this->stripe_status !== StripeSubscription::STATUS_INCOMPLETE_EXPIRED;
     }
-
-    public function endedBeforeFirstCharge(): bool
-    {
-        return filled($this->ends_at)
-            && filled($this->trial_ends_at)
-            && $this->ends_at->lessThanOrEqualTo($this->trial_ends_at);
-    }
 }

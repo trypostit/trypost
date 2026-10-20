@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 beforeEach(function () {
-    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
+    enablePostHog();
 
     $this->account = Account::factory()->create();
     $this->user = User::factory()->create(['account_id' => $this->account->id]);
@@ -134,6 +134,30 @@ test('is_first is true for the account first group and false after', function ()
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job) => $job->payload['properties']['is_first'] === false);
 });
+
+test('is_first goes to exactly one group when two groups settle before either job runs', function (bool $sameSecond) {
+    Queue::fake();
+
+    $publishedAt = now()->subMinute()->startOfSecond();
+    $attributes = ['workspace_id' => $this->workspace->id, 'user_id' => $this->user->id];
+
+    $earlier = Post::factory()->linkedin()->published()->create([...$attributes, 'post_group_id' => (string) Str::uuid(), 'published_at' => $publishedAt]);
+    $later = Post::factory()->x()->published()->create([...$attributes, 'post_group_id' => (string) Str::uuid(), 'published_at' => $sameSecond ? $publishedAt : $publishedAt->addSecond()]);
+
+    (new TrackPostPublished((string) $later->id))->handle(app(PostHogService::class));
+    (new TrackPostPublished((string) $earlier->id))->handle(app(PostHogService::class));
+
+    $firsts = Queue::pushed(SendEvent::class)
+        ->filter(fn (SendEvent $job): bool => $job->method === 'capture' && $job->payload['properties']['is_first'] === true);
+
+    $expected = collect([$earlier, $later])->sortBy([['published_at', 'asc'], ['id', 'asc']])->first();
+
+    expect($firsts)->toHaveCount(1)
+        ->and($firsts->first()->payload['properties']['post_group_id'])->toBe($expected->post_group_id);
+})->with([
+    'a second apart' => [false],
+    'in the same second' => [true],
+]);
 
 test('handle does not push when the post is missing or PostHog is disabled', function () {
     Queue::fake();
