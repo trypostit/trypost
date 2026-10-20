@@ -6,7 +6,6 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Post\DeleteChannelPosts;
 use App\Actions\Post\Queue\ReflowChannelQueue;
-use App\Enums\PostHog\SocialAccountEvent;
 use App\Enums\Repurpose\Status as RepurposeStatus;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Enums\SocialAccount\Status;
@@ -15,13 +14,12 @@ use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Exceptions\SocialAccount\NetworkAlreadyConnectedException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\FinishSocialConnectionRequest;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\TrackSocialAccountConnected;
+use App\Jobs\PostHog\TrackSocialAccountRemoved;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
-use App\Support\PostHog\SocialAccountSnapshot;
 use App\Support\Social\PendingConnection;
 use Exception;
 use Illuminate\Http\RedirectResponse;
@@ -66,7 +64,6 @@ class SocialController extends Controller
         }
 
         $before = $this->repurposeStatesFor($account);
-        $snapshot = $this->disconnectedSnapshot($account);
 
         try {
             ReflowChannelQueue::withLock([$account->id], fn () => DB::transaction(function () use ($account): void {
@@ -78,7 +75,15 @@ class SocialController extends Controller
             return back()->with('flash.error', $exception->getMessage());
         }
 
-        $this->trackDisconnected((string) $workspace->account_id, (string) $request->user()->id, $snapshot);
+        rescue(function () use ($request, $account): void {
+            TrackSocialAccountRemoved::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $request->user()->id,
+                (string) $account->id,
+                (string) $account->workspace_id,
+                $account->platform,
+            );
+        });
 
         $this->flashAccountChange($before);
 
@@ -146,7 +151,16 @@ class SocialController extends Controller
             return $this->failConnection('error_connecting');
         }
 
-        $this->trackConnected($accounts, $reconnect, (string) $request->user()->id, $pending->returnRouteName());
+        rescue(function () use ($accounts, $reconnect, $request, $pending): void {
+            foreach ($accounts as $account) {
+                TrackSocialAccountConnected::dispatchIf(
+                    PostHogService::isEnabled() && blank($reconnect) && $account->wasRecentlyCreated,
+                    (string) $account->id,
+                    (string) $request->user()->id,
+                    $pending->returnRouteName(),
+                );
+            }
+        });
 
         PendingConnection::forget();
 
@@ -521,54 +535,6 @@ class SocialController extends Controller
         $accounts->each(fn (SocialAccount $account) => $this->afterConnected($account));
 
         return $accounts;
-    }
-
-    /**
-     * @param  Collection<int, SocialAccount>  $accounts
-     */
-    private function trackConnected(Collection $accounts, ?SocialAccount $reconnect, string $userId, string $source): void
-    {
-        if (filled($reconnect) || ! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($accounts, $userId, $source): void {
-            $accounts
-                ->filter(fn (SocialAccount $account): bool => $account->wasRecentlyCreated)
-                ->each(function (SocialAccount $account) use ($userId, $source): void {
-                    TrackSocialAccountConnected::dispatch((string) $account->id, $userId, $source);
-                });
-        });
-    }
-
-    /**
-     * The channel as tracking needs it, taken before the delete removes it.
-     *
-     * @return array<string, mixed>|null
-     */
-    private function disconnectedSnapshot(SocialAccount $account): ?array
-    {
-        if (! PostHogService::isEnabled()) {
-            return null;
-        }
-
-        return rescue(function () use ($account): array {
-            return SocialAccountSnapshot::of($account, SocialAccountSnapshot::REASON_REMOVED);
-        });
-    }
-
-    /**
-     * @param  array<string, mixed>|null  $snapshot
-     */
-    private function trackDisconnected(string $billingAccountId, string $userId, ?array $snapshot): void
-    {
-        if (! PostHogService::isEnabled() || blank($snapshot)) {
-            return;
-        }
-
-        rescue(function () use ($billingAccountId, $userId, $snapshot): void {
-            CaptureAccountEvent::dispatch($userId, $billingAccountId, SocialAccountEvent::Disconnected, $snapshot);
-        });
     }
 
     /**

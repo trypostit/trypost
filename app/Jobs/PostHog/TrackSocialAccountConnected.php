@@ -18,13 +18,18 @@ class TrackSocialAccountConnected implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public const SOURCE_TELEGRAM = 'telegram';
+
     public int $tries = 3;
 
     public int $timeout = 30;
 
+    /**
+     * @param  string|null  $userId  Who connected it; null for the account owner (a Telegram connect arrives by webhook, with nobody signed in).
+     */
     public function __construct(
         public string $socialAccountId,
-        public string $userId,
+        public ?string $userId,
         public string $source,
     ) {
         $this->onQueue('posthog');
@@ -42,7 +47,9 @@ class TrackSocialAccountConnected implements ShouldQueue
 
         $account = $socialAccount?->workspace?->account;
 
-        if (blank($account)) {
+        $distinctId = $this->userId ?? $account?->owner_id;
+
+        if (blank($account) || blank($distinctId)) {
             return;
         }
 
@@ -55,7 +62,7 @@ class TrackSocialAccountConnected implements ShouldQueue
             ->count();
 
         $postHog->capture(
-            $this->userId,
+            (string) $distinctId,
             SocialAccountEvent::Connected->value,
             [
                 'social_account_id' => (string) $socialAccount->id,

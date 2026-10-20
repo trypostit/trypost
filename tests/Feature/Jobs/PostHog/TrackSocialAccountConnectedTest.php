@@ -54,6 +54,18 @@ test('handle captures social_account.connected with the channel properties', fun
         && $job->payload['properties']['$groups']['account'] === (string) $this->account->id);
 });
 
+test('handle attributes a connect without a user to the account owner', function () {
+    Queue::fake();
+
+    $socialAccount = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
+
+    (new TrackSocialAccountConnected((string) $socialAccount->id, null, TrackSocialAccountConnected::SOURCE_TELEGRAM))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['distinctId'] === (string) $this->user->id
+        && $job->payload['properties']['source'] === TrackSocialAccountConnected::SOURCE_TELEGRAM);
+});
+
 test('nth_channel counts channels across every workspace of the account', function () {
     Queue::fake();
 

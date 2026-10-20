@@ -520,8 +520,8 @@ it('telegram connection uses source telegram', function () {
 
     Bus::assertDispatchedOnce(TrackSocialAccountConnected::class);
     Bus::assertDispatched(TrackSocialAccountConnected::class, fn (TrackSocialAccountConnected $job): bool => $job->socialAccountId === (string) $account->id
-        && $job->userId === (string) $owner->id
-        && $job->source === 'telegram');
+        && $job->userId === null
+        && $job->source === TrackSocialAccountConnected::SOURCE_TELEGRAM);
 });
 
 it('a telegram reconnect does not dispatch connected', function () {

@@ -21,24 +21,16 @@ class CreateApiKey
     {
         $created = IssueApiKey::execute($user, $workspace, $data);
 
-        self::trackCreated($user, $workspace);
-
-        return $created;
-    }
-
-    private static function trackCreated(User $user, Workspace $workspace): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
         rescue(function () use ($user, $workspace): void {
-            CaptureAccountEvent::dispatch(
+            CaptureAccountEvent::dispatchIf(
+                PostHogService::isEnabled(),
                 (string) $user->id,
                 (string) $workspace->account_id,
                 ApiKeyEvent::Created,
                 ['workspace_id' => (string) $workspace->id],
             );
         });
+
+        return $created;
     }
 }

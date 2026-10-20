@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\WorkspaceEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -198,17 +197,10 @@ test('storing a workspace checks the cap under a lock on the account row', funct
 
 $enablePostHog = function (): void {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
 };
 
-$limitHitPushed = fn (User $user, int $workspacesCount = 1) => fn (CaptureAccountEvent $job): bool => $job->event === WorkspaceEvent::LimitHit
-    && $job->distinctId === (string) $user->id
-    && $job->accountId === (string) $user->account_id
-    && $job->properties === [
-        'plan_slug' => Slug::Socials->value,
-        'workspaces_count' => $workspacesCount,
-        'workspace_limit' => 1,
-    ];
+$limitHitPushed = fn (User $user) => fn (TrackWorkspaceLimitHit $job): bool => $job->userId === (string) $user->id;
 
 test('the creation check at the limit refuses and tracks limit_hit', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
     $enablePostHog();
@@ -219,8 +211,8 @@ test('the creation check at the limit refuses and tracks limit_hit', function ()
         ->assertOk()
         ->assertExactJson(['allowed' => false]);
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($user));
-    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
 });
 
 test('the creation check below the limit allows and does not track', function () use ($onPlan, $enablePostHog) {
@@ -232,7 +224,7 @@ test('the creation check below the limit allows and does not track', function ()
         ->assertOk()
         ->assertExactJson(['allowed' => true]);
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('the creation check allows self-hosted at any count and does not track', function () use ($onPlan, $enablePostHog) {
@@ -244,7 +236,7 @@ test('the creation check allows self-hosted at any count and does not track', fu
         ->postJson(route('app.workspaces.creation-check.store'))
         ->assertExactJson(['allowed' => true]);
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('the creation check allows the first workspace and does not track', function () use ($enablePostHog) {
@@ -257,7 +249,7 @@ test('the creation check allows the first workspace and does not track', functio
         ->postJson(route('app.workspaces.creation-check.store'))
         ->assertExactJson(['allowed' => true]);
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('the creation check refuses an account without a plan at one workspace, as the props did on main', function () use ($enablePostHog) {
@@ -286,8 +278,8 @@ test('the creation check counts the account workspaces, not the ones the owner c
         ->assertOk()
         ->assertExactJson(['allowed' => false]);
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($owner));
-    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($owner));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
 });
 
 test('the creation check is for the account owner only', function () use ($onPlan) {
@@ -304,7 +296,7 @@ test('the creation check is for the account owner only', function () use ($onPla
 
 test('a failed limit_hit dispatch still refuses the creation check', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    failDispatchOf(CaptureAccountEvent::class);
+    failDispatchOf(TrackWorkspaceLimitHit::class);
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
@@ -323,8 +315,8 @@ test('opening the create page at the limit sends the user to the workspaces list
         ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($user));
-    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
 });
 
 test('the create page at the limit still renders for a user without a current workspace, so it never loops with the workspace guard', function () use ($onPlan) {
@@ -346,7 +338,7 @@ test('opening the create page below the limit renders it and does not track', fu
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('workspaces/Create', false));
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('a store refused at the limit creates nothing and is tracked once', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
@@ -360,8 +352,8 @@ test('a store refused at the limit creates nothing and is tracked once', functio
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('workspaces/Index', false));
 
-    Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($user));
-    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
+    Queue::assertPushedOn('posthog', TrackWorkspaceLimitHit::class, $limitHitPushed($user));
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
     expect($user->account->workspaces()->count())->toBe(1)
         ->and(Workspace::where('name', 'Second')->exists())->toBeFalse();
 });
@@ -376,12 +368,12 @@ test('a store refused for a missing subscription does not track limit_hit', func
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
         ->assertRedirect(route('app.billing.index'));
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
 });
 
 test('a failed limit_hit dispatch still sends the user away from the create page', function () use ($onPlan) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    failDispatchOf(CaptureAccountEvent::class);
+    failDispatchOf(TrackWorkspaceLimitHit::class);
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)

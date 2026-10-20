@@ -6,13 +6,14 @@ namespace App\Http\Controllers\App;
 
 use App\Actions\Workspace\CreateWorkspace;
 use App\Actions\Workspace\DeleteWorkspace;
-use App\Http\Controllers\App\Concerns\TracksWorkspaceLimitHit;
 use App\Http\Requests\App\Workspace\StoreWorkspaceRequest;
 use App\Http\Requests\App\Workspace\UpdateWorkspaceRequest;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Account;
 use App\Models\Invite;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +22,6 @@ use Inertia\Response;
 
 class WorkspaceController extends Controller
 {
-    use TracksWorkspaceLimitHit;
-
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -50,7 +49,9 @@ class WorkspaceController extends Controller
         }
 
         if ($user->atWorkspaceLimit() && $user->currentWorkspace) {
-            $this->trackLimitHit($user);
+            rescue(function () use ($user): void {
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled(), (string) $user->id);
+            });
 
             return redirect()->route('app.workspaces.index')
                 ->with('flash.error', __('workspaces.limit_reached'));
@@ -104,9 +105,9 @@ class WorkspaceController extends Controller
         });
 
         if ($redirect) {
-            if ($limitReached) {
-                $this->trackLimitHit($user);
-            }
+            rescue(function () use ($user, $limitReached): void {
+                TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && $limitReached, (string) $user->id);
+            });
 
             return $redirect;
         }

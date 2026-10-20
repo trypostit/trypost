@@ -4,16 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
-use App\Http\Controllers\App\Concerns\TracksWorkspaceLimitHit;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\App\WorkspaceCreationCheckResource;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use Illuminate\Http\Request;
 
 class WorkspaceCreationCheckController extends Controller
 {
-    use TracksWorkspaceLimitHit;
-
     public function store(Request $request): WorkspaceCreationCheckResource
     {
         $this->authorize('create', Workspace::class);
@@ -21,9 +20,9 @@ class WorkspaceCreationCheckController extends Controller
         $user = $request->user();
         $allowed = config('trypost.self_hosted') || $user->account?->canCreateWorkspace() !== false;
 
-        if (! $allowed) {
-            $this->trackLimitHit($user);
-        }
+        rescue(function () use ($user, $allowed): void {
+            TrackWorkspaceLimitHit::dispatchIf(PostHogService::isEnabled() && ! $allowed, (string) $user->id);
+        });
 
         return new WorkspaceCreationCheckResource($allowed);
     }

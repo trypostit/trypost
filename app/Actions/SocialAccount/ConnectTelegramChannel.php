@@ -14,7 +14,6 @@ use App\Models\SocialAccount;
 use App\Models\Workspace;
 use App\Services\PostHogService;
 use App\Services\Social\Telegram\TelegramApi;
-use App\Support\PostHog\SocialAccountSnapshot;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Throwable;
@@ -89,26 +88,16 @@ class ConnectTelegramChannel
 
         TelegramChannelConnected::dispatch($workspace->id, $nonce, $account->id, $created);
 
-        if ($created) {
-            self::trackConnected($workspace, $account);
-        }
+        rescue(function () use ($created, $account): void {
+            TrackSocialAccountConnected::dispatchIf(
+                $created && PostHogService::isEnabled(),
+                (string) $account->id,
+                null,
+                TrackSocialAccountConnected::SOURCE_TELEGRAM,
+            );
+        });
 
         return $account;
-    }
-
-    private static function trackConnected(Workspace $workspace, SocialAccount $account): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($workspace, $account): void {
-            $ownerId = $workspace->account?->owner_id;
-
-            if (filled($ownerId)) {
-                TrackSocialAccountConnected::dispatch((string) $account->id, (string) $ownerId, SocialAccountSnapshot::SOURCE_TELEGRAM);
-            }
-        });
     }
 
     /**

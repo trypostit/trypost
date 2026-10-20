@@ -10,8 +10,6 @@ use App\Enums\PostHog\AiEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Http\Requests\App\Ai\AssistPostContentRequest;
 use App\Jobs\PostHog\CaptureAccountEvent;
-use App\Models\User;
-use App\Models\Workspace;
 use App\Services\PostHogService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
@@ -52,20 +50,10 @@ class PostAiAssistantController extends Controller
             return response()->json(['message' => __('posts.composer.assistant_error')], Response::HTTP_BAD_GATEWAY);
         }
 
-        $this->trackAssistUsed($request->user(), $workspace, $mode);
-
-        return response()->json(['content' => $content]);
-    }
-
-    private function trackAssistUsed(User $user, Workspace $workspace, PostAssistantMode $mode): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($user, $workspace, $mode): void {
-            CaptureAccountEvent::dispatch(
-                (string) $user->id,
+        rescue(function () use ($request, $workspace, $mode): void {
+            CaptureAccountEvent::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $request->user()->id,
                 (string) $workspace->account_id,
                 AiEvent::AssistUsed,
                 [
@@ -74,5 +62,7 @@ class PostAiAssistantController extends Controller
                 ],
             );
         });
+
+        return response()->json(['content' => $content]);
     }
 }

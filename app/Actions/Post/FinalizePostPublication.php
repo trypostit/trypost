@@ -71,17 +71,12 @@ class FinalizePostPublication
         }
 
         $this->notify($outcome['post'], $outcome['successful']);
-        $this->trackPublication($outcome['post'], $outcome['successful']);
-    }
 
-    private function trackPublication(Post $post, bool $successful): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($post, $successful): void {
-            ($successful ? TrackPostPublished::class : TrackPostFailed::class)::dispatch((string) $post->id);
+        rescue(function () use ($outcome): void {
+            ($outcome['successful'] ? TrackPostPublished::class : TrackPostFailed::class)::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $outcome['post']->id,
+            );
         });
     }
 

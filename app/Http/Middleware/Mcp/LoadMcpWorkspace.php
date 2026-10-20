@@ -4,10 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Mcp;
 
-use App\Enums\AccessToken\McpClient;
-use App\Enums\PostHog\McpEvent;
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\TrackMcpToolCalled;
 use App\Services\PostHogService;
 use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
@@ -31,39 +29,22 @@ class LoadMcpWorkspace
         }
 
         return $this->loadWorkspace->handle($request, function (Request $request) use ($next): Response {
-            $this->trackToolCalled($request);
+            if ($request->input('method') === 'tools/call') {
+                rescue(function () use ($request): void {
+                    $user = $request->user();
+                    $today = now()->utc();
+
+                    TrackMcpToolCalled::dispatchIf(
+                        PostHogService::isEnabled() && Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay()),
+                        (string) $user->id,
+                        (string) $user->current_workspace_id,
+                        $user->token()?->oauth_access_token_id,
+                        $request->input('params.name'),
+                    );
+                });
+            }
 
             return $next($request);
         }, 'mcp');
-    }
-
-    private function trackToolCalled(Request $request): void
-    {
-        if (! PostHogService::isEnabled() || $request->input('method') !== 'tools/call') {
-            return;
-        }
-
-        rescue(function () use ($request): void {
-            $user = $request->user();
-            $workspace = $user->currentWorkspace;
-            $today = now()->utc();
-
-            if (! Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay())) {
-                return;
-            }
-
-            $client = $request->attributes->get('access_token')?->loadMissing('client')->client;
-
-            CaptureAccountEvent::dispatch(
-                (string) $user->id,
-                (string) $workspace->account_id,
-                McpEvent::ToolCalled,
-                [
-                    'tool' => $request->input('params.name'),
-                    'client' => McpClient::fromClientName((string) $client?->name)->value,
-                    'workspace_id' => (string) $workspace->id,
-                ],
-            );
-        });
     }
 }

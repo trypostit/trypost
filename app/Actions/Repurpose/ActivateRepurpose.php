@@ -4,10 +4,9 @@ declare(strict_types=1);
 
 namespace App\Actions\Repurpose;
 
-use App\Enums\PostHog\RepurposeEvent;
 use App\Enums\Repurpose\Status;
 use App\Enums\SocialAccount\Status as AccountStatus;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\TrackRepurposeActivated;
 use App\Models\Repurpose;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
@@ -39,31 +38,11 @@ class ActivateRepurpose
             },
         );
 
-        self::trackActivated($activated);
+        rescue(function () use ($activated): void {
+            TrackRepurposeActivated::dispatchIf(PostHogService::isEnabled(), (string) $activated->id);
+        });
 
         return $activated;
-    }
-
-    private static function trackActivated(Repurpose $repurpose): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        rescue(function () use ($repurpose): void {
-            $tracked = $repurpose->withoutRelations()->load(['sourceAccount', 'workspace']);
-
-            CaptureAccountEvent::dispatch(
-                (string) $tracked->user_id,
-                (string) $tracked->workspace->account_id,
-                RepurposeEvent::Activated,
-                [
-                    'repurpose_id' => (string) $tracked->id,
-                    'source' => $tracked->sourceAccount->platform->value,
-                    'destinations_count' => count($tracked->destinations),
-                ],
-            );
-        });
     }
 
     public static function assertSourceUsable(Repurpose $repurpose): void

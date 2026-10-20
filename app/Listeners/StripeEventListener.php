@@ -58,6 +58,10 @@ class StripeEventListener
     }
 
     /**
+     * A subscription is born either `trialing` (card-required trial, no charge
+     * yet) or `active` (first-month coupon or no trial, charged at once): two
+     * business events, see App\Support\StripeSubscriptionConversion.
+     *
      * @param  array<string, mixed>  $payload
      */
     protected function handleSubscriptionCreated(Account $account, array $payload): void
@@ -66,8 +70,9 @@ class StripeEventListener
 
         $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
 
-        $this->trackBilling($account, BillingEvent::Created, $previousPlan, $payload);
-        $this->trackSubscriptionStart($account, $payload);
+        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
+        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === 'trialing', (string) $account->id, $payload);
+        TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === 'active', (string) $account->id, $payload);
     }
 
     /**
@@ -79,9 +84,9 @@ class StripeEventListener
 
         $this->syncPlanFromSubscription($account, $payload);
 
-        $this->trackBilling($account, BillingEvent::Updated, $previousPlan, $payload);
-        $this->trackTrialConversion($account, $payload);
-        $this->trackPlanChange($account, $payload);
+        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Updated, $payload, $previousPlan);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $this->convertedFromTrial($payload) && $this->isNowActive($payload), (string) $account->id, $payload);
+        TrackPlanChanged::dispatchIf(PostHogService::shouldTrack() && $this->priceChanged($payload), (string) $account->id, $payload);
     }
 
     /**
@@ -97,7 +102,7 @@ class StripeEventListener
 
         $account->update(['plan_id' => null]);
 
-        $this->trackBilling($account, BillingEvent::Cancelled, $previousPlan, $payload);
+        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Cancelled, $payload, $previousPlan);
     }
 
     /**
@@ -175,74 +180,6 @@ class StripeEventListener
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function trackBilling(Account $account, BillingEvent $event, ?string $previousPlan, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        TrackBilling::dispatch((string) $account->id, $event, $payload, $previousPlan);
-    }
-
-    /**
-     * A subscription is born either `trialing` (card-required trial, no
-     * charge yet) or `active` (first-month coupon or no trial — charged
-     * immediately). These are different business events, not the same
-     * "checkout completed" moment — see App\Support\StripeSubscriptionConversion.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function trackSubscriptionStart(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        match ($this->currentStatus($payload)) {
-            'trialing' => TrackTrialStarted::dispatch((string) $account->id, $payload),
-            'active' => TrackCheckoutCompleted::dispatch((string) $account->id, $payload),
-            default => null,
-        };
-    }
-
-    /**
-     * Fires on the trial's first successful charge, using Stripe's own
-     * `previous_attributes` rather than trusting local DB state. This also
-     * covers a `past_due` recovery without mistaking a later billing-cycle
-     * recovery for the trial conversion.
-     *
-     * @param  array<string, mixed>  $payload
-     */
-    private function trackTrialConversion(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        if ($this->convertedFromTrial($payload) && $this->isNowActive($payload)) {
-            TrackTrialConverted::dispatch((string) $account->id, $payload);
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function trackPlanChange(Account $account, array $payload): void
-    {
-        if (! PostHogService::shouldTrack()) {
-            return;
-        }
-
-        $previousPriceId = data_get($payload, 'data.previous_attributes.items.data.0.price.id');
-
-        if (filled($previousPriceId) && $previousPriceId !== data_get($payload, 'data.object.items.data.0.price.id')) {
-            TrackPlanChanged::dispatch((string) $account->id, $payload);
-        }
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
     private function currentStatus(array $payload): mixed
     {
         return data_get($payload, 'data.object.status');
@@ -277,6 +214,16 @@ class StripeEventListener
         $currentPeriodStart = data_get($payload, 'data.object.items.data.0.current_period_start');
 
         return $trialEnd !== null && $currentPeriodStart === $trialEnd;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function priceChanged(array $payload): bool
+    {
+        $previousPriceId = data_get($payload, 'data.previous_attributes.items.data.0.price.id');
+
+        return filled($previousPriceId) && $previousPriceId !== data_get($payload, 'data.object.items.data.0.price.id');
     }
 
     /**

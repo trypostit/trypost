@@ -13,7 +13,8 @@ use App\Events\PostDeleted;
 use App\Exceptions\Post\QueueBusyException;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\SendEvent;
+use App\Jobs\PostHog\TrackSocialAccountRemoved;
 use App\Jobs\SendNotification;
 use App\Models\AnalyticsPublication;
 use App\Models\AnalyticsPublicationDailySnapshot;
@@ -22,6 +23,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Services\PostHogService;
 use App\Support\Social\GoogleBusinessDerivativeCleaner;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Bus;
@@ -212,40 +214,46 @@ test('disconnecting tracks social_account.disconnected with reason removed', fun
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
 
-    Bus::fake([CaptureAccountEvent::class]);
+    Bus::fake([TrackSocialAccountRemoved::class]);
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
 
     expect(SocialAccount::find($account->id))->toBeNull();
 
-    Bus::assertDispatchedOnce(CaptureAccountEvent::class);
-    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === SocialAccountEvent::Disconnected
-        && $job->distinctId === (string) $this->user->id
-        && $job->accountId === (string) $this->workspace->account_id
-        && $job->properties === [
-            'social_account_id' => (string) $account->id,
-            'platform' => Platform::LinkedIn->value,
-            'network' => Platform::LinkedIn->network(),
-            'workspace_id' => (string) $this->workspace->id,
-            'reason' => 'removed',
-        ]);
+    Bus::assertDispatchedOnce(TrackSocialAccountRemoved::class);
+    Bus::assertDispatched(TrackSocialAccountRemoved::class, fn (TrackSocialAccountRemoved $job): bool => $job->userId === (string) $this->user->id
+        && $job->socialAccountId === (string) $account->id
+        && $job->workspaceId === (string) $this->workspace->id
+        && $job->platform === Platform::LinkedIn);
+
+    Queue::fake([SendEvent::class]);
+    Bus::dispatched(TrackSocialAccountRemoved::class)->first()->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['event'] === SocialAccountEvent::Disconnected->value
+        && $job->payload['distinctId'] === (string) $this->user->id
+        && $job->payload['properties']['social_account_id'] === (string) $account->id
+        && $job->payload['properties']['platform'] === Platform::LinkedIn->value
+        && $job->payload['properties']['network'] === Platform::LinkedIn->network()
+        && $job->payload['properties']['workspace_id'] === (string) $this->workspace->id
+        && $job->payload['properties']['reason'] === TrackSocialAccountRemoved::REASON
+        && $job->payload['properties']['$groups']['account'] === (string) $this->workspace->account_id);
 });
 
 test('disconnecting tracks nothing when PostHog is disabled', function () {
     config(['services.posthog.enabled' => false]);
     $account = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id]);
 
-    Bus::fake([CaptureAccountEvent::class]);
+    Bus::fake([TrackSocialAccountRemoved::class]);
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
 
-    Bus::assertNotDispatched(CaptureAccountEvent::class);
+    Bus::assertNotDispatched(TrackSocialAccountRemoved::class);
 });
 
 test('disconnecting still succeeds when tracking it fails', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
     $account = SocialAccount::factory()->linkedin()->create(['workspace_id' => $this->workspace->id]);
-    failDispatchOf(CaptureAccountEvent::class);
+    failDispatchOf(TrackSocialAccountRemoved::class);
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))->assertRedirect();
 
@@ -258,7 +266,7 @@ test('a disconnect refused by a busy queue tracks nothing and shows the error', 
     $lock = Cache::lock("queue:{$account->id}", 10);
     $lock->get();
 
-    Bus::fake([CaptureAccountEvent::class]);
+    Bus::fake([TrackSocialAccountRemoved::class]);
 
     $this->actingAs($this->user)->delete(route('app.channels.disconnect', $account))
         ->assertRedirect()
@@ -267,5 +275,5 @@ test('a disconnect refused by a busy queue tracks nothing and shows the error', 
     $lock->release();
 
     expect(SocialAccount::find($account->id))->not->toBeNull();
-    Bus::assertNotDispatched(CaptureAccountEvent::class);
+    Bus::assertNotDispatched(TrackSocialAccountRemoved::class);
 });

@@ -6,16 +6,14 @@ namespace App\Observers;
 
 use App\Actions\Analytics\DispatchAccountAnalytics;
 use App\Actions\SocialAccount\ListPinterestBoards;
-use App\Enums\PostHog\SocialAccountEvent;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\SocialAccount\Status;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\IdentifyConnectedPlatforms;
 use App\Jobs\PostHog\SyncAccountUsage;
+use App\Jobs\PostHog\TrackSocialAccountConnectionLost;
 use App\Models\SocialAccount;
 use App\Services\PostHogService;
 use App\Services\Repurpose\RepurposeAccountSync;
-use App\Support\PostHog\SocialAccountSnapshot;
 use Illuminate\Support\Facades\DB;
 
 class SocialAccountObserver
@@ -71,34 +69,14 @@ class SocialAccountObserver
         }
 
         if ($connectionChanged && $wasConnected) {
-            $this->trackDisconnected($socialAccount);
-        }
-    }
+            $status = $socialAccount->status;
 
-    private function trackDisconnected(SocialAccount $socialAccount): void
-    {
-        if (! PostHogService::isEnabled()) {
-            return;
-        }
-
-        $status = $socialAccount->status->value;
-
-        DB::afterCommit(function () use ($socialAccount, $status): void {
-            rescue(function () use ($socialAccount, $status): void {
-                $account = $socialAccount->loadMissing('workspace.account')->workspace?->account;
-
-                if (blank($account?->owner_id)) {
-                    return;
-                }
-
-                CaptureAccountEvent::dispatch(
-                    (string) $account->owner_id,
-                    (string) $account->id,
-                    SocialAccountEvent::Disconnected,
-                    SocialAccountSnapshot::of($socialAccount, $status, withErrorType: true),
-                );
+            DB::afterCommit(function () use ($socialAccount, $status): void {
+                rescue(function () use ($socialAccount, $status): void {
+                    TrackSocialAccountConnectionLost::dispatchIf(PostHogService::isEnabled(), (string) $socialAccount->id, $status);
+                });
             });
-        });
+        }
     }
 
     private function forgetPinterestBoards(SocialAccount $socialAccount): void
