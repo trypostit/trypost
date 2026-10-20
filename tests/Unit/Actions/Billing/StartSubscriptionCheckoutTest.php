@@ -103,7 +103,7 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
             'cancel_url' => $cancelUrl,
             'metadata' => [
                 'trypost_interval' => 'monthly',
-                'trypost_first_month_offer' => '0',
+                'trypost_first_month_offer' => 'false',
             ],
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
@@ -286,7 +286,7 @@ test('checkout session carries plan, interval and first month offer metadata', f
         ->withArgs(fn (array $options): bool => data_get($options, 'metadata') === [
             'trypost_plan_slug' => 'socials',
             'trypost_interval' => 'monthly',
-            'trypost_first_month_offer' => '1',
+            'trypost_first_month_offer' => 'true',
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 
@@ -330,7 +330,7 @@ test('checkout session marks a yearly price without the first month offer', func
         ->withArgs(fn (array $options): bool => data_get($options, 'metadata') === [
             'trypost_plan_slug' => 'workspaces',
             'trypost_interval' => 'yearly',
-            'trypost_first_month_offer' => '0',
+            'trypost_first_month_offer' => 'false',
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 

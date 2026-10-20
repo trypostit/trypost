@@ -37,7 +37,7 @@ class TrackCheckoutExpired extends AbstractTrackStripeEvent
         return [
             'plan_name' => filled($planSlug) ? Plan::where('slug', $planSlug)->value('name') : null,
             'interval' => data_get($metadata, ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY),
-            'is_first_month_offer' => data_get($metadata, ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY) === '1',
+            'is_first_month_offer' => data_get($metadata, ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY) === 'true',
             'checkout_session_id' => data_get($this->payload, 'data.object.id'),
         ];
     }

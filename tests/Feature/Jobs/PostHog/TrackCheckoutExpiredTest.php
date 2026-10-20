@@ -29,7 +29,7 @@ beforeEach(function () {
             'metadata' => [
                 'trypost_plan_slug' => 'socials',
                 'trypost_interval' => 'monthly',
-                'trypost_first_month_offer' => '1',
+                'trypost_first_month_offer' => 'true',
             ],
         ]],
     ];
@@ -64,7 +64,7 @@ test('captures checkout.expired on the owner with plan and offer', function () {
 });
 
 test('marks the offer false when the session had no first month offer', function () {
-    $this->payload['data']['object']['metadata']['trypost_first_month_offer'] = '0';
+    $this->payload['data']['object']['metadata']['trypost_first_month_offer'] = 'false';
     Queue::fake();
 
     (new TrackCheckoutExpired((string) $this->account->id, $this->payload))
