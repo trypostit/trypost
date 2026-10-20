@@ -16,11 +16,6 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
 
     private const TO_ITEM = 'data.object.items.data.0';
 
-    /**
-     * @var array<string, Plan|null>
-     */
-    private array $plans = [];
-
     protected function requiresPlan(): bool
     {
         return false;
@@ -58,13 +53,10 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
 
     private function plan(string $itemPath): ?Plan
     {
-        if (! array_key_exists($itemPath, $this->plans)) {
-            $priceId = data_get($this->payload, "{$itemPath}.price.id");
-
-            $this->plans[$itemPath] = filled($priceId) ? Plan::forStripePrices([$priceId])->first() : null;
-        }
-
-        return $this->plans[$itemPath];
+        return once(fn (): ?Plan => transform(
+            data_get($this->payload, "{$itemPath}.price.id"),
+            fn (string $priceId): ?Plan => Plan::forStripePrices([$priceId])->first(),
+        ));
     }
 
     private function interval(string $itemPath): Interval
@@ -72,29 +64,31 @@ class TrackPlanChanged extends AbstractTrackStripeEvent
         return Interval::forPrice($this->plan($itemPath), data_get($this->payload, "{$itemPath}.price.id"));
     }
 
-    private function monthlyMinorUnits(string $itemPath): float
+    /**
+     * The item's price times its quantity, in the currency's minor units.
+     */
+    private function itemAmount(string $itemPath): ?int
     {
         $unitAmount = data_get($this->payload, "{$itemPath}.price.unit_amount");
-        $quantity = (int) data_get($this->payload, "{$itemPath}.quantity", 1);
-        $amount = is_int($unitAmount) ? $unitAmount * $quantity : 0;
 
-        return $this->interval($itemPath) === Interval::Yearly ? $amount / 12 : (float) $amount;
+        return is_int($unitAmount) ? $unitAmount * (int) data_get($this->payload, "{$itemPath}.quantity", 1) : null;
+    }
+
+    private function monthlyMinorUnits(string $itemPath): float
+    {
+        return $this->perMonth($itemPath, (float) ($this->itemAmount($itemPath) ?? 0));
+    }
+
+    private function perMonth(string $itemPath, float $amount): float
+    {
+        return $this->interval($itemPath) === Interval::Yearly ? $amount / 12 : $amount;
     }
 
     private function monthlyAmount(string $itemPath): ?float
     {
-        $unitAmount = data_get($this->payload, "{$itemPath}.price.unit_amount");
-        $quantity = (int) data_get($this->payload, "{$itemPath}.quantity", 1);
-
-        $amount = StripeAmount::toDecimal(
-            is_int($unitAmount) ? $unitAmount * $quantity : null,
-            data_get($this->payload, "{$itemPath}.price.currency"),
+        return transform(
+            StripeAmount::toDecimal($this->itemAmount($itemPath), data_get($this->payload, "{$itemPath}.price.currency")),
+            fn (float $amount): float => $this->perMonth($itemPath, $amount),
         );
-
-        if (blank($amount)) {
-            return null;
-        }
-
-        return $this->interval($itemPath) === Interval::Yearly ? $amount / 12 : $amount;
     }
 }
