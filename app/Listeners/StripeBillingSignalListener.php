@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookReceived;
+use Stripe\Checkout\Session;
+use Stripe\Event;
 use Throwable;
 
 class StripeBillingSignalListener
@@ -22,9 +24,9 @@ class StripeBillingSignalListener
      * @var array<string, class-string<AbstractTrackStripeEvent>>
      */
     public const JOBS = [
-        'checkout.session.expired' => TrackCheckoutExpired::class,
-        'invoice.payment_failed' => TrackInvoicePaymentFailed::class,
-        'invoice.upcoming' => TrackInvoiceUpcoming::class,
+        Event::TYPE_CHECKOUT_SESSION_EXPIRED => TrackCheckoutExpired::class,
+        Event::TYPE_INVOICE_PAYMENT_FAILED => TrackInvoicePaymentFailed::class,
+        Event::TYPE_INVOICE_UPCOMING => TrackInvoiceUpcoming::class,
     ];
 
     public function handle(WebhookReceived $event): void
@@ -48,7 +50,7 @@ class StripeBillingSignalListener
                 return;
             }
 
-            if ($type === 'checkout.session.expired' && data_get($event->payload, 'data.object.mode') !== 'subscription') {
+            if ($type === Event::TYPE_CHECKOUT_SESSION_EXPIRED && data_get($event->payload, 'data.object.mode') !== Session::MODE_SUBSCRIPTION) {
                 return;
             }
 
