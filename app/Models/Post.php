@@ -411,6 +411,15 @@ class Post extends Model
     }
 
     /**
+     * Written in TryPost by a user: not imported from the network, and with an
+     * author. Only these posts feed PostHog.
+     */
+    public function isAuthoredInTryPost(): bool
+    {
+        return filled($this->user_id) && $this->origin === Origin::TryPost;
+    }
+
+    /**
      * The post has a destination: a channel, or the snapshot of one that was deleted.
      */
     public function hasDestination(): bool

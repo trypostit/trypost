@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Jobs\PostHog;
 
-use App\Enums\Post\Origin;
 use App\Enums\PostHog\PostEvent;
 use App\Models\Post;
 use App\Services\PostHogService;
@@ -37,7 +36,7 @@ class TrackPost implements ShouldQueue
             ->with(['workspace.account.plan'])
             ->find($this->postId);
 
-        if (! $post || ! self::counts($post)) {
+        if (! $post || ! $post->isAuthoredInTryPost()) {
             return;
         }
 
@@ -58,14 +57,5 @@ class TrackPost implements ShouldQueue
             ],
             $account,
         );
-    }
-
-    /**
-     * Only posts written in TryPost by a user count: an imported network post
-     * (or any post without an author) never feeds a PostHog metric.
-     */
-    private static function counts(Post $post): bool
-    {
-        return filled($post->user_id) && $post->origin === Origin::TryPost;
     }
 }
