@@ -50,14 +50,29 @@ test('handle captures repurpose.activated for its creator with the source and de
         && $job->payload['properties']['$groups']['account'] === (string) $this->user->account_id);
 });
 
-test('handle captures nothing for a repurpose that is gone or has no creator', function () {
-    $repurpose = Repurpose::factory()->create([
+test('handle attributes the event to who activated it, else its creator, else the account owner', function () {
+    $this->user->account->update(['owner_id' => $this->user->id]);
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $repurpose = fn (?string $creatorId): Repurpose => Repurpose::factory()->create([
         'workspace_id' => $this->workspace->id,
-        'user_id' => null,
-        'source_social_account_id' => $this->source->id,
+        'user_id' => $creatorId,
+        'source_social_account_id' => SocialAccount::factory()->instagram()->create(['workspace_id' => $this->workspace->id])->id,
     ]);
 
-    (new TrackRepurposeActivated((string) $repurpose->id))->handle(app(PostHogService::class));
+    (new TrackRepurposeActivated((string) $repurpose($member->id)->id, (string) $this->user->id))->handle(app(PostHogService::class));
+    (new TrackRepurposeActivated((string) $repurpose($member->id)->id))->handle(app(PostHogService::class));
+    (new TrackRepurposeActivated((string) $repurpose(null)->id))->handle(app(PostHogService::class));
+
+    $distinctIds = Queue::pushed(SendEvent::class)
+        ->filter(fn (SendEvent $job): bool => $job->method === 'capture')
+        ->map(fn (SendEvent $job): string => $job->payload['distinctId'])
+        ->values()
+        ->all();
+
+    expect($distinctIds)->toBe([(string) $this->user->id, (string) $member->id, (string) $this->user->id]);
+});
+
+test('handle captures nothing for a repurpose that is gone', function () {
     (new TrackRepurposeActivated((string) Str::uuid()))->handle(app(PostHogService::class));
 
     Queue::assertNotPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'capture');

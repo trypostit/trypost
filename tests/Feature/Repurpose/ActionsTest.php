@@ -467,9 +467,12 @@ test('activating a repurpose tracks it', function () {
 
     enableRepurposeTracking();
 
+    $this->actingAs($user);
+
     ActivateRepurpose::execute($repurpose);
 
-    Queue::assertPushedOn('posthog', TrackRepurposeActivated::class, fn (TrackRepurposeActivated $job) => $job->repurposeId === (string) $repurpose->id);
+    Queue::assertPushedOn('posthog', TrackRepurposeActivated::class, fn (TrackRepurposeActivated $job) => $job->repurposeId === (string) $repurpose->id
+        && $job->userId === (string) $user->id);
 });
 
 test('a rejected activation is not tracked', function () {

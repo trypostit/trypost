@@ -510,6 +510,37 @@ test('subscription updated forwards the previous plan name to TrackBilling', fun
     );
 });
 
+test('a paid subscription deleted after dunning cleared its plan still sends subscription.cancelled once', function () {
+    $this->account->forceFill(['plan_id' => null, 'first_paid_at' => now()->subMonth()])->save();
+
+    Bus::fake([TrackBilling::class]);
+
+    foreach (['evt_deleted_after_unpaid', 'evt_deleted_redelivered'] as $eventId) {
+        $this->listener->handle(new WebhookHandled([
+            'id' => $eventId,
+            'type' => 'customer.subscription.deleted',
+            'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_unpaid', 'status' => 'canceled']],
+        ]));
+    }
+
+    Bus::assertDispatchedOnce(TrackBilling::class);
+    Bus::assertDispatched(TrackBilling::class, fn (TrackBilling $job): bool => $job->event === BillingEvent::Cancelled);
+});
+
+test('an abandoned checkout deleted without a plan or a payment sends nothing', function () {
+    $this->account->forceFill(['plan_id' => null, 'first_paid_at' => null])->save();
+
+    Bus::fake([TrackBilling::class]);
+
+    $this->listener->handle(new WebhookHandled([
+        'id' => 'evt_deleted_abandoned',
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_abandoned', 'status' => 'incomplete_expired']],
+    ]));
+
+    Bus::assertNotDispatched(TrackBilling::class);
+});
+
 test('subscription deleted forwards the previous plan name to TrackBilling', function () {
     $this->account->update(['plan_id' => $this->plan->id]);
 

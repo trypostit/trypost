@@ -98,15 +98,37 @@ class StripeEventListener
      */
     protected function handleSubscriptionDeleted(Account $account, array $payload): void
     {
-        if ($account->plan_id === null) {
+        if ($account->plan_id === null && ! $account->hasPaidSubscription()) {
             return;
         }
 
         $previousPlan = $account->plan?->name;
 
-        $account->update(['plan_id' => null]);
+        if ($account->plan_id !== null) {
+            $account->update(['plan_id' => null]);
+        }
 
-        TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Cancelled, $payload, $previousPlan);
+        TrackBilling::dispatchIf(
+            PostHogService::shouldTrack() && $this->claimCancellation($payload),
+            (string) $account->id,
+            BillingEvent::Cancelled,
+            $payload,
+            $previousPlan,
+        );
+    }
+
+    /**
+     * One subscription.cancelled per subscription. A dunning that ends in
+     * `unpaid` clears plan_id before the delete arrives, so plan_id can no
+     * longer tell a first delivery from one Stripe redelivers days later.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function claimCancellation(array $payload): bool
+    {
+        $subscriptionId = data_get($payload, 'data.object.id');
+
+        return blank($subscriptionId) || Cache::add("posthog:subscription_cancelled:{$subscriptionId}", true, now()->addDays(30));
     }
 
     /**

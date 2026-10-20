@@ -21,8 +21,13 @@ class TrackRepurposeActivated implements ShouldQueue
 
     public int $timeout = 30;
 
-    public function __construct(public string $repurposeId)
-    {
+    /**
+     * @param  string|null  $userId  Who activated it; without one the event goes to its creator, then to the account owner.
+     */
+    public function __construct(
+        public string $repurposeId,
+        public ?string $userId = null,
+    ) {
         $this->onQueue('posthog');
     }
 
@@ -35,12 +40,14 @@ class TrackRepurposeActivated implements ShouldQueue
         $repurpose = Repurpose::query()->with(['sourceAccount', 'workspace.account.plan'])->find($this->repurposeId);
         $account = $repurpose?->workspace?->account;
 
-        if (blank($account) || blank($repurpose->user_id)) {
+        $distinctId = $this->userId ?? $repurpose?->user_id ?? $account?->owner_id;
+
+        if (blank($account) || blank($distinctId)) {
             return;
         }
 
         $postHog->capture(
-            (string) $repurpose->user_id,
+            (string) $distinctId,
             RepurposeEvent::Activated->value,
             [
                 'repurpose_id' => (string) $repurpose->id,

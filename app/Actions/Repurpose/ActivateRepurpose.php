@@ -39,7 +39,7 @@ class ActivateRepurpose
         );
 
         rescue(function () use ($activated): void {
-            TrackRepurposeActivated::dispatchIf(PostHogService::isEnabled(), (string) $activated->id);
+            TrackRepurposeActivated::dispatchIf(PostHogService::isEnabled(), (string) $activated->id, auth()->id());
         });
 
         return $activated;
