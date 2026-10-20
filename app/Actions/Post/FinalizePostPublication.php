@@ -70,12 +70,15 @@ class FinalizePostPublication
             return;
         }
 
-        $this->notify($outcome['post'], $outcome['successful']);
+        $settled = data_get($outcome, 'post');
+        $successful = data_get($outcome, 'successful');
 
-        rescue(function () use ($outcome): void {
-            ($outcome['successful'] ? TrackPostPublished::class : TrackPostFailed::class)::dispatchIf(
+        $this->notify($settled, $successful);
+
+        rescue(function () use ($settled, $successful): void {
+            ($successful ? TrackPostPublished::class : TrackPostFailed::class)::dispatchIf(
                 PostHogService::isEnabled(),
-                (string) $outcome['post']->id,
+                (string) $settled->id,
             );
         });
     }
