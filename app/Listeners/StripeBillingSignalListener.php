@@ -10,6 +10,7 @@ use App\Jobs\PostHog\TrackInvoicePaymentFailed;
 use App\Jobs\PostHog\TrackInvoiceUpcoming;
 use App\Models\Account;
 use App\Services\PostHogService;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
@@ -34,7 +35,7 @@ class StripeBillingSignalListener
         try {
             $type = data_get($event->payload, 'type');
 
-            $job = self::JOBS[$type] ?? null;
+            $job = Arr::get(self::JOBS, $type);
 
             if (blank($job)) {
                 return;
