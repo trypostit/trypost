@@ -173,7 +173,8 @@ final class PendingConnection
     }
 
     /**
-     * The route name of the page the flow returns to.
+     * The route name of the page the flow started from, which is also where
+     * close, Back and the error states return.
      */
     public function returnRouteName(): string
     {
