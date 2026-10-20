@@ -44,16 +44,17 @@ class TrackMcpToolCalled implements ShouldQueue
             return;
         }
 
-        $client = filled($this->accessTokenId)
-            ? AccessToken::query()->with('client')->find($this->accessTokenId)?->client
-            : null;
+        $clientName = transform(
+            $this->accessTokenId,
+            fn (string $id): ?string => AccessToken::query()->with('client')->find($id)?->client?->name,
+        );
 
         $postHog->capture(
             $this->userId,
             McpEvent::ToolCalled->value,
             [
                 'tool' => $this->tool,
-                'client' => McpClient::fromClientName((string) $client?->name)->value,
+                'client' => McpClient::fromClientName((string) $clientName)->value,
                 'workspace_id' => $this->workspaceId,
             ],
             $account,

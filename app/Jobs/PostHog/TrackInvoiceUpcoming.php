@@ -30,36 +30,42 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
      */
     protected function properties(Account $account): array
     {
+        $invoice = data_get($this->payload, 'data.object');
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-        $line = $this->subscriptionLine();
-        $currency = data_get($this->payload, 'data.object.currency');
+        $line = $this->subscriptionLine($invoice);
+        $currency = data_get($invoice, 'currency');
 
-        $chargeAt = transform(
-            data_get($this->payload, 'data.object.next_payment_attempt') ?? data_get($line, 'period.start'),
-            fn (mixed $at): CarbonImmutable => CarbonImmutable::createFromTimestampUTC((int) $at),
-        );
-        $periodEnd = transform(data_get($line, 'period.end'), fn (mixed $at): string => CarbonImmutable::createFromTimestampUTC((int) $at)->toIso8601String());
+        $chargeAt = $this->timestamp(data_get($invoice, 'next_payment_attempt') ?? data_get($line, 'period.start'));
         $interval = $this->interval(data_get($line, 'pricing.price_details.price') ?? $subscription?->stripe_price);
 
         return [
-            'amount' => StripeAmount::toDecimal(data_get($this->payload, 'data.object.amount_due'), $currency),
+            'amount' => StripeAmount::toDecimal(data_get($invoice, 'amount_due'), $currency),
             'currency' => transform($currency, Str::upper(...)),
             'charge_at' => $chargeAt?->toIso8601String(),
-            'period_end' => $periodEnd,
+            'period_end' => $this->timestamp(data_get($line, 'period.end'))?->toIso8601String(),
             'interval' => $interval?->value,
-            'is_first_full_charge' => filled($subscription?->created_at) && $chargeAt && $interval
+            'is_first_full_charge' => filled($subscription?->created_at) && filled($chargeAt) && filled($interval)
                 ? FirstFullCharge::isFirst($subscription->created_at, $chargeAt, $interval)
                 : null,
         ];
     }
 
     /**
+     * The invoice's line for the subscription itself; proration lines also
+     * belong to the subscription item, and a line without a parent is an
+     * invoice item, so the flag must be exactly false.
+     *
      * @return array<string, mixed>|null
      */
-    private function subscriptionLine(): ?array
+    private function subscriptionLine(mixed $invoice): ?array
     {
-        return collect(data_get($this->payload, 'data.object.lines.data', []))
-            ->firstWhere('parent.subscription_item_details.proration', '===', false);
+        return collect(data_get($invoice, 'lines.data', []))
+            ->first(fn (array $line): bool => data_get($line, 'parent.subscription_item_details.proration') === false);
+    }
+
+    private function timestamp(mixed $at): ?CarbonImmutable
+    {
+        return transform($at, fn (mixed $at): CarbonImmutable => CarbonImmutable::createFromTimestampUTC((int) $at));
     }
 
     private function interval(?string $priceId): ?Interval
@@ -68,8 +74,9 @@ class TrackInvoiceUpcoming extends AbstractTrackStripeEvent
             return null;
         }
 
-        $plan = Plan::forStripePrices([$priceId])->first();
-
-        return $plan ? Interval::forPrice($plan, $priceId) : null;
+        return transform(
+            Plan::forStripePrices([$priceId])->first(),
+            fn (Plan $plan): Interval => Interval::forPrice($plan, $priceId),
+        );
     }
 }
