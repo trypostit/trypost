@@ -30,22 +30,32 @@ class LoadMcpWorkspace
         }
 
         return $this->loadWorkspace->handle($request, function (Request $request) use ($next): Response {
-            if ($request->enum('method', Method::class) === Method::ToolsCall) {
-                rescue(function () use ($request): void {
-                    $user = $request->user();
-                    $today = now()->utc();
-
-                    TrackMcpToolCalled::dispatchIf(
-                        PostHogService::isEnabled() && Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay()),
-                        (string) $user->id,
-                        (string) $user->current_workspace_id,
-                        $user->token()?->oauth_access_token_id,
-                        $request->input('params.name'),
-                    );
-                });
-            }
+            $this->trackToolCalled($request);
 
             return $next($request);
         }, 'mcp');
+    }
+
+    /**
+     * Once per user per UTC day, so a busy agent sends one event, not one per call.
+     */
+    private function trackToolCalled(Request $request): void
+    {
+        if ($request->enum('method', Method::class) !== Method::ToolsCall) {
+            return;
+        }
+
+        rescue(function () use ($request): void {
+            $user = $request->user();
+            $today = now()->utc();
+
+            TrackMcpToolCalled::dispatchIf(
+                PostHogService::isEnabled() && Cache::add("posthog:mcp_tool_called:{$user->id}:{$today->toDateString()}", true, $today->endOfDay()),
+                (string) $user->id,
+                (string) $user->current_workspace_id,
+                $user->token()?->oauth_access_token_id,
+                $request->input('params.name'),
+            );
+        });
     }
 }
