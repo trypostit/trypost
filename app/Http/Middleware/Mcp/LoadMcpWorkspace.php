@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Mcp;
 
+use App\Enums\Mcp\Method;
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
 use App\Jobs\PostHog\TrackMcpToolCalled;
 use App\Services\PostHogService;
@@ -29,7 +30,7 @@ class LoadMcpWorkspace
         }
 
         return $this->loadWorkspace->handle($request, function (Request $request) use ($next): Response {
-            if ($request->input('method') === 'tools/call') {
+            if ($request->enum('method', Method::class) === Method::ToolsCall) {
                 rescue(function () use ($request): void {
                     $user = $request->user();
                     $today = now()->utc();
