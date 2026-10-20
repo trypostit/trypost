@@ -6,9 +6,9 @@ use App\Models\Account;
 
 beforeEach(function () {
     $this->runBackfill = function (): void {
-        $migration = require database_path('migrations/2026_10_20_155336_backfill_first_paid_at_on_accounts.php');
+        $migration = require database_path('migrations/2026_10_19_143226_add_lifecycle_to_accounts_table.php');
 
-        $migration->up();
+        $migration->backfillFirstPaidAt();
     };
 
     $this->subscribe = function (Account $account, string $status, array $attributes = []): void {
