@@ -32,6 +32,7 @@ test('marks accounts whose subscription went past checkout and trial', function 
 })->with([
     'active' => ['active', []],
     'past due' => ['past_due', []],
+    'past due on a later renewal' => ['past_due', ['trial_ends_at' => now()->subMonths(3)]],
     'cancelled after its trial' => ['canceled', ['trial_ends_at' => now()->subMonth(), 'ends_at' => now()->subDay()]],
 ]);
 
@@ -46,6 +47,8 @@ test('leaves accounts that were never charged', function (string $status, array 
     'trialing' => ['trialing', ['trial_ends_at' => now()->addDays(3)]],
     'incomplete' => ['incomplete', []],
     'incomplete expired' => ['incomplete_expired', []],
+    'past due on the first charge after its trial' => ['past_due', ['trial_ends_at' => now()->subDays(3)]],
+    'unpaid after the first charge after its trial' => ['unpaid', ['trial_ends_at' => now()->subDays(10)]],
     'cancelled inside its trial' => ['canceled', ['trial_ends_at' => now()->addDays(3), 'ends_at' => now()->subDay()]],
 ]);
 
