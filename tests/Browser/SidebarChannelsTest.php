@@ -277,6 +277,40 @@ test('keyboard focus reveals the channels header actions', function () {
         ->assertNoJavaScriptErrors();
 });
 
+test('hovering anywhere on the sidebar reveals the channels header actions', function () {
+    $user = sidebarChannelsUser('admin');
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitFor($page, '@sidebar-new');
+
+    $page->hover('@app-layout-content');
+    waitForState($page, '@sidebar-channels-actions', "getComputedStyle(element).opacity === '0'");
+
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"sidebar-channels-actions\"]')).opacity"))->toBe('0');
+
+    $page->hover('@sidebar-new');
+    waitForState($page, '@sidebar-channels-actions', "getComputedStyle(element).opacity === '1'");
+
+    expect($page->script("getComputedStyle(document.querySelector('[data-testid=\"sidebar-channels-actions\"]')).opacity"))->toBe('1');
+    $page->assertVisible('@sidebar-channels-search')
+        ->assertVisible('@sidebar-channels-settings')
+        ->assertVisible('@sidebar-channels-connect')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the repurposes item has no beta badge', function () {
+    $this->actingAs(sidebarChannelsUser('admin'));
+
+    $page = visit(route('app.posts.index'));
+    waitFor($page, '[data-testid="nav-/repurposes"]');
+
+    $page->assertVisible('[data-testid="nav-/repurposes"]')
+        ->assertMissing('[data-testid="nav-badge-/repurposes"]')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the channels search button shows its shortcut and opens the command palette', function () {
     $user = sidebarChannelsUser('admin');
     SocialAccount::factory()->linkedin()->create(['workspace_id' => $user->current_workspace_id]);

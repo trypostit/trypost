@@ -153,7 +153,7 @@ const reconnect = (channel: SidebarChannel): void => {
         class="group/channels min-h-0 flex-1 px-4 pt-4 pb-0 group-data-[collapsible=icon]:px-2.5"
         data-testid="sidebar-channels"
     >
-        <div class="group/channels-header relative">
+        <div class="relative">
             <SidebarGroupLabel
                 class="group-data-[collapsible=icon]:hidden"
                 data-testid="sidebar-channels-label"
@@ -170,7 +170,7 @@ const reconnect = (channel: SidebarChannel): void => {
                 :class="[
                     'absolute top-1 right-0 flex items-center gap-1 transition-opacity duration-(--motion-duration-sidebar-toggle) ease-(--motion-easing-sidebar-toggle) group-data-[collapsible=icon]:hidden',
                     channels.length > 0
-                        ? 'focus-within:opacity-100 md:opacity-0 md:group-hover/channels-header:opacity-100'
+                        ? 'focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100'
                         : '',
                 ]"
                 data-testid="sidebar-channels-actions"
