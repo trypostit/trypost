@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Events\WebhookHandled;
 use Stripe\Event as StripeEvent;
+use Throwable;
 
 class StripeEventListener
 {
@@ -49,8 +50,8 @@ class StripeEventListener
                 StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_DELETED => $this->handleSubscriptionDeleted($account, $event->payload),
                 default => null,
             };
-        } catch (\Exception $e) {
-            Log::error('Stripe webhook error: '.$e->getMessage(), [
+        } catch (Throwable $e) {
+            Log::error("Stripe webhook error: {$e->getMessage()}", [
                 'exception' => $e,
                 'payload' => $event->payload,
             ]);
