@@ -3,8 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\WorkspaceEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\TrackWorkspaceLimitHit;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +15,7 @@ beforeEach(function () {
         'services.posthog.enabled' => true,
         'services.posthog.api_key' => 'phc_test_key',
     ]);
-    Queue::fake([CaptureAccountEvent::class]);
+    Queue::fake([TrackWorkspaceLimitHit::class]);
 });
 
 $ownerOn = function (Slug $slug): User {
@@ -51,8 +50,8 @@ test('at the cap, new workspace in the sidebar opens the upgrade dialog in place
         ->assertPathIs(parse_url(route('app.posts.index'), PHP_URL_PATH))
         ->assertNoJavaScriptErrors();
 
-    Queue::assertPushedTimes(CaptureAccountEvent::class, 1);
-    Queue::assertPushed(CaptureAccountEvent::class, fn (CaptureAccountEvent $job) => $job->event === WorkspaceEvent::LimitHit);
+    Queue::assertPushedTimes(TrackWorkspaceLimitHit::class, 1);
+    Queue::assertPushed(TrackWorkspaceLimitHit::class, fn (TrackWorkspaceLimitHit $job) => $job->userId === (string) $user->id);
     expect($user->account->workspaces()->count())->toBe(1);
 });
 
@@ -73,7 +72,7 @@ test('below the cap, new workspace in the sidebar opens the create page and crea
     waitForPath($page, parse_url(route('app.posts.index'), PHP_URL_PATH));
     $page->assertNoJavaScriptErrors();
 
-    Queue::assertNotPushed(CaptureAccountEvent::class);
+    Queue::assertNotPushed(TrackWorkspaceLimitHit::class);
     expect(Workspace::where('name', 'Second')->where('account_id', $user->account_id)->exists())->toBeTrue();
 });
 
