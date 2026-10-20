@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
+import { IconKey } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
 import { detectPreferences } from '@/lib/detectPreferences';
 import { redirect as githubRedirect } from '@/routes/auth/github';
 import { redirect as googleRedirect } from '@/routes/auth/google';
+import { redirect as oidcRedirect } from '@/routes/auth/oidc';
 
 const props = withDefaults(
     defineProps<{
@@ -19,7 +21,11 @@ const props = withDefaults(
 const page = usePage();
 const googleEnabled = computed(() => Boolean(page.props.googleAuthEnabled));
 const githubEnabled = computed(() => Boolean(page.props.githubAuthEnabled));
-const hasSocial = computed(() => googleEnabled.value || githubEnabled.value);
+const oidcEnabled = computed(() => Boolean(page.props.oidcAuthEnabled));
+const oidcLabel = computed(() => String(page.props.oidcDisplayName || 'SSO'));
+const hasSocial = computed(
+    () => googleEnabled.value || githubEnabled.value || oidcEnabled.value,
+);
 
 const detected = detectPreferences();
 
@@ -35,6 +41,7 @@ const query = computed(() => {
 
 const googleUrl = computed(() => googleRedirect.url({ query: query.value }));
 const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
+const oidcUrl = computed(() => oidcRedirect.url({ query: query.value }));
 </script>
 
 <template>
@@ -77,6 +84,21 @@ const githubUrl = computed(() => githubRedirect.url({ query: query.value }));
                     mode === 'login'
                         ? $t('auth.github_login')
                         : $t('auth.github_signup')
+                }}
+            </Button>
+
+            <Button
+                v-if="oidcEnabled"
+                variant="outline"
+                class="w-full"
+                as="a"
+                :href="oidcUrl"
+            >
+                <IconKey class="size-4" />
+                {{
+                    mode === 'login'
+                        ? $t('auth.oidc_login', { provider: oidcLabel })
+                        : $t('auth.oidc_signup', { provider: oidcLabel })
                 }}
             </Button>
         </div>

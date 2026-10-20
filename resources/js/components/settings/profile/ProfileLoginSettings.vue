@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Form, usePage } from '@inertiajs/vue3';
+import { IconKey } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import ConnectedAccountController from '@/actions/App/Http/Controllers/App/Settings/ConnectedAccountController';
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { connect } from '@/routes/app/profile/connected-accounts';
 
-export type SocialProvider = 'google' | 'github';
+export type SocialProvider = 'google' | 'github' | 'oidc';
 
 export type ConnectedAccount = {
     provider: SocialProvider;
@@ -37,11 +38,7 @@ const clearNewPassword = (): void => {
 
 const page = usePage();
 const providerEnabled = (provider: SocialProvider): boolean =>
-    Boolean(
-        page.props[
-            provider === 'google' ? 'googleAuthEnabled' : 'githubAuthEnabled'
-        ],
-    );
+    Boolean(page.props[`${provider}AuthEnabled`]);
 </script>
 
 <template>
@@ -149,7 +146,13 @@ const providerEnabled = (provider: SocialProvider): boolean =>
                     :data-test="`connected-account-${account.provider}`"
                 >
                     <template #media>
+                        <IconKey
+                            v-if="account.provider === 'oidc'"
+                            class="size-7 shrink-0 text-foreground"
+                            :data-testid="`connected-account-icon-${account.provider}`"
+                        />
                         <img
+                            v-else
                             :src="`/images/social/${account.provider}.svg`"
                             :alt="account.label"
                             class="size-7 shrink-0 object-contain"

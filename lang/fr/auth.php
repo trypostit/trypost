@@ -55,6 +55,12 @@ return [
     'google_signup' => 'S\'inscrire avec Google',
     'github_login' => 'Se connecter avec GitHub',
     'github_signup' => 'S\'inscrire avec GitHub',
+    'oidc_login' => 'Se connecter avec :provider',
+    'oidc_signup' => 'S\'inscrire avec :provider',
+    'oidc_group_denied' => 'Votre compte n\'appartient à aucun groupe autorisé à utiliser cette application.',
+    'oidc_email_missing' => 'Votre fournisseur d\'identité n\'a pas transmis d\'adresse e-mail.',
+    'oidc_email_unverified' => 'Votre adresse e-mail n\'est pas vérifiée auprès de votre fournisseur d\'identité.',
+    'oidc_failed' => 'La connexion a échoué. Veuillez réessayer.',
     'github_email_unavailable' => 'Impossible de récupérer votre e-mail depuis GitHub. Rendez votre e-mail GitHub public ou accordez l\'autorisation d\'accès à l\'e-mail, puis réessayez.',
 
     'login' => [

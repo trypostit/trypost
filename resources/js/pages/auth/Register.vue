@@ -42,10 +42,14 @@ const togglePasswordVisibility = (): void => {
 };
 
 const page = usePage();
+const passwordLoginEnabled = computed(() =>
+    Boolean(page.props.passwordLoginEnabled),
+);
 const hasSocial = computed(
     () =>
         Boolean(page.props.googleAuthEnabled) ||
-        Boolean(page.props.githubAuthEnabled),
+        Boolean(page.props.githubAuthEnabled) ||
+        Boolean(page.props.oidcAuthEnabled),
 );
 </script>
 
@@ -62,6 +66,7 @@ const hasSocial = computed(
             </div>
 
             <Form
+                v-if="passwordLoginEnabled"
                 v-bind="store.form()"
                 :reset-on-success="['password']"
                 v-slot="{ errors, processing }"
