@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
-import { IconCheck, IconPlus } from '@tabler/icons-vue';
+import { Head, Link, router } from '@inertiajs/vue3';
+import { IconCheck } from '@tabler/icons-vue';
 import { ref } from 'vue';
 
 import { Avatar } from '@/components/ui/avatar';
@@ -9,6 +9,7 @@ import WorkspaceUpgradeDialog from '@/components/workspaces/WorkspaceUpgradeDial
 import { useWorkspaceAbilities } from '@/composables/useWorkspaceAbilities';
 import { useWorkspaceLimit } from '@/composables/useWorkspaceLimit';
 import AuthLayout from '@/layouts/AuthLayout.vue';
+import { home } from '@/routes/app';
 import { switchMethod } from '@/routes/app/workspaces';
 
 interface Workspace {
@@ -112,16 +113,27 @@ const handleCreateWorkspace = (): void => {
                 </li>
             </ul>
 
-            <Button
-                v-if="canCreateWorkspace"
-                variant="outline"
-                class="w-full bg-card"
-                data-testid="workspaces-create"
-                @click="handleCreateWorkspace"
-            >
-                <IconPlus aria-hidden="true" />
-                {{ $t('workspaces.create.submit') }}
-            </Button>
+            <div class="flex flex-col gap-2">
+                <Button
+                    v-if="canCreateWorkspace"
+                    class="w-full"
+                    data-testid="workspaces-create"
+                    @click="handleCreateWorkspace"
+                >
+                    {{ $t('workspaces.create.submit') }}
+                </Button>
+
+                <Button
+                    v-if="currentWorkspaceId"
+                    as-child
+                    variant="outline"
+                    class="w-full bg-card"
+                >
+                    <Link :href="home.url()" data-testid="workspaces-back">
+                        {{ $t('common.back') }}
+                    </Link>
+                </Button>
+            </div>
         </div>
 
         <WorkspaceUpgradeDialog v-model:open="upgradeDialogOpen" />
