@@ -52,7 +52,8 @@ class WorkspaceController extends Controller
         if ($user->atWorkspaceLimit() && $user->currentWorkspace) {
             $this->trackLimitHit($user);
 
-            return $this->leaveAtWorkspaceLimit();
+            return redirect()->route('app.workspaces.index')
+                ->with('flash.error', __('workspaces.limit_reached'));
         }
 
         return Inertia::render('workspaces/Create');
@@ -77,12 +78,6 @@ class WorkspaceController extends Controller
         return null;
     }
 
-    private function leaveAtWorkspaceLimit(): RedirectResponse
-    {
-        return redirect()->route('app.workspaces.index')
-            ->with('flash.error', __('workspaces.limit_reached'));
-    }
-
     public function store(StoreWorkspaceRequest $request): RedirectResponse
     {
         $user = $request->user();
@@ -99,7 +94,8 @@ class WorkspaceController extends Controller
             if ($user->atWorkspaceLimit()) {
                 $limitReached = true;
 
-                return $this->leaveAtWorkspaceLimit();
+                return redirect()->route('app.workspaces.index')
+                    ->with('flash.error', __('workspaces.limit_reached'));
             }
 
             CreateWorkspace::execute($user, $request->validated());
