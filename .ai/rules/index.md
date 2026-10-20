@@ -13,6 +13,7 @@ Before planning or editing, find the row whose globs match the file's path and r
 | app/Listeners/Stripe*.php, app/Jobs/PostHog/** | .ai/rules/jobs-post-hog.md |
 | app/Jobs/SendNotification.php, app/Jobs/ReconcileGoogleBusinessPost.php, app/Console/Commands/RecoverStuckPosts.php | .ai/rules/jobs.md |
 | resources/js/** | .ai/rules/js.md |
+| app/Http/Middleware/Mcp/**, app/Support/Mcp/**, app/Mcp/Servers/**, app/Enums/Mcp/** | .ai/rules/mcp.md |
 | app/Actions/Media/**, app/Models/Media.php | .ai/rules/media.md |
 | app/Http/Middleware/App/HandleInertiaRequests.php | .ai/rules/middleware-app.md |
 | app/Jobs/PostHog/**, app/Models/Post.php, database/migrations/**, app/Models/SocialAccount.php | .ai/rules/migrations.md |
