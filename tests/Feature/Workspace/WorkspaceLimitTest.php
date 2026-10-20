@@ -113,20 +113,11 @@ test('self-hosted ignores the cap', function () use ($onPlan) {
     expect($user->account->canCreateWorkspace())->toBeTrue();
 });
 
-test('the create page sends the user back when the plan is at its cap', function () use ($onPlan) {
+test('the create page sends the user to the workspaces list when the plan is at its cap', function () use ($onPlan) {
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
         ->from(route('app.posts.index'))
-        ->get(route('app.workspaces.create'))
-        ->assertRedirect(route('app.posts.index'))
-        ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
-});
-
-test('the create page at the cap falls back to the workspaces list when there is no previous page', function () use ($onPlan) {
-    $user = $onPlan(Slug::Socials);
-
-    $this->actingAs($user)
         ->get(route('app.workspaces.create'))
         ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
@@ -156,7 +147,7 @@ test('a subscribed account without a plan cannot store a second workspace', func
     subscribeAccount($user->account);
 
     $this->actingAs($user->fresh())
-        ->from(route('app.workspaces.index'))
+        ->from(route('app.posts.index'))
         ->post(route('app.workspaces.store'), ['name' => 'Second'])
         ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
@@ -322,14 +313,14 @@ test('a failed limit_hit dispatch still refuses the creation check', function ()
         ->assertExactJson(['allowed' => false]);
 });
 
-test('opening the create page at the limit sends the user back and tracks limit_hit once', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
+test('opening the create page at the limit sends the user to the workspaces list and tracks limit_hit once', function () use ($onPlan, $enablePostHog, $limitHitPushed) {
     $enablePostHog();
     $user = $onPlan(Slug::Socials);
 
     $this->actingAs($user)
         ->from(route('app.posts.index'))
         ->get(route('app.workspaces.create'))
-        ->assertRedirect(route('app.posts.index'))
+        ->assertRedirect(route('app.workspaces.index'))
         ->assertSessionHas('flash.error', __('workspaces.limit_reached'));
 
     Queue::assertPushedOn('posthog', CaptureAccountEvent::class, $limitHitPushed($user));

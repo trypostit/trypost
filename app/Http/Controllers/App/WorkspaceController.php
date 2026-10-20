@@ -16,7 +16,6 @@ use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,19 +77,9 @@ class WorkspaceController extends Controller
         return null;
     }
 
-    /**
-     * Back to where the user came from, never to the create page itself, which
-     * would send them away again.
-     */
     private function leaveAtWorkspaceLimit(): RedirectResponse
     {
-        $previous = url()->previous(route('app.workspaces.index'));
-
-        $target = Str::before($previous, '?') === route('app.workspaces.create')
-            ? route('app.workspaces.index')
-            : $previous;
-
-        return redirect()->to($target)
+        return redirect()->route('app.workspaces.index')
             ->with('flash.error', __('workspaces.limit_reached'));
     }
 

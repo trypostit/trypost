@@ -334,10 +334,9 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
     the user is on; `allowed: true` (or a failed check) visits
     `app.workspaces.create`. A refused check tracks `workspace.limit_hit`.
   - GET `/workspaces/create` is never shown at the cap: it tracks
-    `workspace.limit_hit` and redirects back with `workspaces.limit_reached`
-    (to `app.workspaces.index` when the previous page is the create page or
-    unknown). Without a subscription it still goes to billing.
-  - POST at the cap is refused the same way (back, not 403'd, never to create),
+    `workspace.limit_hit` and redirects to `app.workspaces.index` with
+    `workspaces.limit_reached`. Without a subscription it still goes to billing.
+  - POST at the cap is refused the same way (to the list, not 403'd, never to create),
     tracked once by `store` itself after its transaction.
 - First-month coupon qualification is card required + first-time subscriber +
   that plan's monthly price. Workspace count is not part of it.
