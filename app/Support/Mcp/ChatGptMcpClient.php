@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Mcp;
 
 use App\Actions\Mcp\ListChatGptEgressRanges;
+use App\Enums\Mcp\Method;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\IpUtils;
 
@@ -14,7 +15,12 @@ class ChatGptMcpClient
      * JSON-RPC methods ChatGPT may call without a token: connecting and
      * reading the tool list. A tool call always needs a token.
      */
-    private const DISCOVERY_METHODS = ['initialize', 'notifications/initialized', 'ping', 'tools/list'];
+    private const DISCOVERY_METHODS = [
+        Method::Initialize->value,
+        Method::NotificationsInitialized->value,
+        Method::Ping->value,
+        Method::ToolsList->value,
+    ];
 
     /**
      * Passport blanks the Authorization header when it refuses a token, so

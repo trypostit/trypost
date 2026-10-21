@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware\Mcp;
 
+use App\Enums\Mcp\Method;
 use App\Support\Mcp\ChatGptMcpClient;
 use Closure;
 use Illuminate\Http\Request;
@@ -32,7 +33,7 @@ class ChallengeChatGptToolCalls
 
         $call = rescue(fn (): JsonRpcRequest => JsonRpcRequest::from($request->json()->all()), report: false);
 
-        if ($call?->method !== 'tools/call') {
+        if ($call?->method !== Method::ToolsCall->value) {
             return $response;
         }
 

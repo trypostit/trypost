@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mcp\Servers;
 
+use App\Enums\Mcp\Method;
 use App\Mcp\Methods\ListToolsWithSecuritySchemes;
 use App\Mcp\Tools\Analytics\GetAnalyticsPublicationTool;
 use App\Mcp\Tools\Analytics\GetAnalyticsReportTool;
@@ -206,6 +207,6 @@ class TryPostServer extends Server
 
     protected function boot(): void
     {
-        $this->addMethod('tools/list', ListToolsWithSecuritySchemes::class);
+        $this->addMethod(Method::ToolsList->value, ListToolsWithSecuritySchemes::class);
     }
 }
