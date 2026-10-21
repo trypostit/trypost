@@ -399,6 +399,7 @@ class PublishToSocialPlatform implements ShouldBeUnique, ShouldQueue
             ...Arr::except($previousContext, [
                 PublishCheckpoint::TIKTOK_PUBLISH_ID,
                 PublishCheckpoint::TIKTOK_STATUS,
+                PublishCheckpoint::TIKTOK_INIT_AT,
                 PublishCheckpoint::TIKTOK_DERIVATIVE_PATHS,
                 PublishCheckpoint::X_MEDIA,
             ]),

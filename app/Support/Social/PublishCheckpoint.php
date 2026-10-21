@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Support\Social;
 
+use Carbon\CarbonImmutable;
+
 /**
  * Shared keys and readers for in-flight publish checkpoints on
  * posts.error_context. Used by the publishers, the TikTok
@@ -14,6 +16,8 @@ final class PublishCheckpoint
     public const string TIKTOK_PUBLISH_ID = 'tiktok_publish_id';
 
     public const string TIKTOK_STATUS = 'tiktok_status';
+
+    public const string TIKTOK_INIT_AT = 'tiktok_init_at';
 
     public const string TIKTOK_DERIVATIVE_PATHS = 'tiktok_derivative_paths';
 
@@ -31,6 +35,22 @@ final class PublishCheckpoint
         $value = data_get($context, self::TIKTOK_PUBLISH_ID);
 
         return is_string($value) && $value !== '' ? $value : null;
+    }
+
+    /**
+     * When TikTok accepted the publish, which the status checks are timed from.
+     *
+     * @param  array<string, mixed>|null  $context
+     */
+    public static function tiktokInitAt(?array $context): ?CarbonImmutable
+    {
+        $value = data_get($context, self::TIKTOK_INIT_AT);
+
+        if (! is_string($value) || $value === '') {
+            return null;
+        }
+
+        return rescue(fn (): CarbonImmutable => CarbonImmutable::parse($value), null, report: false);
     }
 
     /**

@@ -19,12 +19,15 @@ use App\Services\Social\Concerns\HasSocialHttpClient;
 use App\Support\PostPlatformMetaRules;
 use App\Support\Social\PublishCheckpoint;
 use App\Support\Social\TikTokPhotoDerivativeCleaner;
+use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Sleep;
 use Illuminate\Support\Str;
 use Throwable;
 
@@ -32,9 +35,31 @@ class TikTokPublisher
 {
     use HasSocialHttpClient;
 
-    private const int STATUS_RETRY_DELAY_SECONDS = 30;
+    /**
+     * When the status is checked, in seconds after TikTok accepted the
+     * publish: the first checks come early, then one a minute until the
+     * window closes. TikTok may not know a publish_id it has just returned
+     * yet, so the first check waits a few seconds.
+     */
+    private const array STATUS_CHECKS_SECONDS = [5, 30, 60];
 
-    private const int STATUS_MAX_RETRIES = 120;
+    private const int STATUS_CHECK_INTERVAL_SECONDS = 60;
+
+    private const int STATUS_WINDOW_SECONDS = 3600;
+
+    /**
+     * The status checks after the first, which runs in the publish itself:
+     * the two other early checks, then one a minute until the window closes.
+     */
+    private const int STATUS_MAX_RETRIES = 2 + (self::STATUS_WINDOW_SECONDS - self::STATUS_CHECKS_SECONDS[2]) / self::STATUS_CHECK_INTERVAL_SECONDS;
+
+    /**
+     * How long a status fetch TikTok refuses still counts as TikTok not knowing
+     * the publish yet. It refused publish_ids it published in the same second
+     * (October 2026), so a refusal fails the post only after this, and never
+     * sends it again.
+     */
+    private const int STATUS_UNCONFIRMED_SECONDS = 300;
 
     private string $baseUrl;
 
@@ -66,6 +91,7 @@ class TikTokPublisher
                 $post,
                 $pendingPublishId,
                 PublishCheckpoint::tiktokDerivativePaths($post->error_context),
+                PublishCheckpoint::tiktokInitAt($post->error_context) ?? now(),
             );
         }
 
@@ -245,9 +271,11 @@ class TikTokPublisher
 
         $publishId = $this->requirePublishId(data_get($data, 'data.publish_id'));
 
-        $this->rememberPublishId($post, $publishId);
+        $initAt = $this->rememberPublishId($post, $publishId);
 
-        return $this->completePublish($post, $publishId);
+        $this->waitForFirstStatusCheck();
+
+        return $this->completePublish($post, $publishId, $initAt);
     }
 
     private function publishPhotos(Post $post, $mediaCollection, ?string $content): array
@@ -305,14 +333,16 @@ class TikTokPublisher
 
             $publishId = $this->requirePublishId(data_get($response->json(), 'data.publish_id'));
 
-            $this->rememberPublishId($post, $publishId, $derivatives);
+            $initAt = $this->rememberPublishId($post, $publishId, $derivatives);
         } catch (Throwable $e) {
             app(TikTokPhotoDerivativeCleaner::class)->cleanupPaths($derivatives);
 
             throw $e;
         }
 
-        return $this->completePublishWithCleanup($post, $publishId, $derivatives);
+        $this->waitForFirstStatusCheck();
+
+        return $this->completePublishWithCleanup($post, $publishId, $derivatives, $initAt);
     }
 
     /**
@@ -398,7 +428,13 @@ class TikTokPublisher
         }
     }
 
-    private function waitForPublishStatus(string $publishId): array
+    /**
+     * A refused status fetch is not a failed publish: TikTok has refused
+     * publish_ids it went on to publish. It is checked again until
+     * STATUS_UNCONFIRMED_SECONDS, then fails without sending the post again.
+     * A rejected post comes back as a FAILED status with its fail_reason.
+     */
+    private function waitForPublishStatus(string $publishId, CarbonInterface $initAt): array
     {
         $response = $this->getHttpClient()
             ->post("{$this->baseUrl}/post/publish/status/fetch/", [
@@ -406,11 +442,17 @@ class TikTokPublisher
             ]);
 
         if ($response->failed()) {
-            if ($response->status() !== 429 && ! $response->serverError()) {
-                $this->handleApiError($response);
+            if ($response->status() === 429 || $response->serverError()) {
+                throw $this->pendingPublishException($publishId, $initAt, $response->status());
             }
 
-            throw $this->pendingPublishException($publishId, $response->status());
+            $refusal = TikTokPublishException::fromApiResponse($response);
+
+            if ($this->secondsSince($initAt) < self::STATUS_UNCONFIRMED_SECONDS) {
+                throw $this->pendingPublishException($publishId, $initAt, $response->status());
+            }
+
+            throw TikTokPublishException::unconfirmed($refusal);
         }
 
         $data = $response->json();
@@ -425,6 +467,7 @@ class TikTokPublisher
             ),
             default => throw $this->pendingPublishException(
                 $publishId,
+                $initAt,
                 status: $statusValue !== '' ? $statusValue : null,
             ),
         };
@@ -450,11 +493,14 @@ class TikTokPublisher
      *
      * @param  list<string>  $derivatives
      */
-    private function rememberPublishId(Post $post, string $publishId, array $derivatives = []): void
+    private function rememberPublishId(Post $post, string $publishId, array $derivatives = []): CarbonImmutable
     {
+        $initAt = CarbonImmutable::now();
+
         $context = [
             ...($post->error_context ?? []),
             PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId,
+            PublishCheckpoint::TIKTOK_INIT_AT => $initAt->toIso8601String(),
         ];
 
         if ($derivatives !== []) {
@@ -464,9 +510,16 @@ class TikTokPublisher
         $post->writePublication([
             'error_context' => $context,
         ]);
+
+        return $initAt;
     }
 
-    private function pendingPublishException(string $publishId, ?int $httpStatus = null, ?string $status = null): PlatformUnavailableException
+    private function waitForFirstStatusCheck(): void
+    {
+        Sleep::for(self::STATUS_CHECKS_SECONDS[0])->seconds();
+    }
+
+    private function pendingPublishException(string $publishId, CarbonInterface $initAt, ?int $httpStatus = null, ?string $status = null): PlatformUnavailableException
     {
         $context = [PublishCheckpoint::TIKTOK_PUBLISH_ID => $publishId];
 
@@ -478,9 +531,24 @@ class TikTokPublisher
             message: "TikTok is still processing publish_id {$publishId}",
             httpStatus: $httpStatus,
             context: $context,
-            retryDelaySeconds: self::STATUS_RETRY_DELAY_SECONDS,
+            retryDelaySeconds: $this->secondsUntilNextStatusCheck($initAt),
             maxRetries: self::STATUS_MAX_RETRIES,
         );
+    }
+
+    private function secondsUntilNextStatusCheck(CarbonInterface $initAt): int
+    {
+        $elapsed = $this->secondsSince($initAt);
+
+        $next = collect(self::STATUS_CHECKS_SECONDS)->first(fn (int $seconds): bool => $seconds > $elapsed)
+            ?? (intdiv($elapsed, self::STATUS_CHECK_INTERVAL_SECONDS) + 1) * self::STATUS_CHECK_INTERVAL_SECONDS;
+
+        return max(1, $next - $elapsed);
+    }
+
+    private function secondsSince(CarbonInterface $moment): int
+    {
+        return max(0, (int) $moment->diffInSeconds(now()));
     }
 
     /**
@@ -492,12 +560,12 @@ class TikTokPublisher
      * @param  array<array-key, mixed>  $derivatives
      * @return array<string, mixed>
      */
-    private function completePublishWithCleanup(Post $post, string $publishId, array $derivatives): array
+    private function completePublishWithCleanup(Post $post, string $publishId, array $derivatives, CarbonInterface $initAt): array
     {
         $retainDerivatives = true;
 
         try {
-            $result = $this->completePublish($post, $publishId);
+            $result = $this->completePublish($post, $publishId, $initAt);
             $retainDerivatives = false;
 
             return $result;
@@ -516,9 +584,9 @@ class TikTokPublisher
         }
     }
 
-    private function completePublish(Post $post, string $publishId): array
+    private function completePublish(Post $post, string $publishId, CarbonInterface $initAt): array
     {
-        $statusData = $this->waitForPublishStatus($publishId);
+        $statusData = $this->waitForPublishStatus($publishId, $initAt);
         $postId = $this->videoIdFrom($statusData);
 
         return [
