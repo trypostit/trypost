@@ -583,6 +583,46 @@ test('tiktok publisher fails a publish TikTok still refuses to report five minut
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/init/'));
 });
 
+test('tiktok publisher fails at once when TikTok refuses the status for a reason only the user can fix', function (string $code, string $message) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds(30)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => $code, 'message' => $code],
+        ], 403),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))
+        ->toThrow(fn (TikTokPublishException $exception) => expect($exception->userMessage)->toBe($message));
+})->with([
+    'missing permissions' => ['scope_not_authorized', 'Missing required permissions. Please reconnect with all scopes.'],
+    'account barred from posting' => ['spam_risk_user_banned_from_posting', 'Account is banned from posting.'],
+]);
+
+test('tiktok publisher keeps checking a status refused with a code that only names the request', function (string $code) {
+    $this->freezeSecond();
+    $this->post->update([
+        'error_context' => [
+            'tiktok_publish_id' => 'pub_existing',
+            'tiktok_init_at' => now()->subSeconds(30)->toIso8601String(),
+        ],
+    ]);
+
+    Http::fake([
+        $this->api.'/post/publish/status/fetch/' => Http::response([
+            'error' => ['code' => $code, 'message' => 'invalid_publish_id'],
+        ], 400),
+    ]);
+
+    expect(fn () => $this->publisher->publish($this->post->fresh()))->toThrow(PlatformUnavailableException::class);
+})->with(['invalid_params', 'invalid_param', 'invalid_publish_id', 'rate_limit_exceeded']);
+
 test('tiktok publisher times a publish checkpointed without its start from the resume', function () {
     $this->post->update([
         'error_context' => ['tiktok_publish_id' => 'pub_from_before'],

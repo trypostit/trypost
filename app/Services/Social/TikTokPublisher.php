@@ -432,7 +432,9 @@ class TikTokPublisher
      * A refused status fetch is not a failed publish: TikTok has refused
      * publish_ids it went on to publish. It is checked again until
      * STATUS_UNCONFIRMED_SECONDS, then fails without sending the post again.
-     * A rejected post comes back as a FAILED status with its fail_reason.
+     * Only a refusal the user must fix (permissions, an account barred from
+     * posting) fails at once. A rejected post comes back as a FAILED status
+     * with its fail_reason.
      */
     private function waitForPublishStatus(string $publishId, CarbonInterface $initAt): array
     {
@@ -447,6 +449,10 @@ class TikTokPublisher
             }
 
             $refusal = TikTokPublishException::fromApiResponse($response);
+
+            if (in_array($refusal->category, [ErrorCategory::Permission, ErrorCategory::ContentPolicy], true)) {
+                throw $refusal;
+            }
 
             if ($this->secondsSince($initAt) < self::STATUS_UNCONFIRMED_SECONDS) {
                 throw $this->pendingPublishException($publishId, $initAt, $response->status());
