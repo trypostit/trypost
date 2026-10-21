@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Dto\BlueskySession;
+use App\Actions\SocialAccount\ReadBlueskySession;
 use App\Enums\SocialAccount\Platform as SocialPlatform;
 use App\Exceptions\SocialAccount\ConnectFlowException;
 use App\Models\SocialAccount;
@@ -74,7 +74,7 @@ class BlueskyController extends SocialController
                 throw ValidationException::withMessages(['password' => __('accounts.bluesky.invalid_credentials')]);
             }
 
-            $session = BlueskySession::fromResponse($response);
+            $session = ReadBlueskySession::execute($response);
 
             if ($session === null || ! $session->hasTokens()) {
                 return $this->failConnection('error_connecting');
@@ -135,7 +135,7 @@ class BlueskyController extends SocialController
             ->timeout(30)
             ->get(config('trypost.platforms.bluesky.default_service').'/xrpc/'.BlueskyLexicon::GET_SESSION);
 
-        $session = BlueskySession::fromResponse($response);
+        $session = ReadBlueskySession::execute($response);
 
         if ($session === null || $session->did !== data_get($identity, 'platform_user_id')) {
             throw new ConnectFlowException('error_connecting', $this->platform);

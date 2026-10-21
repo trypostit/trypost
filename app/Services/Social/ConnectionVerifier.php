@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\Social;
 
+use App\Actions\SocialAccount\ReadBlueskySession;
 use App\Actions\SocialAccount\SyncXSubscription;
-use App\Dto\BlueskySession;
 use App\Enums\SocialAccount\Platform;
 use App\Exceptions\PlatformUnavailableException;
 use App\Exceptions\Social\BlueskyPublishException;
@@ -372,7 +372,7 @@ class ConnectionVerifier
 
     private function updateBlueskySession(SocialAccount $account, Response $response): void
     {
-        $session = BlueskySession::fromResponse($response);
+        $session = ReadBlueskySession::execute($response);
 
         if ($session === null || ! $session->hasTokens() || $session->did !== $account->platform_user_id) {
             throw new PlatformUnavailableException('Bluesky returned an invalid session response.');

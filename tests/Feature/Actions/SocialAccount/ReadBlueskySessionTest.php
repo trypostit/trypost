@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\SocialAccount\ReadBlueskySession;
 use App\Dto\BlueskySession;
 use Illuminate\Support\Facades\Http;
 
@@ -14,7 +15,7 @@ test('bluesky session maps the authentication response without coercing values',
         'emailConfirmed' => $emailConfirmed,
     ])])->post('https://bsky.social/xrpc/com.atproto.server.createSession');
 
-    $session = BlueskySession::fromResponse($response);
+    $session = ReadBlueskySession::execute($response);
 
     expect($session)->toBeInstanceOf(BlueskySession::class)
         ->and($session->did)->toBe('did:plc:account')
@@ -32,7 +33,7 @@ test('bluesky session accepts a session lookup without tokens or email confirmat
         'handle' => 'account.bsky.social',
     ])])->get('https://bsky.social/xrpc/com.atproto.server.getSession');
 
-    $session = BlueskySession::fromResponse($response);
+    $session = ReadBlueskySession::execute($response);
 
     expect($session->accessToken)->toBeNull()
         ->and($session->refreshToken)->toBeNull()
@@ -53,7 +54,7 @@ test('bluesky session rejects malformed fields instead of casting them', functio
     $response = Http::fake(['*' => Http::response($body)])
         ->post('https://bsky.social/xrpc/com.atproto.server.createSession');
 
-    expect(BlueskySession::fromResponse($response))->toBeNull();
+    expect(ReadBlueskySession::execute($response))->toBeNull();
 })->with([
     'string true' => ['emailConfirmed', 'true'],
     'string false' => ['emailConfirmed', 'false'],
@@ -78,7 +79,7 @@ test('bluesky session rejects incomplete or unsuccessful responses', function (a
     $response = Http::fake(['*' => Http::response($body, $status)])
         ->get('https://bsky.social/xrpc/com.atproto.server.getSession');
 
-    expect(BlueskySession::fromResponse($response))->toBeNull();
+    expect(ReadBlueskySession::execute($response))->toBeNull();
 })->with([
     'missing identity' => [[], 200],
     'missing handle' => [['did' => 'did:plc:account'], 200],
@@ -95,5 +96,5 @@ test('bluesky session does not consider a partial token pair authenticated', fun
         'accessJwt' => 'access-token',
     ])])->post('https://bsky.social/xrpc/com.atproto.server.createSession');
 
-    expect(BlueskySession::fromResponse($response)->hasTokens())->toBeFalse();
+    expect(ReadBlueskySession::execute($response)->hasTokens())->toBeFalse();
 });
