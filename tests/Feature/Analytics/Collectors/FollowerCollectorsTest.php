@@ -161,3 +161,40 @@ test('an expired youtube token is refreshed before the subscriber count is reque
     Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/channels')
         && $request->hasHeader('Authorization', 'Bearer fresh-token'));
 });
+
+test('vk reads community members through groups.getById', function () {
+    Http::fake(['*' => Http::response(['response' => ['groups' => [[
+        'id' => 123456, 'members_count' => 321,
+    ]]]])]);
+    $account = SocialAccount::factory()->vk()->create();
+
+    $observation = app(FollowerCollectorFactory::class)
+        ->for(Platform::Vk)
+        ->collect($account, CarbonImmutable::parse('2026-09-23', 'UTC'));
+
+    expect($observation->followers)->toBe(321);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/groups.getById')
+        && $request['group_ids'] == 123456
+        && $request['fields'] === 'members_count'
+        && ! isset($request['access_token'])
+        && $request->hasHeader('Authorization'));
+});
+
+test('vk reads profile followers through users.get', function () {
+    Http::fake(['*' => Http::response(['response' => [[
+        'id' => 111, 'followers_count' => 55,
+    ]]])]);
+    $account = SocialAccount::factory()->vk()->create([
+        'platform_user_id' => '111',
+        'meta' => ['owner_id' => 111, 'is_group' => false, 'vk_user_id' => 111],
+    ]);
+
+    $observation = app(FollowerCollectorFactory::class)
+        ->for(Platform::Vk)
+        ->collect($account, CarbonImmutable::parse('2026-09-23', 'UTC'));
+
+    expect($observation->followers)->toBe(55);
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/users.get')
+        && $request['user_ids'] == 111
+        && $request['fields'] === 'followers_count');
+});

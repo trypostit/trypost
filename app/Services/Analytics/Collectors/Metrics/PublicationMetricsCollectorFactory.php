@@ -21,6 +21,7 @@ class PublicationMetricsCollectorFactory
             Platform::TikTok => app(TikTokPublicationMetricsCollector::class),
             Platform::Bluesky => app(BlueskyPublicationMetricsCollector::class),
             Platform::Mastodon => app(MastodonPublicationMetricsCollector::class),
+            Platform::Vk => app(VkPublicationMetricsCollector::class),
             default => throw AnalyticsCollectionException::unsupported("{$platform->value} publication metrics are excluded"),
         };
     }

@@ -57,6 +57,7 @@ return [
         'telegram' => '频道或群组',
         'discord' => '服务器',
         'google_business' => '商家资料',
+        'vk' => '个人主页或社区',
     ],
 
     'details' => [

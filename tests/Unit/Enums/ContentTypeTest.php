@@ -274,6 +274,14 @@ test('media rules preserve pre-centralization editor limits for mapped types', f
             'max_image_bytes' => min(5 * $mb, $hardImage),
             'max_video_bytes' => min(20 * $mb, $hardVideo),
         ],
+        // VK wall posts may be text-only; attachments are optional (up to 10).
+        'vk_post' => [
+            'requires_media' => false,
+            'accepts_gif' => false,
+            'max_files' => 10,
+            'max_image_bytes' => null,
+            'max_video_bytes' => null,
+        ],
         'tiktok_video' => [
             'requires_media' => true,
             'accepts_gif' => false,

@@ -826,6 +826,10 @@ return [
             'label' => 'Beitrag',
             'description' => 'Wird in deinem Geschäftsprofil in Suche und Karten angezeigt',
         ],
+        'vk_post' => [
+            'label' => 'Beitrag',
+            'description' => 'Textbeitrag mit optionalen Medien',
+        ],
     ],
 
     'platforms' => [
