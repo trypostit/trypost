@@ -46,7 +46,7 @@ final class PublishCheckpoint
     {
         $value = data_get($context, self::TIKTOK_INIT_AT);
 
-        if (! is_string($value) || $value === '') {
+        if (blank($value) || ! is_string($value)) {
             return null;
         }
 
