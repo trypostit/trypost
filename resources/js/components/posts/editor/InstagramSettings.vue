@@ -17,6 +17,7 @@ import {
     index as audioIndex,
     show as audioShow,
 } from '@/actions/App/Http/Controllers/App/InstagramAudioController';
+import CharacterCounter from '@/components/CharacterCounter.vue';
 import InputError from '@/components/InputError.vue';
 import SettingsRow from '@/components/posts/editor/SettingsRow.vue';
 import SettingsSection from '@/components/posts/editor/SettingsSection.vue';
@@ -32,10 +33,12 @@ import {
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useReelSoundtrack } from '@/composables/composer/useReelSoundtrack';
 import { useMetaErrors } from '@/composables/useMetaErrors';
 import { instagramProfileUrl } from '@/lib/instagram';
 import { rangeFill } from '@/lib/rangeFill';
+import { toNullableText } from '@/lib/utils';
 import { ContentType } from '@/types/content-type';
 import type { InstagramAudio } from '@/types/instagram';
 import { Platform } from '@/types/platform';
@@ -130,6 +133,13 @@ const musicNeedsFacebook = computed(
 const shareToFeed = computed({
     get: (): boolean => props.meta.share_to_feed ?? true,
     set: (value: boolean) => updateMeta({ share_to_feed: value }),
+});
+
+const FIRST_COMMENT_MAX = 2200;
+const firstComment = computed({
+    get: () => toNullableText(props.meta.first_comment) ?? '',
+    set: (value: string) =>
+        updateMeta({ first_comment: toNullableText(value) }),
 });
 
 const selectedAudio = computed(
@@ -1016,6 +1026,32 @@ onUnmounted(() => {
                     :aria-label="$t('posts.form.instagram.share_to_feed')"
                 />
             </div>
+        </SettingsRow>
+
+        <SettingsRow
+            :label="$t('posts.form.first_comment.label')"
+            label-for="instagram-first-comment"
+            align-top
+        >
+            <Textarea
+                id="instagram-first-comment"
+                v-model="firstComment"
+                data-testid="instagram-first-comment"
+                :disabled="disabled"
+                :maxlength="FIRST_COMMENT_MAX"
+                :placeholder="$t('posts.form.first_comment.placeholder')"
+                class="field-sizing-fixed min-h-20 w-full resize-y"
+            />
+            <CharacterCounter
+                class="block"
+                :exceeded="firstComment.length > FIRST_COMMENT_MAX"
+                data-testid="instagram-first-comment-count"
+            >
+                {{ firstComment.length }}/{{ FIRST_COMMENT_MAX }}
+            </CharacterCounter>
+            <p class="text-xs text-foreground/60">
+                {{ $t('posts.form.first_comment.hint_instagram') }}
+            </p>
         </SettingsRow>
     </SettingsSection>
 </template>
