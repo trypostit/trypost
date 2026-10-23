@@ -59,7 +59,7 @@ abstract class AbstractLinkedInPublisher
      * hashtag (`#php`, not after a letter, digit or `/`, and with a letter in
      * the tag so `#1` stays text) is skipped and still becomes a hashtag.
      */
-    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}\p{M}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
+    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
 
     private string $apiVersion = '202601';
 
