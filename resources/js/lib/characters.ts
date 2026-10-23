@@ -1,5 +1,3 @@
-import { Platform } from '@/types/platform';
-
 /** Characters as the server counts them (`mb_strlen`): one per code point, so an emoji is one. */
 export const characterCount = (text: string): number => Array.from(text).length;
 
@@ -7,19 +5,15 @@ export const characterCount = (text: string): number => Array.from(text).length;
 const PHP_TRIM = /^[ \t\n\r\0\x0B]+|[ \t\n\r\0\x0B]+$/g;
 
 /**
- * The plain text the server measures for a network
- * (`ContentSanitizer::displayText()`): edges trimmed and, except on Mastodon,
- * three or more line breaks collapsed to two.
+ * The plain text the server measures (`ContentSanitizer::displayText()`):
+ * edges trimmed and three or more line breaks collapsed to two.
  */
-export const displayText = (text: string, platform: string): string =>
-    (platform === Platform.Mastodon ? text : text.replace(/\n{3,}/g, '\n\n')).replace(
-        PHP_TRIM,
-        '',
-    );
+export const displayText = (text: string): string =>
+    text.replace(/\n{3,}/g, '\n\n').replace(PHP_TRIM, '');
 
 /** Characters a network's limit counts for this text. */
-export const displayLength = (text: string, platform: string): number =>
-    characterCount(displayText(text, platform));
+export const displayLength = (text: string): number =>
+    characterCount(displayText(text));
 
 /** Mirrors Laravel `Str::trim()`: whitespace plus `Str::INVISIBLE_CHARACTERS` count as nothing. */
 const INVISIBLE =
