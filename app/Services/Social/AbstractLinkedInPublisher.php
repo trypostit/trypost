@@ -58,10 +58,10 @@ abstract class AbstractLinkedInPublisher
     /**
      * What {@see self::toLittleText()} escapes: a whole URL, so its `#`
      * fragment stays text, or one reserved character. A `#` that opens a
-     * hashtag (`#php`, not after a letter, digit or `/`, and with a letter in
+     * hashtag (`#php`, not after a letter, digit, `/`, `=` or `&`, and with a letter in
      * the tag so `#1` stays text) is skipped and still becomes a hashtag.
      */
-    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|'.self::LITTLE_RESERVED.'/iu';
+    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}_\/=&])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|'.self::LITTLE_RESERVED.'/iu';
 
     private string $apiVersion = '202601';
 

@@ -110,6 +110,7 @@ test('linkedin escapes every character little reserves, keeping hashtags', funct
     'a url in parentheses' => ['(see https://example.com/page_1)', '\(see https://example.com/page\_1\)'],
     'an uppercase url' => ['Visit HTTPS://EXAMPLE.COM/?X=1&#Top or WWW.PHP.NET/?a=&#News', 'Visit HTTPS://EXAMPLE.COM/?X=1&\#Top or WWW.PHP.NET/?a=&\#News'],
     'a bare domain with a fragment' => ['example.com/page#top', 'example.com/page\#top'],
+    'a bare domain with a fragment after a query' => ['trypost.it/pricing?plan=#yearly and example.com/?a=1&#Top', 'trypost.it/pricing?plan=\#yearly and example.com/?a=1&\#Top'],
     'a url followed by a hashtag' => ['https://trypost.it #buildinpublic', 'https://trypost.it #buildinpublic'],
     'the php.net advisory links' => [
         "Oct 23: https://www.php.net/index.php#2026-10-23-1\nOct 21: https://www.php.net/index.php#2026-10-21-5\n\n#PHP #CyberSecurity",
