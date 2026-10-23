@@ -172,6 +172,30 @@ test('linkedin publisher handles empty content', function () {
     });
 });
 
+test('linkedin publisher escapes the characters little reserves so the commentary is not cut', function (string $content, string $commentary) {
+    $this->post->update(['content' => $content]);
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:1234567890',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => $request['commentary'] === $commentary);
+})->with([
+    'a date in parentheses' => [
+        "PHP issued a new security advisory today (Oct 23).\n\nBut this one is different.",
+        "PHP issued a new security advisory today \\(Oct 23\\).\n\nBut this one is different.",
+    ],
+    'every reserved character' => ['| { } @ [ ] ( ) < > # \\ * _ ~', '\\| \\{ \\} \\@ \\[ \\] \\( \\) \\< \\> \\# \\\\ \\* \\_ \\~'],
+    'an email and a handle' => ['Write to hi@trypost.it or @trypost', 'Write to hi\\@trypost.it or \\@trypost'],
+    'a url with reserved characters' => ['https://example.com/a_b~c(1)#top', 'https://example.com/a\\_b\\~c\\(1\\)\\#top'],
+    'hashtags stay hashtags' => ["#php first\nShip it #Laravel11 (#café) \"#tips\"", "#php first\nShip it #Laravel11 \\(#café\\) \"#tips\""],
+    'a lone or numbered hash' => ['Issue # 5 and C#', 'Issue \\# 5 and C\\#'],
+]);
+
 test('linkedin publisher can publish post with image', function () {
     $this->post->update([
         'media' => [
@@ -1283,6 +1307,32 @@ test('linkedin publisher sends an article card for a text post that contains a l
             && $article['description'] === 'A great read'
             && ! isset($article['thumbnail']);
     });
+});
+
+test('linkedin publisher reads the link card from the unescaped text', function () {
+    $this->post->update(['content' => 'Read this https://example.com/my_article (new)']);
+
+    $this->mock(LinkCardFetcher::class)
+        ->shouldReceive('fetch')
+        ->once()
+        ->with('Read this https://example.com/my_article (new)')
+        ->andReturn(new LinkCardMetadata(
+            uri: 'https://example.com/my_article',
+            title: 'The Article',
+            description: 'A great read',
+            imageUrl: null,
+        ));
+
+    Http::fake([
+        config('trypost.platforms.linkedin.api').'/rest/posts' => Http::response(null, 201, [
+            'x-restli-id' => 'urn:li:share:article1',
+        ]),
+    ]);
+
+    $this->publisher->publish($this->post);
+
+    Http::assertSent(fn ($request) => $request['commentary'] === 'Read this https://example.com/my\_article \(new\)'
+        && $request['content']['article']['source'] === 'https://example.com/my_article');
 });
 
 test('linkedin publisher sends no article when the user dropped the link preview', function () {

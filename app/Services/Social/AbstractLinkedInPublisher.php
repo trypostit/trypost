@@ -44,6 +44,18 @@ abstract class AbstractLinkedInPublisher
 
     private const int ARTICLE_THUMB_TIMEOUT_SECONDS = 10;
 
+    /**
+     * Characters `little` reserves for mentions, hashtags and templates. Any of
+     * them left unescaped ends the plain text there, so LinkedIn publishes the
+     * commentary cut at that character without an error. A `#` that opens a
+     * hashtag (`#php`, at the start, after a space or an opening bracket or
+     * quote) is the one kept as is, so it still becomes a hashtag; one inside a
+     * word or a URL (`C#`, `/page#top`) is text.
+     *
+     * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/little-text-format
+     */
+    private const string LITTLE_RESERVED_PATTERN = '/(?<![^\s(\[{"“‘])#(?=[\p{L}\p{N}\p{M}])(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
+
     private string $apiVersion = '202601';
 
     private string $accessToken;
@@ -316,7 +328,7 @@ abstract class AbstractLinkedInPublisher
     {
         return [
             'author' => $this->authorUrn(),
-            'commentary' => $content ?? '',
+            'commentary' => $this->toLittleText($content ?? ''),
             'visibility' => 'PUBLIC',
             'distribution' => [
                 'feedDistribution' => 'MAIN_FEED',
@@ -325,6 +337,16 @@ abstract class AbstractLinkedInPublisher
             ],
             'lifecycleState' => 'PUBLISHED',
         ];
+    }
+
+    /**
+     * The commentary as plain `little` text: every reserved character escaped
+     * with a backslash, hashtags excepted. TryPost sends no mentions or
+     * templates, so an `@` or `{` the person typed is always text.
+     */
+    private function toLittleText(string $content): string
+    {
+        return preg_replace(self::LITTLE_RESERVED_PATTERN, '\\\\$0', $content) ?? $content;
     }
 
     /**
