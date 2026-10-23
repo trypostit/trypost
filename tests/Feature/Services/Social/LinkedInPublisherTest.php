@@ -192,8 +192,14 @@ test('linkedin publisher escapes the characters little reserves so the commentar
     'every reserved character' => ['| { } @ [ ] ( ) < > # \\ * _ ~', '\\| \\{ \\} \\@ \\[ \\] \\( \\) \\< \\> \\# \\\\ \\* \\_ \\~'],
     'an email and a handle' => ['Write to hi@trypost.it or @trypost', 'Write to hi\\@trypost.it or \\@trypost'],
     'a url with reserved characters' => ['https://example.com/a_b~c(1)#top', 'https://example.com/a\\_b\\~c\\(1\\)\\#top'],
+    'a url fragment that reads like a hashtag' => [
+        'See https://example.com/docs/#install and www.php.net/#news',
+        'See https://example.com/docs/\\#install and www.php.net/\\#news',
+    ],
     'hashtags stay hashtags' => ["#php first\nShip it #Laravel11 (#café) \"#tips\"", "#php first\nShip it #Laravel11 \\(#café\\) \"#tips\""],
-    'a lone or numbered hash' => ['Issue # 5 and C#', 'Issue \\# 5 and C\\#'],
+    'a hashtag after punctuation or an emoji' => ['Done.#Laravel Tags:#php 🚀#launch', 'Done.#Laravel Tags:#php 🚀#launch'],
+    'an underscore ends the hashtag' => ['#machine_learning', '#machine\\_learning'],
+    'a lone, numbered or in-word hash' => ['Issue # 5, we are #1 in 2026, see #123 and C#', 'Issue \\# 5, we are \\#1 in 2026, see \\#123 and C\\#'],
 ]);
 
 test('linkedin publisher can publish post with image', function () {

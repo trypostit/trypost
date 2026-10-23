@@ -47,14 +47,19 @@ abstract class AbstractLinkedInPublisher
     /**
      * Characters `little` reserves for mentions, hashtags and templates. Any of
      * them left unescaped ends the plain text there, so LinkedIn publishes the
-     * commentary cut at that character without an error. A `#` that opens a
-     * hashtag (`#php`, at the start, after a space or an opening bracket or
-     * quote) is the one kept as is, so it still becomes a hashtag; one inside a
-     * word or a URL (`C#`, `/page#top`) is text.
+     * commentary cut at that character without an error.
      *
      * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/little-text-format
      */
-    private const string LITTLE_RESERVED_PATTERN = '/(?<![^\s(\[{"“‘])#(?=[\p{L}\p{N}\p{M}])(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
+    private const string LITTLE_RESERVED_PATTERN = '/[\\\\|{}@\[\]()<>#*_~]/';
+
+    /**
+     * What {@see self::toLittleText()} escapes: a whole URL, so its `#`
+     * fragment stays text, or one reserved character. A `#` that opens a
+     * hashtag (`#php`, not after a letter, digit or `/`, and with a letter in
+     * the tag so `#1` stays text) is skipped and still becomes a hashtag.
+     */
+    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}\p{M}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
 
     private string $apiVersion = '202601';
 
@@ -346,7 +351,20 @@ abstract class AbstractLinkedInPublisher
      */
     private function toLittleText(string $content): string
     {
-        return preg_replace(self::LITTLE_RESERVED_PATTERN, '\\\\$0', $content) ?? $content;
+        return preg_replace_callback(
+            self::LITTLE_TEXT_PATTERN,
+            fn (array $matches): string => $this->escapeLittleReserved($matches[0]),
+            $content,
+        ) ?? $this->escapeLittleReserved($content);
+    }
+
+    /**
+     * Every reserved character escaped, hashtags included. Byte-wise, so it
+     * also covers text the Unicode pattern cannot read.
+     */
+    private function escapeLittleReserved(string $text): string
+    {
+        return preg_replace(self::LITTLE_RESERVED_PATTERN, '\\\\$0', $text) ?? $text;
     }
 
     /**
