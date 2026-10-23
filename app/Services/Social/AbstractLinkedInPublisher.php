@@ -51,7 +51,9 @@ abstract class AbstractLinkedInPublisher
      *
      * @see https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/little-text-format
      */
-    private const string LITTLE_RESERVED_PATTERN = '/[\\\\|{}@\[\]()<>#*_~]/';
+    private const string LITTLE_RESERVED = '[\\\\|{}@\[\]()<>#*_~]';
+
+    private const string LITTLE_RESERVED_PATTERN = '/'.self::LITTLE_RESERVED.'/';
 
     /**
      * What {@see self::toLittleText()} escapes: a whole URL, so its `#`
@@ -59,7 +61,7 @@ abstract class AbstractLinkedInPublisher
      * hashtag (`#php`, not after a letter, digit or `/`, and with a letter in
      * the tag so `#1` stays text) is skipped and still becomes a hashtag.
      */
-    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|[\\\\|{}@\[\]()<>#*_~]/u';
+    private const string LITTLE_TEXT_PATTERN = '/(?:https?:\/\/|www\.)\S+|(?<![\p{L}\p{N}_\/])#(?=\p{N}*\p{L})(*SKIP)(*FAIL)|'.self::LITTLE_RESERVED.'/iu';
 
     private string $apiVersion = '202601';
 

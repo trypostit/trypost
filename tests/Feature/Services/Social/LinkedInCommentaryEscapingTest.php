@@ -108,7 +108,7 @@ test('linkedin escapes every character little reserves, keeping hashtags', funct
     ],
     'a url query' => ['https://x.com/s?q=a_b&tag=#x&u=@me', 'https://x.com/s?q=a\_b&tag=\#x&u=\@me'],
     'a url in parentheses' => ['(see https://example.com/page_1)', '\(see https://example.com/page\_1\)'],
-    'an uppercase url' => ['Visit HTTPS://EXAMPLE.COM/#Top', 'Visit HTTPS://EXAMPLE.COM/\#Top'],
+    'an uppercase url' => ['Visit HTTPS://EXAMPLE.COM/?X=1&#Top or WWW.PHP.NET/?a=&#News', 'Visit HTTPS://EXAMPLE.COM/?X=1&\#Top or WWW.PHP.NET/?a=&\#News'],
     'a bare domain with a fragment' => ['example.com/page#top', 'example.com/page\#top'],
     'a url followed by a hashtag' => ['https://trypost.it #buildinpublic', 'https://trypost.it #buildinpublic'],
     'the php.net advisory links' => [
@@ -143,7 +143,7 @@ test('linkedin escapes the commentary of every post shape', function (array $med
         if (str_contains($url, '/rest/images')) {
             return Http::response(['value' => [
                 'uploadUrl' => 'https://www.linkedin.com/dms/upload/image',
-                'image' => 'urn:li:image:'.md5($request->body()),
+                'image' => 'urn:li:image:FakeImageUrn',
             ]], 200);
         }
 
