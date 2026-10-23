@@ -1041,10 +1041,7 @@ const remainingCharacters = (account: ComposerAccount): number | null => {
     return (
         limit -
         contentWarningLength(account) -
-        displayLength(
-            contentFor(destination.content, account.platform),
-            account.platform,
-        )
+        displayLength(contentFor(destination.content, account.platform))
     );
 };
 const groupRemaining = (group: NetworkGroup): number | null => {
@@ -1118,7 +1115,7 @@ const activeRemaining = (group: NetworkGroup): number | null => {
     return limit === null
         ? null
         : limit -
-          displayLength(contentFor(reply.text, group.platform), group.platform);
+          displayLength(contentFor(reply.text, group.platform));
 };
 const threadReplyErrors = (group: NetworkGroup): Record<number, string> => {
     const found: Record<number, string> = {};
@@ -1394,10 +1391,7 @@ const destinationIssues = (account: ComposerAccount): DestinationIssue[] => {
             const over =
                 limit === null
                     ? 0
-                    : displayLength(
-                          contentFor(reply.text, account.platform),
-                          account.platform,
-                      ) -
+                    : displayLength(contentFor(reply.text, account.platform)) -
                       limit;
             const replyMediaWarning = reply.media.length
                 ? getMediaValidationWarning(replyContentType, reply.media)
