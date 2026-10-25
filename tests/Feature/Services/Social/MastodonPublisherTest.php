@@ -648,17 +648,19 @@ test('mastodon refuses a post whose content and content warning exceed the limit
 test('mastodon publisher sends plain text for a post and a reply that still hold editor html', function () {
     $this->post->update([
         'content' => '<p>Teste TryPost <strong>negrito</strong> e <em>itálico</em></p><p>Segunda linha #teste https://example.com</p>',
-        'meta' => ['thread_replies' => ['<p>Reply <strong>two</strong></p>']],
+        'meta' => ['thread_replies' => ['<p>Reply <strong>two</strong></p>', ['text' => '<p>Reply <em>three</em></p>', 'media' => []]]],
     ]);
     $instance = data_get($this->socialAccount->meta, 'instance');
     Http::fake(["{$instance}/api/v1/statuses" => Http::sequence()
         ->push(['id' => '1', 'url' => "{$instance}/@t/1"])
-        ->push(['id' => '2', 'url' => "{$instance}/@t/2"])]);
+        ->push(['id' => '2', 'url' => "{$instance}/@t/2"])
+        ->push(['id' => '3', 'url' => "{$instance}/@t/3"])]);
 
     $this->publisher->publish($this->post->fresh());
 
     Http::assertSent(fn ($request): bool => $request['status'] === "Teste TryPost negrito e itálico\nSegunda linha #teste https://example.com");
     Http::assertSent(fn ($request): bool => $request['status'] === 'Reply two' && $request['in_reply_to_id'] === '1');
+    Http::assertSent(fn ($request): bool => $request['status'] === 'Reply three' && $request['in_reply_to_id'] === '2');
 });
 
 test('a mastodon thread chains each reply to the previous one with the root content warning', function () {

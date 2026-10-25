@@ -82,7 +82,7 @@ test('mastodon gets plain text, because it escapes any html it receives', functi
 })->with([
     'editor paragraphs' => ['<p>Hello <strong>world</strong> and <em>italic</em></p><p>Second</p>', "Hello world and italic\nSecond"],
     'a link keeps its text' => ['<p>Check <a href="https://example.com">this</a></p>', 'Check this'],
-    'scripts and blocks are removed' => ['<p>Hello</p><script>alert("xss")</script><div>block</div>', "Hello\nalert(\"xss\")block"],
+    'script and div tags come off, their text stays' => ['<p>Hello</p><script>alert("xss")</script><div>block</div>', "Hello\nalert(\"xss\")block"],
     'entities are decoded once' => ['<p>Tom &amp;amp; <strong>Jerry</strong></p>', 'Tom &amp; Jerry'],
     'plain text is untouched' => ["Plain #tag https://example.com @user@mastodon.social\nnext line", "Plain #tag https://example.com @user@mastodon.social\nnext line"],
     'line breaks collapse like every network' => ["a\n\n\n\nb", "a\n\nb"],
