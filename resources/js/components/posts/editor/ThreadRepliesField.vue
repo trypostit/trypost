@@ -37,7 +37,7 @@ const editor = ref<HTMLTextAreaElement[]>([]);
 
 const remaining = (reply: ThreadReply): number =>
     props.limit -
-    displayLength(contentFor(reply.text, props.platform), props.platform);
+    displayLength(contentFor(reply.text, props.platform));
 
 const isEmpty = (reply: ThreadReply | undefined): boolean =>
     reply !== undefined && reply.text === '' && reply.media.length === 0;

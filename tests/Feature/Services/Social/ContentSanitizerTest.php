@@ -74,27 +74,19 @@ test('it converts list items to dashes', function () {
     expect($result)->toContain('- Item two');
 });
 
-test('it preserves safe html for mastodon', function () {
+test('mastodon gets plain text, because it escapes any html it receives', function (string $content, string $status) {
     $sanitizer = new ContentSanitizer;
-    $result = $sanitizer->sanitize('<p>Hello <strong>world</strong> and <em>italic</em></p>', Platform::Mastodon);
-    expect($result)->toContain('<strong>world</strong>');
-    expect($result)->toContain('<em>italic</em>');
-    expect($result)->toContain('<p>');
-});
 
-test('it strips unsafe html for mastodon', function () {
-    $sanitizer = new ContentSanitizer;
-    $result = $sanitizer->sanitize('<p>Hello</p><script>alert("xss")</script><div>block</div>', Platform::Mastodon);
-    expect($result)->toContain('<p>Hello</p>');
-    expect($result)->not->toContain('<script>');
-    expect($result)->not->toContain('<div>');
-});
-
-test('it preserves links for mastodon', function () {
-    $sanitizer = new ContentSanitizer;
-    $result = $sanitizer->sanitize('<p>Check <a href="https://example.com">this</a></p>', Platform::Mastodon);
-    expect($result)->toContain('<a href="https://example.com">this</a>');
-});
+    expect($sanitizer->sanitize($content, Platform::Mastodon))->toBe($status)
+        ->and($sanitizer->displayText($content, Platform::Mastodon))->toBe($status);
+})->with([
+    'editor paragraphs' => ['<p>Hello <strong>world</strong> and <em>italic</em></p><p>Second</p>', "Hello world and italic\nSecond"],
+    'a link keeps its text' => ['<p>Check <a href="https://example.com">this</a></p>', 'Check this'],
+    'script and div tags come off, their text stays' => ['<p>Hello</p><script>alert("xss")</script><div>block</div>', "Hello\nalert(\"xss\")block"],
+    'entities are decoded once' => ['<p>Tom &amp;amp; <strong>Jerry</strong></p>', 'Tom &amp; Jerry'],
+    'plain text is untouched' => ["Plain #tag https://example.com @user@mastodon.social\nnext line", "Plain #tag https://example.com @user@mastodon.social\nnext line"],
+    'line breaks collapse like every network' => ["a\n\n\n\nb", "a\n\nb"],
+]);
 
 test('it keeps telegram-allowed html and converts strong/em', function () {
     $sanitizer = new ContentSanitizer;
@@ -404,13 +396,6 @@ test('it resolves markup only for the platforms whose sanitized form carries it'
     // Telegram escapes the ampersand for parse_mode=HTML; the reader still sees one.
     expect($sanitizer->sanitize($content, Platform::Telegram))->toContain('&amp;')
         ->and($sanitizer->displayText($content, Platform::Telegram))->toBe($content);
-});
-
-test('it strips mastodon markup for length without decoding its entities twice', function () {
-    $sanitizer = new ContentSanitizer;
-    $content = '<p>Tom &amp;amp; <strong>Jerry</strong></p>';
-
-    expect($sanitizer->displayText($content, Platform::Mastodon))->toBe('Tom &amp; Jerry');
 });
 
 test('a less-than sign typed as text is published, not read as a tag', function (Platform $platform) {
