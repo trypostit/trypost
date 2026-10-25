@@ -12,8 +12,14 @@ export const useGuestLocale = () => {
         () => page.props.languages as Language[],
     );
 
+    const pageLocale = (): string => page.props.locale as string;
+
+    const browserLocale = computed(() =>
+        detectBrowserLanguage(languages.value.map((language) => language.code)),
+    );
+
     const locale = computed<string>({
-        get: () => guestLocale() ?? (page.props.locale as string),
+        get: () => guestLocale() ?? pageLocale(),
         set: (value) => {
             const language = languages.value.find(
                 (candidate) => candidate.code === value,
@@ -25,13 +31,8 @@ export const useGuestLocale = () => {
         },
     });
 
-    const signupLocale = computed<string>(
-        () =>
-            guestLocale() ??
-            detectBrowserLanguage(
-                languages.value.map((language) => language.code),
-            ) ??
-            (page.props.locale as string),
+    const signupLocale = computed(
+        () => guestLocale() ?? browserLocale.value ?? pageLocale(),
     );
 
     return { locale, signupLocale, chosen: computed(guestLocale), languages };
