@@ -25,8 +25,6 @@ export const useGuestLocale = () => {
         },
     });
 
-    // The account's language: the visitor's pick, else the browser's language,
-    // else the default the guest page renders in.
     const signupLocale = computed<string>(
         () =>
             guestLocale() ??

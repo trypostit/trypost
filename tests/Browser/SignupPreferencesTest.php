@@ -2,18 +2,6 @@
 
 declare(strict_types=1);
 
-function waitForSignupPreferencesTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (document.querySelector('[data-testid="{$testId}"]')) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function signupPreferencesValue(mixed $page, string $testId): string
 {
     return (string) $page->script("document.querySelector('[data-testid=\"{$testId}\"]').value");
@@ -23,7 +11,7 @@ test('the register form sends the zone, week start and clock the browser reports
     config()->set('trypost.self_hosted', false);
 
     $page = visit(route('register'))->withLocale($locale)->withTimezone($timezone);
-    waitForSignupPreferencesTestId($page, 'register-time-format');
+    waitForState($page, '@register-time-format', "element.value !== ''");
 
     expect(signupPreferencesValue($page, 'register-timezone'))->toBe($timezone)
         ->and(signupPreferencesValue($page, 'register-week-start'))->toBe($weekStart)
@@ -39,7 +27,7 @@ test('the google and github buttons carry the detected preferences to the OAuth 
     config()->set('trypost.github_auth_enabled', true);
 
     $page = visit(route('login'))->withLocale('en-US')->withTimezone('Asia/Tokyo');
-    waitForSignupPreferencesTestId($page, 'social-login-github');
+    waitFor($page, '@social-login-github');
 
     foreach (['social-login-google', 'social-login-github'] as $button) {
         $params = $page->script("Object.fromEntries(new URL(document.querySelector('[data-testid=\"{$button}\"]').href).searchParams)");
@@ -54,7 +42,7 @@ test('the register form signs up in the browser language when the visitor picks 
     config()->set('trypost.self_hosted', false);
 
     $page = visit(route('register'))->withLocale($browserLocale);
-    waitForSignupPreferencesTestId($page, 'register-locale');
+    waitForState($page, '@register-locale', "element.value !== ''");
 
     expect(signupPreferencesValue($page, 'register-locale'))->toBe($expected);
     $page->assertNoJavaScriptErrors();
@@ -66,11 +54,12 @@ test('the register form signs up in the browser language when the visitor picks 
 ]);
 
 test('the google and github buttons carry the browser language to the OAuth start', function () {
+    config()->set('trypost.self_hosted', false);
     config()->set('trypost.google_auth_enabled', true);
     config()->set('trypost.github_auth_enabled', true);
 
     $page = visit(route('register'))->withLocale('es-ES');
-    waitForSignupPreferencesTestId($page, 'social-login-github');
+    waitFor($page, '@social-login-github');
 
     foreach (['social-login-google', 'social-login-github'] as $button) {
         $params = $page->script("Object.fromEntries(new URL(document.querySelector('[data-testid=\"{$button}\"]').href).searchParams)");
