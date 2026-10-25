@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
+use App\Models\User;
 use Illuminate\Support\Uri;
 
 test('the register form sends the zone, week start and clock the browser reports', function (string $locale, string $timezone, string $weekStart, string $timeFormat) {
@@ -61,5 +63,44 @@ test('the google and github buttons carry the browser language to the OAuth star
         expect(Uri::of($page->attribute($button, 'href'))->query()->get('locale'))->toBe('es');
     }
 
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a language picked on the register page wins over the browser language', function () {
+    config()->set('trypost.self_hosted', false);
+    config()->set('trypost.google_auth_enabled', true);
+    config()->set('trypost.github_auth_enabled', true);
+
+    $page = visit(route('register'))->withLocale('es-ES');
+    waitFor($page, '@language-picker-trigger');
+
+    $page->click('@language-picker-trigger');
+    waitFor($page, '@language-picker-option-pt-BR');
+    $page->click('@language-picker-option-pt-BR');
+    waitForState($page, '@register-locale', "element.value === 'pt-BR'");
+
+    $page->assertValue('@register-locale', 'pt-BR');
+
+    foreach (['@social-login-google', '@social-login-github'] as $button) {
+        expect(Uri::of($page->attribute($button, 'href'))->query()->get('locale'))->toBe('pt-BR');
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('signing up with the email form creates the account in the browser language', function () {
+    config()->set('trypost.self_hosted', false);
+    fakePwnedPasswords();
+
+    $page = visit(route('register'))->withLocale('pt-BR');
+    waitForState($page, '@register-locale', "element.value !== ''");
+
+    $page->fill('@register-name', 'Bia')
+        ->fill('@register-email', 'bia-browser@example.com')
+        ->fill('@register-password', strongPassword())
+        ->click('@register-user-button');
+    waitForPath($page, parse_url(route('app.welcome.persona'), PHP_URL_PATH));
+
+    expect(User::query()->where('email', 'bia-browser@example.com')->sole()->locale)->toBe(Locale::PortugueseBrazil);
     $page->assertNoJavaScriptErrors();
 });

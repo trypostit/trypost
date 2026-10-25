@@ -163,7 +163,7 @@ const hasSocial = computed(
                             class="w-full"
                             :tabindex="4"
                             :disabled="processing"
-                            data-test="register-user-button"
+                            data-testid="register-user-button"
                         >
                             <Spinner v-if="processing" />
                             {{ $t('auth.register.submit') }}
