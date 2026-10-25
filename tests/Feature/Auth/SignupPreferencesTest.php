@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
 use App\Enums\User\WeekStart;
 use App\Models\User;
@@ -109,4 +110,36 @@ test('an existing user logging in with google does not leave the detection in th
     $this->get(route('auth.google.callback'))->assertSessionMissing('signup_preferences');
 
     expect(User::query()->where('email', 'returning@example.com')->sole()->timezone)->toBe('Europe/Lisbon');
+});
+
+test('google signup stores the language sent to the OAuth start', function () {
+    $this->get(route('auth.google.redirect', ['locale' => 'pt-BR', 'timezone' => 'America/Sao_Paulo']));
+    signupPreferencesSocialite('google-auth', 'g-locale', 'google-locale@example.com');
+
+    $this->get(route('auth.google.callback'))->assertRedirect(route('app.welcome', absolute: false));
+
+    expect(User::query()->where('email', 'google-locale@example.com')->sole()->locale)->toBe(Locale::PortugueseBrazil);
+});
+
+test('github signup with an unsupported or missing language falls back to the default', function (array $query) {
+    $this->get(route('auth.github.redirect', $query));
+    signupPreferencesSocialite('github', 'gh-locale', 'github-locale@example.com');
+
+    $this->get(route('auth.github.callback'))->assertRedirect(route('app.welcome', absolute: false));
+
+    expect(User::query()->where('email', 'github-locale@example.com')->sole()->locale)->toBe(Locale::DEFAULT);
+})->with([
+    'unsupported' => [['locale' => 'sv']],
+    'missing' => [[]],
+]);
+
+test('an existing user logging in with google keeps the language they already have', function () {
+    User::factory()->create(['email' => 'returning-locale@example.com', 'google_id' => 'g-returning-locale', 'locale' => Locale::Japanese]);
+
+    $this->get(route('auth.google.redirect', ['locale' => 'pt-BR']));
+    signupPreferencesSocialite('google-auth', 'g-returning-locale', 'returning-locale@example.com');
+
+    $this->get(route('auth.google.callback'));
+
+    expect(User::query()->where('email', 'returning-locale@example.com')->sole()->locale)->toBe(Locale::Japanese);
 });

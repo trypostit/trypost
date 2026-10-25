@@ -22,7 +22,7 @@ use Illuminate\Support\Facades\DB;
 class CreateUser
 {
     /**
-     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
+     * @param  array{name: string, email: string, password?: string, google_id?: string, github_id?: string, email_verified_at?: \DateTimeInterface|null, is_invite?: bool, registration_ip?: string|null, locale?: string|null, timezone?: string|null, week_starts_on?: string|null, time_format?: string|null}  $data
      * @param  array<string, string>  $attributionParameters  UTM parameters and ad click IDs (gclid, fbclid, etc.) captured before signup
      */
     public static function execute(array $data, array $attributionParameters = []): User
@@ -47,7 +47,7 @@ class CreateUser
 
             $account = Account::query()->forceCreate($accountAttributes);
 
-            $locale = Locale::from(data_get($data, 'locale', Locale::DEFAULT->value));
+            $locale = Locale::tryFrom((string) data_get($data, 'locale')) ?? Locale::DEFAULT;
 
             $user = User::create(array_merge([
                 'name' => data_get($data, 'name'),

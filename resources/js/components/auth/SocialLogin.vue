@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import { Button } from '@/components/ui/button';
+import { useGuestLocale } from '@/composables/useGuestLocale';
 import { detectPreferences } from '@/lib/detectPreferences';
 import { redirect as githubRedirect } from '@/routes/auth/github';
 import { redirect as googleRedirect } from '@/routes/auth/google';
@@ -22,9 +23,11 @@ const githubEnabled = computed(() => Boolean(page.props.githubAuthEnabled));
 const hasSocial = computed(() => googleEnabled.value || githubEnabled.value);
 
 const detected = detectPreferences();
+const { signupLocale } = useGuestLocale();
 
 const query = computed(() => {
     const params: Record<string, string> = {
+        locale: signupLocale.value,
         timezone: detected.timezone,
         week_starts_on: detected.week_starts_on,
     };

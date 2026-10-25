@@ -44,7 +44,38 @@ test('the google and github buttons carry the detected preferences to the OAuth 
     foreach (['social-login-google', 'social-login-github'] as $button) {
         $params = $page->script("Object.fromEntries(new URL(document.querySelector('[data-testid=\"{$button}\"]').href).searchParams)");
 
-        expect($params)->toMatchArray(['timezone' => 'Asia/Tokyo', 'week_starts_on' => 'sunday', 'time_format' => '12h']);
+        expect($params)->toMatchArray(['locale' => 'en', 'timezone' => 'Asia/Tokyo', 'week_starts_on' => 'sunday', 'time_format' => '12h']);
+    }
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the register form signs up in the browser language when the visitor picks none', function (string $browserLocale, string $expected) {
+    config()->set('trypost.self_hosted', false);
+
+    $page = visit(route('register'))->withLocale($browserLocale);
+    waitForSignupPreferencesTestId($page, 'register-locale');
+
+    expect(signupPreferencesValue($page, 'register-locale'))->toBe($expected);
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'Brazil' => ['pt-BR', 'pt-BR'],
+    'Portugal, same base language' => ['pt-PT', 'pt-BR'],
+    'Spain' => ['es-ES', 'es'],
+    'unsupported falls back to the default' => ['sv-SE', 'en'],
+]);
+
+test('the google and github buttons carry the browser language to the OAuth start', function () {
+    config()->set('trypost.google_auth_enabled', true);
+    config()->set('trypost.github_auth_enabled', true);
+
+    $page = visit(route('register'))->withLocale('es-ES');
+    waitForSignupPreferencesTestId($page, 'social-login-github');
+
+    foreach (['social-login-google', 'social-login-github'] as $button) {
+        $params = $page->script("Object.fromEntries(new URL(document.querySelector('[data-testid=\"{$button}\"]').href).searchParams)");
+
+        expect($params['locale'] ?? null)->toBe('es');
     }
 
     $page->assertNoJavaScriptErrors();

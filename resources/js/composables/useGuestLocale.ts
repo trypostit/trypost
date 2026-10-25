@@ -2,6 +2,7 @@ import { usePage } from '@inertiajs/vue3';
 import { computed } from 'vue';
 
 import { chooseGuestLocale, guestLocale } from '@/language';
+import { detectBrowserLanguage } from '@/lib/detectPreferences';
 import type { Language } from '@/types';
 
 export const useGuestLocale = () => {
@@ -24,5 +25,16 @@ export const useGuestLocale = () => {
         },
     });
 
-    return { locale, chosen: computed(guestLocale), languages };
+    // The account's language: the visitor's pick, else the browser's language,
+    // else the default the guest page renders in.
+    const signupLocale = computed<string>(
+        () =>
+            guestLocale() ??
+            detectBrowserLanguage(
+                languages.value.map((language) => language.code),
+            ) ??
+            (page.props.locale as string),
+    );
+
+    return { locale, signupLocale, chosen: computed(guestLocale), languages };
 };

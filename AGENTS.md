@@ -563,13 +563,22 @@ enforces that).
   from the picked language — for a guest that is the *only* source of direction,
   since the middleware renders `htmlDir` from the default on every request.
 - **Register submits `locale` as a required hidden field** and creates the user
-  with it. **Login submits it only once the visitor picks a language** — the
-  field goes out empty otherwise, and an empty value leaves `users.locale`
+  with it: the language the visitor picked, else the browser's language
+  (`detectBrowserLanguage` over the supported codes, so `pt-PT` becomes `pt-BR`),
+  else `Locale::DEFAULT` (`signupLocale` in `useGuestLocale`). The page still
+  renders in the default until the visitor picks; only the account gets the
+  browser language. Lifecycle emails pick their language from it, so a signup
+  must not start in English and switch minutes later.
+  **Login submits it only once the visitor picks a language** — the field goes
+  out empty otherwise, and an empty value leaves `users.locale`
   untouched. This asymmetry is load-bearing: the login screen always renders in
   `Locale::DEFAULT`, so an always-sent field would reset every non-English user
   to English on each login. Forgot and reset password do not send it at all.
-- Google and GitHub signups store `Locale::DEFAULT`: they have no picker, and the
-  OAuth callback tells you nothing reliable about the person.
+- Google and GitHub signups send the same `signupLocale` as a query param on the
+  start route, kept by `PreservesSignupPreferences` with the zone and clock (the
+  OAuth callback itself tells you nothing reliable about the person). `CreateUser`
+  falls back to `Locale::DEFAULT` for a missing or unsupported value. A returning
+  user logging in through OAuth keeps their stored locale.
 
 ## User preferences (`/settings/preferences`)
 
@@ -632,8 +641,9 @@ rolls the switch back and toasts.
   `WeekStart::firstDay()/lastDay()` to Carbon. The weekly posting goal
   (`CountPostsSentThisWeek`) and the Insights weekly buckets (`PeriodBuckets`)
   follow the **viewing** user's `week_starts_on`, never Monday or the UI language.
-- **Signup detection:** email, Google and GitHub signups store the browser zone,
-  the week start (`Intl.Locale` week info, else the Sunday-first zone list in
+- **Signup detection:** email, Google and GitHub signups store the browser
+  language (see "UI locale"), the browser zone, the week start (`Intl.Locale`
+  week info, else the Sunday-first zone list in
   `resources/js/lib/detectPreferences.ts`) and the hour cycle. OAuth sends them as
   query params on the start route and `PreservesSignupPreferences` keeps them in
   the session; `CreateUser` validates each one. Fallbacks: UTC, Monday, the
