@@ -363,6 +363,49 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   `AccountPolicy::useAi` checks app access and nothing else. Do not
   reintroduce per-call usage recording.
 
+## Offers (`?offer=` links)
+
+An offer is a Stripe coupon the Welcome checkout applies instead of the `$1`
+first month (owner decision October 2026). It lives in `offers` (`slug`,
+`stripe_coupon_id`, `starts_at` required, `ends_at` and `max_redemptions`
+nullable: no end, no limit) and reaches an account through the pivot
+`account_offer` (`claimed_at`, `redeemed_at`).
+
+- **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.
+  A guest's slug waits in the session; the first authenticated request claims it
+  (`ClaimOffer`), so email signup, Google, GitHub and login need no code of their
+  own. Ads and landing pages link to `/register?offer=<slug>`, win-back emails to
+  `/login?offer=<slug>`. There is no offer page or route.
+- **Who gets it.** Only an account owner whose account has no active
+  subscription: new signups and former customers alike, with no
+  first-time-subscriber rule. An unknown, not yet started, ended or full offer is
+  ignored silently and nothing is kept for later. A redeemed offer is never offered
+  to that account again.
+- **The `offers` row is the only source of truth for dates and places.** The
+  Stripe coupon has no `redeem_by` and no `max_redemptions`. Only redemptions use
+  up a place (`Offer::scopeAvailable`), never a claim; two checkouts racing for the
+  last place may both get it (accepted).
+- **Checkout.** `ConfigureSubscriptionCheckout::apply()`: available offer
+  (`Account::currentOffer()`, the latest claim) → first-month coupon → trial. An
+  offer skips the trial and throws with `allow_promotion_codes`, like the coupon.
+  Validity is checked again when checkout starts. The offer id goes in the
+  subscription metadata `trypost_offer_id`, and the `customer.subscription.created`
+  webhook writes `redeemed_at` (`RedeemOffer`). An offer checkout does not set
+  `trypost_first_month_coupon_id`, so it is not counted as the `$1` first month.
+  Offers apply only to the Welcome checkout (Socials monthly).
+- **Copy.** Name, price and period live in `lang/<locale>/offers.php` under the
+  slug with dashes as underscores (`black-friday-2026` → `black_friday_2026`:
+  `name`, `price`, `period`), in all 16 locales; the price is display text per
+  locale, like `billing.subscribe.prices.first_month`. Nothing about the discount is
+  stored in the database. The Welcome plan step shows the badge
+  (`welcome.plan_offer_badge`) and the offer price; without the name it shows
+  `welcome.plan_offer_badge_generic`, and without the price it keeps the normal
+  price, never a raw key. `tests/Feature/Offer/OfferCopyTest.php` fails when an
+  offer row has no copy.
+- **Adding an offer.** Create the coupon in Stripe (no dates, no limit), add a
+  data migration that inserts the `offers` row (`DB::table`, `Str::uuid7()`), add
+  its copy to all 16 locales, deploy.
+
 ## Multiple social accounts per network
 
 A workspace may connect as many accounts of the same network as it wants (two

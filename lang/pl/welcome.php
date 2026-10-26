@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_first_month' => 'za pierwszy miesiąc',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
+    'plan_offer_badge' => 'Ta cena obowiązuje dzięki promocji :offer.',
+    'plan_offer_badge_generic' => 'To jest cena promocyjna.',
     'plan_per_month' => 'miesięcznie',
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
     'mcp' => [

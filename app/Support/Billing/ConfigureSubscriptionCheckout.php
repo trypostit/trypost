@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Billing;
 
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use Laravel\Cashier\SubscriptionBuilder;
 use RuntimeException;
@@ -19,6 +20,8 @@ final class ConfigureSubscriptionCheckout
 
     public const FIRST_MONTH_OFFER_METADATA_KEY = 'trypost_first_month_offer';
 
+    public const OFFER_METADATA_KEY = 'trypost_offer_id';
+
     /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
      */
@@ -29,6 +32,19 @@ final class ConfigureSubscriptionCheckout
      */
     public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null): SubscriptionBuilder
     {
+        $offer = self::offerFor($account, $plan);
+
+        if (filled($offer)) {
+            if ((bool) config('cashier.allow_promotion_codes', false)) {
+                throw new RuntimeException(
+                    'Cannot apply an offer coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
+                    .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
+                );
+            }
+
+            return $subscription->withCoupon($offer->stripe_coupon_id);
+        }
+
         $couponId = self::firstMonthCouponId($account, $plan);
 
         if ($couponId !== null) {
@@ -62,7 +78,16 @@ final class ConfigureSubscriptionCheckout
 
     public static function offersFirstMonthCoupon(Account $account, Plan $plan): bool
     {
-        return self::firstMonthCouponId($account, $plan) !== null;
+        return blank(self::offerFor($account, $plan)) && self::firstMonthCouponId($account, $plan) !== null;
+    }
+
+    /**
+     * The offer the Welcome checkout applies. It needs the monthly plan,
+     * which only the Welcome checkout passes.
+     */
+    public static function offerFor(Account $account, ?Plan $plan): ?Offer
+    {
+        return filled($plan) ? $account->currentOffer() : null;
     }
 
     private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string

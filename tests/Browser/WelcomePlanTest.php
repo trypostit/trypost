@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
+use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Str;
@@ -383,4 +384,34 @@ test('the activate button shows a spinner while checkout opens', function () {
     $page->click('@welcome-plan-continue');
 
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
+});
+
+test('the plan step shows the generic offer badge for an offer without copy', function () {
+    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@welcome-plan-offer');
+
+    $page->assertSeeIn('@welcome-plan-offer', "You're seeing a special price.")
+        ->assertSeeIn('@plan-price-suffix-socials', 'per month')
+        ->assertDontSee('offers.')
+        ->assertNoJavaScriptErrors();
+
+    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
+});
+
+test('the plan step shows no offer badge without an offer', function () {
+    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+
+    $this->actingAs(welcomeOwnerOnPlanStep());
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@plan-price-socials');
+
+    $page->assertMissing('@welcome-plan-offer')
+        ->assertNoJavaScriptErrors();
 });

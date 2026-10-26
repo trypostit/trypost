@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\Api\LoadWorkspaceFromToken;
+use App\Http\Middleware\App\CaptureOffer;
 use App\Http\Middleware\App\EnsureRegistrationEnabled;
 use App\Http\Middleware\App\HandleInertiaRequests;
 use App\Http\Middleware\App\SetLocale;
@@ -28,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->web(append: [
             SetLocale::class,
+            CaptureOffer::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
         ]);

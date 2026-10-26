@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_first_month' => 'for your first month',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
+    'plan_offer_badge' => 'You\'re seeing this price thanks to :offer.',
+    'plan_offer_badge_generic' => 'You\'re seeing a special price.',
     'plan_per_month' => 'per month',
     'plan_cancel_anytime' => 'Cancel anytime.',
     'mcp' => [

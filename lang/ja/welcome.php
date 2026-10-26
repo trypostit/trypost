@@ -49,6 +49,8 @@ return [
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_first_month' => '初月の料金',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
+    'plan_offer_badge' => ':offerの特別価格が適用されています。',
+    'plan_offer_badge_generic' => '特別価格が適用されています。',
     'plan_per_month' => '毎月',
     'plan_cancel_anytime' => 'いつでも解約できます。',
     'mcp' => [

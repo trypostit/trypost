@@ -49,6 +49,8 @@ return [
     'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_first_month' => '首月价格',
     'plan_terms' => '之后 :price/月，随时取消。',
+    'plan_offer_badge' => '你看到的是 :offer 的优惠价格。',
+    'plan_offer_badge_generic' => '你看到的是优惠价格。',
     'plan_per_month' => '每月',
     'plan_cancel_anytime' => '随时取消。',
     'mcp' => [

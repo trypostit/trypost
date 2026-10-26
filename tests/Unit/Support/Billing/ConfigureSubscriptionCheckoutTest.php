@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\Workspace;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
@@ -348,4 +349,75 @@ test('zero workspaces still get the first-month coupon when first-time', functio
 
     expect($subscription->couponId)->toBe('SOCIALS_18USD')
         ->and(trialExpiresAt($subscription))->toBeNull();
+});
+
+function claimOfferFor(Account $account, array $attributes = []): Offer
+{
+    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BLACK_FRIDAY_50', ...$attributes]);
+    $account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    return $offer;
+}
+
+test('applies an available offer\'s coupon and skips the trial', function () {
+    claimOfferFor($this->account);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+
+    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
+        ->and(trialExpiresAt($subscription))->toBeNull();
+});
+
+test('an offer wins over the first-month coupon', function () {
+    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
+    claimOfferFor($this->account);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+
+    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
+        ->and(ConfigureSubscriptionCheckout::offersFirstMonthCoupon($this->account, socialsPlan()))->toBeFalse();
+});
+
+test('an offer applies to a former customer', function () {
+    givePriorSubscription($this->account);
+    claimOfferFor($this->account);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+
+    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50');
+});
+
+test('does not apply an offer without a plan', function () {
+    claimOfferFor($this->account);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
+
+    expect($subscription->couponId)->toBeNull()
+        ->and(ConfigureSubscriptionCheckout::offerFor($this->account, null))->toBeNull();
+});
+
+test('does not apply an expired offer', function () {
+    claimOfferFor($this->account, ['starts_at' => now()->subDays(10), 'ends_at' => now()->subDay()]);
+
+    $subscription = checkoutSubscription($this->account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+
+    expect($subscription->couponId)->toBeNull();
+});
+
+test('throws when an offer meets allow_promotion_codes', function () {
+    config(['cashier.allow_promotion_codes' => true]);
+    claimOfferFor($this->account);
+
+    expect(fn () => ConfigureSubscriptionCheckout::apply(checkoutSubscription($this->account), $this->account, socialsPlan()))
+        ->toThrow(RuntimeException::class, 'Cannot apply an offer coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled');
 });

@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_first_month' => 'ilk ay için',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
+    'plan_offer_badge' => ':offer sayesinde bu fiyatı görüyorsunuz.',
+    'plan_offer_badge_generic' => 'Özel bir fiyat görüyorsunuz.',
     'plan_per_month' => 'aylık',
     'plan_cancel_anytime' => 'İstediğin zaman iptal et.',
     'mcp' => [

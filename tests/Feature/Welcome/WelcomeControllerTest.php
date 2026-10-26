@@ -12,6 +12,7 @@ use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -695,3 +696,62 @@ function attachCurrentWorkspace(User $user): Workspace
 
     return $workspace;
 }
+
+test('the plan step sends the current offer', function () {
+    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+    completeWelcomeThroughSoftware($this->user);
+    $offer = Offer::factory()->create(['slug' => 'black-friday-2026']);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('offer.key', 'black_friday_2026')
+            ->where('offer.has_name', false)
+            ->where('offer.has_price', false)
+            ->where('firstMonthOffer', false)
+        );
+});
+
+test('the plan step sends no offer once it expired', function () {
+    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+    completeWelcomeThroughSoftware($this->user);
+    $offer = Offer::factory()->create(['ends_at' => now()->addHour()]);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->travel(2)->hours();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('offer', null)
+            ->where('firstMonthOffer', true)
+        );
+});
+
+test('checkout.started records the offer slug', function () {
+    config([
+        'services.posthog.enabled' => true,
+        'services.posthog.api_key' => 'phc_test',
+    ]);
+    Bus::fake();
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->create(['slug' => 'black-friday-2026']);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value
+        && data_get($event->payload, 'properties.offer_slug') === 'black-friday-2026'
+        && data_get($event->payload, 'properties.is_first_month_offer') === false);
+});

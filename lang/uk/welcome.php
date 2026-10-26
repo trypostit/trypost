@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Підключіть канали та заплануйте перший пост уже сьогодні.',
     'plan_first_month' => 'за перший місяць',
     'plan_terms' => 'Потім :price/міс. Скасування будь-коли.',
+    'plan_offer_badge' => 'Ця ціна діє завдяки акції :offer.',
+    'plan_offer_badge_generic' => 'Це спеціальна ціна.',
     'plan_per_month' => 'на місяць',
     'plan_cancel_anytime' => 'Скасування будь-коли.',
     'mcp' => [

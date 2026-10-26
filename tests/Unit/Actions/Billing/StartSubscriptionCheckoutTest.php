@@ -8,6 +8,7 @@ use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -496,4 +497,49 @@ test('redirect updates an existing stripe customer with the current details and 
         ])
         ->and($client->requests[0]['params']['metadata'])->toMatchArray(['persona' => 'agency', 'referral_source' => ''])
         ->and($account->fresh()->stripe_id)->toBe('cus_existing');
+});
+
+test('stores the offer id in subscription metadata', function () {
+    config([
+        'trypost.billing.require_card_for_trial' => true,
+        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
+        'cashier.allow_promotion_codes' => false,
+    ]);
+
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+
+    $account = Account::factory()->create();
+    Workspace::factory()->create(['account_id' => $account->id]);
+    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BLACK_FRIDAY_50']);
+    $account->offers()->attach($offer, ['claimed_at' => now()]);
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('withCoupon')->once()->with('BLACK_FRIDAY_50')->andReturnUsing(function () use ($builder): SubscriptionBuilder {
+        $builder->couponId = 'BLACK_FRIDAY_50';
+
+        return $builder;
+    });
+    $builder->shouldReceive('withMetadata')
+        ->once()
+        ->with(['trypost_offer_id' => $offer->id])
+        ->andReturnSelf();
+    $builder->shouldReceive('checkout')
+        ->once()
+        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.trypost_first_month_offer') === 'false')
+        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect(
+        $accountMock,
+        'price_socials_monthly',
+        route('app.welcome.plan'),
+        $plan,
+    );
 });

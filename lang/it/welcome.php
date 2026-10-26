@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Collega i tuoi canali e programma il tuo primo post oggi.',
     'plan_first_month' => 'per il primo mese',
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
+    'plan_offer_badge' => 'Vedi questo prezzo grazie a :offer.',
+    'plan_offer_badge_generic' => 'Vedi un prezzo speciale.',
     'plan_per_month' => 'al mese',
     'plan_cancel_anytime' => 'Disdici quando vuoi.',
     'mcp' => [

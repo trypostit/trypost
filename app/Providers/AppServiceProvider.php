@@ -19,6 +19,7 @@ use App\Models\Invite;
 use App\Models\Media;
 use App\Models\MediaSourceConnection;
 use App\Models\NotificationPreference;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\Post;
 use App\Models\PostNote;
@@ -117,6 +118,7 @@ class AppServiceProvider extends ServiceProvider
             'media' => Media::class,
             'mediaSourceConnection' => MediaSourceConnection::class,
             'notificationPreference' => NotificationPreference::class,
+            'offer' => Offer::class,
             'plan' => Plan::class,
             'post' => Post::class,
             'repurpose' => Repurpose::class,

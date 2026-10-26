@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
@@ -70,6 +71,24 @@ class Account extends Model
     public function invites(): HasMany
     {
         return $this->hasMany(Invite::class);
+    }
+
+    public function offers(): BelongsToMany
+    {
+        return $this->belongsToMany(Offer::class)->withPivot('claimed_at', 'redeemed_at');
+    }
+
+    /**
+     * The offer the Welcome checkout uses: the most recently claimed one that
+     * is still available and this account has not redeemed.
+     */
+    public function currentOffer(): ?Offer
+    {
+        return $this->offers()
+            ->available()
+            ->wherePivotNull('redeemed_at')
+            ->orderByPivot('claimed_at', 'desc')
+            ->first();
     }
 
     public function posts(): HasManyThrough

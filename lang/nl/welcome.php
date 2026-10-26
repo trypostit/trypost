@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_first_month' => 'voor de eerste maand',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
+    'plan_offer_badge' => 'Je ziet deze prijs dankzij :offer.',
+    'plan_offer_badge_generic' => 'Je ziet een speciale prijs.',
     'plan_per_month' => 'per maand',
     'plan_cancel_anytime' => 'Altijd opzegbaar.',
     'mcp' => [

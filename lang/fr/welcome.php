@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Connectez vos réseaux et programmez votre premier post dès aujourd’hui.',
     'plan_first_month' => 'pour le premier mois',
     'plan_terms' => 'Puis :price/mois. Annulez à tout moment.',
+    'plan_offer_badge' => 'Vous voyez ce prix grâce à :offer.',
+    'plan_offer_badge_generic' => 'Vous voyez un prix spécial.',
     'plan_per_month' => 'par mois',
     'plan_cancel_anytime' => 'Annulez à tout moment.',
     'mcp' => [

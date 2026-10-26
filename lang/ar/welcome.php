@@ -49,6 +49,8 @@ return [
     'plan_description' => 'اربط حساباتك وجدول أول منشور لك اليوم.',
     'plan_first_month' => 'للشهر الأول',
     'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت.',
+    'plan_offer_badge' => 'يظهر لك هذا السعر بفضل عرض :offer.',
+    'plan_offer_badge_generic' => 'يظهر لك سعر خاص.',
     'plan_per_month' => 'شهريًا',
     'plan_cancel_anytime' => 'ألغِ في أي وقت.',
     'mcp' => [

@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Συνδέστε τα κανάλια σας και προγραμματίστε την πρώτη σας ανάρτηση σήμερα.',
     'plan_first_month' => 'για τον πρώτο μήνα',
     'plan_terms' => 'Μετά :price/μήνα. Ακύρωση οποτεδήποτε.',
+    'plan_offer_badge' => 'Βλέπετε αυτή την τιμή χάρη στην προσφορά :offer.',
+    'plan_offer_badge_generic' => 'Βλέπετε μια ειδική τιμή.',
     'plan_per_month' => 'τον μήνα',
     'plan_cancel_anytime' => 'Ακύρωση οποτεδήποτε.',
     'mcp' => [

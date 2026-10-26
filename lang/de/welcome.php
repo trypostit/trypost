@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_first_month' => 'im ersten Monat',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
+    'plan_offer_badge' => 'Du siehst diesen Preis dank :offer.',
+    'plan_offer_badge_generic' => 'Du siehst einen Sonderpreis.',
     'plan_per_month' => 'pro Monat',
     'plan_cancel_anytime' => 'Jederzeit kündbar.',
     'mcp' => [

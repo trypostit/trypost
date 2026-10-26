@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Listeners;
 
+use App\Actions\Offer\RedeemOffer;
 use App\Enums\PostHog\BillingEvent;
 use App\Jobs\PostHog\TrackBilling;
 use App\Jobs\PostHog\TrackCheckoutCompleted;
@@ -13,6 +14,7 @@ use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Services\PostHogService;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -70,6 +72,7 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
+        RedeemOffer::execute($account, data_get($payload, 'data.object.metadata.'.ConfigureSubscriptionCheckout::OFFER_METADATA_KEY));
         $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
         $this->recordFirstPayment($account, $payload);
 

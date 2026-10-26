@@ -49,6 +49,8 @@ return [
     'plan_description' => 'Подключите каналы и запланируйте первый пост уже сегодня.',
     'plan_first_month' => 'за первый месяц',
     'plan_terms' => 'Затем :price/мес. Отмена в любой момент.',
+    'plan_offer_badge' => 'Эта цена действует благодаря акции :offer.',
+    'plan_offer_badge_generic' => 'Это специальная цена.',
     'plan_per_month' => 'в месяц',
     'plan_cancel_anytime' => 'Отмена в любой момент.',
     'mcp' => [
