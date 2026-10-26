@@ -28,11 +28,14 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
+     * Pass the offer when the caller already resolved it, so the coupon and the
+     * checkout metadata come from the same lookup.
+     *
      * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
      */
-    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null): SubscriptionBuilder
+    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null, ?Offer $offer = null): SubscriptionBuilder
     {
-        $offer = self::offerFor($account, $plan);
+        $offer ??= self::offerFor($account, $plan);
 
         if (filled($offer)) {
             if ((bool) config('cashier.allow_promotion_codes', false)) {

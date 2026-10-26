@@ -543,3 +543,45 @@ test('stores the offer id in subscription metadata', function () {
         $plan,
     );
 });
+
+test('the coupon and the metadata come from one offer lookup', function () {
+    config([
+        'trypost.billing.require_card_for_trial' => true,
+        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
+        'cashier.allow_promotion_codes' => false,
+    ]);
+
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+
+    $account = Account::factory()->create();
+    Workspace::factory()->create(['account_id' => $account->id]);
+    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BLACK_FRIDAY_50']);
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('withCoupon')->once()->with('BLACK_FRIDAY_50')->andReturnUsing(function () use ($builder): SubscriptionBuilder {
+        $builder->couponId = 'BLACK_FRIDAY_50';
+
+        return $builder;
+    });
+    $builder->shouldReceive('withMetadata')
+        ->once()
+        ->with(['trypost_offer_id' => $offer->id])
+        ->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+    $accountMock->shouldReceive('currentOffer')->once()->andReturn($offer);
+
+    app(StartSubscriptionCheckout::class)->redirect(
+        $accountMock,
+        'price_socials_monthly',
+        route('app.welcome.plan'),
+        $plan,
+    );
+});

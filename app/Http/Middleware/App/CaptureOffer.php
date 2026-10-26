@@ -15,9 +15,10 @@ class CaptureOffer
     public const string SESSION_KEY = 'pending_offer';
 
     /**
-     * Keeps the slug of an available `?offer=` in the session until the visitor is signed in,
-     * then claims it for their account. Signup (email, Google, GitHub) and
-     * login all land on an authenticated request, so none of them handles it.
+     * Keeps the slug of an available `?offer=` in the session until the
+     * visitor is signed in, then claims it for their account. Signup (email,
+     * Google, GitHub) and login all land on an authenticated request, so none
+     * of them handles it.
      *
      * @param  Closure(Request): (Response)  $next
      */

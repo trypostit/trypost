@@ -123,6 +123,7 @@ test('ignores a non-string or blank offer', function (array $query) {
 })->with([
     'array' => [['offer' => ['black-friday-2026']]],
     'blank' => [['offer' => '']],
+    'huge' => [['offer' => str_repeat('a', 10_000)]],
 ]);
 
 test('matches the slug exactly', function () {

@@ -28,7 +28,7 @@ class StartSubscriptionCheckout
 
         $offer = ConfigureSubscriptionCheckout::offerFor($account, $monthlyPlan);
 
-        ConfigureSubscriptionCheckout::apply($subscription, $account, $monthlyPlan);
+        ConfigureSubscriptionCheckout::apply($subscription, $account, $monthlyPlan, $offer);
         $subscription->withMetadata(array_filter([
             ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => blank($offer) ? $subscription->couponId : null,
             ConfigureSubscriptionCheckout::OFFER_METADATA_KEY => $offer?->id,
