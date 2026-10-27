@@ -8,6 +8,7 @@ use App\Actions\Offer\RedeemOffer;
 use App\Enums\Billing\Interval;
 use App\Enums\PostHog\TrialEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
+use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
@@ -47,6 +48,7 @@ class StartGenericTrial
         }
 
         rescue(function () use ($user, $account, $plan, $offer): void {
+            SyncUser::dispatchIf(PostHogService::isEnabled(), (string) $user->id);
             CaptureAccountEvent::dispatchIf(
                 PostHogService::isEnabled(),
                 (string) $user->id,

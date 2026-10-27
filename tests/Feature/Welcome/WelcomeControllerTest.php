@@ -14,6 +14,7 @@ use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\SendEvent;
+use App\Jobs\PostHog\SyncUser;
 use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
@@ -773,6 +774,7 @@ test('a trial without a card starts in the app, without Stripe', function () {
 
     Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === TrialEvent::Started
         && $job->properties['offer'] === 'ft7dnc');
+    Bus::assertDispatched(SyncUser::class, fn (SyncUser $job): bool => $job->userId === (string) $this->user->id);
     Bus::assertNotDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started);
 });
 

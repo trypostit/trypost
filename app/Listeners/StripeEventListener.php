@@ -160,7 +160,9 @@ class StripeEventListener
     /**
      * The first charge of an account whose subscription was created during a
      * trial without a card it took from an offer, so a payment confirmed or a
-     * webhook retried after the trial still counts. Read before recordFirstPayment writes
+     * webhook retried after the trial still counts. The conversion is claimed
+     * atomically, so the created and updated webhooks of one subscription
+     * handled at the same time count it once. Read before recordFirstPayment writes
      * `first_paid_at`, so it holds once, on created or on a later update.
      *
      * @param  array<string, mixed>  $payload
@@ -176,7 +178,8 @@ class StripeEventListener
         return $account->redeemedOffers()
             ->where('offers.requires_card', false)
             ->get()
-            ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)));
+            ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)))
+            && Cache::add("posthog:trial_converted:{$account->id}", true, now()->addDay());
     }
 
     /**

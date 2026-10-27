@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Support\Billing;
 
-use App\Models\Account;
 use App\Models\Offer;
 use Laravel\Cashier\SubscriptionBuilder;
 
@@ -27,7 +26,7 @@ final class ConfigureSubscriptionCheckout
      * The offer decides the discount, the trial and the promotion code field;
      * without one the account pays the full price. A coupon wins over the
      * field: Stripe rejects both on one session, never a trial with it.
-     * The caller resolves the offer once with Account::currentOffer(), so the coupon, the
+     * The caller resolves the offer once with the account's current offer, so the coupon, the
      * checkout metadata and the tracked events agree.
      */
     public static function apply(SubscriptionBuilder $subscription, ?Offer $offer = null): SubscriptionBuilder

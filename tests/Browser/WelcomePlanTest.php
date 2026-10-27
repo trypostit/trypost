@@ -14,22 +14,6 @@ use Illuminate\Support\Str;
  * Wait for a data-testid element to mount and lay out. Pest browser `@`
  * selectors resolve to data-testid, and assertions do not auto-wait on SPA paint.
  */
-function waitForWelcomePlanTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const sel = '[data-testid="{$testId}"]';
-            for (let i = 0; i < 100; i++) {
-                const el = document.querySelector(sel);
-                if (el && el.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-
-    waitForWebFonts($page);
-}
-
 function welcomePlanVisibleReview(mixed $page): ?string
 {
     return $page->script(<<<'JS'
@@ -132,32 +116,6 @@ function welcomePlanPhoneLayout(mixed $page): array
     JS);
 }
 
-function waitForWelcomePlanPopoverOpen(mixed $page): bool
-{
-    return $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 50; i++) {
-                if (document.querySelector('[data-slot="popover-content"]')) return true;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-            return false;
-        })()
-    JS);
-}
-
-function waitForWelcomePlanPopoverClosed(mixed $page): bool
-{
-    return $page->script(<<<'JS'
-        (async () => {
-            for (let i = 0; i < 50; i++) {
-                if (!document.querySelector('[data-slot="popover-content"]')) return true;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-            return false;
-        })()
-    JS);
-}
-
 function welcomePlanFocus(mixed $page, string $testId): void
 {
     $page->script(<<<JS
@@ -217,9 +175,12 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
 
     $page = visit(route('app.welcome.plan'));
 
-    waitForWelcomePlanTestId($page, 'plan-card-socials');
-    waitForWelcomePlanTestId($page, 'welcome-plan-reviews');
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@plan-card-socials');
+    waitForWebFonts($page);
+    waitFor($page, '@welcome-plan-reviews');
+    waitForWebFonts($page);
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     $page->assertRoute('app.welcome.plan')
         ->assertSee('Activate your account')
@@ -262,7 +223,8 @@ test('the plan step shows the full price without an offer, even when a trial off
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     $page->assertSeeIn('@plan-price-socials', '$19')
         ->assertSeeIn('@plan-price-unit-socials', '/month')
@@ -283,7 +245,8 @@ test('the plan step does not list the workspace limit, so team members close the
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'plan-feature-list-socials');
+    waitFor($page, '@plan-feature-list-socials');
+    waitForWebFonts($page);
 
     expect(welcomePlanLastFeatureLabelTestId($page, 'plan-feature-list-socials'))->toBe('plan-feature-label-socials-team');
 
@@ -298,7 +261,8 @@ test('the review quotes rotate on their own', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-review-paulo_dantas');
+    waitFor($page, '@welcome-plan-review-paulo_dantas');
+    waitForWebFonts($page);
 
     expect(welcomePlanVisibleReview($page))->toBe('welcome-plan-review-paulo_dantas')
         ->and(waitForWelcomePlanReviewOtherThan($page, 'welcome-plan-review-paulo_dantas'))->toBe('welcome-plan-review-diego');
@@ -310,10 +274,12 @@ test('clicking a reviewer photo shows their quote', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-reviewer-pedro');
+    waitFor($page, '@welcome-plan-reviewer-pedro');
+    waitForWebFonts($page);
 
     $page->click('@welcome-plan-reviewer-pedro');
-    waitForWelcomePlanTestId($page, 'welcome-plan-review-pedro');
+    waitFor($page, '@welcome-plan-review-pedro');
+    waitForWebFonts($page);
 
     $page->assertVisible('@welcome-plan-review-pedro')
         ->assertAttribute('@welcome-plan-reviewer-pedro', 'aria-pressed', 'true')
@@ -329,7 +295,8 @@ test('the plan step fits a phone without scrolling and hides the quotes there', 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize(390, 844);
-    waitForWelcomePlanTestId($page, 'plan-card-socials');
+    waitFor($page, '@plan-card-socials');
+    waitForWebFonts($page);
 
     expect(welcomePlanPhoneLayout($page))->toBe(['scrolls' => false, 'quoteVisible' => false]);
 
@@ -343,16 +310,20 @@ test('the feature info opens on a tap or click', function (int $width, int $heig
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize($width, $height);
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
     $page->click('@plan-feature-info-socials-team');
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
-    expect(waitForWelcomePlanPopoverOpen($page))->toBeTrue()
-        ->and(trim((string) $page->text('[data-slot="popover-content"]')))->toStartWith('Invite as many people as you want');
+    waitFor($page, '[data-slot="popover-content"]');
+
+    expect(trim((string) $page->text('[data-slot="popover-content"]')))->toStartWith('Invite as many people as you want');
 
     $page->click('@plan-networks-info-socials');
-    waitForWelcomePlanTestId($page, 'plan-networks-socials');
+    waitFor($page, '@plan-networks-socials');
+    waitForWebFonts($page);
 
     $page->assertVisible('@plan-networks-socials')
         ->assertNoJavaScriptErrors();
@@ -367,16 +338,19 @@ test('the feature info opens from the keyboard and closes with Escape', function
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'))->resize(1440, 900);
-    waitForWelcomePlanTestId($page, 'plan-feature-info-socials-team');
+    waitFor($page, '@plan-feature-info-socials-team');
+    waitForWebFonts($page);
 
     welcomePlanFocus($page, 'plan-feature-info-socials-team');
     $page->keys('@plan-feature-info-socials-team', 'Enter');
 
-    expect(waitForWelcomePlanPopoverOpen($page))->toBeTrue();
+    waitFor($page, '[data-slot="popover-content"]');
+    $page->assertVisible('[data-slot="popover-content"]');
 
     $page->keys('@plan-feature-info-socials-team', 'Escape');
+    waitForGone($page, '[data-slot="popover-content"]');
 
-    expect(waitForWelcomePlanPopoverClosed($page))->toBeTrue();
+    $page->assertMissing('[data-slot="popover-content"]');
 
     $page->assertNoJavaScriptErrors();
 });
@@ -387,7 +361,8 @@ test('the activate button shows a spinner while checkout opens', function () {
     $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
-    waitForWelcomePlanTestId($page, 'welcome-plan-continue');
+    waitFor($page, '@welcome-plan-continue');
+    waitForWebFonts($page);
 
     welcomePlanStallRequests($page);
     $page->click('@welcome-plan-continue');
