@@ -655,3 +655,21 @@ test('loading more invoices does not ask Stripe for the cards or the discount', 
     expect($recorder->urls)->not->toBeEmpty()
         ->and(collect($recorder->urls)->contains(fn (string $url): bool => str_contains($url, 'payment_methods') || str_contains($url, '/v1/subscriptions/') || str_contains($url, '/v1/customers/cus_fake')))->toBeFalse();
 });
+
+test('subscribing from a generic trial never adds another trial', function () {
+    config(['trypost.self_hosted' => false]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
+    $this->account->offers()->attach(Offer::factory()->trial(14)->create(), ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer): bool => $offer === null)
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});

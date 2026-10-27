@@ -451,7 +451,7 @@ test('redirect gives the trial of the offer it is given', function () {
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_socials_monthly', route('app.welcome.plan'), $plan, $offer);
 });
 
-test('redirect keeps the days left of a generic trial and its plan', function () {
+test('redirect from a generic trial charges at once and keeps the trial plan', function () {
     $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
     $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
     $trialEndsAt = now()->addDays(4)->startOfSecond();
@@ -461,7 +461,8 @@ test('redirect keeps the days left of a generic trial and its plan', function ()
     $account->refresh();
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('trialUntil')->once()->withArgs(fn ($until): bool => $until->eq($trialEndsAt))->andReturnSelf();
+    $builder->shouldReceive('trialUntil')->never();
+    $builder->shouldReceive('trialDays')->never();
     $builder->shouldReceive('withMetadata')->once()->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 

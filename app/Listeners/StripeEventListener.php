@@ -72,14 +72,12 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
-        $continuesGenericTrial = $account->onGenericTrial();
-
         $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload, endsGenericTrial: true);
         $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
-        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && ! $continuesGenericTrial && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
+        TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
         TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }
 

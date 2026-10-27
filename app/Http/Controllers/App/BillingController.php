@@ -167,8 +167,8 @@ class BillingController extends Controller
 
     /**
      * Subscribes an account on a generic trial: Stripe Checkout on its plan's
-     * monthly price, keeping the days left of the trial and applying an offer
-     * the owner claimed meanwhile.
+     * monthly price, charged at once (the days left of the trial are not
+     * carried), with a coupon offer the owner claimed meanwhile.
      */
     public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
     {
@@ -190,6 +190,7 @@ class BillingController extends Controller
         abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
         $offer = ConfigureSubscriptionCheckout::offerFor($account, $plan);
+        $offer = $offer?->hasTrial() ? null : $offer;
         $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, fromBilling: true);
 
         rescue(function () use ($request, $account, $plan, $offer): void {

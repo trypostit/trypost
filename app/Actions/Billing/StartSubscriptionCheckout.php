@@ -40,9 +40,6 @@ class StartSubscriptionCheckout
 
         ConfigureSubscriptionCheckout::apply($subscription, $offer);
 
-        if ($account->onGenericTrial() && ! $offer?->hasTrial()) {
-            $subscription->trialUntil($account->trial_ends_at);
-        }
         $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
