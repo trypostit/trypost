@@ -51,7 +51,7 @@ function configureCheckout(Account $account): SubscriptionBuilder
 {
     $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
 
-    ConfigureSubscriptionCheckout::apply($subscription, ConfigureSubscriptionCheckout::offerFor($account, socialsPlan()));
+    ConfigureSubscriptionCheckout::apply($subscription, $account->currentOffer());
 
     return $subscription;
 }
@@ -143,13 +143,7 @@ test('a first-subscription offer skips an account that was billed before', funct
 
     givePriorSubscription($this->account);
 
-    expect(ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()))->toBeNull();
-});
-
-test('does not apply an offer without a plan', function () {
-    claimOfferFor($this->account, Offer::factory()->trial(8)->create());
-
-    expect(ConfigureSubscriptionCheckout::offerFor($this->account, null))->toBeNull();
+    expect($this->account->currentOffer())->toBeNull();
 });
 
 test('does not apply an expired offer', function () {

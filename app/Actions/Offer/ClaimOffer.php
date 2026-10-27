@@ -19,13 +19,9 @@ class ClaimOffer
             return null;
         }
 
-        $offer = Offer::findAvailable($slug);
+        $offer = Offer::findAvailable($slug, $account);
 
         if (blank($offer)) {
-            return null;
-        }
-
-        if ($offer->redemptions()->whereKey($account->id)->exists()) {
             return null;
         }
 

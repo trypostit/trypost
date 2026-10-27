@@ -257,3 +257,19 @@ test('the offer survives moving from the register page to login', function () {
 
     expect($owner->account->offers()->pluck('offers.id')->all())->toBe([$this->offer->id]);
 });
+
+test('a former customer cannot claim a first-subscription offer', function () {
+    $owner = User::factory()->create();
+    $owner->account->update(['owner_id' => $owner->id]);
+    $owner->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_former',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->subDay(),
+    ]);
+    $offer = Offer::factory()->firstSubscriptionOnly()->create(['slug' => 'first-month']);
+
+    expect(ClaimOffer::execute($owner->account->fresh(), 'first-month'))->toBeNull()
+        ->and($owner->account->offers()->whereKey($offer->id)->exists())->toBeFalse();
+});

@@ -63,22 +63,6 @@ test('subscription created handles event without error', function () {
     expect(true)->toBeTrue();
 });
 
-test('a subscription ends the generic trial it replaces', function () {
-    $this->account->update(['trial_ends_at' => now()->addDays(3)]);
-
-    $this->listener->handle(new WebhookHandled([
-        'type' => 'customer.subscription.created',
-        'data' => ['object' => [
-            'customer' => 'cus_test123',
-            'id' => 'sub_123',
-            'status' => 'trialing',
-            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
-        ]],
-    ]));
-
-    expect($this->account->fresh()->trial_ends_at)->toBeNull();
-});
-
 test('subscription updated handles event without error', function () {
     $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',

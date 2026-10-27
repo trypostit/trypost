@@ -98,12 +98,23 @@ class Offer extends Model
     }
 
     /**
-     * The available offer with exactly this slug. MySQL compares strings
-     * without case, so the match is confirmed here, where both engines agree.
+     * Offers without a trial: a coupon, the promotion code field, or both.
      */
-    public static function findAvailable(string $slug): ?self
+    public function scopeWithoutTrial(Builder $query): Builder
     {
-        return self::available()->where('slug', $slug)->get()->firstWhere('slug', $slug);
+        return $query->where(fn (Builder $query): Builder => $query->whereNull('offers.trial_days')->orWhere('offers.trial_days', 0));
+    }
+
+    /**
+     * The available offer with exactly this slug, for an account when one is
+     * given. MySQL compares strings without case, so the match is confirmed
+     * here, where both engines agree.
+     */
+    public static function findAvailable(string $slug, ?Account $account = null): ?self
+    {
+        $offers = filled($account) ? self::availableTo($account) : self::available();
+
+        return $offers->where('slug', $slug)->get()->firstWhere('slug', $slug);
     }
 
     /**

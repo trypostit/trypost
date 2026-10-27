@@ -79,12 +79,17 @@ class Account extends Model
     }
 
     /**
-     * The offer the Welcome checkout uses: the most recently claimed one the
-     * account may still use. Without one it pays the full price.
+     * The offer a checkout uses: the most recently claimed one the account may
+     * still use. Without one it pays the full price. Subscribing from billing
+     * leaves trials out, since it charges at once.
      */
-    public function currentOffer(): ?Offer
+    public function currentOffer(bool $withTrial = true): ?Offer
     {
-        return $this->offers()->availableTo($this)->orderByPivot('claimed_at', 'desc')->first();
+        return $this->offers()
+            ->availableTo($this)
+            ->unless($withTrial, fn (Builder $query): Builder => $query->withoutTrial())
+            ->orderByPivot('claimed_at', 'desc')
+            ->first();
     }
 
     public function posts(): HasManyThrough
@@ -117,12 +122,15 @@ class Account extends Model
     }
 
     /**
-     * Never billed and never on a generic trial: a no-card trial counts as
-     * the first subscription, so trials do not stack.
+     * Never billed and never redeemed an offer: a no-card trial is a redeemed
+     * offer, so it counts as the first subscription and trials do not stack.
+     * Cashier clears `trial_ends_at` on any new subscription, so the
+     * redemption is the record that lasts.
      */
     public function isFirstTimeSubscriber(): bool
     {
-        return ! $this->hasHadBillableSubscription() && blank($this->trial_ends_at);
+        return ! $this->hasHadBillableSubscription()
+            && $this->offers()->wherePivotNotNull('redeemed_at')->doesntExist();
     }
 
     public function hasHadBillableSubscription(): bool

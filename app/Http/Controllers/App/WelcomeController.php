@@ -22,7 +22,6 @@ use App\Http\Resources\App\OfferResource;
 use App\Http\Resources\App\PlanResource;
 use App\Models\Plan;
 use App\Services\PostHogService;
-use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -156,7 +155,7 @@ class WelcomeController extends Controller
         }
 
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
-        $offer = ConfigureSubscriptionCheckout::offerFor($request->user()->account, $plan);
+        $offer = $request->user()->account->currentOffer();
 
         return Inertia::render('welcome/Plan', [
             'plan' => PlanResource::make($plan)->resolve(),
@@ -179,7 +178,7 @@ class WelcomeController extends Controller
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $offer = ConfigureSubscriptionCheckout::offerFor($user->account, $plan);
+        $offer = $user->account->currentOffer();
 
         if ($offer?->startsWithoutCard()) {
             StartGenericTrial::execute($user, $plan, $offer);

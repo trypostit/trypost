@@ -18,7 +18,6 @@ use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\PostHogService;
-use App\Support\Billing\ConfigureSubscriptionCheckout;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -61,9 +60,10 @@ class BillingController extends Controller
         abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+        $hasSubscription = $account->subscribed(Account::SUBSCRIPTION_NAME);
 
         return Inertia::render('settings/account/Billing', [
-            'hasSubscription' => $account->subscribed(Account::SUBSCRIPTION_NAME),
+            'hasSubscription' => $hasSubscription,
             'onTrial' => $account->isOnTrial(),
             'trialEndsAt' => $account->activeTrialEndsAt(),
             'subscription' => $subscription?->only([
@@ -75,7 +75,7 @@ class BillingController extends Controller
             'invoices' => Inertia::scroll(
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
-            'paymentMethods' => fn (): array => $this->paymentMethods($account),
+            'paymentMethods' => fn (): array => $hasSubscription ? $this->paymentMethods($account) : [],
             'discount' => fn (): ?array => $this->discount($account, $subscription),
         ]);
     }
@@ -109,7 +109,7 @@ class BillingController extends Controller
      */
     private function discount(Account $account, ?Subscription $subscription): ?array
     {
-        if (blank($subscription) || ! $account->hasStripeId()) {
+        if (blank($subscription) || ! $subscription->valid() || ! $account->hasStripeId()) {
             return null;
         }
 
@@ -189,8 +189,7 @@ class BillingController extends Controller
 
         abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $offer = ConfigureSubscriptionCheckout::offerFor($account, $plan);
-        $offer = $offer?->hasTrial() ? null : $offer;
+        $offer = $account->currentOffer(withTrial: false);
         $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, fromBilling: true);
 
         rescue(function () use ($request, $account, $plan, $offer): void {

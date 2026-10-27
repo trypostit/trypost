@@ -673,3 +673,34 @@ test('subscribing from a generic trial never adds another trial', function () {
         ->post(route('app.billing.checkout'))
         ->assertRedirect('https://checkout.stripe.test/session');
 });
+
+test('subscribing from a generic trial picks the newest coupon offer over a newer trial claim', function () {
+    config(['trypost.self_hosted' => false]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
+    $blackFriday = Offer::factory()->blackFriday()->create();
+    $this->account->offers()->attach($blackFriday, ['claimed_at' => now()->subDay()]);
+    $this->account->offers()->attach(Offer::factory()->trial(14)->create(), ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer): bool => $offer?->is($blackFriday) === true)
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('billing does not show the discount of a subscription that ended', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, ['percent_off' => 50, 'amount_off' => null, 'currency' => null, 'duration' => 'forever', 'duration_in_months' => null]);
+    $this->account->subscriptions()->update(['stripe_status' => 'canceled', 'ends_at' => now()->subDay()]);
+    $this->account->update(['trial_ends_at' => now()->addDays(5)]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertInertia(fn ($page) => $page->where('discount', null)->where('onTrial', true));
+});

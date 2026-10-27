@@ -6,7 +6,6 @@ namespace App\Support\Billing;
 
 use App\Models\Account;
 use App\Models\Offer;
-use App\Models\Plan;
 use Laravel\Cashier\SubscriptionBuilder;
 
 final class ConfigureSubscriptionCheckout
@@ -28,7 +27,7 @@ final class ConfigureSubscriptionCheckout
      * The offer decides the discount, the trial and the promotion code field;
      * without one the account pays the full price. A coupon wins over the
      * field: Stripe rejects both on one session, never a trial with it.
-     * The caller resolves the offer once with offerFor(), so the coupon, the
+     * The caller resolves the offer once with Account::currentOffer(), so the coupon, the
      * checkout metadata and the tracked events agree.
      */
     public static function apply(SubscriptionBuilder $subscription, ?Offer $offer = null): SubscriptionBuilder
@@ -46,14 +45,5 @@ final class ConfigureSubscriptionCheckout
         }
 
         return $subscription;
-    }
-
-    /**
-     * The offer the Welcome checkout applies. It needs the monthly plan,
-     * which only the Welcome checkout passes.
-     */
-    public static function offerFor(Account $account, ?Plan $plan): ?Offer
-    {
-        return filled($plan) ? $account->currentOffer() : null;
     }
 }
