@@ -30,7 +30,6 @@ class ClaimOffer
         try {
             $account->offers()->syncWithoutDetaching([$offer->id => ['claimed_at' => now()]]);
         } catch (UniqueConstraintViolationException) {
-            return $offer;
         }
 
         return $offer;

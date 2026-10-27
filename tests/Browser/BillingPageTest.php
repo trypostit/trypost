@@ -225,3 +225,26 @@ test('a trial without a card shows when it ends and offers to subscribe', functi
         ->assertMissing('@billing-manage-stripe')
         ->assertNoJavaScriptErrors();
 });
+
+test('a trial cancelled in Stripe shows when it ends instead of the trial', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = billingPageOwner(subscribed: false);
+    $endsAt = now()->addDays(5);
+    $user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_trial_cancelled',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_123',
+        'trial_ends_at' => $endsAt,
+        'ends_at' => $endsAt,
+    ]);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-current-plan-status');
+
+    $page->assertSeeIn('@billing-current-plan-badge', 'Cancelled')
+        ->assertDontSeeIn('@billing-current-plan-status', 'Trial until')
+        ->assertNoJavaScriptErrors();
+});

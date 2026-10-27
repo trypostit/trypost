@@ -12,10 +12,12 @@ use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 use App\Support\Billing\SubscriptionPlanSync;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
@@ -71,15 +73,14 @@ class StripeEventListener
     protected function handleSubscriptionCreated(Account $account, array $payload): void
     {
         $previousPlan = $account->plan?->name;
-        $convertsTrialWithoutCard = blank($account->first_paid_at)
-            && $account->redeemedOffers()->where('offers.requires_card', false)->exists();
+        $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
         $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
-        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard && $this->isNowActive($payload), (string) $account->id, $payload);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard, (string) $account->id, $payload);
         TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
         TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }
@@ -90,13 +91,14 @@ class StripeEventListener
     protected function handleSubscriptionUpdated(Account $account, array $payload): void
     {
         $previousPlan = $account->plan?->name;
+        $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
         $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Updated, $payload, $previousPlan);
-        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $this->convertedFromTrial($payload) && $this->isNowActive($payload), (string) $account->id, $payload);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && (($this->convertedFromTrial($payload) && $this->isNowActive($payload)) || $convertsTrialWithoutCard), (string) $account->id, $payload);
         TrackPlanChanged::dispatchIf(PostHogService::shouldTrack() && $this->priceChanged($payload), (string) $account->id, $payload);
     }
 
@@ -152,6 +154,25 @@ class StripeEventListener
         }
 
         return ! Cache::add("stripe_webhook_event:{$eventId}", true, now()->addDay());
+    }
+
+    /**
+     * The first charge of an account that subscribed during a trial without a
+     * card it took from an offer. Read before recordFirstPayment writes
+     * `first_paid_at`, so it holds once, on created or on a later update.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function convertsTrialWithoutCard(Account $account, array $payload): bool
+    {
+        if (! $this->isNowActive($payload) || filled($account->first_paid_at)) {
+            return false;
+        }
+
+        return $account->redeemedOffers()
+            ->where('offers.requires_card', false)
+            ->get()
+            ->contains(fn (Offer $offer): bool => Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)->isFuture());
     }
 
     /**

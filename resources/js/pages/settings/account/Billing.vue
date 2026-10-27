@@ -102,16 +102,16 @@ const currentInterval = computed(
 );
 
 const subscriptionStatus = computed((): SubscriptionStatus | null => {
-    if (props.onTrial) {
-        return 'trial';
-    }
-
     if (props.subscription?.stripe_status === 'past_due') {
         return 'past_due';
     }
 
     if (props.subscription?.ends_at) {
         return 'cancelling';
+    }
+
+    if (props.onTrial) {
+        return 'trial';
     }
 
     if (props.subscription?.stripe_status === 'active') {

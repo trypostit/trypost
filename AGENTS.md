@@ -407,7 +407,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   group (set on subscription creation). There is no offer event of its own. The old `is_first_month_offer`,
   `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
 - **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
-  slug with dashes as underscores (`ft7d` → `ft7d`): `name` (the
+  slug with dashes as underscores (`free-trial-14-days` → `free_trial_14_days`; the short slugs `ft7d`, `fm1`, `ft7dnc` and `bf26` keep theirs): `name` (the
   banner's tag), `headline` (the banner's sentence), `price`, `period` and an
   optional `unit` shown next to the price (`/month` for Black Friday; a trial or
   the `$1` first month has none, so their copy decides it, never the code), in all

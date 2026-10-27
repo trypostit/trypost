@@ -1173,3 +1173,42 @@ test('a first paid subscription without a trial is not a trial conversion', func
 
     Bus::assertNotDispatched(TrackTrialConverted::class);
 });
+
+test('a trial without a card converts when an incomplete subscription becomes active', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(2), 'redeemed_at' => now()->subDays(2)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'incomplete'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('subscribing long after a trial without a card ended is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subMonths(5), 'redeemed_at' => now()->subMonths(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
