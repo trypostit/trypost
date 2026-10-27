@@ -27,8 +27,8 @@ class SubscriptionDiscountResource extends JsonResource
 
         return [
             'value' => $coupon->isPercentage()
-                ? Number::percentage((float) $coupon->percentOff(), maxPrecision: 2, locale: App::getLocale())
-                : (string) $coupon->amountOff(),
+                ? Number::percentage($coupon->percentOff(), maxPrecision: 2, locale: App::currentLocale())
+                : $coupon->amountOff(),
             'duration' => $coupon->duration(),
             'ends_at' => $this->end()?->toIso8601String(),
         ];
