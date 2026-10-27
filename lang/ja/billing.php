@@ -67,6 +67,7 @@ return [
             'past_due' => '延滞',
         ],
         'change' => 'プランを変更',
+        'subscribe' => '今すぐ申し込む',
         'price_monthly' => ':price/月',
         'price_yearly' => ':price/年',
         'trial_until' => ':dateまでトライアル',

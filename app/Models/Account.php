@@ -157,7 +157,7 @@ class Account extends Model
             return true;
         }
 
-        return $this->subscribed(self::SUBSCRIPTION_NAME);
+        return $this->subscribed(self::SUBSCRIPTION_NAME) || $this->onGenericTrial();
     }
 
     public function workspaceLimit(): ?int
@@ -199,13 +199,17 @@ class Account extends Model
 
     public function isOnTrial(): bool
     {
-        return (bool) $this->subscription(self::SUBSCRIPTION_NAME)?->onTrial();
+        return $this->onGenericTrial() || (bool) $this->subscription(self::SUBSCRIPTION_NAME)?->onTrial();
     }
 
     public function activeTrialEndsAt(): ?CarbonInterface
     {
         $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
 
-        return $subscription?->onTrial() ? $subscription->trial_ends_at : null;
+        if ($subscription?->onTrial()) {
+            return $subscription->trial_ends_at;
+        }
+
+        return $this->onGenericTrial() ? $this->trial_ends_at : null;
     }
 }

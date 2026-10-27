@@ -67,6 +67,7 @@ return [
             'past_due' => 'Просрочен',
         ],
         'change' => 'Сменить план',
+        'subscribe' => 'Оформить подписку',
         'price_monthly' => ':price/месяц',
         'price_yearly' => ':price/год',
         'trial_until' => 'Пробный период до :date',

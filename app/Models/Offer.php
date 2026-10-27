@@ -83,6 +83,15 @@ class Offer extends Model
     }
 
     /**
+     * A trial that needs no card starts in the app (Cashier's generic trial)
+     * instead of at Stripe Checkout.
+     */
+    public function startsWithoutCard(): bool
+    {
+        return ! $this->requires_card && filled($this->trial_days);
+    }
+
+    /**
      * The available offer with exactly this slug. MySQL compares strings
      * without case, so the match is confirmed here, where both engines agree.
      */

@@ -116,10 +116,10 @@ test('isPastDue returns false when self-hosted', function () {
     expect($account->isPastDue())->toBeFalse();
 });
 
-test('isOnTrial ignores generic trial when there is no subscription', function () {
+test('isOnTrial includes a generic trial without a subscription', function () {
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
 
-    expect($account->isOnTrial())->toBeFalse();
+    expect($account->isOnTrial())->toBeTrue();
 });
 
 test('isOnTrial returns false for account without trial or subscription', function () {
@@ -154,7 +154,7 @@ test('activeTrialEndsAt returns generic trial date when only generic is active',
     $endsAt = now()->addDays(7);
     $account = Account::factory()->create(['trial_ends_at' => $endsAt]);
 
-    expect($account->activeTrialEndsAt())->toBeNull();
+    expect($account->activeTrialEndsAt()?->toDateTimeString())->toBe($endsAt->toDateTimeString());
 });
 
 test('activeTrialEndsAt returns subscription date when only subscription trial is active', function () {
@@ -281,13 +281,15 @@ test('hasAppAccess is true for a past_due subscription', function () {
     expect($account->fresh()->hasAppAccess())->toBeTrue();
 });
 
-test('hasAppAccess ignores generic trial when card is required', function () {
-    config([
-        'trypost.self_hosted' => false,
-    ]);
+test('hasAppAccess lasts as long as a generic trial', function () {
+    config(['trypost.self_hosted' => false]);
 
     $account = Account::factory()->create(['trial_ends_at' => now()->addDays(7)]);
 
-    expect($account->hasAppAccess())->toBeFalse()
-        ->and($account->isOnTrial())->toBeFalse();
+    expect($account->hasAppAccess())->toBeTrue();
+
+    Carbon::setTestNow(now()->addDays(8));
+
+    expect($account->fresh()->hasAppAccess())->toBeFalse()
+        ->and($account->fresh()->isOnTrial())->toBeFalse();
 });

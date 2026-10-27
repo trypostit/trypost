@@ -413,6 +413,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('settings/account/billing', [BillingController::class, 'index'])->name('app.billing.index');
     Route::get('settings/account/billing/portal', [BillingController::class, 'portal'])->name('app.billing.portal');
     Route::post('settings/account/billing/change-plan', [BillingController::class, 'changePlan'])->name('app.billing.change-plan');
+    Route::post('settings/account/billing/checkout', [BillingController::class, 'checkout'])->name('app.billing.checkout');
 
 });
 

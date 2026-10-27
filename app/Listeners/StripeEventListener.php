@@ -73,7 +73,7 @@ class StripeEventListener
         $previousPlan = $account->plan?->name;
 
         $this->redeemOffer($account, $payload);
-        $this->syncPlanFromSubscription($account, $payload);
+        $this->syncPlanFromSubscription($account, $payload, endsGenericTrial: true);
         $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
@@ -169,7 +169,7 @@ class StripeEventListener
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function syncPlanFromSubscription(Account $account, array $payload): void
+    private function syncPlanFromSubscription(Account $account, array $payload, bool $endsGenericTrial = false): void
     {
         $status = $this->currentStatus($payload);
 
@@ -180,7 +180,13 @@ class StripeEventListener
                 return;
             }
 
-            $account->update(['plan_id' => $plan->id]);
+            $attributes = ['plan_id' => $plan->id];
+
+            if ($endsGenericTrial) {
+                $attributes['trial_ends_at'] = null;
+            }
+
+            $account->update($attributes);
 
             return;
         }

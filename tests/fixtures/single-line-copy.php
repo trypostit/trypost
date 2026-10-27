@@ -47,6 +47,7 @@ return [
     'billing.plans.features.repurpose' => 40,
     'billing.plans.features.team' => 32,
     'welcome.plan_checkout_button' => 18,
+    'billing.current_plan.subscribe' => 17,
     'offers.bf26.checkout_button' => 21,
     'offers.first_month.checkout_button' => 18,
     'offers.free_trial_7_days.checkout_button' => 18,

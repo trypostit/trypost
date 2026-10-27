@@ -67,6 +67,7 @@ return [
             'past_due' => 'Em atraso',
         ],
         'change' => 'Mudar plano',
+        'subscribe' => 'Assinar agora',
         'price_monthly' => ':price/mês',
         'price_yearly' => ':price/ano',
         'trial_until' => 'Trial até :date',

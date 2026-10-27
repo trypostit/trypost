@@ -67,6 +67,7 @@ return [
             'past_due' => 'Zaległy',
         ],
         'change' => 'Zmień plan',
+        'subscribe' => 'Subskrybuj teraz',
         'price_monthly' => ':price/miesiąc',
         'price_yearly' => ':price/rok',
         'trial_until' => 'Okres próbny do :date',

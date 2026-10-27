@@ -18,7 +18,8 @@ class StartSubscriptionCheckout
     {
         // A leftover Workspaces row (unpaid/canceled without `deleted`) would
         // let Processing treat auth.plan as checkout-complete and skip the wait.
-        if ($account->plan_id !== null) {
+        // A generic trial's plan is current, so it stays.
+        if ($account->plan_id !== null && ! $account->onGenericTrial()) {
             $account->update(['plan_id' => null]);
         }
 
@@ -35,6 +36,10 @@ class StartSubscriptionCheckout
         ], filled(...));
 
         ConfigureSubscriptionCheckout::apply($subscription, $offer);
+
+        if ($account->onGenericTrial() && blank($offer?->trial_days)) {
+            $subscription->trialUntil($account->trial_ends_at);
+        }
         $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
@@ -45,7 +50,6 @@ class StartSubscriptionCheckout
                 ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => (filled($plan) ? Interval::forPrice($plan, $priceId) : Interval::Monthly)->value,
                 ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
             ], filled(...)),
-            ...ConfigureSubscriptionCheckout::sessionOptions($offer),
         ]);
 
         return Inertia::location($session->url);

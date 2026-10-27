@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Enums\Plan\Slug;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
@@ -534,4 +536,47 @@ test('billing index lists no invoices for an account without any', function () {
             ->has('invoices.data', 0)
             ->where('invoices.meta.next_cursor', null)
         );
+});
+
+test('an owner on a generic trial subscribes through Checkout on the monthly price', function () {
+    config(['trypost.self_hosted' => false]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan): bool => $account->is($this->account)
+            && $priceId === 'price_socials_monthly'
+            && $cancelUrl === route('app.billing.index')
+            && $plan->is($socials))
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('a subscribed owner is sent back to billing instead of a second checkout', function () {
+    config(['trypost.self_hosted' => false]);
+    subscribeAccount($this->account);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
+
+    $this->actingAs($this->user)
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect(route('app.billing.index'));
+});
+
+test('a member cannot open the billing checkout', function () {
+    config(['trypost.self_hosted' => false]);
+    $member = User::factory()->create(['account_id' => $this->account->id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('member'));
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $this->account->update(['trial_ends_at' => now()->addDays(5)]);
+
+    $this->actingAs($member->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertForbidden();
 });

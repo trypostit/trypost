@@ -69,6 +69,7 @@ return [
             'past_due' => 'Überfällig',
         ],
         'change' => 'Tarif ändern',
+        'subscribe' => 'Jetzt abonnieren',
         'price_monthly' => ':price/Monat',
         'price_yearly' => ':price/Jahr',
         'trial_until' => 'Testphase bis :date',

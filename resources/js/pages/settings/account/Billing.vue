@@ -35,6 +35,7 @@ import SettingsLayout from '@/layouts/SettingsLayout.vue';
 import { cardBrand } from '@/lib/cardBrands';
 import {
     changePlan as changePlanRoute,
+    checkout as checkoutRoute,
     index,
     portal,
 } from '@/routes/app/billing';
@@ -178,6 +179,12 @@ const closePlanDialog = (): void => {
     isPlanDialogOpen.value = false;
 };
 
+const checkoutForm = useForm({});
+
+const subscribe = (): void => {
+    checkoutForm.post(checkoutRoute.url());
+};
+
 const selectPlan = (planId: string): void => {
     if (planForm.processing) {
         return;
@@ -214,7 +221,7 @@ const selectPlan = (planId: string): void => {
 
             <TabsContent value="plan" class="flex flex-col gap-10">
                 <SettingsSection
-                    v-if="hasSubscription"
+                    v-if="hasSubscription || onTrial"
                     :title="$t('billing.plans.current')"
                 >
                     <div
@@ -274,12 +281,22 @@ const selectPlan = (planId: string): void => {
                                     </p>
                                 </div>
                                 <Button
+                                    v-if="hasSubscription"
                                     variant="outline"
                                     class="shrink-0"
                                     data-testid="billing-change-plan"
                                     @click="openPlanDialog"
                                 >
                                     {{ $t('billing.current_plan.change') }}
+                                </Button>
+                                <Button
+                                    v-else
+                                    class="shrink-0"
+                                    :loading="checkoutForm.processing"
+                                    data-testid="billing-subscribe"
+                                    @click="subscribe"
+                                >
+                                    {{ $t('billing.current_plan.subscribe') }}
                                 </Button>
                             </div>
                         </div>

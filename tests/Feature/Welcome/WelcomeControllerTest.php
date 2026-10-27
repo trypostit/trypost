@@ -5,11 +5,13 @@ declare(strict_types=1);
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
+use App\Enums\PostHog\TrialEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Locale;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Jobs\PostHog\SendEvent;
 use App\Models\Account;
 use App\Models\Offer;
@@ -769,3 +771,30 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
     'english copy for an english user' => ['en', true],
     'english copy only for a portuguese user' => ['pt-BR', false],
 ]);
+
+test('a trial without a card starts in the app, without Stripe', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->trial(7)->withoutCard()->create(['slug' => 'free-trial-7-days-no-card']);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect(route('app.welcome.mcp'));
+
+    $account = $this->user->account->fresh();
+
+    expect($account->plan->slug)->toBe(Slug::Socials)
+        ->and($account->trial_ends_at->toDateString())->toBe(now()->addDays(7)->toDateString())
+        ->and($account->hasAppAccess())->toBeTrue()
+        ->and($account->stripe_id)->toBeNull()
+        ->and($account->offers()->first()->pivot->redeemed_at)->not->toBeNull();
+
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === TrialEvent::Started
+        && $job->properties['offer'] === 'free-trial-7-days-no-card');
+    Bus::assertNotDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value);
+});

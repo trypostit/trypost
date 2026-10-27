@@ -67,6 +67,7 @@ return [
             'past_due' => 'Achterstallig',
         ],
         'change' => 'Plan wijzigen',
+        'subscribe' => 'Nu abonneren',
         'price_monthly' => ':price/maand',
         'price_yearly' => ':price/jaar',
         'trial_until' => 'Proefperiode tot :date',

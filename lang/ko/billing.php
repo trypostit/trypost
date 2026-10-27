@@ -67,6 +67,7 @@ return [
             'past_due' => '연체',
         ],
         'change' => '요금제 변경',
+        'subscribe' => '지금 구독하기',
         'price_monthly' => ':price/월',
         'price_yearly' => ':price/년',
         'trial_until' => ':date까지 체험',

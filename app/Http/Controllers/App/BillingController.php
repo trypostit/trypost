@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\Interval;
+use App\Enums\Plan\Slug;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PaymentMethodResource;
@@ -156,6 +158,32 @@ class BillingController extends Controller
 
         return redirect()->route('app.billing.index')
             ->with('flash.success', __('billing.flash.plan_changed', ['plan' => $plan->name]));
+    }
+
+    /**
+     * Subscribes an account on a generic trial: Stripe Checkout on its plan's
+     * monthly price, keeping the days left of the trial.
+     */
+    public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
+    {
+        if (config('trypost.self_hosted')) {
+            return redirect()->route('app.calendar');
+        }
+
+        $account = $request->user()->account;
+
+        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
+
+        if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return redirect()->route('app.billing.index');
+        }
+
+        $plan = $account->plan ?? Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+        $priceId = Interval::Monthly->priceIdFor($plan);
+
+        abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
+
+        return $checkout->redirect($account, $priceId, route('app.billing.index'), $plan);
     }
 
     public function portal(Request $request): RedirectResponse

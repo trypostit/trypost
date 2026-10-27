@@ -69,6 +69,7 @@ return [
             'past_due' => 'Gecikmiş',
         ],
         'change' => 'Planı değiştir',
+        'subscribe' => 'Şimdi abone ol',
         'price_monthly' => ':price/ay',
         'price_yearly' => ':price/yıl',
         'trial_until' => ':date tarihine kadar deneme',

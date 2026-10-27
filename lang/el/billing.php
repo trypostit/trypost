@@ -67,6 +67,7 @@ return [
             'past_due' => 'Ληξιπρόθεσμο',
         ],
         'change' => 'Αλλαγή πλάνου',
+        'subscribe' => 'Εγγραφή τώρα',
         'price_monthly' => ':price/μήνα',
         'price_yearly' => ':price/έτος',
         'trial_until' => 'Δοκιμαστική περίοδος έως :date',

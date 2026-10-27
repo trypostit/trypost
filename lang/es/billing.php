@@ -67,6 +67,7 @@ return [
             'past_due' => 'Vencido',
         ],
         'change' => 'Cambiar plan',
+        'subscribe' => 'Suscribirse ahora',
         'price_monthly' => ':price/mes',
         'price_yearly' => ':price/año',
         'trial_until' => 'Prueba hasta el :date',

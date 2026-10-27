@@ -67,6 +67,7 @@ return [
             'past_due' => 'Past due',
         ],
         'change' => 'Change plan',
+        'subscribe' => 'Subscribe now',
         'price_monthly' => ':price/month',
         'price_yearly' => ':price/year',
         'trial_until' => 'Trial until :date',

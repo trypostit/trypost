@@ -67,6 +67,7 @@ return [
             'past_due' => 'En retard',
         ],
         'change' => 'Changer d\'offre',
+        'subscribe' => 'S\'abonner',
         'price_monthly' => ':price/mois',
         'price_yearly' => ':price/an',
         'trial_until' => 'Essai jusqu\'au :date',

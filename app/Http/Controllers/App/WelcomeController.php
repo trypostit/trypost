@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\AccessToken\ListConnectedMcpClients;
+use App\Actions\Billing\StartGenericTrial;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
@@ -179,6 +180,13 @@ class WelcomeController extends Controller
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
         $offer = ConfigureSubscriptionCheckout::offerFor($user->account, $plan);
+
+        if ($offer?->startsWithoutCard()) {
+            StartGenericTrial::execute($user, $plan, $offer);
+
+            return redirect()->route('app.welcome.mcp');
+        }
+
         $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan, $offer);
 
         try {

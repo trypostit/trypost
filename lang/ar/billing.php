@@ -67,6 +67,7 @@ return [
             'past_due' => 'متأخرة',
         ],
         'change' => 'تغيير الخطة',
+        'subscribe' => 'اشترك الآن',
         'price_monthly' => ':price/شهر',
         'price_yearly' => ':price/سنة',
         'trial_until' => 'فترة تجريبية حتى :date',

@@ -23,7 +23,7 @@ class OfferSeeder extends Seeder
 
         Offer::updateOrCreate(
             ['slug' => 'free-trial-7-days-no-card'],
-            ['starts_at' => now(), 'trial_days' => 8, 'requires_card' => false],
+            ['starts_at' => now(), 'trial_days' => 7, 'requires_card' => false],
         );
 
         Offer::updateOrCreate(

@@ -67,6 +67,7 @@ return [
             'past_due' => '已逾期',
         ],
         'change' => '更改套餐',
+        'subscribe' => '立即订阅',
         'price_monthly' => ':price/月',
         'price_yearly' => ':price/年',
         'trial_until' => '试用至 :date',

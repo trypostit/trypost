@@ -203,3 +203,24 @@ test('a trial shows when it ends, with the time in the user\'s time zone', funct
         ->assertSeeIn('@billing-current-plan-status', 'Trial until '.$endsAt->setTimezone('America/Sao_Paulo')->format('F j, Y g:i A'))
         ->assertNoJavaScriptErrors();
 });
+
+test('a trial without a card shows when it ends and offers to subscribe', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = billingPageOwner(subscribed: false);
+    $user->update(['timezone' => 'America/Sao_Paulo']);
+    $endsAt = now()->addDays(7)->setTime(15, 30)->utc();
+    $user->account->update(['trial_ends_at' => $endsAt]);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-subscribe');
+
+    $page->assertSeeIn('@billing-current-plan-name', 'Socials')
+        ->assertSeeIn('@billing-current-plan-badge', 'Trial')
+        ->assertSeeIn('@billing-current-plan-status', 'Trial until '.$endsAt->setTimezone('America/Sao_Paulo')->format('F j, Y g:i A'))
+        ->assertSeeIn('@billing-subscribe', 'Subscribe now')
+        ->assertMissing('@billing-change-plan')
+        ->assertMissing('@billing-manage-stripe')
+        ->assertNoJavaScriptErrors();
+});
