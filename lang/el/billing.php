@@ -33,7 +33,6 @@ return [
         'select' => 'Επιλέξτε :plan',
         'upgrade' => 'Αναβάθμιση σε :plan',
         'downgrade' => 'Υποβάθμιση σε :plan',
-        'start_first_month' => 'Ενεργοποίηση με :price',
         'billed_yearly_total' => 'Ετήσια χρέωση · :price (2 μήνες δωρεάν)',
         'socials_tagline' => 'Ιδανικό για creators και μικρά brands.',
         'workspaces_tagline' => 'Ιδανικό για agencies και μεγαλύτερες επιχειρήσεις.',

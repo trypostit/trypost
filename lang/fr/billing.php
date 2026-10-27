@@ -33,7 +33,6 @@ return [
         'select' => 'Choisir :plan',
         'upgrade' => 'Passer à :plan',
         'downgrade' => 'Revenir à :plan',
-        'start_first_month' => 'Activer pour :price',
         'billed_yearly_total' => 'Facturé annuellement · :price (2 mois offerts)',
         'socials_tagline' => 'Idéal pour les créateurs et petites marques.',
         'workspaces_tagline' => 'Idéal pour les agences et grandes entreprises.',

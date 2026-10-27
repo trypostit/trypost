@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Attiva il tuo account',
     'plan_description' => 'Collega i tuoi canali e programma il tuo primo post oggi.',
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
-    'plan_start_trial' => 'Prova gratis',
+    'plan_checkout_button' => 'Attiva a :price',
     'plan_cancel_anytime' => 'Disdici quando vuoi.',
     'mcp' => [
         'title' => 'Gestisci i social dalla chat',

@@ -33,7 +33,6 @@ return [
         'select' => 'Kies :plan',
         'upgrade' => 'Upgrade naar :plan',
         'downgrade' => 'Downgrade naar :plan',
-        'start_first_month' => 'Activeer voor :price',
         'billed_yearly_total' => 'Jaarlijks gefactureerd · :price (2 maanden gratis)',
         'socials_tagline' => 'Ideaal voor creators en kleine merken.',
         'workspaces_tagline' => 'Ideaal voor bureaus en grotere bedrijven.',

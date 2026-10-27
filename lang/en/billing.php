@@ -33,7 +33,6 @@ return [
         'select' => 'Choose :plan',
         'upgrade' => 'Upgrade to :plan',
         'downgrade' => 'Downgrade to :plan',
-        'start_first_month' => 'Activate for :price',
         'billed_yearly_total' => 'Billed annually · :price (2 months free)',
         'socials_tagline' => 'Best for creators and small brands.',
         'workspaces_tagline' => 'Best for agencies and larger businesses.',

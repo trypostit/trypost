@@ -33,7 +33,6 @@ return [
         'select' => '选择 :plan',
         'upgrade' => '升级到 :plan',
         'downgrade' => '降级到 :plan',
-        'start_first_month' => '以 :price 激活',
         'billed_yearly_total' => '按年计费 · :price（免两个月）',
         'socials_tagline' => '适合创作者和小品牌。',
         'workspaces_tagline' => '适合代理商和大型业务。',

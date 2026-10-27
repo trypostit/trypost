@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Aktywuj swoje konto',
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
-    'plan_start_trial' => 'Wypróbuj za darmo',
+    'plan_checkout_button' => 'Aktywuj za :price',
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',

@@ -33,7 +33,6 @@ return [
         'select' => ':plan を選ぶ',
         'upgrade' => ':plan にアップグレード',
         'downgrade' => ':plan にダウングレード',
-        'start_first_month' => ':priceで有効にする',
         'billed_yearly_total' => '年払い · :price（2か月分無料）',
         'socials_tagline' => 'クリエイターや小規模ブランド向け。',
         'workspaces_tagline' => '代理店や大規模ビジネス向け。',

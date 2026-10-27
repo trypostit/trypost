@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Activeer je account',
     'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
-    'plan_start_trial' => 'Gratis proberen',
+    'plan_checkout_button' => 'Activeer voor :price',
     'plan_cancel_anytime' => 'Altijd opzegbaar.',
     'mcp' => [
         'title' => 'Beheer je socials via chat',

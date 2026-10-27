@@ -33,7 +33,6 @@ return [
         'select' => ':plan 선택',
         'upgrade' => ':plan(으)로 업그레이드',
         'downgrade' => ':plan(으)로 다운그레이드',
-        'start_first_month' => ':price에 활성화',
         'billed_yearly_total' => '연간 결제 · :price (2개월 무료)',
         'socials_tagline' => '크리에이터와 소규모 브랜드에 적합.',
         'workspaces_tagline' => '에이전시와 대규모 비즈니스에 적합.',

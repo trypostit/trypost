@@ -410,13 +410,15 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   16 locales; the price is display text per locale, like
   `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
   stored in the database, and the banner (`name`, `headline`) is optional: an
-  offer has both or neither, while `price` and `period` are required
+  offer has both or neither, while `price`, `period` and `checkout_button` are required
   (`OfferCopyTest`). Each trial length is its own offer with its own copy
   (`free-trial-7-days`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
   checks each key in the current locale only. The Welcome plan step shows the
   banner (a `bg-foreground` pill, the name in a `bg-background` uppercase tag) only when the row has `show_banner` and `name` and `headline` exist, and the offer price only when `price` and `period` exist; it never
-  prints a raw key. A trial-only offer's button says
-  `welcome.plan_start_trial`; without an offer the step shows the full price.
+  prints a raw key. The button that opens Stripe Checkout is
+  the offer's `checkout_button` (required, like `price` and `period`), or
+  `welcome.plan_checkout_button` without an offer; without an offer the step
+  shows the full price.
   `tests/Feature/Offer/OfferCopyTest.php` fails when an offer misses its copy in
   any locale.
 - **Adding an offer.** Create its coupon in Stripe when it has one (no dates, no

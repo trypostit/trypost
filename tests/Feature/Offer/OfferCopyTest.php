@@ -9,7 +9,7 @@ test('every offer has its price in every locale, and its banner in all or none',
     $offers = Lang::get('offers', [], Locale::DEFAULT->value);
 
     $missing = collect(Locale::cases())->flatMap(fn (Locale $locale) => collect($offers)
-        ->flatMap(fn (array $copy, string $offer): array => collect(['price', 'period'])
+        ->flatMap(fn (array $copy, string $offer): array => collect(['price', 'period', 'checkout_button'])
             ->when(array_key_exists('name', $copy) || array_key_exists('headline', $copy), fn ($fields) => $fields->push('name', 'headline'))
             ->map(fn (string $field): string => "offers.{$offer}.{$field}")
             ->all())

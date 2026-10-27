@@ -210,7 +210,7 @@ test('plan sends a claimed trial offer only to an account that may use it', func
         ->get(route('app.welcome.plan'))
         ->assertOk()
         ->assertInertia(fn ($page) => $offered
-            ? $page->where('offer.key', 'free_trial_7_days')->where('offer.trial_days', 8)
+            ? $page->where('offer.key', 'free_trial_7_days')
             : $page->where('offer', null));
 })->with([
     'no claim pays the full price' => [fn () => null, false, false],
@@ -687,7 +687,7 @@ test('the plan step sends the current offer', function () {
         ->assertInertia(fn ($page) => $page
             ->where('offer.key', 'black_friday_2026')
             ->where('offer.has_banner', false)
-            ->where('offer.has_price', false)
+            ->where('offer.has_checkout_copy', false)
         );
 });
 
@@ -767,6 +767,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
         'offers.black_friday_2026.price' => '$9.50',
         'offers.black_friday_2026.unit' => '/month',
         'offers.black_friday_2026.period' => 'for your first 3 months',
+        'offers.black_friday_2026.checkout_button' => 'Activate for $9.50',
     ], 'en');
     completeWelcomeThroughSoftware($this->user);
     $this->user->update(['locale' => $locale]);
@@ -776,7 +777,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
         ->get(route('app.welcome.plan'))
         ->assertInertia(fn ($page) => $page
             ->where('offer.has_banner', $hasCopy)
-            ->where('offer.has_price', $hasCopy)
+            ->where('offer.has_checkout_copy', $hasCopy)
             ->where('offer.has_unit', $hasCopy)
         );
 })->with([

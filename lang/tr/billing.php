@@ -35,7 +35,6 @@ return [
         'select' => ':plan seç',
         'upgrade' => ':plan’e yükselt',
         'downgrade' => ':plan’e düşür',
-        'start_first_month' => ':price ile etkinleştir',
         'billed_yearly_total' => 'Yıllık faturalandırılır · :price (2 ay bedava)',
         'socials_tagline' => 'İçerik üreticileri ve küçük markalar için.',
         'workspaces_tagline' => 'Ajanslar ve büyük işletmeler için.',

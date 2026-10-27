@@ -18,7 +18,9 @@ const props = defineProps<{
     offer: Offer | null;
 }>();
 
-const showsOfferPrice = computed((): boolean => props.offer?.has_price === true);
+const showsOfferPrice = computed(
+    (): boolean => props.offer?.has_checkout_copy === true,
+);
 
 const checkoutPriceKey = computed((): string =>
     showsOfferPrice.value
@@ -34,12 +36,10 @@ const unitKey = computed((): string | null => {
     return props.offer?.has_unit ? `offers.${props.offer.key}.unit` : null;
 });
 
-const continueLabelKey = computed((): string =>
-    showsOfferPrice.value &&
-    Boolean(props.offer?.trial_days) &&
-    props.offer?.has_coupon === false
-        ? 'welcome.plan_start_trial'
-        : 'billing.plans.start_first_month',
+const checkoutButtonKey = computed((): string =>
+    showsOfferPrice.value
+        ? `offers.${props.offer?.key}.checkout_button`
+        : 'welcome.plan_checkout_button',
 );
 
 const termsKey = computed((): string =>
@@ -217,7 +217,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    $t(continueLabelKey, { price: $t(checkoutPriceKey) })
+                    $t(checkoutButtonKey, { price: $t(checkoutPriceKey) })
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"

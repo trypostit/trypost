@@ -33,7 +33,6 @@ return [
         'select' => 'Escolher :plan',
         'upgrade' => 'Fazer upgrade para :plan',
         'downgrade' => 'Fazer downgrade para :plan',
-        'start_first_month' => 'Ativar por :price',
         'billed_yearly_total' => 'Cobrança anual · :price (2 meses grátis)',
         'socials_tagline' => 'Indicado para criadores e pequenas marcas.',
         'workspaces_tagline' => 'Indicado para agências e grandes negócios.',

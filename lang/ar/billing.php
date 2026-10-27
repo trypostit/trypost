@@ -33,7 +33,6 @@ return [
         'select' => 'اختر :plan',
         'upgrade' => 'الترقية إلى :plan',
         'downgrade' => 'الرجوع إلى :plan',
-        'start_first_month' => 'فعّل مقابل :price',
         'billed_yearly_total' => 'فوترة سنوية · :price (شهران مجانًا)',
         'socials_tagline' => 'مناسب لمنشئي المحتوى والعلامات الصغيرة.',
         'workspaces_tagline' => 'مناسب للوكالات والأعمال الكبيرة.',
