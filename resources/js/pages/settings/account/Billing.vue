@@ -5,6 +5,7 @@ import {
     IconDiscount,
     IconDownload,
     IconFileText,
+    IconSparkles,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
@@ -302,9 +303,13 @@ const selectPlan = (planId: string): void => {
                         </div>
                         <p
                             v-if="subscriptionStatus === 'trial' && trialEndsAt"
-                            class="border-t border-border bg-muted/40 px-5 py-3 text-sm text-muted-foreground sm:px-6"
+                            class="flex items-center gap-1.5 border-t border-border bg-muted/40 px-5 py-3 text-sm text-muted-foreground sm:px-6"
                             data-testid="billing-current-plan-status"
                         >
+                            <IconSparkles
+                                class="size-4 shrink-0 text-primary-text"
+                                data-testid="billing-current-plan-trial-icon"
+                            />
                             {{
                                 $t('billing.current_plan.trial_until', {
                                     date: date.formatDateTime(trialEndsAt),

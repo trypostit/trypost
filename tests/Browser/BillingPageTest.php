@@ -219,6 +219,7 @@ test('a trial without a card shows when it ends and offers to subscribe', functi
     $page->assertSeeIn('@billing-current-plan-name', 'Socials')
         ->assertSeeIn('@billing-current-plan-badge', 'Trial')
         ->assertSeeIn('@billing-current-plan-status', 'Trial until '.$endsAt->setTimezone('America/Sao_Paulo')->format('F j, Y g:i A'))
+        ->assertVisible('@billing-current-plan-trial-icon')
         ->assertSeeIn('@billing-subscribe', 'Subscribe now')
         ->assertMissing('@billing-change-plan')
         ->assertMissing('@billing-manage-stripe')
