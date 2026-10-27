@@ -70,6 +70,18 @@ test('handle captures trial.converted with plan, interval and conversion data', 
     });
 });
 
+test('a conversion whose payment checkout.completed already reports carries no revenue', function () {
+    Queue::fake();
+
+    (new TrackTrialConverted((string) $this->account->id, $this->payload, withRevenue: false))
+        ->handle(app(PostHogService::class));
+
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['event'] === TrialEvent::Converted->value
+        && $job->payload['properties']['plan_name'] === $this->plan->name
+        && ! array_key_exists('conversion_value', $job->payload['properties'])
+        && ! array_key_exists('conversion_transaction_id', $job->payload['properties']));
+});
+
 test('handle resolves the yearly interval from the price id', function () {
     $this->payload['data']['object']['items']['data'][0]['price']['id'] = 'price_workspace_yearly';
     Queue::fake();

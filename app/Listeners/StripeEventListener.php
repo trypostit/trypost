@@ -79,7 +79,7 @@ class StripeEventListener
         $this->redeemOffer($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
-        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard, (string) $account->id, $payload);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard, (string) $account->id, $payload, withRevenue: false);
         TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
         TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }

@@ -1154,7 +1154,8 @@ test('a trial without a card that subscribes counts as a trial conversion', func
         ]],
     ]));
 
-    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->accountId === (string) $this->account->id);
+    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->accountId === (string) $this->account->id && ! $job->withRevenue);
+    Bus::assertDispatchedTimes(TrackCheckoutCompleted::class, 1);
 });
 
 test('a first paid subscription without a trial is not a trial conversion', function () {
@@ -1193,6 +1194,8 @@ test('a trial without a card converts when an incomplete subscription becomes ac
     ]));
 
     Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->withRevenue);
+    Bus::assertNotDispatched(TrackCheckoutCompleted::class);
 });
 
 test('subscribing long after a trial without a card ended is not a trial conversion', function () {
