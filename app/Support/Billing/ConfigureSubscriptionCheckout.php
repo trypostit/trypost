@@ -49,6 +49,27 @@ final class ConfigureSubscriptionCheckout
     }
 
     /**
+     * Checkout Session options the offer adds. An offer that does not require
+     * a card lets Stripe skip it while nothing is due, and cancels the
+     * subscription when its trial ends without one, which ends app access.
+     *
+     * @return array<string, mixed>
+     */
+    public static function sessionOptions(?Offer $offer): array
+    {
+        if ($offer?->requires_card !== false) {
+            return [];
+        }
+
+        return [
+            'payment_method_collection' => 'if_required',
+            'subscription_data' => [
+                'trial_settings' => ['end_behavior' => ['missing_payment_method' => 'cancel']],
+            ],
+        ];
+    }
+
+    /**
      * The offer the Welcome checkout applies. It needs the monthly plan,
      * which only the Welcome checkout passes.
      */

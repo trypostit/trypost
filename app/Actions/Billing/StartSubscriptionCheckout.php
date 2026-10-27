@@ -45,6 +45,7 @@ class StartSubscriptionCheckout
                 ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => (filled($plan) ? Interval::forPrice($plan, $priceId) : Interval::Monthly)->value,
                 ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
             ], filled(...)),
+            ...ConfigureSubscriptionCheckout::sessionOptions($offer),
         ]);
 
         return Inertia::location($session->url);

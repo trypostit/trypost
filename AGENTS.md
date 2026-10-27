@@ -294,10 +294,11 @@ App access always starts at Stripe Checkout: there is no trial without a card an
 
 Standing constraints:
 - Without an offer the checkout charges the full price at once: no coupon, no trial, no promotion code field.
-- An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum) and `allow_promotion_codes`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
+- An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum), `allow_promotion_codes` and `requires_card`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
 - There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`free-trial-7-days`, `trial_days` 8 because Stripe Checkout counts the trial one day short and shows 8 as 7 days, `first_subscription_only`), the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
 - First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply only there. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
+- `requires_card = false` still goes through Stripe Checkout: it sends `payment_method_collection: if_required` and `subscription_data.trial_settings.end_behavior.missing_payment_method: cancel` (`ConfigureSubscriptionCheckout::sessionOptions()`). Stripe skips the card while nothing is due and cancels the subscription when the trial ends without one; the `deleted` webhook then ends app access and the owner lands on the Welcome plan step again (owner decision October 2026). An offer that charges now still asks for a card.
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
@@ -362,7 +363,7 @@ field, or a mix. The 7-day trial (`free-trial-7-days`), the `$1` first month
 lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
 `trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
 end, no limit; `allow_promotion_codes`, `first_subscription_only` and
-`show_banner` false by default) and reaches an account through the pivot
+`show_banner` false by default; `requires_card` true by default) and reaches an account through the pivot
 `account_offer` (`claimed_at`, `redeemed_at`).
 
 - **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.

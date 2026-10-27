@@ -27,6 +27,7 @@ class OfferFactory extends Factory
             'max_redemptions' => null,
             'trial_days' => null,
             'allow_promotion_codes' => false,
+            'requires_card' => true,
             'first_subscription_only' => false,
             'show_banner' => false,
         ];
@@ -59,6 +60,13 @@ class OfferFactory extends Factory
         return $this->state(fn (array $attributes): array => [
             'stripe_coupon_id' => null,
             'trial_days' => $days,
+        ]);
+    }
+
+    public function withoutCard(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'requires_card' => false,
         ]);
     }
 

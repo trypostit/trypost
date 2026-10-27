@@ -450,3 +450,30 @@ test('redirect gives the trial of the offer it is given', function () {
 
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_socials_monthly', route('app.welcome.plan'), $plan, $offer);
 });
+
+test('redirect opens a checkout that skips the card for an offer that does not require one', function () {
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+
+    $account = Account::factory()->create();
+    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $offer = Offer::factory()->freeTrial()->withoutCard()->create();
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('trialDays')->once()->with(8)->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->andReturnSelf();
+    $builder->shouldReceive('checkout')
+        ->once()
+        ->withArgs(fn (array $options): bool => data_get($options, 'payment_method_collection') === 'if_required'
+            && data_get($options, 'subscription_data.trial_settings.end_behavior.missing_payment_method') === 'cancel'
+            && data_get($options, 'metadata.trypost_offer_slug') === 'free-trial-7-days')
+        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_socials_monthly', route('app.welcome.plan'), $plan, $offer);
+});

@@ -157,3 +157,19 @@ test('does not apply an expired offer', function () {
 
     expect(configureCheckout($this->account)->couponId)->toBeNull();
 });
+
+test('an offer that does not require a card lets Stripe skip it and cancels at the end of the trial', function () {
+    expect(ConfigureSubscriptionCheckout::sessionOptions(Offer::factory()->trial(8)->withoutCard()->make()))->toBe([
+        'payment_method_collection' => 'if_required',
+        'subscription_data' => [
+            'trial_settings' => ['end_behavior' => ['missing_payment_method' => 'cancel']],
+        ],
+    ]);
+});
+
+test('an offer that requires a card, or no offer, adds no session options', function (?Offer $offer) {
+    expect(ConfigureSubscriptionCheckout::sessionOptions($offer))->toBe([]);
+})->with([
+    'card required' => fn () => Offer::factory()->trial(8)->make(),
+    'no offer' => null,
+]);

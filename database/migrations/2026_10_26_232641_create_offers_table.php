@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('stripe_coupon_id')->nullable();
             $table->unsignedSmallInteger('trial_days')->nullable();
             $table->boolean('allow_promotion_codes')->default(false);
+            $table->boolean('requires_card')->default(true);
             $table->timestamp('starts_at');
             $table->timestamp('ends_at')->nullable();
             $table->unsignedInteger('max_redemptions')->nullable();
