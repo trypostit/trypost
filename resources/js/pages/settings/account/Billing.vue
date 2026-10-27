@@ -65,7 +65,6 @@ const props = defineProps<{
     subscription: Subscription | null;
     plan: PlanOption | null;
     workspaceCount: number;
-    workspaceLimit: number | null;
     invoices: Invoice[];
     defaultPaymentMethod: PaymentMethod | null;
     discount: SubscriptionDiscount | null;
@@ -210,51 +209,36 @@ const selectPlan = (planId: string): void => {
                             }}
                         </p>
                         <p
+                            v-if="subscriptionStatus === 'trial' && trialEndsAt"
                             class="text-sm text-muted-foreground"
                             data-testid="billing-current-plan-status"
                         >
-                            <template
-                                v-if="subscriptionStatus === 'trial' && trialEndsAt"
-                            >
-                                {{
-                                    $t('billing.current_plan.trial_until', {
-                                        date: date.formatDate(trialEndsAt),
-                                    })
-                                }}
-                            </template>
-                            <template
-                                v-else-if="
-                                    subscriptionStatus === 'cancelling' &&
-                                    subscription?.ends_at
-                                "
-                            >
-                                {{
-                                    $t('billing.current_plan.cancelled', {
-                                        date: date.formatDate(
-                                            subscription.ends_at,
-                                        ),
-                                    })
-                                }}
-                            </template>
-                            <template v-else-if="subscriptionStatus === 'past_due'">
-                                {{ $t('billing.past_due_notice.title') }}
-                            </template>
-                            <template v-else>
-                                {{ $t('billing.current_plan.renews') }}
-                            </template>
+                            {{
+                                $t('billing.current_plan.trial_until', {
+                                    date: date.formatDate(trialEndsAt),
+                                })
+                            }}
                         </p>
                         <p
-                            class="text-sm text-muted-foreground tabular-nums"
-                            data-testid="billing-current-plan-usage"
+                            v-else-if="
+                                subscriptionStatus === 'cancelling' &&
+                                subscription?.ends_at
+                            "
+                            class="text-sm text-muted-foreground"
+                            data-testid="billing-current-plan-status"
                         >
                             {{
-                                workspaceLimit === null
-                                    ? $t('billing.plans.workspaces_unlimited')
-                                    : $t('billing.current_plan.workspaces_usage', {
-                                          count: workspaceCount.toString(),
-                                          limit: workspaceLimit.toString(),
-                                      })
+                                $t('billing.current_plan.cancelled', {
+                                    date: date.formatDate(subscription.ends_at),
+                                })
                             }}
+                        </p>
+                        <p
+                            v-else-if="subscriptionStatus === 'past_due'"
+                            class="text-sm text-muted-foreground"
+                            data-testid="billing-current-plan-status"
+                        >
+                            {{ $t('billing.past_due_notice.title') }}
                         </p>
                     </div>
                     <Button

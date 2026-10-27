@@ -311,7 +311,7 @@ test('changePlan requires authentication', function () {
     $response->assertRedirect(route('login'));
 });
 
-test('billing index exposes the plan usage and no account details', function (string $slug, ?int $limit) {
+test('billing index exposes the plan and no account details', function (string $slug) {
     config(['trypost.self_hosted' => false]);
 
     $this->account->update([
@@ -327,12 +327,12 @@ test('billing index exposes the plan usage and no account details', function (st
             ->missing('account')
             ->where('plan.slug', $slug)
             ->where('workspaceCount', 1)
-            ->where('workspaceLimit', $limit)
+            ->missing('workspaceLimit')
             ->where('subscription.ends_at', null)
         );
 })->with([
-    'socials' => ['socials', 1],
-    'workspaces' => ['workspaces', null],
+    'socials' => ['socials'],
+    'workspaces' => ['workspaces'],
 ]);
 
 test('billing index exposes the end date of a cancelled subscription', function () {

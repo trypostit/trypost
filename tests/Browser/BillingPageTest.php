@@ -54,8 +54,8 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
 
     $page->assertSeeIn('@billing-current-plan-name', 'Socials')
         ->assertSeeIn('@billing-current-plan-price', '$19/month')
-        ->assertSeeIn('@billing-current-plan-status', 'Renews automatically')
-        ->assertSeeIn('@billing-current-plan-usage', 'Workspaces: 1 of 1')
+        ->assertMissing('@billing-current-plan-status')
+        ->assertMissing('@billing-current-plan-usage')
         ->assertVisible('@settings-nav-billing')
         ->assertMissing('@settings-nav-account')
         ->assertMissing('@billing-details-form')
