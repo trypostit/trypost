@@ -48,7 +48,6 @@ return [
     'plan_title' => 'Aktiviere dein Konto',
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
-    'plan_per_month' => 'pro Monat',
     'plan_start_trial' => 'Kostenlos testen',
     'plan_cancel_anytime' => 'Jederzeit kündbar.',
     'mcp' => [

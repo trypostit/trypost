@@ -205,7 +205,6 @@ return [
     'welcome.mcp.connect_ai' => 20,
     'welcome.mcp.connect_other' => 28,
     'welcome.mcp.connect_with' => 16,
-    'welcome.plan_per_month' => 11,
     'mcp.connect' => 13,
     'mcp.copy' => 10,
     'mcp.copied' => 11,

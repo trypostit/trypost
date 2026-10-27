@@ -227,6 +227,8 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
         ->assertMissing('@plan-card-workspaces')
         ->assertSeeIn('@plan-price-socials', '$0')
         ->assertSeeIn('@plan-price-suffix-socials', 'for 7 days')
+        ->assertSeeIn('@plan-price-original-socials', '$19/month')
+        ->assertMissing('@plan-price-unit-socials')
         ->assertVisible('@plan-networks-info-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
@@ -263,7 +265,9 @@ test('the plan step shows the full price without an offer, even when a trial off
     waitForWelcomePlanTestId($page, 'welcome-plan-continue');
 
     $page->assertSeeIn('@plan-price-socials', '$19')
-        ->assertSeeIn('@plan-price-suffix-socials', 'per month')
+        ->assertSeeIn('@plan-price-unit-socials', '/month')
+        ->assertMissing('@plan-price-original-socials')
+        ->assertMissing('@plan-price-suffix-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
         ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
         ->assertDontSee('7 days')
@@ -402,7 +406,9 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
 
     $page->assertSeeIn('@welcome-plan-offer-name', $name)
         ->assertSeeIn('@welcome-plan-offer-headline', $headline)
+        ->assertSeeIn('@plan-price-original-socials', '$19/month')
         ->assertSeeIn('@plan-price-socials', $price)
+        ->assertSeeIn('@plan-price-unit-socials', '/month')
         ->assertSeeIn('@plan-price-suffix-socials', $period)
         ->assertSeeIn('@welcome-plan-continue', "Activate for {$price}")
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
@@ -438,7 +444,8 @@ test('the plan step shows neither a banner nor an offer price for an offer witho
     waitFor($page, '@plan-price-socials');
 
     $page->assertMissing('@welcome-plan-offer')
-        ->assertSeeIn('@plan-price-suffix-socials', 'per month')
+        ->assertSeeIn('@plan-price-unit-socials', '/month')
+        ->assertMissing('@plan-price-original-socials')
         ->assertDontSee('offers.')
         ->assertNoJavaScriptErrors();
 

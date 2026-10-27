@@ -48,7 +48,6 @@ return [
     'plan_title' => 'Aktywuj swoje konto',
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
-    'plan_per_month' => 'miesięcznie',
     'plan_start_trial' => 'Wypróbuj za darmo',
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
     'mcp' => [

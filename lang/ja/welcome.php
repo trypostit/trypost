@@ -48,7 +48,6 @@ return [
     'plan_title' => 'アカウントを有効にしましょう',
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
     'plan_terms' => 'その後は:price/月。いつでも解約できます。',
-    'plan_per_month' => '毎月',
     'plan_start_trial' => '無料で試す',
     'plan_cancel_anytime' => 'いつでも解約できます。',
     'mcp' => [

@@ -48,7 +48,6 @@ return [
     'plan_title' => 'Activate your account',
     'plan_description' => 'Connect your channels and schedule your first post today.',
     'plan_terms' => 'Then :price/month. Cancel anytime.',
-    'plan_per_month' => 'per month',
     'plan_start_trial' => 'Start free trial',
     'plan_cancel_anytime' => 'Cancel anytime.',
     'mcp' => [

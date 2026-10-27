@@ -48,7 +48,6 @@ return [
     'plan_title' => '계정을 활성화하세요',
     'plan_description' => '채널을 연결하고 오늘 첫 게시물을 예약하세요.',
     'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
-    'plan_per_month' => '매월',
     'plan_start_trial' => '무료 체험 시작',
     'plan_cancel_anytime' => '언제든지 해지 가능.',
     'mcp' => [

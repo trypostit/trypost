@@ -31,12 +31,6 @@ const checkoutPriceKey = computed((): string =>
         : 'billing.subscribe.prices.socials.monthly',
 );
 
-const priceSuffixKey = computed((): string =>
-    showsOfferPrice.value
-        ? `offers.${props.offer?.key}.period`
-        : 'welcome.plan_per_month',
-);
-
 const form = useForm({});
 
 const {
@@ -166,18 +160,34 @@ const submit = (): void => {
                     </div>
                 </div>
 
-                <p class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                    <span
-                        class="text-5xl leading-none font-strong tabular-nums"
-                        :data-testid="`plan-price-${plan.slug}`"
-                        >{{ $t(checkoutPriceKey) }}</span
+                <div class="flex flex-col gap-1">
+                    <s
+                        v-if="offer && showsOfferPrice"
+                        class="text-sm text-muted-foreground"
+                        :data-testid="`plan-price-original-${plan.slug}`"
+                        >{{ $t('billing.subscribe.prices.socials.monthly')
+                        }}{{ $t('billing.plans.per_month') }}</s
                     >
+                    <p class="flex items-baseline gap-1 whitespace-nowrap">
+                        <span
+                            class="text-4xl leading-none font-strong tabular-nums sm:text-5xl"
+                            :data-testid="`plan-price-${plan.slug}`"
+                            >{{ $t(checkoutPriceKey) }}</span
+                        >
+                        <span
+                            v-if="!isTrialOnly"
+                            class="text-base text-foreground"
+                            :data-testid="`plan-price-unit-${plan.slug}`"
+                            >{{ $t('billing.plans.per_month') }}</span
+                        >
+                    </p>
                     <span
+                        v-if="offer && showsOfferPrice"
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{ $t(priceSuffixKey) }}</span
+                        >{{ $t(`offers.${offer.key}.period`) }}</span
                     >
-                </p>
+                </div>
             </div>
 
             <PlanFeatureList

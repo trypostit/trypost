@@ -48,7 +48,6 @@ return [
     'plan_title' => '激活你的账户',
     'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_terms' => '之后 :price/月，随时取消。',
-    'plan_per_month' => '每月',
     'plan_start_trial' => '免费试用',
     'plan_cancel_anytime' => '随时取消。',
     'mcp' => [

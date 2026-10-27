@@ -48,7 +48,6 @@ return [
     'plan_title' => 'Activa tu cuenta',
     'plan_description' => 'Conecta tus redes y programa tu primer post hoy.',
     'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
-    'plan_per_month' => 'al mes',
     'plan_start_trial' => 'Probar gratis',
     'plan_cancel_anytime' => 'Cancela cuando quieras.',
     'mcp' => [

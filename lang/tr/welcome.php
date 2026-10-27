@@ -48,7 +48,6 @@ return [
     'plan_title' => 'Hesabını etkinleştir',
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
-    'plan_per_month' => 'aylık',
     'plan_start_trial' => 'Ücretsiz dene',
     'plan_cancel_anytime' => 'İstediğin zaman iptal et.',
     'mcp' => [
