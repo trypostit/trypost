@@ -8,7 +8,6 @@ use App\Models\Account;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -206,7 +205,7 @@ test('a user without an account claims nothing and keeps no slug', function () {
         ->get(route('app.welcome.subscription-required', ['offer' => 'black-friday-2026']))
         ->assertSessionMissing(CaptureOffer::SESSION_KEY);
 
-    expect(DB::table('account_offer')->count())->toBe(0);
+    $this->assertDatabaseCount('account_offer', 0);
 });
 
 test('a guest\'s offer is claimed when they sign up with google', function () {

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class Offer extends Model
@@ -41,25 +41,23 @@ class Offer extends Model
     }
 
     /**
+     * The accounts that redeemed the offer. Each one uses up a place.
+     */
+    public function redemptions(): BelongsToMany
+    {
+        return $this->accounts()->wherePivotNotNull('redeemed_at');
+    }
+
+    /**
      * Started, not ended, and with a place left. Only redemptions use up a
      * place; a claim alone never does.
      */
     public function scopeAvailable(Builder $query): Builder
     {
         return $query
-            ->where('offers.starts_at', '<=', now())
-            ->where(function (Builder $query): void {
-                $query->whereNull('offers.ends_at')->orWhere('offers.ends_at', '>', now());
-            })
-            ->where(function (Builder $query): void {
-                $query->whereNull('offers.max_redemptions')
-                    ->orWhere('offers.max_redemptions', '>', function (QueryBuilder $query): void {
-                        $query->selectRaw('count(*)')
-                            ->from('account_offer')
-                            ->whereColumn('account_offer.offer_id', 'offers.id')
-                            ->whereNotNull('account_offer.redeemed_at');
-                    });
-            });
+            ->whereNowOrPast('offers.starts_at')
+            ->where(fn (Builder $query): Builder => $query->whereNull('offers.ends_at')->orWhereFuture('offers.ends_at'))
+            ->where(fn (Builder $query): Builder => $query->whereNull('offers.max_redemptions')->orHas('redemptions', '<', DB::raw('offers.max_redemptions')));
     }
 
     /**

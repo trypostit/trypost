@@ -25,15 +25,11 @@ class ClaimOffer
             return null;
         }
 
-        if ($account->offers()->whereKey($offer->id)->wherePivotNotNull('redeemed_at')->exists()) {
+        if ($offer->redemptions()->whereKey($account->id)->exists()) {
             return null;
         }
 
-        $account->offers()->newPivotStatement()->upsert(
-            [['account_id' => $account->id, 'offer_id' => $offer->id, 'claimed_at' => now()]],
-            ['account_id', 'offer_id'],
-            ['claimed_at'],
-        );
+        $account->offers()->syncWithoutDetaching([$offer->id => ['claimed_at' => now()]]);
 
         return $offer;
     }
