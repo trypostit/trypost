@@ -30,7 +30,7 @@ test('user without subscription is redirected to subscribe', function () {
 
     $response = $this->actingAs($user->fresh())->get(route('app.workspace.channels'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome.plan'));
 });
 
 test('user with active subscription can access the app', function () {
@@ -136,5 +136,5 @@ test('a trial without a card can use the app until it ends', function () {
 
     $this->travel(8)->days();
 
-    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertRedirect(route('app.welcome.persona'));
+    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertRedirect(route('app.welcome.plan'));
 });

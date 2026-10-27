@@ -29,7 +29,7 @@ class BillingController extends Controller
 {
     public function subscribe(): RedirectResponse
     {
-        return redirect()->route('app.welcome.persona');
+        return redirect()->route('app.welcome.plan');
     }
 
     public function processing(Request $request): Response|RedirectResponse

@@ -307,7 +307,7 @@ test('skipping the MCP step without app access goes back to Welcome and records 
 
     $this->actingAs($this->user)
         ->get(route('app.welcome.mcp.skip'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     Bus::assertNotDispatched(SendEvent::class);
 });
@@ -379,7 +379,7 @@ test('the MCP step sends an account without app access back to Welcome', functio
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.mcp'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 });
 
 test('plan store fails loudly when the Socials price is not configured', function () {
@@ -599,7 +599,7 @@ test('subscription required screen renders for members without app access', func
 test('subscription required screen sends owners back to the welcome flow', function () {
     $this->actingAs($this->user)
         ->get(route('app.welcome.subscription-required'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 });
 
 test('subscription required screen sends subscribed users to the calendar', function () {

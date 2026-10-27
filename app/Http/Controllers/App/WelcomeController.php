@@ -192,7 +192,7 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         if (! $user->account?->hasAppAccess()) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome.plan');
         }
 
         $workspace = $user->currentWorkspace;
@@ -228,7 +228,7 @@ class WelcomeController extends Controller
         $user = $request->user();
 
         if (! $user->account?->hasAppAccess()) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome.plan');
         }
 
         $postHog->capture(
@@ -250,7 +250,7 @@ class WelcomeController extends Controller
         }
 
         if ($user->isAccountOwner()) {
-            return redirect()->route('app.welcome.persona');
+            return redirect()->route('app.welcome.plan');
         }
 
         return Inertia::render('welcome/SubscriptionRequired', [

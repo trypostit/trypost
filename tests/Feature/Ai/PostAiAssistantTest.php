@@ -245,7 +245,7 @@ test('an unsubscribed account is stopped before the model is called', function (
             'mode' => 'generate',
             'prompt' => 'announce our summer launch today',
         ])
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     PostWritingAssistant::assertNeverPrompted();
 });

@@ -2,6 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Enums\User\Goal;
+use App\Enums\User\Persona;
+use App\Enums\User\PreviousSoftware;
 use App\Models\Account;
 use App\Models\User;
 use App\Models\Workspace;
@@ -16,7 +19,7 @@ test('redirects owners to welcome when account has no active subscription', func
 
     $this->actingAs($user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 });
 
 test('redirects members without app access straight to subscription required', function () {
@@ -94,4 +97,35 @@ test('redirects to workspace create when self-hosted and no workspace', function
     $this->actingAs($user)
         ->get(route('app.calendar'))
         ->assertRedirect(route('app.workspaces.create'));
+});
+
+test('a former customer who already answered Welcome lands straight on the plan step', function () {
+    $owner = User::factory()->create([
+        'persona' => Persona::Agency,
+        'goals' => [Goal::SaveTime->value],
+        'previous_software' => PreviousSoftware::Buffer,
+    ]);
+    $owner->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_former',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->subDay(),
+    ]);
+
+    $this->actingAs($owner->fresh())
+        ->get(route('app.calendar'))
+        ->assertRedirect(route('app.welcome.plan'));
+
+    $this->actingAs($owner->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertOk();
+});
+
+test('a new owner still starts Welcome at the first step', function () {
+    $owner = User::factory()->create(['persona' => null]);
+
+    $this->actingAs($owner)
+        ->get(route('app.welcome.plan'))
+        ->assertRedirect(route('app.welcome.persona'));
 });

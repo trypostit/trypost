@@ -102,7 +102,7 @@ test('an owner without app access can still generate during onboarding', functio
 
     $this->actingAs($this->user)
         ->get(route('app.calendar'))
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     $this->actingAs($this->user)
         ->postJson(route('app.channels.posting-schedule.generate', $this->channel), ['mode' => 'goal', 'goal' => 4])
@@ -121,11 +121,11 @@ test('an owner without app access cannot update or copy a schedule', function ()
 
     $this->actingAs($this->user)
         ->putJson(route('app.channels.posting-schedule.update', $this->channel), schedulePayload())
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     $this->actingAs($this->user)
         ->postJson(route('app.channels.posting-schedule.copy', $this->channel), ['from' => $source->id])
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 
     expect($this->channel->fresh()->posting_schedule)->toBeNull();
 });

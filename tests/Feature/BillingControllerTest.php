@@ -45,7 +45,7 @@ test('subscribe redirects to welcome', function () {
 
     $response = $this->actingAs($this->user)->get(route('app.subscribe'));
 
-    $response->assertRedirect(route('app.welcome.persona'));
+    $response->assertRedirect(route('app.welcome.plan'));
 });
 
 test('changePlan redirects to calendar in self hosted mode', function () {
@@ -746,7 +746,7 @@ test('changing plan without a subscription or a trial sends the owner to Welcome
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.billing.change-plan'), ['plan_id' => $workspaces->id, 'interval' => 'monthly'])
-        ->assertRedirect(route('app.welcome.persona'));
+        ->assertRedirect(route('app.welcome.plan'));
 });
 
 test('processing is ready at once for a trial without a card from Welcome', function () {
