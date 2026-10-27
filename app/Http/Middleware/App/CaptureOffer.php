@@ -31,15 +31,13 @@ class CaptureOffer
             if (filled($slug) && filled(Offer::findAvailable($slug))) {
                 $request->session()->put(self::SESSION_KEY, $slug);
             }
+        } else {
+            $pendingSlug = $request->session()->pull(self::SESSION_KEY);
+            $slug ??= $pendingSlug;
 
-            return $next($request);
-        }
-
-        $pendingSlug = $request->session()->pull(self::SESSION_KEY);
-        $slug ??= $pendingSlug;
-
-        if (filled($slug) && $user->isAccountOwner() && filled($user->account)) {
-            ClaimOffer::execute($user->account, $slug);
+            if (filled($slug) && $user->isAccountOwner()) {
+                ClaimOffer::execute($user->account, $slug);
+            }
         }
 
         return $next($request);
