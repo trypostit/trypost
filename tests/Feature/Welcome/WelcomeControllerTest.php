@@ -792,3 +792,59 @@ test('a second submit does not start the trial without a card again', function (
 
     Bus::assertDispatchedTimes(CaptureAccountEvent::class, 1);
 });
+
+test('a trial without a card whose last place went opens the full price checkout instead of a free trial', function () {
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->trial(7)->withoutCard()->limitedTo(1)->create();
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+    Account::factory()->create()->offers()->attach($offer, ['claimed_at' => now(), 'redeemed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $checkoutOffer = null): bool => blank($checkoutOffer))
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    expect($this->user->account->fresh()->trial_ends_at)->toBeNull()
+        ->and($this->user->account->fresh()->hasAppAccess())->toBeFalse();
+});
+
+test('an offer that ends before the plan is submitted opens the full price checkout', function () {
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->create(['ends_at' => now()->addHour()]);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->travel(2)->hours();
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $checkoutOffer = null): bool => blank($checkoutOffer))
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('when a trial without a card ends the owner loses access and is back at the plan step', function () {
+    completeWelcomeThroughSoftware($this->user);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $offer = Offer::factory()->trial(7)->withoutCard()->create();
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+    StartGenericTrial::execute($this->user->fresh(), $socials, $offer);
+
+    $this->travel(8)->days();
+
+    expect($this->user->account->fresh()->hasAppAccess())->toBeFalse();
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.calendar'))
+        ->assertRedirect(route('app.welcome.plan'));
+});

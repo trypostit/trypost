@@ -313,3 +313,17 @@ test('an owner who claimed an offer before its last place went pays the full pri
     expect($owner->account->offers()->count())->toBe(1)
         ->and($owner->account->currentOffer())->toBeNull();
 });
+
+test('a guest\'s offer that ends before they sign in is not claimed', function () {
+    $offer = Offer::factory()->create(['ends_at' => now()->addHour()]);
+    $owner = offerTestOwner();
+
+    $this->get(route('login', ['offer' => $offer->slug]))->assertSessionHas(CaptureOffer::SESSION_KEY, $offer->slug);
+
+    $this->travel(2)->hours();
+
+    $this->post(route('login.store'), ['email' => $owner->email, 'password' => 'password']);
+    $this->get(route('app.welcome.plan'));
+
+    expect($owner->account->offers()->count())->toBe(0);
+});
