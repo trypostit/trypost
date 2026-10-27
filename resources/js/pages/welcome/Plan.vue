@@ -11,18 +11,13 @@ import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { REVIEWS } from '@/lib/reviews';
 import { store } from '@/routes/app/welcome/plan';
+import type { Offer } from '@/types/offer';
 import type { PlanOption } from '@/types/plan';
-
-type PlanOffer = {
-    key: string;
-    has_name: boolean;
-    has_price: boolean;
-};
 
 const props = defineProps<{
     plan: PlanOption;
     firstMonthOffer: boolean;
-    offer: PlanOffer | null;
+    offer: Offer | null;
 }>();
 
 const showsOfferPrice = computed((): boolean => props.offer?.has_price === true);

@@ -39,6 +39,12 @@ import {
     portal,
 } from '@/routes/app/billing';
 import type { AuthPlan, SharedData } from '@/types';
+import type {
+    Invoice,
+    PaymentMethod,
+    Subscription,
+    SubscriptionDiscount,
+} from '@/types/billing';
 import {
     DEFAULT_BILLING_INTERVAL,
     deniedPlanIdsFor,
@@ -46,34 +52,6 @@ import {
     type BillingInterval,
     type PlanOption,
 } from '@/types/plan';
-
-interface Subscription {
-    stripe_status: string;
-    ends_at: string | null;
-}
-
-interface PaymentMethod {
-    id: string;
-    brand: string;
-    last4: string;
-    exp_month: number;
-    exp_year: number;
-    is_default: boolean;
-}
-
-interface SubscriptionDiscount {
-    value: string;
-    duration: 'once' | 'repeating' | 'forever';
-    ends_at: string | null;
-}
-
-interface Invoice {
-    id: string;
-    date: string;
-    total: string;
-    status: string;
-    invoice_pdf: string | null;
-}
 
 interface ScrollInvoices {
     data: Invoice[];
