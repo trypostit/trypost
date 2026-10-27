@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Billing\ListAccountCards;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
-use App\Http\Resources\App\PaymentMethodResource;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
@@ -22,7 +22,6 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Exceptions\IncompletePayment;
-use Laravel\Cashier\PaymentMethod;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class BillingController extends Controller
@@ -85,46 +84,9 @@ class BillingController extends Controller
             'invoices' => Inertia::scroll(
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
-            'paymentMethods' => fn (): array => $hasSubscription ? $this->paymentMethods($account, $subscription) : [],
+            'paymentMethods' => fn (): array => $hasSubscription ? ListAccountCards::execute($account, $subscription) : [],
             'discount' => fn (): ?array => $this->discount($account, $subscription),
         ]);
-    }
-
-    /**
-     * The customer's cards, the default one first: the customer's default, else
-     * the subscription's (Stripe Checkout anchors the card there), whichever is
-     * a card in the list, else the first card.
-     *
-     * @return list<array{id: string, brand: string, last4: string, exp_month: int, exp_year: int, is_default: bool}>
-     */
-    private function paymentMethods(Account $account, Subscription $subscription): array
-    {
-        $paymentMethods = $account->paymentMethods('card');
-
-        if ($paymentMethods->isEmpty()) {
-            return [];
-        }
-
-        $defaultId = collect([$account->defaultPaymentMethod()?->id, $this->subscriptionPaymentMethodId($subscription)])
-            ->first(fn (?string $id): bool => $paymentMethods->contains(fn (PaymentMethod $paymentMethod): bool => $paymentMethod->id === $id))
-            ?? $paymentMethods->first()->id;
-
-        return $paymentMethods
-            ->sortByDesc(fn (PaymentMethod $paymentMethod): bool => $paymentMethod->id === $defaultId)
-            ->map(fn (PaymentMethod $paymentMethod): array => PaymentMethodResource::make($paymentMethod, $paymentMethod->id === $defaultId)->resolve())
-            ->values()
-            ->all();
-    }
-
-    /**
-     * The card Stripe Checkout attached to the subscription, which renewals
-     * charge when the customer has no default of its own.
-     */
-    private function subscriptionPaymentMethodId(Subscription $subscription): ?string
-    {
-        $paymentMethod = $subscription->asStripeSubscription()->default_payment_method;
-
-        return is_string($paymentMethod) ? $paymentMethod : $paymentMethod?->id;
     }
 
     /**
