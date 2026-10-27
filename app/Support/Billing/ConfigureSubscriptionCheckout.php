@@ -24,8 +24,9 @@ final class ConfigureSubscriptionCheckout
 
     /**
      * The offer decides the discount, the trial and the promotion code field;
-     * without one the account pays the full price. A coupon wins over the
-     * field: Stripe rejects both on one session, never a trial with it.
+     * without one the account pays the full price and may enter a promotion
+     * code. A coupon wins over the field: Stripe rejects both on one session,
+     * never a trial with it.
      * The caller resolves the offer once with the account's current offer, so the coupon, the
      * checkout metadata and the tracked events agree.
      */
@@ -39,7 +40,7 @@ final class ConfigureSubscriptionCheckout
             return $subscription->withCoupon($offer->stripe_coupon_id);
         }
 
-        if ($offer?->allow_promotion_codes === true) {
+        if (blank($offer) || $offer->allow_promotion_codes) {
             $subscription->allowPromotionCodes();
         }
 

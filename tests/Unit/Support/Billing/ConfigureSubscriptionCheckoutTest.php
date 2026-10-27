@@ -56,12 +56,18 @@ function configureCheckout(Account $account): SubscriptionBuilder
     return $subscription;
 }
 
-test('without an offer the checkout charges the full price at once', function () {
+test('without an offer the checkout charges the full price at once and takes a promotion code', function () {
     $subscription = configureCheckout($this->account);
 
     expect($subscription->couponId)->toBeNull()
         ->and(trialExpiresAt($subscription))->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeFalse();
+        ->and($subscription->allowPromotionCodes)->toBeTrue();
+});
+
+test('an offer that does not allow promotion codes hides the field', function () {
+    claimOfferFor($this->account, Offer::factory()->trial(8)->create());
+
+    expect(configureCheckout($this->account)->allowPromotionCodes)->toBeFalse();
 });
 
 test('an offer that allows promotion codes shows the field', function () {
