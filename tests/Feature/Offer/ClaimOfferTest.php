@@ -284,3 +284,32 @@ test('a waiting offer is still claimed when the first signed-in page links to on
 
     expect($owner->account->offers()->pluck('offers.id')->all())->toBe([$this->offer->id]);
 });
+
+test('an offer limited to two places takes two redemptions and refuses a third account', function () {
+    $offer = Offer::factory()->limitedTo(2)->create();
+    $first = offerTestOwner();
+    $second = offerTestOwner();
+    $third = offerTestOwner();
+
+    expect(ClaimOffer::execute($first->account, $offer->slug)?->is($offer))->toBeTrue();
+    $first->account->offers()->updateExistingPivot($offer->id, ['redeemed_at' => now()]);
+
+    expect(ClaimOffer::execute($second->account, $offer->slug)?->is($offer))->toBeTrue();
+    $second->account->offers()->updateExistingPivot($offer->id, ['redeemed_at' => now()]);
+
+    expect(ClaimOffer::execute($third->account, $offer->slug))->toBeNull()
+        ->and($third->account->offers()->count())->toBe(0)
+        ->and($third->account->currentOffer())->toBeNull();
+});
+
+test('an owner who claimed an offer before its last place went pays the full price', function () {
+    $offer = Offer::factory()->limitedTo(1)->create();
+    $owner = offerTestOwner();
+    ClaimOffer::execute($owner->account, $offer->slug);
+
+    $other = offerTestOwner();
+    $other->account->offers()->attach($offer, ['claimed_at' => now(), 'redeemed_at' => now()]);
+
+    expect($owner->account->offers()->count())->toBe(1)
+        ->and($owner->account->currentOffer())->toBeNull();
+});
