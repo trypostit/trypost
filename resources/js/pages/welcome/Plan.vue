@@ -6,6 +6,7 @@ import { computed } from 'vue';
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
+import WelcomeOfferBanner from '@/components/welcome/WelcomeOfferBanner.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
 import { REVIEWS } from '@/lib/reviews';
@@ -78,24 +79,7 @@ const submit = (): void => {
         :description="$t('welcome.plan_description')"
         step="plan"
     >
-        <div
-            v-if="offer?.has_banner"
-            class="mb-6 flex justify-center"
-            data-testid="welcome-plan-offer"
-        >
-            <p
-                class="inline-flex items-center gap-3 rounded-full bg-foreground py-1.5 ps-1.5 pe-5 text-start text-sm text-background sm:text-base"
-            >
-                <span
-                    class="shrink-0 rounded-full bg-background px-3 py-1 text-xs font-strong tracking-wider text-foreground uppercase sm:text-sm"
-                    data-testid="welcome-plan-offer-name"
-                    >{{ $t(`offers.${offer.key}.name`) }}</span
-                >
-                <span data-testid="welcome-plan-offer-headline">{{
-                    $t(`offers.${offer.key}.headline`)
-                }}</span>
-            </p>
-        </div>
+        <WelcomeOfferBanner v-if="offer?.has_banner" :offer-key="offer.key" />
 
         <article
             class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
