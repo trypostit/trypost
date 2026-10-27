@@ -68,7 +68,7 @@ return [
         ],
         'change' => 'Mudar plano',
         'subscribe' => 'Assinar agora',
-        'trial_until' => 'Trial até :date',
+        'trial_until' => 'Seu período de teste vai até :date',
         'cancelled' => 'Cancelado, termina em :date',
         'discount_until' => ':discount de desconto até :date',
         'discount_forever' => ':discount de desconto em todos os pagamentos',
