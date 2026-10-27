@@ -847,4 +847,27 @@ test('when a trial without a card ends the owner loses access and is back at the
     $this->actingAs($this->user->fresh())
         ->get(route('app.calendar'))
         ->assertRedirect(route('app.welcome.plan'));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertInertia(fn ($page) => $page->where('offer', null));
+});
+
+test('an owner on a trial without a card never reaches checkout or a second trial from Welcome', function () {
+    completeWelcomeThroughSoftware($this->user);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->trial(7)->withoutCard()->create();
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+    StartGenericTrial::execute($this->user->fresh(), $socials, $offer);
+    $trialEndsAt = $this->user->account->fresh()->trial_ends_at;
+    $this->user->account->offers()->attach(Offer::factory()->trial(14)->withoutCard()->create(), ['claimed_at' => now()->addMinute()]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect(route('app.calendar'));
+
+    expect($this->user->account->fresh()->trial_ends_at->equalTo($trialEndsAt))->toBeTrue();
 });
