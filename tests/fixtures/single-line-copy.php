@@ -49,6 +49,8 @@ return [
     'welcome.plan_checkout_button' => 24,
     'billing.current_plan.subscribe' => 17,
     'offers.bf26.checkout_button' => 24,
+    'offers.bf26.name' => 14,
+    'offers.fm1.name' => 16,
     'offers.fm1.checkout_button' => 24,
     'offers.ft7d.checkout_button' => 22,
     'offers.ft7dnc.checkout_button' => 22,

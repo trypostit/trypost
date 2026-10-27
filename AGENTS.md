@@ -824,6 +824,7 @@ view turns a forgotten variable into a runtime-only failure.
 
 - This project uses `@tabler/icons-vue` for all icons. NEVER use `lucide-vue-next`.
 - Brand logos come from `@thesvg/vue`, one import per logo (`import Canva from '@thesvg/vue/canva'`). A one-color logo that must follow the theme goes through `inTextColor()` (`resources/js/lib/brandLogos.ts`).
+- **Exception — card brand logos on billing** (owner decision October 2026): the full-color card artwork lives in `public/images/card-brands/*.svg`, mapped by Stripe's `card.brand` in `resources/js/lib/cardBrands.ts` (a brand without its own art uses `generic.svg`).
 - All Tabler icons are prefixed with `Icon`, e.g. `IconCheck`, `IconChevronRight`, `IconMail`.
 - Import icons from `@tabler/icons-vue`: `import { IconCheck, IconX } from '@tabler/icons-vue'`.
 - Browse available icons at https://tabler.io/icons

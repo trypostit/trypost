@@ -13,6 +13,7 @@ use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Listeners\StripeEventListener;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
@@ -1136,4 +1137,39 @@ test('an old subscription ending during a trial without a card keeps the trial p
     ]));
 
     expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+});
+
+test('a trial without a card that subscribes counts as a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(5), 'redeemed_at' => now()->subDays(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatched(TrackTrialConverted::class, fn ($job) => $job->accountId === (string) $this->account->id);
+});
+
+test('a first paid subscription without a trial is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
 });

@@ -71,12 +71,15 @@ class StripeEventListener
     protected function handleSubscriptionCreated(Account $account, array $payload): void
     {
         $previousPlan = $account->plan?->name;
+        $convertsTrialWithoutCard = blank($account->first_paid_at)
+            && $account->redeemedOffers()->where('offers.requires_card', false)->exists();
 
         $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
+        TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard && $this->isNowActive($payload), (string) $account->id, $payload);
         TrackTrialStarted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_TRIALING, (string) $account->id, $payload);
         TrackCheckoutCompleted::dispatchIf(PostHogService::shouldTrack() && $this->currentStatus($payload) === StripeSubscription::STATUS_ACTIVE, (string) $account->id, $payload);
     }

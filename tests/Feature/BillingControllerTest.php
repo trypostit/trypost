@@ -594,7 +594,7 @@ test('a member cannot open the billing checkout', function () {
     $member = User::factory()->create(['account_id' => $this->account->id]);
     $this->workspace->members()->attach($member->id, membershipPivot('member'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
-    $this->account->update(['trial_ends_at' => now()->addDays(5)]);
+    $this->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id'), 'trial_ends_at' => now()->addDays(5)]);
 
     $this->actingAs($member->fresh())
         ->post(route('app.billing.checkout'))

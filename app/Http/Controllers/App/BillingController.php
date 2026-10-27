@@ -7,7 +7,6 @@ namespace App\Http\Controllers\App;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
-use App\Enums\Plan\Slug;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PaymentMethodResource;
@@ -58,8 +57,7 @@ class BillingController extends Controller
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
         return $account->subscribed(Account::SUBSCRIPTION_NAME)
-            && filled($account->plan)
-            && in_array($subscription?->stripe_price, [$account->plan->stripe_monthly_price_id, $account->plan->stripe_yearly_price_id], true);
+            && Plan::forStripePrices([$subscription->stripe_price])->whereKey($account->plan_id)->exists();
     }
 
     public function index(Request $request): Response|RedirectResponse
@@ -203,15 +201,13 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $account = $request->user()->account;
+        $account = $request->user()->accountOrFail();
 
-        if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
+        if ($account->subscribed(Account::SUBSCRIPTION_NAME) || blank($account->plan)) {
             return redirect()->route('app.billing.index');
         }
 
-        $plan = $account->plan ?? Plan::active()->where('slug', Slug::Socials)->firstOrFail();
-
-        return $this->subscribeFromTrial($account, $plan, Interval::Monthly, $checkout);
+        return $this->subscribeFromTrial($account, $account->plan, Interval::Monthly, $checkout);
     }
 
     /**
