@@ -747,6 +747,19 @@ test('plan store hands checkout the offer it tracked', function () {
         ->assertRedirect('https://checkout.stripe.test/session');
 });
 
+test('the plan step sends the banner only for an offer that shows one', function () {
+    app('translator')->addLines([
+        'offers.black_friday_2026.name' => 'Black Friday',
+        'offers.black_friday_2026.headline' => '50% off your first 3 months',
+    ], 'en');
+    completeWelcomeThroughSoftware($this->user);
+    $this->user->account->offers()->attach(Offer::factory()->create(['slug' => 'black-friday-2026']), ['claimed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertInertia(fn ($page) => $page->where('offer.has_banner', false));
+});
+
 test('the plan step sends the offer copy only when it exists in the user\'s language', function (string $locale, bool $hasCopy) {
     app('translator')->addLines([
         'offers.black_friday_2026.name' => 'Black Friday',
@@ -756,7 +769,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
     ], 'en');
     completeWelcomeThroughSoftware($this->user);
     $this->user->update(['locale' => $locale]);
-    $this->user->account->offers()->attach(Offer::factory()->create(['slug' => 'black-friday-2026']), ['claimed_at' => now()]);
+    $this->user->account->offers()->attach(Offer::factory()->withBanner()->create(['slug' => 'black-friday-2026']), ['claimed_at' => now()]);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))

@@ -75,10 +75,10 @@ const submit = (): void => {
             data-testid="welcome-plan-offer"
         >
             <p
-                class="inline-flex items-center gap-2 rounded-full bg-foreground py-1 ps-1 pe-4 text-sm text-background"
+                class="inline-flex items-center gap-3 rounded-full bg-foreground py-1.5 ps-1.5 pe-5 text-start text-sm text-background sm:text-base"
             >
                 <span
-                    class="rounded-full bg-background px-2.5 py-0.5 text-xs font-strong tracking-wide text-foreground uppercase"
+                    class="shrink-0 rounded-full bg-background px-3 py-1 text-xs font-strong tracking-wider text-foreground uppercase sm:text-sm"
                     data-testid="welcome-plan-offer-name"
                     >{{ $t(`offers.${offer.key}.name`) }}</span
                 >

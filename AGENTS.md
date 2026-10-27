@@ -364,8 +364,8 @@ field, or a mix. The 7-day trial (`free-trial-7-days`), the `$1` first month
 (`first-month`) and campaigns such as Black Friday (`bf26`) are all offers. It
 lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
 `trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
-end, no limit; `allow_promotion_codes` and `first_subscription_only` false by
-default) and reaches an account through the pivot
+end, no limit; `allow_promotion_codes`, `first_subscription_only` and
+`show_banner` false by default) and reaches an account through the pivot
 `account_offer` (`claimed_at`, `redeemed_at`).
 
 - **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.
@@ -411,8 +411,7 @@ default) and reaches an account through the pivot
   (`OfferCopyTest`). Each trial length is its own offer with its own copy
   (`free-trial-7-days`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
   checks each key in the current locale only. The Welcome plan step shows the
-  banner (dark pill, the name in a light tag) only when `name` and `headline`
-  exist, and the offer price only when `price` and `period` exist; it never
+  banner (a `bg-foreground` pill, the name in a `bg-background` uppercase tag) only when the row has `show_banner` and `name` and `headline` exist, and the offer price only when `price` and `period` exist; it never
   prints a raw key. A trial-only offer's button says
   `welcome.plan_start_trial`; without an offer the step shows the full price.
   `tests/Feature/Offer/OfferCopyTest.php` fails when an offer misses its copy in

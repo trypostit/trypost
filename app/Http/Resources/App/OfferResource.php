@@ -29,7 +29,7 @@ class OfferResource extends JsonResource
             'key' => $key,
             'trial_days' => $this->trial_days,
             'has_coupon' => filled($this->stripe_coupon_id),
-            'has_banner' => $this->hasCopy("offers.{$key}.name") && $this->hasCopy("offers.{$key}.headline"),
+            'has_banner' => $this->show_banner && $this->hasCopy("offers.{$key}.name") && $this->hasCopy("offers.{$key}.headline"),
             'has_price' => $this->hasCopy("offers.{$key}.price") && $this->hasCopy("offers.{$key}.period"),
         ];
     }

@@ -28,6 +28,7 @@ class OfferFactory extends Factory
             'trial_days' => null,
             'allow_promotion_codes' => false,
             'first_subscription_only' => false,
+            'show_banner' => false,
         ];
     }
 
@@ -65,6 +66,13 @@ class OfferFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'allow_promotion_codes' => true,
+        ]);
+    }
+
+    public function withBanner(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'show_banner' => true,
         ]);
     }
 

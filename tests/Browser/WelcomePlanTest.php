@@ -394,7 +394,7 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
-    $user->account->offers()->attach(Offer::factory()->create(['slug' => $slug]), ['claimed_at' => now()]);
+    $user->account->offers()->attach(Offer::factory()->withBanner()->create(['slug' => $slug]), ['claimed_at' => now()]);
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
@@ -411,6 +411,21 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
     'black friday' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', 'for your first 3 months'],
     'first month' => ['first-month', 'First month', 'Your first month for $1', '$1', 'for your first month'],
 ]);
+
+test('the plan step keeps an offer\'s price but hides its banner when the offer does not show one', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->create(['slug' => 'bf26']), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@plan-price-socials');
+
+    $page->assertMissing('@welcome-plan-offer')
+        ->assertSeeIn('@plan-price-socials', '$9.50')
+        ->assertNoJavaScriptErrors();
+});
 
 test('the plan step shows neither a banner nor an offer price for an offer without copy', function () {
     config(['trypost.self_hosted' => false]);
