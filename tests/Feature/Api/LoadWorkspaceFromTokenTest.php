@@ -497,3 +497,16 @@ test('a workspace query parameter does not break the api rate limiter', function
         ->getJson(route('api.workspace.show', ['workspace' => 'foo']))
         ->assertOk();
 });
+
+test('allows api requests during a trial without a card', function () {
+    $this->user->account->update([
+        'trial_ends_at' => now()->addDays(7),
+    ]);
+
+    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
+        ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
+
+    $this->withHeaders(['Authorization' => 'Bearer '.$this->plainToken])
+        ->getJson(route('api.workspace.show'))
+        ->assertOk();
+});

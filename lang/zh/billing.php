@@ -68,8 +68,6 @@ return [
         ],
         'change' => '更改套餐',
         'subscribe' => '立即订阅',
-        'price_monthly' => ':price/月',
-        'price_yearly' => ':price/年',
         'trial_until' => '试用至 :date',
         'cancelled' => '已取消，将于 :date 结束',
         'discount_until' => '优惠 :discount，截至 :date',

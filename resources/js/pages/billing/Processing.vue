@@ -11,7 +11,7 @@ import { mcp } from '@/routes/app/welcome';
 import type { SharedData } from '@/types';
 
 const props = defineProps<{
-    subscriptionActive: boolean;
+    ready: boolean;
     returnsToBilling: boolean;
 }>();
 
@@ -19,13 +19,13 @@ const page = usePage<SharedData>();
 
 // Poll `auth` so `auth.plan` is set after the webhook writes plan_id.
 const { stop } = usePoll(2000, {
-    only: ['subscriptionActive', 'auth'],
+    only: ['ready', 'auth'],
 });
 
 const finishing = ref(false);
 
 const purchaseReady = computed(
-    (): boolean => props.subscriptionActive && page.props.auth.plan !== null,
+    (): boolean => props.ready && page.props.auth.plan !== null,
 );
 
 const isPhone = useBelowBreakpoint('sm');

@@ -5,14 +5,11 @@ declare(strict_types=1);
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\CheckoutEvent;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Route;
 use Stripe\ApiRequestor;
 use Stripe\HttpClient\ClientInterface;
@@ -162,7 +159,7 @@ test('billing processing shows processing page', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('billing/Processing', false)
-        ->has('subscriptionActive')
+        ->has('ready')
         ->missing('redirectToOnboarding')
     );
 });
@@ -183,7 +180,7 @@ test('billing processing keeps auth.plan null until the webhook writes plan_id',
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('billing/Processing', false)
-            ->where('subscriptionActive', true)
+            ->where('ready', true)
             ->where('auth.plan', null)
         );
 });
@@ -491,6 +488,21 @@ test('billing index takes the first card as the default when the customer has no
         );
 });
 
+test('billing index marks the subscription card as the default when the customer has none', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'visa', secondCardBrand: 'mastercard', customerHasDefault: false, subscriptionCard: 'pm_fake');
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('paymentMethods.0.id', 'pm_fake')
+            ->where('paymentMethods.0.is_default', true)
+            ->where('paymentMethods.1.id', 'pm_fake_second')
+            ->where('paymentMethods.1.is_default', false)
+        );
+});
+
 test('billing index lists no cards without any', function () {
     config(['trypost.self_hosted' => false]);
     fakeStripeBilling($this->account);
@@ -589,9 +601,8 @@ test('a member cannot open the billing checkout', function () {
         ->assertForbidden();
 });
 
-test('subscribing from a generic trial applies an offer claimed meanwhile and tracks the checkout', function () {
-    config(['trypost.self_hosted' => false, 'services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
-    Bus::fake([CaptureAccountEvent::class]);
+test('subscribing from a generic trial applies an offer claimed meanwhile', function () {
+    config(['trypost.self_hosted' => false]);
     $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
     $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
     $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
@@ -607,9 +618,6 @@ test('subscribing from a generic trial applies an offer claimed meanwhile and tr
     $this->actingAs($this->user->fresh())
         ->post(route('app.billing.checkout'))
         ->assertRedirect('https://checkout.stripe.test/session');
-
-    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started
-        && $job->properties['offer'] === 'bf26');
 });
 
 test('processing returns a billing checkout to billing', function () {
@@ -708,4 +716,48 @@ test('billing does not show the discount of a subscription that ended', function
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.index'))
         ->assertInertia(fn ($page) => $page->where('discount', null)->where('onTrial', true));
+});
+
+test('changing plan during a generic trial subscribes to the picked plan through Checkout', function () {
+    config(['trypost.self_hosted' => false]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $workspaces = Plan::where('slug', Slug::Workspaces)->firstOrFail();
+    $workspaces->update(['stripe_yearly_price_id' => 'price_workspaces_yearly']);
+    $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer, $origin): bool => $priceId === 'price_workspaces_yearly'
+            && $plan->is($workspaces)
+            && $origin === CheckoutOrigin::Billing)
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.change-plan'), ['plan_id' => $workspaces->id, 'interval' => 'yearly'])
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('changing plan without a subscription or a trial sends the owner to Welcome', function () {
+    config(['trypost.self_hosted' => false]);
+    $workspaces = Plan::where('slug', Slug::Workspaces)->firstOrFail();
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.change-plan'), ['plan_id' => $workspaces->id, 'interval' => 'monthly'])
+        ->assertRedirect(route('app.welcome.persona'));
+});
+
+test('processing is ready at once for a trial without a card from Welcome', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->update(['trial_ends_at' => now()->addDays(7)]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['from' => 'welcome']))
+        ->assertInertia(fn ($page) => $page->where('ready', true)->where('returnsToBilling', false));
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['from' => 'billing']))
+        ->assertInertia(fn ($page) => $page->where('ready', false));
 });

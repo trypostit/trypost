@@ -8,17 +8,14 @@ use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\CheckoutEvent;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PaymentMethodResource;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SubscriptionDiscountResource;
-use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Subscription;
-use App\Services\PostHogService;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,10 +41,11 @@ class BillingController extends Controller
 
         $account = $request->user()->accountOrFail();
         $from = $request->query('from');
+        $returnsToBilling = is_string($from) && CheckoutOrigin::tryFrom($from) === CheckoutOrigin::Billing;
 
         return Inertia::render('billing/Processing', [
-            'subscriptionActive' => $account->subscribed(Account::SUBSCRIPTION_NAME),
-            'returnsToBilling' => is_string($from) && CheckoutOrigin::tryFrom($from) === CheckoutOrigin::Billing,
+            'ready' => $returnsToBilling ? $account->subscribed(Account::SUBSCRIPTION_NAME) : $account->hasAppAccess(),
+            'returnsToBilling' => $returnsToBilling,
         ]);
     }
 
@@ -77,19 +75,19 @@ class BillingController extends Controller
             'invoices' => Inertia::scroll(
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
-            'paymentMethods' => fn (): array => $hasSubscription ? $this->paymentMethods($account) : [],
+            'paymentMethods' => fn (): array => $hasSubscription ? $this->paymentMethods($account, $subscription) : [],
             'discount' => fn (): ?array => $this->discount($account, $subscription),
         ]);
     }
 
     /**
-     * The customer's cards, the default one first. Stripe Checkout trials anchor
-     * the card to the subscription, not the customer, so without
-     * `invoice_settings.default_payment_method` the first card is the default.
+     * The customer's cards, the default one first: the customer's default, else
+     * the subscription's (Stripe Checkout anchors the card there), else the
+     * first card.
      *
      * @return list<array{id: string, brand: string, last4: string, exp_month: int, exp_year: int, is_default: bool}>
      */
-    private function paymentMethods(Account $account): array
+    private function paymentMethods(Account $account, Subscription $subscription): array
     {
         $paymentMethods = $account->paymentMethods('card');
 
@@ -97,13 +95,26 @@ class BillingController extends Controller
             return [];
         }
 
-        $defaultId = $account->defaultPaymentMethod()?->id ?? $paymentMethods->first()->id;
+        $defaultId = $account->defaultPaymentMethod()?->id
+            ?? $this->subscriptionPaymentMethodId($subscription)
+            ?? $paymentMethods->first()->id;
 
         return $paymentMethods
             ->sortByDesc(fn (PaymentMethod $paymentMethod): bool => $paymentMethod->id === $defaultId)
             ->map(fn (PaymentMethod $paymentMethod): array => PaymentMethodResource::make($paymentMethod, $paymentMethod->id === $defaultId)->resolve())
             ->values()
             ->all();
+    }
+
+    /**
+     * The card Stripe Checkout attached to the subscription, which renewals
+     * charge when the customer has no default of its own.
+     */
+    private function subscriptionPaymentMethodId(Subscription $subscription): ?string
+    {
+        $paymentMethod = $subscription->asStripeSubscription()->default_payment_method;
+
+        return is_string($paymentMethod) ? $paymentMethod : $paymentMethod?->id;
     }
 
     /**
@@ -120,7 +131,7 @@ class BillingController extends Controller
         return filled($discount) ? SubscriptionDiscountResource::make($discount)->resolve() : null;
     }
 
-    public function changePlan(ChangePlanRequest $request): RedirectResponse
+    public function changePlan(ChangePlanRequest $request, StartSubscriptionCheckout $checkout): SymfonyResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
@@ -142,7 +153,9 @@ class BillingController extends Controller
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
-        abort_if($subscription === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No active subscription');
+        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return $this->checkoutFromTrial($account, $plan, $priceId, $checkout);
+        }
 
         try {
             if ($subscription->stripe_price !== $priceId) {
@@ -168,9 +181,8 @@ class BillingController extends Controller
     }
 
     /**
-     * Subscribes an account on a generic trial: Stripe Checkout on its plan's
-     * monthly price, charged at once (the days left of the trial are not
-     * carried), with a coupon offer the owner claimed meanwhile.
+     * Subscribe now on billing: a generic trial subscribes to its plan's
+     * monthly price.
      */
     public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
     {
@@ -191,24 +203,23 @@ class BillingController extends Controller
 
         abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $offer = $account->currentOffer(withTrial: false);
-        $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, CheckoutOrigin::Billing);
+        return $this->checkoutFromTrial($account, $plan, $priceId, $checkout);
+    }
 
-        rescue(function () use ($request, $account, $plan, $offer): void {
-            CaptureAccountEvent::dispatchIf(
-                PostHogService::isEnabled(),
-                (string) $request->user()->id,
-                (string) $account->id,
-                CheckoutEvent::Started,
-                [
-                    'plan_name' => $plan->name,
-                    'interval' => Interval::Monthly->value,
-                    'offer' => $offer?->slug,
-                ],
-            );
-        });
-
-        return $response;
+    /**
+     * A generic trial subscribes through Stripe Checkout, charged at once,
+     * with a coupon offer the owner claimed meanwhile.
+     */
+    private function checkoutFromTrial(Account $account, Plan $plan, string $priceId, StartSubscriptionCheckout $checkout): SymfonyResponse
+    {
+        return $checkout->redirect(
+            $account,
+            $priceId,
+            route('app.billing.index'),
+            $plan,
+            $account->currentOffer(withTrial: false),
+            CheckoutOrigin::Billing,
+        );
     }
 
     public function portal(Request $request): RedirectResponse

@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'Change plan',
         'subscribe' => 'Subscribe now',
-        'price_monthly' => ':price/month',
-        'price_yearly' => ':price/year',
         'trial_until' => 'Trial until :date',
         'cancelled' => 'Cancelled, ends on :date',
         'discount_until' => ':discount off until :date',

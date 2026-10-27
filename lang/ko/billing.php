@@ -68,8 +68,6 @@ return [
         ],
         'change' => '요금제 변경',
         'subscribe' => '지금 구독하기',
-        'price_monthly' => ':price/월',
-        'price_yearly' => ':price/년',
         'trial_until' => ':date까지 체험',
         'cancelled' => '취소됨, :date에 종료',
         'discount_until' => ':date까지 :discount 할인',

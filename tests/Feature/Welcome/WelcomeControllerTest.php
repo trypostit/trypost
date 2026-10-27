@@ -433,7 +433,7 @@ test('completed welcome steps remain reachable when going back', function () {
         ->assertInertia(fn ($page) => $page->component('welcome/Plan', false));
 });
 
-test('welcome funnel captures every step before checkout.started', function () {
+test('welcome funnel captures every step up to the plan, in order', function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
     Bus::fake();
     $workspace = attachCurrentWorkspace($this->user);
@@ -465,7 +465,7 @@ test('welcome funnel captures every step before checkout.started', function () {
         ->post(route('app.welcome.plan.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 
-    $funnel = WelcomeEvent::funnel();
+    $funnel = array_values(array_diff(WelcomeEvent::funnel(), [CheckoutEvent::Started->value]));
 
     $captured = collect(Bus::dispatched(SendEvent::class))
         ->filter(fn (SendEvent $event): bool => $event->method === 'capture')
@@ -693,30 +693,6 @@ test('the plan step sends no offer once it expired', function () {
         );
 });
 
-test('checkout.started records the offer slug', function () {
-    config([
-        'services.posthog.enabled' => true,
-        'services.posthog.api_key' => 'phc_test',
-    ]);
-    Bus::fake();
-    completeWelcomeThroughSoftware($this->user);
-    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-    $offer = Offer::factory()->create(['slug' => 'black-friday-2026']);
-    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.plan.store'))
-        ->assertRedirect('https://checkout.stripe.test/session');
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.offer') === 'black-friday-2026');
-});
-
 test('plan store hands checkout the offer it tracked', function () {
     completeWelcomeThroughSoftware($this->user);
     Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
@@ -784,7 +760,7 @@ test('a trial without a card starts in the app, without Stripe', function () {
 
     $this->actingAs($this->user->fresh())
         ->post(route('app.welcome.plan.store'))
-        ->assertRedirect(route('app.welcome.mcp'));
+        ->assertRedirect(route('app.billing.processing', ['from' => 'welcome']));
 
     $account = $this->user->account->fresh();
 
@@ -796,5 +772,5 @@ test('a trial without a card starts in the app, without Stripe', function () {
 
     Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === TrialEvent::Started
         && $job->properties['offer'] === 'free-trial-7-days-no-card');
-    Bus::assertNotDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value);
+    Bus::assertNotDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started);
 });

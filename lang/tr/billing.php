@@ -70,8 +70,6 @@ return [
         ],
         'change' => 'Planı değiştir',
         'subscribe' => 'Şimdi abone ol',
-        'price_monthly' => ':price/ay',
-        'price_yearly' => ':price/yıl',
         'trial_until' => ':date tarihine kadar deneme',
         'cancelled' => 'İptal edildi, :date tarihinde sona erer',
         'discount_until' => ':date tarihine kadar :discount indirim',

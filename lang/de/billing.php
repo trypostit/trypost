@@ -70,8 +70,6 @@ return [
         ],
         'change' => 'Tarif ändern',
         'subscribe' => 'Jetzt abonnieren',
-        'price_monthly' => ':price/Monat',
-        'price_yearly' => ':price/Jahr',
         'trial_until' => 'Testphase bis :date',
         'cancelled' => 'Gekündigt, endet am :date',
         'discount_until' => ':discount Rabatt bis :date',

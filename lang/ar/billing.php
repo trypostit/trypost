@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'تغيير الخطة',
         'subscribe' => 'اشترك الآن',
-        'price_monthly' => ':price/شهر',
-        'price_yearly' => ':price/سنة',
         'trial_until' => 'فترة تجريبية حتى :date',
         'cancelled' => 'تم الإلغاء، ينتهي في :date',
         'discount_until' => 'خصم :discount حتى :date',

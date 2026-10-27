@@ -7,9 +7,9 @@ namespace App\Http\Controllers\App;
 use App\Actions\AccessToken\ListConnectedMcpClients;
 use App\Actions\Billing\StartGenericTrial;
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
-use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\PostHog\WelcomeEvent;
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
@@ -27,7 +27,6 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 class WelcomeController extends Controller
 {
@@ -166,7 +165,6 @@ class WelcomeController extends Controller
     public function storePlan(
         Request $request,
         StartSubscriptionCheckout $checkout,
-        PostHogService $postHog,
     ): Response|RedirectResponse {
         if ($redirect = $this->redirectIfStepIncomplete($request, requireGoals: true, requireSoftware: true)) {
             return $redirect;
@@ -183,27 +181,10 @@ class WelcomeController extends Controller
         if ($offer?->startsWithoutCard()) {
             StartGenericTrial::execute($user, $plan, $offer);
 
-            return redirect()->route('app.welcome.mcp');
+            return redirect()->route('app.billing.processing', ['from' => CheckoutOrigin::Welcome->value]);
         }
 
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan, $offer);
-
-        try {
-            $postHog->capture(
-                $user->id,
-                CheckoutEvent::Started->value,
-                [
-                    'plan_name' => $plan->name,
-                    'interval' => Interval::Monthly->value,
-                    'offer' => $offer?->slug,
-                ],
-                $user->account,
-            );
-        } catch (Throwable $e) {
-            report($e);
-        }
-
-        return $response;
+        return $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan, $offer);
     }
 
     public function mcp(Request $request): InertiaResponse|RedirectResponse

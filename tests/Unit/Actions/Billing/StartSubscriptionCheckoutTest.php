@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
 use App\Enums\User\ReferralSource;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Bus;
 use Laravel\Cashier\SubscriptionBuilder;
 use Mockery\MockInterface;
 use Stripe\ApiRequestor;
@@ -474,4 +477,33 @@ test('redirect from a generic trial charges at once and keeps the trial plan', f
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_socials_monthly', route('app.billing.index'), $plan);
 
     expect($account->fresh()->plan_id)->toBe($plan->id);
+});
+
+test('redirect tracks checkout.started on the owner with the plan, interval and offer', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake([CaptureAccountEvent::class]);
+    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+
+    $account = Account::factory()->create();
+    $owner = User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $account->update(['owner_id' => $owner->id]);
+    $offer = Offer::factory()->blackFriday()->create();
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('withCoupon')->once()->andReturnSelf();
+    $builder->shouldReceive('withMetadata')->once()->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_socials_monthly', route('app.welcome.plan'), $plan, $offer);
+
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started
+        && $job->distinctId === (string) $owner->id
+        && $job->properties === ['plan_name' => 'Socials', 'interval' => 'monthly', 'offer' => 'bf26']);
 });

@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'Cambia piano',
         'subscribe' => 'Abbonati ora',
-        'price_monthly' => ':price/mese',
-        'price_yearly' => ':price/anno',
         'trial_until' => 'Prova fino al :date',
         'cancelled' => 'Annullato, termina il :date',
         'discount_until' => ':discount di sconto fino al :date',

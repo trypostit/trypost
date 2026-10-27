@@ -115,3 +115,26 @@ test('user with past_due subscription can access the app instead of being forced
     $response->assertOk();
     $response->assertSessionMissing('errors');
 });
+
+test('a trial without a card can use the app until it ends', function () {
+    $user = CreateUser::execute([
+        'name' => 'Alice',
+        'email' => 'alice-generic@example.com',
+        'password' => 'password123',
+        'registration_ip' => '127.0.0.1',
+    ]);
+    $user->account->update(['trial_ends_at' => now()->addDays(7)]);
+
+    $workspace = Workspace::factory()->create([
+        'account_id' => $user->account_id,
+        'user_id' => $user->id,
+    ]);
+    $workspace->members()->attach($user->id, membershipPivot('member'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+
+    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertOk();
+
+    $this->travel(8)->days();
+
+    $this->actingAs($user->fresh())->get(route('app.workspace.channels'))->assertRedirect(route('app.welcome.persona'));
+});

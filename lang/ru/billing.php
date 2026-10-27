@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'Сменить план',
         'subscribe' => 'Оформить подписку',
-        'price_monthly' => ':price/месяц',
-        'price_yearly' => ':price/год',
         'trial_until' => 'Пробный период до :date',
         'cancelled' => 'Отменён, действует до :date',
         'discount_until' => 'Скидка :discount до :date',

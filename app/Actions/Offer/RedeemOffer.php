@@ -10,9 +10,11 @@ use Illuminate\Support\Str;
 class RedeemOffer
 {
     /**
-     * Records that the account's subscription was created with the offer's
-     * coupon. Only the first redemption counts; an offer the account never
-     * claimed is ignored.
+     * Records that the account used the offer it claimed: its subscription
+     * became active or trialing with it, or its trial without a card started.
+     * Only the first redemption counts; an offer the account never claimed is
+     * ignored. The redemption is what makes an offer a first subscription
+     * (`Account::isFirstTimeSubscriber()`).
      */
     public static function execute(Account $account, ?string $offerId): void
     {

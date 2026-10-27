@@ -359,7 +359,7 @@ function subscribeAccount(Account $account): void
  *
  * @param  array<string, mixed>|null  $coupon
  */
-function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0, ?string $secondCardBrand = null, bool $customerHasDefault = true): void
+function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0, ?string $secondCardBrand = null, bool $customerHasDefault = true, ?string $subscriptionCard = null): void
 {
     config(['cashier.secret' => 'sk_test_fake']);
     $account->forceFill(['stripe_id' => 'cus_fake'])->save();
@@ -370,9 +370,9 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
         'stripe_price' => 'price_123',
     ]);
 
-    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices, $secondCardBrand, $customerHasDefault) implements ClientInterface
+    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices, $secondCardBrand, $customerHasDefault, $subscriptionCard) implements ClientInterface
     {
-        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices, private ?string $secondCardBrand, private bool $customerHasDefault) {}
+        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices, private ?string $secondCardBrand, private bool $customerHasDefault, private ?string $subscriptionCard) {}
 
         public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
         {
@@ -395,6 +395,7 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                 str_contains($absUrl, '/v1/subscriptions/') => [
                     'id' => 'sub_fake',
                     'object' => 'subscription',
+                    'default_payment_method' => $this->subscriptionCard,
                     'discounts' => blank($this->coupon) ? [] : [[
                         'id' => 'di_fake',
                         'object' => 'discount',

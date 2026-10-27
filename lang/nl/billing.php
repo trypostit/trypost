@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'Plan wijzigen',
         'subscribe' => 'Nu abonneren',
-        'price_monthly' => ':price/maand',
-        'price_yearly' => ':price/jaar',
         'trial_until' => 'Proefperiode tot :date',
         'cancelled' => 'Opgezegd, eindigt op :date',
         'discount_until' => ':discount korting tot :date',

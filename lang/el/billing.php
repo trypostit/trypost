@@ -68,8 +68,6 @@ return [
         ],
         'change' => 'Αλλαγή πλάνου',
         'subscribe' => 'Εγγραφή τώρα',
-        'price_monthly' => ':price/μήνα',
-        'price_yearly' => ':price/έτος',
         'trial_until' => 'Δοκιμαστική περίοδος έως :date',
         'cancelled' => 'Ακυρώθηκε, λήγει στις :date',
         'discount_until' => 'Έκπτωση :discount έως :date',
