@@ -11,14 +11,15 @@ use App\Models\Subscription;
 class ShowSubscriptionDiscount
 {
     /**
-     * The coupon on a valid subscription, read from Stripe, so billing can say
-     * why the invoice is lower than the plan price.
+     * The coupon on the valid subscription (`Account::validSubscription()`),
+     * read from Stripe, so billing can say why the invoice is lower than the
+     * plan price.
      *
      * @return array{value: string, duration: string, ends_at: string|null}|null
      */
     public static function execute(Account $account, ?Subscription $subscription): ?array
     {
-        if (blank($subscription) || ! $subscription->valid() || ! $account->hasStripeId()) {
+        if (blank($subscription) || ! $account->hasStripeId()) {
             return null;
         }
 

@@ -14,12 +14,17 @@ class ListAccountCards
     /**
      * The customer's cards from Stripe, the default one first: the customer's
      * default, else the subscription's (Stripe Checkout anchors the card
-     * there), whichever is a card in the list, else the first card.
+     * there), whichever is a card in the list, else the first card. Nothing
+     * without a valid subscription.
      *
      * @return list<array{id: string, brand: string, last4: string, exp_month: int, exp_year: int, is_default: bool}>
      */
-    public static function execute(Account $account, Subscription $subscription): array
+    public static function execute(Account $account, ?Subscription $subscription): array
     {
+        if (blank($subscription)) {
+            return [];
+        }
+
         $cards = $account->paymentMethods('card');
 
         if ($cards->isEmpty()) {

@@ -183,10 +183,21 @@ class Account extends Model
      */
     public function planMatchesSubscription(): bool
     {
+        $subscription = $this->validSubscription();
+
+        return filled($subscription)
+            && Plan::forStripePrices([$subscription->stripe_price])->whereKey($this->plan_id)->exists();
+    }
+
+    /**
+     * The subscription while it still gives access (what `subscribed()`
+     * checks): active, trialing or in its grace period.
+     */
+    public function validSubscription(): ?Subscription
+    {
         $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
 
-        return $this->subscribed(self::SUBSCRIPTION_NAME)
-            && Plan::forStripePrices([$subscription->stripe_price])->whereKey($this->plan_id)->exists();
+        return $subscription?->valid() ? $subscription : null;
     }
 
     public function hasAppAccess(): bool

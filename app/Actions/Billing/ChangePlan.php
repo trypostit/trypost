@@ -5,9 +5,11 @@ declare(strict_types=1);
 namespace App\Actions\Billing;
 
 use App\Enums\Billing\CheckoutOrigin;
+use App\Enums\Billing\Interval;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Support\Billing\SubscriptionPlanSync;
+use Illuminate\Support\Facades\Gate;
 use Laravel\Cashier\Exceptions\IncompletePayment;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,12 +18,22 @@ class ChangePlan
     public function __construct(private StartSubscriptionCheckout $checkout) {}
 
     /**
-     * Moves the account to a plan's price. A subscription swaps its price; a
-     * generic trial subscribes through Stripe Checkout, charged at once, with
-     * a coupon offer the owner claimed meanwhile.
+     * Moves the account to a plan's price, once `swapPlan` allows it. A
+     * subscription swaps its price; a generic trial subscribes through Stripe
+     * Checkout, charged at once, with a coupon offer the owner claimed meanwhile.
      */
-    public function execute(Account $account, Plan $plan, string $priceId): Response
+    public function execute(Account $account, Plan $plan, Interval $interval): Response
     {
+        $authorization = Gate::inspect('swapPlan', [$account, $plan]);
+
+        if ($authorization->denied()) {
+            return back()->with('flash.error', $authorization->message());
+        }
+
+        $priceId = $interval->priceIdFor($plan);
+
+        abort_if(blank($priceId), Response::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+
         if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
             return $this->checkout->redirect(
                 $account,

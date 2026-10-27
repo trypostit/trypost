@@ -16,7 +16,6 @@ use App\Models\Account;
 use App\Models\Plan;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
@@ -53,23 +52,19 @@ class BillingController extends Controller
 
         abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
 
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-        $hasSubscription = $account->subscribed(Account::SUBSCRIPTION_NAME);
+        $subscription = $account->validSubscription();
 
         return Inertia::render('settings/account/Billing', [
-            'hasSubscription' => $hasSubscription,
+            'hasSubscription' => filled($subscription),
             'onTrial' => $account->isOnTrial(),
             'trialEndsAt' => $account->activeTrialEndsAt(),
-            'subscription' => $subscription?->valid() ? $subscription->only([
-                'stripe_status',
-                'ends_at',
-            ]) : null,
-            'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
+            'subscription' => $subscription?->only(['stripe_status', 'ends_at']),
+            'plan' => transform($account->plan, fn (Plan $plan): array => PlanResource::make($plan)->resolve()),
             'workspaceCount' => $account->workspaces()->count(),
-            'invoices' => Inertia::scroll(
-                fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
-            )->matchOn('data.id'),
-            'paymentMethods' => fn (): array => $hasSubscription ? ListAccountCards::execute($account, $subscription) : [],
+            'invoices' => Inertia::scroll(fn () => InvoiceResource::collection(
+                $account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid']),
+            ))->matchOn('data.id'),
+            'paymentMethods' => fn (): array => ListAccountCards::execute($account, $subscription),
             'discount' => fn (): ?array => ShowSubscriptionDiscount::execute($account, $subscription),
         ]);
     }
@@ -80,11 +75,10 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        return $this->moveToPlan(
+        return $changePlan->execute(
             $request->user()->account,
             Plan::active()->findOrFail($request->validated('plan_id')),
             Interval::from($request->validated('interval')),
-            $changePlan,
         );
     }
 
@@ -106,25 +100,7 @@ class BillingController extends Controller
             return redirect()->route('app.billing.index');
         }
 
-        return $this->moveToPlan($account, $plan, Interval::Monthly, $changePlan);
-    }
-
-    /**
-     * Every plan move answers to `swapPlan`, then the action moves the account.
-     */
-    private function moveToPlan(Account $account, Plan $plan, Interval $interval, ChangePlan $changePlan): SymfonyResponse
-    {
-        $authorization = Gate::inspect('swapPlan', [$account, $plan]);
-
-        if ($authorization->denied()) {
-            return back()->with('flash.error', $authorization->message());
-        }
-
-        $priceId = $interval->priceIdFor($plan);
-
-        abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
-
-        return $changePlan->execute($account, $plan, $priceId);
+        return $changePlan->execute($account, $plan, Interval::Monthly);
     }
 
     public function portal(Request $request): RedirectResponse
