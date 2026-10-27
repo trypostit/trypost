@@ -257,7 +257,7 @@ const selectPlan = (planId: string): void => {
                                         data-testid="billing-current-plan-price"
                                     >
                                         <span
-                                            class="text-3xl leading-none font-emphasis text-foreground"
+                                            class="text-3xl leading-none font-emphasis tracking-tight text-foreground [word-spacing:-0.15em]"
                                         >
                                             {{ $t(priceKey) }}
                                         </span>
