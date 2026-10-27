@@ -7,6 +7,7 @@ namespace App\Http\Controllers\App;
 use App\Enums\Billing\Interval;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
+use App\Http\Resources\App\PaymentMethodResource;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
@@ -19,6 +20,7 @@ use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 use Laravel\Cashier\Exceptions\IncompletePayment;
+use Laravel\Cashier\PaymentMethod;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class BillingController extends Controller
@@ -66,9 +68,33 @@ class BillingController extends Controller
             'invoices' => Inertia::scroll(
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
-            'defaultPaymentMethod' => $account->displayablePaymentMethod(),
+            'paymentMethods' => $this->paymentMethods($account),
             'discount' => $this->discount($account, $subscription),
         ]);
+    }
+
+    /**
+     * The customer's cards, the default one first. Stripe Checkout trials anchor
+     * the card to the subscription, not the customer, so without
+     * `invoice_settings.default_payment_method` the first card is the default.
+     *
+     * @return list<array{id: string, brand: string, last4: string, exp_month: int, exp_year: int, is_default: bool}>
+     */
+    private function paymentMethods(Account $account): array
+    {
+        $paymentMethods = $account->paymentMethods('card');
+
+        if ($paymentMethods->isEmpty()) {
+            return [];
+        }
+
+        $defaultId = $account->defaultPaymentMethod()?->id ?? $paymentMethods->first()->id;
+
+        return $paymentMethods
+            ->sortByDesc(fn (PaymentMethod $paymentMethod): bool => $paymentMethod->id === $defaultId)
+            ->map(fn (PaymentMethod $paymentMethod): array => PaymentMethodResource::make($paymentMethod, $paymentMethod->id === $defaultId)->resolve())
+            ->values()
+            ->all();
     }
 
     /**

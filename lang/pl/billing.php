@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Metoda płatności',
+        'title' => 'Metody płatności',
+        'default' => 'Domyślna',
         'description' => 'Zaktualizuj kartę lub dane rozliczeniowe w Stripe.',
         'no_payment_method' => 'Brak zapisanej metody płatności.',
         'expires_on' => 'Wygasa :month/:year',

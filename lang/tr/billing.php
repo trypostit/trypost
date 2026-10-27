@@ -81,7 +81,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Ödeme yöntemi',
+        'title' => 'Ödeme yöntemleri',
+        'default' => 'Varsayılan',
         'description' => 'Kartınızı veya fatura bilgilerinizi Stripe’da güncelleyin.',
         'no_payment_method' => 'Henüz kayıtlı ödeme yöntemi yok.',
         'expires_on' => 'Son kullanma: :month/:year',

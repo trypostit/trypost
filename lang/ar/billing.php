@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'طريقة الدفع',
+        'title' => 'طرق الدفع',
+        'default' => 'افتراضية',
         'description' => 'حدّث بطاقتك أو بيانات الفوترة على Stripe.',
         'no_payment_method' => 'لا توجد طريقة دفع مسجّلة بعد.',
         'expires_on' => 'تنتهي في :month/:year',

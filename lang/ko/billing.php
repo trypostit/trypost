@@ -80,6 +80,7 @@ return [
 
     'subscription' => [
         'title' => '결제 수단',
+        'default' => '기본',
         'description' => '카드나 청구 정보는 Stripe에서 업데이트하세요.',
         'no_payment_method' => '아직 등록된 결제 수단이 없습니다.',
         'expires_on' => ':month/:year 만료',

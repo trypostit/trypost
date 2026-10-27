@@ -80,6 +80,7 @@ return [
 
     'subscription' => [
         'title' => 'お支払い方法',
+        'default' => 'デフォルト',
         'description' => 'カードや請求情報は Stripe で更新できます。',
         'no_payment_method' => 'まだ登録されたお支払い方法がありません。',
         'expires_on' => '有効期限 :month/:year',

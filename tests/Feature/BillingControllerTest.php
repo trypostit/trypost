@@ -443,9 +443,55 @@ test('billing index sends the card brand Stripe reports', function () {
         ->get(route('app.billing.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('defaultPaymentMethod.brand', 'mastercard')
-            ->where('defaultPaymentMethod.last4', '4242')
+            ->has('paymentMethods', 1)
+            ->where('paymentMethods.0.brand', 'mastercard')
+            ->where('paymentMethods.0.last4', '4242')
+            ->where('paymentMethods.0.is_default', true)
         );
+});
+
+test('billing index lists every card, the default one first', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'visa', secondCardBrand: 'mastercard');
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('paymentMethods', 2)
+            ->where('paymentMethods.0.id', 'pm_fake')
+            ->where('paymentMethods.0.brand', 'visa')
+            ->where('paymentMethods.0.is_default', true)
+            ->where('paymentMethods.1.id', 'pm_fake_second')
+            ->where('paymentMethods.1.brand', 'mastercard')
+            ->where('paymentMethods.1.last4', '5454')
+            ->where('paymentMethods.1.exp_year', 2055)
+            ->where('paymentMethods.1.is_default', false)
+        );
+});
+
+test('billing index takes the first card as the default when the customer has none', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'visa', secondCardBrand: 'mastercard', customerHasDefault: false);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('paymentMethods.0.id', 'pm_fake_second')
+            ->where('paymentMethods.0.is_default', true)
+            ->where('paymentMethods.1.is_default', false)
+        );
+});
+
+test('billing index lists no cards without any', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('paymentMethods', []));
 });
 
 test('billing index lists the paid invoices a page at a time, newest first', function () {

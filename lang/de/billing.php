@@ -81,7 +81,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Zahlungsmethode',
+        'title' => 'Zahlungsmethoden',
+        'default' => 'Standard',
         'description' => 'Aktualisiere deine Karte oder Rechnungsdaten bei Stripe.',
         'no_payment_method' => 'Noch keine Zahlungsmethode hinterlegt.',
         'expires_on' => 'Läuft ab :month/:year',

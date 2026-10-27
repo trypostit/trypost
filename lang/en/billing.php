@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Payment method',
+        'title' => 'Payment methods',
+        'default' => 'Default',
         'description' => 'Update your card or billing details on Stripe.',
         'no_payment_method' => 'No payment method on file yet.',
         'expires_on' => 'Expires :month/:year',

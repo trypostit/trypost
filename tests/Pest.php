@@ -359,7 +359,7 @@ function subscribeAccount(Account $account): void
  *
  * @param  array<string, mixed>|null  $coupon
  */
-function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0): void
+function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0, ?string $secondCardBrand = null, bool $customerHasDefault = true): void
 {
     config(['cashier.secret' => 'sk_test_fake']);
     $account->forceFill(['stripe_id' => 'cus_fake'])->save();
@@ -370,9 +370,9 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
         'stripe_price' => 'price_123',
     ]);
 
-    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices) implements ClientInterface
+    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices, $secondCardBrand, $customerHasDefault) implements ClientInterface
     {
-        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices) {}
+        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices, private ?string $secondCardBrand, private bool $customerHasDefault) {}
 
         public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
         {
@@ -382,6 +382,13 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                 'customer' => 'cus_fake',
                 'type' => 'card',
                 'card' => ['brand' => $this->cardBrand, 'last4' => '4242', 'exp_month' => 4, 'exp_year' => 2044],
+            ];
+            $secondCard = blank($this->secondCardBrand) ? null : [
+                'id' => 'pm_fake_second',
+                'object' => 'payment_method',
+                'customer' => 'cus_fake',
+                'type' => 'card',
+                'card' => ['brand' => $this->secondCardBrand, 'last4' => '5454', 'exp_month' => 5, 'exp_year' => 2055],
             ];
 
             $body = match (true) {
@@ -396,11 +403,11 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                         'end' => $this->discountEndsAt,
                     ]],
                 ],
-                str_contains($absUrl, '/v1/customers/cus_fake/payment_methods') => ['object' => 'list', 'data' => array_filter([$card]), 'has_more' => false, 'url' => '/v1/payment_methods'],
+                str_contains($absUrl, '/v1/customers/cus_fake/payment_methods'), str_contains($absUrl, '/v1/payment_methods') => ['object' => 'list', 'data' => array_values(array_filter([$secondCard, $card])), 'has_more' => false, 'url' => '/v1/payment_methods'],
                 str_contains($absUrl, '/v1/customers/') => [
                     'id' => 'cus_fake',
                     'object' => 'customer',
-                    'invoice_settings' => ['default_payment_method' => $card],
+                    'invoice_settings' => ['default_payment_method' => $this->customerHasDefault ? $card : null],
                 ],
                 str_contains($absUrl, '/v1/invoices') => $this->invoices($params),
                 default => ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => '/v1/invoices'],

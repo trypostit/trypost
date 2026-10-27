@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Método de pago',
+        'title' => 'Métodos de pago',
+        'default' => 'Predeterminado',
         'description' => 'Actualiza tu tarjeta o datos de facturación en Stripe.',
         'no_payment_method' => 'Aún no hay método de pago registrado.',
         'expires_on' => 'Vence el :month/:year',

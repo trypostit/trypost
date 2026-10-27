@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Método de pagamento',
+        'title' => 'Métodos de pagamento',
+        'default' => 'Padrão',
         'description' => 'Atualize seu cartão ou dados de cobrança no Stripe.',
         'no_payment_method' => 'Nenhum método de pagamento cadastrado.',
         'expires_on' => 'Expira em :month/:year',

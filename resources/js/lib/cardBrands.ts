@@ -1,33 +1,28 @@
-import AmericanExpress from '@thesvg/vue/american-express';
-import DinersClub from '@thesvg/vue/diners-club';
-import Discover from '@thesvg/vue/discover';
-import Jcb from '@thesvg/vue/jcb';
-import Mastercard from '@thesvg/vue/mastercard';
-import Visa from '@thesvg/vue/visa';
-import type { Component } from 'vue';
-
 interface CardBrand {
     name: string;
-    logo: Component | null;
+    logo: string;
 }
 
 /**
  * Card brands as Stripe names them (`card.brand`), with the name people know
- * and its logo. A brand without a logo here shows the generic card icon.
+ * and its card-shaped logo. A brand without its own logo gets the generic card.
  */
 const CARD_BRANDS: Record<string, CardBrand> = {
-    amex: { name: 'American Express', logo: AmericanExpress },
-    diners: { name: 'Diners Club', logo: DinersClub },
-    discover: { name: 'Discover', logo: Discover },
-    eftpos_au: { name: 'eftpos', logo: null },
-    jcb: { name: 'JCB', logo: Jcb },
-    mastercard: { name: 'Mastercard', logo: Mastercard },
-    unionpay: { name: 'UnionPay', logo: null },
-    visa: { name: 'Visa', logo: Visa },
+    amex: { name: 'American Express', logo: '/images/card-brands/amex.svg' },
+    cartes_bancaires: { name: 'Cartes Bancaires', logo: '/images/card-brands/generic.svg' },
+    diners: { name: 'Diners Club', logo: '/images/card-brands/diners.svg' },
+    discover: { name: 'Discover', logo: '/images/card-brands/discover.svg' },
+    eftpos_au: { name: 'eftpos', logo: '/images/card-brands/generic.svg' },
+    interac: { name: 'Interac', logo: '/images/card-brands/generic.svg' },
+    jcb: { name: 'JCB', logo: '/images/card-brands/jcb.svg' },
+    link: { name: 'Link', logo: '/images/card-brands/generic.svg' },
+    mastercard: { name: 'Mastercard', logo: '/images/card-brands/mastercard.svg' },
+    unionpay: { name: 'UnionPay', logo: '/images/card-brands/unionpay.svg' },
+    visa: { name: 'Visa', logo: '/images/card-brands/visa.svg' },
 };
 
 export const cardBrand = (brand: string): CardBrand =>
     CARD_BRANDS[brand] ?? {
         name: brand.charAt(0).toUpperCase() + brand.slice(1),
-        logo: null,
+        logo: '/images/card-brands/generic.svg',
     };

@@ -54,10 +54,12 @@ interface Subscription {
 }
 
 interface PaymentMethod {
+    id: string;
     brand: string;
     last4: string;
     exp_month: number;
     exp_year: number;
+    is_default: boolean;
 }
 
 interface SubscriptionDiscount {
@@ -99,7 +101,7 @@ const props = defineProps<{
     plan: PlanOption | null;
     workspaceCount: number;
     invoices: ScrollInvoices;
-    defaultPaymentMethod: PaymentMethod | null;
+    paymentMethods: PaymentMethod[];
     discount: SubscriptionDiscount | null;
 }>();
 
@@ -112,12 +114,6 @@ const discountKey = computed((): string => {
         ? 'billing.current_plan.discount_until'
         : 'billing.current_plan.discount_forever';
 });
-
-const paymentMethodBrand = computed(() =>
-    props.defaultPaymentMethod
-        ? cardBrand(props.defaultPaymentMethod.brand)
-        : null,
-);
 
 const page = usePage<SharedData>();
 const plans = computed((): PlanOption[] => page.props.plans ?? []);
@@ -284,6 +280,21 @@ const selectPlan = (planId: string): void => {
                                             {{ $t(priceSuffixKey) }}
                                         </span>
                                     </p>
+                                    <p
+                                        v-if="discount"
+                                        class="flex items-center gap-1.5 text-sm text-muted-foreground"
+                                        data-testid="billing-current-plan-discount"
+                                    >
+                                        <IconDiscount
+                                            class="size-4 shrink-0 text-success-text"
+                                        />
+                                        {{
+                                            $t(discountKey, {
+                                                discount: discount.value,
+                                                date: date.formatDate(discount.ends_at),
+                                            })
+                                        }}
+                                    </p>
                                 </div>
                                 <Button
                                     variant="outline"
@@ -294,19 +305,6 @@ const selectPlan = (planId: string): void => {
                                     {{ $t('billing.current_plan.change') }}
                                 </Button>
                             </div>
-                            <p
-                                v-if="discount"
-                                class="flex items-center gap-2 self-start rounded-lg bg-success-subtle px-3 py-2 text-sm text-success-text"
-                                data-testid="billing-current-plan-discount"
-                            >
-                                <IconDiscount class="size-4 shrink-0" />
-                                {{
-                                    $t(discountKey, {
-                                        discount: discount.value,
-                                        date: date.formatDate(discount.ends_at),
-                                    })
-                                }}
-                            </p>
                         </div>
                         <p
                             v-if="subscriptionStatus === 'trial' && trialEndsAt"
@@ -375,59 +373,74 @@ const selectPlan = (planId: string): void => {
                     :title="$t('billing.subscription.title')"
                     :description="$t('billing.subscription.description')"
                 >
-                    <div
-                        class="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-5 sm:p-6"
-                    >
-                        <span
-                            v-if="paymentMethodBrand?.logo"
-                            class="inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border border-border bg-white"
-                            data-testid="billing-card-brand-logo"
-                        >
-                            <component
-                                :is="paymentMethodBrand.logo"
-                                class="h-6 w-auto"
-                                aria-hidden="true"
-                            />
-                        </span>
-                        <span
-                            v-else
-                            class="inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground"
-                        >
-                            <IconCreditCard class="size-5" />
-                        </span>
-                        <div
-                            v-if="defaultPaymentMethod"
-                            class="flex min-w-0 flex-1 flex-col gap-1"
-                        >
-                            <p
-                                class="text-sm leading-tight font-emphasis text-foreground"
-                                data-testid="billing-card-label"
-                            >
-                                {{ paymentMethodBrand?.name }}
-                                <span class="tabular-nums">•••• {{ defaultPaymentMethod.last4 }}</span>
-                            </p>
-                            <p class="text-sm text-muted-foreground tabular-nums">
-                                {{
-                                    $t('billing.subscription.expires_on', {
-                                        month: defaultPaymentMethod.exp_month
-                                            .toString()
-                                            .padStart(2, '0'),
-                                        year: defaultPaymentMethod.exp_year.toString(),
-                                    })
-                                }}
-                            </p>
-                        </div>
-                        <p v-else class="min-w-0 flex-1 text-sm text-muted-foreground">
-                            {{ $t('billing.subscription.no_payment_method') }}
-                        </p>
+                    <template #actions>
                         <Button
                             as="a"
                             variant="outline"
                             :href="portal.url()"
-                            class="shrink-0"
+                            data-testid="billing-manage-stripe"
                         >
                             {{ $t('billing.subscription.manage_stripe') }}
                         </Button>
+                    </template>
+
+                    <ul
+                        v-if="paymentMethods.length > 0"
+                        class="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card"
+                        data-testid="billing-payment-methods"
+                    >
+                        <li
+                            v-for="paymentMethod in paymentMethods"
+                            :key="paymentMethod.id"
+                            class="flex items-center gap-4 px-5 py-4"
+                            :data-testid="`billing-card-${paymentMethod.id}`"
+                        >
+                            <img
+                                :src="cardBrand(paymentMethod.brand).logo"
+                                alt=""
+                                class="h-9 w-auto shrink-0 rounded-md shadow-xs"
+                                :data-testid="`billing-card-logo-${paymentMethod.id}`"
+                            />
+                            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                                <p
+                                    class="flex flex-wrap items-center gap-2 text-sm leading-tight font-emphasis text-foreground"
+                                    data-testid="billing-card-label"
+                                >
+                                    {{ cardBrand(paymentMethod.brand).name }}
+                                    <span class="tabular-nums">•••• {{ paymentMethod.last4 }}</span>
+                                    <Badge
+                                        v-if="paymentMethod.is_default"
+                                        variant="secondary"
+                                        data-testid="billing-card-default"
+                                    >
+                                        {{ $t('billing.subscription.default') }}
+                                    </Badge>
+                                </p>
+                                <p class="text-sm text-muted-foreground tabular-nums">
+                                    {{
+                                        $t('billing.subscription.expires_on', {
+                                            month: paymentMethod.exp_month
+                                                .toString()
+                                                .padStart(2, '0'),
+                                            year: paymentMethod.exp_year.toString(),
+                                        })
+                                    }}
+                                </p>
+                            </div>
+                        </li>
+                    </ul>
+                    <div
+                        v-else
+                        class="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4"
+                    >
+                        <span
+                            class="inline-flex h-9 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                        >
+                            <IconCreditCard class="size-5" />
+                        </span>
+                        <p class="text-sm text-muted-foreground">
+                            {{ $t('billing.subscription.no_payment_method') }}
+                        </p>
                     </div>
                 </SettingsSection>
             </TabsContent>

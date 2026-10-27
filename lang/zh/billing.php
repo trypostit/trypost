@@ -80,6 +80,7 @@ return [
 
     'subscription' => [
         'title' => '付款方式',
+        'default' => '默认',
         'description' => '在 Stripe 更新你的卡片或账单信息。',
         'no_payment_method' => '尚未添加付款方式。',
         'expires_on' => '有效期至 :month/:year',

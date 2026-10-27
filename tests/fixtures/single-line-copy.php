@@ -47,6 +47,7 @@ return [
     'billing.plans.features.repurpose' => 40,
     'billing.plans.features.team' => 32,
     'billing.plans.start_first_month' => 18,
+    'billing.subscription.default' => 14,
     'billing.tabs.plan' => 5,
     'billing.tabs.invoices' => 10,
     'billing.current_plan.statuses.active' => 8,

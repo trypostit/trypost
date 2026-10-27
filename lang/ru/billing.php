@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Способ оплаты',
+        'title' => 'Способы оплаты',
+        'default' => 'Основная',
         'description' => 'Обновите карту или платёжные данные в Stripe.',
         'no_payment_method' => 'Способ оплаты пока не добавлен.',
         'expires_on' => 'Истекает :month/:year',

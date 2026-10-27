@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Betaalmethode',
+        'title' => 'Betaalmethoden',
+        'default' => 'Standaard',
         'description' => 'Werk je kaart of factuurgegevens bij in Stripe.',
         'no_payment_method' => 'Nog geen betaalmethode geregistreerd.',
         'expires_on' => 'Verloopt :month/:year',

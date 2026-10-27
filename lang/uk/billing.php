@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Спосіб оплати',
+        'title' => 'Способи оплати',
+        'default' => 'Основна',
         'description' => 'Оновіть картку або платіжні дані в Stripe.',
         'no_payment_method' => 'Спосіб оплати ще не додано.',
         'expires_on' => 'Діє до :month/:year',

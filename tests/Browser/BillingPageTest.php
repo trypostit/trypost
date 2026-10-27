@@ -96,7 +96,7 @@ test('self-hosted settings show neither an account nor a billing item', function
         ->assertNoJavaScriptErrors();
 });
 
-test('the billing page explains a discount and shows the card brand logo', function () {
+test('the billing page explains a discount and lists every card, the default first', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -109,21 +109,35 @@ test('the billing page explains a discount and shows the card brand logo', funct
         ['percent_off' => 50, 'amount_off' => null, 'currency' => null, 'duration' => 'repeating', 'duration_in_months' => 3],
         now()->addMonths(3)->timestamp,
         'visa',
+        secondCardBrand: 'mastercard',
     );
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.billing.index'));
-    waitFor($page, '@billing-current-plan-discount');
+    waitFor($page, '@billing-card-pm_fake_second');
 
     $page->assertSeeIn('@billing-current-plan-price', '$19')
         ->assertSeeIn('@billing-current-plan-discount', '50% off until')
-        ->assertVisible('@billing-card-brand-logo')
-        ->assertSeeIn('@billing-card-label', 'Visa')
-        ->assertSeeIn('@billing-card-label', '•••• 4242')
+        ->assertSeeIn('@billing-card-pm_fake', 'Visa')
+        ->assertSeeIn('@billing-card-pm_fake', '•••• 4242')
+        ->assertSeeIn('@billing-card-pm_fake', 'Default')
+        ->assertSeeIn('@billing-card-pm_fake_second', 'Mastercard')
+        ->assertSeeIn('@billing-card-pm_fake_second', '•••• 5454')
+        ->assertDontSeeIn('@billing-card-pm_fake_second', 'Default')
+        ->assertVisible('@billing-manage-stripe')
         ->assertNoJavaScriptErrors();
+
+    $page->assertAttribute('@billing-card-logo-pm_fake', 'src', '/images/card-brands/visa.svg')
+        ->assertAttribute('@billing-card-logo-pm_fake_second', 'src', '/images/card-brands/mastercard.svg');
+
+    waitForState($page, '@billing-card-logo-pm_fake_second', 'element.complete && element.naturalWidth > 0');
+
+    expect($page->script("[...document.querySelectorAll('[data-testid=\"billing-payment-methods\"] > li')].map((item) => item.dataset.testid)"))
+        ->toBe(['billing-card-pm_fake', 'billing-card-pm_fake_second'])
+        ->and($page->script("document.querySelector('[data-testid=\"billing-card-logo-pm_fake_second\"]').naturalWidth > 0"))->toBeTrue();
 });
 
-test('the billing page keeps the card icon for a brand without a logo', function () {
+test('the billing page shows the generic card for a brand without its own logo', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = User::factory()->create();
@@ -131,14 +145,14 @@ test('the billing page keeps the card icon for a brand without a logo', function
     $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
-    fakeStripeBilling($user->account, cardBrand: 'unionpay');
+    fakeStripeBilling($user->account, cardBrand: 'eftpos_au');
     $this->actingAs($user->fresh());
 
     $page = visit(route('app.billing.index'));
     waitFor($page, '@billing-card-label');
 
-    $page->assertSeeIn('@billing-card-label', 'UnionPay')
-        ->assertMissing('@billing-card-brand-logo')
+    $page->assertSeeIn('@billing-card-label', 'eftpos')
+        ->assertAttribute('@billing-card-logo-pm_fake', 'src', '/images/card-brands/generic.svg')
         ->assertMissing('@billing-current-plan-discount')
         ->assertNoJavaScriptErrors();
 });

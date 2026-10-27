@@ -227,28 +227,4 @@ class Account extends Model
 
         return $subscription->trial_ends_at;
     }
-
-    /**
-     * Returns the displayable card for the billing UI. Falls back to the first
-     * attached payment method when the customer has no `invoice_settings.default_payment_method`
-     * (Stripe Checkout trials anchor the card to the subscription, not the customer).
-     *
-     * @return array{brand: string, last4: string, exp_month: int, exp_year: int}|null
-     */
-    public function displayablePaymentMethod(): ?array
-    {
-        $paymentMethod = $this->defaultPaymentMethod() ?? $this->paymentMethods()->first();
-        $card = $paymentMethod?->card;
-
-        if (! $card) {
-            return null;
-        }
-
-        return [
-            'brand' => $card->brand,
-            'last4' => $card->last4,
-            'exp_month' => $card->exp_month,
-            'exp_year' => $card->exp_year,
-        ];
-    }
 }

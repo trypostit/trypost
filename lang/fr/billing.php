@@ -79,7 +79,8 @@ return [
     ],
 
     'subscription' => [
-        'title' => 'Moyen de paiement',
+        'title' => 'Moyens de paiement',
+        'default' => 'Par défaut',
         'description' => 'Mettez à jour votre carte ou vos informations de facturation sur Stripe.',
         'no_payment_method' => 'Aucun moyen de paiement enregistré pour le moment.',
         'expires_on' => 'Expire le :month/:year',
