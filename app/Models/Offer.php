@@ -66,9 +66,7 @@ class Offer extends Model
      */
     public static function findAvailable(string $slug): ?self
     {
-        $offer = self::available()->firstWhere('slug', $slug);
-
-        return $offer?->slug === $slug ? $offer : null;
+        return self::available()->where('slug', $slug)->get()->firstWhere('slug', $slug);
     }
 
     /**
