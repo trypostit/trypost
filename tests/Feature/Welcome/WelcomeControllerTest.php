@@ -765,6 +765,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
         'offers.black_friday_2026.name' => 'Black Friday',
         'offers.black_friday_2026.headline' => '50% off your first 3 months',
         'offers.black_friday_2026.price' => '$9.50',
+        'offers.black_friday_2026.unit' => '/month',
         'offers.black_friday_2026.period' => 'for your first 3 months',
     ], 'en');
     completeWelcomeThroughSoftware($this->user);
@@ -776,6 +777,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
         ->assertInertia(fn ($page) => $page
             ->where('offer.has_banner', $hasCopy)
             ->where('offer.has_price', $hasCopy)
+            ->where('offer.has_unit', $hasCopy)
         );
 })->with([
     'english copy for an english user' => ['en', true],

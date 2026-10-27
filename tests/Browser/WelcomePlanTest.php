@@ -225,7 +225,7 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
         ->assertSee('Activate your account')
         ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
-        ->assertSeeIn('@plan-price-socials', '$0')
+        ->assertSeeIn('@plan-price-socials', 'Free')
         ->assertSeeIn('@plan-price-suffix-socials', 'for 7 days')
         ->assertSeeIn('@plan-price-original-socials', '$19/month')
         ->assertMissing('@plan-price-unit-socials')
@@ -394,7 +394,7 @@ test('the activate button shows a spinner while checkout opens', function () {
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
 });
 
-test('the plan step shows an offer\'s banner and price', function (string $slug, string $name, string $headline, string $price, string $period) {
+test('the plan step shows an offer\'s banner and price', function (string $slug, string $name, string $headline, string $price, ?string $unit, string $period) {
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
@@ -408,14 +408,19 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
         ->assertSeeIn('@welcome-plan-offer-headline', $headline)
         ->assertSeeIn('@plan-price-original-socials', '$19/month')
         ->assertSeeIn('@plan-price-socials', $price)
-        ->assertSeeIn('@plan-price-unit-socials', '/month')
         ->assertSeeIn('@plan-price-suffix-socials', $period)
         ->assertSeeIn('@welcome-plan-continue', "Activate for {$price}")
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
         ->assertNoJavaScriptErrors();
+
+    if ($unit === null) {
+        $page->assertMissing('@plan-price-unit-socials');
+    } else {
+        $page->assertSeeIn('@plan-price-unit-socials', $unit);
+    }
 })->with([
-    'black friday' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', 'for your first 3 months'],
-    'first month' => ['first-month', 'First month', 'Your first month for $1', '$1', 'for your first month'],
+    'black friday shows its unit' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', '/month', 'for your first 3 months'],
+    'first month has no unit' => ['first-month', 'First month', 'Your first month for $1', '$1', null, 'for your first month'],
 ]);
 
 test('the plan step keeps an offer\'s price but hides its banner when the offer does not show one', function () {

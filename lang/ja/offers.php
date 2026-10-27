@@ -5,6 +5,7 @@ return [
         'name' => 'ブラックフライデー',
         'headline' => '最初の3か月50%オフ',
         'price' => '$9.50',
+        'unit' => '/月',
         'period' => '最初の3か月',
     ],
     'first_month' => [
@@ -14,7 +15,7 @@ return [
         'period' => '初月の料金',
     ],
     'free_trial_7_days' => [
-        'price' => '$0',
+        'price' => '無料',
         'period' => '7日間',
     ],
 ];

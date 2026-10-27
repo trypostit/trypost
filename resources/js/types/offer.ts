@@ -4,4 +4,5 @@ export interface Offer {
     has_coupon: boolean;
     has_banner: boolean;
     has_price: boolean;
+    has_unit: boolean;
 }

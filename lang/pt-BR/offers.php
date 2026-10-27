@@ -5,6 +5,7 @@ return [
         'name' => 'Black Friday',
         'headline' => '50% de desconto nos 3 primeiros meses',
         'price' => 'R$ 49,50',
+        'unit' => '/mês',
         'period' => 'nos 3 primeiros meses',
     ],
     'first_month' => [
@@ -14,7 +15,7 @@ return [
         'period' => 'no primeiro mês',
     ],
     'free_trial_7_days' => [
-        'price' => 'R$ 0',
+        'price' => 'Grátis',
         'period' => 'por 7 dias',
     ],
 ];

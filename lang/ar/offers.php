@@ -5,6 +5,7 @@ return [
         'name' => 'الجمعة السوداء',
         'headline' => 'خصم 50% على أول 3 أشهر',
         'price' => '$9.50',
+        'unit' => '/شهر',
         'period' => 'لأول 3 أشهر',
     ],
     'first_month' => [
@@ -14,7 +15,7 @@ return [
         'period' => 'للشهر الأول',
     ],
     'free_trial_7_days' => [
-        'price' => '$0',
+        'price' => 'مجانًا',
         'period' => 'لمدة 7 أيام',
     ],
 ];

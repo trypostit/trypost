@@ -5,6 +5,7 @@ return [
         'name' => '블랙 프라이데이',
         'headline' => '첫 3개월 50% 할인',
         'price' => '$9.50',
+        'unit' => '/월',
         'period' => '첫 3개월',
     ],
     'first_month' => [
@@ -14,7 +15,7 @@ return [
         'period' => '첫 달 요금',
     ],
     'free_trial_7_days' => [
-        'price' => '$0',
+        'price' => '무료',
         'period' => '7일 동안',
     ],
 ];

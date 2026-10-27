@@ -403,7 +403,9 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
 - **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
   slug with dashes as underscores (`free-trial-7-days` → `free_trial_7_days`): `name` (the
-  banner's tag), `headline` (the banner's sentence), `price` and `period`, in all
+  banner's tag), `headline` (the banner's sentence), `price`, `period` and an
+  optional `unit` shown next to the price (`/month` for Black Friday; a trial or
+  the `$1` first month has none, so their copy decides it, never the code), in all
   16 locales; the price is display text per locale, like
   `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
   stored in the database, and the banner (`name`, `headline`) is optional: an

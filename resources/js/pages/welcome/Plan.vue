@@ -31,6 +31,14 @@ const checkoutPriceKey = computed((): string =>
         : 'billing.subscribe.prices.socials.monthly',
 );
 
+const unitKey = computed((): string | null => {
+    if (!showsOfferPrice.value) {
+        return 'billing.plans.per_month';
+    }
+
+    return props.offer?.has_unit ? `offers.${props.offer.key}.unit` : null;
+});
+
 const form = useForm({});
 
 const {
@@ -175,10 +183,10 @@ const submit = (): void => {
                             >{{ $t(checkoutPriceKey) }}</span
                         >
                         <span
-                            v-if="!isTrialOnly"
+                            v-if="unitKey"
                             class="text-base text-foreground"
                             :data-testid="`plan-price-unit-${plan.slug}`"
-                            >{{ $t('billing.plans.per_month') }}</span
+                            >{{ $t(unitKey) }}</span
                         >
                     </p>
                     <span

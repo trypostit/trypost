@@ -5,6 +5,7 @@ return [
         'name' => '黑色星期五',
         'headline' => '前 3 个月 5 折',
         'price' => '$9.50',
+        'unit' => '/月',
         'period' => '前 3 个月',
     ],
     'first_month' => [
@@ -14,7 +15,7 @@ return [
         'period' => '首月价格',
     ],
     'free_trial_7_days' => [
-        'price' => '$0',
+        'price' => '免费',
         'period' => '7 天内',
     ],
 ];
