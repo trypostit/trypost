@@ -197,26 +197,31 @@ test('plan shows the Socials plan', function () {
         );
 });
 
-test('plan sends the default trial offer only to an account that may use it', function (Closure $setup, ?string $slug) {
-    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
+test('plan sends a claimed trial offer only to an account that may use it', function (Closure $setup, bool $claims, bool $offered) {
+    $trial = Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']);
     completeWelcomeThroughSoftware($this->user);
     $setup($this->user);
+
+    if ($claims) {
+        $this->user->account->offers()->attach($trial, ['claimed_at' => now()]);
+    }
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $slug === null
-            ? $page->where('offer', null)
-            : $page->where('offer.key', str_replace('-', '_', $slug)));
+        ->assertInertia(fn ($page) => $offered
+            ? $page->where('offer.key', 'free_trial_7_days')->where('offer.trial_days', 7)
+            : $page->where('offer', null));
 })->with([
-    'first-time subscriber' => [fn () => null, 'free-trial'],
+    'no claim pays the full price' => [fn () => null, false, false],
+    'first-time subscriber' => [fn () => null, true, true],
     'retrying an incomplete checkout' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_incomplete',
         'stripe_status' => 'incomplete',
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
-    ]), 'free-trial'],
+    ]), true, true],
     'former subscriber' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_canceled',
@@ -224,8 +229,7 @@ test('plan sends the default trial offer only to an account that may use it', fu
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
         'ends_at' => now()->subDay(),
-    ]), null],
-    'with a claimed offer' => [fn (User $user) => $user->account->offers()->attach(Offer::factory()->create(['slug' => 'bf26']), ['claimed_at' => now()]), 'bf26'],
+    ]), true, false],
 ]);
 
 test('plan store sends the owner to Stripe checkout on the Socials monthly price', function () {

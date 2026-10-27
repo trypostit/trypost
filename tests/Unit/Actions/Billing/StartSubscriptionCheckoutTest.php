@@ -431,15 +431,15 @@ test('redirect gives the trial of the offer it is given', function () {
 
     $account = Account::factory()->create();
     User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
-    $offer = Offer::factory()->trial(8)->asDefault()->create(['slug' => 'free-trial']);
+    $offer = Offer::factory()->trial(7)->create(['slug' => 'free-trial-7-days']);
     $account->refresh();
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('trialDays')->once()->with(8)->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->with(7)->andReturnSelf();
     $builder->shouldReceive('withCoupon')->never();
     $builder->shouldReceive('withMetadata')
         ->once()
-        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => 'free-trial'])
+        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => 'free-trial-7-days'])
         ->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 

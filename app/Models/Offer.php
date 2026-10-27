@@ -27,7 +27,6 @@ class Offer extends Model
         'ends_at',
         'max_redemptions',
         'first_subscription_only',
-        'is_default',
     ];
 
     protected function casts(): array
@@ -39,7 +38,6 @@ class Offer extends Model
             'allow_promotion_codes' => 'boolean',
             'max_redemptions' => 'integer',
             'first_subscription_only' => 'boolean',
-            'is_default' => 'boolean',
         ];
     }
 

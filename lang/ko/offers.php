@@ -13,8 +13,8 @@ return [
         'price' => '$1',
         'period' => '첫 달 요금',
     ],
-    'free_trial' => [
+    'free_trial_7_days' => [
         'price' => '$0',
-        'period' => ':days일 동안',
+        'period' => '7일 동안',
     ],
 ];

@@ -20,7 +20,6 @@ return new class extends Migration
             $table->timestamp('ends_at')->nullable();
             $table->unsignedInteger('max_redemptions')->nullable();
             $table->boolean('first_subscription_only')->default(false);
-            $table->boolean('is_default')->default(false);
             $table->timestamps();
         });
     }

@@ -298,7 +298,7 @@ Everything that is not the full price is an offer (owner decision October 2026):
 Standing constraints:
 - Without an offer the checkout charges the full price at once: no coupon, no trial, no promotion code field.
 - An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum) and `allow_promotion_codes`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
-- There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). The 7-day trial is the default offer (`free-trial`, `trial_days` 7, `is_default`, `first_subscription_only`); the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`) are link offers. Do not reintroduce a checkout env.
+- There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`free-trial-7-days`, `trial_days` 7, `first_subscription_only`), the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
 - First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply only there. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
@@ -360,12 +360,12 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
 
 An offer is anything the Welcome checkout gives instead of the full price
 (owner decision October 2026): a Stripe coupon, a trial, the promotion code
-field, or a mix. The default 7-day trial (`free-trial`), the `$1` first month
+field, or a mix. The 7-day trial (`free-trial-7-days`), the `$1` first month
 (`first-month`) and campaigns such as Black Friday (`bf26`) are all offers. It
 lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
 `trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
-end, no limit; `allow_promotion_codes`, `first_subscription_only` and
-`is_default` false by default) and reaches an account through the pivot
+end, no limit; `allow_promotion_codes` and `first_subscription_only` false by
+default) and reaches an account through the pivot
 `account_offer` (`claimed_at`, `redeemed_at`).
 
 - **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.
@@ -379,8 +379,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   subscription: new signups and former customers alike, unless the offer is
   `first_subscription_only`, which skips an account that was ever billed
   (`hasHadBillableSubscription()`). `Offer::scopeAvailableTo()` holds both rules
-  and drops offers the account redeemed. A default offer needs no claim; its
-  redemption is written as the account's first row for it. An unknown, not yet started, ended or
+  and drops offers the account redeemed. An unknown, not yet started, ended or
   full offer is ignored silently and nothing is kept for later. A redeemed offer
   is never offered to that account again.
 - **The `offers` row is the only source of truth for dates and places.** The
@@ -388,7 +387,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   up a place (`Offer::scopeAvailable`), never a claim; two checkouts racing for the
   last place may both get it (accepted).
 - **Checkout.** `Account::currentOffer()` picks the latest claim the account may
-  still use, else the newest available default offer, else none (full price).
+  still use, else none (full price).
   `ConfigureSubscriptionCheckout::apply()` applies it. Validity is checked again
   when checkout starts. The controller resolves the offer once (`offerFor()`) and
   hands the same one to `StartSubscriptionCheckout` and `apply()`, so the coupon,
@@ -403,13 +402,14 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   group (set on subscription creation). The old `is_first_month_offer`,
   `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
 - **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
-  slug with dashes as underscores (`free-trial` → `free_trial`): `name` (the
+  slug with dashes as underscores (`free-trial-7-days` → `free_trial_7_days`): `name` (the
   banner's tag), `headline` (the banner's sentence), `price` and `period`, in all
   16 locales; the price is display text per locale, like
   `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
   stored in the database, and the banner (`name`, `headline`) is optional: an
   offer has both or neither, while `price` and `period` are required
-  (`OfferCopyTest`). `period` may use `:days`, filled from `trial_days`. The page has no fallback language, so `OfferResource`
+  (`OfferCopyTest`). Each trial length is its own offer with its own copy
+  (`free-trial-7-days`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
   checks each key in the current locale only. The Welcome plan step shows the
   banner (dark pill, the name in a light tag) only when `name` and `headline`
   exist, and the offer price only when `price` and `period` exist; it never

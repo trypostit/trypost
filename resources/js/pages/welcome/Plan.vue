@@ -175,11 +175,7 @@ const submit = (): void => {
                     <span
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{
-                            $t(priceSuffixKey, {
-                                days: String(offer?.trial_days ?? ''),
-                            })
-                        }}</span
+                        >{{ $t(priceSuffixKey) }}</span
                     >
                 </p>
             </div>

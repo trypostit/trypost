@@ -5,7 +5,6 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
-use App\Models\Account;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -209,11 +208,12 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows the free trial, what is included and the G2 rating', function () {
+test('the plan step shows the free trial offer, what is included and the G2 rating', function () {
     config(['trypost.self_hosted' => false]);
-    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
 
-    $this->actingAs(welcomeOwnerOnPlanStep());
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']), ['claimed_at' => now()]);
+    $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
 
@@ -226,7 +226,7 @@ test('the plan step shows the free trial, what is included and the G2 rating', f
         ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
         ->assertSeeIn('@plan-price-socials', '$0')
-        ->assertSeeIn('@plan-price-suffix-socials', 'for 8 days')
+        ->assertSeeIn('@plan-price-suffix-socials', 'for 7 days')
         ->assertVisible('@plan-networks-info-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
@@ -253,19 +253,11 @@ test('the plan step shows the free trial, what is included and the G2 rating', f
         ->assertVisible('@plan-feature-info-socials-ideas');
 });
 
-test('the plan step shows the full price to a former customer, who gets no trial', function () {
+test('the plan step shows the full price without an offer, even when a trial offer exists', function () {
     config(['trypost.self_hosted' => false]);
-    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
+    Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']);
 
-    $user = welcomeOwnerOnPlanStep();
-    $user->account->subscriptions()->create([
-        'type' => Account::SUBSCRIPTION_NAME,
-        'stripe_id' => 'sub_former',
-        'stripe_status' => 'canceled',
-        'stripe_price' => 'price_monthly_test',
-        'ends_at' => now()->subDay(),
-    ]);
-    $this->actingAs($user);
+    $this->actingAs(welcomeOwnerOnPlanStep());
 
     $page = visit(route('app.welcome.plan'));
     waitForWelcomePlanTestId($page, 'welcome-plan-continue');
@@ -274,7 +266,7 @@ test('the plan step shows the full price to a former customer, who gets no trial
         ->assertSeeIn('@plan-price-suffix-socials', 'per month')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
         ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
-        ->assertDontSee('8 days')
+        ->assertDontSee('7 days')
         ->assertNoJavaScriptErrors();
 
     expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');

@@ -13,8 +13,8 @@ return [
         'price' => '$1',
         'period' => 'للشهر الأول',
     ],
-    'free_trial' => [
+    'free_trial_7_days' => [
         'price' => '$0',
-        'period' => 'لمدة :days أيام',
+        'period' => 'لمدة 7 أيام',
     ],
 ];
