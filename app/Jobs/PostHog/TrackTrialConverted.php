@@ -42,8 +42,9 @@ class TrackTrialConverted extends AbstractTrackStripeEvent
      */
     protected function properties(Account $account): array
     {
-        return $this->withRevenue
-            ? StripeSubscriptionConversion::propertiesFor($account, $this->payload)
-            : StripeSubscriptionConversion::baseProperties($account, $this->payload);
+        return match ($this->withRevenue) {
+            true => StripeSubscriptionConversion::propertiesFor($account, $this->payload),
+            false => StripeSubscriptionConversion::baseProperties($account, $this->payload),
+        };
     }
 }
