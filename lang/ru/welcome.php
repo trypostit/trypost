@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Активируйте аккаунт',
     'plan_description' => 'Подключите каналы и запланируйте первый пост уже сегодня.',
     'plan_terms' => 'Затем :price/мес. Отмена в любой момент',
-    'plan_checkout_button' => 'Активировать за :price',
+    'plan_checkout_button' => 'Активировать мой аккаунт',
     'plan_cancel_anytime' => 'Отмена в любой момент',
     'mcp' => [
         'title' => 'Ведите соцсети прямо в чате',

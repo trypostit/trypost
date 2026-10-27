@@ -7,14 +7,14 @@ return [
         'price' => '$9.50',
         'unit' => '/месяц',
         'period' => 'за первые 3 месяца',
-        'checkout_button' => 'Активировать за $9.50',
+        'checkout_button' => 'Активировать мой аккаунт',
     ],
     'first_month' => [
         'name' => 'Первый месяц',
         'headline' => 'Первый месяц за $1',
         'price' => '$1',
         'period' => 'за первый месяц',
-        'checkout_button' => 'Активировать за $1',
+        'checkout_button' => 'Активировать мой аккаунт',
     ],
     'free_trial_7_days' => [
         'price' => 'Бесплатно',

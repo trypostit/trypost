@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Activez votre compte',
     'plan_description' => 'Connectez vos réseaux et programmez votre premier post dès aujourd’hui.',
     'plan_terms' => 'Puis :price/mois. Annulez à tout moment',
-    'plan_checkout_button' => 'Activer pour :price',
+    'plan_checkout_button' => 'Activer mon compte',
     'plan_cancel_anytime' => 'Annulez à tout moment',
     'mcp' => [
         'title' => 'Gérez vos réseaux par chat',

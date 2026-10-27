@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Ενεργοποιήστε τον λογαριασμό σας',
     'plan_description' => 'Συνδέστε τα κανάλια σας και προγραμματίστε την πρώτη σας ανάρτηση σήμερα.',
     'plan_terms' => 'Μετά :price/μήνα. Ακύρωση οποτεδήποτε',
-    'plan_checkout_button' => 'Ενεργοποίηση με :price',
+    'plan_checkout_button' => 'Ενεργοποίηση λογαριασμού',
     'plan_cancel_anytime' => 'Ακύρωση οποτεδήποτε',
     'mcp' => [
         'title' => 'Διαχειριστείτε τα social μέσω chat',

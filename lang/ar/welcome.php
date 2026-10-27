@@ -48,7 +48,7 @@ return [
     'plan_title' => 'فعّل حسابك',
     'plan_description' => 'اربط حساباتك وجدول أول منشور لك اليوم.',
     'plan_terms' => 'ثم :price/شهر. ألغِ في أي وقت',
-    'plan_checkout_button' => 'فعّل مقابل :price',
+    'plan_checkout_button' => 'فعّل حسابي',
     'plan_cancel_anytime' => 'ألغِ في أي وقت',
     'mcp' => [
         'title' => 'أدِر حساباتك الاجتماعية من الدردشة',

@@ -7,14 +7,14 @@ return [
         'price' => '$9.50',
         'unit' => '/μήνα',
         'period' => 'για τους πρώτους 3 μήνες',
-        'checkout_button' => 'Ενεργοποίηση με $9.50',
+        'checkout_button' => 'Ενεργοποίηση λογαριασμού',
     ],
     'first_month' => [
         'name' => 'Πρώτος μήνας',
         'headline' => 'Ο πρώτος σας μήνας με $1',
         'price' => '$1',
         'period' => 'για τον πρώτο μήνα',
-        'checkout_button' => 'Ενεργοποίηση με $1',
+        'checkout_button' => 'Ενεργοποίηση λογαριασμού',
     ],
     'free_trial_7_days' => [
         'price' => 'Δωρεάν',

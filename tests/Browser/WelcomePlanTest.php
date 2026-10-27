@@ -268,7 +268,7 @@ test('the plan step shows the full price without an offer, even when a trial off
         ->assertSeeIn('@plan-price-unit-socials', '/month')
         ->assertMissing('@plan-price-original-socials')
         ->assertMissing('@plan-price-suffix-socials')
-        ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
+        ->assertSeeIn('@welcome-plan-continue', 'Activate my account')
         ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime')
         ->assertDontSee('7 days')
         ->assertNoJavaScriptErrors();
@@ -410,7 +410,7 @@ test('the plan step shows an offer\'s banner and price', function (string $offer
         ->assertSeeIn('@plan-price-original-socials', '$19/month')
         ->assertSeeIn('@plan-price-socials', $price)
         ->assertSeeIn('@plan-price-suffix-socials', $period)
-        ->assertSeeIn('@welcome-plan-continue', "Activate for {$price}")
+        ->assertSeeIn('@welcome-plan-continue', 'Activate my account')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime')
         ->assertNoJavaScriptErrors();
 

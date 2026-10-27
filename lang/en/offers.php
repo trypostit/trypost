@@ -7,14 +7,14 @@ return [
         'price' => '$9.50',
         'unit' => '/month',
         'period' => 'for your first 3 months',
-        'checkout_button' => 'Activate for $9.50',
+        'checkout_button' => 'Activate my account',
     ],
     'first_month' => [
         'name' => 'First month',
         'headline' => 'Your first month for $1',
         'price' => '$1',
         'period' => 'for your first month',
-        'checkout_button' => 'Activate for $1',
+        'checkout_button' => 'Activate my account',
     ],
     'free_trial_7_days' => [
         'price' => 'Free',

@@ -754,7 +754,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
         'offers.black_friday_2026.price' => '$9.50',
         'offers.black_friday_2026.unit' => '/month',
         'offers.black_friday_2026.period' => 'for your first 3 months',
-        'offers.black_friday_2026.checkout_button' => 'Activate for $9.50',
+        'offers.black_friday_2026.checkout_button' => 'Activate my account',
     ], 'en');
     completeWelcomeThroughSoftware($this->user);
     $this->user->update(['locale' => $locale]);

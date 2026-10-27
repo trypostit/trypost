@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Активуйте акаунт',
     'plan_description' => 'Підключіть канали та заплануйте перший пост уже сьогодні.',
     'plan_terms' => 'Потім :price/міс. Скасування будь-коли',
-    'plan_checkout_button' => 'Активувати за :price',
+    'plan_checkout_button' => 'Активувати мій акаунт',
     'plan_cancel_anytime' => 'Скасування будь-коли',
     'mcp' => [
         'title' => 'Ведіть соцмережі просто в чаті',

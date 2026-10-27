@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Ative sua conta',
     'plan_description' => 'Conecte suas redes e agende seu primeiro post hoje.',
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser',
-    'plan_checkout_button' => 'Ativar por :price',
+    'plan_checkout_button' => 'Ativar minha conta',
     'plan_cancel_anytime' => 'Cancele quando quiser',
     'mcp' => [
         'title' => 'Gerencie suas redes pelo chat',

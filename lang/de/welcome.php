@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Aktiviere dein Konto',
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar',
-    'plan_checkout_button' => 'Für :price aktivieren',
+    'plan_checkout_button' => 'Mein Konto aktivieren',
     'plan_cancel_anytime' => 'Jederzeit kündbar',
     'mcp' => [
         'title' => 'Social Media per Chat steuern',

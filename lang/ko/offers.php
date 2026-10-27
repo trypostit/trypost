@@ -7,14 +7,14 @@ return [
         'price' => '$9.50',
         'unit' => '/월',
         'period' => '첫 3개월',
-        'checkout_button' => '$9.50에 활성화',
+        'checkout_button' => '내 계정 활성화',
     ],
     'first_month' => [
         'name' => '첫 달',
         'headline' => '첫 달 $1',
         'price' => '$1',
         'period' => '첫 달 요금',
-        'checkout_button' => '$1에 활성화',
+        'checkout_button' => '내 계정 활성화',
     ],
     'free_trial_7_days' => [
         'price' => '무료',

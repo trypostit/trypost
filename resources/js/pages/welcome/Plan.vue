@@ -207,7 +207,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    $t(priceCopy.checkoutButton, { price: $t(priceCopy.price) })
+                    $t(priceCopy.checkoutButton)
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"

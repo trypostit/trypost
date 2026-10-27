@@ -48,7 +48,7 @@ return [
     'plan_title' => 'Hesabını etkinleştir',
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
     'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et',
-    'plan_checkout_button' => ':price ile etkinleştir',
+    'plan_checkout_button' => 'Hesabımı etkinleştir',
     'plan_cancel_anytime' => 'İstediğin zaman iptal et',
     'mcp' => [
         'title' => 'Sosyal medyanı sohbetle yönet',

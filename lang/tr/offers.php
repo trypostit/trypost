@@ -7,14 +7,14 @@ return [
         'price' => '$9.50',
         'unit' => '/ay',
         'period' => 'ilk 3 ay için',
-        'checkout_button' => '$9.50 ile etkinleştir',
+        'checkout_button' => 'Hesabımı etkinleştir',
     ],
     'first_month' => [
         'name' => 'İlk ay',
         'headline' => 'İlk ayın $1',
         'price' => '$1',
         'period' => 'ilk ay için',
-        'checkout_button' => '$1 ile etkinleştir',
+        'checkout_button' => 'Hesabımı etkinleştir',
     ],
     'free_trial_7_days' => [
         'price' => 'Ücretsiz',

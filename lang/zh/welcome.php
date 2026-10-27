@@ -48,7 +48,7 @@ return [
     'plan_title' => '激活你的账户',
     'plan_description' => '连接你的账号，今天就排期第一条帖子。',
     'plan_terms' => '之后 :price/月，随时取消',
-    'plan_checkout_button' => '以 :price 激活',
+    'plan_checkout_button' => '激活我的账户',
     'plan_cancel_anytime' => '随时取消',
     'mcp' => [
         'title' => '和 AI 聊天，轻松管理社交媒体',
