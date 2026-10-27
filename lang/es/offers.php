@@ -7,6 +7,12 @@ return [
         'price' => '$9.50',
         'period' => 'los primeros 3 meses',
     ],
+    'first_month' => [
+        'name' => 'Primer mes',
+        'headline' => 'Tu primer mes por $1',
+        'price' => '$1',
+        'period' => 'el primer mes',
+    ],
     'free_trial' => [
         'price' => '$0',
         'period' => 'durante :days días',

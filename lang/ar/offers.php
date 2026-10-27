@@ -7,6 +7,12 @@ return [
         'price' => '$9.50',
         'period' => 'لأول 3 أشهر',
     ],
+    'first_month' => [
+        'name' => 'الشهر الأول',
+        'headline' => 'شهرك الأول مقابل $1',
+        'price' => '$1',
+        'period' => 'للشهر الأول',
+    ],
     'free_trial' => [
         'price' => '$0',
         'period' => 'لمدة :days أيام',

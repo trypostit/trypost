@@ -298,7 +298,7 @@ Everything that is not the full price is an offer (owner decision October 2026):
 Standing constraints:
 - Without an offer the checkout charges the full price at once: no coupon, no trial, no promotion code field.
 - An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum) and `allow_promotion_codes`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
-- There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). The 7-day trial is the default offer (`free-trial`, `trial_days` 7, `is_default`, `first_subscription_only`); Black Friday (`bf26`) is a link offer. Do not reintroduce a checkout env.
+- There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). The 7-day trial is the default offer (`free-trial`, `trial_days` 7, `is_default`, `first_subscription_only`); the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`) are link offers. Do not reintroduce a checkout env.
 - First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply only there. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
@@ -360,8 +360,8 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
 
 An offer is anything the Welcome checkout gives instead of the full price
 (owner decision October 2026): a Stripe coupon, a trial, the promotion code
-field, or a mix. The default 7-day trial (`free-trial`) and campaigns such as
-Black Friday (`bf26`) are both offers. It
+field, or a mix. The default 7-day trial (`free-trial`), the `$1` first month
+(`first-month`) and campaigns such as Black Friday (`bf26`) are all offers. It
 lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
 `trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
 end, no limit; `allow_promotion_codes`, `first_subscription_only` and

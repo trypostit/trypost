@@ -7,6 +7,12 @@ return [
         'price' => '$9.50',
         'period' => '첫 3개월',
     ],
+    'first_month' => [
+        'name' => '첫 달',
+        'headline' => '첫 달 $1',
+        'price' => '$1',
+        'period' => '첫 달 요금',
+    ],
     'free_trial' => [
         'price' => '$0',
         'period' => ':days일 동안',
