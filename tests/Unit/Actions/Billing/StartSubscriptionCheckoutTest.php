@@ -61,10 +61,6 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => [
-            'socials' => '',
-            'workspaces' => '',
-        ],
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -104,7 +100,6 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
             'cancel_url' => $cancelUrl,
             'metadata' => [
                 'trypost_interval' => 'monthly',
-                'trypost_first_month_offer' => 'false',
             ],
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
@@ -149,10 +144,6 @@ test('redirect sends no metadata for an account whose owner left every field emp
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => [
-            'socials' => '',
-            'workspaces' => '',
-        ],
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -184,10 +175,6 @@ test('redirect cuts an oversized click id to the stripe metadata limit', functio
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => [
-            'socials' => '',
-            'workspaces' => '',
-        ],
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -210,105 +197,10 @@ test('redirect cuts an oversized click id to the stripe metadata limit', functio
     app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_monthly_test', route('app.welcome'));
 });
 
-test('redirect applies the plan first-month coupon on a monthly price', function () {
+test('checkout session carries the plan and interval of a yearly price', function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => false,
-    ]);
-
-    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
-    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-
-    $account = Account::factory()->create();
-    Workspace::factory()->create(['account_id' => $account->id]);
-    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
-    $account->refresh();
-
-    $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('withCoupon')
-        ->once()
-        ->with('SOCIALS_18USD')
-        ->ordered()
-        ->andReturnUsing(function () use ($builder): SubscriptionBuilder {
-            $builder->couponId = 'SOCIALS_18USD';
-
-            return $builder;
-        });
-    $builder->shouldReceive('withMetadata')
-        ->once()
-        ->with(['trypost_first_month_coupon_id' => 'SOCIALS_18USD'])
-        ->ordered()
-        ->andReturnSelf();
-    $builder->shouldReceive('trialDays')->never();
-    $builder->shouldReceive('checkout')
-        ->once()
-        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
-
-    /** @var Account&MockInterface $accountMock */
-    $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
-    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
-
-    app(StartSubscriptionCheckout::class)->redirect(
-        $accountMock,
-        'price_socials_monthly',
-        route('app.welcome.software'),
-        $plan,
-    );
-});
-
-test('checkout session carries plan, interval and first month offer metadata', function () {
-    config([
-        'trypost.billing.require_card_for_trial' => true,
-        'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => false,
-    ]);
-
-    $plan = Plan::where('slug', Slug::Socials)->firstOrFail();
-    $plan->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-
-    $account = Account::factory()->create();
-    Workspace::factory()->create(['account_id' => $account->id]);
-    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
-    $account->refresh();
-
-    $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('withCoupon')->once()->andReturnUsing(function () use ($builder): SubscriptionBuilder {
-        $builder->couponId = 'SOCIALS_18USD';
-
-        return $builder;
-    });
-    $builder->shouldReceive('withMetadata')->once()->andReturnSelf();
-    $builder->shouldReceive('checkout')
-        ->once()
-        ->withArgs(fn (array $options): bool => data_get($options, 'metadata') === [
-            'trypost_plan_slug' => 'socials',
-            'trypost_interval' => 'monthly',
-            'trypost_first_month_offer' => 'true',
-        ])
-        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
-
-    /** @var Account&MockInterface $accountMock */
-    $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
-    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
-
-    app(StartSubscriptionCheckout::class)->redirect(
-        $accountMock,
-        'price_socials_monthly',
-        route('app.welcome.plan'),
-        $plan,
-    );
-});
-
-test('checkout session marks a yearly price without the first month offer', function () {
-    config([
-        'trypost.billing.require_card_for_trial' => true,
-        'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD',
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -331,7 +223,6 @@ test('checkout session marks a yearly price without the first month offer', func
         ->withArgs(fn (array $options): bool => data_get($options, 'metadata') === [
             'trypost_plan_slug' => 'workspaces',
             'trypost_interval' => 'yearly',
-            'trypost_first_month_offer' => 'false',
         ])
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 
@@ -348,54 +239,10 @@ test('checkout session marks a yearly price without the first month offer', func
     );
 });
 
-test('redirect skips the first-month coupon on a yearly price', function () {
-    config([
-        'trypost.billing.require_card_for_trial' => true,
-        'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD',
-        'cashier.allow_promotion_codes' => false,
-    ]);
-
-    $plan = Plan::where('slug', Slug::Workspaces)->firstOrFail();
-    $plan->update([
-        'stripe_monthly_price_id' => 'price_workspaces_monthly',
-        'stripe_yearly_price_id' => 'price_workspaces_yearly',
-    ]);
-
-    $account = Account::factory()->create();
-    Workspace::factory()->create(['account_id' => $account->id]);
-    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
-    $account->refresh();
-
-    $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('withMetadata')->once()->with([])->andReturnSelf();
-    $builder->shouldReceive('withCoupon')->never();
-    $builder->shouldReceive('trialDays')->once()->with(8)->andReturnSelf();
-    $builder->shouldReceive('checkout')
-        ->once()
-        ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
-
-    /** @var Account&MockInterface $accountMock */
-    $accountMock = Mockery::mock($account)->makePartial();
-    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
-    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
-
-    app(StartSubscriptionCheckout::class)->redirect(
-        $accountMock,
-        'price_workspaces_yearly',
-        route('app.welcome.software'),
-        $plan,
-    );
-});
-
 test('redirect clears a leftover plan_id before opening checkout', function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => [
-            'socials' => '',
-            'workspaces' => '',
-        ],
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -427,7 +274,6 @@ test('redirect creates a new stripe customer with the owner email, the owner nam
         'cashier.secret' => 'sk_test_fake',
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => ['socials' => '', 'workspaces' => ''],
         'cashier.allow_promotion_codes' => false,
     ]);
     $client = fakeStripeCustomerClient();
@@ -466,7 +312,6 @@ test('redirect updates an existing stripe customer with the current details and 
         'cashier.secret' => 'sk_test_fake',
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => ['socials' => '', 'workspaces' => ''],
         'cashier.allow_promotion_codes' => false,
     ]);
     $client = fakeStripeCustomerClient();
@@ -499,10 +344,9 @@ test('redirect updates an existing stripe customer with the current details and 
         ->and($account->fresh()->stripe_id)->toBe('cus_existing');
 });
 
-test('stores the offer id in subscription metadata', function () {
+test('stores the offer id and slug in subscription and checkout metadata', function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -524,11 +368,11 @@ test('stores the offer id in subscription metadata', function () {
     });
     $builder->shouldReceive('withMetadata')
         ->once()
-        ->with(['trypost_offer_id' => $offer->id])
+        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => $offer->slug])
         ->andReturnSelf();
     $builder->shouldReceive('checkout')
         ->once()
-        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.trypost_first_month_offer') === 'false')
+        ->withArgs(fn (array $options): bool => data_get($options, 'metadata.trypost_offer_slug') === $offer->slug)
         ->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 
     /** @var Account&MockInterface $accountMock */
@@ -548,7 +392,6 @@ test('stores the offer id in subscription metadata', function () {
 test('redirect uses the offer it is given and never looks one up', function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
         'cashier.allow_promotion_codes' => false,
     ]);
 
@@ -569,7 +412,7 @@ test('redirect uses the offer it is given and never looks one up', function () {
     });
     $builder->shouldReceive('withMetadata')
         ->once()
-        ->with(['trypost_offer_id' => $offer->id])
+        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => $offer->slug])
         ->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 

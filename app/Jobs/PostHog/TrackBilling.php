@@ -64,7 +64,7 @@ class TrackBilling implements ShouldQueue
             'subscription_status' => $account->subscriptionStatus(),
             'has_active_subscription' => $account->hasActiveSubscription(),
             ...$this->currentCancellationProperties($account),
-            ...$this->firstMonthOfferProperties(),
+            ...$this->offerProperties(),
         ]);
 
         SyncUser::dispatch((string) $account->owner_id);
@@ -113,14 +113,14 @@ class TrackBilling implements ShouldQueue
     /**
      * @return array<string, mixed>
      */
-    private function firstMonthOfferProperties(): array
+    private function offerProperties(): array
     {
         if ($this->event !== BillingEvent::Created) {
             return [];
         }
 
         return [
-            'first_month_offer_ends_at' => StripeSubscriptionConversion::firstMonthOfferEndsAt($this->payload),
+            'offer_slug' => StripeSubscriptionConversion::offerSlug($this->payload),
         ];
     }
 }

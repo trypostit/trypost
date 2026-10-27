@@ -8,19 +8,16 @@ use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
 use Laravel\Cashier\SubscriptionBuilder;
-use RuntimeException;
 
 final class ConfigureSubscriptionCheckout
 {
-    public const FIRST_MONTH_COUPON_METADATA_KEY = 'trypost_first_month_coupon_id';
-
     public const PLAN_METADATA_KEY = 'trypost_plan_slug';
 
     public const INTERVAL_METADATA_KEY = 'trypost_interval';
 
-    public const FIRST_MONTH_OFFER_METADATA_KEY = 'trypost_first_month_offer';
-
     public const OFFER_METADATA_KEY = 'trypost_offer_id';
+
+    public const OFFER_SLUG_METADATA_KEY = 'trypost_offer_slug';
 
     /**
      * Stripe Checkout rejects subscription trials shorter than 48 hours.
@@ -28,36 +25,22 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
+     * An offer applies its coupon. Without one, a first-time subscriber gets
+     * the trial and the promotion code field may show: Stripe rejects a
+     * coupon and promotion codes on the same session, never a trial with them.
      * The caller resolves the offer once with offerFor(), so the coupon, the
      * checkout metadata and the tracked events agree.
-     *
-     * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
      */
-    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null, ?Offer $offer = null): SubscriptionBuilder
+    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Offer $offer = null): SubscriptionBuilder
     {
         if (filled($offer)) {
-            self::assertPromotionCodesOff('an offer coupon');
-
             return $subscription->withCoupon($offer->stripe_coupon_id);
         }
 
-        $couponId = self::firstMonthCouponId($account, $plan);
+        $trialDays = self::trialDaysFor($account);
 
-        if ($couponId !== null) {
-            self::assertPromotionCodesOff('a first-month coupon');
-
-            return $subscription->withCoupon($couponId);
-        }
-
-        if (
-            (bool) config('trypost.billing.require_card_for_trial', true)
-            && self::isFirstTimeSubscriber($account)
-        ) {
-            $trialDays = (int) config('cashier.trial_days');
-
-            if ($trialDays > 0) {
-                $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays));
-            }
+        if ($trialDays > 0) {
+            $subscription->trialDays($trialDays);
         }
 
         if ((bool) config('cashier.allow_promotion_codes', false)) {
@@ -67,55 +50,31 @@ final class ConfigureSubscriptionCheckout
         return $subscription;
     }
 
-    public static function offersFirstMonthCoupon(Account $account, Plan $plan, ?Offer $offer = null): bool
+    /**
+     * The trial a checkout without an offer gets: first-time subscribers only,
+     * with a card at checkout. 0 means no trial.
+     */
+    public static function trialDaysFor(Account $account): int
     {
-        return blank($offer) && self::firstMonthCouponId($account, $plan) !== null;
+        $trialDays = (int) config('cashier.trial_days');
+
+        if (! (bool) config('trypost.billing.require_card_for_trial', true) || $trialDays <= 0 || $account->hasHadBillableSubscription()) {
+            return 0;
+        }
+
+        return max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays);
     }
 
     /**
      * The offer the Welcome checkout applies. It needs the monthly plan,
-     * which only the Welcome checkout passes.
+     * which only the Welcome checkout passes, and a card at checkout.
      */
     public static function offerFor(Account $account, ?Plan $plan): ?Offer
     {
-        return filled($plan) ? $account->currentOffer() : null;
-    }
-
-    /**
-     * @throws RuntimeException when allow_promotion_codes is enabled
-     */
-    private static function assertPromotionCodesOff(string $coupon): void
-    {
-        if ((bool) config('cashier.allow_promotion_codes', false)) {
-            throw new RuntimeException(
-                "Cannot apply {$coupon} while CASHIER_ALLOW_PROMOTION_CODES is enabled: "
-                .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
-            );
-        }
-    }
-
-    private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string
-    {
-        if ($plan === null || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
+        if (blank($plan) || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
             return null;
         }
 
-        if (! self::isFirstTimeSubscriber($account)) {
-            return null;
-        }
-
-        $couponId = config("cashier.first_month_coupon_ids.{$plan->slug->value}");
-
-        if (! is_string($couponId) || $couponId === '') {
-            return null;
-        }
-
-        return $couponId;
-    }
-
-    /** Incomplete / incomplete_expired never became billable, so retries still count as first-time. */
-    private static function isFirstTimeSubscriber(Account $account): bool
-    {
-        return ! $account->hasHadBillableSubscription();
+        return $account->currentOffer();
     }
 }

@@ -29,7 +29,7 @@ beforeEach(function () {
             'metadata' => [
                 'trypost_plan_slug' => 'socials',
                 'trypost_interval' => 'monthly',
-                'trypost_first_month_offer' => 'true',
+                'trypost_offer_slug' => 'bf26',
             ],
         ]],
     ];
@@ -58,13 +58,13 @@ test('captures checkout.expired on the owner with plan and offer', function () {
             && $properties['$groups']['account'] === (string) $this->account->id
             && $properties['plan_name'] === Plan::where('slug', Slug::Socials)->value('name')
             && $properties['interval'] === 'monthly'
-            && $properties['is_first_month_offer'] === true
+            && $properties['offer_slug'] === 'bf26'
             && $properties['checkout_session_id'] === 'cs_test_expired';
     });
 });
 
-test('marks the offer false when the session had no first month offer', function () {
-    $this->payload['data']['object']['metadata']['trypost_first_month_offer'] = 'false';
+test('sends no offer when the session had none', function () {
+    unset($this->payload['data']['object']['metadata']['trypost_offer_slug']);
     Queue::fake();
 
     (new TrackCheckoutExpired((string) $this->account->id, $this->payload))
@@ -72,7 +72,7 @@ test('marks the offer false when the session had no first month offer', function
 
     Queue::assertPushed(
         SendEvent::class,
-        fn (SendEvent $job): bool => $job->payload['properties']['is_first_month_offer'] === false,
+        fn (SendEvent $job): bool => $job->payload['properties']['offer_slug'] === null,
     );
 });
 
@@ -101,7 +101,7 @@ test('sends empty plan, interval and offer when the session has no metadata', fu
 
         return $properties['plan_name'] === null
             && $properties['interval'] === null
-            && $properties['is_first_month_offer'] === false;
+            && $properties['offer_slug'] === null;
     });
 });
 

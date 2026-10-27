@@ -24,6 +24,7 @@ class Offer extends Model
         'starts_at',
         'ends_at',
         'max_redemptions',
+        'first_subscription_only',
     ];
 
     protected function casts(): array
@@ -32,6 +33,7 @@ class Offer extends Model
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'max_redemptions' => 'integer',
+            'first_subscription_only' => 'boolean',
         ];
     }
 
@@ -58,6 +60,18 @@ class Offer extends Model
             ->whereNowOrPast('offers.starts_at')
             ->where(fn (Builder $query): Builder => $query->whereNull('offers.ends_at')->orWhereFuture('offers.ends_at'))
             ->where(fn (Builder $query): Builder => $query->whereNull('offers.max_redemptions')->orHas('redemptions', '<', DB::raw('offers.max_redemptions')));
+    }
+
+    /**
+     * Available offers the account may still use: never one it redeemed, and
+     * a first-subscription offer only while it has never been billed.
+     */
+    public function scopeAvailableTo(Builder $query, Account $account): Builder
+    {
+        return $query
+            ->available()
+            ->whereDoesntHave('redemptions', fn (Builder $query): Builder => $query->whereKey($account->id))
+            ->when($account->hasHadBillableSubscription(), fn (Builder $query): Builder => $query->where('offers.first_subscription_only', false));
     }
 
     /**

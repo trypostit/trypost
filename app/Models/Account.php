@@ -79,16 +79,12 @@ class Account extends Model
     }
 
     /**
-     * The offer the Welcome checkout uses: the most recently claimed one that
-     * is still available and this account has not redeemed.
+     * The offer the Welcome checkout uses: the most recently claimed one the
+     * account may still use.
      */
     public function currentOffer(): ?Offer
     {
-        return $this->offers()
-            ->available()
-            ->wherePivotNull('redeemed_at')
-            ->orderByPivot('claimed_at', 'desc')
-            ->first();
+        return $this->offers()->availableTo($this)->orderByPivot('claimed_at', 'desc')->first();
     }
 
     public function posts(): HasManyThrough

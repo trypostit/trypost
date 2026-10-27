@@ -74,3 +74,26 @@ test('deleting an account removes its offer claims', function () {
 
     $this->assertDatabaseMissing('account_offer', ['offer_id' => $offer->id]);
 });
+
+test('an offer the account redeemed is no longer available to it, only to others', function () {
+    $offer = Offer::factory()->create();
+    $account = Account::factory()->create();
+    $account->offers()->attach($offer, ['claimed_at' => now(), 'redeemed_at' => now()]);
+
+    expect(Offer::availableTo($account)->whereKey($offer->id)->exists())->toBeFalse()
+        ->and(Offer::availableTo(Account::factory()->create())->whereKey($offer->id)->exists())->toBeTrue();
+});
+
+test('a first-subscription offer is not available to an account that was billed before', function () {
+    $offer = Offer::factory()->firstSubscriptionOnly()->create();
+    $account = Account::factory()->create();
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_former',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_monthly_test',
+    ]);
+
+    expect(Offer::availableTo($account)->whereKey($offer->id)->exists())->toBeFalse()
+        ->and(Offer::availableTo(Account::factory()->create())->whereKey($offer->id)->exists())->toBeTrue();
+});

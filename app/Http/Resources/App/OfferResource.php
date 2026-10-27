@@ -19,7 +19,7 @@ use Illuminate\Support\Facades\Lang;
 class OfferResource extends JsonResource
 {
     /**
-     * @return array{key: string, has_name: bool, has_price: bool}
+     * @return array{key: string, has_banner: bool, has_price: bool}
      */
     public function toArray(Request $request): array
     {
@@ -27,7 +27,7 @@ class OfferResource extends JsonResource
 
         return [
             'key' => $key,
-            'has_name' => $this->hasCopy("offers.{$key}.name"),
+            'has_banner' => $this->hasCopy("offers.{$key}.name") && $this->hasCopy("offers.{$key}.headline"),
             'has_price' => $this->hasCopy("offers.{$key}.price") && $this->hasCopy("offers.{$key}.period"),
         ];
     }

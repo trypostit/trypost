@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { IconDiscount, IconStarFilled } from '@tabler/icons-vue';
+import { IconStarFilled } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PlanFeatureList from '@/components/billing/PlanFeatureList.vue';
 import ReviewQuote from '@/components/reviews/ReviewQuote.vue';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import WelcomeContinueButton from '@/components/welcome/WelcomeContinueButton.vue';
 import { useAutoRotate } from '@/composables/useAutoRotate';
 import WelcomeLayout from '@/layouts/WelcomeLayout.vue';
@@ -16,14 +15,14 @@ import type { PlanOption } from '@/types/plan';
 
 const props = defineProps<{
     plan: PlanOption;
-    firstMonthOffer: boolean;
     offer: Offer | null;
+    trialDays: number;
 }>();
 
 const showsOfferPrice = computed((): boolean => props.offer?.has_price === true);
 
-const showsIntroPrice = computed(
-    (): boolean => showsOfferPrice.value || props.firstMonthOffer,
+const showsTrial = computed(
+    (): boolean => !showsOfferPrice.value && props.trialDays > 0,
 );
 
 const checkoutPriceKey = computed((): string => {
@@ -31,8 +30,8 @@ const checkoutPriceKey = computed((): string => {
         return `offers.${props.offer?.key}.price`;
     }
 
-    return props.firstMonthOffer
-        ? 'billing.subscribe.prices.first_month'
+    return showsTrial.value
+        ? 'welcome.plan_trial_price'
         : 'billing.subscribe.prices.socials.monthly';
 });
 
@@ -41,9 +40,7 @@ const priceSuffixKey = computed((): string => {
         return `offers.${props.offer?.key}.period`;
     }
 
-    return props.firstMonthOffer
-        ? 'welcome.plan_first_month'
-        : 'welcome.plan_per_month';
+    return showsTrial.value ? 'welcome.plan_trial_period' : 'welcome.plan_per_month';
 });
 
 const form = useForm({});
@@ -78,18 +75,24 @@ const submit = (): void => {
         :description="$t('welcome.plan_description')"
         step="plan"
     >
-        <Alert v-if="offer && showsOfferPrice" class="mb-4" data-testid="welcome-plan-offer">
-            <IconDiscount />
-            <AlertDescription>
-                {{
-                    offer.has_name
-                        ? $t('welcome.plan_offer_badge', {
-                              offer: $t(`offers.${offer.key}.name`),
-                          })
-                        : $t('welcome.plan_offer_badge_generic')
-                }}
-            </AlertDescription>
-        </Alert>
+        <div
+            v-if="offer?.has_banner"
+            class="mb-6 flex justify-center"
+            data-testid="welcome-plan-offer"
+        >
+            <p
+                class="inline-flex items-center gap-2 rounded-full bg-foreground py-1 ps-1 pe-4 text-sm text-background"
+            >
+                <span
+                    class="rounded-full bg-background px-2.5 py-0.5 text-xs font-strong tracking-wide text-foreground uppercase"
+                    data-testid="welcome-plan-offer-name"
+                    >{{ $t(`offers.${offer.key}.name`) }}</span
+                >
+                <span data-testid="welcome-plan-offer-headline">{{
+                    $t(`offers.${offer.key}.headline`)
+                }}</span>
+            </p>
+        </div>
 
         <article
             class="grid overflow-hidden rounded-xl text-start sm:grid-cols-[2fr_3fr]"
@@ -178,7 +181,7 @@ const submit = (): void => {
                     <span
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{ $t(priceSuffixKey) }}</span
+                        >{{ $t(priceSuffixKey, { days: String(trialDays) }) }}</span
                     >
                 </p>
             </div>
@@ -195,9 +198,11 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    $t('billing.plans.start_first_month', {
-                        price: $t(checkoutPriceKey),
-                    })
+                    showsTrial
+                        ? $t('welcome.plan_start_trial')
+                        : $t('billing.plans.start_first_month', {
+                              price: $t(checkoutPriceKey),
+                          })
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"
@@ -207,7 +212,7 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    showsIntroPrice
+                    showsOfferPrice || showsTrial
                         ? $t('welcome.plan_terms', {
                               price: $t('billing.subscribe.prices.socials.monthly'),
                           })

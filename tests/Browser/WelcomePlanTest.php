@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\User\Goal;
 use App\Enums\User\Persona;
 use App\Enums\User\PreviousSoftware;
+use App\Models\Account;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
@@ -208,8 +209,8 @@ function welcomeOwnerOnPlanStep(): User
     return $user->fresh();
 }
 
-test('the plan step shows the offer, what is included and the G2 rating', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+test('the plan step shows the free trial, what is included and the G2 rating', function () {
+    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
@@ -223,11 +224,12 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertSee('Activate your account')
         ->assertSee('Connect your channels and schedule your first post today.')
         ->assertMissing('@plan-card-workspaces')
-        ->assertSeeIn('@plan-price-socials', '$1')
-        ->assertSeeIn('@plan-price-suffix-socials', 'for your first month')
+        ->assertSeeIn('@plan-price-socials', '$0')
+        ->assertSeeIn('@plan-price-suffix-socials', 'for 8 days')
         ->assertVisible('@plan-networks-info-socials')
-        ->assertSeeIn('@welcome-plan-continue', 'Activate for $1')
+        ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
         ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertMissing('@welcome-plan-offer')
         ->assertVisible('@welcome-step-plan')
         ->assertNoJavaScriptErrors();
 
@@ -250,10 +252,18 @@ test('the plan step shows the offer, what is included and the G2 rating', functi
         ->assertVisible('@plan-feature-info-socials-ideas');
 });
 
-test('the plan step shows the full price when checkout will not apply the first-month coupon', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => '']);
+test('the plan step shows the full price to a former customer, who gets no trial', function () {
+    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
 
-    $this->actingAs(welcomeOwnerOnPlanStep());
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_former',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_monthly_test',
+        'ends_at' => now()->subDay(),
+    ]);
+    $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
     waitForWelcomePlanTestId($page, 'welcome-plan-continue');
@@ -262,7 +272,7 @@ test('the plan step shows the full price when checkout will not apply the first-
         ->assertSeeIn('@plan-price-suffix-socials', 'per month')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
         ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
-        ->assertDontSee('first month')
+        ->assertDontSee('8 days')
         ->assertNoJavaScriptErrors();
 
     expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
@@ -386,8 +396,30 @@ test('the activate button shows a spinner while checkout opens', function () {
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
 });
 
-test('the plan step shows no offer badge or offer price for an offer without copy', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+test('the plan step shows an offer\'s banner and price', function (string $slug, string $name, string $headline, string $price, string $period) {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->create(['slug' => $slug]), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@welcome-plan-offer');
+
+    $page->assertSeeIn('@welcome-plan-offer-name', $name)
+        ->assertSeeIn('@welcome-plan-offer-headline', $headline)
+        ->assertSeeIn('@plan-price-socials', $price)
+        ->assertSeeIn('@plan-price-suffix-socials', $period)
+        ->assertSeeIn('@welcome-plan-continue', "Activate for {$price}")
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertNoJavaScriptErrors();
+})->with([
+    'black friday' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', 'for your first 3 months'],
+    'first month' => ['first-month', 'First month', 'Your first month for $1', '$1', 'for your first month'],
+]);
+
+test('the plan step shows neither a banner nor an offer price for an offer without copy', function () {
+    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
 
     $user = welcomeOwnerOnPlanStep();
     $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]);
@@ -402,16 +434,4 @@ test('the plan step shows no offer badge or offer price for an offer without cop
         ->assertNoJavaScriptErrors();
 
     expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
-});
-
-test('the plan step shows no offer badge without an offer', function () {
-    config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
-
-    $this->actingAs(welcomeOwnerOnPlanStep());
-
-    $page = visit(route('app.welcome.plan'));
-    waitFor($page, '@plan-price-socials');
-
-    $page->assertMissing('@welcome-plan-offer')
-        ->assertNoJavaScriptErrors();
 });

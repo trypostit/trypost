@@ -197,24 +197,24 @@ test('plan shows the Socials plan', function () {
         );
 });
 
-test('plan offers the first month only when checkout will apply the coupon', function (Closure $setup, bool $offered) {
-    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+test('plan sends the trial only when checkout will apply it', function (Closure $setup, int $trialDays) {
+    config(['cashier.trial_days' => 8]);
     completeWelcomeThroughSoftware($this->user);
     $setup($this->user);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('firstMonthOffer', $offered));
+        ->assertInertia(fn ($page) => $page->where('trialDays', $trialDays));
 })->with([
-    'first-time subscriber' => [fn () => null, true],
+    'first-time subscriber' => [fn () => null, 8],
     'retrying an incomplete checkout' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_incomplete',
         'stripe_status' => 'incomplete',
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
-    ]), true],
+    ]), 8],
     'former subscriber' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_canceled',
@@ -222,8 +222,8 @@ test('plan offers the first month only when checkout will apply the coupon', fun
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
         'ends_at' => now()->subDay(),
-    ]), false],
-    'no coupon configured' => [fn () => config(['cashier.first_month_coupon_ids.socials' => '']), false],
+    ]), 0],
+    'with an offer' => [fn (User $user) => $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]), 0],
 ]);
 
 test('plan store sends the owner to Stripe checkout on the Socials monthly price', function () {
@@ -247,33 +247,6 @@ test('plan store sends the owner to Stripe checkout on the Socials monthly price
         ->post(route('app.welcome.plan.store'))
         ->assertRedirect('https://checkout.stripe.test/session');
 });
-
-test('checkout.started records whether the first-month offer was shown', function (string $couponId, bool $offered) {
-    config([
-        'services.posthog.enabled' => true,
-        'services.posthog.api_key' => 'phc_test',
-        'cashier.first_month_coupon_ids.socials' => $couponId,
-    ]);
-    Bus::fake();
-    completeWelcomeThroughSoftware($this->user);
-    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-
-    $this->mock(StartSubscriptionCheckout::class)
-        ->shouldReceive('redirect')
-        ->once()
-        ->andReturn(redirect('https://checkout.stripe.test/session'));
-
-    $this->actingAs($this->user->fresh())
-        ->post(route('app.welcome.plan.store'))
-        ->assertRedirect('https://checkout.stripe.test/session');
-
-    Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => $event->method === 'capture'
-        && data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.is_first_month_offer') === $offered);
-})->with([
-    'with the coupon' => ['coupon_socials', true],
-    'without the coupon' => ['', false],
-]);
 
 test('picking an AI app on the MCP step records which one', function (string $client) {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
@@ -698,7 +671,6 @@ function attachCurrentWorkspace(User $user): Workspace
 }
 
 test('the plan step sends the current offer', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
     completeWelcomeThroughSoftware($this->user);
     $offer = Offer::factory()->create(['slug' => 'black-friday-2026']);
     $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
@@ -708,14 +680,14 @@ test('the plan step sends the current offer', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('offer.key', 'black_friday_2026')
-            ->where('offer.has_name', false)
+            ->where('offer.has_banner', false)
             ->where('offer.has_price', false)
-            ->where('firstMonthOffer', false)
+            ->where('trialDays', 0)
         );
 });
 
 test('the plan step sends no offer once it expired', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
+    config(['cashier.trial_days' => 8]);
     completeWelcomeThroughSoftware($this->user);
     $offer = Offer::factory()->create(['ends_at' => now()->addHour()]);
     $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
@@ -727,7 +699,7 @@ test('the plan step sends no offer once it expired', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('offer', null)
-            ->where('firstMonthOffer', true)
+            ->where('trialDays', 8)
         );
 });
 
@@ -752,8 +724,7 @@ test('checkout.started records the offer slug', function () {
         ->assertRedirect('https://checkout.stripe.test/session');
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.offer_slug') === 'black-friday-2026'
-        && data_get($event->payload, 'properties.is_first_month_offer') === false);
+        && data_get($event->payload, 'properties.offer_slug') === 'black-friday-2026');
 });
 
 test('plan store hands checkout the offer it tracked', function () {
@@ -776,6 +747,7 @@ test('plan store hands checkout the offer it tracked', function () {
 test('the plan step sends the offer copy only when it exists in the user\'s language', function (string $locale, bool $hasCopy) {
     app('translator')->addLines([
         'offers.black_friday_2026.name' => 'Black Friday',
+        'offers.black_friday_2026.headline' => '50% off your first 3 months',
         'offers.black_friday_2026.price' => '$9.50',
         'offers.black_friday_2026.period' => 'for your first 3 months',
     ], 'en');
@@ -786,7 +758,7 @@ test('the plan step sends the offer copy only when it exists in the user\'s lang
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))
         ->assertInertia(fn ($page) => $page
-            ->where('offer.has_name', $hasCopy)
+            ->where('offer.has_banner', $hasCopy)
             ->where('offer.has_price', $hasCopy)
         );
 })->with([

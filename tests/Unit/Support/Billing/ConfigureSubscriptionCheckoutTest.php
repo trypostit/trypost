@@ -6,7 +6,6 @@ use App\Enums\Plan\Slug;
 use App\Models\Account;
 use App\Models\Offer;
 use App\Models\Plan;
-use App\Models\Workspace;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -20,10 +19,6 @@ beforeEach(function () {
     config([
         'trypost.billing.require_card_for_trial' => true,
         'cashier.trial_days' => 8,
-        'cashier.first_month_coupon_ids' => [
-            'socials' => '',
-            'workspaces' => '',
-        ],
         'cashier.allow_promotion_codes' => false,
     ]);
 });
@@ -55,369 +50,121 @@ function socialsPlan(): Plan
     return Plan::where('slug', Slug::Socials)->firstOrFail();
 }
 
-function workspacesPlan(): Plan
-{
-    return Plan::where('slug', Slug::Workspaces)->firstOrFail();
-}
-
-test('recipe A applies an eight-day trial without coupon or promotion codes', function () {
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeFalse()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-});
-
-test('recipe B applies the socials first-month coupon and skips trial days', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => false,
-        'cashier.trial_days' => 8,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBe('SOCIALS_18USD')
-        ->and($subscription->allowPromotionCodes)->toBeFalse()
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('applies the workspaces first-month coupon for that plan', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD',
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, workspacesPlan());
-
-    expect($subscription->couponId)->toBe('WORKSPACES_88USD')
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('does not apply the other plan\'s first-month coupon', function () {
-    config([
-        'cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD',
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-});
-
-test('does not apply a first-month coupon when no plan is given', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD',
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-});
-
-test('recipe C applies trial days and allows promotion codes', function () {
-    config(['cashier.allow_promotion_codes' => true]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeTrue()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-});
-
-test('recipe D charges immediately with promotion codes and no trial', function () {
-    config([
-        'cashier.trial_days' => 0,
-        'cashier.allow_promotion_codes' => true,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect(trialExpiresAt($subscription))->toBeNull()
-        ->and($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeTrue();
-});
-
-test('throws when a qualifying coupon would combine with allow promotion codes', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => true,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    expect(fn () => ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan()))
-        ->toThrow(RuntimeException::class, 'Cannot apply a first-month coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled');
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('throws when coupon and promo are both set even if the account has several workspaces', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => true,
-    ]);
-    Workspace::factory()->count(2)->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    expect(fn () => ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan()))
-        ->toThrow(RuntimeException::class, 'Cannot apply a first-month coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled');
-});
-
-test('does not throw when coupon and promo are both set but a prior canceled subscription skips the coupon', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => true,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-    givePriorSubscription($this->account);
-
-    $subscription = checkoutSubscription($this->account);
-
-    expect(fn () => ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan()))
-        ->not->toThrow(RuntimeException::class);
-
-    expect($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeTrue()
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('missing coupon with card required does not throw and still applies trial', function (?string $couponId) {
-    config([
-        'cashier.first_month_coupon_ids.socials' => $couponId,
-        'cashier.allow_promotion_codes' => false,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
-})->with([
-    'environment variable is unset' => null,
-    'environment variable is empty' => '',
-]);
-
-test('skips the coupon and allows promotion codes when a card is not required', function () {
-    config([
-        'trypost.billing.require_card_for_trial' => false,
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => true,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    expect(fn () => ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan()))
-        ->not->toThrow(RuntimeException::class);
-
-    expect($subscription->allowPromotionCodes)->toBeTrue()
-        ->and($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('the first-month coupon applies to a first-time subscriber with several workspaces', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
-    Workspace::factory()->count(2)->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBe('SOCIALS_18USD')
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('skips coupon and trial when the account has a prior canceled subscription', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-    givePriorSubscription($this->account);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription))->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeFalse();
-});
-
-test('still applies the coupon when the only prior subscription is incomplete_expired', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => false,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-    givePriorSubscription($this->account, 'incomplete_expired');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBe('SOCIALS_18USD')
-        ->and($subscription->allowPromotionCodes)->toBeFalse()
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('still applies the coupon when the only prior subscription is incomplete', function () {
-    config([
-        'cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD',
-        'cashier.allow_promotion_codes' => false,
-    ]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-    givePriorSubscription($this->account, 'incomplete');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBe('SOCIALS_18USD')
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
-test('clamps a one-day trial to Stripe Checkout minimum of two days', function () {
-    config(['cashier.trial_days' => 1]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    Carbon::setTestNow('2026-08-07 12:00:00');
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-09 12:00:00');
-});
-
-test('skips trial days when trial_days is zero', function () {
-    config(['cashier.trial_days' => 0]);
-    Workspace::factory()->create(['account_id' => $this->account->id]);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect(trialExpiresAt($subscription))->toBeNull()
-        ->and($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeFalse();
-});
-
-test('zero workspaces still get the first-month coupon when first-time', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
-
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
-
-    expect($subscription->couponId)->toBe('SOCIALS_18USD')
-        ->and(trialExpiresAt($subscription))->toBeNull();
-});
-
+/**
+ * @param  array<string, mixed>  $attributes
+ */
 function claimOfferFor(Account $account, array $attributes = []): Offer
 {
-    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BLACK_FRIDAY_50', ...$attributes]);
+    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BF26_50', ...$attributes]);
     $account->offers()->attach($offer, ['claimed_at' => now()]);
 
     return $offer;
 }
 
-test('applies an available offer\'s coupon and skips the trial', function () {
+function configureCheckout(Account $account): SubscriptionBuilder
+{
+    $subscription = checkoutSubscription($account);
+
+    ConfigureSubscriptionCheckout::apply($subscription, $account, ConfigureSubscriptionCheckout::offerFor($account, socialsPlan()));
+
+    return $subscription;
+}
+
+test('without an offer a first-time subscriber gets an eight-day trial and no promotion codes', function () {
+    Carbon::setTestNow('2026-08-07 12:00:00');
+
+    $subscription = configureCheckout($this->account);
+
+    expect($subscription->couponId)->toBeNull()
+        ->and($subscription->allowPromotionCodes)->toBeFalse()
+        ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
+});
+
+test('without an offer the trial comes with the promotion code field when enabled', function () {
+    config(['cashier.allow_promotion_codes' => true]);
+
+    $subscription = configureCheckout($this->account);
+
+    expect($subscription->allowPromotionCodes)->toBeTrue()
+        ->and(trialExpiresAt($subscription))->not->toBeNull();
+});
+
+test('an offer applies its coupon with neither a trial nor the promotion code field', function () {
+    config(['cashier.allow_promotion_codes' => true]);
     claimOfferFor($this->account);
 
-    $subscription = checkoutSubscription($this->account);
+    $subscription = configureCheckout($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
-
-    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
+    expect($subscription->couponId)->toBe('BF26_50')
+        ->and($subscription->allowPromotionCodes)->toBeFalse()
         ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('an offer wins over the first-month coupon', function () {
-    config(['cashier.first_month_coupon_ids.socials' => 'SOCIALS_18USD']);
+test('a former customer without an offer gets no trial', function () {
+    givePriorSubscription($this->account);
+
+    $subscription = configureCheckout($this->account);
+
+    expect($subscription->couponId)->toBeNull()
+        ->and(trialExpiresAt($subscription))->toBeNull()
+        ->and(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(0);
+});
+
+test('a checkout that never became billable still counts as first-time', function (string $status) {
+    givePriorSubscription($this->account, $status);
+
+    expect(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(8);
+})->with(['incomplete', 'incomplete_expired']);
+
+test('without a card at checkout there is neither a trial nor an offer', function () {
+    config(['trypost.billing.require_card_for_trial' => false, 'cashier.allow_promotion_codes' => true]);
     claimOfferFor($this->account);
 
-    $subscription = checkoutSubscription($this->account);
+    $subscription = configureCheckout($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
+    expect($subscription->couponId)->toBeNull()
+        ->and(trialExpiresAt($subscription))->toBeNull()
+        ->and($subscription->allowPromotionCodes)->toBeTrue();
+});
 
-    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
-        ->and(ConfigureSubscriptionCheckout::offersFirstMonthCoupon($this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan())))->toBeFalse();
+test('clamps a one-day trial to the Stripe Checkout minimum of two days', function () {
+    config(['cashier.trial_days' => 1]);
+
+    expect(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(ConfigureSubscriptionCheckout::MIN_CHECKOUT_TRIAL_DAYS);
+});
+
+test('zero trial days means no trial', function () {
+    config(['cashier.trial_days' => 0]);
+
+    expect(trialExpiresAt(configureCheckout($this->account)))->toBeNull();
 });
 
 test('an offer applies to a former customer', function () {
     givePriorSubscription($this->account);
     claimOfferFor($this->account);
 
-    $subscription = checkoutSubscription($this->account);
+    expect(configureCheckout($this->account)->couponId)->toBe('BF26_50');
+});
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
+test('a first-subscription offer applies to a first-time subscriber only', function () {
+    claimOfferFor($this->account, ['stripe_coupon_id' => 'FIRST_MONTH_1', 'first_subscription_only' => true]);
 
-    expect($subscription->couponId)->toBe('BLACK_FRIDAY_50');
+    expect(configureCheckout($this->account)->couponId)->toBe('FIRST_MONTH_1');
+
+    givePriorSubscription($this->account);
+    $this->account->unsetRelation('subscriptions');
+
+    expect(ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()))->toBeNull();
 });
 
 test('does not apply an offer without a plan', function () {
     claimOfferFor($this->account);
 
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account);
-
-    expect($subscription->couponId)->toBeNull()
-        ->and(ConfigureSubscriptionCheckout::offerFor($this->account, null))->toBeNull();
+    expect(ConfigureSubscriptionCheckout::offerFor($this->account, null))->toBeNull();
 });
 
 test('does not apply an expired offer', function () {
     claimOfferFor($this->account, ['starts_at' => now()->subDays(10), 'ends_at' => now()->subDay()]);
 
-    $subscription = checkoutSubscription($this->account);
-
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
-
-    expect($subscription->couponId)->toBeNull();
-});
-
-test('throws when an offer meets allow_promotion_codes', function () {
-    config(['cashier.allow_promotion_codes' => true]);
-    claimOfferFor($this->account);
-
-    expect(fn () => ConfigureSubscriptionCheckout::apply(checkoutSubscription($this->account), $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan())))
-        ->toThrow(RuntimeException::class, 'Cannot apply an offer coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled');
+    expect(configureCheckout($this->account)->couponId)->toBeNull();
 });

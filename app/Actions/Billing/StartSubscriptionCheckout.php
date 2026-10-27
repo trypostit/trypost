@@ -29,11 +29,13 @@ class StartSubscriptionCheckout
 
         $offer = filled($monthlyPlan) ? $offer : null;
 
-        ConfigureSubscriptionCheckout::apply($subscription, $account, $monthlyPlan, $offer);
-        $subscription->withMetadata(array_filter([
-            ConfigureSubscriptionCheckout::FIRST_MONTH_COUPON_METADATA_KEY => blank($offer) ? $subscription->couponId : null,
+        $offerMetadata = array_filter([
             ConfigureSubscriptionCheckout::OFFER_METADATA_KEY => $offer?->id,
-        ], filled(...)));
+            ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
+        ], filled(...));
+
+        ConfigureSubscriptionCheckout::apply($subscription, $account, $offer);
+        $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
             'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
@@ -41,7 +43,7 @@ class StartSubscriptionCheckout
             'metadata' => array_filter([
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,
                 ConfigureSubscriptionCheckout::INTERVAL_METADATA_KEY => (filled($plan) ? Interval::forPrice($plan, $priceId) : Interval::Monthly)->value,
-                ConfigureSubscriptionCheckout::FIRST_MONTH_OFFER_METADATA_KEY => blank($offer) && filled($subscription->couponId) ? 'true' : 'false',
+                ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
             ], filled(...)),
         ]);
 

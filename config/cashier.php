@@ -148,35 +148,13 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Paid First Month Coupons
-    |--------------------------------------------------------------------------
-    |
-    | Per-plan Stripe Coupon IDs (amount_off, duration=once) so the first
-    | monthly invoice is $1: Socials $19 − $18, Workspaces $99 − $88. When
-    | the matching coupon is set and the account qualifies (card required,
-    | first-time, monthly price), checkout applies withCoupon and skips
-    | trialDays. Empty for that plan = trial_days instead. Never reuse one
-    | coupon on the other plan — the amounts are different. Yearly prices
-    | never get a coupon. Cannot be combined with allow_promotion_codes on
-    | the same checkout.
-    |
-    */
-
-    'first_month_coupon_ids' => [
-        'socials' => env('STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID'),
-        'workspaces' => env('STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID'),
-    ],
-
-    /*
-    |--------------------------------------------------------------------------
     | Allow Promotion Codes
     |--------------------------------------------------------------------------
     |
-    | When true and no first-month coupon is applied on the session, Stripe
-    | Checkout shows the redeemable promotion-code field. Defaults to false
-    | (SaaS recipe A). Stripe rejects a session that sets both discounts
-    | (coupon) and allow_promotion_codes — ConfigureSubscriptionCheckout
-    | throws if both would apply on the same checkout.
+    | When true and no offer applies on the session, Stripe Checkout shows
+    | the redeemable promotion-code field. Defaults to false. Stripe rejects a
+    | session that sets both a coupon and allow_promotion_codes, so an offer
+    | checkout never shows the field.
     |
     */
 

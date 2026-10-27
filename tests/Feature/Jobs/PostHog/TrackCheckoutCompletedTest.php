@@ -15,7 +15,6 @@ use Illuminate\Support\Facades\Queue;
 
 beforeEach(function () {
     config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test_key']);
-    config(['cashier.first_month_coupon_ids.workspaces' => 'WORKSPACES_88USD']);
 
     $this->plan = Plan::where('slug', Slug::Workspaces)->firstOrFail();
     $this->plan->update([
@@ -65,46 +64,18 @@ test('handle captures checkout.completed with plan, interval and conversion data
             && $job->payload['properties']['conversion_value'] === 99.0
             && $job->payload['properties']['conversion_currency'] === 'USD'
             && $job->payload['properties']['conversion_transaction_id'] === 'sub_test123'
-            && $job->payload['properties']['is_first_month_offer'] === false;
+            && $job->payload['properties']['offer_slug'] === null;
     });
 });
 
-test('handle marks checkout.completed when the subscription uses the configured first month coupon', function () {
-    $periodEndsAt = now()->addMonth()->startOfSecond();
-    $this->payload['data']['object']['metadata'] = [
-        'trypost_first_month_coupon_id' => 'WORKSPACES_88USD',
-    ];
-    $this->payload['data']['object']['items']['data'][0]['current_period_end'] = $periodEndsAt->timestamp;
+test('handle sends the slug of the offer the checkout applied', function () {
+    $this->payload['data']['object']['metadata'] = ['trypost_offer_slug' => 'bf26'];
     Queue::fake();
 
     (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
         ->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, function (SendEvent $job) use ($periodEndsAt): bool {
-        $properties = $job->payload['properties'];
-
-        return $properties['is_first_month_offer'] === true
-            && $properties['first_month_coupon_id'] === 'WORKSPACES_88USD'
-            && $properties['first_month_offer_ends_at'] === $periodEndsAt->toIso8601String();
-    });
-});
-
-test('handle uses the checkout marker even when the coupon configuration changes before the job runs', function () {
-    $this->payload['data']['object']['metadata'] = [
-        'trypost_first_month_coupon_id' => 'WORKSPACES_88USD',
-    ];
-    config(['cashier.first_month_coupon_ids.workspaces' => null]);
-    Queue::fake();
-
-    (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
-        ->handle(app(PostHogService::class));
-
-    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
-        $properties = $job->payload['properties'];
-
-        return $properties['is_first_month_offer'] === true
-            && $properties['first_month_coupon_id'] === 'WORKSPACES_88USD';
-    });
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['offer_slug'] === 'bf26');
 });
 
 test('handle resolves the yearly interval from the price id', function () {

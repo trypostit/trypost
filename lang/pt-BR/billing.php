@@ -12,7 +12,6 @@ return [
     'subscribe' => [
         'billed_monthly' => 'Cobrança mensal',
         'prices' => [
-            'first_month' => 'R$ 1',
             'socials' => ['monthly' => 'R$ 99', 'yearly_per_month' => 'R$ 82,50', 'yearly' => 'R$ 990'],
             'workspaces' => ['monthly' => 'R$ 499', 'yearly_per_month' => 'R$ 415,83', 'yearly' => 'R$ 4.990'],
         ],

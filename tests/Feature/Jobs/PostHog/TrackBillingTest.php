@@ -71,38 +71,30 @@ test('handle updates the account group with the current subscription state', fun
             && $job->payload['groupKey'] === (string) $this->account->id
             && $job->payload['properties']['subscription_status'] === 'active'
             && $job->payload['properties']['has_active_subscription'] === true
-            && ! array_key_exists('first_month_offer_ends_at', $job->payload['properties']);
+            && ! array_key_exists('offer_slug', $job->payload['properties']);
     });
 });
 
-test('subscription creation sets the first month offer end on the account group', function () {
-    $periodEndsAt = now()->addMonth()->startOfSecond();
-    $this->payload['data']['object']['metadata'] = [
-        'trypost_first_month_coupon_id' => 'WORKSPACES_88USD',
-    ];
-    $this->payload['data']['object']['items']['data'][0]['current_period_end'] = $periodEndsAt->timestamp;
+test('subscription creation sets the offer slug on the account group', function () {
+    $this->payload['data']['object']['metadata'] = ['trypost_offer_slug' => 'bf26'];
     Queue::fake();
 
     (new TrackBilling((string) $this->account->id, BillingEvent::Created, $this->payload))
         ->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, function (SendEvent $job) use ($periodEndsAt): bool {
-        return $job->method === 'groupIdentify'
-            && $job->payload['properties']['first_month_offer_ends_at'] === $periodEndsAt->toIso8601String();
-    });
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify'
+        && $job->payload['properties']['offer_slug'] === 'bf26');
 });
 
-test('subscription creation clears a previous first month offer when the new subscription has none', function () {
+test('subscription creation clears a previous offer when the new subscription has none', function () {
     Queue::fake();
 
     (new TrackBilling((string) $this->account->id, BillingEvent::Created, $this->payload))
         ->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, function (SendEvent $job): bool {
-        return $job->method === 'groupIdentify'
-            && array_key_exists('first_month_offer_ends_at', $job->payload['properties'])
-            && $job->payload['properties']['first_month_offer_ends_at'] === null;
-    });
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify'
+        && array_key_exists('offer_slug', $job->payload['properties'])
+        && $job->payload['properties']['offer_slug'] === null);
 });
 
 test('subscription cancellation updates the account group after Cashier marks it ended', function () {

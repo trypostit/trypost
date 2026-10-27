@@ -25,6 +25,7 @@ class OfferFactory extends Factory
             'starts_at' => now()->subDay(),
             'ends_at' => null,
             'max_redemptions' => null,
+            'first_subscription_only' => false,
         ];
     }
 
@@ -47,6 +48,13 @@ class OfferFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'max_redemptions' => $places,
+        ]);
+    }
+
+    public function firstSubscriptionOnly(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'first_subscription_only' => true,
         ]);
     }
 }

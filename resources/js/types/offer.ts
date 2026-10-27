@@ -1,5 +1,5 @@
 export interface Offer {
     key: string;
-    has_name: boolean;
+    has_banner: boolean;
     has_price: boolean;
 }

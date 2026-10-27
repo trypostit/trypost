@@ -288,23 +288,19 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 
 ## Stripe Checkout (env knobs)
 
-Checkout options are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
+Discounts are offers in the database (see "Offers"); the trial and the promotion code field are configured only via env — do not hardcode trial/coupon/promo behavior in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
 
 | Env | Config | Default | Effect |
 | --- | --- | --- | --- |
 | `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
-| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no first-month coupon is applied (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
-| `STRIPE_SOCIALS_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.socials` | empty | Optional. `$18` off Socials monthly (`$19` → `$1`). When set for a qualifying first-time **monthly** checkout of that plan, applies `withCoupon` and **skips** trial. Empty = trial mode |
-| `STRIPE_WORKSPACES_FIRST_MONTH_COUPON_ID` | `cashier.first_month_coupon_ids.workspaces` | empty | Optional. `$88` off Workspaces monthly (`$99` → `$1`). Same qualification as the Socials coupon. Never reuse one coupon on the other plan |
-| `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no coupon is applied, show the Checkout promo-code field |
+| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | Card-required Checkout: `trialDays(N)` for **first-time** subscribers when no offer applies (`0` = off). Re-subscribers skip trial. No-card mode: length of the generic signup trial |
+| `CASHIER_ALLOW_PROMOTION_CODES` | `cashier.allow_promotion_codes` | `false` | When `true` and no offer applies, show the Checkout promo-code field |
 
 Standing constraints:
-- Stripe rejects `discounts` (coupon) and `allow_promotion_codes` on the same session — if both would apply, `ConfigureSubscriptionCheckout` must throw (fail loud). Never “prefer one silently.” Envs may both be set when the account does **not** qualify for the coupon (no throw).
-- A set first-month coupon wins over trial (`trialDays` is skipped for that checkout).
-- Empty coupon + card required + first-time must use `trialDays` — do **not** reintroduce a required-coupon throw.
-- Coupon qualification stays: card required, no prior real subscription (`incomplete` / `incomplete_expired` still qualify), **and** the checkout price is that plan's **monthly** price. Workspace count is irrelevant — Socials is already capped at one, and a first-time Workspaces subscriber qualifies the same way.
-- First-month coupons are **per plan**. Socials is `$18` off, Workspaces is `$88` off. Never apply one plan's coupon to the other price, and never apply either coupon to a yearly price — `$190 − $18` is not `$1`.
-- Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, with the first-month offer, and always opens Stripe Checkout on the **Socials monthly** price. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (they do not get a first-month coupon).
+- A checkout is either an offer or the default, never both (owner decision October 2026). An offer applies its coupon with no trial and no promotion code field. Without one, a first-time subscriber gets `trialDays` (card required) and the field shows when `CASHIER_ALLOW_PROMOTION_CODES` is on. Stripe rejects a coupon and `allow_promotion_codes` on one session but accepts a trial with them, so the env can stay on: an offer checkout simply never sets it.
+- There are no first-month coupon envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` were removed in October 2026). The `$1` first month is an offer row (`first-month`, `first_subscription_only`). Do not reintroduce a coupon env.
+- Trial qualification: card required and no prior real subscription (`incomplete` / `incomplete_expired` still qualify), through `ConfigureSubscriptionCheckout::trialDaysFor()`, which the Welcome plan step also reads to show the trial.
+- Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply only there. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer, no trial).
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
@@ -338,12 +334,9 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
     `workspaces.limit_reached`. Without a subscription it still goes to billing.
   - POST at the cap is refused the same way (to the list, not 403'd, never to create),
     tracked once by `store` itself after its transaction.
-- First-month coupon qualification is card required + first-time subscriber +
-  that plan's monthly price. Workspace count is not part of it.
-  (`incomplete` / `incomplete_expired` still qualify; coupon +
-  `allow_promotion_codes` still throws.) Each plan has its own coupon.
-- Welcome checks out Socials monthly only so the `$1` first month can exist.
-  Billing keeps yearly and Workspaces for subscribers changing plan.
+- Welcome checks out Socials monthly only, so an offer's price is always about
+  Socials monthly. Billing keeps yearly and Workspaces for subscribers changing
+  plan.
 - The legacy plan is archived: it never appears in the picker, so nobody can move
   back to it. Its `workspace_limit` is 1 because it costs less than Socials.
 - Welcome's plan step (`app.welcome.plan`, after the current-tool step) shows
@@ -365,11 +358,13 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
 
 ## Offers (`?offer=` links)
 
-An offer is a Stripe coupon the Welcome checkout applies instead of the `$1`
-first month (owner decision October 2026). It lives in `offers` (`slug`,
-`stripe_coupon_id`, `starts_at` required, `ends_at` and `max_redemptions`
-nullable: no end, no limit) and reaches an account through the pivot
-`account_offer` (`claimed_at`, `redeemed_at`).
+An offer is a Stripe coupon the Welcome checkout applies instead of the default
+trial (owner decision October 2026): the `$1` first month (`first-month`) and
+campaigns such as Black Friday (`bf26`) are all offers. It lives in `offers`
+(`slug`, `stripe_coupon_id`, `starts_at` required, `ends_at` and
+`max_redemptions` nullable: no end, no limit, `first_subscription_only` false by
+default) and reaches an account through the pivot `account_offer` (`claimed_at`,
+`redeemed_at`).
 
 - **Capture.** `CaptureOffer` (web middleware) reads `?offer=<slug>` on any page.
   A signed-in owner claims it at once (`ClaimOffer`). A guest's slug waits in the
@@ -379,39 +374,47 @@ nullable: no end, no limit) and reaches an account through the pivot
   both engines through `Offer::findAvailable()` (MySQL compares without case). Ads and landing pages link to `/register?offer=<slug>`, win-back emails to
   `/login?offer=<slug>`. There is no offer page or route.
 - **Who gets it.** Only an account owner whose account has no active
-  subscription: new signups and former customers alike, with no
-  first-time-subscriber rule. An unknown, not yet started, ended or full offer is
-  ignored silently and nothing is kept for later. A redeemed offer is never offered
-  to that account again.
+  subscription: new signups and former customers alike, unless the offer is
+  `first_subscription_only`, which skips an account that was ever billed
+  (`hasHadBillableSubscription()`). `Offer::scopeAvailableTo()` holds both rules
+  and drops offers the account redeemed. An unknown, not yet started, ended or
+  full offer is ignored silently and nothing is kept for later. A redeemed offer
+  is never offered to that account again.
 - **The `offers` row is the only source of truth for dates and places.** The
   Stripe coupon has no `redeem_by` and no `max_redemptions`. Only redemptions use
   up a place (`Offer::scopeAvailable`), never a claim; two checkouts racing for the
   last place may both get it (accepted).
 - **Checkout.** `ConfigureSubscriptionCheckout::apply()`: available offer
-  (`Account::currentOffer()`, the latest claim) → first-month coupon → trial. An
-  offer skips the trial and throws with `allow_promotion_codes`, like the coupon.
-  Validity is checked again when checkout starts. The controller resolves the
-  offer once (`offerFor()`) and hands the same one to `StartSubscriptionCheckout`
-  and `apply()`, so the coupon, the metadata and the tracked events agree. The
-  offer id goes in the subscription metadata `trypost_offer_id`; the
-  `customer.subscription.created` / `updated` webhook writes `redeemed_at`
-  (`RedeemOffer`) only once the subscription is `active` or `trialing`, so an
-  incomplete checkout never uses up a place. An offer checkout does not set
-  `trypost_first_month_coupon_id`, so it is not counted as the `$1` first month.
-  Offers apply only to the Welcome checkout (Socials monthly).
-- **Copy.** Name, price and period live in `lang/<locale>/offers.php` under the
-  slug with dashes as underscores (`black-friday-2026` → `black_friday_2026`:
-  `name`, `price`, `period`), in all 16 locales; the price is display text per
-  locale, like `billing.subscribe.prices.first_month`. Nothing about the discount is
+  (`Account::currentOffer()`, the latest claim) → otherwise the trial. An offer
+  skips the trial and the promotion code field. Validity is checked again when
+  checkout starts. The controller resolves the offer once (`offerFor()`) and
+  hands the same one to `StartSubscriptionCheckout` and `apply()`, so the coupon,
+  the metadata and the tracked events agree. The offer id and slug go in the
+  subscription metadata (`trypost_offer_id`, `trypost_offer_slug`) and the slug in
+  the session metadata; the `customer.subscription.created` / `updated` webhook
+  writes `redeemed_at` (`RedeemOffer`) only once the subscription is `active` or
+  `trialing`, so an incomplete checkout never uses up a place. Offers apply only
+  to the Welcome checkout (Socials monthly).
+- **Tracking.** PostHog names the offer by its slug, `offer_slug`, on
+  `checkout.started`, `checkout.completed`, `checkout.expired` and the account
+  group (set on subscription creation). The old `is_first_month_offer`,
+  `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
+- **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
+  slug with dashes as underscores (`first-month` → `first_month`): `name` (the
+  banner's tag), `headline` (the banner's sentence), `price` and `period`, in all
+  16 locales; the price is display text per locale, like
+  `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
   stored in the database. The page has no fallback language, so `OfferResource`
   checks each key in the current locale only. The Welcome plan step shows the
-  badge (`welcome.plan_offer_badge`) and the offer price only when the price and
-  period exist; without the name the badge says `welcome.plan_offer_badge_generic`;
-  it never prints a raw key. `tests/Feature/Offer/OfferCopyTest.php` fails when an
+  banner (dark pill, the name in a light tag) only when `name` and `headline`
+  exist, and the offer price only when `price` and `period` exist; it never
+  prints a raw key. Without an offer it shows the trial (`welcome.plan_trial_*`),
+  or the full price when no trial applies. `tests/Feature/Offer/OfferCopyTest.php` fails when an
   offer row misses its copy in any locale.
-- **Adding an offer.** Create the coupon in Stripe (no dates, no limit), add a
-  data migration that inserts the `offers` row (`DB::table`, `Str::uuid7()`), add
-  its copy to all 16 locales, deploy.
+- **Adding an offer.** Create the coupon in Stripe (no dates, no limit), add its
+  copy to all 16 locales and deploy, then insert the `offers` row in each
+  environment's database by hand (owner decision October 2026: no data
+  migration, since the coupon id differs between Stripe test and live).
 
 ## Multiple social accounts per network
 
