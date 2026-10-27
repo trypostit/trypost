@@ -16,6 +16,7 @@ use App\Models\Offer;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
+use App\Support\Billing\StripeValue;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -157,8 +158,9 @@ class StripeEventListener
     }
 
     /**
-     * The first charge of an account that subscribed during a trial without a
-     * card it took from an offer. Read before recordFirstPayment writes
+     * The first charge of an account whose subscription was created during a
+     * trial without a card it took from an offer, so a payment confirmed or a
+     * webhook retried after the trial still counts. Read before recordFirstPayment writes
      * `first_paid_at`, so it holds once, on created or on a later update.
      *
      * @param  array<string, mixed>  $payload
@@ -169,10 +171,12 @@ class StripeEventListener
             return false;
         }
 
+        $subscribedAt = StripeValue::timestamp(data_get($payload, 'data.object.created')) ?? now();
+
         return $account->redeemedOffers()
             ->where('offers.requires_card', false)
             ->get()
-            ->contains(fn (Offer $offer): bool => Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)->isFuture());
+            ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)));
     }
 
     /**

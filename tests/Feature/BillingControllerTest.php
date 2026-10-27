@@ -804,3 +804,23 @@ test('an amount discount in a currency without cents keeps its value', function 
         ->get(route('app.billing.index'))
         ->assertInertia(fn ($page) => $page->where('discount.value', '¥1,000'));
 });
+
+test('a trial without a card shows the trial, not the ended subscription before it', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_ended',
+        'stripe_status' => 'canceled',
+        'stripe_price' => 'price_123',
+        'ends_at' => now()->subMonth(),
+    ]);
+    $this->account->update(['plan_id' => Plan::where('slug', Slug::Socials)->value('id'), 'trial_ends_at' => now()->addDays(7)]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('subscription', null)
+            ->where('onTrial', true)
+            ->where('hasSubscription', false)
+        );
+});

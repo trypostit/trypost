@@ -39,8 +39,7 @@ class BillingController extends Controller
         }
 
         $account = $request->user()->accountOrFail();
-        $from = $request->query('from');
-        $returnsToBilling = is_string($from) && CheckoutOrigin::tryFrom($from) === CheckoutOrigin::Billing;
+        $returnsToBilling = $request->query('from') === CheckoutOrigin::Billing->value;
 
         return Inertia::render('billing/Processing', [
             'ready' => $returnsToBilling ? $this->planSyncedWithSubscription($account) : $account->hasAppAccess(),
@@ -77,10 +76,10 @@ class BillingController extends Controller
             'hasSubscription' => $hasSubscription,
             'onTrial' => $account->isOnTrial(),
             'trialEndsAt' => $account->activeTrialEndsAt(),
-            'subscription' => $subscription?->only([
+            'subscription' => $subscription?->valid() ? $subscription->only([
                 'stripe_status',
                 'ends_at',
-            ]),
+            ]) : null,
             'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
             'workspaceCount' => $account->workspaces()->count(),
             'invoices' => Inertia::scroll(
@@ -148,14 +147,40 @@ class BillingController extends Controller
             return redirect()->route('app.calendar');
         }
 
-        $account = $request->user()->account;
-        $plan = Plan::active()->findOrFail($request->validated('plan_id'));
-        $interval = Interval::from($request->validated('interval'));
+        return $this->moveToPlan(
+            $request->user()->account,
+            Plan::active()->findOrFail($request->validated('plan_id')),
+            Interval::from($request->validated('interval')),
+            $checkout,
+        );
+    }
 
-        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
-            return $this->subscribeFromTrial($account, $plan, $interval, $checkout);
+    /**
+     * Subscribe now on billing: a generic trial subscribes to its plan's
+     * monthly price.
+     */
+    public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
+    {
+        if (config('trypost.self_hosted')) {
+            return redirect()->route('app.calendar');
         }
 
+        $account = $request->user()->accountOrFail();
+
+        if ($account->subscribed(Account::SUBSCRIPTION_NAME) || blank($account->plan)) {
+            return redirect()->route('app.billing.index');
+        }
+
+        return $this->moveToPlan($account, $account->plan, Interval::Monthly, $checkout);
+    }
+
+    /**
+     * One rule for every plan move (`swapPlan`). A subscription swaps its
+     * price; a generic trial subscribes through Stripe Checkout, charged at
+     * once, with a coupon offer the owner claimed meanwhile.
+     */
+    private function moveToPlan(Account $account, Plan $plan, Interval $interval, StartSubscriptionCheckout $checkout): SymfonyResponse
+    {
         $authorization = Gate::inspect('swapPlan', [$account, $plan]);
 
         if ($authorization->denied()) {
@@ -165,6 +190,17 @@ class BillingController extends Controller
         $priceId = $interval->priceIdFor($plan);
 
         abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+
+        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return $checkout->redirect(
+                $account,
+                $priceId,
+                route('app.billing.index'),
+                $plan,
+                $account->currentOffer(withTrial: false),
+                CheckoutOrigin::Billing,
+            );
+        }
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
@@ -189,52 +225,6 @@ class BillingController extends Controller
 
         return redirect()->route('app.billing.index')
             ->with('flash.success', __('billing.flash.plan_changed', ['plan' => $plan->name]));
-    }
-
-    /**
-     * Subscribe now on billing: a generic trial subscribes to its plan's
-     * monthly price.
-     */
-    public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
-    {
-        if (config('trypost.self_hosted')) {
-            return redirect()->route('app.calendar');
-        }
-
-        $account = $request->user()->accountOrFail();
-
-        if ($account->subscribed(Account::SUBSCRIPTION_NAME) || blank($account->plan)) {
-            return redirect()->route('app.billing.index');
-        }
-
-        return $this->subscribeFromTrial($account, $account->plan, Interval::Monthly, $checkout);
-    }
-
-    /**
-     * A generic trial subscribes through Stripe Checkout, charged at once,
-     * under the same rules as a plan change (`swapPlan`), with a coupon offer
-     * the owner claimed meanwhile.
-     */
-    private function subscribeFromTrial(Account $account, Plan $plan, Interval $interval, StartSubscriptionCheckout $checkout): SymfonyResponse
-    {
-        $authorization = Gate::inspect('swapPlan', [$account, $plan]);
-
-        if ($authorization->denied()) {
-            return back()->with('flash.error', $authorization->message());
-        }
-
-        $priceId = $interval->priceIdFor($plan);
-
-        abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
-
-        return $checkout->redirect(
-            $account,
-            $priceId,
-            route('app.billing.index'),
-            $plan,
-            $account->currentOffer(withTrial: false),
-            CheckoutOrigin::Billing,
-        );
     }
 
     public function portal(Request $request): RedirectResponse

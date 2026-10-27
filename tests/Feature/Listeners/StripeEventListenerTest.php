@@ -1212,3 +1212,26 @@ test('subscribing long after a trial without a card ended is not a trial convers
 
     Bus::assertNotDispatched(TrackTrialConverted::class);
 });
+
+test('a subscription created during a trial without a card still converts when its webhook arrives after the trial', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $redeemedAt = now()->subDays(9);
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => $redeemedAt, 'redeemed_at' => $redeemedAt]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'created' => $redeemedAt->copy()->addDays(6)->timestamp,
+                'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+            ],
+            'previous_attributes' => ['status' => 'incomplete'],
+        ],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
