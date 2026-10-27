@@ -21,4 +21,9 @@ return [
         'period' => '7 gün boyunca',
         'checkout_button' => 'Ücretsiz dene',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => 'Ücretsiz',
+        'period' => '7 gün boyunca',
+        'checkout_button' => 'Ücretsiz dene',
+    ],
 ];

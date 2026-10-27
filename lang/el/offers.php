@@ -21,4 +21,9 @@ return [
         'period' => 'για 7 ημέρες',
         'checkout_button' => 'Δωρεάν δοκιμή',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => 'Δωρεάν',
+        'period' => 'για 7 ημέρες',
+        'checkout_button' => 'Δωρεάν δοκιμή',
+    ],
 ];

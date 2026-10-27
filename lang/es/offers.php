@@ -21,4 +21,9 @@ return [
         'period' => 'durante 7 días',
         'checkout_button' => 'Probar gratis',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => 'Gratis',
+        'period' => 'durante 7 días',
+        'checkout_button' => 'Probar gratis',
+    ],
 ];

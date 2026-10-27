@@ -21,4 +21,9 @@ return [
         'period' => 'لمدة 7 أيام',
         'checkout_button' => 'جرّب مجانًا',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => 'مجانًا',
+        'period' => 'لمدة 7 أيام',
+        'checkout_button' => 'جرّب مجانًا',
+    ],
 ];

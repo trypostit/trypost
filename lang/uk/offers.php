@@ -21,4 +21,9 @@ return [
         'period' => 'на 7 днів',
         'checkout_button' => 'Почати безкоштовно',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => 'Безкоштовно',
+        'period' => 'на 7 днів',
+        'checkout_button' => 'Почати безкоштовно',
+    ],
 ];

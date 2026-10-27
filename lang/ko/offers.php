@@ -21,4 +21,9 @@ return [
         'period' => '7일 동안',
         'checkout_button' => '무료 체험 시작',
     ],
+    'free_trial_7_days_no_card' => [
+        'price' => '무료',
+        'period' => '7일 동안',
+        'checkout_button' => '무료 체험 시작',
+    ],
 ];
