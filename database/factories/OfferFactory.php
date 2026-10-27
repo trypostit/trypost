@@ -69,6 +69,43 @@ class OfferFactory extends Factory
         ]);
     }
 
+    /**
+     * The Black Friday 2026 offer: 50% off the first 3 months, with its banner.
+     */
+    public function blackFriday(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'slug' => 'bf26',
+            'stripe_coupon_id' => 'BF26_50_3M',
+            'show_banner' => true,
+        ]);
+    }
+
+    /**
+     * The $1 first month, for accounts that never subscribed.
+     */
+    public function firstMonth(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'slug' => 'first-month',
+            'stripe_coupon_id' => 'SOCIALS_18USD',
+            'first_subscription_only' => true,
+        ]);
+    }
+
+    /**
+     * The 7-day free trial. Stripe Checkout shows 8 trial days as 7.
+     */
+    public function freeTrial(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'slug' => 'free-trial-7-days',
+            'stripe_coupon_id' => null,
+            'trial_days' => 8,
+            'first_subscription_only' => true,
+        ]);
+    }
+
     public function withBanner(): static
     {
         return $this->state(fn (array $attributes): array => [

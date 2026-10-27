@@ -431,11 +431,11 @@ test('redirect gives the trial of the offer it is given', function () {
 
     $account = Account::factory()->create();
     User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
-    $offer = Offer::factory()->trial(7)->create(['slug' => 'free-trial-7-days']);
+    $offer = Offer::factory()->freeTrial()->create();
     $account->refresh();
 
     $builder = Mockery::mock(SubscriptionBuilder::class);
-    $builder->shouldReceive('trialDays')->once()->with(7)->andReturnSelf();
+    $builder->shouldReceive('trialDays')->once()->with(8)->andReturnSelf();
     $builder->shouldReceive('withCoupon')->never();
     $builder->shouldReceive('withMetadata')
         ->once()

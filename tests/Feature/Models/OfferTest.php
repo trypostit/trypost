@@ -103,3 +103,14 @@ test('current offer is empty without a claim', function () {
 
     expect(Account::factory()->create()->currentOffer())->toBeNull();
 });
+
+test('the factory builds the three real offers with their copy', function (string $state, string $slug) {
+    $offer = Offer::factory()->{$state}()->create();
+
+    expect($offer->slug)->toBe($slug)
+        ->and(__("offers.{$offer->langKey()}.price"))->not->toBe("offers.{$offer->langKey()}.price");
+})->with([
+    'black friday' => ['blackFriday', 'bf26'],
+    'first month' => ['firstMonth', 'first-month'],
+    'free trial' => ['freeTrial', 'free-trial-7-days'],
+]);

@@ -212,7 +212,7 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
-    $user->account->offers()->attach(Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']), ['claimed_at' => now()]);
+    $user->account->offers()->attach(Offer::factory()->freeTrial()->create(), ['claimed_at' => now()]);
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
@@ -257,7 +257,7 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
 
 test('the plan step shows the full price without an offer, even when a trial offer exists', function () {
     config(['trypost.self_hosted' => false]);
-    Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']);
+    Offer::factory()->freeTrial()->create();
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
@@ -394,11 +394,11 @@ test('the activate button shows a spinner while checkout opens', function () {
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
 });
 
-test('the plan step shows an offer\'s banner and price', function (string $slug, string $name, string $headline, string $price, ?string $unit, string $period) {
+test('the plan step shows an offer\'s banner and price', function (string $offer, string $name, string $headline, string $price, ?string $unit, string $period) {
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
-    $user->account->offers()->attach(Offer::factory()->withBanner()->create(['slug' => $slug]), ['claimed_at' => now()]);
+    $user->account->offers()->attach(Offer::factory()->{$offer}()->withBanner()->create(), ['claimed_at' => now()]);
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
@@ -419,15 +419,15 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
         $page->assertSeeIn('@plan-price-unit-socials', $unit);
     }
 })->with([
-    'black friday shows its unit' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', '/month', 'for your first 3 months'],
-    'first month has no unit' => ['first-month', 'First month', 'Your first month for $1', '$1', null, 'for your first month'],
+    'black friday shows its unit' => ['blackFriday', 'Black Friday', '50% off your first 3 months', '$9.50', '/month', 'for your first 3 months'],
+    'first month has no unit' => ['firstMonth', 'First month', 'Your first month for $1', '$1', null, 'for your first month'],
 ]);
 
 test('the plan step keeps an offer\'s price but hides its banner when the offer does not show one', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
-    $user->account->offers()->attach(Offer::factory()->create(['slug' => 'bf26']), ['claimed_at' => now()]);
+    $user->account->offers()->attach(Offer::factory()->blackFriday()->create(['show_banner' => false]), ['claimed_at' => now()]);
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));

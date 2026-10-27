@@ -198,7 +198,7 @@ test('plan shows the Socials plan', function () {
 });
 
 test('plan sends a claimed trial offer only to an account that may use it', function (Closure $setup, bool $claims, bool $offered) {
-    $trial = Offer::factory()->trial(7)->firstSubscriptionOnly()->create(['slug' => 'free-trial-7-days']);
+    $trial = Offer::factory()->freeTrial()->create();
     completeWelcomeThroughSoftware($this->user);
     $setup($this->user);
 
@@ -210,7 +210,7 @@ test('plan sends a claimed trial offer only to an account that may use it', func
         ->get(route('app.welcome.plan'))
         ->assertOk()
         ->assertInertia(fn ($page) => $offered
-            ? $page->where('offer.key', 'free_trial_7_days')->where('offer.trial_days', 7)
+            ? $page->where('offer.key', 'free_trial_7_days')->where('offer.trial_days', 8)
             : $page->where('offer', null));
 })->with([
     'no claim pays the full price' => [fn () => null, false, false],
