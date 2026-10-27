@@ -19,33 +19,37 @@ const props = defineProps<{
     offer: Offer | null;
 }>();
 
-const showsOfferPrice = computed(
-    (): boolean => props.offer?.has_checkout_copy === true,
-);
+interface PriceCopy {
+    price: string;
+    unit: string | null;
+    period: string | null;
+    checkoutButton: string;
+    terms: string;
+}
 
-const checkoutPriceKey = computed((): string =>
-    showsOfferPrice.value
-        ? `offers.${props.offer?.key}.price`
-        : 'billing.subscribe.prices.socials.monthly',
-);
+const FULL_PRICE_COPY: PriceCopy = {
+    price: 'billing.subscribe.prices.socials.monthly',
+    unit: 'billing.plans.per_month',
+    period: null,
+    checkoutButton: 'welcome.plan_checkout_button',
+    terms: 'welcome.plan_cancel_anytime',
+};
 
-const unitKey = computed((): string | null => {
-    if (!showsOfferPrice.value) {
-        return 'billing.plans.per_month';
+const priceCopy = computed((): PriceCopy => {
+    if (!props.offer?.has_checkout_copy) {
+        return FULL_PRICE_COPY;
     }
 
-    return props.offer?.has_unit ? `offers.${props.offer.key}.unit` : null;
+    const offerCopy = `offers.${props.offer.key}`;
+
+    return {
+        price: `${offerCopy}.price`,
+        unit: props.offer.has_unit ? `${offerCopy}.unit` : null,
+        period: `${offerCopy}.period`,
+        checkoutButton: `${offerCopy}.checkout_button`,
+        terms: 'welcome.plan_terms',
+    };
 });
-
-const checkoutButtonKey = computed((): string =>
-    showsOfferPrice.value
-        ? `offers.${props.offer?.key}.checkout_button`
-        : 'welcome.plan_checkout_button',
-);
-
-const termsKey = computed((): string =>
-    showsOfferPrice.value ? 'welcome.plan_terms' : 'welcome.plan_cancel_anytime',
-);
 
 const form = useForm({});
 
@@ -161,7 +165,7 @@ const submit = (): void => {
 
                 <div class="flex flex-col gap-1">
                     <s
-                        v-if="offer && showsOfferPrice"
+                        v-if="priceCopy.period"
                         class="text-sm text-muted-foreground"
                         :data-testid="`plan-price-original-${plan.slug}`"
                         >{{ $t('billing.subscribe.prices.socials.monthly')
@@ -171,20 +175,20 @@ const submit = (): void => {
                         <span
                             class="text-4xl leading-none font-strong tracking-tight tabular-nums [word-spacing:-0.15em] sm:text-5xl"
                             :data-testid="`plan-price-${plan.slug}`"
-                            >{{ $t(checkoutPriceKey) }}</span
+                            >{{ $t(priceCopy.price) }}</span
                         >
                         <span
-                            v-if="unitKey"
+                            v-if="priceCopy.unit"
                             class="text-base text-foreground"
                             :data-testid="`plan-price-unit-${plan.slug}`"
-                            >{{ $t(unitKey) }}</span
+                            >{{ $t(priceCopy.unit) }}</span
                         >
                     </p>
                     <span
-                        v-if="offer && showsOfferPrice"
+                        v-if="priceCopy.period"
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{ $t(`offers.${offer.key}.period`) }}</span
+                        >{{ $t(priceCopy.period) }}</span
                     >
                 </div>
             </div>
@@ -201,7 +205,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    $t(checkoutButtonKey, { price: $t(checkoutPriceKey) })
+                    $t(priceCopy.checkoutButton, { price: $t(priceCopy.price) })
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"
@@ -211,7 +215,7 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    $t(termsKey, {
+                    $t(priceCopy.terms, {
                         price: $t('billing.subscribe.prices.socials.monthly'),
                     })
                 }}
