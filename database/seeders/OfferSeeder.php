@@ -22,7 +22,7 @@ class OfferSeeder extends Seeder
 
         Offer::updateOrCreate(
             ['slug' => 'free-trial-7-days'],
-            ['starts_at' => now(), 'trial_days' => 7, 'first_subscription_only' => true],
+            ['starts_at' => now(), 'trial_days' => 8, 'first_subscription_only' => true],
         );
 
         Offer::updateOrCreate(
