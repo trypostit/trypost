@@ -12,21 +12,7 @@ afterEach(function () {
     ApiRequestor::setHttpClient(null);
 });
 
-function waitForBillingPageTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
-function billingPageOwner(): User
+function billingPageOwner(bool $subscribed = true): User
 {
     $user = User::factory()->create();
     $user->account->update([
@@ -39,7 +25,10 @@ function billingPageOwner(): User
     ]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
-    subscribeAccount($user->account);
+
+    if ($subscribed) {
+        subscribeAccount($user->account);
+    }
 
     return $user->fresh();
 }
@@ -50,7 +39,7 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
     $this->actingAs(billingPageOwner());
 
     $page = visit(route('app.billing.index'));
-    waitForBillingPageTestId($page, 'billing-current-plan');
+    waitFor($page, '@billing-current-plan');
 
     $page->assertSeeIn('@billing-current-plan-name', 'Socials')
         ->assertSeeIn('@billing-current-plan-price', '$19')
@@ -64,7 +53,7 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
         ->assertMissing('@plan-card-socials');
 
     $page->click('@billing-change-plan');
-    waitForBillingPageTestId($page, 'plan-card-workspaces');
+    waitFor($page, '@plan-card-workspaces');
 
     $page->assertVisible('@billing-plan-dialog')
         ->assertVisible('@plan-card-socials')
@@ -74,7 +63,7 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
         ->assertSeeIn('@plan-price-socials', '$19');
 
     $page->click('@plan-interval-yearly');
-    waitForBillingPageTestId($page, 'plan-save-two-months');
+    waitFor($page, '@plan-save-two-months');
 
     $page->assertSeeIn('@plan-price-socials', '$15.83')
         ->assertSeeIn('@plan-select-socials', 'Switch to yearly')
@@ -89,7 +78,7 @@ test('self-hosted settings show neither an account nor a billing item', function
     $this->actingAs(billingPageOwner());
 
     $page = visit(route('app.profile.edit'));
-    waitForBillingPageTestId($page, 'settings-nav-profile');
+    waitFor($page, '@settings-nav-profile');
 
     $page->assertMissing('@settings-nav-account')
         ->assertMissing('@settings-nav-billing')
@@ -99,11 +88,7 @@ test('self-hosted settings show neither an account nor a billing item', function
 test('the billing page explains a discount and lists every card, the default first', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = User::factory()->create();
-    $user->account->update(['plan_id' => Plan::query()->where('slug', Slug::Socials)->value('id')]);
-    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
+    $user = billingPageOwner(subscribed: false);
     fakeStripeBilling(
         $user->account,
         ['percent_off' => 50, 'amount_off' => null, 'currency' => null, 'duration' => 'repeating', 'duration_in_months' => 3],
@@ -140,11 +125,7 @@ test('the billing page explains a discount and lists every card, the default fir
 test('the billing page shows the generic card for a brand without its own logo', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = User::factory()->create();
-    $user->account->update(['plan_id' => Plan::query()->where('slug', Slug::Socials)->value('id')]);
-    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
-    $workspace->members()->attach($user->id, membershipPivot('admin'));
-    $user->update(['current_workspace_id' => $workspace->id]);
+    $user = billingPageOwner(subscribed: false);
     fakeStripeBilling($user->account, cardBrand: 'eftpos_au');
     $this->actingAs($user->fresh());
 
@@ -160,8 +141,7 @@ test('the billing page shows the generic card for a brand without its own logo',
 test('the invoices tab lists the paid invoices and loads more on scroll', function () {
     config(['trypost.self_hosted' => false, 'app.pagination.default' => 10]);
 
-    $user = billingPageOwner();
-    $user->account->subscriptions()->delete();
+    $user = billingPageOwner(subscribed: false);
     fakeStripeBilling($user->account, paidInvoices: 12);
     $this->actingAs($user->fresh());
 
@@ -188,8 +168,7 @@ test('the invoices tab lists the paid invoices and loads more on scroll', functi
 test('the invoices tab opens from the link and says when there are none yet', function () {
     config(['trypost.self_hosted' => false]);
 
-    $user = billingPageOwner();
-    $user->account->subscriptions()->delete();
+    $user = billingPageOwner(subscribed: false);
     fakeStripeBilling($user->account);
     $this->actingAs($user->fresh());
 

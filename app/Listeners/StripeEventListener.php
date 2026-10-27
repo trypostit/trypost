@@ -230,11 +230,11 @@ class StripeEventListener
      */
     private function redeemOffer(Account $account, array $payload): void
     {
-        if (! in_array($this->currentStatus($payload), [StripeSubscription::STATUS_ACTIVE, StripeSubscription::STATUS_TRIALING], true)) {
+        if (! SubscriptionPlanSync::allows($this->currentStatus($payload))) {
             return;
         }
 
-        RedeemOffer::execute($account, data_get($payload, 'data.object.metadata.'.ConfigureSubscriptionCheckout::OFFER_METADATA_KEY));
+        RedeemOffer::execute($account, data_get($payload, ['data', 'object', 'metadata', ConfigureSubscriptionCheckout::OFFER_METADATA_KEY]));
     }
 
     /**
