@@ -7,6 +7,7 @@ namespace App\Actions\Billing;
 use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
 use App\Models\Subscription;
+use Laravel\Cashier\Discount;
 
 class ShowSubscriptionDiscount
 {
@@ -23,8 +24,6 @@ class ShowSubscriptionDiscount
             return null;
         }
 
-        $discount = $subscription->discount();
-
-        return filled($discount) ? SubscriptionDiscountResource::make($discount)->resolve() : null;
+        return transform($subscription->discount(), fn (Discount $discount): array => SubscriptionDiscountResource::make($discount)->resolve());
     }
 }
