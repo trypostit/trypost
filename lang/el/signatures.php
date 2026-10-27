@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Υπογραφές',
     'description' => 'Έτοιμα κείμενα για τις αναρτήσεις σας.',

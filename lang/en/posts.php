@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => 'List',
     'view_switcher' => 'Schedule view',

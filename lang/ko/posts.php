@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => '목록',
     'view_switcher' => '일정 보기',

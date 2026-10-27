@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Paramètres',
     'description' => 'Gérez votre profil et les paramètres de votre compte',

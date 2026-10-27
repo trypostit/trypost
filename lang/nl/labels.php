@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Labels',
     'description' => 'Organiseer je posts met labels.',

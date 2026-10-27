@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => 'リスト',
     'view_switcher' => 'スケジュール表示',

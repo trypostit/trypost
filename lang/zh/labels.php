@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '标签',
     'description' => '用标签整理你的帖子。',

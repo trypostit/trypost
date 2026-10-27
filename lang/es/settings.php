@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Configuración',
     'description' => 'Administra tu perfil y configuración de la cuenta',

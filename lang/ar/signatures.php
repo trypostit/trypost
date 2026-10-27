@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'التوقيعات',
     'description' => 'نصوص جاهزة لإضافتها إلى منشوراتك.',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => 'Γράψτε μια σημείωση...',
     'title' => 'Σημειώσεις',

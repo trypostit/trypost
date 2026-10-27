@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => 'Scrivi una nota...',
     'title' => 'Note',

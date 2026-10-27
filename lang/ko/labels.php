@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '라벨',
     'description' => '라벨로 게시물을 정리하세요.',

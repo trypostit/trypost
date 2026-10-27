@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Мітки',
     'description' => 'Упорядковуйте дописи за допомогою міток.',

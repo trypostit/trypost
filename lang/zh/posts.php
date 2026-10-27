@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => '列表',
     'view_switcher' => '日程视图',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'ラベル',
     'description' => 'ラベルで投稿を整理しましょう。',

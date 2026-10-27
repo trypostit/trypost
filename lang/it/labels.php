@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Etichette',
     'description' => 'Organizza i tuoi post con le etichette.',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '서명',
     'description' => '게시물에 추가할 재사용 텍스트입니다.',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'bf26' => [
         'name' => 'Чорна пʼятниця',

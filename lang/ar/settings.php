@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'الإعدادات',
     'description' => 'إدارة ملفك الشخصي وإعدادات حسابك',

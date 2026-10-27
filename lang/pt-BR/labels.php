@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Etiquetas',
     'description' => 'Organize e filtre seus posts com etiquetas.',

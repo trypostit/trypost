@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '設定',
     'description' => 'プロフィールとアカウントの設定を管理します',

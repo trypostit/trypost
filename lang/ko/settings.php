@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '설정',
     'description' => '프로필 및 계정 설정 관리',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Налаштування',
     'description' => 'Керуйте профілем та налаштуваннями облікового запису',

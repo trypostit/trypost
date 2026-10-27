@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Signatures',
     'description' => 'Textes réutilisables pour vos publications.',

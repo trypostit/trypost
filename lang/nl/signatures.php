@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Handtekeningen',
     'description' => 'Herbruikbare teksten voor je posts.',

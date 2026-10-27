@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Labels',
     'description' => 'Organize and filter your posts with labels.',

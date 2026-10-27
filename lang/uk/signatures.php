@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Підписи',
     'description' => 'Готові тексти для ваших дописів.',

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Signatures',
     'description' => 'Reusable text to append to your posts.',

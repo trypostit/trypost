@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => 'اكتب ملاحظة...',
     'title' => 'ملاحظات',

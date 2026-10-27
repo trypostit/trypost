@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => 'Elenco',
     'view_switcher' => 'Vista programmazione',

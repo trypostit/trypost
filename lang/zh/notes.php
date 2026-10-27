@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => '写下备注…',
     'title' => '备注',

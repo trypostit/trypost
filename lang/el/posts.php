@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => 'Λίστα',
     'view_switcher' => 'Προβολή προγράμματος',

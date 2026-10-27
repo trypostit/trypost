@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => 'Напишите заметку...',
     'title' => 'Заметки',

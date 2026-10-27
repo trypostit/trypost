@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'list_view' => 'قائمة',
     'view_switcher' => 'عرض الجدول',

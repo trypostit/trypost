@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '设置',
     'description' => '管理你的个人资料和账户设置',

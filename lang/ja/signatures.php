@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => '署名',
     'description' => '投稿に追加できる定型文です。',

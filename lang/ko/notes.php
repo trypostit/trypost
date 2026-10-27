@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'placeholder' => '메모를 작성하세요...',
     'title' => '메모',

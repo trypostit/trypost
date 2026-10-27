@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 return [
     'title' => 'Firmas',
     'description' => 'Textos reutilizables para tus posts.',
