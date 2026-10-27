@@ -170,7 +170,7 @@ const submit = (): void => {
                     >
                     <p class="flex items-baseline gap-1 whitespace-nowrap">
                         <span
-                            class="text-4xl leading-none font-strong tabular-nums sm:text-5xl"
+                            class="text-4xl leading-none font-strong tracking-tight tabular-nums [word-spacing:-0.15em] sm:text-5xl"
                             :data-testid="`plan-price-${plan.slug}`"
                             >{{ $t(checkoutPriceKey) }}</span
                         >
