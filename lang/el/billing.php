@@ -24,6 +24,7 @@ return [
         'yearly' => 'Ετήσια',
         'save_two_months' => '2 μήνες δωρεάν',
         'per_month' => '/μήνα',
+        'per_year' => '/έτος',
         'workspaces_one' => 'Ένα workspace',
         'workspaces_unlimited' => 'Απεριόριστα workspaces',
         'workspaces_tooltip' => 'Ένα workspace είναι ένα brand ή ένας πελάτης, ξεχωριστά από τα υπόλοιπα: με δικούς του λογαριασμούς social, υπογραφές, ετικέτες, analytics, δικαιώματα μελών και σύνδεση MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Ενεργό',
+            'trial' => 'Δωρεάν δοκιμή',
+            'cancelling' => 'Ακυρώθηκε',
+            'past_due' => 'Ληξιπρόθεσμο',
+        ],
         'change' => 'Αλλαγή πλάνου',
         'price_monthly' => ':price/μήνα',
         'price_yearly' => ':price/έτος',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Διαχείριση στο Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Πλάνο',
+        'invoices' => 'Τιμολόγια',
+    ],
+
     'invoices' => [
-        'title' => 'Τιμολόγια',
-        'description' => 'Κατεβάστε τα προηγούμενα τιμολόγιά σας.',
+        'columns' => [
+            'date' => 'Ημερομηνία',
+            'amount' => 'Ποσό',
+            'status' => 'Κατάσταση',
+        ],
+        'empty_title' => 'Δεν υπάρχουν ακόμη τιμολόγια',
+        'empty_description' => 'Τα τιμολόγιά σας θα εμφανίζονται εδώ μετά την πρώτη σας πληρωμή.',
         'paid' => 'Πληρωμένο',
         'download' => 'Λήψη τιμολογίου',
     ],

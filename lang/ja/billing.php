@@ -24,6 +24,7 @@ return [
         'yearly' => '年額',
         'save_two_months' => '2か月分無料',
         'per_month' => '/月',
+        'per_year' => '/年',
         'workspaces_one' => 'ワークスペース 1 つ',
         'workspaces_unlimited' => '無制限のワークスペース',
         'workspaces_tooltip' => 'ワークスペースは 1 つのブランドや顧客ごとの独立した領域です。SNS アカウント、署名、ラベル、アナリティクス、メンバー権限、MCP 接続をそれぞれ個別に持ちます。',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => '有効',
+            'trial' => '無料トライアル',
+            'cancelling' => '解約済み',
+            'past_due' => '延滞',
+        ],
         'change' => 'プランを変更',
         'price_monthly' => ':price/月',
         'price_yearly' => ':price/年',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Stripe で管理',
     ],
 
+    'tabs' => [
+        'plan' => 'プラン',
+        'invoices' => '請求書',
+    ],
+
     'invoices' => [
-        'title' => '請求書',
-        'description' => '過去の請求書をダウンロードできます。',
+        'columns' => [
+            'date' => '日付',
+            'amount' => '金額',
+            'status' => 'ステータス',
+        ],
+        'empty_title' => '請求書はまだありません',
+        'empty_description' => '初回のお支払い後、請求書がここに表示されます。',
         'paid' => '支払い済み',
         'download' => '請求書をダウンロード',
     ],

@@ -53,7 +53,9 @@ test('the billing page shows the current plan and changes plans in a dialog', fu
     waitForBillingPageTestId($page, 'billing-current-plan');
 
     $page->assertSeeIn('@billing-current-plan-name', 'Socials')
-        ->assertSeeIn('@billing-current-plan-price', '$19/month')
+        ->assertSeeIn('@billing-current-plan-price', '$19')
+        ->assertSeeIn('@billing-current-plan-price', '/month')
+        ->assertSeeIn('@billing-current-plan-badge', 'Active')
         ->assertMissing('@billing-current-plan-status')
         ->assertMissing('@billing-current-plan-usage')
         ->assertVisible('@settings-nav-billing')
@@ -113,7 +115,7 @@ test('the billing page explains a discount and shows the card brand logo', funct
     $page = visit(route('app.billing.index'));
     waitFor($page, '@billing-current-plan-discount');
 
-    $page->assertSeeIn('@billing-current-plan-price', '$19/month')
+    $page->assertSeeIn('@billing-current-plan-price', '$19')
         ->assertSeeIn('@billing-current-plan-discount', '50% off until')
         ->assertVisible('@billing-card-brand-logo')
         ->assertSeeIn('@billing-card-label', 'Visa')
@@ -138,5 +140,49 @@ test('the billing page keeps the card icon for a brand without a logo', function
     $page->assertSeeIn('@billing-card-label', 'UnionPay')
         ->assertMissing('@billing-card-brand-logo')
         ->assertMissing('@billing-current-plan-discount')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the invoices tab lists the paid invoices and loads more on scroll', function () {
+    config(['trypost.self_hosted' => false, 'app.pagination.default' => 10]);
+
+    $user = billingPageOwner();
+    $user->account->subscriptions()->delete();
+    fakeStripeBilling($user->account, paidInvoices: 12);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-tab-invoices');
+
+    $page->assertMissing('@billing-invoices')
+        ->click('@billing-tab-invoices');
+    waitFor($page, '@billing-invoice-in_fake_012');
+    waitForCondition($page, "new URLSearchParams(location.search).get('tab') === 'invoices'");
+
+    $page->assertSeeIn('@billing-invoice-in_fake_012', '$19.00')
+        ->assertSeeIn('@billing-invoice-in_fake_012', 'Paid')
+        ->assertVisible('@billing-invoice-download-in_fake_012');
+
+    $page->script('window.scrollTo(0, document.body.scrollHeight)');
+    waitFor($page, '@billing-invoice-in_fake_001');
+
+    $page->assertVisible('@billing-invoice-in_fake_001')
+        ->assertMissing('@billing-current-plan')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the invoices tab opens from the link and says when there are none yet', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = billingPageOwner();
+    $user->account->subscriptions()->delete();
+    fakeStripeBilling($user->account);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index', ['tab' => 'invoices']));
+    waitFor($page, '@billing-invoices-empty');
+
+    $page->assertSeeIn('@billing-invoices-empty', 'No invoices yet')
+        ->assertMissing('@billing-invoices')
         ->assertNoJavaScriptErrors();
 });

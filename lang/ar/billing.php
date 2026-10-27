@@ -24,6 +24,7 @@ return [
         'yearly' => 'سنوي',
         'save_two_months' => 'شهران مجانًا',
         'per_month' => '/شهر',
+        'per_year' => '/سنة',
         'workspaces_one' => 'مساحة عمل واحدة',
         'workspaces_unlimited' => 'مساحات عمل غير محدودة',
         'workspaces_tooltip' => 'مساحة العمل هي علامة تجارية أو عميل واحد، منفصلة عن البقية: بحساباتها الاجتماعية وتوقيعاتها وتصنيفاتها وتحليلاتها وصلاحيات أعضائها واتصال MCP الخاص بها.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'نشطة',
+            'trial' => 'تجربة مجانية',
+            'cancelling' => 'ملغاة',
+            'past_due' => 'متأخرة',
+        ],
         'change' => 'تغيير الخطة',
         'price_monthly' => ':price/شهر',
         'price_yearly' => ':price/سنة',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'الإدارة عبر Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'الخطة',
+        'invoices' => 'الفواتير',
+    ],
+
     'invoices' => [
-        'title' => 'الفواتير',
-        'description' => 'نزّل فواتيرك السابقة.',
+        'columns' => [
+            'date' => 'التاريخ',
+            'amount' => 'المبلغ',
+            'status' => 'الحالة',
+        ],
+        'empty_title' => 'لا توجد فواتير بعد',
+        'empty_description' => 'ستظهر فواتيرك هنا بعد أول دفعة.',
         'paid' => 'مدفوعة',
         'download' => 'تنزيل الفاتورة',
     ],

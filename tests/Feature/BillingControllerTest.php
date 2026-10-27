@@ -447,3 +447,46 @@ test('billing index sends the card brand Stripe reports', function () {
             ->where('defaultPaymentMethod.last4', '4242')
         );
 });
+
+test('billing index lists the paid invoices a page at a time, newest first', function () {
+    config(['trypost.self_hosted' => false, 'app.pagination.default' => 10]);
+    fakeStripeBilling($this->account, paidInvoices: 12);
+
+    $nextPage = null;
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(function ($page) use (&$nextPage) {
+            $page->has('invoices.data', 10)
+                ->where('invoices.data.0.id', 'in_fake_012')
+                ->where('invoices.data.0.total', '$19.00')
+                ->where('invoices.data.0.invoice_pdf', 'https://pay.stripe.com/invoice/in_fake_12/pdf')
+                ->where('invoices.data.9.id', 'in_fake_003')
+                ->whereType('invoices.meta.next_cursor', 'string');
+
+            $nextPage = $page->toArray()['props']['invoices']['meta']['next_cursor'];
+        });
+
+    $this->get(route('app.billing.index', ['cursor' => $nextPage]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('invoices.data', 2)
+            ->where('invoices.data.0.id', 'in_fake_002')
+            ->where('invoices.data.1.id', 'in_fake_001')
+            ->where('invoices.meta.next_cursor', null)
+        );
+});
+
+test('billing index lists no invoices for an account without any', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('invoices.data', 0)
+            ->where('invoices.meta.next_cursor', null)
+        );
+});

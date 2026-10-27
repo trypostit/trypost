@@ -24,6 +24,7 @@ return [
         'yearly' => 'Anual',
         'save_two_months' => '2 meses grátis',
         'per_month' => '/mês',
+        'per_year' => '/ano',
         'workspaces_one' => 'Um workspace',
         'workspaces_unlimited' => 'Workspaces ilimitados',
         'workspaces_tooltip' => 'Um workspace é uma marca ou cliente, separado dos demais: com suas próprias redes sociais, assinaturas, labels, analytics, permissões de membros e conexão MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Ativo',
+            'trial' => 'Teste grátis',
+            'cancelling' => 'Cancelado',
+            'past_due' => 'Em atraso',
+        ],
         'change' => 'Mudar plano',
         'price_monthly' => ':price/mês',
         'price_yearly' => ':price/ano',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Gerenciar no Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plano',
+        'invoices' => 'Faturas',
+    ],
+
     'invoices' => [
-        'title' => 'Faturas',
-        'description' => 'Baixe suas faturas anteriores.',
+        'columns' => [
+            'date' => 'Data',
+            'amount' => 'Valor',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Nenhuma fatura ainda',
+        'empty_description' => 'Suas faturas aparecem aqui depois do primeiro pagamento.',
         'paid' => 'Pago',
         'download' => 'Baixar fatura',
     ],

@@ -26,6 +26,7 @@ return [
         'yearly' => 'Jährlich',
         'save_two_months' => '2 Monate gratis',
         'per_month' => '/Monat',
+        'per_year' => '/Jahr',
         'workspaces_one' => 'Ein Workspace',
         'workspaces_unlimited' => 'Unbegrenzte Workspaces',
         'workspaces_tooltip' => 'Ein Workspace ist eine Marke oder ein Kunde, getrennt von allen anderen: mit eigenen Social-Media-Konten, Signaturen, Labels, Analytics, Mitgliederrechten und MCP-Verbindung.',
@@ -63,6 +64,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktiv',
+            'trial' => 'Kostenloser Test',
+            'cancelling' => 'Gekündigt',
+            'past_due' => 'Überfällig',
+        ],
         'change' => 'Tarif ändern',
         'price_monthly' => ':price/Monat',
         'price_yearly' => ':price/Jahr',
@@ -81,9 +88,19 @@ return [
         'manage_stripe' => 'Bei Stripe verwalten',
     ],
 
+    'tabs' => [
+        'plan' => 'Tarif',
+        'invoices' => 'Rechnungen',
+    ],
+
     'invoices' => [
-        'title' => 'Rechnungen',
-        'description' => 'Lade deine bisherigen Rechnungen herunter.',
+        'columns' => [
+            'date' => 'Datum',
+            'amount' => 'Betrag',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Noch keine Rechnungen',
+        'empty_description' => 'Deine Rechnungen erscheinen hier nach deiner ersten Zahlung.',
         'paid' => 'Bezahlt',
         'download' => 'Rechnung herunterladen',
     ],

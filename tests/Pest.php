@@ -359,7 +359,7 @@ function subscribeAccount(Account $account): void
  *
  * @param  array<string, mixed>|null  $coupon
  */
-function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null): void
+function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null, int $paidInvoices = 0): void
 {
     config(['cashier.secret' => 'sk_test_fake']);
     $account->forceFill(['stripe_id' => 'cus_fake'])->save();
@@ -370,9 +370,9 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
         'stripe_price' => 'price_123',
     ]);
 
-    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand) implements ClientInterface
+    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand, $paidInvoices) implements ClientInterface
     {
-        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand) {}
+        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand, private int $paidInvoices) {}
 
         public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
         {
@@ -402,10 +402,46 @@ function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discou
                     'object' => 'customer',
                     'invoice_settings' => ['default_payment_method' => $card],
                 ],
+                str_contains($absUrl, '/v1/invoices') => $this->invoices($params),
                 default => ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => '/v1/invoices'],
             };
 
             return [json_encode($body), 200, []];
+        }
+
+        /**
+         * The paid invoices, newest first, paged the way Stripe pages them:
+         * `limit` and `starting_after`, and only when `status` is `paid`.
+         *
+         * @param  array<string, mixed>  $params
+         * @return array<string, mixed>
+         */
+        private function invoices(array $params): array
+        {
+            $invoices = collect($this->paidInvoices > 0 ? range($this->paidInvoices, 1) : [])
+                ->filter(fn (): bool => data_get($params, 'status') === 'paid')
+                ->map(fn (int $number): array => [
+                    'id' => sprintf('in_fake_%03d', $number),
+                    'object' => 'invoice',
+                    'customer' => 'cus_fake',
+                    'status' => 'paid',
+                    'currency' => 'usd',
+                    'total' => 1900,
+                    'created' => now()->subMonths($this->paidInvoices - $number)->timestamp,
+                    'invoice_pdf' => "https://pay.stripe.com/invoice/in_fake_{$number}/pdf",
+                ])
+                ->values();
+
+            $after = data_get($params, 'starting_after');
+            $start = blank($after) ? 0 : $invoices->search(fn (array $invoice): bool => $invoice['id'] === $after) + 1;
+            $limit = (int) data_get($params, 'limit', 10);
+
+            return [
+                'object' => 'list',
+                'data' => $invoices->slice($start, $limit)->values()->all(),
+                'has_more' => $invoices->count() > $start + $limit,
+                'url' => '/v1/invoices',
+            ];
         }
     });
 }

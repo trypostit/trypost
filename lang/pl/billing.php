@@ -24,6 +24,7 @@ return [
         'yearly' => 'Rocznie',
         'save_two_months' => '2 miesiące gratis',
         'per_month' => '/miesiąc',
+        'per_year' => '/rok',
         'workspaces_one' => 'Jeden workspace',
         'workspaces_unlimited' => 'Nielimitowane workspace’y',
         'workspaces_tooltip' => 'Workspace to jedna marka lub klient, oddzielony od pozostałych: własne konta społecznościowe, podpisy, etykiety, analityka, uprawnienia członków i połączenie MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktywny',
+            'trial' => 'Okres próbny',
+            'cancelling' => 'Anulowany',
+            'past_due' => 'Zaległy',
+        ],
         'change' => 'Zmień plan',
         'price_monthly' => ':price/miesiąc',
         'price_yearly' => ':price/rok',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Zarządzaj w Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Faktury',
+    ],
+
     'invoices' => [
-        'title' => 'Faktury',
-        'description' => 'Pobierz swoje wcześniejsze faktury.',
+        'columns' => [
+            'date' => 'Data',
+            'amount' => 'Kwota',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Brak faktur',
+        'empty_description' => 'Faktury pojawią się tutaj po pierwszej płatności.',
         'paid' => 'Opłacona',
         'download' => 'Pobierz fakturę',
     ],

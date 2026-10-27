@@ -24,6 +24,7 @@ return [
         'yearly' => '按年',
         'save_two_months' => '免两个月',
         'per_month' => '/月',
+        'per_year' => '/年',
         'workspaces_one' => '一个工作区',
         'workspaces_unlimited' => '无限工作区',
         'workspaces_tooltip' => '一个工作区对应一个品牌或客户，与其他工作区相互隔离：拥有自己的社交账号、签名、标签、数据分析、成员权限和 MCP 连接。',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => '生效中',
+            'trial' => '免费试用',
+            'cancelling' => '已取消',
+            'past_due' => '已逾期',
+        ],
         'change' => '更改套餐',
         'price_monthly' => ':price/月',
         'price_yearly' => ':price/年',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => '在 Stripe 上管理',
     ],
 
+    'tabs' => [
+        'plan' => '套餐',
+        'invoices' => '发票',
+    ],
+
     'invoices' => [
-        'title' => '发票',
-        'description' => '下载你过往的发票。',
+        'columns' => [
+            'date' => '日期',
+            'amount' => '金额',
+            'status' => '状态',
+        ],
+        'empty_title' => '暂无发票',
+        'empty_description' => '首次付款后，你的发票会显示在这里。',
         'paid' => '已支付',
         'download' => '下载发票',
     ],

@@ -24,6 +24,7 @@ return [
         'yearly' => 'Jaarlijks',
         'save_two_months' => '2 maanden gratis',
         'per_month' => '/maand',
+        'per_year' => '/jaar',
         'workspaces_one' => 'Eén workspace',
         'workspaces_unlimited' => 'Onbeperkte workspaces',
         'workspaces_tooltip' => 'Een workspace is één merk of klant, gescheiden van de rest: met eigen social-media-accounts, handtekeningen, labels, analytics, ledenrechten en MCP-verbinding.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Actief',
+            'trial' => 'Gratis proefperiode',
+            'cancelling' => 'Opgezegd',
+            'past_due' => 'Achterstallig',
+        ],
         'change' => 'Plan wijzigen',
         'price_monthly' => ':price/maand',
         'price_yearly' => ':price/jaar',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Beheren op Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Facturen',
+    ],
+
     'invoices' => [
-        'title' => 'Facturen',
-        'description' => 'Download je eerdere facturen.',
+        'columns' => [
+            'date' => 'Datum',
+            'amount' => 'Bedrag',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'Nog geen facturen',
+        'empty_description' => 'Je facturen verschijnen hier na je eerste betaling.',
         'paid' => 'Betaald',
         'download' => 'Factuur downloaden',
     ],

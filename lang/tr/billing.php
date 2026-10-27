@@ -26,6 +26,7 @@ return [
         'yearly' => 'Yıllık',
         'save_two_months' => '2 ay ücretsiz',
         'per_month' => '/ay',
+        'per_year' => '/yıl',
         'workspaces_one' => 'Bir workspace',
         'workspaces_unlimited' => 'Sınırsız workspace',
         'workspaces_tooltip' => 'Workspace, diğerlerinden ayrı tutulan tek bir marka veya müşteridir: kendi sosyal medya hesapları, imzaları, etiketleri, analizleri, üye izinleri ve MCP bağlantısı vardır.',
@@ -63,6 +64,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Aktif',
+            'trial' => 'Ücretsiz deneme',
+            'cancelling' => 'İptal edildi',
+            'past_due' => 'Gecikmiş',
+        ],
         'change' => 'Planı değiştir',
         'price_monthly' => ':price/ay',
         'price_yearly' => ':price/yıl',
@@ -81,9 +88,19 @@ return [
         'manage_stripe' => 'Stripe\'ta yönet',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Faturalar',
+    ],
+
     'invoices' => [
-        'title' => 'Faturalar',
-        'description' => 'Geçmiş faturalarınızı indirin.',
+        'columns' => [
+            'date' => 'Tarih',
+            'amount' => 'Tutar',
+            'status' => 'Durum',
+        ],
+        'empty_title' => 'Henüz fatura yok',
+        'empty_description' => 'Faturalarınız ilk ödemenizden sonra burada görünür.',
         'paid' => 'Ödendi',
         'download' => 'Faturayı indir',
     ],

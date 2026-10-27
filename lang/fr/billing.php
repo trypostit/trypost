@@ -24,6 +24,7 @@ return [
         'yearly' => 'Annuel',
         'save_two_months' => '2 mois offerts',
         'per_month' => '/mois',
+        'per_year' => '/an',
         'workspaces_one' => 'Un espace de travail',
         'workspaces_unlimited' => 'Espaces de travail illimités',
         'workspaces_tooltip' => 'Un espace de travail correspond à une marque ou un client, séparé des autres : ses propres réseaux sociaux, signatures, libellés, statistiques, permissions des membres et connexion MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Active',
+            'trial' => 'Essai gratuit',
+            'cancelling' => 'Annulée',
+            'past_due' => 'En retard',
+        ],
         'change' => 'Changer d\'offre',
         'price_monthly' => ':price/mois',
         'price_yearly' => ':price/an',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Gérer sur Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Offre',
+        'invoices' => 'Factures',
+    ],
+
     'invoices' => [
-        'title' => 'Factures',
-        'description' => 'Téléchargez vos factures passées.',
+        'columns' => [
+            'date' => 'Date',
+            'amount' => 'Montant',
+            'status' => 'Statut',
+        ],
+        'empty_title' => 'Aucune facture pour l\'instant',
+        'empty_description' => 'Vos factures apparaîtront ici après votre premier paiement.',
         'paid' => 'Payée',
         'download' => 'Télécharger la facture',
     ],

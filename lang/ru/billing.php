@@ -24,6 +24,7 @@ return [
         'yearly' => 'Ежегодно',
         'save_two_months' => '2 месяца бесплатно',
         'per_month' => '/месяц',
+        'per_year' => '/год',
         'workspaces_one' => 'Один workspace',
         'workspaces_unlimited' => 'Неограниченное число workspace',
         'workspaces_tooltip' => 'Workspace — это один бренд или клиент, отделённый от остальных: свои соцсети, подписи, метки, аналитика, права участников и подключение MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Активен',
+            'trial' => 'Пробный период',
+            'cancelling' => 'Отменён',
+            'past_due' => 'Просрочен',
+        ],
         'change' => 'Сменить план',
         'price_monthly' => ':price/месяц',
         'price_yearly' => ':price/год',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Управлять в Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'План',
+        'invoices' => 'Счета',
+    ],
+
     'invoices' => [
-        'title' => 'Счета',
-        'description' => 'Скачивайте прошлые счета.',
+        'columns' => [
+            'date' => 'Дата',
+            'amount' => 'Сумма',
+            'status' => 'Статус',
+        ],
+        'empty_title' => 'Счетов пока нет',
+        'empty_description' => 'Счета появятся здесь после первой оплаты.',
         'paid' => 'Оплачено',
         'download' => 'Скачать счёт',
     ],

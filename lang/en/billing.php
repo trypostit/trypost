@@ -24,6 +24,7 @@ return [
         'yearly' => 'Yearly',
         'save_two_months' => '2 months free',
         'per_month' => '/month',
+        'per_year' => '/year',
         'workspaces_one' => 'One workspace',
         'workspaces_unlimited' => 'Unlimited workspaces',
         'workspaces_tooltip' => 'A workspace is one brand or client, kept separate from the rest: its own social accounts, signatures, labels, analytics, member permissions, and MCP connection.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Active',
+            'trial' => 'Free trial',
+            'cancelling' => 'Cancelled',
+            'past_due' => 'Past due',
+        ],
         'change' => 'Change plan',
         'price_monthly' => ':price/month',
         'price_yearly' => ':price/year',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Manage on Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'Plan',
+        'invoices' => 'Invoices',
+    ],
+
     'invoices' => [
-        'title' => 'Invoices',
-        'description' => 'Download your past invoices.',
+        'columns' => [
+            'date' => 'Date',
+            'amount' => 'Amount',
+            'status' => 'Status',
+        ],
+        'empty_title' => 'No invoices yet',
+        'empty_description' => 'Your invoices show up here after your first payment.',
         'paid' => 'Paid',
         'download' => 'Download invoice',
     ],

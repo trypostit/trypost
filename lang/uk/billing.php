@@ -24,6 +24,7 @@ return [
         'yearly' => 'Щороку',
         'save_two_months' => '2 місяці безкоштовно',
         'per_month' => '/місяць',
+        'per_year' => '/рік',
         'workspaces_one' => 'Один workspace',
         'workspaces_unlimited' => 'Необмежена кількість workspace',
         'workspaces_tooltip' => 'Workspace — це один бренд або клієнт, відокремлений від інших: власні соцмережі, підписи, мітки, аналітика, права учасників і підключення MCP.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => 'Активний',
+            'trial' => 'Пробний період',
+            'cancelling' => 'Скасовано',
+            'past_due' => 'Прострочено',
+        ],
         'change' => 'Змінити план',
         'price_monthly' => ':price/місяць',
         'price_yearly' => ':price/рік',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Керувати в Stripe',
     ],
 
+    'tabs' => [
+        'plan' => 'План',
+        'invoices' => 'Рахунки',
+    ],
+
     'invoices' => [
-        'title' => 'Рахунки',
-        'description' => 'Завантажуйте минулі рахунки.',
+        'columns' => [
+            'date' => 'Дата',
+            'amount' => 'Сума',
+            'status' => 'Статус',
+        ],
+        'empty_title' => 'Рахунків поки немає',
+        'empty_description' => 'Рахунки з’являться тут після першої оплати.',
         'paid' => 'Оплачено',
         'download' => 'Завантажити рахунок',
     ],

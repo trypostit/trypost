@@ -6,6 +6,7 @@ namespace App\Http\Controllers\App;
 
 use App\Enums\Billing\Interval;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
+use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
@@ -62,13 +63,9 @@ class BillingController extends Controller
             ]),
             'plan' => $account->plan ? PlanResource::make($account->plan)->resolve() : null,
             'workspaceCount' => $account->workspaces()->count(),
-            'invoices' => $account->invoices()->map(fn ($invoice) => [
-                'id' => $invoice->id,
-                'date' => $invoice->date(),
-                'total' => $invoice->total(),
-                'status' => $invoice->status,
-                'invoice_pdf' => $invoice->invoice_pdf,
-            ]),
+            'invoices' => Inertia::scroll(
+                fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
+            )->matchOn('data.id'),
             'defaultPaymentMethod' => $account->displayablePaymentMethod(),
             'discount' => $this->discount($account, $subscription),
         ]);

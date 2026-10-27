@@ -24,6 +24,7 @@ return [
         'yearly' => '연간',
         'save_two_months' => '2개월 무료',
         'per_month' => '/월',
+        'per_year' => '/년',
         'workspaces_one' => '워크스페이스 하나',
         'workspaces_unlimited' => '무제한 워크스페이스',
         'workspaces_tooltip' => '워크스페이스는 브랜드나 고객 하나를 나머지와 분리한 공간입니다. 소셜 계정, 서명, 라벨, 분석, 멤버 권한, MCP 연결을 각각 따로 가집니다.',
@@ -61,6 +62,12 @@ return [
     ],
 
     'current_plan' => [
+        'statuses' => [
+            'active' => '활성',
+            'trial' => '무료 체험',
+            'cancelling' => '취소됨',
+            'past_due' => '연체',
+        ],
         'change' => '요금제 변경',
         'price_monthly' => ':price/월',
         'price_yearly' => ':price/년',
@@ -79,9 +86,19 @@ return [
         'manage_stripe' => 'Stripe에서 관리',
     ],
 
+    'tabs' => [
+        'plan' => '요금제',
+        'invoices' => '청구서',
+    ],
+
     'invoices' => [
-        'title' => '청구서',
-        'description' => '지난 청구서를 다운로드하세요.',
+        'columns' => [
+            'date' => '날짜',
+            'amount' => '금액',
+            'status' => '상태',
+        ],
+        'empty_title' => '아직 청구서가 없습니다',
+        'empty_description' => '첫 결제 후 청구서가 여기에 표시됩니다.',
         'paid' => '결제 완료',
         'download' => '인보이스 다운로드',
     ],
