@@ -64,7 +64,7 @@ test('handle captures checkout.completed with plan, interval and conversion data
             && $job->payload['properties']['conversion_value'] === 99.0
             && $job->payload['properties']['conversion_currency'] === 'USD'
             && $job->payload['properties']['conversion_transaction_id'] === 'sub_test123'
-            && $job->payload['properties']['offer_slug'] === null;
+            && $job->payload['properties']['offer'] === null;
     });
 });
 
@@ -75,7 +75,7 @@ test('handle sends the slug of the offer the checkout applied', function () {
     (new TrackCheckoutCompleted((string) $this->account->id, $this->payload))
         ->handle(app(PostHogService::class));
 
-    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['offer_slug'] === 'bf26');
+    Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->payload['properties']['offer'] === 'bf26');
 });
 
 test('handle resolves the yearly interval from the price id', function () {

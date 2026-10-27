@@ -727,7 +727,7 @@ test('checkout.started records the offer slug', function () {
         ->assertRedirect('https://checkout.stripe.test/session');
 
     Bus::assertDispatched(SendEvent::class, fn (SendEvent $event): bool => data_get($event->payload, 'event') === CheckoutEvent::Started->value
-        && data_get($event->payload, 'properties.offer_slug') === 'black-friday-2026');
+        && data_get($event->payload, 'properties.offer') === 'black-friday-2026');
 });
 
 test('plan store hands checkout the offer it tracked', function () {

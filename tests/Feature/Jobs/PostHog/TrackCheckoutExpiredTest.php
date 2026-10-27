@@ -58,7 +58,7 @@ test('captures checkout.expired on the owner with plan and offer', function () {
             && $properties['$groups']['account'] === (string) $this->account->id
             && $properties['plan_name'] === Plan::where('slug', Slug::Socials)->value('name')
             && $properties['interval'] === 'monthly'
-            && $properties['offer_slug'] === 'bf26'
+            && $properties['offer'] === 'bf26'
             && $properties['checkout_session_id'] === 'cs_test_expired';
     });
 });
@@ -72,7 +72,7 @@ test('sends no offer when the session had none', function () {
 
     Queue::assertPushed(
         SendEvent::class,
-        fn (SendEvent $job): bool => $job->payload['properties']['offer_slug'] === null,
+        fn (SendEvent $job): bool => $job->payload['properties']['offer'] === null,
     );
 });
 
@@ -101,7 +101,7 @@ test('sends empty plan, interval and offer when the session has no metadata', fu
 
         return $properties['plan_name'] === null
             && $properties['interval'] === null
-            && $properties['offer_slug'] === null;
+            && $properties['offer'] === null;
     });
 });
 

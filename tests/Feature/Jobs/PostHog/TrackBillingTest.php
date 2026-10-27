@@ -71,7 +71,7 @@ test('handle updates the account group with the current subscription state', fun
             && $job->payload['groupKey'] === (string) $this->account->id
             && $job->payload['properties']['subscription_status'] === 'active'
             && $job->payload['properties']['has_active_subscription'] === true
-            && ! array_key_exists('offer_slug', $job->payload['properties']);
+            && ! array_key_exists('offer', $job->payload['properties']);
     });
 });
 
@@ -83,7 +83,7 @@ test('subscription creation sets the offer slug on the account group', function 
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify'
-        && $job->payload['properties']['offer_slug'] === 'bf26');
+        && $job->payload['properties']['offer'] === 'bf26');
 });
 
 test('subscription creation clears a previous offer when the new subscription has none', function () {
@@ -93,8 +93,8 @@ test('subscription creation clears a previous offer when the new subscription ha
         ->handle(app(PostHogService::class));
 
     Queue::assertPushed(SendEvent::class, fn (SendEvent $job): bool => $job->method === 'groupIdentify'
-        && array_key_exists('offer_slug', $job->payload['properties'])
-        && $job->payload['properties']['offer_slug'] === null);
+        && array_key_exists('offer', $job->payload['properties'])
+        && $job->payload['properties']['offer'] === null);
 });
 
 test('subscription cancellation updates the account group after Cashier marks it ended', function () {

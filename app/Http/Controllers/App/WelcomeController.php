@@ -188,7 +188,7 @@ class WelcomeController extends Controller
                 [
                     'plan_name' => $plan->name,
                     'interval' => Interval::Monthly->value,
-                    'offer_slug' => $offer?->slug,
+                    'offer' => $offer?->slug,
                 ],
                 $user->account,
             );

@@ -62,7 +62,7 @@ final class StripeSubscriptionConversion
     {
         return [
             ...self::propertiesFor($account, $payload),
-            'offer_slug' => self::offerSlug($payload),
+            'offer' => self::offerSlug($payload),
         ];
     }
 

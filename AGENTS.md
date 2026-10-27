@@ -397,9 +397,10 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   writes `redeemed_at` (`RedeemOffer`) only once the subscription is `active` or
   `trialing`, so an incomplete checkout never uses up a place. Offers apply only
   to the Welcome checkout (Socials monthly).
-- **Tracking.** PostHog names the offer by its slug, `offer_slug`, on
+- **Tracking.** The offer goes to PostHog only with the checkout, as the property
+  `offer` holding its slug (`bf26`, `free-trial-7-days`, null without one) on
   `checkout.started`, `checkout.completed`, `checkout.expired` and the account
-  group (set on subscription creation). The old `is_first_month_offer`,
+  group (set on subscription creation). There is no offer event of its own. The old `is_first_month_offer`,
   `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
 - **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
   slug with dashes as underscores (`free-trial-7-days` → `free_trial_7_days`): `name` (the

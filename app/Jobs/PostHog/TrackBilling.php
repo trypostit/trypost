@@ -120,7 +120,7 @@ class TrackBilling implements ShouldQueue
         }
 
         return [
-            'offer_slug' => StripeSubscriptionConversion::offerSlug($this->payload),
+            'offer' => StripeSubscriptionConversion::offerSlug($this->payload),
         ];
     }
 }
