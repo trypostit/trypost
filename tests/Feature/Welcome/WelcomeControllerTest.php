@@ -212,7 +212,7 @@ test('plan sends a claimed trial offer only to an account that may use it', func
         ->get(route('app.welcome.plan'))
         ->assertOk()
         ->assertInertia(fn ($page) => $offered
-            ? $page->where('offer.key', 'free_trial_7_days')
+            ? $page->where('offer.key', 'ft7d')
             : $page->where('offer', null));
 })->with([
     'no claim pays the full price' => [fn () => null, false, false],
@@ -753,7 +753,7 @@ test('a trial without a card starts in the app, without Stripe', function () {
     Bus::fake();
     completeWelcomeThroughSoftware($this->user);
     Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
-    $offer = Offer::factory()->trial(7)->withoutCard()->create(['slug' => 'free-trial-7-days-no-card']);
+    $offer = Offer::factory()->trial(7)->withoutCard()->create(['slug' => 'ft7dnc']);
     $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
 
     $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
@@ -771,6 +771,6 @@ test('a trial without a card starts in the app, without Stripe', function () {
         ->and($account->offers()->first()->pivot->redeemed_at)->not->toBeNull();
 
     Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === TrialEvent::Started
-        && $job->properties['offer'] === 'free-trial-7-days-no-card');
+        && $job->properties['offer'] === 'ft7dnc');
     Bus::assertNotDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started);
 });

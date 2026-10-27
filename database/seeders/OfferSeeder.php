@@ -17,12 +17,12 @@ class OfferSeeder extends Seeder
     public function run(): void
     {
         Offer::updateOrCreate(
-            ['slug' => 'free-trial-7-days'],
+            ['slug' => 'ft7d'],
             ['starts_at' => now(), 'trial_days' => 8, 'first_subscription_only' => true],
         );
 
         Offer::updateOrCreate(
-            ['slug' => 'free-trial-7-days-no-card'],
+            ['slug' => 'ft7dnc'],
             ['starts_at' => now(), 'trial_days' => 7, 'requires_card' => false],
         );
 
@@ -32,7 +32,7 @@ class OfferSeeder extends Seeder
         );
 
         Offer::updateOrCreate(
-            ['slug' => 'first-month'],
+            ['slug' => 'fm1'],
             ['starts_at' => now(), 'stripe_coupon_id' => 'SOCIALS_18USD', 'first_subscription_only' => true],
         );
     }

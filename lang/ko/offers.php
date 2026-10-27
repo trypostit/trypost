@@ -9,19 +9,19 @@ return [
         'period' => '첫 3개월',
         'checkout_button' => '내 계정 활성화',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => '첫 달',
         'headline' => '첫 달 $1',
         'price' => '$1',
         'period' => '첫 달 요금',
         'checkout_button' => '내 계정 활성화',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => '무료',
         'period' => '7일 동안',
         'checkout_button' => '무료 체험 시작',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => '무료',
         'period' => '7일 동안',
         'checkout_button' => '무료 체험 시작',

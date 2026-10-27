@@ -9,19 +9,19 @@ return [
         'period' => 'in den ersten 3 Monaten',
         'checkout_button' => 'Mein Konto aktivieren',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => 'Erster Monat',
         'headline' => 'Dein erster Monat für $1',
         'price' => '$1',
         'period' => 'im ersten Monat',
         'checkout_button' => 'Mein Konto aktivieren',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => 'Kostenlos',
         'period' => 'für 7 Tage',
         'checkout_button' => 'Kostenlos testen',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => 'Kostenlos',
         'period' => 'für 7 Tage',
         'checkout_button' => 'Kostenlos testen',

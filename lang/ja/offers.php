@@ -9,19 +9,19 @@ return [
         'period' => '最初の3か月',
         'checkout_button' => 'アカウントを有効にする',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => '初月',
         'headline' => '初月は$1',
         'price' => '$1',
         'period' => '初月の料金',
         'checkout_button' => 'アカウントを有効にする',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => '無料',
         'period' => '7日間',
         'checkout_button' => '無料で試す',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => '無料',
         'period' => '7日間',
         'checkout_button' => '無料で試す',

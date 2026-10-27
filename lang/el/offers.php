@@ -9,19 +9,19 @@ return [
         'period' => 'για τους πρώτους 3 μήνες',
         'checkout_button' => 'Ενεργοποίηση λογαριασμού',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => 'Πρώτος μήνας',
         'headline' => 'Ο πρώτος σας μήνας με $1',
         'price' => '$1',
         'period' => 'για τον πρώτο μήνα',
         'checkout_button' => 'Ενεργοποίηση λογαριασμού',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => 'Δωρεάν',
         'period' => 'για 7 ημέρες',
         'checkout_button' => 'Δωρεάν δοκιμή',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => 'Δωρεάν',
         'period' => 'για 7 ημέρες',
         'checkout_button' => 'Δωρεάν δοκιμή',

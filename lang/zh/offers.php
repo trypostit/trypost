@@ -9,19 +9,19 @@ return [
         'period' => '前 3 个月',
         'checkout_button' => '激活我的账户',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => '首月',
         'headline' => '首月仅需 $1',
         'price' => '$1',
         'period' => '首月价格',
         'checkout_button' => '激活我的账户',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => '免费',
         'period' => '7 天内',
         'checkout_button' => '开始免费试用',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => '免费',
         'period' => '7 天内',
         'checkout_button' => '开始免费试用',

@@ -9,19 +9,19 @@ return [
         'period' => 'за первые 3 месяца',
         'checkout_button' => 'Активировать мой аккаунт',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => 'Первый месяц',
         'headline' => 'Первый месяц за $1',
         'price' => '$1',
         'period' => 'за первый месяц',
         'checkout_button' => 'Активировать мой аккаунт',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => 'Бесплатно',
         'period' => 'на 7 дней',
         'checkout_button' => 'Начать бесплатно',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => 'Бесплатно',
         'period' => 'на 7 дней',
         'checkout_button' => 'Начать бесплатно',

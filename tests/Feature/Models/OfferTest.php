@@ -111,8 +111,8 @@ test('the factory builds the three real offers with their copy', function (strin
         ->and(__("offers.{$offer->langKey()}.price"))->not->toBe("offers.{$offer->langKey()}.price");
 })->with([
     'black friday' => ['blackFriday', 'bf26'],
-    'first month' => ['firstMonth', 'first-month'],
-    'free trial' => ['freeTrial', 'free-trial-7-days'],
+    'first month' => ['firstMonth', 'fm1'],
+    'free trial' => ['freeTrial', 'ft7d'],
 ]);
 
 test('a first-subscription offer is not available to an account that had a trial without a card, even once Cashier cleared it', function () {

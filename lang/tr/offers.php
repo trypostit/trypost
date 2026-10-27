@@ -9,19 +9,19 @@ return [
         'period' => 'ilk 3 ay için',
         'checkout_button' => 'Hesabımı etkinleştir',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => 'İlk ay',
         'headline' => 'İlk ayın $1',
         'price' => '$1',
         'period' => 'ilk ay için',
         'checkout_button' => 'Hesabımı etkinleştir',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => 'Ücretsiz',
         'period' => '7 gün boyunca',
         'checkout_button' => 'Ücretsiz dene',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => 'Ücretsiz',
         'period' => '7 gün boyunca',
         'checkout_button' => 'Ücretsiz dene',

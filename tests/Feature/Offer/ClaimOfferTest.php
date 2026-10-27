@@ -268,8 +268,8 @@ test('a former customer cannot claim a first-subscription offer', function () {
         'stripe_price' => 'price_123',
         'ends_at' => now()->subDay(),
     ]);
-    $offer = Offer::factory()->firstSubscriptionOnly()->create(['slug' => 'first-month']);
+    $offer = Offer::factory()->firstSubscriptionOnly()->create(['slug' => 'fm1']);
 
-    expect(ClaimOffer::execute($owner->account->fresh(), 'first-month'))->toBeNull()
+    expect(ClaimOffer::execute($owner->account->fresh(), 'fm1'))->toBeNull()
         ->and($owner->account->offers()->whereKey($offer->id)->exists())->toBeFalse();
 });

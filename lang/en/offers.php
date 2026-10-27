@@ -9,19 +9,19 @@ return [
         'period' => 'for your first 3 months',
         'checkout_button' => 'Activate my account',
     ],
-    'first_month' => [
+    'fm1' => [
         'name' => 'First month',
         'headline' => 'Your first month for $1',
         'price' => '$1',
         'period' => 'for your first month',
         'checkout_button' => 'Activate my account',
     ],
-    'free_trial_7_days' => [
+    'ft7d' => [
         'price' => 'Free',
         'period' => 'for 7 days',
         'checkout_button' => 'Start free trial',
     ],
-    'free_trial_7_days_no_card' => [
+    'ft7dnc' => [
         'price' => 'Free',
         'period' => 'for 7 days',
         'checkout_button' => 'Start free trial',

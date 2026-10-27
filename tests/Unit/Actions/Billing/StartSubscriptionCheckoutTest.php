@@ -442,7 +442,7 @@ test('redirect gives the trial of the offer it is given', function () {
     $builder->shouldReceive('withCoupon')->never();
     $builder->shouldReceive('withMetadata')
         ->once()
-        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => 'free-trial-7-days'])
+        ->with(['trypost_offer_id' => $offer->id, 'trypost_offer_slug' => 'ft7d'])
         ->andReturnSelf();
     $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
 

@@ -295,7 +295,7 @@ There is no checkout env (owner decision October 2026; `REQUIRE_CARD_FOR_TRIAL` 
 Standing constraints:
 - Without an offer the checkout charges the full price at once: no coupon, no trial, no promotion code field.
 - An offer applies what its row sets: `stripe_coupon_id` (the discount), `trial_days` (clamped to Stripe's 2-day minimum), `allow_promotion_codes` and `requires_card`. Stripe rejects a coupon and promotion codes on one session but accepts a trial with either, so a coupon wins and the field is left off; a trial goes with both.
-- There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`free-trial-7-days`, `trial_days` 8 because Stripe Checkout counts the trial one day short and shows 8 as 7 days, `first_subscription_only`), the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
+- There are no fm1 coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`ft7d`, `trial_days` 8 because Stripe Checkout counts the trial one day short and shows 8 as 7 days, `first_subscription_only`), the `$1` first month (`fm1`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
 - First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply there and, coupons only, at **Subscribe now** on billing. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
 - An offer with `requires_card = false` and `trial_days` (`Offer::startsWithoutCard()`) never opens Stripe: the Welcome plan step starts Cashier's generic trial (`StartGenericTrial`: `accounts.trial_ends_at`, the Socials `plan_id`, the redemption, `trial.started`) and goes on to the MCP step (owner decision October 2026). The account has app access while it lasts (`Account::hasAppAccess()` = subscribed or `onGenericTrial()`), billing shows the trial and **Subscribe now** (`app.billing.checkout`), a Checkout on the plan's monthly price charged at once, without carrying the days left of the trial (owner decision October 2026), applies a coupon offer claimed meanwhile (never a trial) and returns to billing after paying (`app.billing.processing?from=billing`, read through `CheckoutOrigin`). Changing plan during the trial (the billing and workspace upgrade pickers) opens the same Checkout on the picked plan and interval: `swapPlan` allows a generic trial. The Welcome no-card trial goes through Processing too (`from=welcome`, ready at once), so phones skip the MCP step like a paid checkout. Cashier's `customer.subscription.created` handler clears `trial_ends_at`. When the trial ends without a subscription, access stops and the owner is back at Welcome. Every other offer goes through Stripe Checkout and asks for a card.
@@ -358,8 +358,8 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
 
 An offer is anything the Welcome checkout gives instead of the full price
 (owner decision October 2026): a Stripe coupon, a trial, the promotion code
-field, or a mix. The 7-day trial (`free-trial-7-days`), the `$1` first month
-(`first-month`) and campaigns such as Black Friday (`bf26`) are all offers. It
+field, or a mix. The 7-day trial (`ft7d`), the `$1` first month
+(`fm1`) and campaigns such as Black Friday (`bf26`) are all offers. It
 lives in `offers` (`slug` and `starts_at` required; `stripe_coupon_id`,
 `trial_days`, `ends_at` and `max_redemptions` nullable: no coupon, no trial, no
 end, no limit; `allow_promotion_codes`, `first_subscription_only` and
@@ -401,12 +401,12 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   Welcome checkout (Socials monthly) and, coupons only, at Subscribe now on
   billing (`currentOffer(withTrial: false)`).
 - **Tracking.** `checkout.started` is sent by `StartSubscriptionCheckout` itself, on the owner, for every Checkout (Welcome, Subscribe now, plan change), never by a controller. The offer goes to PostHog only with the checkout, as the property
-  `offer` holding its slug (`bf26`, `free-trial-7-days`, null without one) on
+  `offer` holding its slug (`bf26`, `ft7d`, null without one) on
   `checkout.started`, `checkout.completed`, `checkout.expired` and the account
   group (set on subscription creation). There is no offer event of its own. The old `is_first_month_offer`,
   `first_month_coupon_id` and `first_month_offer_ends_at` are gone.
 - **Copy.** Each offer's copy lives in `lang/<locale>/offers.php` under the
-  slug with dashes as underscores (`free-trial-7-days` → `free_trial_7_days`): `name` (the
+  slug with dashes as underscores (`ft7d` → `ft7d`): `name` (the
   banner's tag), `headline` (the banner's sentence), `price`, `period` and an
   optional `unit` shown next to the price (`/month` for Black Friday; a trial or
   the `$1` first month has none, so their copy decides it, never the code), in all
@@ -417,7 +417,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   stored in the database, and the banner (`name`, `headline`) is optional: an
   offer has both or neither, while `price`, `period` and `checkout_button` are required
   (`OfferCopyTest`). Each trial length is its own offer with its own copy
-  (`free-trial-7-days`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
+  (`ft7d`, `free-trial-14-days`), so several can run at once. The page has no fallback language, so `OfferResource`
   checks each key in the current locale only. The Welcome plan step shows the
   banner (a `bg-foreground` pill, the name in a `bg-background` uppercase tag) only when the row has `show_banner` and `name` and `headline` exist, and the offer price only when `price` and `period` exist; it never
   prints a raw key. The button that opens Stripe Checkout is

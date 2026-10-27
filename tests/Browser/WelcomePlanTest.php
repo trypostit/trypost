@@ -462,7 +462,7 @@ test('a trial without a card says so under the button', function () {
     config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
-    $user->account->offers()->attach(Offer::factory()->freeTrial()->withoutCard()->create(['slug' => 'free-trial-7-days-no-card']), ['claimed_at' => now()]);
+    $user->account->offers()->attach(Offer::factory()->freeTrial()->withoutCard()->create(['slug' => 'ft7dnc']), ['claimed_at' => now()]);
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));

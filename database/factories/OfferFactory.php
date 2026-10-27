@@ -95,7 +95,7 @@ class OfferFactory extends Factory
     public function firstMonth(): static
     {
         return $this->state(fn (array $attributes): array => [
-            'slug' => 'first-month',
+            'slug' => 'fm1',
             'stripe_coupon_id' => 'SOCIALS_18USD',
             'first_subscription_only' => true,
         ]);
@@ -107,7 +107,7 @@ class OfferFactory extends Factory
     public function freeTrial(): static
     {
         return $this->state(fn (array $attributes): array => [
-            'slug' => 'free-trial-7-days',
+            'slug' => 'ft7d',
             'stripe_coupon_id' => null,
             'trial_days' => 8,
             'first_subscription_only' => true,
