@@ -1126,3 +1126,14 @@ test('a trial cancelled through the real Cashier webhook is signed up, a paid su
     'trial' => [false, LifecycleStage::SignedUp],
     'paid' => [true, LifecycleStage::Churned],
 ]);
+
+test('an old subscription ending during a trial without a card keeps the trial plan', function () {
+    $this->account->update(['plan_id' => $this->socials->id, 'trial_ends_at' => now()->addDays(5)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.deleted',
+        'data' => ['object' => ['customer' => 'cus_test123', 'id' => 'sub_old', 'status' => 'canceled']],
+    ]));
+
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
+});

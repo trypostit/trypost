@@ -62,7 +62,9 @@ test('once the subscription and plan are ready the processing page sends the use
 test('a subscription started from billing returns to billing, not the onboarding', function () {
     config(['trypost.self_hosted' => false]);
 
-    $this->actingAs(billingProcessingSubscriber());
+    $user = billingProcessingSubscriber();
+    Plan::query()->whereKey($user->account->plan_id)->update(['stripe_monthly_price_id' => 'price_123']);
+    $this->actingAs($user->fresh());
 
     $billingPath = parse_url(route('app.billing.index'), PHP_URL_PATH);
 

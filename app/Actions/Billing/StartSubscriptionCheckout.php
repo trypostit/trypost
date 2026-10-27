@@ -6,6 +6,7 @@ namespace App\Actions\Billing;
 
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
+use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
@@ -28,10 +29,10 @@ class StartSubscriptionCheckout
 
         $account->syncOrCreateStripeCustomer();
 
-        $monthlyPlan = $this->monthlyPlan($plan, $priceId);
+        $offerPlan = $this->offerPlan($plan, $priceId);
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId);
 
-        $offer = filled($monthlyPlan) ? $offer : null;
+        $offer = filled($offerPlan) ? $offer : null;
 
         $offerMetadata = array_filter([
             ConfigureSubscriptionCheckout::OFFER_METADATA_KEY => $offer?->id,
@@ -71,8 +72,11 @@ class StartSubscriptionCheckout
         return Inertia::location($session->url);
     }
 
-    private function monthlyPlan(?Plan $plan, string $priceId): ?Plan
+    /**
+     * Offers are written for Socials monthly, so no other price gets one.
+     */
+    private function offerPlan(?Plan $plan, string $priceId): ?Plan
     {
-        return $plan?->stripe_monthly_price_id === $priceId ? $plan : null;
+        return $plan?->slug === Slug::Socials && $plan->stripe_monthly_price_id === $priceId ? $plan : null;
     }
 }

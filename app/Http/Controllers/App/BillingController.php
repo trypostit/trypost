@@ -44,9 +44,22 @@ class BillingController extends Controller
         $returnsToBilling = is_string($from) && CheckoutOrigin::tryFrom($from) === CheckoutOrigin::Billing;
 
         return Inertia::render('billing/Processing', [
-            'ready' => $returnsToBilling ? $account->subscribed(Account::SUBSCRIPTION_NAME) : $account->hasAppAccess(),
+            'ready' => $returnsToBilling ? $this->planSyncedWithSubscription($account) : $account->hasAppAccess(),
             'returnsToBilling' => $returnsToBilling,
         ]);
+    }
+
+    /**
+     * A billing checkout is ready once the webhook wrote the plan of the new
+     * subscription, so Processing never returns to billing on the trial plan.
+     */
+    private function planSyncedWithSubscription(Account $account): bool
+    {
+        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
+
+        return $account->subscribed(Account::SUBSCRIPTION_NAME)
+            && filled($account->plan)
+            && in_array($subscription?->stripe_price, [$account->plan->stripe_monthly_price_id, $account->plan->stripe_yearly_price_id], true);
     }
 
     public function index(Request $request): Response|RedirectResponse
@@ -141,6 +154,10 @@ class BillingController extends Controller
         $plan = Plan::active()->findOrFail($request->validated('plan_id'));
         $interval = Interval::from($request->validated('interval'));
 
+        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+            return $this->subscribeFromTrial($account, $plan, $interval, $checkout);
+        }
+
         $authorization = Gate::inspect('swapPlan', [$account, $plan]);
 
         if ($authorization->denied()) {
@@ -152,10 +169,6 @@ class BillingController extends Controller
         abort_if($priceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
-        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
-            return $this->checkoutFromTrial($account, $plan, $priceId, $checkout);
-        }
 
         try {
             if ($subscription->stripe_price !== $priceId) {
@@ -192,26 +205,32 @@ class BillingController extends Controller
 
         $account = $request->user()->account;
 
-        abort_unless($request->user()->isAccountOwner(), SymfonyResponse::HTTP_FORBIDDEN);
-
         if ($account->subscribed(Account::SUBSCRIPTION_NAME)) {
             return redirect()->route('app.billing.index');
         }
 
         $plan = $account->plan ?? Plan::active()->where('slug', Slug::Socials)->firstOrFail();
-        $priceId = Interval::Monthly->priceIdFor($plan);
 
-        abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
-
-        return $this->checkoutFromTrial($account, $plan, $priceId, $checkout);
+        return $this->subscribeFromTrial($account, $plan, Interval::Monthly, $checkout);
     }
 
     /**
      * A generic trial subscribes through Stripe Checkout, charged at once,
-     * with a coupon offer the owner claimed meanwhile.
+     * under the same rules as a plan change (`swapPlan`), with a coupon offer
+     * the owner claimed meanwhile.
      */
-    private function checkoutFromTrial(Account $account, Plan $plan, string $priceId, StartSubscriptionCheckout $checkout): SymfonyResponse
+    private function subscribeFromTrial(Account $account, Plan $plan, Interval $interval, StartSubscriptionCheckout $checkout): SymfonyResponse
     {
+        $authorization = Gate::inspect('swapPlan', [$account, $plan]);
+
+        if ($authorization->denied()) {
+            return back()->with('flash.error', $authorization->message());
+        }
+
+        $priceId = $interval->priceIdFor($plan);
+
+        abort_if($priceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+
         return $checkout->redirect(
             $account,
             $priceId,

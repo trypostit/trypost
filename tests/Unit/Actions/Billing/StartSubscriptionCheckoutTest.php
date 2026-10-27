@@ -507,3 +507,24 @@ test('redirect tracks checkout.started on the owner with the plan, interval and 
         && $job->distinctId === (string) $owner->id
         && $job->properties === ['plan_name' => 'Socials', 'interval' => 'monthly', 'offer' => 'bf26']);
 });
+
+test('redirect gives no offer to a plan other than Socials monthly', function () {
+    $workspaces = Plan::where('slug', Slug::Workspaces)->firstOrFail();
+    $workspaces->update(['stripe_monthly_price_id' => 'price_workspaces_monthly']);
+
+    $account = Account::factory()->create();
+    User::factory()->create(['account_id' => $account->id, 'referral_source' => null]);
+    $account->refresh();
+
+    $builder = Mockery::mock(SubscriptionBuilder::class);
+    $builder->shouldReceive('withCoupon')->never();
+    $builder->shouldReceive('withMetadata')->once()->with([])->andReturnSelf();
+    $builder->shouldReceive('checkout')->once()->andReturn((object) ['url' => 'https://checkout.stripe.test/session']);
+
+    /** @var Account&MockInterface $accountMock */
+    $accountMock = Mockery::mock($account)->makePartial();
+    $accountMock->shouldReceive('syncOrCreateStripeCustomer')->once()->andReturnNull();
+    $accountMock->shouldReceive('newSubscription')->once()->andReturn($builder);
+
+    app(StartSubscriptionCheckout::class)->redirect($accountMock, 'price_workspaces_monthly', route('app.billing.index'), $workspaces, Offer::factory()->blackFriday()->create());
+});

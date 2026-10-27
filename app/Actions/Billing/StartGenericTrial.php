@@ -21,20 +21,30 @@ class StartGenericTrial
      * Starts an offer's trial without a card: Cashier's generic trial on
      * `accounts.trial_ends_at`, with nothing created in Stripe. The account
      * has app access until it ends, and subscribes through Checkout from
-     * billing to keep it.
+     * billing to keep it. A second submit while it runs starts nothing.
      */
     public static function execute(User $user, Plan $plan, Offer $offer): void
     {
-        $account = $user->account;
+        $account = DB::transaction(function () use ($user, $plan, $offer): ?Account {
+            $account = Account::query()->lockForUpdate()->find($user->account_id);
 
-        DB::transaction(function () use ($account, $plan, $offer): void {
+            if ($account->onGenericTrial() || $account->subscribed(Account::SUBSCRIPTION_NAME)) {
+                return null;
+            }
+
             $account->forceFill([
                 'plan_id' => $plan->id,
                 'trial_ends_at' => now()->addDays($offer->trial_days),
             ])->save();
 
             RedeemOffer::execute($account, $offer->id);
+
+            return $account;
         });
+
+        if (blank($account)) {
+            return;
+        }
 
         rescue(function () use ($user, $account, $plan, $offer): void {
             CaptureAccountEvent::dispatchIf(

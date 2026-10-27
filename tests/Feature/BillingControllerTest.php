@@ -598,7 +598,7 @@ test('a member cannot open the billing checkout', function () {
 
     $this->actingAs($member->fresh())
         ->post(route('app.billing.checkout'))
-        ->assertForbidden();
+        ->assertSessionHas('flash.error', __('billing.flash.cannot_manage'));
 });
 
 test('subscribing from a generic trial applies an offer claimed meanwhile', function () {
@@ -760,4 +760,38 @@ test('processing is ready at once for a trial without a card from Welcome', func
     $this->actingAs($this->user->fresh())
         ->get(route('app.billing.processing', ['from' => 'billing']))
         ->assertInertia(fn ($page) => $page->where('ready', false));
+});
+
+test('an amount discount is formatted in the user\'s language', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->user->update(['locale' => 'pt-BR']);
+    fakeStripeBilling($this->account, ['percent_off' => null, 'amount_off' => 1800, 'currency' => 'usd', 'duration' => 'forever', 'duration_in_months' => null]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertInertia(fn ($page) => $page->where('discount.value', "US$\u{a0}18,00"));
+});
+
+test('processing waits for the plan of the new subscription before returning to billing', function () {
+    config(['trypost.self_hosted' => false]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $workspaces = Plan::where('slug', Slug::Workspaces)->firstOrFail();
+    $workspaces->update(['stripe_monthly_price_id' => 'price_workspaces_monthly']);
+    $this->account->update(['plan_id' => $socials->id]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_upgrade',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_workspaces_monthly',
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['from' => 'billing']))
+        ->assertInertia(fn ($page) => $page->where('ready', false));
+
+    $this->account->update(['plan_id' => $workspaces->id]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.processing', ['from' => 'billing']))
+        ->assertInertia(fn ($page) => $page->where('ready', true));
 });

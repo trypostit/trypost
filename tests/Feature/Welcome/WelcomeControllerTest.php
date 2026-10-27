@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Actions\Billing\StartGenericTrial;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
@@ -773,4 +774,19 @@ test('a trial without a card starts in the app, without Stripe', function () {
     Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === TrialEvent::Started
         && $job->properties['offer'] === 'ft7dnc');
     Bus::assertNotDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started);
+});
+
+test('a second submit does not start the trial without a card again', function () {
+    config(['services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake();
+    completeWelcomeThroughSoftware($this->user);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->trial(7)->withoutCard()->create(['slug' => 'ft7dnc']);
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    StartGenericTrial::execute($this->user->fresh(), $socials, $offer);
+    StartGenericTrial::execute($this->user->fresh(), $socials, $offer);
+
+    Bus::assertDispatchedTimes(CaptureAccountEvent::class, 1);
 });
