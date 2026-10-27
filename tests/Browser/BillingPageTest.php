@@ -118,7 +118,7 @@ test('the billing page explains a discount and lists every card, the default fir
 
     waitForState($page, '@billing-card-logo-pm_fake_second', 'element.complete && element.naturalWidth > 0');
 
-    expect($page->script("[...document.querySelectorAll('[data-testid=\"billing-payment-methods\"] > li')].map((item) => item.dataset.testid)"))
+    expect($page->script("[...document.querySelectorAll('[data-testid=\"billing-payment-methods\"] > [data-testid^=\"billing-card-\"]')].map((item) => item.dataset.testid)"))
         ->toBe(['billing-card-pm_fake', 'billing-card-pm_fake_second'])
         ->and($page->script("document.querySelector('[data-testid=\"billing-card-logo-pm_fake_second\"]').naturalWidth > 0"))->toBeTrue();
 });
