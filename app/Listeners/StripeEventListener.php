@@ -114,7 +114,7 @@ class StripeEventListener
 
         $previousPlan = $account->plan?->name;
 
-        if ($account->plan_id !== null && ! $account->onGenericTrial()) {
+        if (filled($account->plan_id) && ! $account->onGenericTrial()) {
             $account->update(['plan_id' => null]);
         }
 
@@ -216,7 +216,7 @@ class StripeEventListener
             return;
         }
 
-        if (SubscriptionPlanSync::clears($status) && $account->plan_id !== null && ! $account->onGenericTrial()) {
+        if (SubscriptionPlanSync::clears($status) && filled($account->plan_id) && ! $account->onGenericTrial()) {
             $account->update(['plan_id' => null]);
         }
     }

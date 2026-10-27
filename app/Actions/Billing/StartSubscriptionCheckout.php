@@ -23,7 +23,7 @@ class StartSubscriptionCheckout
     {
         // A leftover Workspaces row (unpaid/canceled without `deleted`) would
         // let Processing treat auth.plan as checkout-complete and skip the wait.
-        if ($account->plan_id !== null && ! $account->onGenericTrial()) {
+        if (filled($account->plan_id) && ! $account->onGenericTrial()) {
             $account->update(['plan_id' => null]);
         }
 
