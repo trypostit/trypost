@@ -6,6 +6,11 @@ use App\Enums\Plan\Slug;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use Stripe\ApiRequestor;
+
+afterEach(function () {
+    ApiRequestor::setHttpClient(null);
+});
 
 function waitForBillingPageTestId(mixed $page, string $testId): void
 {
@@ -86,5 +91,52 @@ test('self-hosted settings show neither an account nor a billing item', function
 
     $page->assertMissing('@settings-nav-account')
         ->assertMissing('@settings-nav-billing')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the billing page explains a discount and shows the card brand logo', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::query()->where('slug', Slug::Socials)->value('id')]);
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    fakeStripeBilling(
+        $user->account,
+        ['percent_off' => 50, 'amount_off' => null, 'currency' => null, 'duration' => 'repeating', 'duration_in_months' => 3],
+        now()->addMonths(3)->timestamp,
+        'visa',
+    );
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-current-plan-discount');
+
+    $page->assertSeeIn('@billing-current-plan-price', '$19/month')
+        ->assertSeeIn('@billing-current-plan-discount', '50% off until')
+        ->assertVisible('@billing-card-brand-logo')
+        ->assertSeeIn('@billing-card-label', 'Visa')
+        ->assertSeeIn('@billing-card-label', '•••• 4242')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the billing page keeps the card icon for a brand without a logo', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = User::factory()->create();
+    $user->account->update(['plan_id' => Plan::query()->where('slug', Slug::Socials)->value('id')]);
+    $workspace = Workspace::factory()->create(['account_id' => $user->account_id, 'user_id' => $user->id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    fakeStripeBilling($user->account, cardBrand: 'unionpay');
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-card-label');
+
+    $page->assertSeeIn('@billing-card-label', 'UnionPay')
+        ->assertMissing('@billing-card-brand-logo')
+        ->assertMissing('@billing-current-plan-discount')
         ->assertNoJavaScriptErrors();
 });

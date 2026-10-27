@@ -70,6 +70,9 @@ return [
         'renews' => 'Otomatik olarak yenilenir',
         'cancelled' => 'İptal edildi, :date tarihinde sona erer',
         'workspaces_usage' => 'Çalışma alanları: :count / :limit',
+        'discount_until' => ':date tarihine kadar :discount indirim',
+        'discount_forever' => 'Her ödemede :discount indirim',
+        'discount_once' => 'Sonraki ödemenizde :discount indirim',
     ],
 
     'subscription' => [

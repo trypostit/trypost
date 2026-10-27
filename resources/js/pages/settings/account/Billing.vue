@@ -18,6 +18,7 @@ import {
 import { Separator } from '@/components/ui/separator';
 import date from '@/date';
 import SettingsLayout from '@/layouts/SettingsLayout.vue';
+import { cardBrand } from '@/lib/cardBrands';
 import {
     changePlan as changePlanRoute,
     portal,
@@ -43,6 +44,12 @@ interface PaymentMethod {
     exp_year: number;
 }
 
+interface SubscriptionDiscount {
+    value: string;
+    duration: 'once' | 'repeating' | 'forever';
+    ends_at: string | null;
+}
+
 interface Invoice {
     id: string;
     date: string;
@@ -61,7 +68,24 @@ const props = defineProps<{
     workspaceLimit: number | null;
     invoices: Invoice[];
     defaultPaymentMethod: PaymentMethod | null;
+    discount: SubscriptionDiscount | null;
 }>();
+
+const discountKey = computed((): string => {
+    if (props.discount?.duration === 'once') {
+        return 'billing.current_plan.discount_once';
+    }
+
+    return props.discount?.ends_at
+        ? 'billing.current_plan.discount_until'
+        : 'billing.current_plan.discount_forever';
+});
+
+const paymentMethodBrand = computed(() =>
+    props.defaultPaymentMethod
+        ? cardBrand(props.defaultPaymentMethod.brand)
+        : null,
+);
 
 const page = usePage<SharedData>();
 const plans = computed((): PlanOption[] => page.props.plans ?? []);
@@ -174,6 +198,18 @@ const selectPlan = (planId: string): void => {
                             </p>
                         </div>
                         <p
+                            v-if="discount"
+                            class="text-sm text-success-text"
+                            data-testid="billing-current-plan-discount"
+                        >
+                            {{
+                                $t(discountKey, {
+                                    discount: discount.value,
+                                    date: date.formatDate(discount.ends_at),
+                                })
+                            }}
+                        </p>
+                        <p
                             class="text-sm text-muted-foreground"
                             data-testid="billing-current-plan-status"
                         >
@@ -268,6 +304,18 @@ const selectPlan = (planId: string): void => {
                     class="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card px-4 py-6"
                 >
                     <span
+                        v-if="paymentMethodBrand?.logo"
+                        class="inline-flex h-10 w-14 shrink-0 items-center justify-center rounded-lg border border-border bg-white"
+                        data-testid="billing-card-brand-logo"
+                    >
+                        <component
+                            :is="paymentMethodBrand.logo"
+                            class="h-6 w-auto"
+                            aria-hidden="true"
+                        />
+                    </span>
+                    <span
+                        v-else
                         class="inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-primary-subtle text-primary-text"
                     >
                         <IconCreditCard class="size-6" />
@@ -277,10 +325,11 @@ const selectPlan = (planId: string): void => {
                         class="flex min-w-0 flex-1 flex-col gap-1"
                     >
                         <p
-                            class="text-sm leading-tight font-emphasis text-foreground capitalize"
+                            class="text-sm leading-tight font-emphasis text-foreground"
+                            data-testid="billing-card-label"
                         >
-                            {{ defaultPaymentMethod.brand }} ••••
-                            {{ defaultPaymentMethod.last4 }}
+                            {{ paymentMethodBrand?.name }}
+                            <span class="tabular-nums">•••• {{ defaultPaymentMethod.last4 }}</span>
                         </p>
                         <p class="text-sm text-muted-foreground">
                             {{

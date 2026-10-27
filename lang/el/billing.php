@@ -68,6 +68,9 @@ return [
         'renews' => 'Ανανεώνεται αυτόματα',
         'cancelled' => 'Ακυρώθηκε, λήγει στις :date',
         'workspaces_usage' => 'Workspaces: :count από :limit',
+        'discount_until' => 'Έκπτωση :discount έως :date',
+        'discount_forever' => 'Έκπτωση :discount σε κάθε πληρωμή',
+        'discount_once' => 'Έκπτωση :discount στην επόμενη πληρωμή',
     ],
 
     'subscription' => [

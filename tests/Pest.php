@@ -22,6 +22,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 use Tests\BrowserTestCase;
 use Tests\TestCase;
 
@@ -348,6 +350,64 @@ function subscribeAccount(Account $account): void
         'stripe_status' => 'active',
         'stripe_price' => 'price_123',
     ]);
+}
+
+/**
+ * Answers Stripe from memory for an account billed as `cus_fake` on
+ * `sub_fake`: the subscription with an optional coupon, the customer with an
+ * optional card, and no invoices. Reset with ApiRequestor::setHttpClient(null).
+ *
+ * @param  array<string, mixed>|null  $coupon
+ */
+function fakeStripeBilling(Account $account, ?array $coupon = null, ?int $discountEndsAt = null, ?string $cardBrand = null): void
+{
+    config(['cashier.secret' => 'sk_test_fake']);
+    $account->forceFill(['stripe_id' => 'cus_fake'])->save();
+    $account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_fake',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    ApiRequestor::setHttpClient(new class($coupon, $discountEndsAt, $cardBrand) implements ClientInterface
+    {
+        public function __construct(private ?array $coupon, private ?int $discountEndsAt, private ?string $cardBrand) {}
+
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $card = blank($this->cardBrand) ? null : [
+                'id' => 'pm_fake',
+                'object' => 'payment_method',
+                'customer' => 'cus_fake',
+                'type' => 'card',
+                'card' => ['brand' => $this->cardBrand, 'last4' => '4242', 'exp_month' => 4, 'exp_year' => 2044],
+            ];
+
+            $body = match (true) {
+                str_contains($absUrl, '/v1/subscriptions/') => [
+                    'id' => 'sub_fake',
+                    'object' => 'subscription',
+                    'discounts' => blank($this->coupon) ? [] : [[
+                        'id' => 'di_fake',
+                        'object' => 'discount',
+                        'coupon' => ['object' => 'coupon', 'id' => 'FAKE', ...$this->coupon],
+                        'start' => now()->subDay()->timestamp,
+                        'end' => $this->discountEndsAt,
+                    ]],
+                ],
+                str_contains($absUrl, '/v1/customers/cus_fake/payment_methods') => ['object' => 'list', 'data' => array_filter([$card]), 'has_more' => false, 'url' => '/v1/payment_methods'],
+                str_contains($absUrl, '/v1/customers/') => [
+                    'id' => 'cus_fake',
+                    'object' => 'customer',
+                    'invoice_settings' => ['default_payment_method' => $card],
+                ],
+                default => ['object' => 'list', 'data' => [], 'has_more' => false, 'url' => '/v1/invoices'],
+            };
+
+            return [json_encode($body), 200, []];
+        }
+    });
 }
 
 /**

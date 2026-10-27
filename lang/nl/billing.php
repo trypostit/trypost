@@ -68,6 +68,9 @@ return [
         'renews' => 'Wordt automatisch verlengd',
         'cancelled' => 'Opgezegd, eindigt op :date',
         'workspaces_usage' => 'Workspaces: :count van :limit',
+        'discount_until' => ':discount korting tot :date',
+        'discount_forever' => ':discount korting op elke betaling',
+        'discount_once' => ':discount korting op je volgende betaling',
     ],
 
     'subscription' => [

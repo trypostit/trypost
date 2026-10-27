@@ -68,6 +68,9 @@ return [
         'renews' => '自动续订',
         'cancelled' => '已取消，将于 :date 结束',
         'workspaces_usage' => '工作区：:count / :limit',
+        'discount_until' => '优惠 :discount，截至 :date',
+        'discount_forever' => '每次付款优惠 :discount',
+        'discount_once' => '下次付款优惠 :discount',
     ],
 
     'subscription' => [

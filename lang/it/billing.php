@@ -68,6 +68,9 @@ return [
         'renews' => 'Si rinnova automaticamente',
         'cancelled' => 'Annullato, termina il :date',
         'workspaces_usage' => 'Workspace: :count di :limit',
+        'discount_until' => ':discount di sconto fino al :date',
+        'discount_forever' => ':discount di sconto su ogni pagamento',
+        'discount_once' => ':discount di sconto sul prossimo pagamento',
     ],
 
     'subscription' => [

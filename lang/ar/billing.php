@@ -68,6 +68,9 @@ return [
         'renews' => 'يتجدد تلقائيًا',
         'cancelled' => 'تم الإلغاء، ينتهي في :date',
         'workspaces_usage' => 'مساحات العمل: :count من :limit',
+        'discount_until' => 'خصم :discount حتى :date',
+        'discount_forever' => 'خصم :discount على كل دفعة',
+        'discount_once' => 'خصم :discount على دفعتك القادمة',
     ],
 
     'subscription' => [

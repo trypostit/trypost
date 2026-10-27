@@ -68,6 +68,9 @@ return [
         'renews' => 'Поновлюється автоматично',
         'cancelled' => 'Скасовано, діє до :date',
         'workspaces_usage' => 'Робочі простори: :count з :limit',
+        'discount_until' => 'Знижка :discount до :date',
+        'discount_forever' => 'Знижка :discount на кожен платіж',
+        'discount_once' => 'Знижка :discount на наступний платіж',
     ],
 
     'subscription' => [

@@ -7,8 +7,10 @@ namespace App\Http\Controllers\App;
 use App\Enums\Billing\Interval;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\PlanResource;
+use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
 use App\Models\Plan;
+use App\Models\Subscription;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,7 +71,22 @@ class BillingController extends Controller
                 'invoice_pdf' => $invoice->invoice_pdf,
             ]),
             'defaultPaymentMethod' => $account->displayablePaymentMethod(),
+            'discount' => $this->discount($account, $subscription),
         ]);
+    }
+
+    /**
+     * @return array{value: string, duration: string, ends_at: string|null}|null
+     */
+    private function discount(Account $account, ?Subscription $subscription): ?array
+    {
+        if (blank($subscription) || ! $account->hasStripeId()) {
+            return null;
+        }
+
+        $discount = $subscription->discount();
+
+        return filled($discount) ? SubscriptionDiscountResource::make($discount)->resolve() : null;
     }
 
     public function changePlan(ChangePlanRequest $request): RedirectResponse

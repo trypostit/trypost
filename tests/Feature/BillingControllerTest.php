@@ -7,6 +7,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Route;
+use Stripe\ApiRequestor;
 
 beforeEach(function () {
     config(['trypost.billing.require_card_for_trial' => true]);
@@ -22,6 +23,10 @@ beforeEach(function () {
     ]);
     $this->workspace->members()->attach($this->user->id, membershipPivot('member'));
     $this->user->update(['current_workspace_id' => $this->workspace->id]);
+});
+
+afterEach(function () {
+    ApiRequestor::setHttpClient(null);
 });
 
 // Subscribe tests
@@ -374,4 +379,71 @@ test('billing index exposes a past due subscription', function () {
 test('the account settings page no longer exists', function () {
     expect(Route::has('app.account.edit'))->toBeFalse()
         ->and(Route::has('app.account.update'))->toBeFalse();
+});
+
+test('billing index shows a percentage discount and when it ends', function () {
+    config(['trypost.self_hosted' => false]);
+    $endsAt = now()->addMonths(3)->startOfSecond();
+    fakeStripeBilling($this->account, ['percent_off' => 50, 'amount_off' => null, 'currency' => null, 'duration' => 'repeating', 'duration_in_months' => 3], $endsAt->timestamp);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('discount.value', '50%')
+            ->where('discount.duration', 'repeating')
+            ->where('discount.ends_at', $endsAt->toIso8601String())
+        );
+});
+
+test('billing index shows an amount discount that never ends', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, ['percent_off' => null, 'amount_off' => 1800, 'currency' => 'usd', 'duration' => 'forever', 'duration_in_months' => null]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('discount.value', '$18.00')
+            ->where('discount.duration', 'forever')
+            ->where('discount.ends_at', null)
+        );
+});
+
+test('billing index sends no discount without one', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('discount', null));
+});
+
+test('billing index does not ask Stripe for a discount without a Stripe customer', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_no_customer',
+        'stripe_status' => 'active',
+        'stripe_price' => 'price_123',
+    ]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('discount', null));
+});
+
+test('billing index sends the card brand Stripe reports', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'mastercard');
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('defaultPaymentMethod.brand', 'mastercard')
+            ->where('defaultPaymentMethod.last4', '4242')
+        );
 });

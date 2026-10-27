@@ -68,6 +68,9 @@ return [
         'renews' => '자동 갱신',
         'cancelled' => '취소됨, :date에 종료',
         'workspaces_usage' => '워크스페이스: :count / :limit',
+        'discount_until' => ':date까지 :discount 할인',
+        'discount_forever' => '매 결제 시 :discount 할인',
+        'discount_once' => '다음 결제 시 :discount 할인',
     ],
 
     'subscription' => [

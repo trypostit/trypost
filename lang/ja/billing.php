@@ -68,6 +68,9 @@ return [
         'renews' => '自動更新',
         'cancelled' => '解約済み、:dateに終了',
         'workspaces_usage' => 'ワークスペース: :count / :limit',
+        'discount_until' => ':dateまで:discount割引',
+        'discount_forever' => '毎回の支払いで:discount割引',
+        'discount_once' => '次回の支払いで:discount割引',
     ],
 
     'subscription' => [
