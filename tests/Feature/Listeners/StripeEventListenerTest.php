@@ -63,26 +63,6 @@ test('subscription created handles event without error', function () {
     expect(true)->toBeTrue();
 });
 
-test('subscription created clears the generic trial_ends_at on the account', function () {
-    $this->account->update(['trial_ends_at' => now()->addDays(3)]);
-
-    $this->listener->handle(new WebhookHandled([
-        'type' => 'customer.subscription.created',
-        'data' => ['object' => [
-            'customer' => 'cus_test123',
-            'id' => 'sub_123',
-            'status' => 'active',
-            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
-        ]],
-    ]));
-
-    expect($this->account->fresh()->trial_ends_at)->toBeNull();
-});
-
-// ========================================
-// customer.subscription.updated
-// ========================================
-
 test('subscription updated handles event without error', function () {
     $this->listener->handle(new WebhookHandled([
         'type' => 'customer.subscription.updated',
@@ -1019,8 +999,8 @@ test('subscription updated still syncs plan_id when TrackPlanChanged dispatch fa
     expect($this->account->fresh()->plan_id)->toBe($this->workspaces->id);
 });
 
-test('subscription created still syncs plan_id and clears trial_ends_at when the start tracking dispatch fails', function (string $status, string $job) {
-    $this->account->update(['plan_id' => null, 'trial_ends_at' => now()->addDays(3)]);
+test('subscription created still syncs plan_id when the start tracking dispatch fails', function (string $status, string $job) {
+    $this->account->update(['plan_id' => null]);
     failDispatchOf($job);
 
     $this->listener->handle(new WebhookHandled([
@@ -1034,10 +1014,7 @@ test('subscription created still syncs plan_id and clears trial_ends_at when the
         ]],
     ]));
 
-    $account = $this->account->fresh();
-
-    expect($account->plan_id)->toBe($this->socials->id)
-        ->and($account->trial_ends_at)->toBeNull();
+    expect($this->account->fresh()->plan_id)->toBe($this->socials->id);
 })->with([
     'trialing' => ['trialing', TrackTrialStarted::class],
     'active' => ['active', TrackCheckoutCompleted::class],
@@ -1125,7 +1102,7 @@ test('a trial records no payment until it converts, and a later activation keeps
 });
 
 test('a trial cancelled through the real Cashier webhook is signed up, a paid subscription cancelled the same way is churned', function (bool $paid, LifecycleStage $expected) {
-    config(['cashier.webhook.secret' => null, 'trypost.self_hosted' => false, 'trypost.billing.require_card_for_trial' => true]);
+    config(['cashier.webhook.secret' => null, 'trypost.self_hosted' => false]);
     $this->account->forceFill(['trial_ends_at' => null, 'first_paid_at' => $paid ? now()->subMonth() : null])->save();
     $this->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,

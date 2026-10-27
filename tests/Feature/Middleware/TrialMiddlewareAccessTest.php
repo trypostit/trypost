@@ -10,7 +10,6 @@ use Database\Seeders\PlanSeeder;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
-    config(['trypost.billing.require_card_for_trial' => true]);
     $this->seed(PlanSeeder::class);
 });
 
@@ -115,26 +114,4 @@ test('user with past_due subscription can access the app instead of being forced
 
     $response->assertOk();
     $response->assertSessionMissing('errors');
-});
-
-test('user on generic trial can access the app when card is not required', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
-    $user = CreateUser::execute([
-        'name' => 'Alice',
-        'email' => 'alice-generic@example.com',
-        'password' => 'password123',
-        'registration_ip' => '127.0.0.1',
-    ]);
-
-    $workspace = Workspace::factory()->create([
-        'account_id' => $user->account_id,
-        'user_id' => $user->id,
-    ]);
-    $workspace->members()->attach($user->id, membershipPivot('member'));
-    $user->update(['current_workspace_id' => $workspace->id]);
-
-    $response = $this->actingAs($user->fresh())->get(route('app.workspace.channels'));
-
-    $response->assertOk();
 });

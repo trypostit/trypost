@@ -130,18 +130,4 @@ return [
 
     'logger' => env('CASHIER_LOGGER'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Trial Period
-    |--------------------------------------------------------------------------
-    |
-    | Length of the signup trial on accounts.trial_ends_at when
-    | REQUIRE_CARD_FOR_TRIAL=false (no card at signup). Set to 0 to disable
-    | it. The Checkout trial is not configured here: it is an offer's
-    | trial_days (offers table).
-    |
-    */
-
-    'trial_days' => env('CASHIER_TRIAL_DAYS', 8),
-
 ];

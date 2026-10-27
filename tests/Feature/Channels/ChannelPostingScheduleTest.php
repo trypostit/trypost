@@ -99,7 +99,6 @@ test('generate from a goal saves the goal and a matching schedule', function () 
 
 test('an owner without app access can still generate during onboarding', function () {
     config()->set('trypost.self_hosted', false);
-    config()->set('trypost.billing.require_card_for_trial', true);
 
     $this->actingAs($this->user)
         ->get(route('app.calendar'))
@@ -115,7 +114,6 @@ test('an owner without app access can still generate during onboarding', functio
 
 test('an owner without app access cannot update or copy a schedule', function () {
     config()->set('trypost.self_hosted', false);
-    config()->set('trypost.billing.require_card_for_trial', true);
     $source = SocialAccount::factory()->x()->create([
         'workspace_id' => $this->workspace->id,
         'posting_schedule' => PostingSchedule::empty()->withTime(0, '10:00'),

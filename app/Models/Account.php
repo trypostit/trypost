@@ -157,10 +157,7 @@ class Account extends Model
             return true;
         }
 
-        $requiresCardForTrial = (bool) config('trypost.billing.require_card_for_trial', true);
-
-        return $this->subscribed(self::SUBSCRIPTION_NAME)
-            || (! $requiresCardForTrial && $this->isOnTrial());
+        return $this->subscribed(self::SUBSCRIPTION_NAME);
     }
 
     public function workspaceLimit(): ?int
@@ -202,10 +199,6 @@ class Account extends Model
 
     public function isOnTrial(): bool
     {
-        if (! (bool) config('trypost.billing.require_card_for_trial', true) && $this->onGenericTrial()) {
-            return true;
-        }
-
         return (bool) $this->subscription(self::SUBSCRIPTION_NAME)?->onTrial();
     }
 
@@ -213,14 +206,6 @@ class Account extends Model
     {
         $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
 
-        if (! $subscription?->onTrial()) {
-            if (! (bool) config('trypost.billing.require_card_for_trial', true) && $this->onGenericTrial()) {
-                return $this->trial_ends_at;
-            }
-
-            return null;
-        }
-
-        return $subscription->trial_ends_at;
+        return $subscription?->onTrial() ? $subscription->trial_ends_at : null;
     }
 }

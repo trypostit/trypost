@@ -230,7 +230,7 @@ describe('a signed-in user gets the same answers from every client', function ()
     ]);
 
     test('an account without a subscription still gets the 402', function (string $ip) {
-        config(['trypost.self_hosted' => false, 'trypost.billing.require_card_for_trial' => true]);
+        config(['trypost.self_hosted' => false]);
         $unsubscribed = createApiTestToken();
         $token = mcpBearerToken($unsubscribed['user'], $unsubscribed['workspace'])['plain_token'];
 

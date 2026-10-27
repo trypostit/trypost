@@ -286,14 +286,11 @@ Every lang string is rendered in all 16 locales, and the longest one decides the
 - A rewrite of existing text (shorten, rephrase, tone) keeps the text's own language; only new text is written in `{{ $language }}`.
 - AI is web only: no REST API endpoint and no MCP tool calls an AI agent.
 
-## Stripe Checkout (offers and env knobs)
+## Stripe Checkout (offers)
 
 Everything that is not the full price is an offer (owner decision October 2026): the discount, the trial and the promotion code field live on the `offers` row (see "Offers"), never in env or in controllers. All of it goes through `App\Support\Billing\ConfigureSubscriptionCheckout` (called from `StartSubscriptionCheckout`).
 
-| Env | Config | Default | Effect |
-| --- | --- | --- | --- |
-| `REQUIRE_CARD_FOR_TRIAL` | `trypost.billing.require_card_for_trial` | `true` | `true`: app access only after Stripe Checkout (no generic signup trial). `false`: generic `accounts.trial_ends_at` trial without a card |
-| `CASHIER_TRIAL_DAYS` | `cashier.trial_days` | `8` | No-card mode only: length of the generic signup trial (`0` = off). The Checkout trial is an offer's `trial_days` |
+App access always starts at Stripe Checkout: there is no trial without a card and no checkout env (owner decision October 2026; `REQUIRE_CARD_FOR_TRIAL` and `CASHIER_TRIAL_DAYS` were removed, so a forgotten env value can never override an offer). An account has app access only with a subscription (`Account::hasAppAccess()`), and a trial is always the subscription's Stripe trial. Do not reintroduce a no-card signup trial.
 
 Standing constraints:
 - Without an offer the checkout charges the full price at once: no coupon, no trial, no promotion code field.

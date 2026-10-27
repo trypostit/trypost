@@ -505,21 +505,6 @@ test('welcome steps redirect to calendar for subscribed accounts', function (str
     'plan store' => ['app.welcome.plan.store', 'post'],
 ]);
 
-test('welcome redirects generic-trial accounts with app access to calendar', function () {
-    config(['trypost.billing.require_card_for_trial' => false]);
-
-    $this->user->account->forceFill([
-        'trial_ends_at' => now()->addDays(8),
-    ])->save();
-
-    expect($this->user->account->fresh()->hasAppAccess())->toBeTrue()
-        ->and($this->user->account->fresh()->subscribed(Account::SUBSCRIPTION_NAME))->toBeFalse();
-
-    $this->actingAs($this->user->fresh())
-        ->get(route('app.welcome.persona'))
-        ->assertRedirect(route('app.calendar'));
-});
-
 test('welcome steps redirect to calendar in self hosted mode', function (string $routeName, string $method, array $payload = []) {
     config(['trypost.self_hosted' => true]);
 
