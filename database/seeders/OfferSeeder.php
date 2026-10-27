@@ -23,7 +23,7 @@ class OfferSeeder extends Seeder
 
         Offer::updateOrCreate(
             ['slug' => 'ft7dnc'],
-            ['starts_at' => now(), 'trial_days' => 7, 'requires_card' => false],
+            ['starts_at' => now(), 'trial_days' => 7, 'requires_card' => false, 'first_subscription_only' => true],
         );
 
         Offer::updateOrCreate(
