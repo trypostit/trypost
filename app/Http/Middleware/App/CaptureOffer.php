@@ -25,8 +25,7 @@ class CaptureOffer
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $slug = $request->query('offer');
-        $slug = is_string($slug) && filled($slug) ? $slug : null;
+        $slug = $this->offerSlug($request);
         $user = $request->user();
 
         if (blank($user)) {
@@ -43,5 +42,16 @@ class CaptureOffer
         }
 
         return $next($request);
+    }
+
+    /**
+     * The `?offer=` slug, or null when it is missing, blank or not a string
+     * (`?offer[]=`), which a page must ignore instead of failing on.
+     */
+    private function offerSlug(Request $request): ?string
+    {
+        $slug = $request->query('offer');
+
+        return is_string($slug) && filled($slug) ? $slug : null;
     }
 }

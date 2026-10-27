@@ -108,7 +108,7 @@ class StripeEventListener
      */
     protected function handleSubscriptionDeleted(Account $account, array $payload): void
     {
-        if ($account->plan_id === null && ! $account->hasPaidSubscription()) {
+        if (blank($account->plan_id) && ! $account->hasPaidSubscription()) {
             return;
         }
 
