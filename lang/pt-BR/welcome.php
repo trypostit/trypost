@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Conecte suas redes e agende seu primeiro post hoje.',
     'plan_terms' => 'Depois, :price/mês. Cancele quando quiser.',
     'plan_per_month' => 'por mês',
-    'plan_trial_price' => 'R$ 0',
-    'plan_trial_period' => 'por :days dias',
     'plan_start_trial' => 'Testar grátis',
     'plan_cancel_anytime' => 'Cancele quando quiser.',
     'mcp' => [

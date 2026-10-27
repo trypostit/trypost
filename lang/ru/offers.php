@@ -13,4 +13,8 @@ return [
         'price' => '$1',
         'period' => 'за первый месяц',
     ],
+    'free_trial' => [
+        'price' => '$0',
+        'period' => 'на :days дней',
+    ],
 ];

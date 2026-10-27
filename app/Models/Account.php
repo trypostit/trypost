@@ -80,11 +80,13 @@ class Account extends Model
 
     /**
      * The offer the Welcome checkout uses: the most recently claimed one the
-     * account may still use.
+     * account may still use, else the default offer. Without either it pays
+     * the full price.
      */
     public function currentOffer(): ?Offer
     {
-        return $this->offers()->availableTo($this)->orderByPivot('claimed_at', 'desc')->first();
+        return $this->offers()->availableTo($this)->orderByPivot('claimed_at', 'desc')->first()
+            ?? Offer::availableTo($this)->where('is_default', true)->latest('starts_at')->first();
     }
 
     public function posts(): HasManyThrough

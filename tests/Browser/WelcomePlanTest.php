@@ -210,7 +210,8 @@ function welcomeOwnerOnPlanStep(): User
 }
 
 test('the plan step shows the free trial, what is included and the G2 rating', function () {
-    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
+    config(['trypost.self_hosted' => false]);
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
 
     $this->actingAs(welcomeOwnerOnPlanStep());
 
@@ -253,7 +254,8 @@ test('the plan step shows the free trial, what is included and the G2 rating', f
 });
 
 test('the plan step shows the full price to a former customer, who gets no trial', function () {
-    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
+    config(['trypost.self_hosted' => false]);
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
 
     $user = welcomeOwnerOnPlanStep();
     $user->account->subscriptions()->create([
@@ -419,7 +421,7 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
 ]);
 
 test('the plan step shows neither a banner nor an offer price for an offer without copy', function () {
-    config(['trypost.self_hosted' => false, 'cashier.trial_days' => 8]);
+    config(['trypost.self_hosted' => false]);
 
     $user = welcomeOwnerOnPlanStep();
     $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]);

@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Verbinde deine Kanäle und plane noch heute deinen ersten Post.',
     'plan_terms' => 'Danach :price/Monat. Jederzeit kündbar.',
     'plan_per_month' => 'pro Monat',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'für :days Tage',
     'plan_start_trial' => 'Kostenlos testen',
     'plan_cancel_anytime' => 'Jederzeit kündbar.',
     'mcp' => [

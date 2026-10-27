@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Collega i tuoi canali e programma il tuo primo post oggi.',
     'plan_terms' => 'Poi :price/mese. Disdici quando vuoi.',
     'plan_per_month' => 'al mese',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'per :days giorni',
     'plan_start_trial' => 'Prova gratis',
     'plan_cancel_anytime' => 'Disdici quando vuoi.',
     'mcp' => [

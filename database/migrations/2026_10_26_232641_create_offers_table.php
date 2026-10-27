@@ -13,11 +13,14 @@ return new class extends Migration
         Schema::create('offers', function (Blueprint $table): void {
             $table->uuid('id')->primary();
             $table->string('slug')->unique();
-            $table->string('stripe_coupon_id');
+            $table->string('stripe_coupon_id')->nullable();
+            $table->unsignedSmallInteger('trial_days')->nullable();
+            $table->boolean('allow_promotion_codes')->default(false);
             $table->timestamp('starts_at');
             $table->timestamp('ends_at')->nullable();
             $table->unsignedInteger('max_redemptions')->nullable();
             $table->boolean('first_subscription_only')->default(false);
+            $table->boolean('is_default')->default(false);
             $table->timestamps();
         });
     }

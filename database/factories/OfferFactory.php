@@ -25,7 +25,10 @@ class OfferFactory extends Factory
             'starts_at' => now()->subDay(),
             'ends_at' => null,
             'max_redemptions' => null,
+            'trial_days' => null,
+            'allow_promotion_codes' => false,
             'first_subscription_only' => false,
+            'is_default' => false,
         ];
     }
 
@@ -48,6 +51,28 @@ class OfferFactory extends Factory
     {
         return $this->state(fn (array $attributes): array => [
             'max_redemptions' => $places,
+        ]);
+    }
+
+    public function trial(int $days): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'stripe_coupon_id' => null,
+            'trial_days' => $days,
+        ]);
+    }
+
+    public function allowingPromotionCodes(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'allow_promotion_codes' => true,
+        ]);
+    }
+
+    public function asDefault(): static
+    {
+        return $this->state(fn (array $attributes): array => [
+            'is_default' => true,
         ]);
     }
 

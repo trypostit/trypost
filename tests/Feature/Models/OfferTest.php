@@ -97,3 +97,22 @@ test('a first-subscription offer is not available to an account that was billed 
     expect(Offer::availableTo($account)->whereKey($offer->id)->exists())->toBeFalse()
         ->and(Offer::availableTo(Account::factory()->create())->whereKey($offer->id)->exists())->toBeTrue();
 });
+
+test('current offer falls back to the newest default offer, and a claim wins over it', function () {
+    $account = Account::factory()->create();
+    Offer::factory()->asDefault()->create(['starts_at' => now()->subDays(5)]);
+    $newestDefault = Offer::factory()->asDefault()->create(['starts_at' => now()->subDay()]);
+
+    expect($account->currentOffer()?->is($newestDefault))->toBeTrue();
+
+    $claimed = Offer::factory()->create();
+    $account->offers()->attach($claimed, ['claimed_at' => now()]);
+
+    expect($account->currentOffer()?->is($claimed))->toBeTrue();
+});
+
+test('current offer is empty without a claim or a default offer', function () {
+    Offer::factory()->create();
+
+    expect(Account::factory()->create()->currentOffer())->toBeNull();
+});

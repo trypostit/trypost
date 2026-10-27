@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Koppel je kanalen en plan vandaag je eerste post.',
     'plan_terms' => 'Daarna :price/maand. Altijd opzegbaar.',
     'plan_per_month' => 'per maand',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'voor :days dagen',
     'plan_start_trial' => 'Gratis proberen',
     'plan_cancel_anytime' => 'Altijd opzegbaar.',
     'mcp' => [

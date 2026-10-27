@@ -135,29 +135,13 @@ return [
     | Trial Period
     |--------------------------------------------------------------------------
     |
-    | Days of trial. With REQUIRE_CARD_FOR_TRIAL=true and no first-month coupon
-    | applied, first-time checkouts get Stripe trialDays (status trialing).
-    | Re-subscribers (any prior real subscription) skip trial. With
-    | REQUIRE_CARD_FOR_TRIAL=false, it is the generic signup trial length on
-    | accounts.trial_ends_at. Set to 0 to disable trials. Stripe Checkout
-    | rejects trials shorter than 48 hours — values of 1 are clamped to 2.
+    | Length of the signup trial on accounts.trial_ends_at when
+    | REQUIRE_CARD_FOR_TRIAL=false (no card at signup). Set to 0 to disable
+    | it. The Checkout trial is not configured here: it is an offer's
+    | trial_days (offers table).
     |
     */
 
     'trial_days' => env('CASHIER_TRIAL_DAYS', 8),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Allow Promotion Codes
-    |--------------------------------------------------------------------------
-    |
-    | When true and no offer applies on the session, Stripe Checkout shows
-    | the redeemable promotion-code field. Defaults to false. Stripe rejects a
-    | session that sets both a coupon and allow_promotion_codes, so an offer
-    | checkout never shows the field.
-    |
-    */
-
-    'allow_promotion_codes' => (bool) env('CASHIER_ALLOW_PROMOTION_CODES', false),
 
 ];

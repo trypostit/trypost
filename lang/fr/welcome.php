@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Connectez vos réseaux et programmez votre premier post dès aujourd’hui.',
     'plan_terms' => 'Puis :price/mois. Annulez à tout moment.',
     'plan_per_month' => 'par mois',
-    'plan_trial_price' => '0 $',
-    'plan_trial_period' => 'pendant :days jours',
     'plan_start_trial' => 'Essai gratuit',
     'plan_cancel_anytime' => 'Annulez à tout moment.',
     'mcp' => [

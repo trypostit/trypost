@@ -21,10 +21,13 @@ class Offer extends Model
     protected $fillable = [
         'slug',
         'stripe_coupon_id',
+        'trial_days',
+        'allow_promotion_codes',
         'starts_at',
         'ends_at',
         'max_redemptions',
         'first_subscription_only',
+        'is_default',
     ];
 
     protected function casts(): array
@@ -32,8 +35,11 @@ class Offer extends Model
         return [
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
+            'trial_days' => 'integer',
+            'allow_promotion_codes' => 'boolean',
             'max_redemptions' => 'integer',
             'first_subscription_only' => 'boolean',
+            'is_default' => 'boolean',
         ];
     }
 

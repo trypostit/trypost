@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
     'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
     'plan_per_month' => 'miesięcznie',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'przez :days dni',
     'plan_start_trial' => 'Wypróbuj za darmo',
     'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
     'mcp' => [

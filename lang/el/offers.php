@@ -13,4 +13,8 @@ return [
         'price' => '$1',
         'period' => 'για τον πρώτο μήνα',
     ],
+    'free_trial' => [
+        'price' => '$0',
+        'period' => 'για :days ημέρες',
+    ],
 ];

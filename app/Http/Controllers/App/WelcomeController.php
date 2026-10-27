@@ -160,7 +160,6 @@ class WelcomeController extends Controller
         return Inertia::render('welcome/Plan', [
             'plan' => PlanResource::make($plan)->resolve(),
             'offer' => filled($offer) ? OfferResource::make($offer)->resolve() : null,
-            'trialDays' => filled($offer) ? 0 : ConfigureSubscriptionCheckout::trialDaysFor($request->user()->account),
         ]);
     }
 

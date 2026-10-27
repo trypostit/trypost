@@ -25,25 +25,23 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
-     * An offer applies its coupon. Without one, a first-time subscriber gets
-     * the trial and the promotion code field may show: Stripe rejects a
-     * coupon and promotion codes on the same session, never a trial with them.
+     * The offer decides the discount, the trial and the promotion code field;
+     * without one the account pays the full price. A coupon wins over the
+     * field: Stripe rejects both on one session, never a trial with it.
      * The caller resolves the offer once with offerFor(), so the coupon, the
      * checkout metadata and the tracked events agree.
      */
-    public static function apply(SubscriptionBuilder $subscription, Account $account, ?Offer $offer = null): SubscriptionBuilder
+    public static function apply(SubscriptionBuilder $subscription, ?Offer $offer = null): SubscriptionBuilder
     {
-        if (filled($offer)) {
+        if (filled($offer?->trial_days)) {
+            $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $offer->trial_days));
+        }
+
+        if (filled($offer?->stripe_coupon_id)) {
             return $subscription->withCoupon($offer->stripe_coupon_id);
         }
 
-        $trialDays = self::trialDaysFor($account);
-
-        if ($trialDays > 0) {
-            $subscription->trialDays($trialDays);
-        }
-
-        if ((bool) config('cashier.allow_promotion_codes', false)) {
+        if ($offer?->allow_promotion_codes === true) {
             $subscription->allowPromotionCodes();
         }
 
@@ -51,30 +49,11 @@ final class ConfigureSubscriptionCheckout
     }
 
     /**
-     * The trial a checkout without an offer gets: first-time subscribers only,
-     * with a card at checkout. 0 means no trial.
-     */
-    public static function trialDaysFor(Account $account): int
-    {
-        $trialDays = (int) config('cashier.trial_days');
-
-        if (! (bool) config('trypost.billing.require_card_for_trial', true) || $trialDays <= 0 || $account->hasHadBillableSubscription()) {
-            return 0;
-        }
-
-        return max(self::MIN_CHECKOUT_TRIAL_DAYS, $trialDays);
-    }
-
-    /**
      * The offer the Welcome checkout applies. It needs the monthly plan,
-     * which only the Welcome checkout passes, and a card at checkout.
+     * which only the Welcome checkout passes.
      */
     public static function offerFor(Account $account, ?Plan $plan): ?Offer
     {
-        if (blank($plan) || ! (bool) config('trypost.billing.require_card_for_trial', true)) {
-            return null;
-        }
-
-        return $account->currentOffer();
+        return filled($plan) ? $account->currentOffer() : null;
     }
 }

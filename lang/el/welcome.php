@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Συνδέστε τα κανάλια σας και προγραμματίστε την πρώτη σας ανάρτηση σήμερα.',
     'plan_terms' => 'Μετά :price/μήνα. Ακύρωση οποτεδήποτε.',
     'plan_per_month' => 'τον μήνα',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'για :days ημέρες',
     'plan_start_trial' => 'Δωρεάν δοκιμή',
     'plan_cancel_anytime' => 'Ακύρωση οποτεδήποτε.',
     'mcp' => [

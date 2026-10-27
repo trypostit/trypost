@@ -16,32 +16,26 @@ import type { PlanOption } from '@/types/plan';
 const props = defineProps<{
     plan: PlanOption;
     offer: Offer | null;
-    trialDays: number;
 }>();
 
 const showsOfferPrice = computed((): boolean => props.offer?.has_price === true);
 
-const showsTrial = computed(
-    (): boolean => !showsOfferPrice.value && props.trialDays > 0,
+const isTrialOnly = computed(
+    (): boolean =>
+        Boolean(props.offer?.trial_days) && props.offer?.has_coupon === false,
 );
 
-const checkoutPriceKey = computed((): string => {
-    if (showsOfferPrice.value) {
-        return `offers.${props.offer?.key}.price`;
-    }
+const checkoutPriceKey = computed((): string =>
+    showsOfferPrice.value
+        ? `offers.${props.offer?.key}.price`
+        : 'billing.subscribe.prices.socials.monthly',
+);
 
-    return showsTrial.value
-        ? 'welcome.plan_trial_price'
-        : 'billing.subscribe.prices.socials.monthly';
-});
-
-const priceSuffixKey = computed((): string => {
-    if (showsOfferPrice.value) {
-        return `offers.${props.offer?.key}.period`;
-    }
-
-    return showsTrial.value ? 'welcome.plan_trial_period' : 'welcome.plan_per_month';
-});
+const priceSuffixKey = computed((): string =>
+    showsOfferPrice.value
+        ? `offers.${props.offer?.key}.period`
+        : 'welcome.plan_per_month',
+);
 
 const form = useForm({});
 
@@ -181,7 +175,11 @@ const submit = (): void => {
                     <span
                         class="text-base text-foreground"
                         :data-testid="`plan-price-suffix-${plan.slug}`"
-                        >{{ $t(priceSuffixKey, { days: String(trialDays) }) }}</span
+                        >{{
+                            $t(priceSuffixKey, {
+                                days: String(offer?.trial_days ?? ''),
+                            })
+                        }}</span
                     >
                 </p>
             </div>
@@ -198,7 +196,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    showsTrial
+                    isTrialOnly && showsOfferPrice
                         ? $t('welcome.plan_start_trial')
                         : $t('billing.plans.start_first_month', {
                               price: $t(checkoutPriceKey),
@@ -212,7 +210,7 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    showsOfferPrice || showsTrial
+                    showsOfferPrice
                         ? $t('welcome.plan_terms', {
                               price: $t('billing.subscribe.prices.socials.monthly'),
                           })

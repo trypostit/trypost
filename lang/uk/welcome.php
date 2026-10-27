@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Підключіть канали та заплануйте перший пост уже сьогодні.',
     'plan_terms' => 'Потім :price/міс. Скасування будь-коли.',
     'plan_per_month' => 'на місяць',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'на :days днів',
     'plan_start_trial' => 'Почати безкоштовно',
     'plan_cancel_anytime' => 'Скасування будь-коли.',
     'mcp' => [

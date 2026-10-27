@@ -49,8 +49,6 @@ return [
     'plan_description' => 'Подключите каналы и запланируйте первый пост уже сегодня.',
     'plan_terms' => 'Затем :price/мес. Отмена в любой момент.',
     'plan_per_month' => 'в месяц',
-    'plan_trial_price' => '$0',
-    'plan_trial_period' => 'на :days дней',
     'plan_start_trial' => 'Начать бесплатно',
     'plan_cancel_anytime' => 'Отмена в любой момент.',
     'mcp' => [

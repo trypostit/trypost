@@ -197,24 +197,26 @@ test('plan shows the Socials plan', function () {
         );
 });
 
-test('plan sends the trial only when checkout will apply it', function (Closure $setup, int $trialDays) {
-    config(['cashier.trial_days' => 8]);
+test('plan sends the default trial offer only to an account that may use it', function (Closure $setup, ?string $slug) {
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create(['slug' => 'free-trial']);
     completeWelcomeThroughSoftware($this->user);
     $setup($this->user);
 
     $this->actingAs($this->user->fresh())
         ->get(route('app.welcome.plan'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('trialDays', $trialDays));
+        ->assertInertia(fn ($page) => $slug === null
+            ? $page->where('offer', null)
+            : $page->where('offer.key', str_replace('-', '_', $slug)));
 })->with([
-    'first-time subscriber' => [fn () => null, 8],
+    'first-time subscriber' => [fn () => null, 'free-trial'],
     'retrying an incomplete checkout' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_incomplete',
         'stripe_status' => 'incomplete',
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
-    ]), 8],
+    ]), 'free-trial'],
     'former subscriber' => [fn (User $user) => $user->account->subscriptions()->create([
         'type' => Account::SUBSCRIPTION_NAME,
         'stripe_id' => 'sub_canceled',
@@ -222,8 +224,8 @@ test('plan sends the trial only when checkout will apply it', function (Closure 
         'stripe_price' => 'price_monthly_test',
         'quantity' => 1,
         'ends_at' => now()->subDay(),
-    ]), 0],
-    'with an offer' => [fn (User $user) => $user->account->offers()->attach(Offer::factory()->create(), ['claimed_at' => now()]), 0],
+    ]), null],
+    'with a claimed offer' => [fn (User $user) => $user->account->offers()->attach(Offer::factory()->create(['slug' => 'bf26']), ['claimed_at' => now()]), 'bf26'],
 ]);
 
 test('plan store sends the owner to Stripe checkout on the Socials monthly price', function () {
@@ -682,12 +684,10 @@ test('the plan step sends the current offer', function () {
             ->where('offer.key', 'black_friday_2026')
             ->where('offer.has_banner', false)
             ->where('offer.has_price', false)
-            ->where('trialDays', 0)
         );
 });
 
 test('the plan step sends no offer once it expired', function () {
-    config(['cashier.trial_days' => 8]);
     completeWelcomeThroughSoftware($this->user);
     $offer = Offer::factory()->create(['ends_at' => now()->addHour()]);
     $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
@@ -699,7 +699,6 @@ test('the plan step sends no offer once it expired', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('offer', null)
-            ->where('trialDays', 8)
         );
 });
 

@@ -13,4 +13,8 @@ return [
         'price' => '$1',
         'period' => 'voor de eerste maand',
     ],
+    'free_trial' => [
+        'price' => '$0',
+        'period' => 'voor :days dagen',
+    ],
 ];

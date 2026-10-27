@@ -15,18 +15,7 @@ uses(RefreshDatabase::class);
 
 beforeEach(function () {
     $this->account = Account::factory()->create();
-
-    config([
-        'trypost.billing.require_card_for_trial' => true,
-        'cashier.trial_days' => 8,
-        'cashier.allow_promotion_codes' => false,
-    ]);
 });
-
-function checkoutSubscription(Account $account): SubscriptionBuilder
-{
-    return $account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
-}
 
 function givePriorSubscription(Account $account, string $status = 'canceled'): void
 {
@@ -36,6 +25,7 @@ function givePriorSubscription(Account $account, string $status = 'canceled'): v
         'stripe_status' => $status,
         'stripe_price' => 'price_monthly_test',
     ]);
+    $account->unsetRelation('subscriptions');
 }
 
 function trialExpiresAt(SubscriptionBuilder $subscription): ?Carbon
@@ -50,12 +40,8 @@ function socialsPlan(): Plan
     return Plan::where('slug', Slug::Socials)->firstOrFail();
 }
 
-/**
- * @param  array<string, mixed>  $attributes
- */
-function claimOfferFor(Account $account, array $attributes = []): Offer
+function claimOfferFor(Account $account, Offer $offer): Offer
 {
-    $offer = Offer::factory()->create(['stripe_coupon_id' => 'BF26_50', ...$attributes]);
     $account->offers()->attach($offer, ['claimed_at' => now()]);
 
     return $offer;
@@ -63,25 +49,53 @@ function claimOfferFor(Account $account, array $attributes = []): Offer
 
 function configureCheckout(Account $account): SubscriptionBuilder
 {
-    $subscription = checkoutSubscription($account);
+    $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, 'price_monthly_test');
 
-    ConfigureSubscriptionCheckout::apply($subscription, $account, ConfigureSubscriptionCheckout::offerFor($account, socialsPlan()));
+    ConfigureSubscriptionCheckout::apply($subscription, ConfigureSubscriptionCheckout::offerFor($account, socialsPlan()));
 
     return $subscription;
 }
 
-test('without an offer a first-time subscriber gets an eight-day trial and no promotion codes', function () {
+test('without an offer the checkout charges the full price at once', function () {
+    $subscription = configureCheckout($this->account);
+
+    expect($subscription->couponId)->toBeNull()
+        ->and(trialExpiresAt($subscription))->toBeNull()
+        ->and($subscription->allowPromotionCodes)->toBeFalse();
+});
+
+test('an offer that allows promotion codes shows the field', function () {
+    Offer::factory()->trial(8)->asDefault()->allowingPromotionCodes()->create();
+
+    expect(configureCheckout($this->account)->allowPromotionCodes)->toBeTrue();
+});
+
+test('the default trial offer gives every first-time subscriber its trial', function () {
     Carbon::setTestNow('2026-08-07 12:00:00');
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create();
 
     $subscription = configureCheckout($this->account);
 
     expect($subscription->couponId)->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeFalse()
         ->and(trialExpiresAt($subscription)?->toDateTimeString())->toBe('2026-08-15 12:00:00');
 });
 
-test('without an offer the trial comes with the promotion code field when enabled', function () {
-    config(['cashier.allow_promotion_codes' => true]);
+test('a former customer gets no first-subscription trial', function () {
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create();
+    givePriorSubscription($this->account);
+
+    expect(trialExpiresAt(configureCheckout($this->account)))->toBeNull();
+});
+
+test('a checkout that never became billable still counts as first-time', function (string $status) {
+    Offer::factory()->trial(8)->asDefault()->firstSubscriptionOnly()->create();
+    givePriorSubscription($this->account, $status);
+
+    expect(trialExpiresAt(configureCheckout($this->account)))->not->toBeNull();
+})->with(['incomplete', 'incomplete_expired']);
+
+test('a trial offer keeps the promotion code field, which Stripe accepts with a trial', function () {
+    Offer::factory()->trial(8)->asDefault()->allowingPromotionCodes()->create();
 
     $subscription = configureCheckout($this->account);
 
@@ -89,9 +103,8 @@ test('without an offer the trial comes with the promotion code field when enable
         ->and(trialExpiresAt($subscription))->not->toBeNull();
 });
 
-test('an offer applies its coupon with neither a trial nor the promotion code field', function () {
-    config(['cashier.allow_promotion_codes' => true]);
-    claimOfferFor($this->account);
+test('a coupon wins over the promotion code field, which Stripe rejects with it', function () {
+    claimOfferFor($this->account, Offer::factory()->allowingPromotionCodes()->create(['stripe_coupon_id' => 'BF26_50']));
 
     $subscription = configureCheckout($this->account);
 
@@ -100,71 +113,57 @@ test('an offer applies its coupon with neither a trial nor the promotion code fi
         ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('a former customer without an offer gets no trial', function () {
-    givePriorSubscription($this->account);
+test('a claimed offer wins over the default offer', function () {
+    Offer::factory()->trial(8)->asDefault()->create();
+    claimOfferFor($this->account, Offer::factory()->create(['stripe_coupon_id' => 'BF26_50']));
 
     $subscription = configureCheckout($this->account);
 
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription))->toBeNull()
-        ->and(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(0);
+    expect($subscription->couponId)->toBe('BF26_50')
+        ->and(trialExpiresAt($subscription))->toBeNull();
 });
 
-test('a checkout that never became billable still counts as first-time', function (string $status) {
-    givePriorSubscription($this->account, $status);
-
-    expect(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(8);
-})->with(['incomplete', 'incomplete_expired']);
-
-test('without a card at checkout there is neither a trial nor an offer', function () {
-    config(['trypost.billing.require_card_for_trial' => false, 'cashier.allow_promotion_codes' => true]);
-    claimOfferFor($this->account);
+test('an offer can carry a coupon and a trial together', function () {
+    claimOfferFor($this->account, Offer::factory()->create(['stripe_coupon_id' => 'BF26_50', 'trial_days' => 8]));
 
     $subscription = configureCheckout($this->account);
 
-    expect($subscription->couponId)->toBeNull()
-        ->and(trialExpiresAt($subscription))->toBeNull()
-        ->and($subscription->allowPromotionCodes)->toBeTrue();
+    expect($subscription->couponId)->toBe('BF26_50')
+        ->and(trialExpiresAt($subscription))->not->toBeNull();
 });
 
 test('clamps a one-day trial to the Stripe Checkout minimum of two days', function () {
-    config(['cashier.trial_days' => 1]);
+    Carbon::setTestNow('2026-08-07 12:00:00');
+    Offer::factory()->trial(1)->asDefault()->create();
 
-    expect(ConfigureSubscriptionCheckout::trialDaysFor($this->account))->toBe(ConfigureSubscriptionCheckout::MIN_CHECKOUT_TRIAL_DAYS);
-});
-
-test('zero trial days means no trial', function () {
-    config(['cashier.trial_days' => 0]);
-
-    expect(trialExpiresAt(configureCheckout($this->account)))->toBeNull();
+    expect(trialExpiresAt(configureCheckout($this->account))?->toDateTimeString())->toBe('2026-08-09 12:00:00');
 });
 
 test('an offer applies to a former customer', function () {
     givePriorSubscription($this->account);
-    claimOfferFor($this->account);
+    claimOfferFor($this->account, Offer::factory()->create(['stripe_coupon_id' => 'BF26_50']));
 
     expect(configureCheckout($this->account)->couponId)->toBe('BF26_50');
 });
 
-test('a first-subscription offer applies to a first-time subscriber only', function () {
-    claimOfferFor($this->account, ['stripe_coupon_id' => 'FIRST_MONTH_1', 'first_subscription_only' => true]);
+test('a first-subscription offer skips an account that was billed before', function () {
+    claimOfferFor($this->account, Offer::factory()->firstSubscriptionOnly()->create(['stripe_coupon_id' => 'FIRST_MONTH_1']));
 
     expect(configureCheckout($this->account)->couponId)->toBe('FIRST_MONTH_1');
 
     givePriorSubscription($this->account);
-    $this->account->unsetRelation('subscriptions');
 
     expect(ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()))->toBeNull();
 });
 
 test('does not apply an offer without a plan', function () {
-    claimOfferFor($this->account);
+    Offer::factory()->trial(8)->asDefault()->create();
 
     expect(ConfigureSubscriptionCheckout::offerFor($this->account, null))->toBeNull();
 });
 
 test('does not apply an expired offer', function () {
-    claimOfferFor($this->account, ['starts_at' => now()->subDays(10), 'ends_at' => now()->subDay()]);
+    claimOfferFor($this->account, Offer::factory()->expired()->create(['stripe_coupon_id' => 'BF26_50']));
 
     expect(configureCheckout($this->account)->couponId)->toBeNull();
 });

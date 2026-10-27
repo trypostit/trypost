@@ -34,7 +34,7 @@ class StartSubscriptionCheckout
             ConfigureSubscriptionCheckout::OFFER_SLUG_METADATA_KEY => $offer?->slug,
         ], filled(...));
 
-        ConfigureSubscriptionCheckout::apply($subscription, $account, $offer);
+        ConfigureSubscriptionCheckout::apply($subscription, $offer);
         $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
