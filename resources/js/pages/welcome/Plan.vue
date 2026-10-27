@@ -166,7 +166,7 @@ const submit = (): void => {
                     </div>
                 </div>
 
-                <p class="flex flex-col gap-1">
+                <p class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                     <span
                         class="text-5xl leading-none font-strong tabular-nums"
                         :data-testid="`plan-price-${plan.slug}`"
