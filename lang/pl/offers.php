@@ -25,5 +25,6 @@ return [
         'price' => 'Za darmo',
         'period' => 'przez 7 dni',
         'checkout_button' => 'Wypróbuj za darmo',
+        'terms' => 'Karta kredytowa nie jest wymagana.',
     ],
 ];

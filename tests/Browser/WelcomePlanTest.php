@@ -456,3 +456,21 @@ test('the plan step shows neither a banner nor an offer price for an offer witho
 
     expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
 });
+
+test('a trial without a card says so under the button', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = welcomeOwnerOnPlanStep();
+    $user->account->offers()->attach(Offer::factory()->freeTrial()->withoutCard()->create(['slug' => 'free-trial-7-days-no-card']), ['claimed_at' => now()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.welcome.plan'));
+    waitFor($page, '@welcome-plan-terms');
+
+    $page->assertSeeIn('@plan-price-socials', 'Free')
+        ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
+        ->assertSeeIn('@welcome-plan-terms', 'No credit card required.')
+        ->assertDontSee('Cancel anytime')
+        ->assertDontSee('Then $19/month')
+        ->assertNoJavaScriptErrors();
+});

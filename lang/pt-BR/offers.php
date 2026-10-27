@@ -25,5 +25,6 @@ return [
         'price' => 'Grátis',
         'period' => 'por 7 dias',
         'checkout_button' => 'Testar grátis',
+        'terms' => 'Sem cartão de crédito.',
     ],
 ];

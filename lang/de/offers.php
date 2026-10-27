@@ -25,5 +25,6 @@ return [
         'price' => 'Kostenlos',
         'period' => 'für 7 Tage',
         'checkout_button' => 'Kostenlos testen',
+        'terms' => 'Keine Kreditkarte nötig.',
     ],
 ];

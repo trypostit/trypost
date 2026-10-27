@@ -47,7 +47,9 @@ const priceCopy = computed((): PriceCopy => {
         unit: props.offer.has_unit ? `${offerCopy}.unit` : null,
         period: `${offerCopy}.period`,
         checkoutButton: `${offerCopy}.checkout_button`,
-        terms: 'welcome.plan_terms',
+        terms: props.offer.has_terms
+            ? `${offerCopy}.terms`
+            : 'welcome.plan_terms',
     };
 });
 

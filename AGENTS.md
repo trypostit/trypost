@@ -405,7 +405,9 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   banner's tag), `headline` (the banner's sentence), `price`, `period` and an
   optional `unit` shown next to the price (`/month` for Black Friday; a trial or
   the `$1` first month has none, so their copy decides it, never the code), in all
-  16 locales; the price is display text per locale, like
+  16 locales, plus an optional `terms` for the line under the button (a trial
+  without a card says no card is needed; without it the line is
+  `welcome.plan_terms`, "Then :price/month"); the price is display text per locale, like
   `billing.subscribe.prices.socials.monthly`. Nothing about the discount is
   stored in the database, and the banner (`name`, `headline`) is optional: an
   offer has both or neither, while `price`, `period` and `checkout_button` are required

@@ -25,5 +25,6 @@ return [
         'price' => 'Gratis',
         'period' => 'per 7 giorni',
         'checkout_button' => 'Prova gratis',
+        'terms' => 'Nessuna carta di credito richiesta.',
     ],
 ];

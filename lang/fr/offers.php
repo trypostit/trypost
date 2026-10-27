@@ -25,5 +25,6 @@ return [
         'price' => 'Gratuit',
         'period' => 'pendant 7 jours',
         'checkout_button' => 'Essai gratuit',
+        'terms' => 'Aucune carte bancaire requise.',
     ],
 ];

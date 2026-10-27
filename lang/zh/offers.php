@@ -25,5 +25,6 @@ return [
         'price' => '免费',
         'period' => '7 天内',
         'checkout_button' => '免费试用',
+        'terms' => '无需信用卡。',
     ],
 ];

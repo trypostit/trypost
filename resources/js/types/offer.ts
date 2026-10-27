@@ -3,4 +3,5 @@ export interface Offer {
     has_banner: boolean;
     has_checkout_copy: boolean;
     has_unit: boolean;
+    has_terms: boolean;
 }
