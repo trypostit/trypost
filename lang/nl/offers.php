@@ -7,12 +7,6 @@ return [
         'price' => '$9.50',
         'period' => 'voor de eerste 3 maanden',
     ],
-    'first_month' => [
-        'name' => 'Eerste maand',
-        'headline' => 'Je eerste maand voor $1',
-        'price' => '$1',
-        'period' => 'voor de eerste maand',
-    ],
     'free_trial' => [
         'price' => '$0',
         'period' => 'voor :days dagen',

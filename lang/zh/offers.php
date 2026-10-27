@@ -7,12 +7,6 @@ return [
         'price' => '$9.50',
         'period' => '前 3 个月',
     ],
-    'first_month' => [
-        'name' => '首月',
-        'headline' => '首月仅需 $1',
-        'price' => '$1',
-        'period' => '首月价格',
-    ],
     'free_trial' => [
         'price' => '$0',
         'period' => ':days 天内',

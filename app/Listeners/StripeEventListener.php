@@ -63,7 +63,7 @@ class StripeEventListener
 
     /**
      * A subscription is born either `trialing` (card-required trial, no charge
-     * yet) or `active` (first-month coupon or no trial, charged at once): two
+     * yet) or `active` (an offer without a trial, or no offer, charged at once): two
      * business events, see App\Support\StripeSubscriptionConversion.
      *
      * @param  array<string, mixed>  $payload

@@ -34,7 +34,7 @@ beforeEach(function () {
             'metadata' => [
                 'trypost_plan_slug' => 'socials',
                 'trypost_interval' => 'monthly',
-                'trypost_first_month_offer' => 'true',
+                'trypost_offer_slug' => 'bf26',
             ],
         ]],
     ];

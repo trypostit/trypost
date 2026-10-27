@@ -417,7 +417,6 @@ test('the plan step shows an offer\'s banner and price', function (string $slug,
         ->assertNoJavaScriptErrors();
 })->with([
     'black friday' => ['bf26', 'Black Friday', '50% off your first 3 months', '$9.50', 'for your first 3 months'],
-    'first month' => ['first-month', 'First month', 'Your first month for $1', '$1', 'for your first month'],
 ]);
 
 test('the plan step shows neither a banner nor an offer price for an offer without copy', function () {

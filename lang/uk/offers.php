@@ -7,12 +7,6 @@ return [
         'price' => '$9.50',
         'period' => 'за перші 3 місяці',
     ],
-    'first_month' => [
-        'name' => 'Перший місяць',
-        'headline' => 'Перший місяць за $1',
-        'price' => '$1',
-        'period' => 'за перший місяць',
-    ],
     'free_trial' => [
         'price' => '$0',
         'period' => 'на :days днів',
