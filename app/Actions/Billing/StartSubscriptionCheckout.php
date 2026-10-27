@@ -29,10 +29,9 @@ class StartSubscriptionCheckout
 
         $account->syncOrCreateStripeCustomer();
 
-        $offerPlan = $this->offerPlan($plan, $priceId);
         $subscription = $account->newSubscription(Account::SUBSCRIPTION_NAME, $priceId);
 
-        $offer = filled($offerPlan) ? $offer : null;
+        $offer = $this->qualifiesForOffer($plan, $priceId) ? $offer : null;
 
         $offerMetadata = array_filter([
             ConfigureSubscriptionCheckout::OFFER_METADATA_KEY => $offer?->id,
@@ -75,8 +74,8 @@ class StartSubscriptionCheckout
     /**
      * Offers are written for Socials monthly, so no other price gets one.
      */
-    private function offerPlan(?Plan $plan, string $priceId): ?Plan
+    private function qualifiesForOffer(?Plan $plan, string $priceId): bool
     {
-        return $plan?->slug === Slug::Socials && $plan->stripe_monthly_price_id === $priceId ? $plan : null;
+        return $plan?->slug === Slug::Socials && $plan->stripe_monthly_price_id === $priceId;
     }
 }

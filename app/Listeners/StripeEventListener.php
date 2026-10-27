@@ -76,9 +76,9 @@ class StripeEventListener
         $previousPlan = $account->plan?->name;
         $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
-        $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
+        $this->redeemOffer($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Created, $payload, $previousPlan);
         TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && $convertsTrialWithoutCard, (string) $account->id, $payload);
@@ -94,9 +94,9 @@ class StripeEventListener
         $previousPlan = $account->plan?->name;
         $convertsTrialWithoutCard = $this->convertsTrialWithoutCard($account, $payload);
 
-        $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
+        $this->redeemOffer($account, $payload);
 
         TrackBilling::dispatchIf(PostHogService::shouldTrack(), (string) $account->id, BillingEvent::Updated, $payload, $previousPlan);
         TrackTrialConverted::dispatchIf(PostHogService::shouldTrack() && (($this->convertedFromTrial($payload) && $this->isNowActive($payload)) || $convertsTrialWithoutCard), (string) $account->id, $payload);

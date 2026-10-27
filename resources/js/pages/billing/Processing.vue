@@ -33,12 +33,14 @@ const isPhone = useBelowBreakpoint('sm');
 /** Connecting an AI is a desktop task, so phones go straight to the schedule. */
 const goNext = (): void => {
     if (props.returnsToBilling) {
-        router.visit(billingIndex.url());
+        router.visit(billingIndex.url(), { replace: true });
 
         return;
     }
 
-    router.visit(isPhone.value ? postsIndex.url() : mcp.url());
+    router.visit(isPhone.value ? postsIndex.url() : mcp.url(), {
+        replace: true,
+    });
 };
 
 // Card-required trials are already `subscribed()` (`trialing`) on first paint.

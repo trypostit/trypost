@@ -824,3 +824,27 @@ test('a trial without a card shows the trial, not the ended subscription before 
             ->where('hasSubscription', false)
         );
 });
+
+test('subscribe now never opens a checkout on an archived plan', function () {
+    config(['trypost.self_hosted' => false]);
+    $this->account->update(['plan_id' => Plan::where('slug', Slug::Workspace)->value('id'), 'trial_ends_at' => now()->addDays(5)]);
+
+    $this->mock(StartSubscriptionCheckout::class)->shouldReceive('redirect')->never();
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect(route('app.billing.index'));
+});
+
+test('billing index skips a default that is not a card and marks the subscription card', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, cardBrand: 'visa', secondCardBrand: 'mastercard', subscriptionCard: 'pm_fake', customerDefaultIsLink: true);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertInertia(fn ($page) => $page
+            ->where('paymentMethods.0.id', 'pm_fake')
+            ->where('paymentMethods.0.is_default', true)
+            ->where('paymentMethods.1.is_default', false)
+        );
+});

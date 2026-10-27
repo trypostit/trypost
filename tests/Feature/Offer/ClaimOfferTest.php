@@ -273,3 +273,14 @@ test('a former customer cannot claim a first-subscription offer', function () {
     expect(ClaimOffer::execute($owner->account->fresh(), 'fm1'))->toBeNull()
         ->and($owner->account->offers()->whereKey($offer->id)->exists())->toBeFalse();
 });
+
+test('a waiting offer is still claimed when the first signed-in page links to one that cannot be', function () {
+    $this->withSession([CaptureOffer::SESSION_KEY => 'black-friday-2026']);
+    $owner = offerTestOwner();
+
+    $this->actingAs($owner)
+        ->get(route('app.welcome.plan', ['offer' => 'no-such-offer']))
+        ->assertSessionMissing(CaptureOffer::SESSION_KEY);
+
+    expect($owner->account->offers()->pluck('offers.id')->all())->toBe([$this->offer->id]);
+});

@@ -92,8 +92,8 @@ class BillingController extends Controller
 
     /**
      * The customer's cards, the default one first: the customer's default, else
-     * the subscription's (Stripe Checkout anchors the card there), else the
-     * first card.
+     * the subscription's (Stripe Checkout anchors the card there), whichever is
+     * a card in the list, else the first card.
      *
      * @return list<array{id: string, brand: string, last4: string, exp_month: int, exp_year: int, is_default: bool}>
      */
@@ -105,8 +105,8 @@ class BillingController extends Controller
             return [];
         }
 
-        $defaultId = $account->defaultPaymentMethod()?->id
-            ?? $this->subscriptionPaymentMethodId($subscription)
+        $defaultId = collect([$account->defaultPaymentMethod()?->id, $this->subscriptionPaymentMethodId($subscription)])
+            ->first(fn (?string $id): bool => $paymentMethods->contains(fn (PaymentMethod $paymentMethod): bool => $paymentMethod->id === $id))
             ?? $paymentMethods->first()->id;
 
         return $paymentMethods
@@ -167,11 +167,13 @@ class BillingController extends Controller
 
         $account = $request->user()->accountOrFail();
 
-        if ($account->subscribed(Account::SUBSCRIPTION_NAME) || blank($account->plan)) {
+        $plan = Plan::active()->find($account->plan_id);
+
+        if ($account->subscribed(Account::SUBSCRIPTION_NAME) || blank($plan)) {
             return redirect()->route('app.billing.index');
         }
 
-        return $this->moveToPlan($account, $account->plan, Interval::Monthly, $checkout);
+        return $this->moveToPlan($account, $plan, Interval::Monthly, $checkout);
     }
 
     /**
