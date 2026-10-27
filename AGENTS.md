@@ -342,7 +342,10 @@ used** — `syncWorkspaceQuantity()` was removed with the per-workspace model.
   only Socials (owner decision October 2026): new owners always start on
   Socials. The same `PlanPicker` drives upgrade/downgrade on the billing page
   (`app.billing.change-plan`).
-  A change is a `swap()` to another price id. `accounts.plan_id` is written by
+  A change is a `swap()` to another price id. A swap to a yearly price drops the
+  subscription's discount (`ChangePlan`, `discounts: ''`; owner decision October
+  2026): an offer's coupon would otherwise take its percentage off a whole year.
+  A monthly swap keeps it, so an owner who upgrades mid-offer keeps what is left. `accounts.plan_id` is written by
   `changePlan` after a successful `swap()` only when the subscription is
   `active` or `trialing` (so create works before the webhook). Welcome checkout
   never writes it — `StartSubscriptionCheckout` **clears** a leftover `plan_id`
