@@ -423,7 +423,9 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   limit), add its
   copy to all 16 locales and deploy, then insert the `offers` row in each
   environment's database by hand (owner decision October 2026: no data
-  migration, since the coupon id differs between Stripe test and live).
+  migration, since the coupon id differs between Stripe test and live). Locally,
+  `php artisan db:seed --class=OfferSeeder` adds the test-mode offers; it is not
+  part of `DatabaseSeeder`, so tests never start with them.
 
 ## Multiple social accounts per network
 
