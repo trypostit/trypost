@@ -20,7 +20,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
 import {
     Table,
     TableBody,
@@ -366,8 +365,6 @@ const selectPlan = (planId: string): void => {
                     </Dialog>
                 </SettingsSection>
 
-                <Separator v-if="hasSubscription" />
-
                 <SettingsSection
                     v-if="hasSubscription"
                     :title="$t('billing.subscription.title')"
@@ -392,18 +389,18 @@ const selectPlan = (planId: string): void => {
                         <li
                             v-for="paymentMethod in paymentMethods"
                             :key="paymentMethod.id"
-                            class="flex items-center gap-4 px-5 py-4"
+                            class="flex items-center gap-3 px-4 py-3"
                             :data-testid="`billing-card-${paymentMethod.id}`"
                         >
                             <img
                                 :src="cardBrand(paymentMethod.brand).logo"
                                 alt=""
-                                class="h-9 w-auto shrink-0 rounded-md shadow-xs"
+                                class="h-7 w-auto shrink-0 rounded-[5px] shadow-xs"
                                 :data-testid="`billing-card-logo-${paymentMethod.id}`"
                             />
-                            <div class="flex min-w-0 flex-1 flex-col gap-0.5">
+                            <div class="flex min-w-0 flex-1 flex-col">
                                 <p
-                                    class="flex flex-wrap items-center gap-2 text-sm leading-tight font-emphasis text-foreground"
+                                    class="flex flex-wrap items-center gap-1.5 text-[13px] leading-5 font-emphasis text-foreground"
                                     data-testid="billing-card-label"
                                 >
                                     {{ cardBrand(paymentMethod.brand).name }}
@@ -416,7 +413,7 @@ const selectPlan = (planId: string): void => {
                                         {{ $t('billing.subscription.default') }}
                                     </Badge>
                                 </p>
-                                <p class="text-sm text-muted-foreground tabular-nums">
+                                <p class="text-xs leading-4 text-muted-foreground tabular-nums">
                                     {{
                                         $t('billing.subscription.expires_on', {
                                             month: paymentMethod.exp_month
@@ -431,10 +428,10 @@ const selectPlan = (planId: string): void => {
                     </ul>
                     <div
                         v-else
-                        class="flex items-center gap-4 rounded-xl border border-border bg-card px-5 py-4"
+                        class="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
                     >
                         <span
-                            class="inline-flex h-9 w-14 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
+                            class="inline-flex h-7 w-11 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground"
                         >
                             <IconCreditCard class="size-5" />
                         </span>
