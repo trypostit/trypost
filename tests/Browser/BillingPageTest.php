@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
+use App\Models\Account;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
@@ -177,5 +178,28 @@ test('the invoices tab opens from the link and says when there are none yet', fu
 
     $page->assertSeeIn('@billing-invoices-empty', 'No invoices yet')
         ->assertMissing('@billing-invoices')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a trial shows when it ends, with the time in the user\'s time zone', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $user = billingPageOwner(subscribed: false);
+    $user->update(['timezone' => 'America/Sao_Paulo']);
+    $endsAt = now()->addDays(7)->setTime(15, 30)->utc();
+    $user->account->subscriptions()->create([
+        'type' => Account::SUBSCRIPTION_NAME,
+        'stripe_id' => 'sub_trial',
+        'stripe_status' => 'trialing',
+        'stripe_price' => 'price_123',
+        'trial_ends_at' => $endsAt,
+    ]);
+    $this->actingAs($user->fresh());
+
+    $page = visit(route('app.billing.index'));
+    waitFor($page, '@billing-current-plan-status');
+
+    $page->assertSeeIn('@billing-current-plan-badge', 'Trial')
+        ->assertSeeIn('@billing-current-plan-status', 'Trial until '.$endsAt->setTimezone('America/Sao_Paulo')->format('F j, Y g:i A'))
         ->assertNoJavaScriptErrors();
 });

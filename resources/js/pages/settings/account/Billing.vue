@@ -290,7 +290,7 @@ const selectPlan = (planId: string): void => {
                         >
                             {{
                                 $t('billing.current_plan.trial_until', {
-                                    date: date.formatDate(trialEndsAt),
+                                    date: date.formatDateTime(trialEndsAt),
                                 })
                             }}
                         </p>
