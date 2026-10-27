@@ -44,12 +44,11 @@ class ListAccountCards
 
     /**
      * The card Stripe Checkout attached to the subscription, which renewals
-     * charge when the customer has no default of its own.
+     * charge when the customer has no default of its own. Not expanded, so
+     * Stripe sends its id.
      */
     private static function subscriptionPaymentMethodId(Subscription $subscription): ?string
     {
-        $paymentMethod = $subscription->asStripeSubscription()->default_payment_method;
-
-        return is_string($paymentMethod) ? $paymentMethod : $paymentMethod?->id;
+        return $subscription->asStripeSubscription()->default_payment_method;
     }
 }
