@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Billing;
 
+use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Models\Account;
 use App\Models\Offer;
@@ -14,10 +15,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 class StartSubscriptionCheckout
 {
-    /**
-     * @param  bool  $fromBilling  the owner returns to billing after paying, not to the Welcome steps
-     */
-    public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null, ?Offer $offer = null, bool $fromBilling = false): Response
+    public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null, ?Offer $offer = null, CheckoutOrigin $origin = CheckoutOrigin::Welcome): Response
     {
         // A leftover Workspaces row (unpaid/canceled without `deleted`) would
         // let Processing treat auth.plan as checkout-complete and skip the wait.
@@ -43,7 +41,7 @@ class StartSubscriptionCheckout
         $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
-            'success_url' => route('app.billing.processing', ['from' => $fromBilling ? 'billing' : 'welcome']).'&session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => route('app.billing.processing', ['from' => $origin->value]).'&session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
             'metadata' => array_filter([
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,

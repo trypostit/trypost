@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
 use App\Jobs\PostHog\CaptureAccountEvent;
@@ -552,12 +553,12 @@ test('an owner on a generic trial subscribes through Checkout on the monthly pri
     $this->mock(StartSubscriptionCheckout::class)
         ->shouldReceive('redirect')
         ->once()
-        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer, $fromBilling): bool => $account->is($this->account)
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer, $origin): bool => $account->is($this->account)
             && $priceId === 'price_socials_monthly'
             && $cancelUrl === route('app.billing.index')
             && $plan->is($socials)
             && $offer === null
-            && $fromBilling === true)
+            && $origin === CheckoutOrigin::Billing)
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
@@ -620,6 +621,10 @@ test('processing returns a billing checkout to billing', function () {
 
     $this->actingAs($this->user)
         ->get(route('app.billing.processing', ['from' => 'welcome']))
+        ->assertInertia(fn ($page) => $page->where('returnsToBilling', false));
+
+    $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['from' => ['billing']]))
         ->assertInertia(fn ($page) => $page->where('returnsToBilling', false));
 });
 

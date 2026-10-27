@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\App;
 
 use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
 use App\Enums\PostHog\CheckoutEvent;
@@ -42,10 +43,11 @@ class BillingController extends Controller
         }
 
         $account = $request->user()->accountOrFail();
+        $from = $request->query('from');
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account->subscribed(Account::SUBSCRIPTION_NAME),
-            'returnsToBilling' => $request->query('from') === 'billing',
+            'returnsToBilling' => is_string($from) && CheckoutOrigin::tryFrom($from) === CheckoutOrigin::Billing,
         ]);
     }
 
@@ -190,7 +192,7 @@ class BillingController extends Controller
         abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
         $offer = $account->currentOffer(withTrial: false);
-        $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, fromBilling: true);
+        $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, CheckoutOrigin::Billing);
 
         rescue(function () use ($request, $account, $plan, $offer): void {
             CaptureAccountEvent::dispatchIf(
