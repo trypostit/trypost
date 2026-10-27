@@ -62,7 +62,7 @@ class LoadWorkspaceFromToken
             }
         }
 
-        // Match web access (EnsureAccountReady): a Stripe subscription.
+        // Match web access (EnsureAccountReady).
         if (! config('trypost.self_hosted') && ! $workspace->account?->hasAppAccess()) {
             return response()->json(['message' => 'Active subscription required.'], Response::HTTP_PAYMENT_REQUIRED);
         }

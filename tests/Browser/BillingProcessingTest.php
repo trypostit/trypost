@@ -59,6 +59,20 @@ test('once the subscription and plan are ready the processing page sends the use
         ->assertNoJavaScriptErrors();
 });
 
+test('a subscription started from billing returns to billing, not the onboarding', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(billingProcessingSubscriber());
+
+    $billingPath = parse_url(route('app.billing.index'), PHP_URL_PATH);
+
+    $page = visit(route('app.billing.processing', ['from' => 'billing']));
+    waitForBillingProcessingPath($page, $billingPath);
+
+    $page->assertPathIs($billingPath)
+        ->assertNoJavaScriptErrors();
+});
+
 test('on a phone the processing page skips the MCP step and opens the schedule', function () {
     config(['trypost.self_hosted' => false]);
 

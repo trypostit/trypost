@@ -114,3 +114,21 @@ test('the factory builds the three real offers with their copy', function (strin
     'first month' => ['firstMonth', 'first-month'],
     'free trial' => ['freeTrial', 'free-trial-7-days'],
 ]);
+
+test('a first-subscription offer is not available to an account that had a trial without a card', function () {
+    $offer = Offer::factory()->firstSubscriptionOnly()->create();
+    $account = Account::factory()->create(['trial_ends_at' => now()->subDay()]);
+
+    expect(Offer::availableTo($account)->whereKey($offer->id)->exists())->toBeFalse();
+});
+
+test('a trial needs at least one day', function (?int $days, bool $hasTrial) {
+    $offer = Offer::factory()->withoutCard()->make(['trial_days' => $days]);
+
+    expect($offer->hasTrial())->toBe($hasTrial)
+        ->and($offer->startsWithoutCard())->toBe($hasTrial);
+})->with([
+    'no trial' => [null, false],
+    'zero days' => [0, false],
+    'seven days' => [7, true],
+]);

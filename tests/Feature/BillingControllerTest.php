@@ -4,12 +4,17 @@ declare(strict_types=1);
 
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use App\Models\User;
 use App\Models\Workspace;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Route;
 use Stripe\ApiRequestor;
+use Stripe\HttpClient\ClientInterface;
 
 beforeEach(function () {
 
@@ -547,10 +552,12 @@ test('an owner on a generic trial subscribes through Checkout on the monthly pri
     $this->mock(StartSubscriptionCheckout::class)
         ->shouldReceive('redirect')
         ->once()
-        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan): bool => $account->is($this->account)
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer, $fromBilling): bool => $account->is($this->account)
             && $priceId === 'price_socials_monthly'
             && $cancelUrl === route('app.billing.index')
-            && $plan->is($socials))
+            && $plan->is($socials)
+            && $offer === null
+            && $fromBilling === true)
         ->andReturn(redirect('https://checkout.stripe.test/session'));
 
     $this->actingAs($this->user->fresh())
@@ -579,4 +586,72 @@ test('a member cannot open the billing checkout', function () {
     $this->actingAs($member->fresh())
         ->post(route('app.billing.checkout'))
         ->assertForbidden();
+});
+
+test('subscribing from a generic trial applies an offer claimed meanwhile and tracks the checkout', function () {
+    config(['trypost.self_hosted' => false, 'services.posthog.enabled' => true, 'services.posthog.api_key' => 'phc_test']);
+    Bus::fake([CaptureAccountEvent::class]);
+    $socials = Plan::where('slug', Slug::Socials)->firstOrFail();
+    $socials->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $this->account->update(['plan_id' => $socials->id, 'trial_ends_at' => now()->addDays(5)]);
+    $blackFriday = Offer::factory()->blackFriday()->create();
+    $this->account->offers()->attach($blackFriday, ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $offer): bool => $offer?->is($blackFriday) === true)
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.billing.checkout'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+
+    Bus::assertDispatched(CaptureAccountEvent::class, fn (CaptureAccountEvent $job): bool => $job->event === CheckoutEvent::Started
+        && $job->properties['offer'] === 'bf26');
+});
+
+test('processing returns a billing checkout to billing', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['from' => 'billing']))
+        ->assertInertia(fn ($page) => $page->where('returnsToBilling', true));
+
+    $this->actingAs($this->user)
+        ->get(route('app.billing.processing', ['from' => 'welcome']))
+        ->assertInertia(fn ($page) => $page->where('returnsToBilling', false));
+});
+
+test('loading more invoices does not ask Stripe for the cards or the discount', function () {
+    config(['trypost.self_hosted' => false, 'app.pagination.default' => 10]);
+    fakeStripeBilling($this->account, paidInvoices: 12);
+    $recorder = new class(ApiRequestor::httpClient()) implements ClientInterface
+    {
+        /** @var list<string> */
+        public array $urls = [];
+
+        public function __construct(private ClientInterface $client) {}
+
+        public function request($method, $absUrl, $headers, $params, $hasFile, $apiMode = 'v1', $maxNetworkRetries = null): array
+        {
+            $this->urls[] = $absUrl;
+
+            return $this->client->request($method, $absUrl, $headers, $params, $hasFile, $apiMode, $maxNetworkRetries);
+        }
+    };
+    ApiRequestor::setHttpClient($recorder);
+
+    $page = $this->actingAs($this->user->fresh())->get(route('app.billing.index'))->assertOk()->viewData('page');
+    $recorder->urls = [];
+
+    $this->withHeaders([
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => (string) $page['version'],
+        'X-Inertia-Partial-Component' => 'settings/account/Billing',
+        'X-Inertia-Partial-Data' => 'invoices',
+    ])->get(route('app.billing.index'))->assertOk();
+
+    expect($recorder->urls)->not->toBeEmpty()
+        ->and(collect($recorder->urls)->contains(fn (string $url): bool => str_contains($url, 'payment_methods') || str_contains($url, '/v1/subscriptions/') || str_contains($url, '/v1/customers/cus_fake')))->toBeFalse();
 });

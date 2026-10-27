@@ -7,14 +7,18 @@ namespace App\Http\Controllers\App;
 use App\Actions\Billing\StartSubscriptionCheckout;
 use App\Enums\Billing\Interval;
 use App\Enums\Plan\Slug;
+use App\Enums\PostHog\CheckoutEvent;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PaymentMethodResource;
 use App\Http\Resources\App\PlanResource;
 use App\Http\Resources\App\SubscriptionDiscountResource;
+use App\Jobs\PostHog\CaptureAccountEvent;
 use App\Models\Account;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Services\PostHogService;
+use App\Support\Billing\ConfigureSubscriptionCheckout;
 use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -42,6 +46,7 @@ class BillingController extends Controller
 
         return Inertia::render('billing/Processing', [
             'subscriptionActive' => $account->subscribed(Account::SUBSCRIPTION_NAME),
+            'returnsToBilling' => $request->query('from') === 'billing',
         ]);
     }
 
@@ -70,8 +75,8 @@ class BillingController extends Controller
             'invoices' => Inertia::scroll(
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
-            'paymentMethods' => $this->paymentMethods($account),
-            'discount' => $this->discount($account, $subscription),
+            'paymentMethods' => fn (): array => $this->paymentMethods($account),
+            'discount' => fn (): ?array => $this->discount($account, $subscription),
         ]);
     }
 
@@ -162,7 +167,8 @@ class BillingController extends Controller
 
     /**
      * Subscribes an account on a generic trial: Stripe Checkout on its plan's
-     * monthly price, keeping the days left of the trial.
+     * monthly price, keeping the days left of the trial and applying an offer
+     * the owner claimed meanwhile.
      */
     public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
     {
@@ -183,7 +189,24 @@ class BillingController extends Controller
 
         abort_if($priceId === null, SymfonyResponse::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        return $checkout->redirect($account, $priceId, route('app.billing.index'), $plan);
+        $offer = ConfigureSubscriptionCheckout::offerFor($account, $plan);
+        $response = $checkout->redirect($account, $priceId, route('app.billing.index'), $plan, $offer, fromBilling: true);
+
+        rescue(function () use ($request, $account, $plan, $offer): void {
+            CaptureAccountEvent::dispatchIf(
+                PostHogService::isEnabled(),
+                (string) $request->user()->id,
+                (string) $account->id,
+                CheckoutEvent::Started,
+                [
+                    'plan_name' => $plan->name,
+                    'interval' => Interval::Monthly->value,
+                    'offer' => $offer?->slug,
+                ],
+            );
+        });
+
+        return $response;
     }
 
     public function portal(Request $request): RedirectResponse

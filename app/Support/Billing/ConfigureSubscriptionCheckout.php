@@ -33,7 +33,7 @@ final class ConfigureSubscriptionCheckout
      */
     public static function apply(SubscriptionBuilder $subscription, ?Offer $offer = null): SubscriptionBuilder
     {
-        if (filled($offer?->trial_days)) {
+        if ($offer?->hasTrial()) {
             $subscription->trialDays(max(self::MIN_CHECKOUT_TRIAL_DAYS, $offer->trial_days));
         }
 

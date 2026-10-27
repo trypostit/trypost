@@ -5,12 +5,14 @@ import { computed, onMounted, ref, watch } from 'vue';
 
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import AuthSplitLayout from '@/layouts/auth/AuthSplitLayout.vue';
+import { index as billingIndex } from '@/routes/app/billing';
 import { index as postsIndex } from '@/routes/app/posts';
 import { mcp } from '@/routes/app/welcome';
 import type { SharedData } from '@/types';
 
 const props = defineProps<{
     subscriptionActive: boolean;
+    returnsToBilling: boolean;
 }>();
 
 const page = usePage<SharedData>();
@@ -30,6 +32,12 @@ const isPhone = useBelowBreakpoint('sm');
 
 /** Connecting an AI is a desktop task, so phones go straight to the schedule. */
 const goNext = (): void => {
+    if (props.returnsToBilling) {
+        router.visit(billingIndex.url());
+
+        return;
+    }
+
     router.visit(isPhone.value ? postsIndex.url() : mcp.url());
 };
 

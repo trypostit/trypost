@@ -91,7 +91,7 @@ test('redirect keeps the attribution metadata on the stripe customer, not on the
     $builder->shouldReceive('checkout')
         ->once()
         ->with([
-            'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => route('app.billing.processing', ['from' => 'welcome']).'&session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
             'metadata' => [
                 'trypost_interval' => 'monthly',

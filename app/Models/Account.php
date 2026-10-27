@@ -116,6 +116,15 @@ class Account extends Model
             ]);
     }
 
+    /**
+     * Never billed and never on a generic trial: a no-card trial counts as
+     * the first subscription, so trials do not stack.
+     */
+    public function isFirstTimeSubscriber(): bool
+    {
+        return ! $this->hasHadBillableSubscription() && blank($this->trial_ends_at);
+    }
+
     public function hasHadBillableSubscription(): bool
     {
         return $this->subscriptions->contains(fn (Subscription $subscription): bool => $subscription->becameBillable());

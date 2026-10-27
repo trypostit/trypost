@@ -14,7 +14,10 @@ use Symfony\Component\HttpFoundation\Response;
 
 class StartSubscriptionCheckout
 {
-    public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null, ?Offer $offer = null): Response
+    /**
+     * @param  bool  $fromBilling  the owner returns to billing after paying, not to the Welcome steps
+     */
+    public function redirect(Account $account, string $priceId, string $cancelUrl, ?Plan $plan = null, ?Offer $offer = null, bool $fromBilling = false): Response
     {
         // A leftover Workspaces row (unpaid/canceled without `deleted`) would
         // let Processing treat auth.plan as checkout-complete and skip the wait.
@@ -37,13 +40,13 @@ class StartSubscriptionCheckout
 
         ConfigureSubscriptionCheckout::apply($subscription, $offer);
 
-        if ($account->onGenericTrial() && blank($offer?->trial_days)) {
+        if ($account->onGenericTrial() && ! $offer?->hasTrial()) {
             $subscription->trialUntil($account->trial_ends_at);
         }
         $subscription->withMetadata($offerMetadata);
 
         $session = $subscription->checkout([
-            'success_url' => route('app.billing.processing').'?session_id={CHECKOUT_SESSION_ID}',
+            'success_url' => route('app.billing.processing', ['from' => $fromBilling ? 'billing' : 'welcome']).'&session_id={CHECKOUT_SESSION_ID}',
             'cancel_url' => $cancelUrl,
             'metadata' => array_filter([
                 ConfigureSubscriptionCheckout::PLAN_METADATA_KEY => $plan?->slug->value,

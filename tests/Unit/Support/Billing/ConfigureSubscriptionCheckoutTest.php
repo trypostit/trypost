@@ -157,3 +157,9 @@ test('does not apply an expired offer', function () {
 
     expect(configureCheckout($this->account)->couponId)->toBeNull();
 });
+
+test('an offer with zero trial days gives no trial', function () {
+    claimOfferFor($this->account, Offer::factory()->trial(0)->create());
+
+    expect(trialExpiresAt(configureCheckout($this->account)))->toBeNull();
+});

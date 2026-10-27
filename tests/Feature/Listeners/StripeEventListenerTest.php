@@ -619,6 +619,24 @@ test('subscription created dispatches TrackTrialStarted when status is trialing'
     Bus::assertNotDispatched(TrackCheckoutCompleted::class);
 });
 
+test('a subscription that continues a generic trial does not start a second trial', function () {
+    Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
+    $this->account->update(['trial_ends_at' => now()->addDays(4)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'trialing',
+            'trial_end' => now()->addDays(4)->timestamp,
+            'items' => ['data' => [['price' => ['id' => 'price_workspace_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialStarted::class);
+});
+
 test('subscription created dispatches neither job for a status we do not track', function () {
     Bus::fake([TrackCheckoutCompleted::class, TrackTrialStarted::class]);
 

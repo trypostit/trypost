@@ -298,7 +298,7 @@ Standing constraints:
 - There are no first-month coupon or promotion code envs any more (`STRIPE_*_FIRST_MONTH_COUPON_ID` and `CASHIER_ALLOW_PROMOTION_CODES` were removed in October 2026). Every offer reaches an account through its link: the 7-day trial (`free-trial-7-days`, `trial_days` 8 because Stripe Checkout counts the trial one day short and shows 8 as 7 days, `first_subscription_only`), the `$1` first month (`first-month`, `first_subscription_only`) and Black Friday (`bf26`). There is no default offer: a signup without a link pays the full price. Do not reintroduce a checkout env.
 - First-subscription offers skip an account with a prior real subscription (`incomplete` / `incomplete_expired` still qualify).
 - Welcome checkout is the last Welcome step, the plan step (`app.welcome.plan.store`): it shows only **Socials**, monthly, and always opens Stripe Checkout on the **Socials monthly** price. Offers apply only there. Yearly and Workspaces stay on the billing change-plan picker for existing subscribers (no offer).
-- An offer with `requires_card = false` and `trial_days` (`Offer::startsWithoutCard()`) never opens Stripe: the Welcome plan step starts Cashier's generic trial (`StartGenericTrial`: `accounts.trial_ends_at`, the Socials `plan_id`, the redemption, `trial.started`) and goes on to the MCP step (owner decision October 2026). The account has app access while it lasts (`Account::hasAppAccess()` = subscribed or `onGenericTrial()`), billing shows the trial and **Subscribe now** (`app.billing.checkout`), a Checkout on the plan's monthly price that keeps the days left (`trialUntil`), and the `customer.subscription.created` webhook clears `trial_ends_at`. When the trial ends without a subscription, access stops and the owner is back at Welcome. Every other offer goes through Stripe Checkout and asks for a card.
+- An offer with `requires_card = false` and `trial_days` (`Offer::startsWithoutCard()`) never opens Stripe: the Welcome plan step starts Cashier's generic trial (`StartGenericTrial`: `accounts.trial_ends_at`, the Socials `plan_id`, the redemption, `trial.started`) and goes on to the MCP step (owner decision October 2026). The account has app access while it lasts (`Account::hasAppAccess()` = subscribed or `onGenericTrial()`), billing shows the trial and **Subscribe now** (`app.billing.checkout`), a Checkout on the plan's monthly price that keeps the days left (`trialUntil`, which Stripe Checkout raises to 48 hours when fewer are left), applies an offer claimed meanwhile, tracks `checkout.started` and returns to billing after paying (`app.billing.processing?from=billing`). The `customer.subscription.created` webhook clears `trial_ends_at` and does not send a second `trial.started`. When the trial ends without a subscription, access stops and the owner is back at Welcome. Every other offer goes through Stripe Checkout and asks for a card.
 - Prefer documenting durable billing decisions here (and in `AGENTS.md`) — do **not** create a `.ai/` rules folder for this project.
 
 ## Plans and the workspace limit
@@ -375,8 +375,9 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   `/login?offer=<slug>`. There is no offer page or route.
 - **Who gets it.** Only an account owner whose account has no active
   subscription: new signups and former customers alike, unless the offer is
-  `first_subscription_only`, which skips an account that was ever billed
-  (`hasHadBillableSubscription()`). `Offer::scopeAvailableTo()` holds both rules
+  `first_subscription_only`, which skips an account that was ever billed or
+  already had a generic trial (`Account::isFirstTimeSubscriber()`), so trials and
+  the `$1` month never stack. `Offer::scopeAvailableTo()` holds both rules
   and drops offers the account redeemed. An unknown, not yet started, ended or
   full offer is ignored silently and nothing is kept for later. A redeemed offer
   is never offered to that account again.
@@ -384,6 +385,7 @@ end, no limit; `allow_promotion_codes`, `first_subscription_only` and
   Stripe coupon has no `redeem_by` and no `max_redemptions`. Only redemptions use
   up a place (`Offer::scopeAvailable`), never a claim; two checkouts racing for the
   last place may both get it (accepted).
+- A trial means `trial_days > 0` (`Offer::hasTrial()`); `0` is no trial.
 - **Checkout.** `Account::currentOffer()` picks the latest claim the account may
   still use, else none (full price).
   `ConfigureSubscriptionCheckout::apply()` applies it. Validity is checked again

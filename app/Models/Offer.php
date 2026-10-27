@@ -72,14 +72,15 @@ class Offer extends Model
 
     /**
      * Available offers the account may still use: never one it redeemed, and
-     * a first-subscription offer only while it has never been billed.
+     * a first-subscription offer only while it has never subscribed or
+     * started a trial.
      */
     public function scopeAvailableTo(Builder $query, Account $account): Builder
     {
         return $query
             ->available()
             ->whereDoesntHave('redemptions', fn (Builder $query): Builder => $query->whereKey($account->id))
-            ->when($account->hasHadBillableSubscription(), fn (Builder $query): Builder => $query->where('offers.first_subscription_only', false));
+            ->when(! $account->isFirstTimeSubscriber(), fn (Builder $query): Builder => $query->where('offers.first_subscription_only', false));
     }
 
     /**
@@ -88,7 +89,12 @@ class Offer extends Model
      */
     public function startsWithoutCard(): bool
     {
-        return ! $this->requires_card && filled($this->trial_days);
+        return ! $this->requires_card && $this->hasTrial();
+    }
+
+    public function hasTrial(): bool
+    {
+        return $this->trial_days > 0;
     }
 
     /**
