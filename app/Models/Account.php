@@ -176,6 +176,19 @@ class Account extends Model
         return $subscription->canceled() ? 'canceled' : $subscription->stripe_status;
     }
 
+    /**
+     * The plan holds the price of the current subscription: what a billing
+     * checkout waits for, so Processing never returns to billing on the
+     * plan the account had before.
+     */
+    public function planMatchesSubscription(): bool
+    {
+        $subscription = $this->subscription(self::SUBSCRIPTION_NAME);
+
+        return $this->subscribed(self::SUBSCRIPTION_NAME)
+            && Plan::forStripePrices([$subscription->stripe_price])->whereKey($this->plan_id)->exists();
+    }
+
     public function hasAppAccess(): bool
     {
         if (config('trypost.self_hosted')) {

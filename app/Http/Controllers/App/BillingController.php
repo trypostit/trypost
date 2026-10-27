@@ -4,24 +4,21 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Billing\ChangePlan;
 use App\Actions\Billing\ListAccountCards;
-use App\Actions\Billing\StartSubscriptionCheckout;
+use App\Actions\Billing\ShowSubscriptionDiscount;
 use App\Enums\Billing\CheckoutOrigin;
 use App\Enums\Billing\Interval;
 use App\Http\Requests\App\Billing\ChangePlanRequest;
 use App\Http\Resources\App\InvoiceResource;
 use App\Http\Resources\App\PlanResource;
-use App\Http\Resources\App\SubscriptionDiscountResource;
 use App\Models\Account;
 use App\Models\Plan;
-use App\Models\Subscription;
-use App\Support\Billing\SubscriptionPlanSync;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
-use Laravel\Cashier\Exceptions\IncompletePayment;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class BillingController extends Controller
@@ -41,21 +38,9 @@ class BillingController extends Controller
         $returnsToBilling = $request->query('from') === CheckoutOrigin::Billing->value;
 
         return Inertia::render('billing/Processing', [
-            'ready' => $returnsToBilling ? $this->planSyncedWithSubscription($account) : $account->hasAppAccess(),
+            'ready' => $returnsToBilling ? $account->planMatchesSubscription() : $account->hasAppAccess(),
             'returnsToBilling' => $returnsToBilling,
         ]);
-    }
-
-    /**
-     * A billing checkout is ready once the webhook wrote the plan of the new
-     * subscription, so Processing never returns to billing on the trial plan.
-     */
-    private function planSyncedWithSubscription(Account $account): bool
-    {
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
-        return $account->subscribed(Account::SUBSCRIPTION_NAME)
-            && Plan::forStripePrices([$subscription->stripe_price])->whereKey($account->plan_id)->exists();
     }
 
     public function index(Request $request): Response|RedirectResponse
@@ -85,25 +70,11 @@ class BillingController extends Controller
                 fn () => InvoiceResource::collection($account->cursorPaginateInvoices((int) config('app.pagination.default'), ['status' => 'paid'])),
             )->matchOn('data.id'),
             'paymentMethods' => fn (): array => $hasSubscription ? ListAccountCards::execute($account, $subscription) : [],
-            'discount' => fn (): ?array => $this->discount($account, $subscription),
+            'discount' => fn (): ?array => ShowSubscriptionDiscount::execute($account, $subscription),
         ]);
     }
 
-    /**
-     * @return array{value: string, duration: string, ends_at: string|null}|null
-     */
-    private function discount(Account $account, ?Subscription $subscription): ?array
-    {
-        if (blank($subscription) || ! $subscription->valid() || ! $account->hasStripeId()) {
-            return null;
-        }
-
-        $discount = $subscription->discount();
-
-        return filled($discount) ? SubscriptionDiscountResource::make($discount)->resolve() : null;
-    }
-
-    public function changePlan(ChangePlanRequest $request, StartSubscriptionCheckout $checkout): SymfonyResponse
+    public function changePlan(ChangePlanRequest $request, ChangePlan $changePlan): SymfonyResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
@@ -113,7 +84,7 @@ class BillingController extends Controller
             $request->user()->account,
             Plan::active()->findOrFail($request->validated('plan_id')),
             Interval::from($request->validated('interval')),
-            $checkout,
+            $changePlan,
         );
     }
 
@@ -121,7 +92,7 @@ class BillingController extends Controller
      * Subscribe now on billing: a generic trial subscribes to its plan's
      * monthly price.
      */
-    public function checkout(Request $request, StartSubscriptionCheckout $checkout): SymfonyResponse
+    public function checkout(Request $request, ChangePlan $changePlan): SymfonyResponse
     {
         if (config('trypost.self_hosted')) {
             return redirect()->route('app.calendar');
@@ -135,15 +106,13 @@ class BillingController extends Controller
             return redirect()->route('app.billing.index');
         }
 
-        return $this->moveToPlan($account, $plan, Interval::Monthly, $checkout);
+        return $this->moveToPlan($account, $plan, Interval::Monthly, $changePlan);
     }
 
     /**
-     * One rule for every plan move (`swapPlan`). A subscription swaps its
-     * price; a generic trial subscribes through Stripe Checkout, charged at
-     * once, with a coupon offer the owner claimed meanwhile.
+     * Every plan move answers to `swapPlan`, then the action moves the account.
      */
-    private function moveToPlan(Account $account, Plan $plan, Interval $interval, StartSubscriptionCheckout $checkout): SymfonyResponse
+    private function moveToPlan(Account $account, Plan $plan, Interval $interval, ChangePlan $changePlan): SymfonyResponse
     {
         $authorization = Gate::inspect('swapPlan', [$account, $plan]);
 
@@ -155,40 +124,7 @@ class BillingController extends Controller
 
         abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
 
-        if (! $account->subscribed(Account::SUBSCRIPTION_NAME)) {
-            return $checkout->redirect(
-                $account,
-                $priceId,
-                route('app.billing.index'),
-                $plan,
-                $account->currentOffer(withTrial: false),
-                CheckoutOrigin::Billing,
-            );
-        }
-
-        $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
-
-        try {
-            if ($subscription->stripe_price !== $priceId) {
-                $subscription->swap($priceId);
-            }
-        } catch (IncompletePayment $exception) {
-            return redirect()->route('cashier.payment', [
-                $exception->payment->id,
-                'redirect' => route('app.billing.index'),
-            ]);
-        }
-
-        $subscription->refresh();
-
-        if (! SubscriptionPlanSync::allows($subscription->stripe_status)) {
-            return redirect()->route('app.billing.index');
-        }
-
-        $account->update(['plan_id' => $plan->id]);
-
-        return redirect()->route('app.billing.index')
-            ->with('flash.success', __('billing.flash.plan_changed', ['plan' => $plan->name]));
+        return $changePlan->execute($account, $plan, $priceId);
     }
 
     public function portal(Request $request): RedirectResponse
