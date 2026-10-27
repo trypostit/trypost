@@ -158,28 +158,42 @@ class StripeEventListener
     }
 
     /**
-     * The first charge of an account whose subscription was created during a
-     * trial without a card it took from an offer, so a payment confirmed or a
-     * webhook retried after the trial still counts. The conversion is claimed
-     * atomically, so the created and updated webhooks of one subscription
-     * handled at the same time count it once. Read before recordFirstPayment writes
-     * `first_paid_at`, so it holds once, on created or on a later update.
+     * A subscription created during a trial without a card the account took
+     * from an offer turns active: on created, or when an incomplete one is
+     * paid. A former customer counts too, and a webhook that arrives after the
+     * trial still counts. The conversion is claimed atomically per subscription,
+     * so its created and updated webhooks handled at the same time count it once.
      *
      * @param  array<string, mixed>  $payload
      */
     private function convertsTrialWithoutCard(Account $account, array $payload): bool
     {
-        if (! $this->isNowActive($payload) || filled($account->first_paid_at)) {
+        if (! $this->startsActive($payload)) {
             return false;
         }
 
+        $subscriptionId = data_get($payload, 'data.object.id', $account->id);
         $subscribedAt = StripeValue::timestamp(data_get($payload, 'data.object.created')) ?? now();
 
         return $account->redeemedOffers()
             ->where('offers.requires_card', false)
             ->get()
             ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)))
-            && Cache::add("posthog:trial_converted:{$account->id}", true, now()->addDay());
+            && Cache::add("posthog:trial_converted:{$subscriptionId}", true, now()->addDay());
+    }
+
+    /**
+     * The subscription turns active now: created active, or paid after it was
+     * created incomplete. A renewal or a plan change of an active one is not.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function startsActive(array $payload): bool
+    {
+        return $this->isNowActive($payload) && (
+            data_get($payload, 'type') === StripeEvent::TYPE_CUSTOMER_SUBSCRIPTION_CREATED
+            || data_get($payload, 'data.previous_attributes.status') === StripeSubscription::STATUS_INCOMPLETE
+        );
     }
 
     /**

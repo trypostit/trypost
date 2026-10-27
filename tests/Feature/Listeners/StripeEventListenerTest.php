@@ -1254,3 +1254,42 @@ test('a trial without a card converts once when its created and updated webhooks
 
     Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
 });
+
+test('a former customer who subscribes during a trial without a card counts as a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => now()->subYear()])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.created',
+        'data' => ['object' => [
+            'customer' => 'cus_test123',
+            'id' => 'sub_123',
+            'status' => 'active',
+            'items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]],
+        ]],
+    ]));
+
+    Bus::assertDispatchedTimes(TrackTrialConverted::class, 1);
+});
+
+test('a later update of a subscription that was already active is not a trial conversion', function () {
+    Bus::fake([TrackTrialConverted::class, TrackCheckoutCompleted::class]);
+    $this->account->forceFill(['first_paid_at' => null])->save();
+    $this->account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
+
+    $this->listener->handle(new WebhookHandled([
+        'type' => 'customer.subscription.updated',
+        'data' => [
+            'object' => [
+                'customer' => 'cus_test123',
+                'id' => 'sub_123',
+                'status' => 'active',
+                'items' => ['data' => [['price' => ['id' => 'price_socials_yearly']]]],
+            ],
+            'previous_attributes' => ['items' => ['data' => [['price' => ['id' => 'price_socials_monthly']]]]],
+        ],
+    ]));
+
+    Bus::assertNotDispatched(TrackTrialConverted::class);
+});
