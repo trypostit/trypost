@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Enums\Plan\Slug;
 use App\Models\Account;
+use App\Models\Offer;
 use App\Models\Plan;
 use Carbon\Carbon;
 use Database\Seeders\PlanSeeder;
@@ -292,4 +293,26 @@ test('hasAppAccess lasts as long as a generic trial', function () {
 
     expect($account->fresh()->hasAppAccess())->toBeFalse()
         ->and($account->fresh()->isOnTrial())->toBeFalse();
+});
+
+test('a subscription created during a redeemed trial without a card was subscribed during that trial', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDays(3), 'redeemed_at' => now()->subDays(3)]);
+
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeTrue()
+        ->and($account->subscribedDuringTrialWithoutCard(now()->addDays(5)))->toBeFalse();
+});
+
+test('a trial that asked for a card is not a trial without a card', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->create(), ['claimed_at' => now()->subDay(), 'redeemed_at' => now()->subDay()]);
+
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeFalse();
+});
+
+test('a claimed trial without a card that was never redeemed is not a trial', function () {
+    $account = Account::factory()->create();
+    $account->offers()->attach(Offer::factory()->trial(7)->withoutCard()->create(), ['claimed_at' => now()->subDay()]);
+
+    expect($account->subscribedDuringTrialWithoutCard(now()))->toBeFalse();
 });

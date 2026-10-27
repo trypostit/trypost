@@ -7,6 +7,7 @@ namespace App\Models;
 use App\Enums\Account\LifecycleStage;
 use App\Models\Traits\BillsOwnerAsStripeCustomer;
 use App\Models\Traits\HasUsage;
+use Carbon\Carbon;
 use Carbon\CarbonInterface;
 use Database\Factories\AccountFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -128,6 +129,18 @@ class Account extends Model
                 'first_published_at' => 'datetime',
                 'last_published_at' => 'datetime',
             ]);
+    }
+
+    /**
+     * A subscription created at that moment falls inside a trial without a
+     * card the account redeemed from an offer, whenever its webhook arrives.
+     */
+    public function subscribedDuringTrialWithoutCard(CarbonInterface $subscribedAt): bool
+    {
+        return $this->redeemedOffers()
+            ->where('offers.requires_card', false)
+            ->get()
+            ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)));
     }
 
     /**

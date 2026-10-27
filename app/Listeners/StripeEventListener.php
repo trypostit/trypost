@@ -12,13 +12,11 @@ use App\Jobs\PostHog\TrackPlanChanged;
 use App\Jobs\PostHog\TrackTrialConverted;
 use App\Jobs\PostHog\TrackTrialStarted;
 use App\Models\Account;
-use App\Models\Offer;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 use App\Support\Billing\StripeValue;
 use App\Support\Billing\SubscriptionPlanSync;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Laravel\Cashier\Cashier;
@@ -159,10 +157,10 @@ class StripeEventListener
 
     /**
      * A subscription created during a trial without a card the account took
-     * from an offer turns active: on created, or when an incomplete one is
-     * paid. A former customer counts too, and a webhook that arrives after the
-     * trial still counts. The conversion is claimed atomically per subscription,
-     * so its created and updated webhooks handled at the same time count it once.
+     * from an offer (`Account::subscribedDuringTrialWithoutCard()`) turns
+     * active: on created, or when an incomplete one is paid. The conversion is
+     * claimed atomically per subscription, so its created and updated webhooks
+     * handled at the same time count it once.
      *
      * @param  array<string, mixed>  $payload
      */
@@ -175,10 +173,7 @@ class StripeEventListener
         $subscriptionId = data_get($payload, 'data.object.id', $account->id);
         $subscribedAt = StripeValue::timestamp(data_get($payload, 'data.object.created')) ?? now();
 
-        return $account->redeemedOffers()
-            ->where('offers.requires_card', false)
-            ->get()
-            ->contains(fn (Offer $offer): bool => $subscribedAt->lessThan(Carbon::parse($offer->pivot->redeemed_at)->addDays($offer->trial_days)))
+        return $account->subscribedDuringTrialWithoutCard($subscribedAt)
             && Cache::add("posthog:trial_converted:{$subscriptionId}", true, now()->addDay());
     }
 
