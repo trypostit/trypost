@@ -25,6 +25,6 @@ return [
         'price' => '무료',
         'period' => '7일 동안',
         'checkout_button' => '무료 체험 시작',
-        'terms' => '신용카드가 필요 없습니다.',
+        'terms' => '신용카드가 필요 없습니다',
     ],
 ];

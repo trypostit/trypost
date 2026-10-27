@@ -25,6 +25,6 @@ return [
         'price' => 'Gratis',
         'period' => 'voor 7 dagen',
         'checkout_button' => 'Gratis proberen',
-        'terms' => 'Geen creditcard nodig.',
+        'terms' => 'Geen creditcard nodig',
     ],
 ];

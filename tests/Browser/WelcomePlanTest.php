@@ -231,7 +231,7 @@ test('the plan step shows the free trial offer, what is included and the G2 rati
         ->assertMissing('@plan-price-unit-socials')
         ->assertVisible('@plan-networks-info-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
-        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime')
         ->assertMissing('@welcome-plan-offer')
         ->assertVisible('@welcome-step-plan')
         ->assertNoJavaScriptErrors();
@@ -269,11 +269,12 @@ test('the plan step shows the full price without an offer, even when a trial off
         ->assertMissing('@plan-price-original-socials')
         ->assertMissing('@plan-price-suffix-socials')
         ->assertSeeIn('@welcome-plan-continue', 'Activate for $19')
-        ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime.')
+        ->assertSeeIn('@welcome-plan-terms', 'Cancel anytime')
         ->assertDontSee('7 days')
         ->assertNoJavaScriptErrors();
 
-    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19');
+    expect(trim((string) $page->text('@plan-price-socials')))->toBe('$19')
+        ->and(trim((string) $page->text('@welcome-plan-terms')))->toBe('Cancel anytime');
 });
 
 test('the plan step does not list the workspace limit, so team members close the list', function () {
@@ -410,7 +411,7 @@ test('the plan step shows an offer\'s banner and price', function (string $offer
         ->assertSeeIn('@plan-price-socials', $price)
         ->assertSeeIn('@plan-price-suffix-socials', $period)
         ->assertSeeIn('@welcome-plan-continue', "Activate for {$price}")
-        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime.')
+        ->assertSeeIn('@welcome-plan-terms', 'Then $19/month. Cancel anytime')
         ->assertNoJavaScriptErrors();
 
     if ($unit === null) {
@@ -469,7 +470,7 @@ test('a trial without a card says so under the button', function () {
 
     $page->assertSeeIn('@plan-price-socials', 'Free')
         ->assertSeeIn('@welcome-plan-continue', 'Start free trial')
-        ->assertSeeIn('@welcome-plan-terms', 'No credit card required.')
+        ->assertSeeIn('@welcome-plan-terms', 'No credit card required')
         ->assertDontSee('Cancel anytime')
         ->assertDontSee('Then $19/month')
         ->assertNoJavaScriptErrors();

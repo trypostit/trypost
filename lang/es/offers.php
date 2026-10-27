@@ -25,6 +25,6 @@ return [
         'price' => 'Gratis',
         'period' => 'durante 7 días',
         'checkout_button' => 'Probar gratis',
-        'terms' => 'No necesitas tarjeta de crédito.',
+        'terms' => 'No necesitas tarjeta de crédito',
     ],
 ];

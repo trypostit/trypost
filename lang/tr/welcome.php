@@ -47,9 +47,9 @@ return [
     ],
     'plan_title' => 'Hesabını etkinleştir',
     'plan_description' => 'Kanallarını bağla ve ilk gönderini bugün planla.',
-    'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et.',
+    'plan_terms' => 'Sonra :price/ay. İstediğin zaman iptal et',
     'plan_checkout_button' => ':price ile etkinleştir',
-    'plan_cancel_anytime' => 'İstediğin zaman iptal et.',
+    'plan_cancel_anytime' => 'İstediğin zaman iptal et',
     'mcp' => [
         'title' => 'Sosyal medyanı sohbetle yönet',
         'description' => 'TryPost’ta gönderilerini favori yapay zekânla oluştur, planla ve analiz et.',

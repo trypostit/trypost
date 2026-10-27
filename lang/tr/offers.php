@@ -25,6 +25,6 @@ return [
         'price' => 'Ücretsiz',
         'period' => '7 gün boyunca',
         'checkout_button' => 'Ücretsiz dene',
-        'terms' => 'Kredi kartı gerekmez.',
+        'terms' => 'Kredi kartı gerekmez',
     ],
 ];

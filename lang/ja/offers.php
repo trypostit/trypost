@@ -25,6 +25,6 @@ return [
         'price' => '無料',
         'period' => '7日間',
         'checkout_button' => '無料で試す',
-        'terms' => 'クレジットカードは不要です。',
+        'terms' => 'クレジットカードは不要です',
     ],
 ];

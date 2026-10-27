@@ -47,9 +47,9 @@ return [
     ],
     'plan_title' => 'アカウントを有効にしましょう',
     'plan_description' => 'チャンネルを連携して、今日最初の投稿を予約しましょう。',
-    'plan_terms' => 'その後は:price/月。いつでも解約できます。',
+    'plan_terms' => 'その後は:price/月。いつでも解約できます',
     'plan_checkout_button' => ':priceで有効にする',
-    'plan_cancel_anytime' => 'いつでも解約できます。',
+    'plan_cancel_anytime' => 'いつでも解約できます',
     'mcp' => [
         'title' => 'AIとの会話でSNSを運用',
         'description' => 'お気に入りのAIで、TryPostの投稿を作成・予約・分析。',

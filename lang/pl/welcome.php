@@ -47,9 +47,9 @@ return [
     ],
     'plan_title' => 'Aktywuj swoje konto',
     'plan_description' => 'Połącz kanały i zaplanuj pierwszy post już dziś.',
-    'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie.',
+    'plan_terms' => 'Potem :price/mies. Anuluj w dowolnym momencie',
     'plan_checkout_button' => 'Aktywuj za :price',
-    'plan_cancel_anytime' => 'Anuluj w dowolnym momencie.',
+    'plan_cancel_anytime' => 'Anuluj w dowolnym momencie',
     'mcp' => [
         'title' => 'Zarządzaj social mediami w czacie',
         'description' => 'Twórz, planuj i analizuj posty w TryPost z ulubioną AI.',

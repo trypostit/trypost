@@ -47,9 +47,9 @@ return [
     ],
     'plan_title' => 'Activa tu cuenta',
     'plan_description' => 'Conecta tus redes y programa tu primer post hoy.',
-    'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras.',
+    'plan_terms' => 'Luego, :price/mes. Cancela cuando quieras',
     'plan_checkout_button' => 'Activar por :price',
-    'plan_cancel_anytime' => 'Cancela cuando quieras.',
+    'plan_cancel_anytime' => 'Cancela cuando quieras',
     'mcp' => [
         'title' => 'Gestiona tus redes desde el chat',
         'description' => 'Crea, programa y analiza posts en TryPost con tu IA favorita.',

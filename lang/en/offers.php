@@ -25,6 +25,6 @@ return [
         'price' => 'Free',
         'period' => 'for 7 days',
         'checkout_button' => 'Start free trial',
-        'terms' => 'No credit card required.',
+        'terms' => 'No credit card required',
     ],
 ];

@@ -47,9 +47,9 @@ return [
     ],
     'plan_title' => '계정을 활성화하세요',
     'plan_description' => '채널을 연결하고 오늘 첫 게시물을 예약하세요.',
-    'plan_terms' => '이후 :price/월. 언제든지 해지 가능.',
+    'plan_terms' => '이후 :price/월. 언제든지 해지 가능',
     'plan_checkout_button' => ':price에 활성화',
-    'plan_cancel_anytime' => '언제든지 해지 가능.',
+    'plan_cancel_anytime' => '언제든지 해지 가능',
     'mcp' => [
         'title' => 'AI와 대화하며 SNS를 관리하세요',
         'description' => '좋아하는 AI로 TryPost 게시물을 만들고, 예약하고, 분석하세요.',
