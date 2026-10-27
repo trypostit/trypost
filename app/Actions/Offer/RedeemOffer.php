@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Offer;
 
 use App\Models\Account;
+use Illuminate\Support\Str;
 
 class RedeemOffer
 {
@@ -15,7 +16,7 @@ class RedeemOffer
      */
     public static function execute(Account $account, ?string $offerId): void
     {
-        if (blank($offerId)) {
+        if (! Str::isUuid($offerId)) {
             return;
         }
 

@@ -83,7 +83,7 @@ const submit = (): void => {
         :description="$t('welcome.plan_description')"
         step="plan"
     >
-        <Alert v-if="offer" class="mb-4" data-testid="welcome-plan-offer">
+        <Alert v-if="offer && showsOfferPrice" class="mb-4" data-testid="welcome-plan-offer">
             <IconDiscount />
             <AlertDescription>
                 {{

@@ -15,9 +15,13 @@ class ClaimOffer
      */
     public static function execute(Account $account, string $slug): ?Offer
     {
-        $offer = Offer::available()->where('slug', $slug)->first();
+        if ($account->hasActiveSubscription()) {
+            return null;
+        }
 
-        if (blank($offer) || $offer->slug !== $slug || $account->hasActiveSubscription()) {
+        $offer = Offer::findAvailable($slug);
+
+        if (blank($offer)) {
             return null;
         }
 

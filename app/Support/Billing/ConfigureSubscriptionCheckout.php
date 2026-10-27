@@ -28,22 +28,15 @@ final class ConfigureSubscriptionCheckout
     public const MIN_CHECKOUT_TRIAL_DAYS = 2;
 
     /**
-     * Pass the offer when the caller already resolved it, so the coupon and the
-     * checkout metadata come from the same lookup.
+     * The caller resolves the offer once with offerFor(), so the coupon, the
+     * checkout metadata and the tracked events agree.
      *
      * @throws RuntimeException when a coupon would apply with allow_promotion_codes enabled
      */
     public static function apply(SubscriptionBuilder $subscription, Account $account, ?Plan $plan = null, ?Offer $offer = null): SubscriptionBuilder
     {
-        $offer ??= self::offerFor($account, $plan);
-
         if (filled($offer)) {
-            if ((bool) config('cashier.allow_promotion_codes', false)) {
-                throw new RuntimeException(
-                    'Cannot apply an offer coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
-                    .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
-                );
-            }
+            self::assertPromotionCodesOff('an offer coupon');
 
             return $subscription->withCoupon($offer->stripe_coupon_id);
         }
@@ -51,12 +44,7 @@ final class ConfigureSubscriptionCheckout
         $couponId = self::firstMonthCouponId($account, $plan);
 
         if ($couponId !== null) {
-            if ((bool) config('cashier.allow_promotion_codes', false)) {
-                throw new RuntimeException(
-                    'Cannot apply a first-month coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled: '
-                    .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
-                );
-            }
+            self::assertPromotionCodesOff('a first-month coupon');
 
             return $subscription->withCoupon($couponId);
         }
@@ -79,9 +67,9 @@ final class ConfigureSubscriptionCheckout
         return $subscription;
     }
 
-    public static function offersFirstMonthCoupon(Account $account, Plan $plan): bool
+    public static function offersFirstMonthCoupon(Account $account, Plan $plan, ?Offer $offer = null): bool
     {
-        return blank(self::offerFor($account, $plan)) && self::firstMonthCouponId($account, $plan) !== null;
+        return blank($offer) && self::firstMonthCouponId($account, $plan) !== null;
     }
 
     /**
@@ -91,6 +79,19 @@ final class ConfigureSubscriptionCheckout
     public static function offerFor(Account $account, ?Plan $plan): ?Offer
     {
         return filled($plan) ? $account->currentOffer() : null;
+    }
+
+    /**
+     * @throws RuntimeException when allow_promotion_codes is enabled
+     */
+    private static function assertPromotionCodesOff(string $coupon): void
+    {
+        if ((bool) config('cashier.allow_promotion_codes', false)) {
+            throw new RuntimeException(
+                "Cannot apply {$coupon} while CASHIER_ALLOW_PROMOTION_CODES is enabled: "
+                .'Stripe Checkout rejects discounts and allow_promotion_codes on the same session.'
+            );
+        }
     }
 
     private static function firstMonthCouponId(Account $account, ?Plan $plan): ?string

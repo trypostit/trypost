@@ -8,8 +8,9 @@ use App\Models\Account;
 use App\Models\Offer;
 use App\Models\User;
 use App\Models\Workspace;
-use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Laravel\Socialite\Facades\Socialite;
+use Laravel\Socialite\Two\User as SocialiteUser;
 
 beforeEach(function () {
     config(['trypost.self_hosted' => false]);
@@ -183,17 +184,77 @@ test('a guest\'s link to an offer that has not started is not kept for later', f
     expect(User::query()->where('email', 'early@example.com')->firstOrFail()->account->offers()->count())->toBe(0);
 });
 
-test('a claim that lands while another is being made does not fail', function () {
+test('a guest\'s wrong-case slug is not kept in the session', function () {
+    $this->get(route('register', ['offer' => 'BLACK-FRIDAY-2026']))
+        ->assertSessionMissing(CaptureOffer::SESSION_KEY);
+});
+
+test('a signed-in owner claims without going through the session', function () {
     $owner = offerTestOwner();
-    $inserted = false;
 
-    DB::listen(function (QueryExecuted $query) use ($owner, &$inserted): void {
-        if (! $inserted && str_contains($query->sql, 'account_offer') && str_contains($query->sql, 'account_id') && str_starts_with(strtolower($query->sql), 'select')) {
-            $inserted = true;
-            DB::table('account_offer')->insert(['account_id' => $owner->account_id, 'offer_id' => $this->offer->id, 'claimed_at' => now()->subMinute()]);
-        }
-    });
+    $this->actingAs($owner)
+        ->get(route('app.welcome.plan', ['offer' => 'black-friday-2026']))
+        ->assertSessionMissing(CaptureOffer::SESSION_KEY);
 
-    expect(ClaimOffer::execute($owner->account, 'black-friday-2026')?->id)->toBe($this->offer->id)
-        ->and($owner->account->offers()->count())->toBe(1);
+    expect($owner->account->offers()->count())->toBe(1);
+});
+
+test('a user without an account claims nothing and keeps no slug', function () {
+    $user = User::factory()->create(['account_id' => null]);
+
+    $this->actingAs($user)
+        ->get(route('app.welcome.subscription-required', ['offer' => 'black-friday-2026']))
+        ->assertSessionMissing(CaptureOffer::SESSION_KEY);
+
+    expect(DB::table('account_offer')->count())->toBe(0);
+});
+
+test('a guest\'s offer is claimed when they sign up with google', function () {
+    config(['trypost.google_auth_enabled' => true]);
+    $this->get(route('auth.google.redirect', ['offer' => 'black-friday-2026']));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->id = 'g-offer';
+    $socialiteUser->name = 'Google Offer';
+    $socialiteUser->email = 'google-offer@example.com';
+    Socialite::shouldReceive('driver')->with('google-auth')->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->followingRedirects()->get(route('auth.google.callback'));
+
+    expect(User::query()->where('email', 'google-offer@example.com')->firstOrFail()->account->offers()->pluck('offers.id')->all())
+        ->toBe([$this->offer->id]);
+});
+
+test('a guest\'s offer is claimed when they sign up with github', function () {
+    config(['trypost.github_auth_enabled' => true]);
+    $this->get(route('auth.github.redirect', ['offer' => 'black-friday-2026']));
+
+    $socialiteUser = new SocialiteUser;
+    $socialiteUser->id = 'gh-offer';
+    $socialiteUser->name = 'GitHub Offer';
+    $socialiteUser->email = 'github-offer@example.com';
+    $socialiteUser->nickname = 'github-offer';
+    Socialite::shouldReceive('driver')->with('github')->andReturn($driver = Mockery::mock());
+    $driver->shouldReceive('user')->andReturn($socialiteUser);
+
+    $this->followingRedirects()->get(route('auth.github.callback'));
+
+    expect(User::query()->where('email', 'github-offer@example.com')->firstOrFail()->account->offers()->pluck('offers.id')->all())
+        ->toBe([$this->offer->id]);
+});
+
+test('the offer survives moving from the register page to login', function () {
+    $owner = offerTestOwner();
+
+    $this->get(route('register', ['offer' => 'black-friday-2026']));
+    $this->get(route('login'));
+    $this->get(route('register'));
+
+    $this->followingRedirects()->post(route('login.store'), [
+        'email' => $owner->email,
+        'password' => 'password',
+    ]);
+
+    expect($owner->account->offers()->pluck('offers.id')->all())->toBe([$this->offer->id]);
 });

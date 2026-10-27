@@ -72,7 +72,7 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
-        RedeemOffer::execute($account, data_get($payload, 'data.object.metadata.'.ConfigureSubscriptionCheckout::OFFER_METADATA_KEY));
+        $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload, clearGenericTrial: true);
         $this->recordFirstPayment($account, $payload);
 
@@ -88,6 +88,7 @@ class StripeEventListener
     {
         $previousPlan = $account->plan?->name;
 
+        $this->redeemOffer($account, $payload);
         $this->syncPlanFromSubscription($account, $payload);
         $this->recordFirstPayment($account, $payload);
 
@@ -219,6 +220,21 @@ class StripeEventListener
         }
 
         return $plan;
+    }
+
+    /**
+     * An offer is used once its subscription is active or trialing: an
+     * incomplete one may never be paid, and would use up a place for nothing.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    private function redeemOffer(Account $account, array $payload): void
+    {
+        if (! in_array($this->currentStatus($payload), [StripeSubscription::STATUS_ACTIVE, StripeSubscription::STATUS_TRIALING], true)) {
+            return;
+        }
+
+        RedeemOffer::execute($account, data_get($payload, 'data.object.metadata.'.ConfigureSubscriptionCheckout::OFFER_METADATA_KEY));
     }
 
     /**

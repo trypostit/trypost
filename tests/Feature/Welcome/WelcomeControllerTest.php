@@ -755,3 +755,41 @@ test('checkout.started records the offer slug', function () {
         && data_get($event->payload, 'properties.offer_slug') === 'black-friday-2026'
         && data_get($event->payload, 'properties.is_first_month_offer') === false);
 });
+
+test('plan store hands checkout the offer it tracked', function () {
+    completeWelcomeThroughSoftware($this->user);
+    Plan::where('slug', Slug::Socials)->update(['stripe_monthly_price_id' => 'price_socials_monthly']);
+    $offer = Offer::factory()->create();
+    $this->user->account->offers()->attach($offer, ['claimed_at' => now()]);
+
+    $this->mock(StartSubscriptionCheckout::class)
+        ->shouldReceive('redirect')
+        ->once()
+        ->withArgs(fn ($account, $priceId, $cancelUrl, $plan, $checkoutOffer = null): bool => $checkoutOffer?->is($offer) === true)
+        ->andReturn(redirect('https://checkout.stripe.test/session'));
+
+    $this->actingAs($this->user->fresh())
+        ->post(route('app.welcome.plan.store'))
+        ->assertRedirect('https://checkout.stripe.test/session');
+});
+
+test('the plan step sends the offer copy only when it exists in the user\'s language', function (string $locale, bool $hasCopy) {
+    app('translator')->addLines([
+        'offers.black_friday_2026.name' => 'Black Friday',
+        'offers.black_friday_2026.price' => '$9.50',
+        'offers.black_friday_2026.period' => 'for your first 3 months',
+    ], 'en');
+    completeWelcomeThroughSoftware($this->user);
+    $this->user->update(['locale' => $locale]);
+    $this->user->account->offers()->attach(Offer::factory()->create(['slug' => 'black-friday-2026']), ['claimed_at' => now()]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.welcome.plan'))
+        ->assertInertia(fn ($page) => $page
+            ->where('offer.has_name', $hasCopy)
+            ->where('offer.has_price', $hasCopy)
+        );
+})->with([
+    'english copy for an english user' => ['en', true],
+    'english copy only for a portuguese user' => ['pt-BR', false],
+]);

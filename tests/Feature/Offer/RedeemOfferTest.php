@@ -14,15 +14,15 @@ beforeEach(function () {
     $this->offer = Offer::factory()->limitedTo(1)->create();
 });
 
-function subscriptionCreatedWithOffer(?string $offerId): WebhookHandled
+function subscriptionCreatedWithOffer(?string $offerId, string $status = 'active', string $type = 'customer.subscription.created'): WebhookHandled
 {
     return new WebhookHandled([
         'id' => 'evt_'.fake()->uuid(),
-        'type' => 'customer.subscription.created',
+        'type' => $type,
         'data' => ['object' => [
             'customer' => 'cus_offer123',
             'id' => 'sub_offer',
-            'status' => 'active',
+            'status' => $status,
             'metadata' => array_filter(['trypost_offer_id' => $offerId]),
         ]],
     ]);
@@ -69,4 +69,37 @@ test('a redeemed offer uses up a place', function () {
     (new StripeEventListener)->handle(subscriptionCreatedWithOffer($this->offer->id));
 
     expect(Offer::available()->whereKey($this->offer->id)->exists())->toBeFalse();
+});
+
+test('an incomplete subscription does not redeem the offer', function () {
+    $this->account->offers()->attach($this->offer, ['claimed_at' => now()]);
+
+    (new StripeEventListener)->handle(subscriptionCreatedWithOffer($this->offer->id, 'incomplete'));
+
+    expect($this->account->offers()->first()->pivot->redeemed_at)->toBeNull();
+});
+
+test('the offer is redeemed once an incomplete subscription becomes active', function () {
+    $this->account->offers()->attach($this->offer, ['claimed_at' => now()]);
+
+    (new StripeEventListener)->handle(subscriptionCreatedWithOffer($this->offer->id, 'incomplete'));
+    (new StripeEventListener)->handle(subscriptionCreatedWithOffer($this->offer->id, 'active', 'customer.subscription.updated'));
+
+    expect($this->account->offers()->first()->pivot->redeemed_at)->not->toBeNull();
+});
+
+test('a trialing subscription redeems the offer', function () {
+    $this->account->offers()->attach($this->offer, ['claimed_at' => now()]);
+
+    (new StripeEventListener)->handle(subscriptionCreatedWithOffer($this->offer->id, 'trialing'));
+
+    expect($this->account->offers()->first()->pivot->redeemed_at)->not->toBeNull();
+});
+
+test('ignores offer metadata that is not an offer id', function () {
+    $this->account->offers()->attach($this->offer, ['claimed_at' => now()]);
+
+    (new StripeEventListener)->handle(subscriptionCreatedWithOffer('not-a-uuid'));
+
+    expect($this->account->offers()->first()->pivot->redeemed_at)->toBeNull();
 });

@@ -364,7 +364,7 @@ test('applies an available offer\'s coupon and skips the trial', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
 
     expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
         ->and(trialExpiresAt($subscription))->toBeNull();
@@ -376,10 +376,10 @@ test('an offer wins over the first-month coupon', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
 
     expect($subscription->couponId)->toBe('BLACK_FRIDAY_50')
-        ->and(ConfigureSubscriptionCheckout::offersFirstMonthCoupon($this->account, socialsPlan()))->toBeFalse();
+        ->and(ConfigureSubscriptionCheckout::offersFirstMonthCoupon($this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan())))->toBeFalse();
 });
 
 test('an offer applies to a former customer', function () {
@@ -388,7 +388,7 @@ test('an offer applies to a former customer', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
 
     expect($subscription->couponId)->toBe('BLACK_FRIDAY_50');
 });
@@ -409,7 +409,7 @@ test('does not apply an expired offer', function () {
 
     $subscription = checkoutSubscription($this->account);
 
-    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan());
+    ConfigureSubscriptionCheckout::apply($subscription, $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan()));
 
     expect($subscription->couponId)->toBeNull();
 });
@@ -418,6 +418,6 @@ test('throws when an offer meets allow_promotion_codes', function () {
     config(['cashier.allow_promotion_codes' => true]);
     claimOfferFor($this->account);
 
-    expect(fn () => ConfigureSubscriptionCheckout::apply(checkoutSubscription($this->account), $this->account, socialsPlan()))
+    expect(fn () => ConfigureSubscriptionCheckout::apply(checkoutSubscription($this->account), $this->account, socialsPlan(), ConfigureSubscriptionCheckout::offerFor($this->account, socialsPlan())))
         ->toThrow(RuntimeException::class, 'Cannot apply an offer coupon while CASHIER_ALLOW_PROMOTION_CODES is enabled');
 });

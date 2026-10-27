@@ -63,6 +63,17 @@ class Offer extends Model
     }
 
     /**
+     * The available offer with exactly this slug. MySQL compares strings
+     * without case, so the match is confirmed here, where both engines agree.
+     */
+    public static function findAvailable(string $slug): ?self
+    {
+        $offer = self::available()->firstWhere('slug', $slug);
+
+        return $offer?->slug === $slug ? $offer : null;
+    }
+
+    /**
      * The key of the offer's copy in lang/<locale>/offers.php.
      */
     public function langKey(): string

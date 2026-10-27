@@ -386,7 +386,7 @@ test('the activate button shows a spinner while checkout opens', function () {
     expect(waitForWelcomePlanButtonSpinner($page, 'welcome-plan-continue'))->toBe(['spinner' => true, 'disabled' => true]);
 });
 
-test('the plan step shows the generic offer badge for an offer without copy', function () {
+test('the plan step shows no offer badge or offer price for an offer without copy', function () {
     config(['trypost.self_hosted' => false, 'cashier.first_month_coupon_ids.socials' => 'coupon_socials']);
 
     $user = welcomeOwnerOnPlanStep();
@@ -394,9 +394,9 @@ test('the plan step shows the generic offer badge for an offer without copy', fu
     $this->actingAs($user);
 
     $page = visit(route('app.welcome.plan'));
-    waitFor($page, '@welcome-plan-offer');
+    waitFor($page, '@plan-price-socials');
 
-    $page->assertSeeIn('@welcome-plan-offer', "You're seeing a special price.")
+    $page->assertMissing('@welcome-plan-offer')
         ->assertSeeIn('@plan-price-suffix-socials', 'per month')
         ->assertDontSee('offers.')
         ->assertNoJavaScriptErrors();

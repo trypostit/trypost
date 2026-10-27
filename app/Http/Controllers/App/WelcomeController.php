@@ -17,14 +17,13 @@ use App\Http\Requests\App\Welcome\StoreWelcomeGoalsRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeMcpConnectClickRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomePersonaRequest;
 use App\Http\Requests\App\Welcome\StoreWelcomeSoftwareRequest;
+use App\Http\Resources\App\OfferResource;
 use App\Http\Resources\App\PlanResource;
-use App\Models\Offer;
 use App\Models\Plan;
 use App\Services\PostHogService;
 use App\Support\Billing\ConfigureSubscriptionCheckout;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Lang;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -156,33 +155,14 @@ class WelcomeController extends Controller
         }
 
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
+        $account = $request->user()->account;
+        $offer = ConfigureSubscriptionCheckout::offerFor($account, $plan);
 
         return Inertia::render('welcome/Plan', [
             'plan' => PlanResource::make($plan)->resolve(),
-            'firstMonthOffer' => ConfigureSubscriptionCheckout::offersFirstMonthCoupon($request->user()->account, $plan),
-            'offer' => $this->offerProps(ConfigureSubscriptionCheckout::offerFor($request->user()->account, $plan)),
+            'firstMonthOffer' => ConfigureSubscriptionCheckout::offersFirstMonthCoupon($account, $plan, $offer),
+            'offer' => filled($offer) ? OfferResource::make($offer)->resolve() : null,
         ]);
-    }
-
-    /**
-     * The offer's copy lives in lang/<locale>/offers.php; the page shows its
-     * name and price only when the keys exist, never the raw key.
-     *
-     * @return array{key: string, has_name: bool, has_price: bool}|null
-     */
-    private function offerProps(?Offer $offer): ?array
-    {
-        if (blank($offer)) {
-            return null;
-        }
-
-        $key = $offer->langKey();
-
-        return [
-            'key' => $key,
-            'has_name' => Lang::has("offers.{$key}.name"),
-            'has_price' => Lang::has("offers.{$key}.price") && Lang::has("offers.{$key}.period"),
-        ];
     }
 
     public function storePlan(
@@ -200,9 +180,9 @@ class WelcomeController extends Controller
 
         abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
-        $firstMonthOffer = ConfigureSubscriptionCheckout::offersFirstMonthCoupon($user->account, $plan);
         $offer = ConfigureSubscriptionCheckout::offerFor($user->account, $plan);
-        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan);
+        $firstMonthOffer = ConfigureSubscriptionCheckout::offersFirstMonthCoupon($user->account, $plan, $offer);
+        $response = $checkout->redirect($user->account, $priceId, route('app.welcome.plan'), $plan, $offer);
 
         try {
             $postHog->capture(
