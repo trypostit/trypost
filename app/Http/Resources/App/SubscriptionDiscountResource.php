@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Number;
+use Laravel\Cashier\Cashier;
 use Laravel\Cashier\Discount;
 
 /**
@@ -28,7 +29,7 @@ class SubscriptionDiscountResource extends JsonResource
         return [
             'value' => $coupon->isPercentage()
                 ? Number::percentage($coupon->percentOff(), maxPrecision: 2, locale: App::currentLocale())
-                : Number::currency($coupon->rawAmountOff() / 100, in: strtoupper((string) $coupon->asStripeCoupon()->currency), locale: App::currentLocale()),
+                : Cashier::formatAmount($coupon->rawAmountOff(), $coupon->asStripeCoupon()->currency, App::currentLocale()),
             'duration' => $coupon->duration(),
             'ends_at' => $this->end()?->toIso8601String(),
         ];

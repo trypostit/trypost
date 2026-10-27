@@ -166,7 +166,7 @@ class BillingController extends Controller
 
         $priceId = $interval->priceIdFor($plan);
 
-        abort_if($priceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+        abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
 
         $subscription = $account->subscription(Account::SUBSCRIPTION_NAME);
 
@@ -229,7 +229,7 @@ class BillingController extends Controller
 
         $priceId = $interval->priceIdFor($plan);
 
-        abort_if($priceId === null, SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
+        abort_if(blank($priceId), SymfonyResponse::HTTP_UNPROCESSABLE_ENTITY, 'No price configured for this interval');
 
         return $checkout->redirect(
             $account,

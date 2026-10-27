@@ -174,7 +174,7 @@ class WelcomeController extends Controller
         $plan = Plan::active()->where('slug', Slug::Socials)->firstOrFail();
         $priceId = Interval::Monthly->priceIdFor($plan);
 
-        abort_if($priceId === null, Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
+        abort_if(blank($priceId), Response::HTTP_INTERNAL_SERVER_ERROR, 'Price is not configured.');
 
         $offer = $user->account->currentOffer();
 

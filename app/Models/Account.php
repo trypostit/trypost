@@ -79,6 +79,15 @@ class Account extends Model
     }
 
     /**
+     * The offers this account used: a checkout with them became active or
+     * trialing, or their trial without a card started.
+     */
+    public function redeemedOffers(): BelongsToMany
+    {
+        return $this->offers()->wherePivotNotNull('redeemed_at');
+    }
+
+    /**
      * The offer a checkout uses: the most recently claimed one the account may
      * still use. Without one it pays the full price. Subscribing from billing
      * leaves trials out, since it charges at once.
@@ -129,8 +138,7 @@ class Account extends Model
      */
     public function isFirstTimeSubscriber(): bool
     {
-        return ! $this->hasHadBillableSubscription()
-            && $this->offers()->wherePivotNotNull('redeemed_at')->doesntExist();
+        return ! $this->hasHadBillableSubscription() && $this->redeemedOffers()->doesntExist();
     }
 
     public function hasHadBillableSubscription(): bool

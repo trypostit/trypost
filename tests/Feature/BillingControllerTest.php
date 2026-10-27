@@ -795,3 +795,12 @@ test('processing waits for the plan of the new subscription before returning to 
         ->get(route('app.billing.processing', ['from' => 'billing']))
         ->assertInertia(fn ($page) => $page->where('ready', true));
 });
+
+test('an amount discount in a currency without cents keeps its value', function () {
+    config(['trypost.self_hosted' => false]);
+    fakeStripeBilling($this->account, ['percent_off' => null, 'amount_off' => 1000, 'currency' => 'jpy', 'duration' => 'forever', 'duration_in_months' => null]);
+
+    $this->actingAs($this->user->fresh())
+        ->get(route('app.billing.index'))
+        ->assertInertia(fn ($page) => $page->where('discount.value', '¥1,000'));
+});
