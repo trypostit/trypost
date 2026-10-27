@@ -20,11 +20,6 @@ const props = defineProps<{
 
 const showsOfferPrice = computed((): boolean => props.offer?.has_price === true);
 
-const isTrialOnly = computed(
-    (): boolean =>
-        Boolean(props.offer?.trial_days) && props.offer?.has_coupon === false,
-);
-
 const checkoutPriceKey = computed((): string =>
     showsOfferPrice.value
         ? `offers.${props.offer?.key}.price`
@@ -38,6 +33,18 @@ const unitKey = computed((): string | null => {
 
     return props.offer?.has_unit ? `offers.${props.offer.key}.unit` : null;
 });
+
+const continueLabelKey = computed((): string =>
+    showsOfferPrice.value &&
+    Boolean(props.offer?.trial_days) &&
+    props.offer?.has_coupon === false
+        ? 'welcome.plan_start_trial'
+        : 'billing.plans.start_first_month',
+);
+
+const termsKey = computed((): string =>
+    showsOfferPrice.value ? 'welcome.plan_terms' : 'welcome.plan_cancel_anytime',
+);
 
 const form = useForm({});
 
@@ -210,11 +217,7 @@ const submit = (): void => {
                 :processing="form.processing"
                 :disabled="form.processing"
                 :label="
-                    isTrialOnly && showsOfferPrice
-                        ? $t('welcome.plan_start_trial')
-                        : $t('billing.plans.start_first_month', {
-                              price: $t(checkoutPriceKey),
-                          })
+                    $t(continueLabelKey, { price: $t(checkoutPriceKey) })
                 "
                 testid="welcome-plan-continue"
                 @continue="submit"
@@ -224,11 +227,9 @@ const submit = (): void => {
                 data-testid="welcome-plan-terms"
             >
                 {{
-                    showsOfferPrice
-                        ? $t('welcome.plan_terms', {
-                              price: $t('billing.subscribe.prices.socials.monthly'),
-                          })
-                        : $t('welcome.plan_cancel_anytime')
+                    $t(termsKey, {
+                        price: $t('billing.subscribe.prices.socials.monthly'),
+                    })
                 }}
             </p>
         </template>
