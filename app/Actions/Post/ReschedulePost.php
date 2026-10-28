@@ -9,7 +9,6 @@ use App\Enums\Post\Status as PostStatus;
 use App\Models\Post;
 use App\Models\User;
 use App\Models\Workspace;
-use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
 
 class ReschedulePost
@@ -21,7 +20,7 @@ class ReschedulePost
      *
      * @return array{post: Post, action: PostAction|null}
      */
-    public static function execute(Workspace $workspace, Post $post, ?CarbonImmutable $at, User $actor): array
+    public static function execute(Workspace $workspace, Post $post, ?string $scheduledAt, User $actor): array
     {
         if (! $post->hasChannel()) {
             throw ValidationException::withMessages(['scheduled_at' => __('posts.errors.choose_channel')]);
@@ -29,7 +28,7 @@ class ReschedulePost
 
         return UpdatePost::execute($workspace, $post, [
             'status' => $post->status === PostStatus::Draft ? PostStatus::Draft->value : PostStatus::Scheduled->value,
-            'scheduled_at' => $at?->toIso8601String(),
+            'scheduled_at' => $scheduledAt,
         ], $actor);
     }
 }

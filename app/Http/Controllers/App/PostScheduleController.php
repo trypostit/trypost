@@ -13,7 +13,6 @@ use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
 use App\Support\PostStatusRules;
-use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 
 class PostScheduleController extends Controller
@@ -34,30 +33,14 @@ class PostScheduleController extends Controller
             PostStatusRules::assertStoredPostPublishable($post);
         }
 
-        if ($request->validated('action') === 'reschedule') {
-            $result = ReschedulePost::execute(
-                $workspace,
-                $post,
-                transform($request->validated('scheduled_at'), fn (string $at): CarbonImmutable => CarbonImmutable::parse($at)->utc()),
-                $request->user(),
-            );
-
-            if (data_get($result, 'action') === PostAction::Finalized) {
-                session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
-                session()->flash('flash.bannerStyle', 'danger');
-            }
-
-            return back();
-        }
-
-        $data = match ($request->validated('action')) {
-            'draft' => ['status' => PostStatus::Draft->value],
-            'publish_now' => ['status' => PostStatus::Publishing->value],
-            'queue_next' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Next->value],
-            'queue_top' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Top->value],
-        };
-
-        $result = UpdatePost::execute($workspace, $post, $data, $request->user());
+        $result = $request->validated('action') === 'reschedule'
+            ? ReschedulePost::execute($workspace, $post, $request->validated('scheduled_at'), $request->user())
+            : UpdatePost::execute($workspace, $post, match ($request->validated('action')) {
+                'draft' => ['status' => PostStatus::Draft->value],
+                'publish_now' => ['status' => PostStatus::Publishing->value],
+                'queue_next' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Next->value],
+                'queue_top' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Top->value],
+            }, $request->user());
 
         $action = data_get($result, 'action');
 
@@ -66,7 +49,7 @@ class PostScheduleController extends Controller
             session()->flash('flash.bannerStyle', 'danger');
         }
 
-        if ($action === PostAction::Publishing || $action === PostAction::Scheduled) {
+        if ($request->validated('action') !== 'reschedule' && ($action === PostAction::Publishing || $action === PostAction::Scheduled)) {
             $queue = $this->publishPageReturnUrl(['tab' => 'queue']);
 
             return $queue ? redirect($queue) : back();

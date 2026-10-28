@@ -143,8 +143,8 @@ export default {
     },
 
     /**
-     * Short weekday + month + day of a UTC instant in an explicit time zone,
-     * in the active locale's order ("Thu, October 29").
+     * Weekday + month + day of a UTC instant in an explicit time zone, in the
+     * active locale's order ("Thursday, October 29").
      */
     formatWeekdayMonthDay(date: string, timezone: string): string {
         return new Intl.DateTimeFormat(activeLocale.value, {
@@ -228,6 +228,18 @@ export default {
             .tz(timezone)
             .locale(activeLocale.value.toLowerCase())
             .format(timeToken());
+    },
+
+    /**
+     * Short month, day and time (e.g. "Oct 1 4:21 PM") of a UTC instant in an
+     * explicit time zone.
+     */
+    formatMonthDayTimeInTimezone(date: string, timezone: string) {
+        return dayjs
+            .utc(date)
+            .tz(timezone)
+            .locale(activeLocale.value.toLowerCase())
+            .format(`MMM D ${timeToken()}`);
     },
 
     /**

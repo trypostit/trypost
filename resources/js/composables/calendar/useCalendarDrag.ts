@@ -19,12 +19,11 @@ import {
     needsCustomTimeConfirmation,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
+import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PostCard } from '@/types/publish';
 
 export interface CalendarDrag {
-    registerPost: (el: HTMLElement, post: PostCard) => () => void;
-    registerTarget: (el: HTMLElement, target: CalendarDropTarget) => () => void;
     overTarget: Ref<string | null>;
     hoveredTarget: Ref<string | null>;
     draggingPostId: Ref<string | null>;
@@ -52,13 +51,7 @@ export interface CalendarDragLifecycle {
         target: CalendarDropTarget | null,
         accepts: boolean,
     ) => void;
-    onDrop?: (
-        post: PostCard,
-        target: CalendarDropTarget,
-        scheduledAt: string | null,
-    ) => void;
     onCancel?: (post: PostCard) => void;
-    onMoved?: (post: PostCard, scheduledAt: string | null) => void;
     onConfirmed?: (
         post: PostCard,
         target: CalendarDropTarget,
@@ -88,10 +81,10 @@ interface HoveredTarget {
 const MOUSE_ACTIVATION_DISTANCE = 4;
 const TOUCH_ACTIVATION_DELAY = 250;
 const TOUCH_ACTIVATION_TOLERANCE = 5;
-const AUTO_SCROLL_EDGE = 48;
 const AUTO_SCROLL_MAX_STEP = 20;
 const DRAGGABLE_ATTRIBUTE = 'data-calendar-draggable';
 const DROP_ATTRIBUTE = 'data-calendar-drop';
+const SCROLLER_ATTRIBUTE = 'data-calendar-scroller';
 const PREVIEW_CLASSES = [
     'pointer-events-none',
     'fixed',
@@ -116,21 +109,6 @@ export const calendarTargetKey = (target: CalendarDropTarget): string => {
     }
 };
 
-const isScrollable = (node: HTMLElement): boolean => {
-    const overflow = getComputedStyle(node).overflowY;
-
-    return (
-        (overflow === 'auto' || overflow === 'scroll') &&
-        node.scrollHeight > node.clientHeight
-    );
-};
-
-const autoScrollStep = (distance: number): number =>
-    Math.ceil(
-        ((AUTO_SCROLL_EDGE - Math.max(distance, 0)) / AUTO_SCROLL_EDGE) *
-            AUTO_SCROLL_MAX_STEP,
-    );
-
 const swallowClick = (event: Event): void => {
     event.preventDefault();
     event.stopPropagation();
@@ -145,8 +123,6 @@ const suppressNextClick = (): void => {
         window.removeEventListener('click', swallowClick, { capture: true });
     }, 0);
 };
-
-const noop = (): void => {};
 
 export const useCalendarDragContext = (): CalendarDragContext =>
     inject(
@@ -179,12 +155,14 @@ export const useCalendarDrag = (
     const posts = new Map<Element, PostCard>();
     const targets = new Map<Element, CalendarDropTarget>();
     const postCleanups = new Map<HTMLElement, () => void>();
-    const targetCleanups = new Map<HTMLElement, () => void>();
 
     let preview: HTMLElement | null = null;
     let previewOffset = { x: 0, y: 0 };
     let gesture: Gesture | null = null;
-    let scrollFrame: number | null = null;
+    let frame: number | null = null;
+    let scroller: HTMLElement | null = null;
+    let pointerMoved = false;
+    let stopEscape: (() => void) | null = null;
 
     const isDraggable = (post: PostCard): boolean =>
         canDragCalendarPost(post, options.now.value, options.canCreatePost.value);
@@ -254,9 +232,10 @@ export const useCalendarDrag = (
     });
 
     const forget = (postId: string): void => {
-        movedPosts.value = Object.fromEntries(
-            Object.entries(movedPosts.value).filter(([id]) => id !== postId),
-        );
+        const rest = { ...movedPosts.value };
+
+        delete rest[postId];
+        movedPosts.value = rest;
     };
 
     const reloadedPost = (page: Page, postId: string): CalendarPost | undefined =>
@@ -313,21 +292,32 @@ export const useCalendarDrag = (
             return;
         }
 
-        options.onDrop?.(post, target, scheduledAt);
-
         movedPosts.value = {
             ...movedPosts.value,
             [post.id]: movedPost(post, scheduledAt),
         };
 
-        let failed = false;
         let settled = false;
+
+        const confirm = (): void => {
+            if (!settled) {
+                settled = true;
+                options.onConfirmed?.(post, target, scheduledAt);
+            }
+        };
 
         const reject = (): void => {
             if (!settled) {
                 settled = true;
                 options.onRejected?.(post);
             }
+        };
+
+        const fail = (message?: string): false => {
+            reject();
+            rollback(post.id, message);
+
+            return false;
         };
 
         const isAtNewInstant = (page: Page): boolean => {
@@ -364,9 +354,7 @@ export const useCalendarDrag = (
                         toast.success(trans('posts.approvals.requested'), {
                             testId: 'calendar-reschedule-approval-toast',
                         });
-
-                        settled = true;
-                        options.onConfirmed?.(post, target, scheduledAt);
+                        confirm();
 
                         return;
                     }
@@ -377,42 +365,18 @@ export const useCalendarDrag = (
                         return;
                     }
 
-                    settled = true;
-                    options.onConfirmed?.(post, target, scheduledAt);
+                    confirm();
                     toast.success(successMessage(post, target, scheduledAt), {
                         testId: 'calendar-reschedule-success-toast',
                     });
                 },
                 onError: () => {
-                    failed = true;
-                    reject();
-                    rollback(post.id);
+                    fail();
                 },
-                onHttpException: () => {
-                    failed = true;
-                    reject();
-                    rollback(post.id);
-
-                    return false;
-                },
-                onNetworkError: () => {
-                    failed = true;
-                    reject();
-                    rollback(post.id);
-
-                    return false;
-                },
-                onCancel: () => {
-                    failed = true;
-                    reject();
-                },
-                onFinish: () => {
-                    forget(post.id);
-
-                    if (!failed) {
-                        options.onMoved?.(post, scheduledAt);
-                    }
-                },
+                onHttpException: () => fail(),
+                onNetworkError: () => fail(),
+                onCancel: reject,
+                onFinish: () => forget(post.id),
             },
         );
     };
@@ -465,53 +429,31 @@ export const useCalendarDrag = (
         );
     };
 
-    const edgeScroller = (
-        x: number,
-        y: number,
-    ): { scroller: HTMLElement; step: number } | null => {
-        let node: Element | null = document.elementsFromPoint(x, y)[0] ?? null;
-
-        while (node && node !== document.body) {
-            if (node instanceof HTMLElement && isScrollable(node)) {
-                const rect = node.getBoundingClientRect();
-                const fromTop = y - rect.top;
-                const fromBottom = rect.bottom - y;
-
-                if (fromBottom < AUTO_SCROLL_EDGE) {
-                    return { scroller: node, step: autoScrollStep(fromBottom) };
-                }
-
-                if (fromTop < AUTO_SCROLL_EDGE) {
-                    return { scroller: node, step: -autoScrollStep(fromTop) };
-                }
-            }
-
-            node = node.parentElement;
-        }
-
-        return null;
-    };
-
-    const autoScroll = (): void => {
+    const tick = (): void => {
         if (!gesture?.active) {
-            scrollFrame = null;
+            frame = null;
 
             return;
         }
 
-        const edge = edgeScroller(gesture.x, gesture.y);
+        if (scroller) {
+            const before = scroller.scrollTop;
 
-        if (edge) {
-            const before = edge.scroller.scrollTop;
-
-            edge.scroller.scrollTop += edge.step;
-
-            if (edge.scroller.scrollTop !== before) {
-                updateOver();
-            }
+            scroller.scrollTop += edgeScrollDelta(
+                scroller,
+                { clientX: gesture.x, clientY: gesture.y },
+                'vertical',
+                AUTO_SCROLL_MAX_STEP,
+            );
+            pointerMoved ||= scroller.scrollTop !== before;
         }
 
-        scrollFrame = requestAnimationFrame(autoScroll);
+        if (pointerMoved) {
+            pointerMoved = false;
+            updateOver();
+        }
+
+        frame = requestAnimationFrame(tick);
     };
 
     const preventWhileDragging = (event: Event): void => {
@@ -536,7 +478,7 @@ export const useCalendarDrag = (
 
         if (gesture.active) {
             event.preventDefault();
-            updateOver();
+            pointerMoved = true;
 
             return;
         }
@@ -614,22 +556,11 @@ export const useCalendarDrag = (
         }
     };
 
-    const onKeyDown = (event: KeyboardEvent): void => {
-        if (event.key === 'Escape' && gesture) {
-            if (gesture.active) {
-                event.preventDefault();
-                event.stopPropagation();
-            }
-
-            cancel();
-        }
-    };
-
     const listen = (): void => {
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
         window.addEventListener('pointercancel', onPointerCancel);
-        window.addEventListener('keydown', onKeyDown, { capture: true });
+        stopEscape = cancelDragOnEscape(cancel, () => gesture?.active === true);
         window.addEventListener('contextmenu', preventWhileDragging);
         window.addEventListener('blur', cancel);
         document.addEventListener('visibilitychange', onVisibilityChange);
@@ -639,7 +570,8 @@ export const useCalendarDrag = (
         window.removeEventListener('pointermove', onPointerMove);
         window.removeEventListener('pointerup', onPointerUp);
         window.removeEventListener('pointercancel', onPointerCancel);
-        window.removeEventListener('keydown', onKeyDown, { capture: true });
+        stopEscape?.();
+        stopEscape = null;
         window.removeEventListener('contextmenu', preventWhileDragging);
         window.removeEventListener('blur', cancel);
         document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -664,9 +596,10 @@ export const useCalendarDrag = (
             clientX: gesture.startX,
             clientY: gesture.startY,
         });
+        scroller = document.querySelector<HTMLElement>(`[${SCROLLER_ATTRIBUTE}]`);
         options.onDragStart?.(gesture.post);
         updateOver();
-        scrollFrame = requestAnimationFrame(autoScroll);
+        frame = requestAnimationFrame(tick);
     };
 
     const release = (): void => {
@@ -678,12 +611,14 @@ export const useCalendarDrag = (
             gesture.el.style.removeProperty('touch-action');
         }
 
-        if (scrollFrame !== null) {
-            cancelAnimationFrame(scrollFrame);
-            scrollFrame = null;
+        if (frame !== null) {
+            cancelAnimationFrame(frame);
+            frame = null;
         }
 
         gesture = null;
+        scroller = null;
+        pointerMoved = false;
         unlisten();
         endDrag();
     };
@@ -722,8 +657,6 @@ export const useCalendarDrag = (
     onBeforeUnmount(cancel);
 
     const registerPost = (el: HTMLElement, post: PostCard): (() => void) => {
-        posts.set(el, post);
-
         const onPointerDown = (event: PointerEvent): void =>
             startGesture(el, event);
         const onDragStart = (event: DragEvent): void => event.preventDefault();
@@ -744,7 +677,6 @@ export const useCalendarDrag = (
                 cancel();
             }
 
-            posts.delete(el);
             el.removeAttribute(DRAGGABLE_ATTRIBUTE);
             el.removeAttribute('aria-describedby');
             el.style.removeProperty('-webkit-touch-callout');
@@ -753,19 +685,6 @@ export const useCalendarDrag = (
             el.removeEventListener('pointerdown', onPointerDown);
             el.removeEventListener('dragstart', onDragStart);
             el.removeEventListener('touchmove', preventWhileDragging);
-        };
-    };
-
-    const registerTarget = (
-        el: HTMLElement,
-        target: CalendarDropTarget,
-    ): (() => void) => {
-        targets.set(el, target);
-        el.setAttribute(DROP_ATTRIBUTE, calendarTargetKey(target));
-
-        return () => {
-            targets.delete(el);
-            el.removeAttribute(DROP_ATTRIBUTE);
         };
     };
 
@@ -782,35 +701,31 @@ export const useCalendarDrag = (
         }
     };
 
-    const unregisterPost = (el: HTMLElement): void => {
-        (postCleanups.get(el) ?? noop)();
-        postCleanups.delete(el);
-        posts.delete(el);
+    const syncTarget = (el: HTMLElement, target: CalendarDropTarget): void => {
+        targets.set(el, target);
+        el.setAttribute(DROP_ATTRIBUTE, calendarTargetKey(target));
     };
 
     const vCalendarPost: Directive<HTMLElement, PostCard> = {
         mounted: (el, { value }) => syncPost(el, value),
         updated: (el, { value }) => syncPost(el, value),
-        beforeUnmount: unregisterPost,
+        beforeUnmount: (el) => {
+            postCleanups.get(el)?.();
+            postCleanups.delete(el);
+            posts.delete(el);
+        },
     };
 
     const vCalendarTarget: Directive<HTMLElement, CalendarDropTarget> = {
-        mounted: (el, { value }) => {
-            targetCleanups.set(el, registerTarget(el, value));
-        },
-        updated: (el, { value }) => {
-            targets.set(el, value);
-            el.setAttribute(DROP_ATTRIBUTE, calendarTargetKey(value));
-        },
+        mounted: (el, { value }) => syncTarget(el, value),
+        updated: (el, { value }) => syncTarget(el, value),
         beforeUnmount: (el) => {
-            (targetCleanups.get(el) ?? noop)();
-            targetCleanups.delete(el);
+            targets.delete(el);
+            el.removeAttribute(DROP_ATTRIBUTE);
         },
     };
 
     return {
-        registerPost,
-        registerTarget,
         overTarget,
         hoveredTarget,
         draggingPostId,

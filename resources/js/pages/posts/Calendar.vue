@@ -162,19 +162,6 @@ watch(
     },
 );
 
-const refreshSlots = (): void => {
-    router.get(
-        calendarUrl(props.view, currentDateQuery()),
-        {},
-        {
-            preserveState: true,
-            preserveScroll: true,
-            preserveUrl: true,
-            only: ['slots'],
-        },
-    );
-};
-
 const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
     customTimeDialog.value?.confirm(from, to, timezone.value) ??
     Promise.resolve(false);
@@ -289,11 +276,6 @@ const calendarDrag = useCalendarDrag({
     onConfirmed: announceDrop,
     onRejected: announceReturn,
     onCancel: announceReturn,
-    onMoved: () => {
-        if (showSlots.value) {
-            refreshSlots();
-        }
-    },
 });
 
 provide(calendarDragKey, calendarDrag);
@@ -456,7 +438,7 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        refreshSlots();
+        reload(['slots']);
     }
 });
 
@@ -897,6 +879,7 @@ const goToDay = (key: string): void => {
                     <div
                         v-else
                         class="flex flex-1 flex-col overflow-y-auto overscroll-contain"
+                        data-calendar-scroller
                         data-testid="calendar-month-grid"
                     >
                         <div

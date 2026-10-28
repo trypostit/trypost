@@ -12,8 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import date from '@/date';
-import dayjs from '@/dayjs';
-import { activeLocale } from '@/language';
 
 const STORAGE_KEY = 'calendar.skipCustomTimeConfirm';
 
@@ -47,11 +45,7 @@ const escapeHtml = (value: string): string =>
         .replaceAll('>', '&gt;');
 
 const strong = (at: string, timezone: string): string => {
-    const time = dayjs
-        .utc(at)
-        .tz(timezone)
-        .locale(activeLocale.value.toLowerCase())
-        .format(`MMM D ${date.timeToken()}`);
+    const time = date.formatMonthDayTimeInTimezone(at, timezone);
 
     return `<strong class="font-[650]">${escapeHtml(time)} <i>(${escapeHtml(timezone)})</i></strong>`;
 };

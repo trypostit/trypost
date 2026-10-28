@@ -22,9 +22,6 @@ export const canDragCalendarPost = (
             post.scheduled_at !== null &&
             dayjs.utc(post.scheduled_at).isAfter(now.add(1, 'minute'))));
 
-export const isFutureInstant = (at: string, now: dayjs.Dayjs): boolean =>
-    dayjs.utc(at).isAfter(now);
-
 const instantOnDay = (
     post: PostCard,
     dayKey: string,
@@ -79,15 +76,15 @@ export const dropInstant = (
             ? instantOnDay(post, target.dayKey, timezone, now)
             : dayjs.utc(target.at);
 
-    if (!instant || !isFutureInstant(instant.utc().format(), now)) {
+    if (
+        !instant ||
+        !instant.isAfter(now) ||
+        (post.scheduled_at && dayjs.utc(post.scheduled_at).isSame(instant))
+    ) {
         return undefined;
     }
 
-    const result = instant.utc().format();
-
-    return post.scheduled_at && dayjs.utc(post.scheduled_at).isSame(result)
-        ? undefined
-        : result;
+    return instant.utc().format();
 };
 
 export const needsCustomTimeConfirmation = (
