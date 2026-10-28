@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'この時刻はすでに過ぎています。後の時刻を選んでください。',
             'required' => 'この投稿の時刻を選んでください。',
+            'not_movable' => 'この投稿は今は移動できません。',
         ],
         'drag_hint' => 'ドラッグして予定を変更',
         'drag_hint_undated' => ':channel の日付なしの下書きをドラッグして予約',
         'announce' => [
             'over' => ':from に予定されている項目が :target の上にあります。',
+            'over_undated' => ':channel の日付なしの下書きが :target の上にあります。',
             'moved' => ':from に予定されていた項目を :to に変更しました。',
             'returned' => '項目を元の位置に戻しました。',
             'undated' => ':from に予定されていた項目を「日付なし」に移しました。',

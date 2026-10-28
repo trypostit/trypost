@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Bu saat geçti. Daha sonraki bir saat seçin.',
             'required' => 'Bu gönderi için bir saat seçin.',
+            'not_movable' => 'Bu gönderi şu anda taşınamaz.',
         ],
         'drag_hint' => 'Taşımak için sürükleyin',
         'drag_hint_undated' => ':channel için tarihsiz taslağı planlamak üzere sürükleyin',
         'announce' => [
             'over' => ':from için planlanan öğe :target üzerinde.',
+            'over_undated' => ':channel için tarihsiz taslak :target üzerinde.',
             'moved' => ':from için planlanan öğe :to tarihine taşındı.',
             'returned' => 'Öğe özgün konumuna geri bırakıldı.',
             'undated' => ':from için planlanan öğe Tarihsiz alanına bırakıldı.',

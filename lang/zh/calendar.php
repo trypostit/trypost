@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => '这个时间已经过去了。请选择更晚的时间。',
             'required' => '请为这条帖子选择时间。',
+            'not_movable' => '这条帖子现在无法移动。',
         ],
         'drag_hint' => '拖动以改期',
         'drag_hint_undated' => '拖动 :channel 的无日期草稿以安排时间',
         'announce' => [
             'over' => '计划在 :from 的项目正位于 :target 上方。',
+            'over_undated' => ':channel 的无日期草稿正位于 :target 上方。',
             'moved' => '计划在 :from 的项目已改期至 :to。',
             'returned' => '项目已放回原位置。',
             'undated' => '计划在 :from 的项目已放入无日期。',

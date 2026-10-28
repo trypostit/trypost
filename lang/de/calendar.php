@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Diese Zeit ist bereits vorbei. Wähle eine spätere Zeit.',
             'required' => 'Wähle eine Zeit für diesen Beitrag.',
+            'not_movable' => 'Dieser Beitrag kann gerade nicht verschoben werden.',
         ],
         'drag_hint' => 'Zum Verschieben ziehen',
         'drag_hint_undated' => 'Entwurf ohne Datum für :channel zum Planen ziehen',
         'announce' => [
             'over' => 'Element geplant für :from befindet sich über :target.',
+            'over_undated' => 'Entwurf ohne Datum für :channel befindet sich über :target.',
             'moved' => 'Element geplant für :from wurde auf :to verschoben.',
             'returned' => 'Element wurde an seiner ursprünglichen Position abgelegt.',
             'undated' => 'Element geplant für :from wurde auf Ohne Datum abgelegt.',

@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Cette heure est déjà passée. Choisissez une heure plus tardive.',
             'required' => 'Choisissez une heure pour cette publication.',
+            'not_movable' => 'Cette publication ne peut pas être déplacée pour le moment.',
         ],
         'drag_hint' => 'Faites glisser pour reprogrammer',
         'drag_hint_undated' => 'Faites glisser le brouillon sans date de :channel pour le programmer',
         'announce' => [
             'over' => 'l\'élément prévu pour :from est au-dessus de :target.',
+            'over_undated' => 'Le brouillon sans date de :channel est au-dessus de :target.',
             'moved' => 'l\'élément prévu pour :from a été reprogrammé pour :to.',
             'returned' => 'L\'élément a été remis à sa position d\'origine.',
             'undated' => 'l\'élément prévu pour :from a été déposé sur Sans date.',

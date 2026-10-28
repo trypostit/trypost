@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Enums\Post;
 
+use LogicException;
+
 enum ScheduleAction: string
 {
     case Draft = 'draft';
@@ -14,6 +16,7 @@ enum ScheduleAction: string
 
     /**
      * What UpdatePost receives for an action that only changes the post's status or queue position.
+     * Reschedule carries a time and goes through ReschedulePost instead.
      *
      * @return array{status: string, queue?: string}
      */
@@ -24,6 +27,7 @@ enum ScheduleAction: string
             self::PublishNow => ['status' => Status::Publishing->value],
             self::QueueNext => ['status' => Status::Scheduled->value, 'queue' => QueuePosition::Next->value],
             self::QueueTop => ['status' => Status::Scheduled->value, 'queue' => QueuePosition::Top->value],
+            self::Reschedule => throw new LogicException('Reschedule goes through ReschedulePost.'),
         };
     }
 }

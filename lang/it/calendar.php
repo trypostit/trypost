@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Questo orario è già passato. Scegli un orario successivo.',
             'required' => 'Scegli un orario per questo post.',
+            'not_movable' => 'Questo post non può essere spostato ora.',
         ],
         'drag_hint' => 'Trascina per riprogrammare',
         'drag_hint_undated' => 'Trascina la bozza senza data di :channel per programmarla',
         'announce' => [
             'over' => 'l\'elemento programmato per :from è sopra :target.',
+            'over_undated' => 'La bozza senza data di :channel è sopra :target.',
             'moved' => 'l\'elemento programmato per :from è stato riprogrammato per :to.',
             'returned' => 'L\'elemento è tornato nella posizione originale.',
             'undated' => 'l\'elemento programmato per :from è stato rilasciato su Senza data.',

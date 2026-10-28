@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'This time has already passed. Pick a later time.',
             'required' => 'Pick a time for this post.',
+            'not_movable' => 'This post can\'t be moved right now.',
         ],
         'drag_hint' => 'Drag to reschedule',
         'drag_hint_undated' => 'Drag No Date draft for :channel to schedule',
         'announce' => [
             'over' => 'item scheduled for :from is over :target.',
+            'over_undated' => 'No Date draft for :channel is over :target.',
             'moved' => 'item scheduled for :from was rescheduled to :to.',
             'returned' => 'Item was dropped back in its original position.',
             'undated' => 'item scheduled for :from was dropped on No Date.',

@@ -36,7 +36,7 @@ class PostScheduleController extends Controller
 
         $result = match ($scheduleAction) {
             ScheduleAction::Reschedule => ReschedulePost::execute($workspace, $post, $request->validated('scheduled_at'), $request->user()),
-            default => UpdatePost::execute($workspace, $post, $scheduleAction->postChanges(), $request->user()),
+            ScheduleAction::Draft, ScheduleAction::PublishNow, ScheduleAction::QueueNext, ScheduleAction::QueueTop => UpdatePost::execute($workspace, $post, $scheduleAction->postChanges(), $request->user()),
         };
 
         $action = data_get($result, 'action');

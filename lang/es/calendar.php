@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Esa hora ya pasó. Elige una hora posterior.',
             'required' => 'Elige una hora para esta publicación.',
+            'not_movable' => 'Esta publicación no se puede mover ahora.',
         ],
         'drag_hint' => 'Arrastra para reprogramar',
         'drag_hint_undated' => 'Arrastra el borrador sin fecha de :channel para programarlo',
         'announce' => [
             'over' => 'el elemento programado para :from está sobre :target.',
+            'over_undated' => 'El borrador sin fecha de :channel está sobre :target.',
             'moved' => 'el elemento programado para :from se reprogramó para :to.',
             'returned' => 'El elemento volvió a su posición original.',
             'undated' => 'el elemento programado para :from se soltó en Sin fecha.',

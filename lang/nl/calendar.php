@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Deze tijd is al voorbij. Kies een latere tijd.',
             'required' => 'Kies een tijd voor dit bericht.',
+            'not_movable' => 'Dit bericht kan nu niet worden verplaatst.',
         ],
         'drag_hint' => 'Sleep om te verplaatsen',
         'drag_hint_undated' => 'Sleep het concept zonder datum voor :channel om te plannen',
         'announce' => [
             'over' => 'item gepland voor :from staat boven :target.',
+            'over_undated' => 'Concept zonder datum voor :channel staat boven :target.',
             'moved' => 'item gepland voor :from is verplaatst naar :to.',
             'returned' => 'Item is teruggezet op de oorspronkelijke plek.',
             'undated' => 'item gepland voor :from is neergezet op Geen datum.',

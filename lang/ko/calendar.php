@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => '이미 지난 시간입니다. 이후 시간을 선택하세요.',
             'required' => '이 게시물의 시간을 선택하세요.',
+            'not_movable' => '이 게시물은 지금 이동할 수 없습니다.',
         ],
         'drag_hint' => '끌어서 일정 변경',
         'drag_hint_undated' => ':channel의 날짜 없는 임시 저장 글을 끌어서 예약',
         'announce' => [
             'over' => ':from에 예약된 항목이 :target 위에 있습니다.',
+            'over_undated' => ':channel의 날짜 없는 임시 저장 글이 :target 위에 있습니다.',
             'moved' => ':from에 예약된 항목을 :to(으)로 변경했습니다.',
             'returned' => '항목을 원래 위치로 되돌렸습니다.',
             'undated' => ':from에 예약된 항목을 날짜 없음으로 옮겼습니다.',

@@ -44,11 +44,13 @@ return [
         'errors' => [
             'past' => 'Esse horário já passou. Escolha um horário mais tarde.',
             'required' => 'Escolha um horário para este post.',
+            'not_movable' => 'Este post não pode ser movido agora.',
         ],
         'drag_hint' => 'Arraste para reagendar',
         'drag_hint_undated' => 'Arraste o rascunho sem data de :channel para agendar',
         'announce' => [
             'over' => 'item agendado para :from está sobre :target.',
+            'over_undated' => 'O rascunho sem data de :channel está sobre :target.',
             'moved' => 'item agendado para :from foi reagendado para :to.',
             'returned' => 'O item voltou à posição original.',
             'undated' => 'item agendado para :from foi solto em Sem data.',
