@@ -26,6 +26,7 @@ export interface CalendarDrag {
     registerPost: (el: HTMLElement, post: PostCard) => () => void;
     registerTarget: (el: HTMLElement, target: CalendarDropTarget) => () => void;
     overTarget: Ref<string | null>;
+    hoveredTarget: Ref<string | null>;
     draggingPostId: Ref<string | null>;
     movedPosts: Ref<Record<string, CalendarPost>>;
     vCalendarPost: Directive<HTMLElement, PostCard>;
@@ -34,7 +35,11 @@ export interface CalendarDrag {
 
 type CalendarDragContext = Pick<
     CalendarDrag,
-    'overTarget' | 'draggingPostId' | 'vCalendarPost' | 'vCalendarTarget'
+    | 'overTarget'
+    | 'hoveredTarget'
+    | 'draggingPostId'
+    | 'vCalendarPost'
+    | 'vCalendarTarget'
 >;
 
 export const calendarDragKey: InjectionKey<CalendarDragContext> =
@@ -42,7 +47,11 @@ export const calendarDragKey: InjectionKey<CalendarDragContext> =
 
 export interface CalendarDragLifecycle {
     onDragStart?: (post: PostCard) => void;
-    onOver?: (post: PostCard, target: CalendarDropTarget | null) => void;
+    onOver?: (
+        post: PostCard,
+        target: CalendarDropTarget | null,
+        accepts: boolean,
+    ) => void;
     onDrop?: (
         post: PostCard,
         target: CalendarDropTarget,
@@ -63,7 +72,11 @@ interface Gesture {
     y: number;
     active: boolean;
     timer: number | null;
-    target: CalendarDropTarget | null;
+}
+
+interface HoveredTarget {
+    target: CalendarDropTarget;
+    accepts: boolean;
 }
 
 const MOUSE_ACTIVATION_DISTANCE = 4;
@@ -133,6 +146,7 @@ export const useCalendarDragContext = (): CalendarDragContext =>
         calendarDragKey,
         () => ({
             overTarget: ref<string | null>(null),
+            hoveredTarget: ref<string | null>(null),
             draggingPostId: ref<string | null>(null),
             vCalendarPost: {},
             vCalendarTarget: {},
@@ -150,6 +164,7 @@ export const useCalendarDrag = (
     } & CalendarDragLifecycle,
 ): CalendarDrag => {
     const overTarget = ref<string | null>(null);
+    const hoveredTarget = ref<string | null>(null);
     const draggingPostId = ref<string | null>(null);
     const movedPosts = ref<Record<string, CalendarPost>>({});
 
@@ -211,6 +226,7 @@ export const useCalendarDrag = (
         preview?.remove();
         preview = null;
         overTarget.value = null;
+        hoveredTarget.value = null;
         draggingPostId.value = null;
         document.body.classList.remove(GRABBING_CLASS);
     };
@@ -329,16 +345,24 @@ export const useCalendarDrag = (
         post: PostCard,
         x: number,
         y: number,
-    ): CalendarDropTarget | null => {
+    ): HoveredTarget | null => {
+        let refusing: CalendarDropTarget | null = null;
+
         for (const element of document.elementsFromPoint(x, y)) {
             const target = targets.get(element);
 
-            if (target && instantFor(post, target) !== undefined) {
-                return target;
+            if (!target) {
+                continue;
             }
+
+            if (instantFor(post, target) !== undefined) {
+                return { target, accepts: true };
+            }
+
+            refusing ??= target;
         }
 
-        return null;
+        return refusing ? { target: refusing, accepts: false } : null;
     };
 
     const updateOver = (): void => {
@@ -348,15 +372,21 @@ export const useCalendarDrag = (
 
         placePreview({ clientX: gesture.x, clientY: gesture.y });
 
-        const target = targetAt(gesture.post, gesture.x, gesture.y);
-        const key = target ? calendarTargetKey(target) : null;
+        const hovered = targetAt(gesture.post, gesture.x, gesture.y);
+        const key = hovered ? calendarTargetKey(hovered.target) : null;
+        const acceptingKey = hovered?.accepts ? key : null;
 
-        gesture.target = target;
-
-        if (key !== overTarget.value) {
-            overTarget.value = key;
-            options.onOver?.(gesture.post, target);
+        if (key === hoveredTarget.value && acceptingKey === overTarget.value) {
+            return;
         }
+
+        hoveredTarget.value = key;
+        overTarget.value = acceptingKey;
+        options.onOver?.(
+            gesture.post,
+            hovered?.target ?? null,
+            hovered?.accepts ?? false,
+        );
     };
 
     const edgeScroller = (
@@ -419,6 +449,12 @@ export const useCalendarDrag = (
             return;
         }
 
+        if (gesture.pointerType !== 'touch' && event.buttons === 0) {
+            cancel();
+
+            return;
+        }
+
         gesture.x = event.clientX;
         gesture.y = event.clientY;
 
@@ -462,20 +498,22 @@ export const useCalendarDrag = (
         gesture.y = event.clientY;
 
         const post = gesture.post;
-        const target = targetAt(post, gesture.x, gesture.y);
+        const hovered = targetAt(post, gesture.x, gesture.y);
 
         release();
         suppressNextClick();
 
-        const scheduledAt = target ? instantFor(post, target) : undefined;
+        const scheduledAt = hovered?.accepts
+            ? instantFor(post, hovered.target)
+            : undefined;
 
-        if (!target || scheduledAt === undefined) {
+        if (!hovered || scheduledAt === undefined) {
             options.onCancel?.(post);
 
             return;
         }
 
-        void move(post, target, scheduledAt);
+        void move(post, hovered.target, scheduledAt);
     };
 
     const cancel = (): void => {
@@ -490,6 +528,12 @@ export const useCalendarDrag = (
 
     const onPointerCancel = (event: PointerEvent): void => {
         if (gesture && event.pointerId === gesture.pointerId) {
+            cancel();
+        }
+    };
+
+    const onVisibilityChange = (): void => {
+        if (document.visibilityState === 'hidden') {
             cancel();
         }
     };
@@ -511,6 +555,8 @@ export const useCalendarDrag = (
         window.addEventListener('pointercancel', onPointerCancel);
         window.addEventListener('keydown', onKeyDown, { capture: true });
         window.addEventListener('contextmenu', preventWhileDragging);
+        window.addEventListener('blur', cancel);
+        document.addEventListener('visibilitychange', onVisibilityChange);
     };
 
     const unlisten = (): void => {
@@ -519,6 +565,8 @@ export const useCalendarDrag = (
         window.removeEventListener('pointercancel', onPointerCancel);
         window.removeEventListener('keydown', onKeyDown, { capture: true });
         window.removeEventListener('contextmenu', preventWhileDragging);
+        window.removeEventListener('blur', cancel);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
     };
 
     const activate = (): void => {
@@ -591,12 +639,11 @@ export const useCalendarDrag = (
                 event.pointerType === 'touch'
                     ? window.setTimeout(activate, TOUCH_ACTIVATION_DELAY)
                     : null,
-            target: null,
         };
         listen();
     };
 
-    onBeforeUnmount(release);
+    onBeforeUnmount(cancel);
 
     const registerPost = (el: HTMLElement, post: PostCard): (() => void) => {
         posts.set(el, post);
@@ -608,6 +655,7 @@ export const useCalendarDrag = (
         el.setAttribute(DRAGGABLE_ATTRIBUTE, 'true');
         el.style.setProperty('-webkit-touch-callout', 'none');
         el.style.setProperty('user-select', 'none');
+        el.style.setProperty('-webkit-user-select', 'none');
         el.addEventListener('pointerdown', onPointerDown);
         el.addEventListener('dragstart', onDragStart);
         el.addEventListener('touchmove', preventWhileDragging, {
@@ -623,6 +671,7 @@ export const useCalendarDrag = (
             el.removeAttribute(DRAGGABLE_ATTRIBUTE);
             el.style.removeProperty('-webkit-touch-callout');
             el.style.removeProperty('user-select');
+            el.style.removeProperty('-webkit-user-select');
             el.removeEventListener('pointerdown', onPointerDown);
             el.removeEventListener('dragstart', onDragStart);
             el.removeEventListener('touchmove', preventWhileDragging);
@@ -685,6 +734,7 @@ export const useCalendarDrag = (
         registerPost,
         registerTarget,
         overTarget,
+        hoveredTarget,
         draggingPostId,
         movedPosts,
         vCalendarPost,

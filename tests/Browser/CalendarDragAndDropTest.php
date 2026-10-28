@@ -108,7 +108,7 @@ function calendarDragIsBusy(mixed $page): bool
 /**
  * Runs a gesture in the page. Pest drives the mouse only through whole
  * drags, so partial moves, holds and touch pointers are dispatched as
- * PointerEvents: `down`, `move` and `up` take a point, `center` and `at`
+ * PointerEvents: `down`, `move`, `up` and `hover` (no button) take a point, `center` and `at`
  * give one, `pause` waits in the page and `state` reads the drag visuals.
  */
 function calendarGesture(mixed $page, string $steps, string $pointerType = 'mouse'): mixed
@@ -124,7 +124,7 @@ function calendarGesture(mixed $page, string $steps, string $pointerType = 'mous
                 return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
             };
             const at = (point, dx = 0, dy = 0) => ({ x: point.x + dx, y: point.y + dy });
-            const fire = (type, point) => (document.elementFromPoint(point.x, point.y) ?? document.body).dispatchEvent(new PointerEvent(type, {
+            const fire = (type, point, buttons = type === 'pointerup' ? 0 : 1) => (document.elementFromPoint(point.x, point.y) ?? document.body).dispatchEvent(new PointerEvent(type, {
                 bubbles: true,
                 cancelable: true,
                 composed: true,
@@ -132,7 +132,7 @@ function calendarGesture(mixed $page, string $steps, string $pointerType = 'mous
                 pointerType,
                 isPrimary: true,
                 button: type === 'pointermove' ? -1 : 0,
-                buttons: type === 'pointerup' ? 0 : 1,
+                buttons,
                 clientX: point.x,
                 clientY: point.y,
             }));
@@ -140,6 +140,7 @@ function calendarGesture(mixed $page, string $steps, string $pointerType = 'mous
             const down = async (point) => { fire('pointerdown', point); await frame(); };
             const move = async (point) => { fire('pointermove', point); await frame(); };
             const up = async (point) => { fire('pointerup', point); await frame(); };
+            const hover = async (point) => { fire('pointermove', point, 0); await frame(); };
             const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
             const touchMovePrevented = (selector) => {
                 const element = query(selector);
@@ -515,6 +516,20 @@ test('a scheduled post is not taken by the No Date panel', function () {
     waitFor($page, "@calendar-post-{$post->id}");
     waitFor($page, '@calendar-undated-empty');
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+
+    $hovered = calendarGesture($page, <<<JS
+        query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-undated-panel'));
+        const highlighted = query('@calendar-undated-panel').classList.contains('border-primary');
+        await up(center('@calendar-undated-panel'));
+
+        return { highlighted, dragging: state().dragging, after: query('@calendar-undated-panel').classList.contains('border-primary') };
+    JS);
+
+    expect($hovered)->toBe(['highlighted' => true, 'dragging' => false, 'after' => false])
+        ->and(calendarDragIsBusy($page))->toBeFalse();
+
     calendarDragOnto($page, "@calendar-post-{$post->id}", '@calendar-undated-panel');
 
     expect(calendarDragIsBusy($page))->toBeFalse()
@@ -958,6 +973,46 @@ test('Esc cancels a drag', function () {
     JS);
 
     expect($after)->toBeFalse()
+        ->and(calendarDragIsBusy($page))->toBeFalse()
+        ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a drag ends when the window loses focus or the mouse button is already up', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $at = $day->setTime(10, 30);
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-slot-{$key}-12\"]').scrollIntoView({ block: 'center' })");
+
+    $steps = calendarGesture($page, <<<JS
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+        const dragging = state().dragging;
+        window.dispatchEvent(new Event('blur'));
+        await frame();
+        const blurred = state().dragging;
+        await move(center('@calendar-slot-{$key}-13'));
+        await up(center('@calendar-slot-{$key}-13'));
+
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+        const again = state().dragging;
+        await hover(center('@calendar-slot-{$key}-13'));
+        const buttonless = state().dragging;
+        await up(center('@calendar-slot-{$key}-13'));
+
+        return { dragging, blurred, again, buttonless, cell: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15') };
+    JS);
+
+    expect($steps)->toBe(['dragging' => true, 'blurred' => false, 'again' => true, 'buttonless' => false, 'cell' => false])
         ->and(calendarDragIsBusy($page))->toBeFalse()
         ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
