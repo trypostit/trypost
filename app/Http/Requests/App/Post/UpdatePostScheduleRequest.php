@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\App\Post;
 
+use App\Enums\Post\ScheduleAction;
 use App\Enums\Post\Status as PostStatus;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
@@ -22,9 +23,9 @@ class UpdatePostScheduleRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'action' => ['required', Rule::in(['draft', 'publish_now', 'queue_next', 'queue_top', 'reschedule'])],
+            'action' => ['required', Rule::enum(ScheduleAction::class)],
             'scheduled_at' => [
-                'exclude_unless:action,reschedule',
+                Rule::excludeIf(fn (): bool => $this->enum('action', ScheduleAction::class) !== ScheduleAction::Reschedule),
                 'present',
                 Rule::requiredIf(fn (): bool => $this->route('post')?->status !== PostStatus::Draft),
                 'nullable',
