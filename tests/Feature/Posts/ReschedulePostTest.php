@@ -2,8 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Actions\Post\FinalizePostPublication;
 use App\Actions\Post\Queue\ReflowChannelQueue;
+use App\Enums\Post\PublishStatus;
 use App\Enums\Post\QueuePosition;
+use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\SocialAccount\Platform;
@@ -337,4 +340,47 @@ test('reschedule of a post the viewer cannot see is not found', function () {
     $this->actingAs($this->user)
         ->putJson(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
         ->assertNotFound();
+});
+
+test('reschedule keeps a recurring post\'s rule and remaining count', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $post->forceFill([
+        'recurrence_frequency' => RecurrenceFrequency::Week,
+        'recurrence_interval' => 1,
+        'recurrence_remaining' => 3,
+    ])->save();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-09T10:00:00Z'])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->recurrence_frequency)->toBe(RecurrenceFrequency::Week)
+        ->and($post->recurrence_interval)->toBe(1)
+        ->and($post->recurrence_remaining)->toBe(3)
+        ->and($post->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-09 10:00', 'UTC')->toIso8601String());
+});
+
+test('the next occurrence of a rescheduled recurring post follows the new time', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $post->forceFill([
+        'recurrence_frequency' => RecurrenceFrequency::Week,
+        'recurrence_interval' => 1,
+        'recurrence_remaining' => 3,
+    ])->save();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-09T10:00:00Z'])
+        ->assertSessionHasNoErrors();
+
+    $this->travelTo(CarbonImmutable::parse('2026-10-09 10:05', 'UTC'));
+    $post->refresh()->forceFill(['status' => PostStatus::Publishing, 'publish_status' => PublishStatus::Published])->save();
+    app(FinalizePostPublication::class)->handle($post);
+
+    $next = Post::query()->whereKeyNot($post->id)->where('workspace_id', $this->workspace->id)->sole();
+
+    expect($next->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-16 10:00', 'UTC')->toIso8601String())
+        ->and($next->recurrence_remaining)->toBe(2)
+        ->and($next->recurrence_frequency)->toBe(RecurrenceFrequency::Week);
 });

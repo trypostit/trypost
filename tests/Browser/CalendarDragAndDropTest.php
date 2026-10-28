@@ -455,10 +455,6 @@ test('published posts are not draggable', function () {
     $published = calendarDragPost($channel, $day->setTime(8, 0), PostStatus::Published, attributes: ['published_at' => $day->setTime(8, 0)]);
     $failed = calendarDragPost($channel, $day->setTime(9, 0), PostStatus::Failed);
     $pending = calendarDragPost($channel, $day->setTime(10, 0), PostStatus::PendingApproval);
-    $recurring = calendarDragPost($channel, $day->setTime(11, 0), attributes: [
-        'recurrence_interval' => 1,
-        'recurrence_frequency' => RecurrenceFrequency::Week,
-    ]);
     $movable = calendarDragPost($channel, $day->setTime(12, 0));
     $this->actingAs($user);
 
@@ -471,8 +467,34 @@ test('published posts are not draggable', function () {
     expect($draggable($movable))->toBe('true')
         ->and($draggable($published))->toBeNull()
         ->and($draggable($failed))->toBeNull()
-        ->and($draggable($pending))->toBeNull()
-        ->and($draggable($recurring))->toBeNull();
+        ->and($draggable($pending))->toBeNull();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a recurring post can be dragged and stays recurring', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(9, 0), attributes: [
+        'recurrence_interval' => 1,
+        'recurrence_frequency' => RecurrenceFrequency::Week,
+        'recurrence_remaining' => 3,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    waitFor($page, "@calendar-post-recurring-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$day->format('Y-m-d')}-10");
+    waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-10 @calendar-post-{$post->id}");
+    calendarDragFinished($page);
+
+    $post->refresh();
+
+    expect($post->scheduled_at->equalTo($day->setTime(10, 0)))->toBeTrue()
+        ->and($post->recurrence_frequency)->toBe(RecurrenceFrequency::Week)
+        ->and($post->recurrence_interval)->toBe(1)
+        ->and($post->recurrence_remaining)->toBe(3);
+    waitFor($page, "@calendar-post-recurring-{$post->id}");
     $page->assertNoJavaScriptErrors();
 });
 

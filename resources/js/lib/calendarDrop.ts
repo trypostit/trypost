@@ -17,7 +17,6 @@ export const canDragCalendarPost = (
 ): boolean =>
     canCreatePost &&
     post.platform !== null &&
-    !post.recurrence_frequency &&
     (post.status === PostStatus.Draft ||
         (post.status === PostStatus.Scheduled &&
             post.scheduled_at !== null &&
