@@ -19,13 +19,11 @@ import {
     needsCustomTimeConfirmation,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
-import {
-    CALENDAR_AUTO_SCROLL_STEP,
-    cancelDragOnEscape,
-    edgeScrollDelta,
-} from '@/lib/dragPlaceholder';
+import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PostCard } from '@/types/publish';
+
+const CALENDAR_AUTO_SCROLL_STEP = 20;
 
 export interface CalendarDrag {
     overTarget: Ref<string | null>;

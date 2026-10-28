@@ -3,8 +3,6 @@ export type DragAxis = 'vertical' | 'horizontal';
 const AUTO_SCROLL_EDGE = 48;
 const AUTO_SCROLL_MAX_STEP = 14;
 
-export const CALENDAR_AUTO_SCROLL_STEP = 20;
-
 /**
  * The slot a dragged item would land in among the children of `container`
  * that carry `data-<attribute>`, ignoring the dragged one. Positions come
