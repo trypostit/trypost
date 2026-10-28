@@ -71,7 +71,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'time_format',
         'week_starts_on',
         'default_post_action',
-        'skips_custom_time_confirmation',
     ];
 
     /**
@@ -82,7 +81,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
         'time_format' => TimeFormat::DEFAULT->value,
         'week_starts_on' => WeekStart::DEFAULT->value,
         'default_post_action' => DefaultPostAction::DEFAULT->value,
-        'skips_custom_time_confirmation' => false,
     ];
 
     /**
@@ -143,7 +141,6 @@ class User extends Authenticatable implements HasLocalePreference, MustVerifyEma
             'time_format' => TimeFormat::class,
             'week_starts_on' => WeekStart::class,
             'default_post_action' => DefaultPostAction::class,
-            'skips_custom_time_confirmation' => 'boolean',
         ];
     }
 

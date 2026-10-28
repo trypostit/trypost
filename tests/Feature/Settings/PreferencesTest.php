@@ -70,33 +70,6 @@ test('a JSON request saves one preference and answers with no content', function
         ->and($user->theme)->toBe(Theme::Dark);
 });
 
-test('a new user still sees the custom time confirmation', function () {
-    expect(User::factory()->create()->fresh()->skips_custom_time_confirmation)->toBeFalse();
-});
-
-test('a JSON request stores that the custom time confirmation is skipped and the auth user shares it', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patchJson(route('app.settings.preferences.update'), ['skips_custom_time_confirmation' => true])
-        ->assertNoContent();
-
-    expect($user->refresh()->skips_custom_time_confirmation)->toBeTrue();
-
-    $this->actingAs($user)
-        ->get(route('app.settings.preferences'))
-        ->assertInertia(fn (AssertableInertia $page) => $page->where('auth.user.skips_custom_time_confirmation', true));
-});
-
-test('the custom time confirmation preference must be a boolean', function () {
-    $user = User::factory()->create();
-
-    $this->actingAs($user)
-        ->patchJson(route('app.settings.preferences.update'), ['skips_custom_time_confirmation' => 'maybe'])
-        ->assertUnprocessable()
-        ->assertJsonValidationErrors('skips_custom_time_confirmation');
-});
-
 test('a JSON request with an invalid value gets a 422', function () {
     $user = User::factory()->create();
 

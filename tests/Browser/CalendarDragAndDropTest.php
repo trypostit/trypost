@@ -294,7 +294,7 @@ test('confirming makes the queued post custom', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('don\'t show again skips the dialog next time', function () {
+test('ticking the box and confirming stores the choice and the next drop skips the dialog', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();
     $key = $day->format('Y-m-d');
@@ -311,7 +311,7 @@ test('don\'t show again skips the dialog next time', function () {
     $page->click('@calendar-custom-time-confirm');
     calendarDragFinished($page);
 
-    expect($user->refresh()->skips_custom_time_confirmation)->toBeTrue();
+    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm')"))->toBe('true');
     waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->setTime(9, 25)));
 
     waitFor($page, "@calendar-post-{$second->id}");
@@ -324,26 +324,6 @@ test('don\'t show again skips the dialog next time', function () {
     $second->refresh();
     expect($second->scheduled_at->equalTo($day->addDay()->setTime(11, 0)))->toBeTrue()
         ->and($second->schedule_mode)->toBe(ScheduleMode::Custom);
-    $page->assertNoJavaScriptErrors();
-});
-
-test('a fresh browser context for that user skips the dialog', function () {
-    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
-    $user->update(['skips_custom_time_confirmation' => true]);
-    $day = calendarDragDay();
-    $key = $day->format('Y-m-d');
-    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
-    $this->actingAs($user);
-
-    $page = visit(calendarDragWeekUrl($day));
-    waitFor($page, "@calendar-post-{$post->id}");
-    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
-    waitFor($page, "@calendar-slot-{$key}-11 @calendar-post-{$post->id}");
-    calendarDragFinished($page);
-
-    $page->assertMissing('@calendar-custom-time-dialog');
-    expect($post->refresh()->scheduled_at->equalTo($day->setTime(11, 0)))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -362,7 +342,7 @@ test('ticking the box and cancelling stores nothing', function () {
     $page->click('@calendar-custom-time-cancel');
     waitForGone($page, '@calendar-custom-time-dialog');
 
-    expect($user->refresh()->skips_custom_time_confirmation)->toBeFalse()
+    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm')"))->toBeNull()
         ->and($post->refresh()->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });

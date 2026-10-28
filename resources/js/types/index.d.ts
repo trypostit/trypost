@@ -135,7 +135,6 @@ export interface User {
     time_format: TimeFormat;
     week_starts_on: WeekStart;
     default_post_action: DefaultPostAction;
-    skips_custom_time_confirmation: boolean;
     email_verified_at: string | null;
     created_at: string;
     updated_at: string;

@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { useHttp, usePage } from '@inertiajs/vue3';
 import { AlertDialogCancel } from 'reka-ui';
 import { ref } from 'vue';
 
@@ -15,13 +14,8 @@ import { Separator } from '@/components/ui/separator';
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
-import { update as updatePreferences } from '@/routes/app/settings/preferences';
-import type { User } from '@/types';
 
-const page = usePage();
-const preferenceHttp = useHttp<{ skips_custom_time_confirmation: boolean }>({
-    skips_custom_time_confirmation: true,
-});
+const STORAGE_KEY = 'calendar.skipCustomTimeConfirm';
 
 const isOpen = ref(false);
 const skipNextTime = ref(false);
@@ -30,19 +24,17 @@ const toLabel = ref('');
 
 let resolveChoice: ((confirmed: boolean) => void) | null = null;
 
-const currentUser = (): User | null =>
-    (page.props.auth?.user as User | null) ?? null;
-
-const storeSkip = async (): Promise<void> => {
-    const user = currentUser();
-
-    if (!user) {
-        return;
-    }
-
+const readSkip = (): boolean => {
     try {
-        await preferenceHttp.patch(updatePreferences.url());
-        user.skips_custom_time_confirmation = true;
+        return window.localStorage.getItem(STORAGE_KEY) === 'true';
+    } catch {
+        return false;
+    }
+};
+
+const storeSkip = (): void => {
+    try {
+        window.localStorage.setItem(STORAGE_KEY, 'true');
     } catch {
         return;
     }
@@ -75,7 +67,7 @@ const confirm = (
     to: string,
     timezone: string,
 ): Promise<boolean> => {
-    if (currentUser()?.skips_custom_time_confirmation) {
+    if (readSkip()) {
         return Promise.resolve(true);
     }
 
@@ -98,7 +90,7 @@ const onOpenChange = (value: boolean): void => {
 
 const accept = (): void => {
     if (skipNextTime.value) {
-        void storeSkip();
+        storeSkip();
     }
 
     settle(true);
