@@ -19,7 +19,11 @@ import {
     needsCustomTimeConfirmation,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
-import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
+import {
+    CALENDAR_AUTO_SCROLL_STEP,
+    cancelDragOnEscape,
+    edgeScrollDelta,
+} from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PostCard } from '@/types/publish';
 
@@ -29,7 +33,7 @@ export interface CalendarDrag {
     draggingPostId: Ref<string | null>;
     movedPosts: Ref<Record<string, CalendarPost>>;
     vCalendarPost: Directive<HTMLElement, PostCard>;
-    vCalendarTarget: Directive<HTMLElement, CalendarDropTarget>;
+    vCalendarTarget: Directive<HTMLElement, CalendarDropTarget | null>;
 }
 
 type CalendarDragContext = Pick<
@@ -81,7 +85,6 @@ interface HoveredTarget {
 const MOUSE_ACTIVATION_DISTANCE = 4;
 const TOUCH_ACTIVATION_DELAY = 250;
 const TOUCH_ACTIVATION_TOLERANCE = 5;
-const AUTO_SCROLL_MAX_STEP = 20;
 const DRAGGABLE_ATTRIBUTE = 'data-calendar-draggable';
 const DROP_ATTRIBUTE = 'data-calendar-drop';
 const SCROLLER_ATTRIBUTE = 'data-calendar-scroller';
@@ -165,6 +168,7 @@ export const useCalendarDrag = (
     let stopEscape: (() => void) | null = null;
 
     const isDraggable = (post: PostCard): boolean =>
+        !(post.id in movedPosts.value) &&
         canDragCalendarPost(post, options.now.value, options.canCreatePost.value);
 
     const instantFor = (
@@ -444,7 +448,7 @@ export const useCalendarDrag = (
                 scroller,
                 { clientX: gesture.x, clientY: gesture.y },
                 'vertical',
-                AUTO_SCROLL_MAX_STEP,
+                CALENDAR_AUTO_SCROLL_STEP,
             );
             pointerMoved ||= scroller.scrollTop !== before;
         }
@@ -702,7 +706,21 @@ export const useCalendarDrag = (
         }
     };
 
-    const syncTarget = (el: HTMLElement, target: CalendarDropTarget): void => {
+    const forgetTarget = (el: HTMLElement): void => {
+        targets.delete(el);
+        el.removeAttribute(DROP_ATTRIBUTE);
+    };
+
+    const syncTarget = (
+        el: HTMLElement,
+        target: CalendarDropTarget | null,
+    ): void => {
+        if (!target) {
+            forgetTarget(el);
+
+            return;
+        }
+
         targets.set(el, target);
         el.setAttribute(DROP_ATTRIBUTE, calendarTargetKey(target));
     };
@@ -717,13 +735,10 @@ export const useCalendarDrag = (
         },
     };
 
-    const vCalendarTarget: Directive<HTMLElement, CalendarDropTarget> = {
+    const vCalendarTarget: Directive<HTMLElement, CalendarDropTarget | null> = {
         mounted: (el, { value }) => syncTarget(el, value),
         updated: (el, { value }) => syncTarget(el, value),
-        beforeUnmount: (el) => {
-            targets.delete(el);
-            el.removeAttribute(DROP_ATTRIBUTE);
-        },
+        beforeUnmount: forgetTarget,
     };
 
     return {

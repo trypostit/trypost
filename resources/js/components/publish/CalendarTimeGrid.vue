@@ -108,12 +108,16 @@ const hourSlots = computed(() =>
                 `${day.format('YYYY-MM-DD')} ${hourLabel(hour)}:00`,
                 props.timezone,
             );
-            const target: CalendarDropTarget = {
-                kind: 'hour',
-                at: start.utc().format(),
-            };
+            const target: CalendarDropTarget | null =
+                start.hour() === hour
+                    ? { kind: 'hour', at: start.utc().format() }
+                    : null;
 
-            return { start, target, key: calendarTargetKey(target) };
+            return {
+                start,
+                target,
+                key: target ? calendarTargetKey(target) : null,
+            };
         }),
     ),
 );
@@ -131,13 +135,14 @@ const { overTarget, draggingPostId, vCalendarTarget } =
     useCalendarDragContext();
 
 const isHourOver = (column: number, hour: number): boolean =>
+    hourSlots.value[column][hour].key !== null &&
     overTarget.value === hourSlots.value[column][hour].key;
 
 const isDimmed = (column: number, hour: number, item: CalendarItem): boolean =>
     isHourOver(column, hour) && item.post?.id !== draggingPostId.value;
 
 const compose = (column: number, hour: number): void => {
-    emit('compose', hourSlots.value[column][hour].target.at);
+    emit('compose', hourSlots.value[column][hour].start.utc().format());
 };
 
 const scrollToCurrentHour = (): void => {

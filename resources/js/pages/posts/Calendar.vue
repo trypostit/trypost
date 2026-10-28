@@ -197,6 +197,10 @@ const describeTarget = (target: CalendarDropTarget): string => {
     }
 };
 
+const channelLabel = (post: PostCard): string =>
+    post.social_account?.display_label ??
+    (post.platform ? getPlatformLabel(post.platform) : '');
+
 const announce = (message: string): void => {
     lastOverAnnouncement = '';
     announcement.value = message;
@@ -207,14 +211,19 @@ const announceOver = (
     target: CalendarDropTarget | null,
     accepts: boolean,
 ): void => {
-    if (!target || !accepts || !post.scheduled_at) {
+    if (!target || !accepts) {
         return;
     }
 
-    const message = trans('calendar.reschedule.announce.over', {
-        from: describeAt(post.scheduled_at, false),
-        target: describeTarget(target),
-    });
+    const message = post.scheduled_at
+        ? trans('calendar.reschedule.announce.over', {
+              from: describeAt(post.scheduled_at, false),
+              target: describeTarget(target),
+          })
+        : trans('calendar.reschedule.announce.over_undated', {
+              channel: channelLabel(post),
+              target: describeTarget(target),
+          });
 
     if (message === lastOverAnnouncement) {
         return;
@@ -248,9 +257,7 @@ const announceDrop = (
                   to,
               })
             : trans('calendar.reschedule.announce.from_undated', {
-                  channel:
-                      post.social_account?.display_label ??
-                      (post.platform ? getPlatformLabel(post.platform) : ''),
+                  channel: channelLabel(post),
                   to,
               }),
     );
