@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
 use App\Enums\Post\QueuePosition;
@@ -12,6 +13,7 @@ use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
 use App\Support\PostStatusRules;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 
 class PostScheduleController extends Controller
@@ -30,6 +32,22 @@ class PostScheduleController extends Controller
 
         if ($request->validated('action') === 'publish_now' && ! PostStatusRules::blocksEditing($post)) {
             PostStatusRules::assertStoredPostPublishable($post);
+        }
+
+        if ($request->validated('action') === 'reschedule') {
+            $result = ReschedulePost::execute(
+                $workspace,
+                $post,
+                transform($request->validated('scheduled_at'), fn (string $at): CarbonImmutable => CarbonImmutable::parse($at)->utc()),
+                $request->user(),
+            );
+
+            if (data_get($result, 'action') === PostAction::Finalized) {
+                session()->flash('flash.banner', __('posts.flash.cannot_edit_finalized'));
+                session()->flash('flash.bannerStyle', 'danger');
+            }
+
+            return back();
         }
 
         $data = match ($request->validated('action')) {
