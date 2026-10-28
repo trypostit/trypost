@@ -39,8 +39,7 @@ const storeSkip = (): void => {
     }
 };
 
-
-const settle = (confirmed: boolean): void => {
+const settle =(confirmed: boolean): void => {
     isOpen.value = false;
     resolveChoice?.(confirmed);
     resolveChoice = null;
