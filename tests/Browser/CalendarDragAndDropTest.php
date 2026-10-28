@@ -30,7 +30,7 @@ function calendarDragSetup(string $timezone = 'UTC', ?string $slotTime = null): 
 
     $schedule = PostingSchedule::empty();
 
-    if ($slotTime !== null) {
+    if (filled($slotTime)) {
         foreach (range(0, 6) as $weekday) {
             $schedule = $schedule->withTime($weekday, $slotTime);
         }

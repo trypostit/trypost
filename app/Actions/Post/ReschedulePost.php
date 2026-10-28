@@ -34,7 +34,7 @@ class ReschedulePost
             ], $actor);
         }
 
-        if ($at === null) {
+        if (blank($at)) {
             throw ValidationException::withMessages(['scheduled_at' => __('validation.required', ['attribute' => 'scheduled at'])]);
         }
 
