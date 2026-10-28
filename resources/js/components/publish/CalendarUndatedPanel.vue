@@ -107,9 +107,18 @@ const plainText = (draft: UndatedDraft): string =>
                 preserve-url
             >
                 <div id="calendar-undated-list" class="flex flex-col gap-2">
+                    <template v-for="draft in drafts" :key="draft.id">
+                    <span
+                        :id="`${HINT_ID_PREFIX}${draft.id}`"
+                        class="sr-only"
+                        :data-testid="`calendar-drag-hint-${draft.id}`"
+                        >{{
+                            $t('calendar.reschedule.drag_hint_undated', {
+                                channel: channelLabel(draft),
+                            })
+                        }}</span
+                    >
                     <Link
-                        v-for="draft in drafts"
-                        :key="draft.id"
                         v-calendar-post="draft"
                         :href="editPost.url(draft.id)"
                         class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
@@ -120,16 +129,6 @@ const plainText = (draft: UndatedDraft): string =>
                         "
                         :data-testid="`calendar-undated-${draft.id}`"
                     >
-                        <span
-                            :id="`${HINT_ID_PREFIX}${draft.id}`"
-                            class="sr-only"
-                            :data-testid="`calendar-drag-hint-${draft.id}`"
-                            >{{
-                                $t('calendar.reschedule.drag_hint_undated', {
-                                    channel: channelLabel(draft),
-                                })
-                            }}</span
-                        >
                         <div class="flex min-w-0 items-center gap-2">
                             <img
                                 v-if="draft.platform"
@@ -165,6 +164,7 @@ const plainText = (draft: UndatedDraft): string =>
                             />
                         </div>
                     </Link>
+                    </template>
                 </div>
 
                 <template #next="{ loading }">

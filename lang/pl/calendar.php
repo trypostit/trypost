@@ -44,7 +44,7 @@ return [
         'drag_hint' => 'Przeciągnij, aby zmienić termin',
         'drag_hint_undated' => 'Przeciągnij szkic bez daty dla :channel, aby go zaplanować',
         'announce' => [
-            'over' => 'element zaplanowany na :from znajduje się nad: :target.',
+            'over' => 'element zaplanowany na :from znajduje się nad :target.',
             'moved' => 'element zaplanowany na :from przeniesiono na :to.',
             'returned' => 'Element wrócił na pierwotne miejsce.',
             'undated' => 'element zaplanowany na :from upuszczono w sekcji Bez daty.',

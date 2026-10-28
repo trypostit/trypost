@@ -208,6 +208,7 @@ export const useCalendarDrag = (
             node.removeAttribute('id');
         });
         copy.removeAttribute('id');
+        copy.removeAttribute('aria-describedby');
         copy.removeAttribute(DRAGGABLE_ATTRIBUTE);
         copy.setAttribute('aria-hidden', 'true');
         copy.dataset.testid = 'calendar-drag-preview';

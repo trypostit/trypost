@@ -1259,6 +1259,9 @@ test('every draggable card describes how to drag it', function () {
 
     $describe = fn (string $selector): ?string => $page->script("(() => { const id = document.querySelector('[data-testid=\"{$selector}\"]').getAttribute('aria-describedby'); return id ? document.getElementById(id)?.textContent.trim() ?? null : null; })()");
 
+    $linkText = $page->script("document.querySelector('[data-testid=\"calendar-undated-{$draft->id}\"]').textContent");
+    expect($linkText)->not->toContain(__('calendar.reschedule.drag_hint_undated', ['channel' => $channel->display_label]));
+
     expect($describe("calendar-post-{$post->id}"))->toBe(__('calendar.reschedule.drag_hint'))
         ->and($describe("calendar-undated-{$draft->id}"))->toBe(__('calendar.reschedule.drag_hint_undated', ['channel' => $channel->display_label]));
     $page->assertNoJavaScriptErrors();
