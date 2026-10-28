@@ -41,6 +41,10 @@ return [
             'confirm' => '移到自定义时间',
         ],
         'error' => '无法移动此帖子。请重试。',
+        'errors' => [
+            'past' => '这个时间已经过去了。请选择更晚的时间。',
+            'required' => '请为这条帖子选择时间。',
+        ],
         'drag_hint' => '拖动以改期',
         'drag_hint_undated' => '拖动 :channel 的无日期草稿以安排时间',
         'announce' => [

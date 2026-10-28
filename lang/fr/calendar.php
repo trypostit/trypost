@@ -41,6 +41,10 @@ return [
             'confirm' => 'Déplacer à l\'heure choisie',
         ],
         'error' => 'Impossible de déplacer cette publication. Réessayez.',
+        'errors' => [
+            'past' => 'Cette heure est déjà passée. Choisissez une heure plus tardive.',
+            'required' => 'Choisissez une heure pour cette publication.',
+        ],
         'drag_hint' => 'Faites glisser pour reprogrammer',
         'drag_hint_undated' => 'Faites glisser le brouillon sans date de :channel pour le programmer',
         'announce' => [

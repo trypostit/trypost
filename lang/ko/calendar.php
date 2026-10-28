@@ -41,6 +41,10 @@ return [
             'confirm' => '지정 시간으로 이동',
         ],
         'error' => '게시물을 이동하지 못했습니다. 다시 시도해 주세요.',
+        'errors' => [
+            'past' => '이미 지난 시간입니다. 이후 시간을 선택하세요.',
+            'required' => '이 게시물의 시간을 선택하세요.',
+        ],
         'drag_hint' => '끌어서 일정 변경',
         'drag_hint_undated' => ':channel의 날짜 없는 임시 저장 글을 끌어서 예약',
         'announce' => [

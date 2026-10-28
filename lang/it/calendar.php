@@ -41,6 +41,10 @@ return [
             'confirm' => 'Sposta all\'orario scelto',
         ],
         'error' => 'Impossibile spostare questo post. Riprova.',
+        'errors' => [
+            'past' => 'Questo orario è già passato. Scegli un orario successivo.',
+            'required' => 'Scegli un orario per questo post.',
+        ],
         'drag_hint' => 'Trascina per riprogrammare',
         'drag_hint_undated' => 'Trascina la bozza senza data di :channel per programmarla',
         'announce' => [

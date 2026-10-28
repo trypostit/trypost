@@ -41,6 +41,10 @@ return [
             'confirm' => 'Özel saate taşı',
         ],
         'error' => 'Gönderi taşınamadı. Tekrar deneyin.',
+        'errors' => [
+            'past' => 'Bu saat geçti. Daha sonraki bir saat seçin.',
+            'required' => 'Bu gönderi için bir saat seçin.',
+        ],
         'drag_hint' => 'Taşımak için sürükleyin',
         'drag_hint_undated' => ':channel için tarihsiz taslağı planlamak üzere sürükleyin',
         'announce' => [

@@ -41,6 +41,10 @@ return [
             'confirm' => 'Użyj tej godziny',
         ],
         'error' => 'Nie udało się przenieść wpisu. Spróbuj ponownie.',
+        'errors' => [
+            'past' => 'Ta godzina już minęła. Wybierz późniejszą godzinę.',
+            'required' => 'Wybierz godzinę dla tego wpisu.',
+        ],
         'drag_hint' => 'Przeciągnij, aby zmienić termin',
         'drag_hint_undated' => 'Przeciągnij szkic bez daty dla :channel, aby go zaplanować',
         'announce' => [

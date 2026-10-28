@@ -41,6 +41,10 @@ return [
             'confirm' => 'Eigen tijd gebruiken',
         ],
         'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
+        'errors' => [
+            'past' => 'Deze tijd is al voorbij. Kies een latere tijd.',
+            'required' => 'Kies een tijd voor dit bericht.',
+        ],
         'drag_hint' => 'Sleep om te verplaatsen',
         'drag_hint_undated' => 'Sleep het concept zonder datum voor :channel om te plannen',
         'announce' => [

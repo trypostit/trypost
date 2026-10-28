@@ -635,7 +635,7 @@ test('a post published meanwhile goes back and the reason is shown', function ()
     $page->assertNoJavaScriptErrors();
 });
 
-test('a refused time shows the calendar error, not the raw validation message', function () {
+test('a time that passed meanwhile is refused with the reason', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
     $key = $day->format('Y-m-d');
@@ -652,10 +652,48 @@ test('a refused time shows the calendar error, not the raw validation message', 
     waitFor($page, '@calendar-reschedule-error-toast');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.error'));
+    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.errors.past'));
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
+});
+
+test('two drops in a row both land', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $first = calendarDragPost($channel, $day->setTime(10, 0));
+    $second = calendarDragPost($channel, $day->setTime(11, 0));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    calendarDragAssertLive($page, "@calendar-post-{$first->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$second->id}");
+    calendarDragWatchAnnouncer($page);
+
+    calendarGesture($page, <<<JS
+        query('@calendar-slot-{$key}-11').scrollIntoView({ block: 'center' });
+        const first = center('@calendar-post-{$first->id}');
+        const second = center('@calendar-post-{$second->id}');
+        const target = center('@calendar-slot-{$key}-12');
+        fire('pointerdown', first);
+        fire('pointermove', target);
+        fire('pointerup', target);
+        fire('pointerdown', second);
+        fire('pointermove', target);
+        fire('pointerup', target);
+    JS);
+    waitFor($page, "@calendar-slot-{$key}-12 @calendar-post-{$first->id}");
+    waitFor($page, "@calendar-slot-{$key}-12 @calendar-post-{$second->id}");
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    expect($first->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue()
+        ->and($second->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue()
+        ->and(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-12")
+        ->and(calendarDragCellOf($page, $second))->toBe("calendar-slot-{$key}-12")
+        ->and(calendarDragAnnouncements($page))->not->toContain(__('calendar.reschedule.announce.returned'));
+    $page->assertMissing('@calendar-reschedule-error-toast')
+        ->assertNoJavaScriptErrors();
 });
 
 test('a move by a member who needs approval says it was sent for approval', function () {

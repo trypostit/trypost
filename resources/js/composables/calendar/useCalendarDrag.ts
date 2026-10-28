@@ -338,6 +338,7 @@ export const useCalendarDrag = (
                 scheduled_at: scheduledAt,
             },
             {
+                async: true,
                 preserveScroll: true,
                 preserveState: true,
                 only: [...options.reloadProps, 'flash'],
@@ -370,8 +371,8 @@ export const useCalendarDrag = (
                         testId: 'calendar-reschedule-success-toast',
                     });
                 },
-                onError: () => {
-                    fail();
+                onError: (errors) => {
+                    fail(Object.values(errors)[0]);
                 },
                 onHttpException: () => fail(),
                 onNetworkError: () => fail(),

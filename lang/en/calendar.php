@@ -41,6 +41,10 @@ return [
             'confirm' => 'Move to custom time',
         ],
         'error' => 'Couldn\'t move this post. Try again.',
+        'errors' => [
+            'past' => 'This time has already passed. Pick a later time.',
+            'required' => 'Pick a time for this post.',
+        ],
         'drag_hint' => 'Drag to reschedule',
         'drag_hint_undated' => 'Drag No Date draft for :channel to schedule',
         'announce' => [

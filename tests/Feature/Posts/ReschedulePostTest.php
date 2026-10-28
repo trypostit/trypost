@@ -179,14 +179,14 @@ test('reschedule with a null time removes a draft date', function () {
         ->and($draft->scheduled_at)->toBeNull();
 });
 
-test('reschedule with a null time is refused for a scheduled post', function () {
+test('reschedule with a null time is refused for a scheduled post and asks for a time', function () {
     $post = rescheduleCustom($this->channel, $this->user);
     $at = $post->scheduled_at->toIso8601String();
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null])
         ->assertRedirect()
-        ->assertSessionHasErrors('scheduled_at');
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.required')]);
 
     $post->refresh();
 
@@ -194,14 +194,14 @@ test('reschedule with a null time is refused for a scheduled post', function () 
         ->and($post->scheduled_at->toIso8601String())->toBe($at);
 });
 
-test('reschedule refuses a past instant', function () {
+test('reschedule refuses a past instant and asks for a later time', function () {
     $post = rescheduleCustom($this->channel, $this->user);
     $at = $post->scheduled_at->toIso8601String();
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => now()->subMinute()->toIso8601String()])
         ->assertRedirect()
-        ->assertSessionHasErrors('scheduled_at');
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.past')]);
 
     expect($post->fresh()->scheduled_at->toIso8601String())->toBe($at);
 });

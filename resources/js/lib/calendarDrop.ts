@@ -39,9 +39,13 @@ const instantOnDay = (
         : `${DRAFT_DAY_CLOCK}:00`;
     const instant = dayjs.tz(`${dayKey}T${clock}`, timezone);
 
-    return instant.isAfter(now)
-        ? instant
-        : now.add(5, 'minute').startOf('minute');
+    if (instant.isAfter(now)) {
+        return instant;
+    }
+
+    const soon = now.add(5, 'minute').startOf('minute');
+
+    return soon.tz(timezone).format('YYYY-MM-DD') === dayKey ? soon : undefined;
 };
 
 const isInHourOf = (post: PostCard, at: string): boolean => {

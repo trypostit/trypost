@@ -33,4 +33,15 @@ class UpdatePostScheduleRequest extends FormRequest
             ],
         ];
     }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'scheduled_at.after' => __('calendar.reschedule.errors.past'),
+            'scheduled_at.required' => __('calendar.reschedule.errors.required'),
+        ];
+    }
 }

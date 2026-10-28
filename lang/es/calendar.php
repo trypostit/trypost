@@ -41,6 +41,10 @@ return [
             'confirm' => 'Usar esta hora',
         ],
         'error' => 'No se pudo mover esta publicación. Inténtalo de nuevo.',
+        'errors' => [
+            'past' => 'Esa hora ya pasó. Elige una hora posterior.',
+            'required' => 'Elige una hora para esta publicación.',
+        ],
         'drag_hint' => 'Arrastra para reprogramar',
         'drag_hint_undated' => 'Arrastra el borrador sin fecha de :channel para programarlo',
         'announce' => [

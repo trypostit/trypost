@@ -41,6 +41,10 @@ return [
             'confirm' => 'Eigene Zeit nutzen',
         ],
         'error' => 'Beitrag konnte nicht verschoben werden. Versuche es erneut.',
+        'errors' => [
+            'past' => 'Diese Zeit ist bereits vorbei. Wähle eine spätere Zeit.',
+            'required' => 'Wähle eine Zeit für diesen Beitrag.',
+        ],
         'drag_hint' => 'Zum Verschieben ziehen',
         'drag_hint_undated' => 'Entwurf ohne Datum für :channel zum Planen ziehen',
         'announce' => [

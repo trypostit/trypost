@@ -41,6 +41,10 @@ return [
             'confirm' => 'Usar este horário',
         ],
         'error' => 'Não foi possível mover este post. Tente novamente.',
+        'errors' => [
+            'past' => 'Esse horário já passou. Escolha um horário mais tarde.',
+            'required' => 'Escolha um horário para este post.',
+        ],
         'drag_hint' => 'Arraste para reagendar',
         'drag_hint_undated' => 'Arraste o rascunho sem data de :channel para agendar',
         'announce' => [
