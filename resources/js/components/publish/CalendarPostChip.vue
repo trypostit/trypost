@@ -11,7 +11,10 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
+import {
+    HINT_ID_PREFIX,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
@@ -135,6 +138,12 @@ const scheduleMode = computed(() =>
                 />
             </Presence>
         </Teleport>
+        <span
+            :id="`${HINT_ID_PREFIX}${post.id}`"
+            class="sr-only"
+            :data-testid="`calendar-drag-hint-${post.id}`"
+            >{{ $t('calendar.reschedule.drag_hint') }}</span
+        >
         <PopoverTrigger as-child>
             <button
                 v-calendar-post="post"

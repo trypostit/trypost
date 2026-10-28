@@ -41,5 +41,21 @@ return [
             'confirm' => 'Mover para este horário',
         ],
         'error' => 'Não foi possível mover este post. Tente novamente.',
+        'drag_hint' => 'Arraste para reagendar',
+        'drag_hint_undated' => 'Arraste o rascunho sem data de :channel para agendar',
+        'announce' => [
+            'over' => 'item agendado para :from está sobre :target.',
+            'moved' => 'item agendado para :from foi reagendado para :to.',
+            'returned' => 'O item voltou à posição original.',
+            'undated' => 'item agendado para :from foi solto em Sem data.',
+            'from_undated' => 'O rascunho sem data de :channel foi agendado para :to.',
+            'date_time' => ':date às :time',
+        ],
+        'toast' => [
+            'moved' => 'Seu post foi reagendado para :time.',
+            'moved_draft' => 'Seu rascunho foi reagendado para :time.',
+            'undated' => 'Seu rascunho foi movido para Sem data.',
+            'unqueued_suffix' => 'O horário da fila ficou livre de novo.',
+        ],
     ],
 ];

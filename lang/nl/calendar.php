@@ -41,5 +41,21 @@ return [
             'confirm' => 'Naar eigen tijd verplaatsen',
         ],
         'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
+        'drag_hint' => 'Sleep om te verplaatsen',
+        'drag_hint_undated' => 'Sleep het concept zonder datum voor :channel om te plannen',
+        'announce' => [
+            'over' => 'item gepland voor :from staat boven :target.',
+            'moved' => 'item gepland voor :from is verplaatst naar :to.',
+            'returned' => 'Item is teruggezet op de oorspronkelijke plek.',
+            'undated' => 'item gepland voor :from is neergezet op Geen datum.',
+            'from_undated' => 'Concept zonder datum voor :channel is gepland voor :to.',
+            'date_time' => ':date om :time',
+        ],
+        'toast' => [
+            'moved' => 'Je bericht is verplaatst naar :time.',
+            'moved_draft' => 'Je concept is verplaatst naar :time.',
+            'undated' => 'Je concept is verplaatst naar Geen datum.',
+            'unqueued_suffix' => 'Het wachtrijslot is weer vrij.',
+        ],
     ],
 ];

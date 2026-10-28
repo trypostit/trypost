@@ -674,6 +674,7 @@ test('a move by a member who needs approval says it was sent for approval', func
     calendarDragFinished($page);
 
     $page->assertSeeIn('@calendar-reschedule-approval-toast', __('posts.approvals.requested'));
+    expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0);
     expect($post->refresh()->status)->toBe(PostStatus::PendingApproval);
     $page->assertNoJavaScriptErrors();
 });
@@ -1017,4 +1018,301 @@ test('a drag ends when the window loses focus or the mouse button is already up'
         ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
+});
+
+function calendarDragWatchAnnouncer(mixed $page): void
+{
+    $page->script(<<<'JS'
+        window.__announcements = [];
+        new MutationObserver(() => {
+            const text = document.querySelector('[data-testid="calendar-drag-announcer"]').textContent.trim();
+
+            if (text !== '') {
+                window.__announcements.push(text);
+            }
+        }).observe(document.querySelector('[data-testid="calendar-drag-announcer"]'), { childList: true, characterData: true, subtree: true });
+    JS);
+}
+
+/**
+ * @return list<string>
+ */
+function calendarDragAnnouncements(mixed $page): array
+{
+    return $page->script('window.__announcements');
+}
+
+function calendarDragWhen(CarbonImmutable $at, bool $dateOnly = false): string
+{
+    return $dateOnly
+        ? $at->format('D, F j')
+        : __('calendar.reschedule.announce.date_time', ['date' => $at->format('D, F j'), 'time' => $at->format('g:i A')]);
+}
+
+function calendarDragPlay(mixed $page, string $post, string $to): void
+{
+    calendarGesture($page, <<<JS
+        query('{$post}').scrollIntoView({ block: 'center' });
+        query('{$to}').scrollIntoView({ block: 'nearest' });
+        await down(center('{$post}'));
+        await move(center('{$to}'));
+        await up(center('{$to}'));
+    JS);
+}
+
+test('a drop in the week view announces the target once and then the move once', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $from = $day->setTime(10, 30);
+    $to = $day->setTime(12, 0);
+    $post = calendarDragPost($channel, $from);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitFor($page, "@calendar-slot-{$key}-12 @calendar-post-{$post->id}");
+    calendarDragFinished($page);
+
+    expect(calendarDragAnnouncements($page))->toBe([
+        __('calendar.reschedule.announce.over', ['from' => calendarDragWhen($from), 'target' => calendarDragWhen($to)]),
+        __('calendar.reschedule.announce.moved', ['from' => calendarDragWhen($from), 'to' => calendarDragWhen($to)]),
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a month drop announces the date only for the target', function () {
+    [$user, $channel] = calendarDragSetup();
+    $from = now('UTC')->startOfMonth()->addMonth()->addDays(3)->setTime(14, 35);
+    $to = $from->addDays(2);
+    $post = calendarDragPost($channel, $from);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $from->format('Y-m-d')]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-day-{$to->format('Y-m-d')}");
+    waitFor($page, "@calendar-day-{$to->format('Y-m-d')} @calendar-post-{$post->id}");
+    calendarDragFinished($page);
+
+    expect(calendarDragAnnouncements($page))->toBe([
+        __('calendar.reschedule.announce.over', ['from' => calendarDragWhen($from), 'target' => calendarDragWhen($to, dateOnly: true)]),
+        __('calendar.reschedule.announce.moved', ['from' => calendarDragWhen($from), 'to' => calendarDragWhen($to, dateOnly: true)]),
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a drag released outside every target returns the card and announces it once', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $from = $day->setTime(10, 30);
+    $post = calendarDragPost($channel, $from);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+
+    calendarGesture($page, <<<JS
+        query('@calendar-slot-{$key}-12').scrollIntoView({ block: 'center' });
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+        await move({ x: 2, y: 2 });
+        await up({ x: 2, y: 2 });
+    JS);
+    waitForGone($page, '@calendar-drag-preview');
+
+    expect(calendarDragAnnouncements($page))->toBe([
+        __('calendar.reschedule.announce.over', ['from' => calendarDragWhen($from), 'target' => calendarDragWhen($day->setTime(12, 0))]),
+        __('calendar.reschedule.announce.returned'),
+    ])
+        ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($from))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('Esc announces that the card went back, once', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+
+    calendarGesture($page, <<<JS
+        query('@calendar-slot-{$key}-12').scrollIntoView({ block: 'center' });
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+    JS);
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+    calendarGesture($page, "await up(center('@calendar-slot-{$key}-12'));");
+
+    $announcements = calendarDragAnnouncements($page);
+    expect($announcements)->toHaveCount(2)
+        ->and($announcements[1])->toBe(__('calendar.reschedule.announce.returned'));
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the No Date panel highlights for a scheduled post, refuses it and announces the return', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $from = $day->setTime(10, 0);
+    $post = calendarDragPost($channel, $from);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    waitFor($page, '@calendar-undated-empty');
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+
+    $highlighted = calendarGesture($page, <<<JS
+        query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-undated-panel'));
+        const highlighted = query('@calendar-undated-panel').classList.contains('border-primary');
+        await up(center('@calendar-undated-panel'));
+
+        return highlighted;
+    JS);
+    waitForGone($page, '@calendar-drag-preview');
+
+    expect($highlighted)->toBeTrue()
+        ->and(calendarDragAnnouncements($page))->toBe([__('calendar.reschedule.announce.returned')])
+        ->and($post->refresh()->scheduled_at->equalTo($from))->toBeTrue();
+    expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('dropping a dated draft on No Date announces it and toasts', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $from = $day->setTime(10, 0);
+    $draft = calendarDragPost($channel, $from, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-post-{$draft->id}");
+    waitFor($page, '@calendar-undated-empty');
+    calendarDragAssertLive($page, "@calendar-post-{$draft->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-post-{$draft->id}", '@calendar-undated-panel');
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    calendarDragFinished($page);
+
+    expect(calendarDragAnnouncements($page))->toBe([
+        __('calendar.reschedule.announce.over', ['from' => calendarDragWhen($from), 'target' => __('calendar.no_date')]),
+        __('calendar.reschedule.announce.undated', ['from' => calendarDragWhen($from)]),
+    ]);
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.undated'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a draft from the No Date panel announces its channel and new time and toasts as a draft', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $to = $day->setTime(11, 0);
+    $draft = calendarDragPost($channel, null, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    calendarDragAssertLive($page, "@calendar-undated-{$draft->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-undated-{$draft->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, "@calendar-slot-{$key}-11 @calendar-post-{$draft->id}");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    calendarDragFinished($page);
+
+    expect(calendarDragAnnouncements($page))->toBe([
+        __('calendar.reschedule.announce.from_undated', ['channel' => $channel->display_label, 'to' => calendarDragWhen($to)]),
+    ]);
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved_draft', ['time' => calendarDragWhen($to)]))
+        ->assertNoJavaScriptErrors();
+});
+
+test('every draggable card describes how to drag it', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(10, 0));
+    $draft = calendarDragPost($channel, null, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-undated-{$draft->id}");
+
+    $describe = fn (string $selector): ?string => $page->script("(() => { const id = document.querySelector('[data-testid=\"{$selector}\"]').getAttribute('aria-describedby'); return id ? document.getElementById(id)?.textContent.trim() ?? null : null; })()");
+
+    expect($describe("calendar-post-{$post->id}"))->toBe(__('calendar.reschedule.drag_hint'))
+        ->and($describe("calendar-undated-{$draft->id}"))->toBe(__('calendar.reschedule.drag_hint_undated', ['channel' => $channel->display_label]));
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a moved post toasts its new time', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitFor($page, '@calendar-reschedule-success-toast');
+
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved', ['time' => calendarDragWhen($day->setTime(12, 0))]))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a month move toasts the date only', function () {
+    [$user, $channel] = calendarDragSetup();
+    $from = now('UTC')->startOfMonth()->addMonth()->addDays(3)->setTime(14, 35);
+    $to = $from->addDays(2);
+    $post = calendarDragPost($channel, $from);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $from->format('Y-m-d')]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-day-{$to->format('Y-m-d')}");
+    waitFor($page, '@calendar-reschedule-success-toast');
+
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved', ['time' => calendarDragWhen($to, dateOnly: true)]))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a queued post that leaves the queue says its slot is free again', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitFor($page, '@calendar-custom-time-dialog');
+    $page->click('@calendar-custom-time-confirm');
+    waitFor($page, '@calendar-reschedule-success-toast');
+
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved', ['time' => calendarDragWhen($day->setTime(12, 0))]).' '.__('calendar.reschedule.toast.unqueued_suffix'))
+        ->assertNoJavaScriptErrors();
 });

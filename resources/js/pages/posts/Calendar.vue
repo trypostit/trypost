@@ -7,6 +7,7 @@ import {
     IconPlus,
 } from '@tabler/icons-vue';
 import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
+import { trans } from 'laravel-vue-i18n';
 import {
     computed,
     onMounted,
@@ -41,6 +42,7 @@ import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import {
     deletePostCardKey,
     postCardLabelsKey,
@@ -52,6 +54,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
 import { calendar } from '@/routes/app';
 import {
@@ -176,12 +179,119 @@ const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
     customTimeDialog.value?.confirm(from, to, timezone.value) ??
     Promise.resolve(false);
 
+const announcement = ref('');
+let lastOverAnnouncement = '';
+
+const describeAt = (at: string, dateOnly: boolean): string => {
+    const day = dayjs
+        .utc(at)
+        .tz(timezone.value)
+        .locale(activeLocale.value.toLowerCase())
+        .format('ddd, MMMM D');
+
+    return dateOnly
+        ? day
+        : trans('calendar.reschedule.announce.date_time', {
+              date: day,
+              time: date.formatTimeInTimezone(at, timezone.value),
+          });
+};
+
+const describeInstant = (at: string, target: CalendarDropTarget): string =>
+    describeAt(at, target.kind === 'day');
+
+const describeTarget = (target: CalendarDropTarget): string => {
+    switch (target.kind) {
+        case 'undated':
+            return trans('calendar.no_date');
+        case 'day':
+            return describeAt(
+                dayjs.tz(target.dayKey, timezone.value).utc().format(),
+                true,
+            );
+        default:
+            return describeAt(target.at, false);
+    }
+};
+
+const announce = (message: string): void => {
+    lastOverAnnouncement = '';
+    announcement.value = message;
+};
+
+const announceOver = (
+    post: PostCard,
+    target: CalendarDropTarget | null,
+    accepts: boolean,
+): void => {
+    if (!target || !accepts || !post.scheduled_at) {
+        return;
+    }
+
+    const message = trans('calendar.reschedule.announce.over', {
+        from: describeAt(post.scheduled_at, false),
+        target: describeTarget(target),
+    });
+
+    if (message === lastOverAnnouncement) {
+        return;
+    }
+
+    lastOverAnnouncement = message;
+    announcement.value = message;
+};
+
+const announceDrop = (
+    post: PostCard,
+    target: CalendarDropTarget,
+    scheduledAt: string | null,
+): void => {
+    if (scheduledAt === null) {
+        announce(
+            trans('calendar.reschedule.announce.undated', {
+                from: describeAt(post.scheduled_at ?? '', false),
+            }),
+        );
+
+        return;
+    }
+
+    const to = describeInstant(scheduledAt, target);
+
+    announce(
+        post.scheduled_at
+            ? trans('calendar.reschedule.announce.moved', {
+                  from: describeAt(post.scheduled_at, false),
+                  to,
+              })
+            : trans('calendar.reschedule.announce.from_undated', {
+                  channel:
+                      post.social_account?.display_label ??
+                      (post.platform ? getPlatformLabel(post.platform) : ''),
+                  to,
+              }),
+    );
+};
+
+const clearAnnouncement = (): void => {
+    lastOverAnnouncement = '';
+    announcement.value = '';
+};
+
+const announceReturn = (): void =>
+    announce(trans('calendar.reschedule.announce.returned'));
+
 const calendarDrag = useCalendarDrag({
     timezone,
     now,
     canCreatePost,
     reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
     confirmCustomTime,
+    describeInstant,
+    onDragStart: clearAnnouncement,
+    onOver: announceOver,
+    onDrop: announceDrop,
+    onCancel: announceReturn,
     onMoved: () => {
         if (showSlots.value) {
             refreshSlots();
@@ -971,6 +1081,15 @@ const goToDay = (key: string): void => {
     </AppLayout>
 
     <CalendarCustomTimeDialog ref="customTimeDialog" />
+
+    <div
+        class="sr-only"
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="calendar-drag-announcer"
+    >
+        {{ announcement }}
+    </div>
 
     <ConfirmDeleteModal
         ref="deleteModal"

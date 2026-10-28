@@ -41,5 +41,21 @@ return [
             'confirm' => '移到自定义时间',
         ],
         'error' => '无法移动此帖子。请重试。',
+        'drag_hint' => '拖动以改期',
+        'drag_hint_undated' => '拖动 :channel 的无日期草稿以安排时间',
+        'announce' => [
+            'over' => '计划在 :from 的项目正位于 :target 上方。',
+            'moved' => '计划在 :from 的项目已改期至 :to。',
+            'returned' => '项目已放回原位置。',
+            'undated' => '计划在 :from 的项目已放入无日期。',
+            'from_undated' => ':channel 的无日期草稿已安排在 :to。',
+            'date_time' => ':date :time',
+        ],
+        'toast' => [
+            'moved' => '你的帖子已改期至 :time。',
+            'moved_draft' => '你的草稿已改期至 :time。',
+            'undated' => '你的草稿已移到无日期。',
+            'unqueued_suffix' => '队列时段已重新空出。',
+        ],
     ],
 ];

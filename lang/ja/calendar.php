@@ -41,5 +41,21 @@ return [
             'confirm' => '指定の時刻に移動',
         ],
         'error' => '投稿を移動できませんでした。もう一度お試しください。',
+        'drag_hint' => 'ドラッグして予定を変更',
+        'drag_hint_undated' => ':channel の日付なしの下書きをドラッグして予約',
+        'announce' => [
+            'over' => ':from に予定されている項目が :target の上にあります。',
+            'moved' => ':from に予定されていた項目を :to に変更しました。',
+            'returned' => '項目を元の位置に戻しました。',
+            'undated' => ':from に予定されていた項目を「日付なし」に移しました。',
+            'from_undated' => ':channel の日付なしの下書きを :to に予約しました。',
+            'date_time' => ':date :time',
+        ],
+        'toast' => [
+            'moved' => '投稿を :time に変更しました。',
+            'moved_draft' => '下書きを :time に変更しました。',
+            'undated' => '下書きを「日付なし」に移しました。',
+            'unqueued_suffix' => 'キューの枠が再び空きました。',
+        ],
     ],
 ];

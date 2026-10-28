@@ -94,6 +94,7 @@ const PREVIEW_CLASSES = [
     'opacity-80',
     'rotate-[2.765deg]',
 ];
+export const HINT_ID_PREFIX = 'calendar-drag-hint-';
 const GRABBING_CLASS = 'cursor-grabbing';
 
 export const calendarTargetKey = (target: CalendarDropTarget): string => {
@@ -161,6 +162,7 @@ export const useCalendarDrag = (
         canCreatePost: Readonly<Ref<boolean>>;
         reloadProps: string[];
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
+        describeInstant: (at: string, target: CalendarDropTarget) => string;
     } & CalendarDragLifecycle,
 ): CalendarDrag => {
     const overTarget = ref<string | null>(null);
@@ -265,6 +267,29 @@ export const useCalendarDrag = (
         });
     };
 
+    const successMessage = (
+        post: PostCard,
+        target: CalendarDropTarget,
+        scheduledAt: string | null,
+    ): string => {
+        if (scheduledAt === null) {
+            return trans('calendar.reschedule.toast.undated');
+        }
+
+        const time = options.describeInstant(scheduledAt, target);
+        const message = trans(
+            post.status === PostStatus.Draft
+                ? 'calendar.reschedule.toast.moved_draft'
+                : 'calendar.reschedule.toast.moved',
+            { time },
+        );
+
+        return post.status === PostStatus.Scheduled &&
+            post.schedule_mode === ScheduleMode.Queue
+            ? `${message} ${trans('calendar.reschedule.toast.unqueued_suffix')}`
+            : message;
+    };
+
     const move = async (
         post: PostCard,
         target: CalendarDropTarget,
@@ -309,7 +334,13 @@ export const useCalendarDrag = (
                         toast.success(trans('posts.approvals.requested'), {
                             testId: 'calendar-reschedule-approval-toast',
                         });
+
+                        return;
                     }
+
+                    toast.success(successMessage(post, target, scheduledAt), {
+                        testId: 'calendar-reschedule-success-toast',
+                    });
                 },
                 onError: () => {
                     failed = true;
@@ -653,6 +684,7 @@ export const useCalendarDrag = (
         const onDragStart = (event: DragEvent): void => event.preventDefault();
 
         el.setAttribute(DRAGGABLE_ATTRIBUTE, 'true');
+        el.setAttribute('aria-describedby', `${HINT_ID_PREFIX}${post.id}`);
         el.style.setProperty('-webkit-touch-callout', 'none');
         el.style.setProperty('user-select', 'none');
         el.style.setProperty('-webkit-user-select', 'none');
@@ -669,6 +701,7 @@ export const useCalendarDrag = (
 
             posts.delete(el);
             el.removeAttribute(DRAGGABLE_ATTRIBUTE);
+            el.removeAttribute('aria-describedby');
             el.style.removeProperty('-webkit-touch-callout');
             el.style.removeProperty('user-select');
             el.style.removeProperty('-webkit-user-select');

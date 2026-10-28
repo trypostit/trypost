@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { InfiniteScroll, Link } from '@inertiajs/vue3';
 import { IconEdit, IconX } from '@tabler/icons-vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
     calendarTargetKey,
+    HINT_ID_PREFIX,
     useCalendarDragContext,
 } from '@/composables/calendar/useCalendarDrag';
 import {
@@ -38,6 +40,10 @@ const isOver = computed(
 
 const thumbnail = (draft: UndatedDraft): string | null =>
     (draft.media ?? []).find(isImage)?.url ?? null;
+
+const channelLabel = (draft: UndatedDraft): string =>
+    draft.social_account?.display_label ??
+    trans('calendar.undated.no_channel');
 
 const plainText = (draft: UndatedDraft): string =>
     htmlToPlainText(draft.content ?? '').trim();
@@ -114,6 +120,16 @@ const plainText = (draft: UndatedDraft): string =>
                         "
                         :data-testid="`calendar-undated-${draft.id}`"
                     >
+                        <span
+                            :id="`${HINT_ID_PREFIX}${draft.id}`"
+                            class="sr-only"
+                            :data-testid="`calendar-drag-hint-${draft.id}`"
+                            >{{
+                                $t('calendar.reschedule.drag_hint_undated', {
+                                    channel: channelLabel(draft),
+                                })
+                            }}</span
+                        >
                         <div class="flex min-w-0 items-center gap-2">
                             <img
                                 v-if="draft.platform"
@@ -124,10 +140,7 @@ const plainText = (draft: UndatedDraft): string =>
                             <span
                                 class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
                             >
-                                {{
-                                    draft.social_account?.display_label ??
-                                    $t('calendar.undated.no_channel')
-                                }}
+                                {{ channelLabel(draft) }}
                             </span>
                             <Badge variant="info" class="shrink-0">
                                 <IconEdit />

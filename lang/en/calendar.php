@@ -41,5 +41,21 @@ return [
             'confirm' => 'Move to custom time',
         ],
         'error' => 'Couldn\'t move this post. Try again.',
+        'drag_hint' => 'Drag to reschedule',
+        'drag_hint_undated' => 'Drag No Date draft for :channel to schedule',
+        'announce' => [
+            'over' => 'item scheduled for :from is over :target.',
+            'moved' => 'item scheduled for :from was rescheduled to :to.',
+            'returned' => 'Item was dropped back in its original position.',
+            'undated' => 'item scheduled for :from was dropped on No Date.',
+            'from_undated' => 'No Date draft for :channel was scheduled for :to.',
+            'date_time' => ':date at :time',
+        ],
+        'toast' => [
+            'moved' => 'Rescheduled your post for :time.',
+            'moved_draft' => 'Rescheduled your draft for :time.',
+            'undated' => 'Moved your draft to No Date.',
+            'unqueued_suffix' => 'The queue slot is free again.',
+        ],
     ],
 ];

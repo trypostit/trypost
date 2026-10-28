@@ -41,5 +41,21 @@ return [
             'confirm' => 'Sposta all\'orario scelto',
         ],
         'error' => 'Impossibile spostare questo post. Riprova.',
+        'drag_hint' => 'Trascina per riprogrammare',
+        'drag_hint_undated' => 'Trascina la bozza senza data di :channel per programmarla',
+        'announce' => [
+            'over' => 'l\'elemento programmato per :from è sopra :target.',
+            'moved' => 'l\'elemento programmato per :from è stato riprogrammato per :to.',
+            'returned' => 'L\'elemento è tornato nella posizione originale.',
+            'undated' => 'l\'elemento programmato per :from è stato rilasciato su Senza data.',
+            'from_undated' => 'La bozza senza data di :channel è stata programmata per :to.',
+            'date_time' => ':date alle :time',
+        ],
+        'toast' => [
+            'moved' => 'Il tuo post è stato riprogrammato per :time.',
+            'moved_draft' => 'La tua bozza è stata riprogrammata per :time.',
+            'undated' => 'La tua bozza è stata spostata in Senza data.',
+            'unqueued_suffix' => 'Lo slot della coda è di nuovo libero.',
+        ],
     ],
 ];

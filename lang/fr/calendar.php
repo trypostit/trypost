@@ -41,5 +41,21 @@ return [
             'confirm' => 'Déplacer à l\'heure choisie',
         ],
         'error' => 'Impossible de déplacer cette publication. Réessayez.',
+        'drag_hint' => 'Faites glisser pour reprogrammer',
+        'drag_hint_undated' => 'Faites glisser le brouillon sans date de :channel pour le programmer',
+        'announce' => [
+            'over' => 'l\'élément prévu pour :from est au-dessus de :target.',
+            'moved' => 'l\'élément prévu pour :from a été reprogrammé pour :to.',
+            'returned' => 'L\'élément a été remis à sa position d\'origine.',
+            'undated' => 'l\'élément prévu pour :from a été déposé sur Sans date.',
+            'from_undated' => 'Le brouillon sans date de :channel a été programmé pour :to.',
+            'date_time' => ':date à :time',
+        ],
+        'toast' => [
+            'moved' => 'Votre publication a été reprogrammée pour :time.',
+            'moved_draft' => 'Votre brouillon a été reprogrammé pour :time.',
+            'undated' => 'Votre brouillon a été déplacé vers Sans date.',
+            'unqueued_suffix' => 'L\'emplacement de la file est de nouveau libre.',
+        ],
     ],
 ];

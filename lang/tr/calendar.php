@@ -41,5 +41,21 @@ return [
             'confirm' => 'Özel saate taşı',
         ],
         'error' => 'Gönderi taşınamadı. Tekrar deneyin.',
+        'drag_hint' => 'Taşımak için sürükleyin',
+        'drag_hint_undated' => ':channel için tarihsiz taslağı planlamak üzere sürükleyin',
+        'announce' => [
+            'over' => ':from için planlanan öğe :target üzerinde.',
+            'moved' => ':from için planlanan öğe :to tarihine taşındı.',
+            'returned' => 'Öğe özgün konumuna geri bırakıldı.',
+            'undated' => ':from için planlanan öğe Tarihsiz alanına bırakıldı.',
+            'from_undated' => ':channel için tarihsiz taslak :to tarihine planlandı.',
+            'date_time' => ':date, :time',
+        ],
+        'toast' => [
+            'moved' => 'Gönderiniz :time tarihine taşındı.',
+            'moved_draft' => 'Taslağınız :time tarihine taşındı.',
+            'undated' => 'Taslağınız Tarihsiz alanına taşındı.',
+            'unqueued_suffix' => 'Kuyruktaki yer yeniden boş.',
+        ],
     ],
 ];

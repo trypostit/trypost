@@ -41,5 +41,21 @@ return [
             'confirm' => '지정 시간으로 이동',
         ],
         'error' => '게시물을 이동하지 못했습니다. 다시 시도해 주세요.',
+        'drag_hint' => '끌어서 일정 변경',
+        'drag_hint_undated' => ':channel의 날짜 없는 임시 저장 글을 끌어서 예약',
+        'announce' => [
+            'over' => ':from에 예약된 항목이 :target 위에 있습니다.',
+            'moved' => ':from에 예약된 항목을 :to(으)로 변경했습니다.',
+            'returned' => '항목을 원래 위치로 되돌렸습니다.',
+            'undated' => ':from에 예약된 항목을 날짜 없음으로 옮겼습니다.',
+            'from_undated' => ':channel의 날짜 없는 임시 저장 글을 :to에 예약했습니다.',
+            'date_time' => ':date :time',
+        ],
+        'toast' => [
+            'moved' => '게시물을 :time(으)로 변경했습니다.',
+            'moved_draft' => '임시 저장 글을 :time(으)로 변경했습니다.',
+            'undated' => '임시 저장 글을 날짜 없음으로 옮겼습니다.',
+            'unqueued_suffix' => '대기열 자리가 다시 비었습니다.',
+        ],
     ],
 ];

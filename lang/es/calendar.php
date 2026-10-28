@@ -41,5 +41,21 @@ return [
             'confirm' => 'Mover a hora personalizada',
         ],
         'error' => 'No se pudo mover esta publicación. Inténtalo de nuevo.',
+        'drag_hint' => 'Arrastra para reprogramar',
+        'drag_hint_undated' => 'Arrastra el borrador sin fecha de :channel para programarlo',
+        'announce' => [
+            'over' => 'el elemento programado para :from está sobre :target.',
+            'moved' => 'el elemento programado para :from se reprogramó para :to.',
+            'returned' => 'El elemento volvió a su posición original.',
+            'undated' => 'el elemento programado para :from se soltó en Sin fecha.',
+            'from_undated' => 'El borrador sin fecha de :channel se programó para :to.',
+            'date_time' => ':date a las :time',
+        ],
+        'toast' => [
+            'moved' => 'Tu publicación se reprogramó para :time.',
+            'moved_draft' => 'Tu borrador se reprogramó para :time.',
+            'undated' => 'Tu borrador pasó a Sin fecha.',
+            'unqueued_suffix' => 'El hueco de la cola vuelve a estar libre.',
+        ],
     ],
 ];

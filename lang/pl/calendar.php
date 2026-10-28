@@ -41,5 +41,21 @@ return [
             'confirm' => 'Przenieś na własną godzinę',
         ],
         'error' => 'Nie udało się przenieść wpisu. Spróbuj ponownie.',
+        'drag_hint' => 'Przeciągnij, aby zmienić termin',
+        'drag_hint_undated' => 'Przeciągnij szkic bez daty dla :channel, aby go zaplanować',
+        'announce' => [
+            'over' => 'element zaplanowany na :from znajduje się nad: :target.',
+            'moved' => 'element zaplanowany na :from przeniesiono na :to.',
+            'returned' => 'Element wrócił na pierwotne miejsce.',
+            'undated' => 'element zaplanowany na :from upuszczono w sekcji Bez daty.',
+            'from_undated' => 'Szkic bez daty dla :channel zaplanowano na :to.',
+            'date_time' => ':date, :time',
+        ],
+        'toast' => [
+            'moved' => 'Wpis przeniesiono na :time.',
+            'moved_draft' => 'Szkic przeniesiono na :time.',
+            'undated' => 'Szkic przeniesiono do sekcji Bez daty.',
+            'unqueued_suffix' => 'Miejsce w kolejce jest znów wolne.',
+        ],
     ],
 ];
