@@ -674,9 +674,15 @@ test('a move by a member who needs approval says it was sent for approval', func
 
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@calendar-reschedule-approval-toast');
     calendarDragFinished($page);
+
+    $announcements = calendarDragAnnouncements($page);
+    expect(array_slice($announcements, -1))->toBe([__('calendar.reschedule.announce.moved', ['from' => calendarDragWhen($day->setTime(10, 0)), 'to' => calendarDragWhen($day->setTime(11, 0))])])
+        ->and($announcements)->not->toContain(__('calendar.reschedule.announce.returned'));
 
     $page->assertSeeIn('@calendar-reschedule-approval-toast', __('posts.approvals.requested'));
     expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0);

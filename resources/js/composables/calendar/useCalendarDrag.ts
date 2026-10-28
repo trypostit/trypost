@@ -365,7 +365,8 @@ export const useCalendarDrag = (
                             testId: 'calendar-reschedule-approval-toast',
                         });
 
-                        reject();
+                        settled = true;
+                        options.onConfirmed?.(post, target, scheduledAt);
 
                         return;
                     }
