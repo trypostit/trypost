@@ -106,7 +106,7 @@ const plainText = (draft: UndatedDraft): string =>
                         :key="draft.id"
                         v-calendar-post="draft"
                         :href="editPost.url(draft.id)"
-                        class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[draggable=true]]:cursor-grab"
+                        class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
                         :class="
                             draggingPostId === draft.id
                                 ? 'border-transparent bg-secondary *:invisible'

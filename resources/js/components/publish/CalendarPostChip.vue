@@ -145,7 +145,7 @@ const scheduleMode = computed(() =>
                     isDragging
                         ? 'border-transparent bg-muted *:invisible hover:bg-muted'
                         : (STATUS_CLASSES[post.status] ?? ''),
-                    '[&[draggable=true]]:cursor-grab',
+                    '[&[data-calendar-draggable=true]]:cursor-grab',
                     compact
                         ? 'size-7 items-center justify-center'
                         : layout === 'week'

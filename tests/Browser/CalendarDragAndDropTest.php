@@ -95,14 +95,73 @@ function calendarDragOnto(mixed $page, string $from, string $to): void
 
 function calendarDragAssertLive(mixed $page, string $selector): void
 {
-    waitForState($page, $selector, "element.getAttribute('draggable') === 'true'");
+    waitForState($page, $selector, "element.dataset.calendarDraggable === 'true'");
 
-    expect($page->script('document.querySelector('.jsSelector($selector).').getAttribute("draggable")'))->toBe('true');
+    expect($page->script('document.querySelector('.jsSelector($selector).').dataset.calendarDraggable'))->toBe('true');
 }
 
 function calendarDragIsBusy(mixed $page): bool
 {
     return $page->script('document.querySelector(\'[data-testid="calendar-grid"]\').hasAttribute("aria-busy")');
+}
+
+/**
+ * Runs a gesture in the page. Pest drives the mouse only through whole
+ * drags, so partial moves, holds and touch pointers are dispatched as
+ * PointerEvents: `down`, `move` and `up` take a point, `center` and `at`
+ * give one, `pause` waits in the page and `state` reads the drag visuals.
+ */
+function calendarGesture(mixed $page, string $steps, string $pointerType = 'mouse'): mixed
+{
+    return $page->script(<<<JS
+        (async () => {
+            const pointerType = '{$pointerType}';
+            const pointerId = pointerType === 'touch' ? 2 : 1;
+            const query = (selector) => document.querySelector(selector.replace(/@([\w-]+)/g, '[data-testid="$1"]'));
+            const center = (selector) => {
+                const box = query(selector).getBoundingClientRect();
+
+                return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+            };
+            const at = (point, dx = 0, dy = 0) => ({ x: point.x + dx, y: point.y + dy });
+            const fire = (type, point) => (document.elementFromPoint(point.x, point.y) ?? document.body).dispatchEvent(new PointerEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+                pointerId,
+                pointerType,
+                isPrimary: true,
+                button: type === 'pointermove' ? -1 : 0,
+                buttons: type === 'pointerup' ? 0 : 1,
+                clientX: point.x,
+                clientY: point.y,
+            }));
+            const frame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+            const down = async (point) => { fire('pointerdown', point); await frame(); };
+            const move = async (point) => { fire('pointermove', point); await frame(); };
+            const up = async (point) => { fire('pointerup', point); await frame(); };
+            const pause = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+            const touchMovePrevented = (selector) => {
+                const element = query(selector);
+                const box = element.getBoundingClientRect();
+                const touch = new Touch({ identifier: pointerId, target: element, clientX: box.left + 2, clientY: box.top + 2 });
+                const event = new TouchEvent('touchmove', { bubbles: true, cancelable: true, touches: [touch], targetTouches: [touch], changedTouches: [touch] });
+                element.dispatchEvent(event);
+
+                return event.defaultPrevented;
+            };
+            const state = () => {
+                const preview = query('@calendar-drag-preview');
+
+                return {
+                    dragging: preview !== null,
+                    opacity: preview ? getComputedStyle(preview).opacity : null,
+                    rotated: preview ? getComputedStyle(preview).rotate !== 'none' || getComputedStyle(preview).transform !== 'none' : false,
+                };
+            };
+            {$steps}
+        })()
+    JS);
 }
 
 test('dragging a custom post onto an hour moves it to that hour', function () {
@@ -501,9 +560,9 @@ test('published posts are not draggable', function () {
 
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$movable->id}");
-    waitForState($page, "@calendar-post-{$movable->id}", "element.getAttribute('draggable') === 'true'");
+    waitForState($page, "@calendar-post-{$movable->id}", "element.dataset.calendarDraggable === 'true'");
 
-    $draggable = fn (Post $post): ?string => $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]').getAttribute('draggable')");
+    $draggable = fn (Post $post): ?string => $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]').dataset.calendarDraggable ?? null");
 
     expect($draggable($movable))->toBe('true')
         ->and($draggable($published))->toBeNull()
@@ -679,5 +738,248 @@ test('the custom time dialog footer fits a phone', function () {
     JS);
 
     expect($layout)->toBe(['inside' => true, 'atBottom' => true]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a mouse drag starts only after 4px', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]').scrollIntoView({ block: 'center' })");
+
+    $steps = calendarGesture($page, <<<JS
+        const start = center('@calendar-post-{$post->id}');
+        await down(start);
+        await move(at(start, 3, 0));
+        const short = state();
+        await move(at(start, 5, 0));
+
+        return [short, state()];
+    JS);
+
+    expect($steps[0]['dragging'])->toBeFalse()
+        ->and($steps[1]['dragging'])->toBeTrue();
+
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+    $page->assertMissing('@calendar-drag-preview')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a touch press held 250ms drags the card', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day))->on()->iPadPro()->resize(1024, 1366);
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-slot-{$key}-12\"]').scrollIntoView({ block: 'center' })");
+
+    $steps = calendarGesture($page, <<<JS
+        const start = center('@calendar-post-{$post->id}');
+        await down(start);
+        await move(at(start, 2, 2));
+        await pause(100);
+        const early = state();
+        await pause(250);
+        const held = state();
+        await move(center('@calendar-slot-{$key}-12'));
+        const prevented = touchMovePrevented('@calendar-post-{$post->id}');
+        const touchAction = getComputedStyle(query('@calendar-post-{$post->id}')).touchAction;
+        await up(center('@calendar-slot-{$key}-12'));
+
+        return { early: early.dragging, held: held.dragging, prevented, touchAction };
+    JS, 'touch');
+
+    expect($steps)->toBe(['early' => false, 'held' => true, 'prevented' => true, 'touchAction' => 'none']);
+
+    waitFor($page, "@calendar-slot-{$key}-12 @calendar-post-{$post->id}");
+    calendarDragFinished($page);
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a touch swipe before 250ms scrolls and does not drag', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $at = $day->setTime(10, 30);
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day))->on()->iPadPro()->resize(1024, 1366);
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]').scrollIntoView({ block: 'center' })");
+
+    $steps = calendarGesture($page, <<<JS
+        const start = center('@calendar-post-{$post->id}');
+        const touchAction = getComputedStyle(query('@calendar-post-{$post->id}')).touchAction;
+        await down(start);
+        await pause(50);
+        await move(at(start, 0, -20));
+        const prevented = touchMovePrevented('@calendar-post-{$post->id}');
+        await pause(300);
+        const after = state();
+        await move(center('@calendar-slot-{$key}-12'));
+        const prevented2 = touchMovePrevented('@calendar-post-{$post->id}');
+        await up(center('@calendar-slot-{$key}-12'));
+
+        return { touchAction, prevented: prevented || prevented2, dragging: after.dragging };
+    JS, 'touch');
+
+    expect($steps)->toBe(['touchAction' => 'auto', 'prevented' => false, 'dragging' => false])
+        ->and(calendarDragIsBusy($page))->toBeFalse()
+        ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a tap still opens the post', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day))->on()->iPadPro()->resize(1024, 1366);
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->page()->locator("[data-testid=\"calendar-post-{$post->id}\"]")->tap();
+    waitFor($page, "@calendar-post-popover-{$post->id}");
+
+    $page->assertVisible("@calendar-post-popover-{$post->id}")
+        ->assertMissing('@calendar-drag-preview');
+    $page->keys("@calendar-post-popover-{$post->id}", 'Escape');
+    waitForGone($page, "@calendar-post-overlay-{$post->id}");
+
+    $page->click("@calendar-post-{$post->id}");
+    waitFor($page, "@calendar-post-popover-{$post->id}");
+    $page->assertVisible("@calendar-post-popover-{$post->id}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('mid-drag the preview, placeholder, hovered cell and hovered slot show the drag', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '15:25');
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(13, 30));
+    $other = calendarDragPost($channel, $day->setTime(12, 10));
+    $slotKey = calendarDragSlotKey($channel, $day->setTime(15, 25));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-posting-slot-{$slotKey}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-slot-{$key}-13\"]').scrollIntoView({ block: 'center' })");
+
+    $steps = calendarGesture($page, <<<JS
+        const origin = () => query('@calendar-post-{$post->id}');
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+        const overCell = {
+            ...state(),
+            placeholder: origin().classList.contains('bg-muted') && getComputedStyle(origin().firstElementChild).visibility === 'hidden',
+            cell: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15'),
+            dimmed: getComputedStyle(query('@calendar-post-{$other->id}')).opacity,
+        };
+        await move(center('@calendar-posting-slot-{$slotKey}'));
+        const overSlot = {
+            slot: query('@calendar-posting-slot-{$slotKey}').classList.contains('bg-accent'),
+            cell: query('@calendar-slot-{$key}-15').classList.contains('bg-primary/15'),
+            previous: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15'),
+        };
+
+        return { overCell, overSlot };
+    JS);
+
+    expect($steps['overCell'])->toBe([
+        'dragging' => true,
+        'opacity' => '0.8',
+        'rotated' => true,
+        'placeholder' => true,
+        'cell' => true,
+        'dimmed' => '0.5',
+    ])->and($steps['overSlot'])->toBe(['slot' => true, 'cell' => false, 'previous' => false]);
+
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the grid auto-scrolls near its bottom edge', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(1, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-time-grid\"]').scrollTop = 0");
+
+    $scrolled = calendarGesture($page, <<<JS
+        const grid = query('@calendar-time-grid');
+        const box = grid.getBoundingClientRect();
+        const start = center('@calendar-post-{$post->id}');
+        await down(start);
+        await move({ x: start.x, y: box.bottom - 10 });
+        for (let i = 0; i < 60 && grid.scrollTop === 0; i++) {
+            await pause(50);
+        }
+
+        return grid.scrollTop;
+    JS);
+
+    expect($scrolled)->toBeGreaterThan(0);
+
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('Esc cancels a drag', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $at = $day->setTime(10, 30);
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-slot-{$key}-12\"]').scrollIntoView({ block: 'center' })");
+
+    $over = calendarGesture($page, <<<JS
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+
+        return state().dragging && query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15');
+    JS);
+
+    expect($over)->toBeTrue();
+
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+
+    $after = calendarGesture($page, <<<JS
+        await up(center('@calendar-slot-{$key}-12'));
+
+        return query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15');
+    JS);
+
+    expect($after)->toBeFalse()
+        ->and(calendarDragIsBusy($page))->toBeFalse()
+        ->and(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
