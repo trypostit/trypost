@@ -38,7 +38,7 @@ return [
             'unqueued' => 'Het bericht wordt op de nieuwe tijd gepubliceerd, maar neemt geen plek in je wachtrij in.',
             'dont_show_again' => 'Niet meer tonen',
             'cancel' => 'Annuleren',
-            'confirm' => 'Naar eigen tijd verplaatsen',
+            'confirm' => 'Eigen tijd gebruiken',
         ],
         'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
         'drag_hint' => 'Sleep om te verplaatsen',

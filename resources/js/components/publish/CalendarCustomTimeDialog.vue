@@ -107,7 +107,7 @@ defineExpose({ confirm });
     <AlertDialog :open="isOpen" @update:open="onOpenChange">
         <AlertDialogContent
             disable-outside-pointer-events
-            class="gap-4 px-0 pt-6 pb-4 sm:max-w-[560px]"
+            class="gap-4 px-0 pt-6 pb-4 sm:max-w-[480px]"
             data-testid="calendar-custom-time-dialog"
         >
             <AlertDialogTitle class="px-6 text-base leading-5 font-[550]">
