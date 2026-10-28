@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AlertDialogCancel } from 'reka-ui';
 import { ref } from 'vue';
 
 import {
@@ -87,8 +88,6 @@ const onOpenChange = (value: boolean): void => {
     }
 };
 
-const cancel = (): void => settle(false);
-
 const accept = (): void => {
     if (skipNextTime.value) {
         storeSkip();
@@ -144,13 +143,14 @@ defineExpose({ confirm });
                     />
                     {{ $t('calendar.reschedule.custom_time.dont_show_again') }}
                 </label>
-                <Button
-                    variant="ghost"
-                    data-testid="calendar-custom-time-cancel"
-                    @click="cancel"
-                >
-                    {{ $t('calendar.reschedule.custom_time.cancel') }}
-                </Button>
+                <AlertDialogCancel as-child>
+                    <Button
+                        variant="ghost"
+                        data-testid="calendar-custom-time-cancel"
+                    >
+                        {{ $t('calendar.reschedule.custom_time.cancel') }}
+                    </Button>
+                </AlertDialogCancel>
                 <Button data-testid="calendar-custom-time-confirm" @click="accept">
                     {{ $t('calendar.reschedule.custom_time.confirm') }}
                 </Button>

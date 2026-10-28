@@ -11,7 +11,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * @return array{0: User, 1: SocialAccount}
@@ -160,7 +159,9 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
     waitFor($page, "@calendar-post-{$post->id}");
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@calendar-custom-time-dialog');
+    waitForState($page, '@calendar-custom-time-cancel', 'document.activeElement === element');
 
+    expect($page->script('document.activeElement?.dataset.testid'))->toBe('calendar-custom-time-cancel');
     $page->assertSeeIn('@calendar-custom-time-dialog', __('calendar.reschedule.custom_time.title'))
         ->assertSeeIn('@calendar-custom-time-description', "{$queuedAt->format('M j g:i A')} (UTC)")
         ->assertSeeIn('@calendar-custom-time-description', "{$day->setTime(11, 0)->format('M j g:i A')} (UTC)");
@@ -347,18 +348,19 @@ test('month drop keeps the clock time', function () {
 });
 
 test('month drop on today after that time lands five minutes from now', function () {
-    $timezone = collect(['UTC', 'Asia/Tokyo', 'America/New_York', 'Asia/Kolkata', 'Pacific/Auckland', 'America/Los_Angeles', 'Europe/Berlin'])
-        ->first(fn (string $zone): bool => now($zone)->hour >= 2 && now($zone)->hour <= 21 && ! now($zone)->isLastOfMonth());
-    [$user, $channel] = calendarDragSetup($timezone);
-    $local = now($timezone);
-    $at = $local->addDay()->setTime($local->subHour()->hour, $local->minute)->startOfMinute()->utc();
-    $post = calendarDragPost($channel, $at);
+    [$user, $channel] = calendarDragSetup();
+    $today = now('UTC')->startOfDay();
+    $gridEnd = $today->endOfMonth()->endOfWeek($user->week_starts_on->lastDay())->startOfDay();
+    $post = $today->equalTo($gridEnd)
+        ? calendarDragPost($channel, $today->subDay(), PostStatus::Draft)
+        : calendarDragPost($channel, $today->addDay());
     $this->actingAs($user);
 
-    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $local->format('Y-m-d')]));
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $today->format('Y-m-d')]));
     waitFor($page, "@calendar-post-{$post->id}");
-    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-day-{$local->format('Y-m-d')}");
-    waitFor($page, "@calendar-day-{$local->format('Y-m-d')} @calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-day-{$today->format('Y-m-d')}");
+    waitFor($page, "@calendar-day-{$today->format('Y-m-d')} @calendar-post-{$post->id}");
     calendarDragFinished($page);
 
     $scheduledAt = $post->refresh()->scheduled_at;
@@ -504,24 +506,7 @@ test('a slot taken meanwhile rolls back with an error toast', function () {
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-posting-slot-{$slotKey}");
     waitFor($page, "@calendar-post-{$post->id}");
-
-    $taken = false;
-    Post::retrieved(function (Post $retrieved) use (&$taken, $post, $channel, $slotAt): void {
-        if ($taken || ! $retrieved->is($post)) {
-            return;
-        }
-
-        $probe = Cache::lock("queue:{$channel->id}");
-
-        if ($probe->get()) {
-            $probe->release();
-
-            return;
-        }
-
-        $taken = true;
-        calendarDragPost($channel, $slotAt);
-    });
+    $occupant = calendarDragPost($channel, $slotAt);
 
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-posting-slot-{$slotKey}");
     waitFor($page, '@calendar-reschedule-error-toast');
@@ -531,9 +516,77 @@ test('a slot taken meanwhile rolls back with an error toast', function () {
     waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-09 @calendar-post-{$post->id}");
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$day->format('Y-m-d')}-09");
     $post->refresh();
-    expect($taken)->toBeTrue()
-        ->and($post->scheduled_at->equalTo($queuedAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    expect($post->scheduled_at->equalTo($queuedAt))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue)
+        ->and($occupant->refresh()->scheduled_at->equalTo($slotAt))->toBeTrue();
+    $page->assertMissing('@calendar-custom-time-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a post published meanwhile goes back and the reason is shown', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $at = $day->setTime(10, 0);
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $post->forceFill(['status' => PostStatus::Published, 'published_at' => $at])->save();
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@flash-banner-toast');
+    calendarDragFinished($page);
+
+    $page->assertSeeIn('@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a refused time shows the calendar error, not the raw validation message', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $at = $day->setTime(10, 0);
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $this->travelTo($day->addDays(2));
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-reschedule-error-toast');
+    calendarDragFinished($page);
+
+    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.error'));
+    expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a move by a member who needs approval says it was sent for approval', function () {
+    [$owner, $channel] = calendarDragSetup();
+    $member = User::factory()->create(['account_id' => $owner->account_id, 'timezone' => 'UTC']);
+    $channel->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $channel->workspace_id]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 0), attributes: ['user_id' => $member->id]);
+    $this->actingAs($member);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-reschedule-approval-toast');
+    calendarDragFinished($page);
+
+    $page->assertSeeIn('@calendar-reschedule-approval-toast', __('posts.approvals.requested'));
+    expect($post->refresh()->status)->toBe(PostStatus::PendingApproval);
     $page->assertNoJavaScriptErrors();
 });
 

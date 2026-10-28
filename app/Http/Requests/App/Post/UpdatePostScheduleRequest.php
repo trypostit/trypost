@@ -23,6 +23,7 @@ class UpdatePostScheduleRequest extends FormRequest
         return [
             'action' => ['required', Rule::in(['draft', 'publish_now', 'queue_next', 'queue_top', 'reschedule'])],
             'scheduled_at' => ['exclude_unless:action,reschedule', 'present', 'nullable', 'date', 'after:now'],
+            'keep_in_queue' => ['exclude_unless:action,reschedule', 'sometimes', 'boolean'],
         ];
     }
 }

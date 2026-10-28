@@ -4,6 +4,7 @@ import {
     monitorForElements,
 } from '@atlaskit/pragmatic-drag-and-drop/element/adapter';
 import { disableNativeDragPreview } from '@atlaskit/pragmatic-drag-and-drop/element/disable-native-drag-preview';
+import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import {
@@ -166,33 +167,40 @@ export const useCalendarDrag = (options: {
         document.body.classList.remove(GRABBING_CLASS);
     };
 
+    const staysQueued = (post: PostCard, target: CalendarDropTarget): boolean =>
+        post.status === PostStatus.Scheduled &&
+        post.schedule_mode === ScheduleMode.Queue &&
+        !needsCustomTimeConfirmation(post, target);
+
     const movedPost = (
         post: PostCard,
         target: CalendarDropTarget,
         scheduledAt: string | null,
-    ): CalendarPost => {
-        const staysQueued =
-            post.schedule_mode === ScheduleMode.Queue &&
-            !needsCustomTimeConfirmation(post, target);
-
-        return {
-            ...post,
-            scheduled_at: scheduledAt,
-            calendar_at: scheduledAt ?? '',
-            schedule_mode:
-                post.status === PostStatus.Scheduled
-                    ? staysQueued
-                        ? ScheduleMode.Queue
-                        : ScheduleMode.Custom
-                    : post.schedule_mode,
-        };
-    };
+    ): CalendarPost => ({
+        ...post,
+        scheduled_at: scheduledAt,
+        calendar_at: scheduledAt ?? '',
+        schedule_mode:
+            post.status === PostStatus.Scheduled
+                ? staysQueued(post, target)
+                    ? ScheduleMode.Queue
+                    : ScheduleMode.Custom
+                : post.schedule_mode,
+    });
 
     const forget = (postId: string): void => {
         movedPosts.value = Object.fromEntries(
             Object.entries(movedPosts.value).filter(([id]) => id !== postId),
         );
     };
+
+    const reloadedPost = (page: Page, postId: string): CalendarPost | undefined =>
+        Object.values(
+            (page.props.posts as Record<string, CalendarPost[]> | undefined) ??
+                {},
+        )
+            .flat()
+            .find((reloaded) => reloaded.id === postId);
 
     const rollback = (postId: string, message?: string): void => {
         forget(postId);
@@ -224,21 +232,44 @@ export const useCalendarDrag = (options: {
 
         router.put(
             updatePostSchedule.url(post.id),
-            { action: 'reschedule', scheduled_at: scheduledAt },
+            {
+                action: 'reschedule',
+                scheduled_at: scheduledAt,
+                keep_in_queue: staysQueued(post, target),
+            },
             {
                 preserveScroll: true,
                 preserveState: true,
-                only: options.reloadProps,
+                only: [...options.reloadProps, 'flash'],
                 reset: ['undatedDrafts'],
+                onSuccess: (page) => {
+                    if (
+                        reloadedPost(page, post.id)?.status ===
+                        PostStatus.PendingApproval
+                    ) {
+                        toast.success(trans('posts.approvals.requested'), {
+                            testId: 'calendar-reschedule-approval-toast',
+                        });
+                    }
+                },
                 onError: (errors) => {
                     failed = true;
-                    rollback(post.id, Object.values(errors)[0]);
+                    rollback(post.id, errors.slot_at);
                 },
                 onHttpException: () => {
                     failed = true;
                     rollback(post.id);
 
                     return false;
+                },
+                onNetworkError: () => {
+                    failed = true;
+                    rollback(post.id);
+
+                    return false;
+                },
+                onCancel: () => {
+                    failed = true;
                 },
                 onFinish: () => {
                     forget(post.id);
