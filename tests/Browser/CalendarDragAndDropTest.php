@@ -6,6 +6,7 @@ use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
 use App\Enums\User\Locale;
+use App\Enums\User\TimeFormat;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -1392,5 +1393,32 @@ test('toasts and announcements write dates in the order of the user\'s language'
 
     expect($toast)->toContain($expected)
         ->and($announced)->toContain($expected);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('toasts and announcements follow the user\'s 24-hour clock', function () {
+    [$user, $channel] = calendarDragSetup();
+    $user->update(['time_format' => TimeFormat::TwentyFourHour]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-15");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    calendarDragFinished($page);
+
+    $toast = $page->script('document.querySelector(\'[data-testid="calendar-reschedule-success-toast"]\').textContent');
+    $announced = implode(' ', calendarDragAnnouncements($page));
+
+    expect($toast)->toContain('15:00')
+        ->not->toContain('3:00 PM')
+        ->and($announced)->toContain('15:00')
+        ->and($announced)->toContain('10:30')
+        ->and($announced)->not->toContain('PM');
     $page->assertNoJavaScriptErrors();
 });
