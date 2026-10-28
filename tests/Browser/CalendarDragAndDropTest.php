@@ -94,6 +94,13 @@ function calendarDragOnto(mixed $page, string $from, string $to): void
     $page->drag($from, $to);
 }
 
+function calendarDragAssertLive(mixed $page, string $selector): void
+{
+    waitForState($page, $selector, "element.getAttribute('draggable') === 'true'");
+
+    expect($page->script('document.querySelector('.jsSelector($selector).').getAttribute("draggable")'))->toBe('true');
+}
+
 function calendarDragIsBusy(mixed $page): bool
 {
     return $page->script('document.querySelector(\'[data-testid="calendar-grid"]\').hasAttribute("aria-busy")');
@@ -177,6 +184,7 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
                 strong: [getComputedStyle(strong).fontWeight, getComputedStyle(strong.querySelector('i')).fontStyle],
                 buttons: [cancel.offsetHeight, confirm.offsetHeight],
                 cancelFirst: cancel.offsetLeft + cancel.offsetWidth <= confirm.offsetLeft,
+                footer: dialog.querySelector('[data-testid="calendar-custom-time-footer"]').offsetHeight,
             };
         })()
     JS);
@@ -190,6 +198,7 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
         'strong' => ['650', 'italic'],
         'buttons' => [32, 32],
         'cancelFirst' => true,
+        'footer' => 32,
     ]);
 
     $page->click('@calendar-custom-time-cancel');
@@ -243,6 +252,7 @@ test('don\'t show again skips the dialog next time', function () {
     calendarDragFinished($page);
 
     expect($page->script('window.localStorage.getItem("calendar.skipCustomTimeConfirm")'))->toBe('true');
+    waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->setTime(9, 25)));
 
     waitFor($page, "@calendar-post-{$second->id}");
     calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$nextKey}-11");
@@ -290,6 +300,7 @@ test('past hours and past days are not drop targets', function () {
 
     $page = visit(route('app.calendar', ['view' => 'days', 'day' => $yesterday->format('Y-m-d')]));
     waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
 
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$today}-{$now->format('H')}");
     expect(calendarDragIsBusy($page))->toBeFalse();
@@ -300,13 +311,21 @@ test('past hours and past days are not drop targets', function () {
 
     $month = visit(route('app.calendar', ['view' => 'month', 'month' => $yesterday->format('Y-m-d'), 'undated' => 1]));
     waitFor($month, "@calendar-undated-{$draft->id}");
+    calendarDragAssertLive($month, "@calendar-undated-{$draft->id}");
     calendarDragOnto($month, "@calendar-undated-{$draft->id}", "@calendar-day-{$yesterday->format('Y-m-d')}");
     expect(calendarDragIsBusy($month))->toBeFalse();
     $month->assertVisible("@calendar-undated-{$draft->id}");
 
     expect($post->refresh()->scheduled_at->equalTo($at))->toBeTrue()
         ->and($draft->refresh()->scheduled_at)->toBeNull();
-    $page->assertMissing('@calendar-reschedule-error-toast')->assertNoJavaScriptErrors();
+    $page->assertMissing('@calendar-reschedule-error-toast');
+
+    $validAt = $at->hour > 0 ? $at->subHour() : $at->addHour();
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$validAt->format('Y-m-d')}-{$validAt->format('H')}");
+    calendarDragFinished($page);
+
+    expect($post->refresh()->scheduled_at->equalTo($validAt))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
     $month->assertNoJavaScriptErrors();
 });
 
@@ -413,13 +432,19 @@ test('a scheduled post is not taken by the No Date panel', function () {
     $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
     waitFor($page, "@calendar-post-{$post->id}");
     waitFor($page, '@calendar-undated-empty');
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     calendarDragOnto($page, "@calendar-post-{$post->id}", '@calendar-undated-panel');
 
     expect(calendarDragIsBusy($page))->toBeFalse()
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$day->format('Y-m-d')}-10");
-    $page->assertMissing("@calendar-undated-{$post->id}")
-        ->assertNoJavaScriptErrors();
+    $page->assertMissing("@calendar-undated-{$post->id}");
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$day->format('Y-m-d')}-11");
+    calendarDragFinished($page);
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(11, 0)))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('published posts are not draggable', function () {
@@ -522,10 +547,54 @@ test('a drag that ends on its own cell sends nothing', function () {
 
     $page = visit(calendarDragWeekUrl($day));
     waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-10");
 
     expect(calendarDragIsBusy($page))->toBeFalse()
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10");
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    calendarDragFinished($page);
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(11, 0)))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
+
+test('the custom time dialog footer fits a phone', function (string $locale) {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $user->update(['locale' => $locale]);
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$day->format('Y-m-d')}-11");
+    waitFor($page, '@calendar-custom-time-dialog');
+    $page->resize(390, 844);
+    waitForState($page, '@calendar-custom-time-dialog', 'element.offsetWidth === 390');
+
+    $layout = $page->script(<<<'JS'
+        (() => {
+            const dialog = document.querySelector('[data-testid="calendar-custom-time-dialog"]');
+            const footer = dialog.querySelector('[data-testid="calendar-custom-time-footer"]');
+            const bounds = dialog.getBoundingClientRect();
+            const buttons = ['calendar-custom-time-cancel', 'calendar-custom-time-confirm']
+                .map((id) => dialog.querySelector(`[data-testid="${id}"]`));
+
+            return {
+                inside: [...footer.children].every((child) => {
+                    const box = child.getBoundingClientRect();
+
+                    return box.left >= bounds.left && box.right <= bounds.right && child.scrollWidth <= child.clientWidth;
+                }),
+                singleLine: buttons.every((button) => button.offsetHeight === 32 && button.scrollWidth <= button.clientWidth),
+                atBottom: Math.round(bounds.bottom - footer.getBoundingClientRect().bottom) <= 16,
+            };
+        })()
+    JS);
+
+    expect($layout)->toBe(['inside' => true, 'singleLine' => true, 'atBottom' => true]);
+    $page->assertNoJavaScriptErrors();
+})->with(['en', 'de', 'pl']);

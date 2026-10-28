@@ -129,10 +129,13 @@ defineExpose({ confirm });
                 />
                 <p>{{ $t('calendar.reschedule.custom_time.unqueued') }}</p>
             </AlertDialogDescription>
-            <Separator />
-            <div class="flex items-center justify-end gap-2 px-6">
+            <Separator class="max-sm:mt-auto" />
+            <div
+                class="flex items-center justify-end gap-2 px-6 max-sm:flex-wrap"
+                data-testid="calendar-custom-time-footer"
+            >
                 <label
-                    class="me-2.5 flex items-center gap-2 text-sm leading-[21px] text-foreground"
+                    class="me-2.5 flex items-center gap-2 text-sm leading-[21px] text-foreground max-sm:me-0 max-sm:w-full"
                 >
                     <Checkbox
                         :model-value="skipNextTime"
