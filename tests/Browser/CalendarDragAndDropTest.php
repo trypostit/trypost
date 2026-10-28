@@ -252,7 +252,7 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
     JS);
 
     expect($styles)->toBe([
-        'width' => 480,
+        'width' => 560,
         'padding' => '24px 0px 16px',
         'gap' => '16px',
         'radius' => '16px',
