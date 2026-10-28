@@ -31,4 +31,15 @@ return [
         'draft' => 'Taslak',
         'no_channel' => 'Kanal yok',
     ],
+    'reschedule' => [
+        'custom_time' => [
+            'title' => 'Gönderi özel bir saate taşınıyor',
+            'description' => 'Bu gönderiyi kuyruktaki bir saatten (:from) yayın saatlerinizden biri olmayan özel bir saate (:to) taşıyorsunuz.',
+            'unqueued' => 'Gönderi seçtiğiniz yeni saatte yayınlanır, ancak kuyruğunuzda yer kaplamaz.',
+            'dont_show_again' => 'Bir daha gösterme',
+            'cancel' => 'İptal',
+            'confirm' => 'Özel saate taşı',
+        ],
+        'error' => 'Gönderi taşınamadı. Tekrar deneyin.',
+    ],
 ];

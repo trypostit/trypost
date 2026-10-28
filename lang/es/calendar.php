@@ -31,4 +31,15 @@ return [
         'draft' => 'Borrador',
         'no_channel' => 'Sin canal',
     ],
+    'reschedule' => [
+        'custom_time' => [
+            'title' => 'Mover publicación a una hora personalizada',
+            'description' => 'Vas a mover esta publicación de un hueco de la cola, :from, a una hora personalizada, :to, que no es una de tus horas de publicación.',
+            'unqueued' => 'La publicación se publicará a la nueva hora elegida, pero no ocupará un hueco en tu cola.',
+            'dont_show_again' => 'No volver a mostrar',
+            'cancel' => 'Cancelar',
+            'confirm' => 'Mover a hora personalizada',
+        ],
+        'error' => 'No se pudo mover esta publicación. Inténtalo de nuevo.',
+    ],
 ];

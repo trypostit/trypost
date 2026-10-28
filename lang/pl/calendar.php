@@ -31,4 +31,15 @@ return [
         'draft' => 'Szkic',
         'no_channel' => 'Brak kanału',
     ],
+    'reschedule' => [
+        'custom_time' => [
+            'title' => 'Przenoszenie wpisu na własną godzinę',
+            'description' => 'Ten wpis zostanie przeniesiony z miejsca w kolejce, :from, na własną godzinę, :to, która nie należy do Twoich godzin publikacji.',
+            'unqueued' => 'Wpis zostanie opublikowany o wybranej godzinie, ale nie zajmie miejsca w Twojej kolejce.',
+            'dont_show_again' => 'Nie pokazuj ponownie',
+            'cancel' => 'Anuluj',
+            'confirm' => 'Przenieś na własną godzinę',
+        ],
+        'error' => 'Nie udało się przenieść wpisu. Spróbuj ponownie.',
+    ],
 ];

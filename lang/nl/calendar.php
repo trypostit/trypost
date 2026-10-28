@@ -31,4 +31,15 @@ return [
         'draft' => 'Concept',
         'no_channel' => 'Geen kanaal',
     ],
+    'reschedule' => [
+        'custom_time' => [
+            'title' => 'Bericht naar een eigen tijd verplaatsen',
+            'description' => 'Je verplaatst dit bericht van een plek in de wachtrij, :from, naar een eigen tijd, :to, die niet een van je publicatietijden is.',
+            'unqueued' => 'Het bericht wordt op de nieuwe tijd gepubliceerd, maar neemt geen plek in je wachtrij in.',
+            'dont_show_again' => 'Niet meer tonen',
+            'cancel' => 'Annuleren',
+            'confirm' => 'Naar eigen tijd verplaatsen',
+        ],
+        'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
+    ],
 ];

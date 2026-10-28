@@ -31,4 +31,15 @@ return [
         'draft' => 'Rascunho',
         'no_channel' => 'Sem canal',
     ],
+    'reschedule' => [
+        'custom_time' => [
+            'title' => 'Movendo o post para um horário personalizado',
+            'description' => 'Você está movendo este post de um horário da fila, :from, para um horário personalizado, :to, que não é um dos seus horários de publicação.',
+            'unqueued' => 'O post será publicado no novo horário escolhido, mas não vai ocupar um lugar na sua fila.',
+            'dont_show_again' => 'Não mostrar novamente',
+            'cancel' => 'Cancelar',
+            'confirm' => 'Mover para este horário',
+        ],
+        'error' => 'Não foi possível mover este post. Tente novamente.',
+    ],
 ];
