@@ -25,7 +25,7 @@ test('the options without a brand name have a welcome label in every locale', fu
 })->with(Locale::values());
 
 test('every branded option has its logo in the competitors folder', function () {
-    $branded = array_filter(PreviousSoftware::cases(), fn (PreviousSoftware $software): bool => $software->brandName() !== null);
+    $branded = array_filter(PreviousSoftware::cases(), fn (PreviousSoftware $software): bool => filled($software->brandName()));
 
     foreach ($branded as $software) {
         expect(public_path("images/competitors/{$software->value}.svg"))->toBeFile();

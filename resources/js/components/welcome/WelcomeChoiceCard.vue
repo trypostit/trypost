@@ -39,7 +39,7 @@ const select = (): void => {
         <span
             :class="[
                 'inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-control',
-                selected && !art.logo && !art.icon ? 'bg-card' : art.tint,
+                selected && art.emoji ? 'bg-card' : art.tint,
             ]"
             aria-hidden="true"
         >

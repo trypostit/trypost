@@ -95,7 +95,7 @@ test('the software step shows each competitor by its logo and the other options 
     $page = visit(route('app.welcome.software'));
 
     foreach (PreviousSoftware::cases() as $software) {
-        if ($software->brandName() === null) {
+        if (blank($software->brandName())) {
             continue;
         }
 
