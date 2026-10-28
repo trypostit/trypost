@@ -39,6 +39,10 @@ const instantOnDay = (
         : `${DRAFT_DAY_CLOCK}:00`;
     const instant = dayjs.tz(`${dayKey}T${clock}`, timezone);
 
+    if (instant.format('HH:mm:ss') !== clock) {
+        return undefined;
+    }
+
     if (instant.isAfter(now)) {
         return instant;
     }

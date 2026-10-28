@@ -1806,6 +1806,7 @@ test('a post due within a minute and a draft without a channel cannot be dragged
     $soon = now('UTC')->addSeconds(30);
     $due = calendarDragPost($channel, $soon);
     $movable = calendarDragPost($channel, $soon->addHours(2));
+    $edge = calendarDragPost($channel, now('UTC')->addMinutes(2));
     $channelless = Post::factory()->create([
         'workspace_id' => $channel->workspace_id,
         'user_id' => $user->id,
@@ -1826,6 +1827,7 @@ test('a post due within a minute and a draft without a channel cannot be dragged
 
     expect($channelless->platform)->toBeNull()
         ->and($draggable("calendar-post-{$movable->id}"))->toBe('true')
+        ->and($draggable("calendar-post-{$edge->id}"))->toBe('true')
         ->and($draggable("calendar-undated-{$draft->id}"))->toBe('true')
         ->and($draggable("calendar-post-{$due->id}"))->toBeNull()
         ->and($draggable("calendar-undated-{$channelless->id}"))->toBeNull();
@@ -2000,7 +2002,7 @@ test('a post that becomes due before the move reaches the server goes back with 
     waitFor($page, '@calendar-reschedule-error-toast');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.errors.not_movable'));
+    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.errors.publishing_soon'));
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$at->format('Y-m-d')}-{$at->format('H')}")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -2103,6 +2105,48 @@ test('the hour skipped by the start of daylight saving is not a drop target', fu
         ->and($keys[2])->toBeNull()
         ->and($dropKeys)->toHaveCount(23)
         ->and(array_unique($dropKeys))->toHaveCount(23);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the hour skipped by the start of daylight saving is not highlighted and offers no new post', function () {
+    [$user, $channel] = calendarDragSetup('America/New_York');
+    $sunday = calendarDragNextDstSunday('second sunday of march');
+    $key = $sunday->format('Y-m-d');
+    $post = calendarDragPost($channel, $sunday->setTime(10, 0)->utc());
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($sunday));
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+
+    $cells = $page->script(<<<JS
+        ({
+            skippedOver: document.querySelector('[data-testid="calendar-slot-{$key}-02"]').classList.contains('bg-primary/15'),
+            skippedAdd: document.querySelector('[data-testid="calendar-add-{$key}-02"]') !== null,
+            nextAdd: document.querySelector('[data-testid="calendar-add-{$key}-03"]') !== null,
+        })
+    JS);
+
+    expect($cells)->toBe(['skippedOver' => false, 'skippedAdd' => false, 'nextAdd' => true]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a month drop whose clock falls in the hour skipped by daylight saving is refused', function () {
+    [$user, $channel] = calendarDragSetup('America/New_York');
+    $sunday = calendarDragNextDstSunday('second sunday of march');
+    $from = $sunday->subDays(2)->setTime(2, 30);
+    $post = calendarDragPost($channel, $from->utc());
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $sunday->format('Y-m-d')]));
+    waitFor($page, "@calendar-day-{$from->format('Y-m-d')} @calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-day-{$sunday->format('Y-m-d')}");
+    waitForGone($page, '@calendar-drag-preview');
+
+    expect($page->script('window.__heldRequests.length'))->toBe(0)
+        ->and(calendarDragCellOf($page, $post))->toBe("calendar-day-{$from->format('Y-m-d')}")
+        ->and($post->refresh()->scheduled_at->equalTo($from))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
 

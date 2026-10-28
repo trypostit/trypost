@@ -309,6 +309,7 @@ watch(
                     <button
                         v-if="
                             canCreatePost &&
+                            hourSlots[index][hour].target &&
                             !isPastSlot(index, hour) &&
                             !draggingPostId
                         "
