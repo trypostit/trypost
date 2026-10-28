@@ -3,10 +3,15 @@ import { IconPlus } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
+import {
+    calendarTargetKey,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import type { CalendarSlot, PublishSocialAccount } from '@/types/publish';
 
 const props = withDefaults(
@@ -27,6 +32,20 @@ const time = computed(() =>
 
 const testKey = computed(
     () => `${props.postingSlot.channel_id}-${dayjs.utc(props.postingSlot.at).unix()}`,
+);
+
+const { overTarget, vCalendarTarget } = useCalendarDragContext();
+
+const dropTarget = computed(
+    (): CalendarDropTarget => ({
+        kind: 'slot',
+        at: props.postingSlot.at,
+        channelId: props.postingSlot.channel_id,
+    }),
+);
+
+const isOver = computed(
+    () => overTarget.value === calendarTargetKey(dropTarget.value),
 );
 
 const newPost = (): void => {
@@ -79,14 +98,16 @@ const newPost = (): void => {
     </component>
     <component
         v-else
+        v-calendar-target="dropTarget"
         :is="canCreatePost ? 'button' : 'div'"
         :type="canCreatePost ? 'button' : undefined"
         class="group/slot flex shrink-0 items-center rounded-lg border border-dashed border-border-strong text-xs font-medium text-muted-foreground transition-control enabled:hover:bg-secondary enabled:hover:text-foreground enabled:focus-visible:bg-secondary enabled:focus-visible:text-foreground"
-        :class="
+        :class="[
             compact
                 ? 'size-7 justify-center'
-                : 'h-7 w-full min-w-0 gap-1.5 px-1.5'
-        "
+                : 'h-7 w-full min-w-0 gap-1.5 px-1.5',
+            { 'bg-accent': isOver },
+        ]"
         :title="channel?.display_label"
         :aria-label="
             channel

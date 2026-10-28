@@ -11,6 +11,7 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
@@ -32,6 +33,9 @@ const props = withDefaults(
     { layout: 'month' },
 );
 
+const { draggingPostId, vCalendarPost } = useCalendarDragContext();
+
+const isDragging = computed(() => draggingPostId.value === props.post.id);
 
 const open = ref(false);
 const detailsOpen = ref(false);
@@ -133,11 +137,15 @@ const scheduleMode = computed(() =>
         </Teleport>
         <PopoverTrigger as-child>
             <button
+                v-calendar-post="post"
                 type="button"
                 v-bind="$attrs"
                 class="flex min-w-0 shrink-0 gap-1.5 rounded-lg border border-border-strong bg-card text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary"
                 :class="[
-                    STATUS_CLASSES[post.status] ?? '',
+                    isDragging
+                        ? 'border-transparent bg-muted *:invisible hover:bg-muted'
+                        : (STATUS_CLASSES[post.status] ?? ''),
+                    '[&[draggable=true]]:cursor-grab',
                     compact
                         ? 'size-7 items-center justify-center'
                         : layout === 'week'

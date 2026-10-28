@@ -4,9 +4,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
 import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
+import {
+    calendarTargetKey,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
 import type {
     CalendarPost,
@@ -99,6 +104,20 @@ const slotStart = (key: string, hour: number): dayjs.Dayjs =>
 const isPastSlot = (key: string, hour: number): boolean =>
     slotStart(key, hour).isBefore(props.now);
 
+const { overTarget, draggingPostId, vCalendarTarget } =
+    useCalendarDragContext();
+
+const hourTarget = (key: string, hour: number): CalendarDropTarget => ({
+    kind: 'hour',
+    at: slotStart(key, hour).utc().format(),
+});
+
+const isHourOver = (key: string, hour: number): boolean =>
+    overTarget.value === calendarTargetKey(hourTarget(key, hour));
+
+const isDimmed = (key: string, hour: number, item: CalendarItem): boolean =>
+    isHourOver(key, hour) && item.post?.id !== draggingPostId.value;
+
 const hourLabel = (hour: number): string =>
     `${String(hour).padStart(2, '0')}`;
 
@@ -163,9 +182,11 @@ watch(
                 <div
                     v-for="hour in HOURS"
                     :key="hour"
+                    v-calendar-target="hourTarget(column.key, hour)"
                     class="group relative flex items-start justify-between gap-1 px-1 py-2 md:px-3"
                     :class="{
                         'bg-accent': isPastSlot(column.key, hour),
+                        'bg-primary/15': isHourOver(column.key, hour),
                         'border-t border-border-strong':
                             hour > 0 && (index > 0 || hour % 2 === 1),
                     }"
@@ -215,7 +236,16 @@ watch(
                                         : 'week'
                                 "
                                 :compact="iconOnly"
-                                :class="chipClass(column, hour)"
+                                :class="[
+                                    chipClass(column, hour),
+                                    {
+                                        'opacity-50': isDimmed(
+                                            column.key,
+                                            hour,
+                                            item,
+                                        ),
+                                    },
+                                ]"
                             />
                             <CalendarSlotChip
                                 v-else-if="item.slot"
@@ -224,7 +254,16 @@ watch(
                                 :timezone="timezone"
                                 :can-create-post="canCreatePost"
                                 :compact="iconOnly"
-                                :class="chipClass(column, hour)"
+                                :class="[
+                                    chipClass(column, hour),
+                                    {
+                                        'opacity-50': isDimmed(
+                                            column.key,
+                                            hour,
+                                            item,
+                                        ),
+                                    },
+                                ]"
                             />
                         </template>
                         <button
@@ -247,7 +286,11 @@ watch(
                     </div>
 
                     <button
-                        v-if="canCreatePost && !isPastSlot(column.key, hour)"
+                        v-if="
+                            canCreatePost &&
+                            !isPastSlot(column.key, hour) &&
+                            !draggingPostId
+                        "
                         type="button"
                         :aria-label="$t('calendar.new_post')"
                         class="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"

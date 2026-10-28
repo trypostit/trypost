@@ -1,13 +1,19 @@
 <script setup lang="ts">
 import { InfiniteScroll, Link } from '@inertiajs/vue3';
 import { IconEdit, IconX } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    calendarTargetKey,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
+import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import { isImage } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { edit as editPost } from '@/routes/app/posts';
@@ -21,6 +27,15 @@ const emit = defineEmits<{
     close: [];
 }>();
 
+const UNDATED_TARGET: CalendarDropTarget = { kind: 'undated' };
+
+const { overTarget, draggingPostId, vCalendarPost, vCalendarTarget } =
+    useCalendarDragContext();
+
+const isOver = computed(
+    () => overTarget.value === calendarTargetKey(UNDATED_TARGET),
+);
+
 const thumbnail = (draft: UndatedDraft): string | null =>
     (draft.media ?? []).find(isImage)?.url ?? null;
 
@@ -30,7 +45,9 @@ const plainText = (draft: UndatedDraft): string =>
 
 <template>
     <aside
-        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl bg-muted md:w-[360px]"
+        v-calendar-target="UNDATED_TARGET"
+        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl border bg-muted md:w-[360px]"
+        :class="isOver ? 'border-primary' : 'border-transparent'"
         data-testid="calendar-undated-panel"
     >
         <div class="flex shrink-0 items-start gap-4 px-4 pt-4 pb-3">
@@ -87,8 +104,14 @@ const plainText = (draft: UndatedDraft): string =>
                     <Link
                         v-for="draft in drafts"
                         :key="draft.id"
+                        v-calendar-post="draft"
                         :href="editPost.url(draft.id)"
-                        class="flex flex-col gap-1 rounded-lg border border-dashed border-border-strong bg-card px-2 py-2 text-start transition-control hover:bg-secondary"
+                        class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[draggable=true]]:cursor-grab"
+                        :class="
+                            draggingPostId === draft.id
+                                ? 'border-transparent bg-secondary *:invisible'
+                                : 'border-dashed border-border-strong bg-card hover:bg-secondary'
+                        "
                         :data-testid="`calendar-undated-${draft.id}`"
                     >
                         <div class="flex min-w-0 items-center gap-2">

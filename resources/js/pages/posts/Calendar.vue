@@ -23,6 +23,7 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
+import CalendarCustomTimeDialog from '@/components/publish/CalendarCustomTimeDialog.vue';
 import CalendarPeriodPicker from '@/components/publish/CalendarPeriodPicker.vue';
 import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
 import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
@@ -31,6 +32,11 @@ import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue'
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
+import {
+    calendarDragKey,
+    calendarTargetKey,
+    useCalendarDrag,
+} from '@/composables/calendar/useCalendarDrag';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
@@ -68,6 +74,7 @@ import type {
     PublishScope,
     PublishSocialAccount,
     ScrollUndatedDrafts,
+    UndatedDraft,
 } from '@/types/publish';
 
 interface Props {
@@ -112,6 +119,9 @@ const RELOAD_PROPS = [
 ];
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const customTimeDialog = ref<InstanceType<
+    typeof CalendarCustomTimeDialog
+> | null>(null);
 
 provide(deletePostCardKey, (post: PostCard) => {
     deleteModal.value?.open({ url: destroyPost.url(post.id) });
@@ -148,6 +158,98 @@ watch(
         timezone.value = value;
     },
 );
+
+const refreshSlots = (): void => {
+    router.get(
+        calendarUrl(props.view, currentDateQuery()),
+        {},
+        {
+            preserveState: true,
+            preserveScroll: true,
+            preserveUrl: true,
+            only: ['slots'],
+        },
+    );
+};
+
+const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
+    customTimeDialog.value?.confirm(from, to, timezone.value) ??
+    Promise.resolve(false);
+
+const calendarDrag = useCalendarDrag({
+    timezone,
+    now,
+    canCreatePost,
+    reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
+    confirmCustomTime,
+    onMoved: () => {
+        if (showSlots.value) {
+            refreshSlots();
+        }
+    },
+});
+
+provide(calendarDragKey, calendarDrag);
+
+const {
+    overTarget,
+    draggingPostId,
+    movedPosts,
+    vCalendarTarget,
+} = calendarDrag;
+
+const isRescheduling = computed(
+    () => Object.keys(movedPosts.value).length > 0,
+);
+
+const dayTargetKey = (day: dayjs.Dayjs): string =>
+    calendarTargetKey({ kind: 'day', dayKey: dayKey(day) });
+
+const isDayOver = (day: dayjs.Dayjs): boolean =>
+    overTarget.value === dayTargetKey(day);
+
+const displayedPosts = computed<Record<string, CalendarPost[]>>(() => {
+    const moved = movedPosts.value;
+
+    if (Object.keys(moved).length === 0) {
+        return props.posts;
+    }
+
+    const grouped: Record<string, CalendarPost[]> = {};
+    const place = (post: CalendarPost): void => {
+        const key = dayjs
+            .utc(post.calendar_at)
+            .tz(timezone.value)
+            .format('YYYY-MM-DD');
+
+        grouped[key] = [...(grouped[key] ?? []), post];
+    };
+
+    Object.values(props.posts)
+        .flat()
+        .filter((post) => !moved[post.id])
+        .forEach(place);
+    Object.values(moved)
+        .filter((post) => post.scheduled_at !== null)
+        .forEach(place);
+
+    return grouped;
+});
+
+const displayedUndatedDrafts = computed<UndatedDraft[] | null>(() => {
+    if (!props.undatedDrafts) {
+        return null;
+    }
+
+    const moved = movedPosts.value;
+
+    return [
+        ...Object.values(moved)
+            .filter((post) => post.scheduled_at === null)
+            .map((post): UndatedDraft => ({ ...post, scheduled_at: null })),
+        ...props.undatedDrafts.data.filter((draft) => !moved[draft.id]),
+    ];
+});
 
 const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
@@ -247,16 +349,7 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        router.get(
-            calendarUrl(props.view, currentDateQuery()),
-            {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                preserveUrl: true,
-                only: ['slots'],
-            },
-        );
+        refreshSlots();
     }
 });
 
@@ -405,7 +498,7 @@ const slotChannels = computed<Record<string, PublishSocialAccount>>(() =>
 
 const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
     calendarItems(
-        props.posts[dayKey(day)] ?? [],
+        displayedPosts.value[dayKey(day)] ?? [],
         visibleSlots.value[dayKey(day)] ?? [],
     );
 
@@ -679,12 +772,13 @@ const goToDay = (key: string): void => {
                     ref="periodSwipeTarget"
                     class="mb-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-strong md:mb-6"
                     :class="{ 'max-md:hidden': undatedOpen }"
+                    :aria-busy="isRescheduling || undefined"
                     data-testid="calendar-grid"
                 >
                     <CalendarTimeGrid
                         v-if="view !== 'month'"
                         :days="periodDays"
-                        :posts="posts"
+                        :posts="displayedPosts"
                         :slots="visibleSlots"
                         :channels="slotChannels"
                         :timezone="timezone"
@@ -721,10 +815,15 @@ const goToDay = (key: string): void => {
                                 <div
                                     v-for="(day, index) in week"
                                     :key="dayKey(day)"
+                                    v-calendar-target="{
+                                        kind: 'day',
+                                        dayKey: dayKey(day),
+                                    }"
                                     class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
                                     :class="{
                                         'border-l': index > 0,
                                         'bg-accent': isPast(day),
+                                        'bg-primary/15': isDayOver(day),
                                     }"
                                     :data-testid="`calendar-day-${dayKey(day)}`"
                                 >
@@ -745,7 +844,11 @@ const goToDay = (key: string): void => {
                                             {{ day.format('D') }}
                                         </span>
                                         <button
-                                            v-if="canCreatePost && !isPast(day)"
+                                            v-if="
+                                                canCreatePost &&
+                                                !isPast(day) &&
+                                                !draggingPostId
+                                            "
                                             type="button"
                                             :aria-label="$t('calendar.new_post')"
                                             class="flex size-6 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
@@ -774,6 +877,12 @@ const goToDay = (key: string): void => {
                                                 :post="item.post"
                                                 :timezone="timezone"
                                                 :compact="!isDesktop"
+                                                :class="{
+                                                    'opacity-50':
+                                                        isDayOver(day) &&
+                                                        item.post.id !==
+                                                            draggingPostId,
+                                                }"
                                             />
                                             <CalendarSlotChip
                                                 v-else-if="item.slot"
@@ -852,7 +961,7 @@ const goToDay = (key: string): void => {
                         data-testid="calendar-undated-slide"
                     >
                         <CalendarUndatedPanel
-                            :drafts="undatedDrafts?.data ?? null"
+                            :drafts="displayedUndatedDrafts"
                             @close="closeUndated"
                         />
                     </div>
@@ -860,6 +969,8 @@ const goToDay = (key: string): void => {
             </div>
         </div>
     </AppLayout>
+
+    <CalendarCustomTimeDialog ref="customTimeDialog" />
 
     <ConfirmDeleteModal
         ref="deleteModal"
