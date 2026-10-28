@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Questo orario è già passato. Scegli un orario successivo.',
             'required' => 'Scegli un orario per questo post.',
-            'not_movable' => 'Questo post non può essere spostato ora.',
+            'pending' => 'Questo post è in attesa di approvazione. Spostalo dopo che è stato approvato o rifiutato.',
+            'publishing_soon' => 'Questo post sta per essere pubblicato, quindi non può più essere spostato.',
+            'too_far' => 'Scegli una data precedente al 19 gennaio 2038.',
         ],
         'drag_hint' => 'Trascina per riprogrammare',
         'drag_hint_undated' => 'Trascina la bozza senza data di :channel per programmarla',

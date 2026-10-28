@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Esa hora ya pasó. Elige una hora posterior.',
             'required' => 'Elige una hora para esta publicación.',
-            'not_movable' => 'Esta publicación no se puede mover ahora.',
+            'pending' => 'Esta publicación está esperando aprobación. Muévela cuando se apruebe o se rechace.',
+            'publishing_soon' => 'Esta publicación está a punto de publicarse, así que ya no se puede mover.',
+            'too_far' => 'Elige una fecha anterior al 19 de enero de 2038.',
         ],
         'drag_hint' => 'Arrastra para reprogramar',
         'drag_hint_undated' => 'Arrastra el borrador sin fecha de :channel para programarlo',

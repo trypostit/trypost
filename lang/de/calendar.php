@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Diese Zeit ist bereits vorbei. Wähle eine spätere Zeit.',
             'required' => 'Wähle eine Zeit für diesen Beitrag.',
-            'not_movable' => 'Dieser Beitrag kann gerade nicht verschoben werden.',
+            'pending' => 'Dieser Beitrag wartet auf Freigabe. Verschiebe ihn, sobald er freigegeben oder abgelehnt ist.',
+            'publishing_soon' => 'Dieser Beitrag wird gleich veröffentlicht und kann nicht mehr verschoben werden.',
+            'too_far' => 'Wähle ein Datum vor dem 19. Januar 2038.',
         ],
         'drag_hint' => 'Zum Verschieben ziehen',
         'drag_hint_undated' => 'Entwurf ohne Datum für :channel zum Planen ziehen',

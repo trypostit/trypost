@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Ta godzina już minęła. Wybierz późniejszą godzinę.',
             'required' => 'Wybierz godzinę dla tego wpisu.',
-            'not_movable' => 'Tego wpisu nie można teraz przenieść.',
+            'pending' => 'Ten wpis czeka na zatwierdzenie. Przenieś go, gdy zostanie zatwierdzony lub odrzucony.',
+            'publishing_soon' => 'Ten wpis zaraz zostanie opublikowany, więc nie można go już przenieść.',
+            'too_far' => 'Wybierz datę przed 19 stycznia 2038.',
         ],
         'drag_hint' => 'Przeciągnij, aby zmienić termin',
         'drag_hint_undated' => 'Przeciągnij szkic bez daty dla :channel, aby go zaplanować',

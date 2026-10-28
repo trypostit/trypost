@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Deze tijd is al voorbij. Kies een latere tijd.',
             'required' => 'Kies een tijd voor dit bericht.',
-            'not_movable' => 'Dit bericht kan nu niet worden verplaatst.',
+            'pending' => 'Dit bericht wacht op goedkeuring. Verplaats het zodra het is goedgekeurd of afgewezen.',
+            'publishing_soon' => 'Dit bericht wordt zo gepubliceerd en kan niet meer worden verplaatst.',
+            'too_far' => 'Kies een datum vóór 19 januari 2038.',
         ],
         'drag_hint' => 'Sleep om te verplaatsen',
         'drag_hint_undated' => 'Sleep het concept zonder datum voor :channel om te plannen',

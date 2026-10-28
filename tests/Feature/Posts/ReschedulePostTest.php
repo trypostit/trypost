@@ -375,7 +375,7 @@ test('reschedule of a pending post is refused and keeps the request as it is', f
     $this->actingAs($actor)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-09T15:00:00Z'])
         ->assertRedirect()
-        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.not_movable')]);
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.pending')]);
 
     $post->refresh();
 
@@ -409,13 +409,50 @@ test('reschedule of a scheduled post due within a minute or overdue is refused',
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
         ->assertRedirect()
-        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.not_movable')]);
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.publishing_soon')]);
 
     $post->refresh();
 
     expect($post->status)->toBe(PostStatus::Scheduled)
         ->and($post->scheduled_at->toIso8601String())->toBe($at);
 })->with(['in 20 seconds' => '+20 seconds', '30 seconds ago' => '-30 seconds']);
+
+test('reschedule of a scheduled post due in two minutes moves it', function () {
+    $post = rescheduleCustom($this->channel, $this->user, now()->addMinutes(2)->toDateTimeString());
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    expect($post->fresh()->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-08 11:00', 'UTC')->toIso8601String());
+});
+
+test('reschedule is refused when the post went to approval after the request was validated', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $at = $post->scheduled_at->toIso8601String();
+    $flipped = false;
+
+    Post::retrieved(function (Post $retrieved) use ($post, &$flipped): void {
+        if ($flipped || $retrieved->id !== $post->id) {
+            return;
+        }
+
+        $flipped = true;
+        Post::query()->whereKey($post->id)->toBase()->update(['status' => PostStatus::PendingApproval->value]);
+    });
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.pending')]);
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::PendingApproval)
+        ->and($post->scheduled_at->toIso8601String())->toBe($at)
+        ->and($post->approved_by)->toBeNull();
+});
 
 test('reschedule refuses a time past the 2038 ceiling before it reaches the post', function () {
     $post = Post::factory()->create([
@@ -428,7 +465,7 @@ test('reschedule refuses a time past the 2038 ceiling before it reaches the post
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2038-01-19T00:00:00Z'])
         ->assertRedirect()
-        ->assertSessionHasErrors(['scheduled_at' => __('validation.before', ['attribute' => 'scheduled at', 'date' => '2038-01-19'])]);
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.too_far')]);
 });
 
 test('reschedule refuses a malformed time', function () {

@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Esse horário já passou. Escolha um horário mais tarde.',
             'required' => 'Escolha um horário para este post.',
-            'not_movable' => 'Este post não pode ser movido agora.',
+            'pending' => 'Este post está aguardando aprovação. Mova-o depois que for aprovado ou rejeitado.',
+            'publishing_soon' => 'Este post está prestes a ser publicado, então não pode mais ser movido.',
+            'too_far' => 'Escolha uma data antes de 19 de janeiro de 2038.',
         ],
         'drag_hint' => 'Arraste para reagendar',
         'drag_hint_undated' => 'Arraste o rascunho sem data de :channel para agendar',

@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'This time has already passed. Pick a later time.',
             'required' => 'Pick a time for this post.',
-            'not_movable' => 'This post can\'t be moved right now.',
+            'pending' => 'This post is waiting for approval. Move it once it\'s approved or rejected.',
+            'publishing_soon' => 'This post is about to be published, so it can\'t be moved anymore.',
+            'too_far' => 'Pick a date before January 19, 2038.',
         ],
         'drag_hint' => 'Drag to reschedule',
         'drag_hint_undated' => 'Drag No Date draft for :channel to schedule',

@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Cette heure est déjà passée. Choisissez une heure plus tardive.',
             'required' => 'Choisissez une heure pour cette publication.',
-            'not_movable' => 'Cette publication ne peut pas être déplacée pour le moment.',
+            'pending' => 'Cette publication attend une approbation. Déplacez-la une fois approuvée ou refusée.',
+            'publishing_soon' => 'Cette publication est sur le point d\'être publiée, elle ne peut plus être déplacée.',
+            'too_far' => 'Choisissez une date avant le 19 janvier 2038.',
         ],
         'drag_hint' => 'Faites glisser pour reprogrammer',
         'drag_hint_undated' => 'Faites glisser le brouillon sans date de :channel pour le programmer',

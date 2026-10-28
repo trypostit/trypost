@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => 'Bu saat geçti. Daha sonraki bir saat seçin.',
             'required' => 'Bu gönderi için bir saat seçin.',
-            'not_movable' => 'Bu gönderi şu anda taşınamaz.',
+            'pending' => 'Bu gönderi onay bekliyor. Onaylandıktan veya reddedildikten sonra taşıyın.',
+            'publishing_soon' => 'Bu gönderi birazdan yayınlanacak, bu yüzden artık taşınamaz.',
+            'too_far' => '19 Ocak 2038\'den önce bir tarih seçin.',
         ],
         'drag_hint' => 'Taşımak için sürükleyin',
         'drag_hint_undated' => ':channel için tarihsiz taslağı planlamak üzere sürükleyin',

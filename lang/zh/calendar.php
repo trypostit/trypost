@@ -44,7 +44,9 @@ return [
         'errors' => [
             'past' => '这个时间已经过去了。请选择更晚的时间。',
             'required' => '请为这条帖子选择时间。',
-            'not_movable' => '这条帖子现在无法移动。',
+            'pending' => '这条帖子正在等待批准。批准或拒绝后再移动它。',
+            'publishing_soon' => '这条帖子即将发布，因此无法再移动。',
+            'too_far' => '请选择 2038 年 1 月 19 日之前的日期。',
         ],
         'drag_hint' => '拖动以改期',
         'drag_hint_undated' => '拖动 :channel 的无日期草稿以安排时间',
