@@ -1056,8 +1056,8 @@ function calendarDragAnnouncements(mixed $page): array
 function calendarDragWhen(CarbonImmutable $at, bool $dateOnly = false): string
 {
     return $dateOnly
-        ? $at->format('D, F j')
-        : __('calendar.reschedule.announce.date_time', ['date' => $at->format('D, F j'), 'time' => $at->format('g:i A')]);
+        ? $at->format('l, F j')
+        : __('calendar.reschedule.announce.date_time', ['date' => $at->format('l, F j'), 'time' => $at->format('g:i A')]);
 }
 
 function calendarDragPlay(mixed $page, string $post, string $to): void
@@ -1386,7 +1386,7 @@ test('toasts and announcements write dates in the order of the user\'s language'
     waitFor($page, '@calendar-reschedule-success-toast');
     calendarDragFinished($page);
 
-    $expected = $page->script("new Intl.DateTimeFormat('pt-BR', { weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date('{$to->format('Y-m-d\\TH:i:s')}Z'))");
+    $expected = $page->script("new Intl.DateTimeFormat('pt-BR', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date('{$to->format('Y-m-d\\TH:i:s')}Z'))");
     $toast = $page->script('document.querySelector(\'[data-testid="calendar-reschedule-success-toast"]\').textContent');
     $announced = implode(' ', calendarDragAnnouncements($page));
 

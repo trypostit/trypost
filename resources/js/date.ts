@@ -148,7 +148,7 @@ export default {
      */
     formatWeekdayMonthDay(date: string, timezone: string): string {
         return new Intl.DateTimeFormat(activeLocale.value, {
-            weekday: 'short',
+            weekday: 'long',
             month: 'long',
             day: 'numeric',
             timeZone: timezone,
