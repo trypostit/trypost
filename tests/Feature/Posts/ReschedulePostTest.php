@@ -153,6 +153,107 @@ test('reschedule keeps a custom post custom on a free slot of its channel', func
         ->and($post->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
 });
 
+test('a custom post sent to a free slot of its channel goes into the queue at that slot', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue)
+        ->and($post->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
+});
+
+test('a queued post sent to another free slot stays in the queue there and frees its old slot', function () {
+    $post = rescheduleQueued($this->channel, $this->user);
+    $oldSlot = $post->scheduled_at;
+    $slot = CarbonImmutable::parse('2026-10-09 09:00', 'UTC');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->schedule_mode)->toBe(ScheduleMode::Queue)
+        ->and($post->scheduled_at->toIso8601String())->toBe($slot->toIso8601String())
+        ->and(ReflowChannelQueue::isFreeSlot($this->channel->refresh(), $oldSlot))->toBeTrue();
+});
+
+test('a post sent to a slot another post holds is refused and keeps its time', function () {
+    $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
+    rescheduleCustom($this->channel, $this->user, $slot->toDateTimeString());
+    $post = rescheduleCustom($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasErrors(['slot_at' => __('posts.errors.queue_order_stale')]);
+
+    $post->refresh();
+
+    expect($post->schedule_mode)->toBe(ScheduleMode::Custom)
+        ->and($post->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-06 10:00', 'UTC')->toIso8601String());
+});
+
+test('a post sent to the queue at an instant that is not a slot is refused instead of becoming custom', function () {
+    $post = rescheduleQueued($this->channel, $this->user);
+    $queuedAt = $post->scheduled_at->toIso8601String();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-06T15:30:00Z', 'queue_slot' => true])
+        ->assertSessionHasErrors('slot_at');
+
+    $post->refresh();
+
+    expect($post->schedule_mode)->toBe(ScheduleMode::Queue)
+        ->and($post->scheduled_at->toIso8601String())->toBe($queuedAt);
+});
+
+test('a draft sent to a slot stays a draft with that date', function () {
+    $draft = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-06 10:00', 'UTC')]);
+    $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasNoErrors();
+
+    $draft->refresh();
+
+    expect($draft->status)->toBe(PostStatus::Draft)
+        ->and($draft->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
+});
+
+test('a post sent to a slot by a member who needs approval stores a pending request', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $post = rescheduleCustom($this->channel, $member);
+    $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
+
+    $this->actingAs($member)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::PendingApproval)
+        ->and($post->approval_requested_by)->toBe($member->id);
+});
+
+test('another action ignores queue_slot', function () {
+    $draft = reschedulePost($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'queue_next', 'queue_slot' => 'not-a-boolean'])
+        ->assertSessionHasNoErrors();
+
+    expect($draft->fresh()->schedule_mode)->toBe(ScheduleMode::Queue);
+});
+
 test('reschedule keeps a draft a draft and moves its date', function () {
     $draft = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-06 10:00', 'UTC')]);
 

@@ -95,10 +95,18 @@ export const dropInstant = (
     return instant.utc().format();
 };
 
+export const entersQueueSlot = (
+    post: PostCard,
+    target: CalendarDropTarget,
+): boolean =>
+    post.status === PostStatus.Scheduled &&
+    target.kind === 'slot' &&
+    target.channelId === post.social_account_id;
+
 export const needsCustomTimeConfirmation = (
     post: PostCard,
     target: CalendarDropTarget,
 ): boolean =>
     post.schedule_mode === ScheduleMode.Queue &&
     post.status === PostStatus.Scheduled &&
-    !(target.kind === 'slot' && target.channelId === post.social_account_id);
+    !entersQueueSlot(post, target);

@@ -16,6 +16,7 @@ import dayjs from '@/dayjs';
 import {
     canDragCalendarPost,
     dropInstant,
+    entersQueueSlot,
     needsCustomTimeConfirmation,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
@@ -220,17 +221,28 @@ export const useCalendarDrag = (
         document.body.classList.remove(GRABBING_CLASS);
     };
 
+    const movedScheduleMode = (
+        post: PostCard,
+        target: CalendarDropTarget,
+    ): PostCard['schedule_mode'] => {
+        if (post.status !== PostStatus.Scheduled) {
+            return post.schedule_mode;
+        }
+
+        return entersQueueSlot(post, target)
+            ? ScheduleMode.Queue
+            : ScheduleMode.Custom;
+    };
+
     const movedPost = (
         post: PostCard,
+        target: CalendarDropTarget,
         scheduledAt: string | null,
     ): CalendarPost => ({
         ...post,
         scheduled_at: scheduledAt,
         calendar_at: scheduledAt ?? '',
-        schedule_mode:
-            post.status === PostStatus.Scheduled
-                ? ScheduleMode.Custom
-                : post.schedule_mode,
+        schedule_mode: movedScheduleMode(post, target),
     });
 
     const forget = (postId: string): void => {
@@ -296,7 +308,7 @@ export const useCalendarDrag = (
 
         movedPosts.value = {
             ...movedPosts.value,
-            [post.id]: movedPost(post, scheduledAt),
+            [post.id]: movedPost(post, target, scheduledAt),
         };
 
         let settled = false;
@@ -338,6 +350,7 @@ export const useCalendarDrag = (
             {
                 action: 'reschedule',
                 scheduled_at: scheduledAt,
+                queue_slot: entersQueueSlot(post, target),
             },
             {
                 async: true,

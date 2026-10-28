@@ -185,7 +185,7 @@ test('dragging a custom post onto an hour moves it to that hour', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('dragging onto a slot takes the slot\'s exact time', function () {
+test('dragging onto a slot of its channel takes the slot\'s exact time in the queue', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '15:25');
     $day = calendarDragDay();
     $slotAt = $day->setTime(15, 25);
@@ -202,7 +202,33 @@ test('dragging onto a slot takes the slot\'s exact time', function () {
 
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a custom post dropped on a free slot of its channel goes back into the queue', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '15:25');
+    $day = calendarDragDay();
+    $slotAt = $day->setTime(15, 25);
+    $post = calendarDragPost($channel, $day->setTime(13, 30));
+    $slotKey = calendarDragSlotKey($channel, $slotAt);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-posting-slot-{$slotKey}");
+    waitForState($page, "@post-schedule-mode-{$post->id}", "element.dataset.mode === 'custom'");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-posting-slot-{$slotKey}");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+    waitForState($page, "@calendar-slot-{$day->format('Y-m-d')}-15 @post-schedule-mode-{$post->id}", "element.dataset.mode === 'queue'");
+
+    $page->assertMissing('@calendar-custom-time-dialog')
+        ->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved', ['time' => calendarDragWhen($slotAt)]))
+        ->assertDontSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unqueued_suffix'));
+    $post->refresh();
+    expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -347,7 +373,7 @@ test('ticking the box and cancelling stores nothing', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('dropping a queued post on a free slot of its channel becomes custom at that slot without asking', function () {
+test('dropping a queued post on a free slot of its channel moves it there in the queue without asking', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();
     $slotAt = $day->addDay()->setTime(9, 25);
@@ -365,7 +391,7 @@ test('dropping a queued post on a free slot of its channel becomes custom at tha
     $page->assertMissing('@calendar-custom-time-dialog');
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -2008,7 +2034,7 @@ test('a post that becomes due before the move reaches the server goes back with 
     $page->assertNoJavaScriptErrors();
 });
 
-test('a custom post dropped on a posting time in the month grid takes that exact time', function () {
+test('a custom post dropped on a posting time of its channel in the month grid goes into the queue at that time', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '15:25');
     $day = calendarDragDay();
     $slotAt = $day->addDay()->setTime(15, 25);
@@ -2025,12 +2051,12 @@ test('a custom post dropped on a posting time in the month grid takes that exact
 
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertMissing('@calendar-custom-time-dialog')
         ->assertNoJavaScriptErrors();
 });
 
-test('a queued post dropped on a free posting time of its channel in the month grid becomes custom without asking', function () {
+test('a queued post dropped on a free posting time of its channel in the month grid stays in the queue there without asking', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();
     $slotAt = $day->addDay()->setTime(9, 25);
@@ -2047,7 +2073,7 @@ test('a queued post dropped on a free posting time of its channel in the month g
 
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertMissing('@calendar-custom-time-dialog')
         ->assertNoJavaScriptErrors();
 });

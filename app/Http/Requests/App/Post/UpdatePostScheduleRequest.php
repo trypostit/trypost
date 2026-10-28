@@ -33,6 +33,11 @@ class UpdatePostScheduleRequest extends FormRequest
                 'after:now',
                 'before:2038-01-19',
             ],
+            'queue_slot' => [
+                Rule::excludeIf(fn (): bool => $this->enum('action', ScheduleAction::class) !== ScheduleAction::Reschedule),
+                'sometimes',
+                'boolean',
+            ],
         ];
     }
 
