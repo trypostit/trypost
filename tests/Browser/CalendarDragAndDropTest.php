@@ -1227,6 +1227,44 @@ test('dropping a dated draft on No Date announces it and toasts', function () {
         __('calendar.reschedule.announce.over', ['from' => calendarDragWhen($from), 'target' => __('calendar.no_date')]),
         __('calendar.reschedule.announce.undated', ['from' => calendarDragWhen($from)]),
     ]);
+    expect($page->script(<<<'JS'
+        (() => {
+            const toast = document.querySelector('[data-testid="calendar-reschedule-success-toast"]').getBoundingClientRect();
+            const centre = toast.left + toast.width / 2;
+
+            return {
+                top: toast.top < window.innerHeight / 4,
+                centred: Math.abs(centre - window.innerWidth / 2) <= 2,
+            };
+        })()
+    JS))->toBe(['top' => true, 'centred' => true]);
+    expect($page->script(<<<'JS'
+        (() => {
+            const toast = document.querySelector('[data-testid="calendar-reschedule-success-toast"]');
+            const style = getComputedStyle(toast);
+            const icon = toast.querySelector('[data-icon]').getBoundingClientRect();
+            const content = toast.querySelector('[data-content]').getBoundingClientRect();
+            const close = toast.querySelector('[data-close-button]').getBoundingClientRect();
+
+            return {
+                width: toast.offsetWidth,
+                padding: style.padding,
+                radius: style.borderTopLeftRadius,
+                font: [style.fontSize, style.lineHeight, style.fontWeight],
+                icon: [icon.width, Math.round(icon.top - toast.getBoundingClientRect().top)],
+                closeAfterContent: close.left >= content.right,
+                closeSize: close.width,
+            };
+        })()
+    JS))->toBe([
+        'width' => 480,
+        'padding' => '12px 16px 12px 12px',
+        'radius' => '12px',
+        'font' => ['14px', '21px', '400'],
+        'icon' => [24, 12],
+        'closeAfterContent' => true,
+        'closeSize' => 24,
+    ]);
     $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.undated'))
         ->assertNoJavaScriptErrors();
 });

@@ -6,6 +6,7 @@ import {
   IconCircleCheckFilled,
   IconInfoCircleFilled,
   IconLoader2,
+  IconX,
 } from "@tabler/icons-vue"
 import { Toaster as Sonner } from "vue-sonner"
 
@@ -15,8 +16,11 @@ const props = defineProps<ToasterProps>()
 <template>
   <Sonner
     v-bind="props"
-    position="bottom-right"
+    position="top-center"
+    offset="16px"
+    close-button
     :style="{
+      '--width': '480px',
       '--normal-bg': 'var(--popover)',
       '--normal-text': 'var(--popover-foreground)',
       '--normal-border': 'var(--border)',
@@ -49,29 +53,63 @@ const props = defineProps<ToasterProps>()
     <template #loading-icon>
       <IconLoader2 class="size-5 animate-spin" />
     </template>
+    <template #close-icon>
+      <IconX class="size-4" />
+    </template>
   </Sonner>
 </template>
 
 <style>
 [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
-  gap: 10px;
-  padding: 14px 16px;
-  border-color: transparent;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 12px 16px 12px 12px;
+  border: 0;
   border-radius: 12px;
-  box-shadow: var(--shadow-md);
+  box-shadow:
+    0 0 0 1px var(--border),
+    0 0 1px 1px rgb(0 0 0 / 0.09),
+    0 4px 8px -4px rgb(0 0 0 / 0.12),
+    0 16px 24px -8px rgb(0 0 0 / 0.12);
   font-size: 14px;
-  font-weight: 500;
-  line-height: 20px;
-}
-
-.dark [data-sonner-toaster] [data-sonner-toast][data-styled="true"] {
-  border-color: var(--border);
+  font-weight: 400;
+  line-height: 21px;
 }
 
 [data-sonner-toaster] [data-sonner-toast] [data-icon] {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  justify-content: center;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-icon] svg {
   width: 20px;
   height: 20px;
-  margin: 0;
+}
+
+[data-sonner-toaster] [data-sonner-toast] [data-content] {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-top: 1.5px;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button] {
+  position: static;
+  order: 99;
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted-foreground);
+  transform: none;
+}
+
+[data-sonner-toaster] [data-sonner-toast][data-styled="true"] [data-close-button]:hover {
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 [data-sonner-toaster] [data-sonner-toast] [data-description] {
