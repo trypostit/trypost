@@ -29,6 +29,7 @@ class UpdatePreferencesRequest extends FormRequest
             'time_format' => ['sometimes', 'required', Rule::enum(TimeFormat::class)],
             'week_starts_on' => ['sometimes', 'required', Rule::enum(WeekStart::class)],
             'default_post_action' => ['sometimes', 'required', Rule::enum(DefaultPostAction::class)],
+            'skips_custom_time_confirmation' => ['sometimes', 'required', 'boolean'],
         ];
     }
 }

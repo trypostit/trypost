@@ -252,13 +252,14 @@ test('don\'t show again skips the dialog next time', function () {
     $page->click('@calendar-custom-time-confirm');
     calendarDragFinished($page);
 
-    expect($page->script('window.localStorage.getItem("calendar.skipCustomTimeConfirm")'))->toBe('true');
+    expect($user->refresh()->skips_custom_time_confirmation)->toBeTrue();
     waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->setTime(9, 25)));
 
     waitFor($page, "@calendar-post-{$second->id}");
     calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$nextKey}-11");
     waitFor($page, "@calendar-slot-{$nextKey}-11 @calendar-post-{$second->id}");
     calendarDragFinished($page);
+    waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->addDay()->setTime(9, 25)));
 
     $page->assertMissing('@calendar-custom-time-dialog');
     $second->refresh();
@@ -267,7 +268,47 @@ test('don\'t show again skips the dialog next time', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('dropping a queued post on a free slot of its channel keeps it queued without asking', function () {
+test('a fresh browser context for that user skips the dialog', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $user->update(['skips_custom_time_confirmation' => true]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, "@calendar-slot-{$key}-11 @calendar-post-{$post->id}");
+    calendarDragFinished($page);
+
+    $page->assertMissing('@calendar-custom-time-dialog');
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(11, 0)))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('ticking the box and cancelling stores nothing', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-custom-time-skip');
+    $page->click('@calendar-custom-time-skip');
+    $page->click('@calendar-custom-time-cancel');
+    waitForGone($page, '@calendar-custom-time-dialog');
+
+    expect($user->refresh()->skips_custom_time_confirmation)->toBeFalse()
+        ->and($post->refresh()->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('dropping a queued post on a free slot of its channel becomes custom at that slot without asking', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();
     $slotAt = $day->addDay()->setTime(9, 25);
@@ -285,7 +326,7 @@ test('dropping a queued post on a free slot of its channel keeps it queued witho
     $page->assertMissing('@calendar-custom-time-dialog');
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -514,35 +555,6 @@ test('the drop uses the display zone', function () {
     expect($post->refresh()->scheduled_at->equalTo($tokyoDay->setTime(10, 0)))->toBeTrue()
         ->and($post->scheduled_at->utc()->format('H:i'))->toBe('01:00');
     $page->assertNoJavaScriptErrors();
-});
-
-test('a slot taken meanwhile rolls back with an error toast', function () {
-    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
-    $day = calendarDragDay();
-    $queuedAt = $day->setTime(9, 25);
-    $slotAt = $day->addDay()->setTime(9, 25);
-    $slotKey = calendarDragSlotKey($channel, $slotAt);
-    $post = calendarDragPost($channel, $queuedAt, mode: ScheduleMode::Queue);
-    $this->actingAs($user);
-
-    $page = visit(calendarDragWeekUrl($day));
-    waitFor($page, "@calendar-posting-slot-{$slotKey}");
-    waitFor($page, "@calendar-post-{$post->id}");
-    $occupant = calendarDragPost($channel, $slotAt);
-
-    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-posting-slot-{$slotKey}");
-    waitFor($page, '@calendar-reschedule-error-toast');
-    calendarDragFinished($page);
-
-    $page->assertSeeIn('@calendar-reschedule-error-toast', __('posts.errors.queue_order_stale'));
-    waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-09 @calendar-post-{$post->id}");
-    expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$day->format('Y-m-d')}-09");
-    $post->refresh();
-    expect($post->scheduled_at->equalTo($queuedAt))->toBeTrue()
-        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue)
-        ->and($occupant->refresh()->scheduled_at->equalTo($slotAt))->toBeTrue();
-    $page->assertMissing('@calendar-custom-time-dialog')
-        ->assertNoJavaScriptErrors();
 });
 
 test('a post published meanwhile goes back and the reason is shown', function () {

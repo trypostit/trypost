@@ -40,7 +40,6 @@ class PostScheduleController extends Controller
                 $post,
                 transform($request->validated('scheduled_at'), fn (string $at): CarbonImmutable => CarbonImmutable::parse($at)->utc()),
                 $request->user(),
-                (bool) $request->validated('keep_in_queue', false),
             );
 
             if (data_get($result, 'action') === PostAction::Finalized) {

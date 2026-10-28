@@ -167,14 +167,8 @@ export const useCalendarDrag = (options: {
         document.body.classList.remove(GRABBING_CLASS);
     };
 
-    const staysQueued = (post: PostCard, target: CalendarDropTarget): boolean =>
-        post.status === PostStatus.Scheduled &&
-        post.schedule_mode === ScheduleMode.Queue &&
-        !needsCustomTimeConfirmation(post, target);
-
     const movedPost = (
         post: PostCard,
-        target: CalendarDropTarget,
         scheduledAt: string | null,
     ): CalendarPost => ({
         ...post,
@@ -182,9 +176,7 @@ export const useCalendarDrag = (options: {
         calendar_at: scheduledAt ?? '',
         schedule_mode:
             post.status === PostStatus.Scheduled
-                ? staysQueued(post, target)
-                    ? ScheduleMode.Queue
-                    : ScheduleMode.Custom
+                ? ScheduleMode.Custom
                 : post.schedule_mode,
     });
 
@@ -225,7 +217,7 @@ export const useCalendarDrag = (options: {
 
         movedPosts.value = {
             ...movedPosts.value,
-            [post.id]: movedPost(post, target, scheduledAt),
+            [post.id]: movedPost(post, scheduledAt),
         };
 
         let failed = false;
@@ -235,7 +227,6 @@ export const useCalendarDrag = (options: {
             {
                 action: 'reschedule',
                 scheduled_at: scheduledAt,
-                keep_in_queue: staysQueued(post, target),
             },
             {
                 preserveScroll: true,
@@ -252,9 +243,9 @@ export const useCalendarDrag = (options: {
                         });
                     }
                 },
-                onError: (errors) => {
+                onError: () => {
                     failed = true;
-                    rollback(post.id, errors.slot_at);
+                    rollback(post.id);
                 },
                 onHttpException: () => {
                     failed = true;
