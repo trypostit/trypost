@@ -358,3 +358,87 @@ test('reschedule from the publish list stays on the page it came from', function
         ->assertSessionHasNoErrors()
         ->assertRedirect(route('app.posts.index'));
 });
+
+test('reschedule of a pending post is refused and keeps the request as it is', function (string $who) {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $post = rescheduleCustom($this->channel, $member);
+
+    $this->actingAs($member)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
+        ->assertSessionHasNoErrors();
+
+    $pending = $post->fresh();
+    $actor = $who === 'requester' ? $member : $this->user;
+
+    $this->actingAs($actor)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-09T15:00:00Z'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.not_movable')]);
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::PendingApproval)
+        ->and($post->scheduled_at?->toIso8601String())->toBe($pending->scheduled_at?->toIso8601String())
+        ->and($post->approved_by)->toBeNull()
+        ->and($post->approval_requested_by)->toBe($member->id);
+})->with(['requester', 'approver']);
+
+test('reschedule of a failed or publishing post does nothing', function (PostStatus $status) {
+    $post = reschedulePost($this->channel, $this->user, [
+        'status' => $status,
+        'scheduled_at' => CarbonImmutable::parse('2026-10-05 07:00', 'UTC'),
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
+        ->assertRedirect()
+        ->assertSessionHas('flash.banner', __('posts.flash.cannot_edit_finalized'));
+
+    $post->refresh();
+
+    expect($post->status)->toBe($status)
+        ->and($post->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-05 07:00', 'UTC')->toIso8601String());
+})->with([PostStatus::Failed, PostStatus::Publishing]);
+
+test('reschedule of a scheduled post due within a minute or overdue is refused', function (string $due) {
+    $post = rescheduleCustom($this->channel, $this->user, now()->modify($due)->toDateTimeString());
+    $at = $post->scheduled_at->toIso8601String();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-08T11:00:00Z'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.not_movable')]);
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->toIso8601String())->toBe($at);
+})->with(['in 20 seconds' => '+20 seconds', '30 seconds ago' => '-30 seconds']);
+
+test('reschedule refuses a time past the 2038 ceiling before it reaches the post', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+        'content' => 'A caption',
+        'status' => PostStatus::Draft,
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2038-01-19T00:00:00Z'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('validation.before', ['attribute' => 'scheduled at', 'date' => '2038-01-19'])]);
+});
+
+test('reschedule refuses a malformed time', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $at = $post->scheduled_at->toIso8601String();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => 'next tuesday-ish'])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('validation.date', ['attribute' => 'scheduled at'])]);
+
+    expect($post->fresh()->scheduled_at->toIso8601String())->toBe($at);
+});
