@@ -87,6 +87,29 @@ test('the software step goes back to goals, the step right before it', function 
         ->assertNoJavaScriptErrors();
 });
 
+test('the software step shows each competitor by its logo and the other options by an icon', function () {
+    config(['trypost.self_hosted' => false]);
+
+    $this->actingAs(welcomeHeaderOwner());
+
+    $page = visit(route('app.welcome.software'));
+
+    foreach (PreviousSoftware::cases() as $software) {
+        if ($software->brandName() === null) {
+            continue;
+        }
+
+        waitForState($page, "@welcome-software-{$software->value}-logo", 'element.complete && element.naturalWidth > 0');
+        $page->assertScript("document.querySelector('[data-testid=\"welcome-software-{$software->value}-logo\"]').naturalWidth > 0");
+    }
+
+    $page->assertMissing('@welcome-software-none-logo')
+        ->assertMissing('@welcome-software-other-logo')
+        ->assertVisible('@welcome-software-none-icon')
+        ->assertVisible('@welcome-software-other-icon')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the plan step goes back to software, the step right before it', function () {
     config(['trypost.self_hosted' => false]);
 

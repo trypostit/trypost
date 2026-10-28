@@ -39,11 +39,24 @@ const select = (): void => {
         <span
             :class="[
                 'inline-flex size-9 shrink-0 items-center justify-center rounded-lg transition-control',
-                selected ? 'bg-card' : art.tint,
+                selected && !art.logo && !art.icon ? 'bg-card' : art.tint,
             ]"
             aria-hidden="true"
         >
-            <span class="text-xl leading-none">{{ art.emoji }}</span>
+            <img
+                v-if="art.logo"
+                :src="art.logo"
+                alt=""
+                class="size-5"
+                :data-testid="`${testid}-logo`"
+            />
+            <component
+                :is="art.icon"
+                v-else-if="art.icon"
+                class="size-5 text-neutral-500"
+                :data-testid="`${testid}-icon`"
+            />
+            <span v-else class="text-xl leading-none">{{ art.emoji }}</span>
         </span>
         <span
             class="min-w-0 flex-1 text-sm font-medium text-foreground"
