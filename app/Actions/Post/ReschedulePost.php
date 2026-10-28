@@ -27,20 +27,9 @@ class ReschedulePost
             throw ValidationException::withMessages(['scheduled_at' => __('posts.errors.choose_channel')]);
         }
 
-        if ($post->status === PostStatus::Draft) {
-            return UpdatePost::execute($workspace, $post, [
-                'status' => PostStatus::Draft->value,
-                'scheduled_at' => $at?->toIso8601String(),
-            ], $actor);
-        }
-
-        if (blank($at)) {
-            throw ValidationException::withMessages(['scheduled_at' => __('validation.required', ['attribute' => 'scheduled at'])]);
-        }
-
         return UpdatePost::execute($workspace, $post, [
-            'status' => PostStatus::Scheduled->value,
-            'scheduled_at' => $at->toIso8601String(),
+            'status' => $post->status === PostStatus::Draft ? PostStatus::Draft->value : PostStatus::Scheduled->value,
+            'scheduled_at' => $at?->toIso8601String(),
         ], $actor);
     }
 }
