@@ -322,3 +322,39 @@ test('the next occurrence of a rescheduled recurring post follows the new time',
         ->and($next->recurrence_remaining)->toBe(2)
         ->and($next->recurrence_frequency)->toBe(RecurrenceFrequency::Week);
 });
+
+test('reschedule without a time field is refused and keeps a draft\'s date', function () {
+    $draft = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-06 10:00', 'UTC')]);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'reschedule'])
+        ->assertRedirect()
+        ->assertSessionHasErrors('scheduled_at');
+
+    expect($draft->fresh()->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-06 10:00', 'UTC')->toIso8601String());
+});
+
+test('another action ignores a stray past time', function () {
+    $draft = reschedulePost($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $draft), ['action' => 'queue_next', 'scheduled_at' => now()->subDay()->toIso8601String()])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect();
+
+    $draft->refresh();
+
+    expect($draft->status)->toBe(PostStatus::Scheduled)
+        ->and($draft->schedule_mode)->toBe(ScheduleMode::Queue)
+        ->and($draft->scheduled_at->toIso8601String())->toBe(CarbonImmutable::parse('2026-10-05 09:00', 'UTC')->toIso8601String());
+});
+
+test('reschedule from the publish list stays on the page it came from', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->from(route('app.posts.index'))
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-06T14:00:00Z'])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(route('app.posts.index'));
+});
