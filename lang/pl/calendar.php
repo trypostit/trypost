@@ -34,7 +34,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Przenoszenie wpisu na własną godzinę',
-            'description' => 'Ten wpis zostanie przeniesiony z miejsca w kolejce, :from, na własną godzinę, :to, która nie należy do Twoich godzin publikacji.',
+            'description' => 'Ten wpis zostanie przeniesiony z miejsca w kolejce, <strong>:from <i>(:zone)</i></strong>, na własną godzinę, <strong>:to <i>(:zone)</i></strong>, która nie należy do Twoich godzin publikacji.',
             'unqueued' => 'Wpis zostanie opublikowany o wybranej godzinie, ale nie zajmie miejsca w Twojej kolejce.',
             'dont_show_again' => 'Nie pokazuj więcej',
             'cancel' => 'Anuluj',

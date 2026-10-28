@@ -34,7 +34,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => '投稿を指定の時刻に移動',
-            'description' => 'この投稿をキューの枠(:from)から、投稿時刻に含まれていない指定の時刻(:to)に移動します。',
+            'description' => 'この投稿をキューの枠<strong>:from <i>(:zone)</i></strong>から、投稿時刻に含まれていない指定の時刻<strong>:to <i>(:zone)</i></strong>に移動します。',
             'unqueued' => '投稿は選択した新しい時刻に公開されますが、キューの枠は使用しません。',
             'dont_show_again' => '今後は表示しない',
             'cancel' => 'キャンセル',

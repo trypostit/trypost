@@ -34,7 +34,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Movendo o post para um horário personalizado',
-            'description' => 'Você está movendo este post de um horário da fila, :from, para um horário personalizado, :to, que não é um dos seus horários de publicação.',
+            'description' => 'Você está movendo este post de um horário da fila, <strong>:from <i>(:zone)</i></strong>, para um horário personalizado, <strong>:to <i>(:zone)</i></strong>, que não é um dos seus horários de publicação.',
             'unqueued' => 'O post será publicado no novo horário escolhido, mas não vai ocupar um lugar na sua fila.',
             'dont_show_again' => 'Não mostrar de novo',
             'cancel' => 'Cancelar',

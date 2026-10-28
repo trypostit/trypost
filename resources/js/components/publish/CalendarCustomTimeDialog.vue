@@ -17,8 +17,9 @@ const STORAGE_KEY = 'calendar.skipCustomTimeConfirm';
 
 const isOpen = ref(false);
 const skipNextTime = ref(false);
-const fromLabel = ref('');
-const toLabel = ref('');
+const fromTime = ref('');
+const toTime = ref('');
+const zone = ref('');
 
 let resolveChoice: ((confirmed: boolean) => void) | null = null;
 
@@ -38,17 +39,6 @@ const storeSkip = (): void => {
     }
 };
 
-const escapeHtml = (value: string): string =>
-    value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;');
-
-const strong = (at: string, timezone: string): string => {
-    const time = date.formatMonthDayTimeInTimezone(at, timezone);
-
-    return `<strong class="font-[650]">${escapeHtml(time)} <i>(${escapeHtml(timezone)})</i></strong>`;
-};
 
 const settle = (confirmed: boolean): void => {
     isOpen.value = false;
@@ -66,8 +56,9 @@ const confirm = (
     }
 
     resolveChoice?.(false);
-    fromLabel.value = strong(from, timezone);
-    toLabel.value = strong(to, timezone);
+    fromTime.value = date.formatMonthDayTimeInTimezone(from, timezone);
+    toTime.value = date.formatMonthDayTimeInTimezone(to, timezone);
+    zone.value = timezone;
     skipNextTime.value = false;
     isOpen.value = true;
 
@@ -112,11 +103,13 @@ defineExpose({ confirm });
                 class="flex flex-col gap-4 px-6 text-sm leading-[21px] text-foreground"
             >
                 <p
+                    class="[&_strong]:font-[650]"
                     data-testid="calendar-custom-time-description"
                     v-html="
                         $t('calendar.reschedule.custom_time.description', {
-                            from: fromLabel,
-                            to: toLabel,
+                            from: fromTime,
+                            to: toTime,
+                            zone,
                         })
                     "
                 />

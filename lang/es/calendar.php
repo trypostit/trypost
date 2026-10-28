@@ -34,7 +34,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Mover publicación a una hora personalizada',
-            'description' => 'Vas a mover esta publicación de un hueco de la cola, :from, a una hora personalizada, :to, que no es una de tus horas de publicación.',
+            'description' => 'Vas a mover esta publicación de un hueco de la cola, <strong>:from <i>(:zone)</i></strong>, a una hora personalizada, <strong>:to <i>(:zone)</i></strong>, que no es una de tus horas de publicación.',
             'unqueued' => 'La publicación se publicará a la nueva hora elegida, pero no ocupará un hueco en tu cola.',
             'dont_show_again' => 'No mostrar más',
             'cancel' => 'Cancelar',
