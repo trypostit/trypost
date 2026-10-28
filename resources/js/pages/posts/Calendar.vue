@@ -183,11 +183,7 @@ const announcement = ref('');
 let lastOverAnnouncement = '';
 
 const describeAt = (at: string, dateOnly: boolean): string => {
-    const day = dayjs
-        .utc(at)
-        .tz(timezone.value)
-        .locale(activeLocale.value.toLowerCase())
-        .format('ddd, MMMM D');
+    const day = date.formatWeekdayMonthDay(at, timezone.value);
 
     return dateOnly
         ? day
@@ -290,7 +286,8 @@ const calendarDrag = useCalendarDrag({
     describeInstant,
     onDragStart: clearAnnouncement,
     onOver: announceOver,
-    onDrop: announceDrop,
+    onConfirmed: announceDrop,
+    onRejected: announceReturn,
     onCancel: announceReturn,
     onMoved: () => {
         if (showSlots.value) {

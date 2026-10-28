@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Enums\Post\RecurrenceFrequency;
 use App\Enums\Post\ScheduleMode;
 use App\Enums\Post\Status as PostStatus;
+use App\Enums\User\Locale;
 use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -623,12 +624,16 @@ test('a post published meanwhile goes back and the reason is shown', function ()
     waitFor($page, "@calendar-post-{$post->id}");
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     $post->forceFill(['status' => PostStatus::Published, 'published_at' => $at])->save();
+    calendarDragWatchAnnouncer($page);
 
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
     waitFor($page, '@flash-banner-toast');
     calendarDragFinished($page);
 
     $page->assertSeeIn('@flash-banner-toast', __('posts.flash.cannot_edit_finalized'));
+    expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0)
+        ->and(array_slice(calendarDragAnnouncements($page), -1))->toBe([__('calendar.reschedule.announce.returned')])
+        ->and(collect(calendarDragAnnouncements($page))->filter(fn (string $text): bool => $text === __('calendar.reschedule.announce.returned'))->count())->toBe(1);
     expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$key}-10")
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
     $page->assertNoJavaScriptErrors();
@@ -1318,4 +1323,30 @@ test('a queued post that leaves the queue says its slot is free again', function
 
     $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.moved', ['time' => calendarDragWhen($day->setTime(12, 0))]).' '.__('calendar.reschedule.toast.unqueued_suffix'))
         ->assertNoJavaScriptErrors();
+});
+
+test('toasts and announcements write dates in the order of the user\'s language', function () {
+    [$user, $channel] = calendarDragSetup();
+    $user->update(['locale' => Locale::PortugueseBrazil]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $to = $day->setTime(12, 0);
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragPlay($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    calendarDragFinished($page);
+
+    $expected = $page->script("new Intl.DateTimeFormat('pt-BR', { weekday: 'short', month: 'long', day: 'numeric', timeZone: 'UTC' }).format(new Date('{$to->format('Y-m-d\\TH:i:s')}Z'))");
+    $toast = $page->script('document.querySelector(\'[data-testid="calendar-reschedule-success-toast"]\').textContent');
+    $announced = implode(' ', calendarDragAnnouncements($page));
+
+    expect($toast)->toContain($expected)
+        ->and($announced)->toContain($expected);
+    $page->assertNoJavaScriptErrors();
 });

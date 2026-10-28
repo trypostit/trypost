@@ -143,6 +143,19 @@ export default {
     },
 
     /**
+     * Short weekday + month + day of a UTC instant in an explicit time zone,
+     * in the active locale's order ("Thu, October 29").
+     */
+    formatWeekdayMonthDay(date: string, timezone: string): string {
+        return new Intl.DateTimeFormat(activeLocale.value, {
+            weekday: 'short',
+            month: 'long',
+            day: 'numeric',
+            timeZone: timezone,
+        }).format(dayjs.utc(date).toDate());
+    },
+
+    /**
      * Format a local date-only value (YYYY-MM-DD or Date) with the active locale.
      */
     formatLocalDate(date: string | Date | null | undefined) {

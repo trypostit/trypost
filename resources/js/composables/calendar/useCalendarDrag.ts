@@ -59,6 +59,12 @@ export interface CalendarDragLifecycle {
     ) => void;
     onCancel?: (post: PostCard) => void;
     onMoved?: (post: PostCard, scheduledAt: string | null) => void;
+    onConfirmed?: (
+        post: PostCard,
+        target: CalendarDropTarget,
+        scheduledAt: string | null,
+    ) => void;
+    onRejected?: (post: PostCard) => void;
 }
 
 interface Gesture {
@@ -315,6 +321,25 @@ export const useCalendarDrag = (
         };
 
         let failed = false;
+        let settled = false;
+
+        const reject = (): void => {
+            if (!settled) {
+                settled = true;
+                options.onRejected?.(post);
+            }
+        };
+
+        const isAtNewInstant = (page: Page): boolean => {
+            const reloaded = reloadedPost(page, post.id);
+
+            return (
+                !reloaded ||
+                (scheduledAt !== null &&
+                    reloaded.scheduled_at !== null &&
+                    dayjs.utc(reloaded.scheduled_at).isSame(dayjs.utc(scheduledAt)))
+            );
+        };
 
         router.put(
             updatePostSchedule.url(post.id),
@@ -328,6 +353,10 @@ export const useCalendarDrag = (
                 only: [...options.reloadProps, 'flash'],
                 reset: ['undatedDrafts'],
                 onSuccess: (page) => {
+                    if (settled) {
+                        return;
+                    }
+
                     if (
                         reloadedPost(page, post.id)?.status ===
                         PostStatus.PendingApproval
@@ -336,31 +365,45 @@ export const useCalendarDrag = (
                             testId: 'calendar-reschedule-approval-toast',
                         });
 
+                        reject();
+
                         return;
                     }
 
+                    if (!isAtNewInstant(page)) {
+                        reject();
+
+                        return;
+                    }
+
+                    settled = true;
+                    options.onConfirmed?.(post, target, scheduledAt);
                     toast.success(successMessage(post, target, scheduledAt), {
                         testId: 'calendar-reschedule-success-toast',
                     });
                 },
                 onError: () => {
                     failed = true;
+                    reject();
                     rollback(post.id);
                 },
                 onHttpException: () => {
                     failed = true;
+                    reject();
                     rollback(post.id);
 
                     return false;
                 },
                 onNetworkError: () => {
                     failed = true;
+                    reject();
                     rollback(post.id);
 
                     return false;
                 },
                 onCancel: () => {
                     failed = true;
+                    reject();
                 },
                 onFinish: () => {
                     forget(post.id);
