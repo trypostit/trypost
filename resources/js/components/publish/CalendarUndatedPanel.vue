@@ -104,14 +104,13 @@ const plainText = (draft: UndatedDraft): string =>
                 <div id="calendar-undated-list" class="flex flex-col gap-2">
                     <template v-for="draft in drafts" :key="draft.id">
                     <span
+                        v-if="draft.social_account"
                         :id="`${HINT_ID_PREFIX}${draft.id}`"
                         class="sr-only"
                         :data-testid="`calendar-drag-hint-${draft.id}`"
                         >{{
                             $t('calendar.reschedule.drag_hint_undated', {
-                                channel:
-                                    draft.social_account?.display_label ??
-                                    $t('calendar.undated.no_channel'),
+                                channel: draft.social_account.display_label,
                             })
                         }}</span
                     >

@@ -228,7 +228,7 @@ test('the no date panel slides open and closed, pushing the calendar aside gradu
     $page->assertMissing('@calendar-undated-panel')->assertNoJavaScriptErrors();
 });
 
-test('an undated draft without a channel says so in the language of the user', function () {
+test('an undated draft without a channel says so in the language of the user and has no drag hint', function () {
     [$user, $linkedin] = calendarPageSetup();
     $user->update(['locale' => Locale::PortugueseBrazil]);
     $draft = Post::factory()->draft()->create([
@@ -243,7 +243,7 @@ test('an undated draft without a channel says so in the language of the user', f
     waitFor($page, "@calendar-undated-{$draft->id}");
 
     $page->assertSeeIn("@calendar-undated-{$draft->id}", 'Sem canal')
-        ->assertScript("document.querySelector('[data-testid=\"calendar-drag-hint-{$draft->id}\"]').textContent.includes('Sem canal')", true)
+        ->assertMissing("@calendar-drag-hint-{$draft->id}")
         ->assertNoJavaScriptErrors();
 });
 

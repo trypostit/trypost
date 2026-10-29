@@ -100,7 +100,8 @@ interface Props {
 
 const props = defineProps<Props>();
 const page = usePage();
-const { canCreatePost, canManageAccounts } = useWorkspaceAbilities();
+const { canCreatePost, canManageAccounts, requiresApproval } =
+    useWorkspaceAbilities();
 const { showSlots, setShowSlots } = useShowPostingSlots();
 
 const VIEWS: readonly CalendarView[] = ['days', 'week', 'month'];
@@ -167,10 +168,15 @@ const { announcement, describeInstant, hooks } =
 const calendarDrag = useCalendarDrag({
     timezone,
     canCreatePost,
+    requiresApproval,
     reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
     confirmCustomTime,
     describeInstant,
     ...hooks,
+    onConfirmed: (post, target, scheduledAt) => {
+        hooks.onConfirmed?.(post, target, scheduledAt);
+        refreshSlotsAfterMove();
+    },
 });
 
 provide(calendarDragKey, calendarDrag);
@@ -277,6 +283,17 @@ const toggleUndated = (): void => {
 const closeUndated = (): void => {
     if (undatedOpen.value) {
         toggleUndated();
+    }
+};
+
+/**
+ * A move frees one posting slot and may take another. The move's own reload
+ * follows the browser URL, which carries no `slots=1` when the slots were
+ * loaded on mount, so the slots are asked for here.
+ */
+const refreshSlotsAfterMove = (): void => {
+    if (showSlots.value) {
+        reload(['slots'], [], true);
     }
 };
 

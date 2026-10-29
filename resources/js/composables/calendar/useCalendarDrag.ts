@@ -149,6 +149,7 @@ export const useCalendarDrag = (
     options: {
         timezone: Readonly<Ref<string>>;
         canCreatePost: Readonly<Ref<boolean>>;
+        requiresApproval: Readonly<Ref<boolean>>;
         reloadProps: string[];
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
         describeInstant: (at: string, target: CalendarDropTarget) => string;
@@ -410,13 +411,19 @@ export const useCalendarDrag = (
                         return;
                     }
 
-                    const leftTheFilteredList =
+                    const leftTheList =
                         reloaded === null &&
                         scheduledAt !== null &&
                         post.status !== PostStatus.Draft;
 
+                    if (leftTheList && !options.requiresApproval.value) {
+                        reject();
+
+                        return;
+                    }
+
                     if (
-                        leftTheFilteredList ||
+                        leftTheList ||
                         reloaded?.status === PostStatus.PendingApproval
                     ) {
                         announceApproval();

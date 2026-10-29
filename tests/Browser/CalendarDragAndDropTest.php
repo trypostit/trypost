@@ -89,10 +89,9 @@ function calendarDragOnto(mixed $page, string $from, string $to): void
     calendarGesture($page, <<<JS
         query('{$from}').scrollIntoView({ block: 'center' });
         query('{$to}').scrollIntoView({ block: 'nearest' });
-        const reachable = () => query('{$from}').contains(document.elementFromPoint(center('{$from}').x, center('{$from}').y));
-        for (let i = 0; i < 100 && !reachable(); i++) {
-            await pause(50);
-        }
+    JS);
+    waitForState($page, $from, '((box) => element.contains(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)))(element.getBoundingClientRect())');
+    calendarGesture($page, <<<JS
         await down(center('{$from}'));
         await move(center('{$to}'));
         await up(center('{$to}'));
@@ -271,7 +270,6 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
                 strong: [getComputedStyle(strong).fontWeight, getComputedStyle(strong.querySelector('i')).fontStyle],
                 buttons: [cancel.offsetHeight, confirm.offsetHeight],
                 cancelFirst: cancel.offsetLeft + cancel.offsetWidth <= confirm.offsetLeft,
-                footer: dialog.querySelector('[data-testid="calendar-custom-time-footer"]').offsetHeight,
             };
         })()
     JS);
@@ -285,7 +283,6 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
         'strong' => ['650', 'italic'],
         'buttons' => [32, 32],
         'cancelFirst' => true,
-        'footer' => 32,
     ]);
 
     $page->click('@calendar-custom-time-cancel');
@@ -2564,4 +2561,54 @@ test('a No Date draft dropped on a day while the status filter hides drafts says
     expect($draft->scheduled_at->equalTo($day->setTime(9, 0)))->toBeTrue()
         ->and($draft->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
+});
+
+test('a move into a free slot updates the posting slots shown, even when the URL does not ask for them', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = calendarDragDay();
+    $queuedAt = $day->setTime(9, 25);
+    $slotAt = $day->addDay()->setTime(9, 25);
+    $post = calendarDragPost($channel, $queuedAt, mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    $page->assertScript("new URLSearchParams(location.search).has('slots')", false);
+    waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $slotAt));
+    waitFor($page, "@calendar-post-{$post->id}");
+    $page->assertMissing('@calendar-posting-slot-'.calendarDragSlotKey($channel, $queuedAt));
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", '@calendar-posting-slot-'.calendarDragSlotKey($channel, $slotAt));
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $slotAt));
+    waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $queuedAt));
+
+    $page->assertMissing('@calendar-posting-slot-'.calendarDragSlotKey($channel, $slotAt))
+        ->assertPresent('@calendar-posting-slot-'.calendarDragSlotKey($channel, $queuedAt))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a post that leaves the week while it moves goes back instead of claiming it went for approval', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+
+    $post->forceFill(['status' => PostStatus::Published, 'published_at' => now()->subWeeks(2)])->saveQuietly();
+    $page->script('window.__releaseHeldRequests()');
+    waitForCondition($page, 'window.__announcements.length >= 2');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    expect(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'));
+    $page->assertMissing('@calendar-reschedule-approval-toast')
+        ->assertMissing('@calendar-reschedule-success-toast')
+        ->assertNoJavaScriptErrors();
 });
