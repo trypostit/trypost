@@ -150,7 +150,7 @@ export const useCalendarDrag = (
         timezone: Readonly<Ref<string>>;
         canCreatePost: Readonly<Ref<boolean>>;
         requiresApproval: Readonly<Ref<boolean>>;
-        reloadProps: string[];
+        reloadProps: () => string[];
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
         describeInstant: (
             at: string,
@@ -353,8 +353,18 @@ export const useCalendarDrag = (
         };
 
         const moveId = ++movesSent;
+        const component = page.component;
         let reloaded: CalendarPost | null | undefined;
         let staleResponse = false;
+
+        const reloadInstead = (): void => {
+            staleResponse = true;
+            router.reload({
+                only: options.reloadProps(),
+                reset: ['undatedDrafts'],
+                onFinish: () => forget(post.id),
+            });
+        };
 
         const announceApproval = (): void => {
             toast.success(trans('posts.approvals.requested'), {
@@ -374,7 +384,7 @@ export const useCalendarDrag = (
                 async: true,
                 preserveScroll: true,
                 preserveState: true,
-                only: [...options.reloadProps, 'flash'],
+                only: [...options.reloadProps(), 'flash'],
                 reset: ['undatedDrafts'],
                 onBeforeUpdate: (response) => {
                     reloaded =
@@ -397,25 +407,24 @@ export const useCalendarDrag = (
                     response.props = {
                         ...page.props,
                         flash: response.props.flash,
+                        errors: response.props.errors,
                     };
                     response.url = page.url;
                 },
                 onSuccess: () => {
-                    if (staleResponse) {
-                        router.reload({
-                            only: options.reloadProps,
-                            reset: ['undatedDrafts'],
-                            onFinish: () => forget(post.id),
-                        });
-                    }
+                    if (reloaded === undefined) {
+                        if (page.component === component) {
+                            reloadInstead();
+                        }
 
-                    if (settled) {
                         return;
                     }
 
-                    if (reloaded === undefined) {
-                        confirm();
+                    if (staleResponse) {
+                        reloadInstead();
+                    }
 
+                    if (settled) {
                         return;
                     }
 

@@ -1080,6 +1080,18 @@ test('destroy returns to a page without its optional route parameter as it was, 
         ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
 });
 
+test('destroy ignores a numeric query key of the page it returns to', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['week' => '2026-10-26']).'&0=foo')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
+});
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

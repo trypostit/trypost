@@ -187,7 +187,7 @@ const statusTestId = computed(() =>
         </Teleport>
         <span
             :id="`${HINT_ID_PREFIX}${post.id}`"
-            class="sr-only"
+            hidden
             :data-testid="`calendar-drag-hint-${post.id}`"
             >{{ $t('calendar.reschedule.drag_hint') }}</span
         >

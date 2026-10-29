@@ -27,7 +27,12 @@ export const useDisplayTimezone = (
     defaultTz: string,
     available: string[],
     currentTab?: () => string,
-    reloadProps: string[] = ['posts', 'queue', 'counts', 'displayTimezone'],
+    reloadProps: string[] | (() => string[]) = [
+        'posts',
+        'queue',
+        'counts',
+        'displayTimezone',
+    ],
 ): {
     timezone: Ref<string>;
     setTimezone: (tz: string) => void;
@@ -60,7 +65,10 @@ export const useDisplayTimezone = (
                 preserveState: true,
                 preserveScroll: true,
                 replace: true,
-                only: reloadProps,
+                only:
+                    typeof reloadProps === 'function'
+                        ? reloadProps()
+                        : reloadProps,
                 reset: ['posts'],
             },
         );

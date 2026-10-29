@@ -13,6 +13,7 @@ use App\Support\PostStatusRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
@@ -92,7 +93,7 @@ trait RendersPublishPage
     /**
      * The page the request was sent from, rebuilt with route() from the route its
      * Referer matched, so it always points at this app, at the same route
-     * parameters (a query key never replaces or fills one). Its query is kept, minus the
+     * parameters (a query key, named or numeric, never replaces or fills one). Its query is kept, minus the
      * keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
      * that matches no route of the app, or cannot be read, returns to the home page.
      *
@@ -106,7 +107,10 @@ trait RendersPublishPage
         }
 
         try {
-            $query = Uri::of(url()->previous())->query()->except([...$except, ...$route->parameterNames()]);
+            $query = Arr::where(
+                Uri::of(url()->previous())->query()->except([...$except, ...$route->parameterNames()]),
+                fn (mixed $value, int|string $key): bool => is_string($key),
+            );
         } catch (UriException) {
             return route('app.home');
         }

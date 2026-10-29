@@ -22,6 +22,15 @@ export const canDragCalendarPost = (
             post.scheduled_at !== null &&
             dayjs.utc(post.scheduled_at).isAfter(now.add(1, 'minute'))));
 
+const SOON_MINUTES = 5;
+
+/**
+ * Five minutes from now, to the minute: where a drop lands when the time it
+ * names has already started (today on the month grid, the current hour).
+ */
+const soon = (now: dayjs.Dayjs): dayjs.Dayjs =>
+    now.add(SOON_MINUTES, 'minute').startOf('minute');
+
 const instantOnDay = (
     post: PostCard,
     dayKey: string,
@@ -47,9 +56,30 @@ const instantOnDay = (
         return instant;
     }
 
-    const soon = now.add(5, 'minute').startOf('minute');
+    const later = soon(now);
 
-    return soon.tz(timezone).format('YYYY-MM-DD') === dayKey ? soon : undefined;
+    return later.tz(timezone).format('YYYY-MM-DD') === dayKey
+        ? later
+        : undefined;
+};
+
+/**
+ * An hour cell takes the start of its hour, or, for the hour under way, five
+ * minutes from now while that is still inside the hour.
+ */
+const instantInHour = (
+    at: string,
+    now: dayjs.Dayjs,
+): dayjs.Dayjs | undefined => {
+    const start = dayjs.utc(at);
+
+    if (start.isAfter(now)) {
+        return start;
+    }
+
+    const later = soon(now);
+
+    return later.isBefore(start.add(1, 'hour')) ? later : undefined;
 };
 
 const isInHourOf = (post: PostCard, at: string): boolean => {
@@ -82,7 +112,9 @@ export const dropInstant = (
     const instant =
         target.kind === 'day'
             ? instantOnDay(post, target.dayKey, timezone, now)
-            : dayjs.utc(target.at);
+            : target.kind === 'hour'
+              ? instantInHour(target.at, now)
+              : dayjs.utc(target.at);
 
     if (
         !instant ||

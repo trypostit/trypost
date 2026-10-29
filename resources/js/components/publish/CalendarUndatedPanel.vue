@@ -107,7 +107,7 @@ const plainText = (draft: UndatedDraft): string =>
                     <span
                         v-if="draft.social_account"
                         :id="`${HINT_ID_PREFIX}${draft.id}`"
-                        class="sr-only"
+                        hidden
                         :data-testid="`calendar-drag-hint-${draft.id}`"
                         >{{
                             $t('calendar.reschedule.drag_hint_undated', {

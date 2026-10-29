@@ -114,8 +114,14 @@ const RELOAD_PROPS = [
     'view',
     'displayTimezone',
     'filters',
-    'slots',
 ];
+
+/**
+ * The props a reload of this page asks for. The posting slots are an optional
+ * prop, so they are only asked for (and built) while the viewer shows them.
+ */
+const reloadProps = (): string[] =>
+    showSlots.value ? [...RELOAD_PROPS, 'slots'] : RELOAD_PROPS;
 
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
 const customTimeDialog = ref<InstanceType<
@@ -146,7 +152,7 @@ const { timezone, setTimezone } = useDisplayTimezone(
     props.displayTimezone,
     props.timezones.map((option) => option.value),
     undefined,
-    RELOAD_PROPS,
+    reloadProps,
 );
 
 provideViewTimezone(timezone);
@@ -169,7 +175,7 @@ const calendarDrag = useCalendarDrag({
     timezone,
     canCreatePost,
     requiresApproval,
-    reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
+    reloadProps: () => [...reloadProps(), 'undatedDrafts'],
     confirmCustomTime,
     describeInstant,
     ...hooks,
@@ -242,7 +248,7 @@ const visit = (url: string): void => {
     router.get(
         url,
         {},
-        { preserveState: true, preserveScroll: true, only: RELOAD_PROPS },
+        { preserveState: true, preserveScroll: true, only: reloadProps() },
     );
 };
 
@@ -267,7 +273,7 @@ const reload = (
 
 watch(
     [selectedLabelIds, selectedUntagged, selectedChannelIds, selectedStatus],
-    () => reload([...RELOAD_PROPS, 'undatedDrafts'], ['undatedDrafts']),
+    () => reload([...reloadProps(), 'undatedDrafts'], ['undatedDrafts']),
     { deep: true },
 );
 

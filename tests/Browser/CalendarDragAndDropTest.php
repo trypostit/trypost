@@ -413,8 +413,10 @@ test('past hours and past days are not drop targets', function () {
     waitFor($page, "@calendar-post-{$post->id}");
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
 
-    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$today}-{$now->format('H')}");
-    waitForGone($page, '@calendar-grid[aria-busy]');
+    if ($now->hour > 0) {
+        calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$today}-{$now->subHour()->format('H')}");
+        waitForGone($page, '@calendar-grid[aria-busy]');
+    }
 
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$yesterday->format('Y-m-d')}-{$now->format('H')}");
     waitForGone($page, '@calendar-grid[aria-busy]');
@@ -1371,6 +1373,8 @@ test('every draggable card describes how to drag it', function () {
 
     $linkText = $page->script("document.querySelector('[data-testid=\"calendar-undated-{$draft->id}\"]').textContent");
     expect($linkText)->not->toContain(__('calendar.reschedule.drag_hint_undated', ['channel' => $channel->display_label]));
+
+    $page->assertScript("[...document.querySelectorAll('[data-testid^=\"calendar-drag-hint-\"]')].every((hint) => getComputedStyle(hint).display === 'none')", true);
 
     expect($describe("calendar-post-{$post->id}"))->toBe(__('calendar.reschedule.drag_hint'))
         ->and($describe("calendar-undated-{$draft->id}"))->toBe(__('calendar.reschedule.drag_hint_undated', ['channel' => $channel->display_label]));
@@ -2613,5 +2617,89 @@ test('a post that leaves the week while it moves goes back instead of claiming i
     expect(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'));
     $page->assertMissing('@calendar-reschedule-approval-toast')
         ->assertMissing('@calendar-reschedule-success-toast')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the hour under way takes a drop five minutes from now while that is still inside the hour', function () {
+    [$user, $channel] = calendarDragSetup();
+    $now = now('UTC');
+    $today = $now->format('Y-m-d');
+    $post = calendarDragPost($channel, $now->addDay()->startOfHour());
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'days', 'day' => $today]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$today}-{$now->format('H')}");
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $scheduledAt = $post->refresh()->scheduled_at;
+    $insideTheHour = $now->addMinutes(6)->format('Y-m-d H') === $now->format('Y-m-d H');
+
+    expect($insideTheHour
+        ? $scheduledAt->between($now->addMinutes(4), $now->addMinutes(6)) && $scheduledAt->format('H') === $now->format('H')
+        : $scheduledAt->equalTo($now->addDay()->startOfHour()))->toBeTrue();
+    $page->assertMissing('@calendar-reschedule-error-toast')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an older move refused by the server and answered after a newer one still shows why', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $first = calendarDragPost($channel, $day->setTime(10, 0));
+    $second = calendarDragPost($channel, $day->setTime(11, 0));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    calendarDragAssertLive($page, "@calendar-post-{$first->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$second->id}");
+    calendarDragHoldRequests($page);
+
+    calendarDragOnto($page, "@calendar-post-{$first->id}", "@calendar-slot-{$key}-13");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+    calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$key}-14");
+    waitForCondition($page, 'window.__heldRequests.length === 2');
+
+    $page->script('window.__heldRequests[1]()');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    $first->forceFill(['status' => PostStatus::PendingApproval])->saveQuietly();
+    $page->script('window.__heldRequests[0]()');
+    waitFor($page, '@calendar-reschedule-error-toast');
+
+    $page->assertSeeIn('@calendar-reschedule-error-toast', __('calendar.reschedule.errors.pending'))
+        ->assertNoJavaScriptErrors();
+    expect($first->refresh()->scheduled_at->equalTo($day->setTime(10, 0)))->toBeTrue();
+});
+
+test('a move answered after the view changed is not announced as done without knowing', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+
+    $page->click('@calendar-view-trigger');
+    waitFor($page, '@calendar-view-month');
+    $page->click('@calendar-view-month');
+    waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
+    waitFor($page, '@calendar-month-grid');
+
+    $post->forceFill(['status' => PostStatus::PendingApproval])->saveQuietly();
+    $page->script('window.__releaseHeldRequests()');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
+
+    expect(implode(' ', calendarDragAnnouncements($page)))->not->toContain(__('calendar.reschedule.announce.moved', ['from' => calendarDragWhen($day->setTime(10, 30)), 'to' => calendarDragWhen($day->setTime(12, 0))]))
+        ->and($post->refresh()->scheduled_at->equalTo($day->setTime(10, 30)))->toBeTrue();
+    $page->assertMissing('@calendar-reschedule-success-toast')
         ->assertNoJavaScriptErrors();
 });
