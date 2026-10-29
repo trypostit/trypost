@@ -245,13 +245,18 @@ const visit = (url: string): void => {
     );
 };
 
-const reload = (only: string[], reset: string[] = []): void => {
+const reload = (
+    only: string[],
+    reset: string[] = [],
+    preserveUrl = false,
+): void => {
     router.get(
         calendarUrl(props.view, currentDateQuery()),
         {},
         {
             preserveState: true,
             preserveScroll: true,
+            preserveUrl,
             replace: true,
             only,
             reset,
@@ -287,7 +292,7 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        reload(['slots']);
+        reload(['slots'], [], true);
     }
 });
 
