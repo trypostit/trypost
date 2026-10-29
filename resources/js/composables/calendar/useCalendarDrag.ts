@@ -253,6 +253,7 @@ export const useCalendarDrag = (
         scheduledAt: string | null,
     ): CalendarPost => ({
         ...post,
+        status: scheduledAt === null ? PostStatus.Draft : post.status,
         scheduled_at: scheduledAt,
         calendar_at: scheduledAt ?? '',
         schedule_mode: movedScheduleMode(post, target),
@@ -277,8 +278,18 @@ export const useCalendarDrag = (
         target: CalendarDropTarget,
         scheduledAt: string | null,
     ): string => {
+        const leavesTheQueue =
+            post.status === PostStatus.Scheduled &&
+            post.schedule_mode === ScheduleMode.Queue &&
+            !entersQueueSlot(post, target);
+        const queueNote = leavesTheQueue
+            ? ` ${trans('calendar.reschedule.toast.unqueued_suffix')}`
+            : '';
+
         if (scheduledAt === null) {
-            return trans('calendar.reschedule.toast.undated');
+            return post.status === PostStatus.Draft
+                ? trans('calendar.reschedule.toast.undated')
+                : `${trans('calendar.reschedule.toast.unscheduled')}${queueNote}`;
         }
 
         const time = options.describeInstant(
@@ -293,11 +304,7 @@ export const useCalendarDrag = (
             { time },
         );
 
-        return post.status === PostStatus.Scheduled &&
-            post.schedule_mode === ScheduleMode.Queue &&
-            !entersQueueSlot(post, target)
-            ? `${message} ${trans('calendar.reschedule.toast.unqueued_suffix')}`
-            : message;
+        return `${message}${queueNote}`;
     };
 
     const postIn = (

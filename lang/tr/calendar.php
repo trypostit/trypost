@@ -53,7 +53,6 @@ return [
         'error' => 'Gönderi taşınamadı. Tekrar deneyin.',
         'errors' => [
             'past' => 'Bu saat geçti. Daha sonraki bir saat seçin.',
-            'required' => 'Bu gönderi için bir saat seçin.',
             'pending' => 'Bu gönderi onay bekliyor. Onaylandıktan veya reddedildikten sonra taşıyın.',
             'publishing_soon' => 'Bu gönderi birazdan yayınlanacak, bu yüzden artık taşınamaz.',
             'too_far' => '19 Ocak 2038\'den önce bir tarih seçin.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Gönderiniz :time tarihine taşındı.',
             'moved_draft' => 'Taslağınız :time tarihine taşındı.',
             'undated' => 'Taslağınız Tarihsiz alanına taşındı.',
-            'unqueued_suffix' => 'Kuyruktaki yer yeniden boş.',
+            'unscheduled' => 'Gönderiniz taslak olarak Tarihsiz alanına taşındı.',
+            'unqueued_suffix' => 'Kuyruktaki saat yeniden boş.',
         ],
     ],
 ];

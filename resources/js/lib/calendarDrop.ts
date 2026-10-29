@@ -100,9 +100,7 @@ export const dropInstant = (
     now: dayjs.Dayjs,
 ): string | null | undefined => {
     if (target.kind === 'undated') {
-        return post.status === PostStatus.Draft && post.scheduled_at !== null
-            ? null
-            : undefined;
+        return post.scheduled_at !== null ? null : undefined;
     }
 
     if (target.kind === 'hour' && isInHourOf(post, target.at)) {

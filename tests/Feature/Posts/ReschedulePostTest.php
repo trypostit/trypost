@@ -318,19 +318,50 @@ test('reschedule with a null time removes a draft date', function () {
         ->and($draft->scheduled_at)->toBeNull();
 });
 
-test('reschedule with a null time is refused for a scheduled post and asks for a time', function () {
+test('reschedule with a null time takes a scheduled post off the schedule as a draft without a date', function () {
     $post = rescheduleCustom($this->channel, $this->user);
-    $at = $post->scheduled_at->toIso8601String();
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null])
-        ->assertRedirect()
-        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.required')]);
+        ->assertSessionHasNoErrors();
 
     $post->refresh();
 
-    expect($post->status)->toBe(PostStatus::Scheduled)
-        ->and($post->scheduled_at->toIso8601String())->toBe($at);
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull();
+});
+
+test('reschedule with a null time takes a queued post out of the queue and frees its slot', function () {
+    $post = rescheduleQueued($this->channel, $this->user);
+    $slot = $post->scheduled_at;
+    $next = rescheduleQueued($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull()
+        ->and($next->refresh()->scheduled_at->equalTo($slot))->toBeFalse()
+        ->and(Post::query()->where('social_account_id', $this->channel->id)->where('status', PostStatus::Scheduled)->where('scheduled_at', $slot)->exists())->toBeFalse();
+});
+
+test('a member who needs approval takes a post off the schedule without asking for approval', function () {
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $this->workspace->id]);
+    $post = rescheduleCustom($this->channel, $member);
+
+    $this->actingAs($member)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull();
 });
 
 test('reschedule refuses a past instant and asks for a later time', function () {
@@ -593,7 +624,7 @@ test('reschedule is refused when the post went to approval after the request was
         ->and($post->approved_by)->toBeNull();
 });
 
-test('a null time is refused when the draft was scheduled after the request was validated', function () {
+test('a null time takes a post scheduled after the request was validated off the schedule', function () {
     $post = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-07 10:00', 'UTC')]);
     $flipped = false;
 
@@ -608,13 +639,12 @@ test('a null time is refused when the draft was scheduled after the request was 
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null, 'queue_slot' => true])
-        ->assertRedirect()
-        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.required')]);
+        ->assertSessionHasNoErrors();
 
     $post->refresh();
 
-    expect($post->status)->toBe(PostStatus::Scheduled)
-        ->and($post->scheduled_at->equalTo(CarbonImmutable::parse('2026-10-07 10:00', 'UTC')))->toBeTrue();
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull();
 });
 
 test('reschedule refuses a time past the 2038 ceiling before it reaches the post', function () {

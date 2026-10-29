@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Mover publicación a una hora personalizada',
-            'description' => 'Vas a mover esta publicación de un hueco de la cola, <strong>:from <i>(:zone)</i></strong>, a una hora personalizada, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Vas a mover esta publicación de su hora en la cola, <strong>:from <i>(:zone)</i></strong>, a una hora personalizada, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'La publicación se publicará a la nueva hora elegida, pero no ocupará un hueco en tu cola.',
             'dont_show_again' => 'No mostrar más',
             'cancel' => 'Cancelar',
@@ -53,7 +53,6 @@ return [
         'error' => 'No se pudo mover esta publicación. Inténtalo de nuevo.',
         'errors' => [
             'past' => 'Esa hora ya pasó. Elige una hora posterior.',
-            'required' => 'Elige una hora para esta publicación.',
             'pending' => 'Esta publicación está esperando aprobación. Muévela cuando se apruebe o se rechace.',
             'publishing_soon' => 'Esta publicación está a punto de publicarse, así que ya no se puede mover.',
             'too_far' => 'Elige una fecha anterior al 19 de enero de 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Tu publicación se reprogramó para :time.',
             'moved_draft' => 'Tu borrador se reprogramó para :time.',
             'undated' => 'Tu borrador pasó a Sin fecha.',
-            'unqueued_suffix' => 'El hueco de la cola vuelve a estar libre.',
+            'unscheduled' => 'Tu publicación pasó a Sin fecha como borrador.',
+            'unqueued_suffix' => 'Su hora en la cola vuelve a estar libre.',
         ],
     ],
 ];

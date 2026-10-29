@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Bericht naar een eigen tijd verplaatsen',
-            'description' => 'Je verplaatst dit bericht van een plek in de wachtrij, <strong>:from <i>(:zone)</i></strong>, naar een eigen tijd, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Je verplaatst dit bericht van zijn tijd in de wachtrij, <strong>:from <i>(:zone)</i></strong>, naar een eigen tijd, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'Het bericht wordt op de nieuwe tijd gepubliceerd, maar neemt geen plek in je wachtrij in.',
             'dont_show_again' => 'Niet meer tonen',
             'cancel' => 'Annuleren',
@@ -53,7 +53,6 @@ return [
         'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
         'errors' => [
             'past' => 'Deze tijd is al voorbij. Kies een latere tijd.',
-            'required' => 'Kies een tijd voor dit bericht.',
             'pending' => 'Dit bericht wacht op goedkeuring. Verplaats het zodra het is goedgekeurd of afgewezen.',
             'publishing_soon' => 'Dit bericht wordt zo gepubliceerd en kan niet meer worden verplaatst.',
             'too_far' => 'Kies een datum vóór 19 januari 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Je bericht is verplaatst naar :time.',
             'moved_draft' => 'Je concept is verplaatst naar :time.',
             'undated' => 'Je concept is verplaatst naar Geen datum.',
-            'unqueued_suffix' => 'Het wachtrijslot is weer vrij.',
+            'unscheduled' => 'Je bericht is als concept naar Geen datum verplaatst.',
+            'unqueued_suffix' => 'De tijd in de wachtrij is weer vrij.',
         ],
     ],
 ];

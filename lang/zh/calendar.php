@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => '将帖子移到自定义时间',
-            'description' => '你正在将此帖子从队列时段 <strong>:from <i>(:zone)</i></strong> 移到自定义时间 <strong>:to <i>(:zone)</i></strong>。',
+            'description' => '你正在将此帖子从队列时间 <strong>:from <i>(:zone)</i></strong> 移到自定义时间 <strong>:to <i>(:zone)</i></strong>。',
             'unqueued' => '帖子将在你选择的新时间发布,但不会占用队列中的位置。',
             'dont_show_again' => '不再显示',
             'cancel' => '取消',
@@ -53,7 +53,6 @@ return [
         'error' => '无法移动此帖子。请重试。',
         'errors' => [
             'past' => '这个时间已经过去了。请选择更晚的时间。',
-            'required' => '请为这条帖子选择时间。',
             'pending' => '这条帖子正在等待批准。批准或拒绝后再移动它。',
             'publishing_soon' => '这条帖子即将发布，因此无法再移动。',
             'too_far' => '请选择 2038 年 1 月 19 日之前的日期。',
@@ -73,7 +72,8 @@ return [
             'moved' => '你的帖子已改期至 :time。',
             'moved_draft' => '你的草稿已改期至 :time。',
             'undated' => '你的草稿已移到无日期。',
-            'unqueued_suffix' => '队列时段已重新空出。',
+            'unscheduled' => '你的帖子已作为草稿移到无日期。',
+            'unqueued_suffix' => '队列中的时间已重新空出。',
         ],
     ],
 ];

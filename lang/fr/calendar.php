@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Déplacer la publication à une heure personnalisée',
-            'description' => 'Vous déplacez cette publication d\'un créneau de la file d\'attente, <strong>:from <i>(:zone)</i></strong>, vers une heure personnalisée, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Vous déplacez cette publication de son horaire dans la file d\'attente, <strong>:from <i>(:zone)</i></strong>, vers une heure personnalisée, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'La publication sera diffusée à la nouvelle heure choisie, mais n\'occupera pas de place dans votre file d\'attente.',
             'dont_show_again' => 'Ne plus afficher',
             'cancel' => 'Annuler',
@@ -53,7 +53,6 @@ return [
         'error' => 'Impossible de déplacer cette publication. Réessayez.',
         'errors' => [
             'past' => 'Cette heure est déjà passée. Choisissez une heure plus tardive.',
-            'required' => 'Choisissez une heure pour cette publication.',
             'pending' => 'Cette publication attend une approbation. Déplacez-la une fois approuvée ou refusée.',
             'publishing_soon' => 'Cette publication est sur le point d\'être publiée, elle ne peut plus être déplacée.',
             'too_far' => 'Choisissez une date avant le 19 janvier 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Votre publication a été reprogrammée pour :time.',
             'moved_draft' => 'Votre brouillon a été reprogrammé pour :time.',
             'undated' => 'Votre brouillon a été déplacé vers Sans date.',
-            'unqueued_suffix' => 'L\'emplacement de la file est de nouveau libre.',
+            'unscheduled' => 'Votre publication a été déplacée vers Sans date en brouillon.',
+            'unqueued_suffix' => 'Son horaire dans la file d\'attente est de nouveau libre.',
         ],
     ],
 ];

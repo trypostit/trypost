@@ -531,19 +531,21 @@ test('a draft from the No Date panel dropped on a month day lands at nine', func
     waitFor($page, "@calendar-undated-{$draft->id}");
     calendarDragOnto($page, "@calendar-undated-{$draft->id}", "@calendar-day-{$day->format('Y-m-d')}");
     waitFor($page, "@calendar-day-{$day->format('Y-m-d')} @calendar-post-{$draft->id}");
+    waitFor($page, '@calendar-reschedule-success-toast');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
     $draft->refresh();
     expect($draft->scheduled_at->equalTo($day->setTime(9, 0)))->toBeTrue()
         ->and($draft->status)->toBe(PostStatus::Draft);
-    $page->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@calendar-reschedule-success-toast', '9:00 AM')
+        ->assertNoJavaScriptErrors();
 });
 
-test('a scheduled post is not taken by the No Date panel', function () {
-    [$user, $channel] = calendarDragSetup();
+test('a queued post dropped on No Date becomes a draft without a date and frees its slot', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();
-    $at = $day->setTime(10, 0);
-    $post = calendarDragPost($channel, $at);
+    $at = $day->setTime(9, 25);
+    $post = calendarDragPost($channel, $at, mode: ScheduleMode::Queue);
     $this->actingAs($user);
 
     $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
@@ -551,30 +553,18 @@ test('a scheduled post is not taken by the No Date panel', function () {
     waitFor($page, '@calendar-undated-empty');
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
 
-    $hovered = calendarGesture($page, <<<JS
-        query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
-        await down(center('@calendar-post-{$post->id}'));
-        await move(center('@calendar-undated-panel'));
-        const highlighted = query('@calendar-undated-panel').hasAttribute('data-drop-over');
-        await up(center('@calendar-undated-panel'));
-
-        return { highlighted, dragging: state().dragging, after: query('@calendar-undated-panel').hasAttribute('data-drop-over') };
-    JS);
-
-    waitForGone($page, '@calendar-grid[aria-busy]');
-    expect($hovered)->toBe(['highlighted' => true, 'dragging' => false, 'after' => false]);
-
     calendarDragOnto($page, "@calendar-post-{$post->id}", '@calendar-undated-panel');
-
-    waitForGone($page, '@calendar-grid[aria-busy]');
-    expect($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
-    expect(calendarDragCellOf($page, $post))->toBe("calendar-slot-{$day->format('Y-m-d')}-10");
-    $page->assertMissing("@calendar-undated-{$post->id}");
-
-    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$day->format('Y-m-d')}-11");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitFor($page, "@calendar-undated-{$post->id}");
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    expect($post->refresh()->scheduled_at->equalTo($day->setTime(11, 0)))->toBeTrue();
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unscheduled'))
+        ->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unqueued_suffix'))
+        ->assertMissing("@calendar-post-{$post->id}")
+        ->assertPresent('@calendar-posting-slot-'.calendarDragSlotKey($channel, $at));
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 
@@ -1237,7 +1227,7 @@ test('Esc announces that the card went back, once', function () {
     $page->assertNoJavaScriptErrors();
 });
 
-test('the No Date panel highlights for a scheduled post, refuses it and announces the return', function () {
+test('the No Date panel highlights for a scheduled post, takes it and announces where it went', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
     $from = $day->setTime(10, 0);
@@ -1259,12 +1249,12 @@ test('the No Date panel highlights for a scheduled post, refuses it and announce
 
         return highlighted;
     JS);
-    waitForGone($page, '@calendar-drag-preview');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
 
     expect($highlighted)->toBeTrue()
-        ->and(calendarDragAnnouncements($page))->toBe([__('calendar.reschedule.announce.returned')])
-        ->and($post->refresh()->scheduled_at->equalTo($from))->toBeTrue();
-    expect($page->script('document.querySelectorAll(\'[data-testid="calendar-reschedule-success-toast"]\').length'))->toBe(0);
+        ->and(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.undated', ['from' => calendarDragWhen($from)]))
+        ->and($post->refresh()->scheduled_at)->toBeNull();
     $page->assertNoJavaScriptErrors();
 });
 

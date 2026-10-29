@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Przenoszenie wpisu na własną godzinę',
-            'description' => 'Ten wpis zostanie przeniesiony z miejsca w kolejce, <strong>:from <i>(:zone)</i></strong>, na własną godzinę, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Ten wpis zostanie przeniesiony z godziny w kolejce, <strong>:from <i>(:zone)</i></strong>, na własną godzinę, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'Wpis zostanie opublikowany o wybranej godzinie, ale nie zajmie miejsca w Twojej kolejce.',
             'dont_show_again' => 'Nie pokazuj więcej',
             'cancel' => 'Anuluj',
@@ -53,7 +53,6 @@ return [
         'error' => 'Nie udało się przenieść wpisu. Spróbuj ponownie.',
         'errors' => [
             'past' => 'Ta godzina już minęła. Wybierz późniejszą godzinę.',
-            'required' => 'Wybierz godzinę dla tego wpisu.',
             'pending' => 'Ten wpis czeka na zatwierdzenie. Przenieś go, gdy zostanie zatwierdzony lub odrzucony.',
             'publishing_soon' => 'Ten wpis zaraz zostanie opublikowany, więc nie można go już przenieść.',
             'too_far' => 'Wybierz datę przed 19 stycznia 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Wpis przeniesiono na :time.',
             'moved_draft' => 'Szkic przeniesiono na :time.',
             'undated' => 'Szkic przeniesiono do sekcji Bez daty.',
-            'unqueued_suffix' => 'Miejsce w kolejce jest znów wolne.',
+            'unscheduled' => 'Wpis przeniesiono do sekcji Bez daty jako szkic.',
+            'unqueued_suffix' => 'Godzina w kolejce jest znów wolna.',
         ],
     ],
 ];

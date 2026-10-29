@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Sposta il post a un orario personalizzato',
-            'description' => 'Stai spostando questo post da uno slot della coda, <strong>:from <i>(:zone)</i></strong>, a un orario personalizzato, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Stai spostando questo post dal suo orario in coda, <strong>:from <i>(:zone)</i></strong>, a un orario personalizzato, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'Il post verrà pubblicato al nuovo orario scelto, ma non occuperà un posto nella tua coda.',
             'dont_show_again' => 'Non mostrare più',
             'cancel' => 'Annulla',
@@ -53,7 +53,6 @@ return [
         'error' => 'Impossibile spostare questo post. Riprova.',
         'errors' => [
             'past' => 'Questo orario è già passato. Scegli un orario successivo.',
-            'required' => 'Scegli un orario per questo post.',
             'pending' => 'Questo post è in attesa di approvazione. Spostalo dopo che è stato approvato o rifiutato.',
             'publishing_soon' => 'Questo post sta per essere pubblicato, quindi non può più essere spostato.',
             'too_far' => 'Scegli una data precedente al 19 gennaio 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Il tuo post è stato riprogrammato per :time.',
             'moved_draft' => 'La tua bozza è stata riprogrammata per :time.',
             'undated' => 'La tua bozza è stata spostata in Senza data.',
-            'unqueued_suffix' => 'Lo slot della coda è di nuovo libero.',
+            'unscheduled' => 'Il tuo post è stato spostato in Senza data come bozza.',
+            'unqueued_suffix' => 'Il suo orario in coda è di nuovo libero.',
         ],
     ],
 ];

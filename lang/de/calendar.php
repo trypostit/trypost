@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Beitrag auf eine eigene Uhrzeit verschieben',
-            'description' => 'Du verschiebst diesen Beitrag von einem Platz in der Warteschlange, <strong>:from <i>(:zone)</i></strong>, auf eine eigene Uhrzeit, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Du verschiebst diesen Beitrag von seiner Zeit in der Warteschlange, <strong>:from <i>(:zone)</i></strong>, auf eine eigene Uhrzeit, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'Der Beitrag wird zur neu gewählten Zeit veröffentlicht, belegt aber keinen Platz in deiner Warteschlange.',
             'dont_show_again' => 'Nicht mehr zeigen',
             'cancel' => 'Abbrechen',
@@ -53,7 +53,6 @@ return [
         'error' => 'Beitrag konnte nicht verschoben werden. Versuche es erneut.',
         'errors' => [
             'past' => 'Diese Zeit ist bereits vorbei. Wähle eine spätere Zeit.',
-            'required' => 'Wähle eine Zeit für diesen Beitrag.',
             'pending' => 'Dieser Beitrag wartet auf Freigabe. Verschiebe ihn, sobald er freigegeben oder abgelehnt ist.',
             'publishing_soon' => 'Dieser Beitrag wird gleich veröffentlicht und kann nicht mehr verschoben werden.',
             'too_far' => 'Wähle ein Datum vor dem 19. Januar 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Dein Beitrag wurde auf :time verschoben.',
             'moved_draft' => 'Dein Entwurf wurde auf :time verschoben.',
             'undated' => 'Dein Entwurf wurde zu Ohne Datum verschoben.',
-            'unqueued_suffix' => 'Der Platz in der Warteschlange ist wieder frei.',
+            'unscheduled' => 'Dein Beitrag wurde als Entwurf zu Ohne Datum verschoben.',
+            'unqueued_suffix' => 'Die Zeit in der Warteschlange ist wieder frei.',
         ],
     ],
 ];

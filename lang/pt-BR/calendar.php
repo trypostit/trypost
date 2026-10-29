@@ -53,7 +53,6 @@ return [
         'error' => 'Não foi possível mover este post. Tente novamente.',
         'errors' => [
             'past' => 'Esse horário já passou. Escolha um horário mais tarde.',
-            'required' => 'Escolha um horário para este post.',
             'pending' => 'Este post está aguardando aprovação. Mova-o depois que for aprovado ou rejeitado.',
             'publishing_soon' => 'Este post está prestes a ser publicado, então não pode mais ser movido.',
             'too_far' => 'Escolha uma data antes de 19 de janeiro de 2038.',
@@ -73,6 +72,7 @@ return [
             'moved' => 'Seu post foi reagendado para :time.',
             'moved_draft' => 'Seu rascunho foi reagendado para :time.',
             'undated' => 'Seu rascunho foi movido para Sem data.',
+            'unscheduled' => 'Seu post foi movido para Sem data como rascunho.',
             'unqueued_suffix' => 'O horário da fila ficou livre de novo.',
         ],
     ],

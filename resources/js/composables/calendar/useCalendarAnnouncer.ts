@@ -39,7 +39,8 @@ export const useCalendarAnnouncer = (
     /**
      * A day drop keeps the post's clock time, so it names the date only, unless
      * the time changed too (today after that time moves it to a few minutes
-     * from now), which the user has to hear.
+     * from now) or was never the user's (an undated draft lands at nine), which
+     * the user has to hear.
      */
     const describeInstant = (
         at: string,
@@ -49,7 +50,8 @@ export const useCalendarAnnouncer = (
         describeAt(
             at,
             target.kind === 'day' &&
-                (previousAt === null || clockOf(previousAt) === clockOf(at)),
+                previousAt !== null &&
+                clockOf(previousAt) === clockOf(at),
         );
 
     const describeTarget = (target: CalendarDropTarget): string => {

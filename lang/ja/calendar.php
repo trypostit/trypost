@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => '投稿を指定の時刻に移動',
-            'description' => 'この投稿をキューの枠<strong>:from <i>(:zone)</i></strong>から、指定の時刻<strong>:to <i>(:zone)</i></strong>に移動します。',
+            'description' => 'この投稿をキューの時刻<strong>:from <i>(:zone)</i></strong>から、指定の時刻<strong>:to <i>(:zone)</i></strong>に移動します。',
             'unqueued' => '投稿は選択した新しい時刻に公開されますが、キューの枠は使用しません。',
             'dont_show_again' => '今後は表示しない',
             'cancel' => 'キャンセル',
@@ -53,7 +53,6 @@ return [
         'error' => '投稿を移動できませんでした。もう一度お試しください。',
         'errors' => [
             'past' => 'この時刻はすでに過ぎています。後の時刻を選んでください。',
-            'required' => 'この投稿の時刻を選んでください。',
             'pending' => 'この投稿は承認待ちです。承認または却下されてから移動してください。',
             'publishing_soon' => 'この投稿はまもなく公開されるため、移動できません。',
             'too_far' => '2038年1月19日より前の日付を選んでください。',
@@ -73,7 +72,8 @@ return [
             'moved' => '投稿を :time に変更しました。',
             'moved_draft' => '下書きを :time に変更しました。',
             'undated' => '下書きを「日付なし」に移しました。',
-            'unqueued_suffix' => 'キューの枠が再び空きました。',
+            'unscheduled' => '投稿を下書きとして「日付なし」に移しました。',
+            'unqueued_suffix' => 'キューの時刻が再び空きました。',
         ],
     ],
 ];

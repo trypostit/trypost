@@ -18,6 +18,8 @@ class ReschedulePost
 {
     /**
      * Moves a post to the instant it receives. A draft stays a draft and only changes its date.
+     * A null instant (a drop on No Date) takes the post off the schedule: it becomes a draft
+     * without a date, which frees a queued post's slot and never needs approval.
      * A scheduled post sent with `$queueSlot` goes into its channel's queue at that free slot
      * (MoveChannelPostToQueueSlot, which refuses a taken slot or an instant that is not one).
      * A slot past the queue window (MoveChannelPostToQueueSlot::withinQueueWindow) counts as a
@@ -44,10 +46,6 @@ class ReschedulePost
                 throw ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.publishing_soon')]);
             }
 
-            if (blank($scheduledAt) && $post->status !== PostStatus::Draft) {
-                throw ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.required')]);
-            }
-
             $slotAt = filled($scheduledAt) ? CarbonImmutable::parse($scheduledAt)->utc() : null;
 
             if ($queueSlot && filled($slotAt) && $post->status === PostStatus::Scheduled && MoveChannelPostToQueueSlot::withinQueueWindow($slotAt)) {
@@ -55,7 +53,7 @@ class ReschedulePost
             }
 
             return UpdatePost::execute($workspace, $post, [
-                'status' => $post->status === PostStatus::Draft ? PostStatus::Draft->value : PostStatus::Scheduled->value,
+                'status' => blank($scheduledAt) || $post->status === PostStatus::Draft ? PostStatus::Draft->value : PostStatus::Scheduled->value,
                 'scheduled_at' => $scheduledAt,
             ], $actor);
         });

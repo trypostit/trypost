@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Moving post to a custom time',
-            'description' => 'You\'re moving this post from a queue slot at <strong>:from <i>(:zone)</i></strong> to a custom time, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'You\'re moving this post from its time in the queue, <strong>:from <i>(:zone)</i></strong>, to a custom time, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'The post will be published at the new time you picked, but it won\'t use a spot in your queue.',
             'dont_show_again' => 'Don\'t show this again',
             'cancel' => 'Cancel',
@@ -53,7 +53,6 @@ return [
         'error' => 'Couldn\'t move this post. Try again.',
         'errors' => [
             'past' => 'This time has already passed. Pick a later time.',
-            'required' => 'Pick a time for this post.',
             'pending' => 'This post is waiting for approval. Move it once it\'s approved or rejected.',
             'publishing_soon' => 'This post is about to be published, so it can\'t be moved anymore.',
             'too_far' => 'Pick a date before January 19, 2038.',
@@ -73,7 +72,8 @@ return [
             'moved' => 'Rescheduled your post for :time.',
             'moved_draft' => 'Rescheduled your draft for :time.',
             'undated' => 'Moved your draft to No Date.',
-            'unqueued_suffix' => 'The queue slot is free again.',
+            'unscheduled' => 'Moved your post to No Date as a draft.',
+            'unqueued_suffix' => 'Its time in the queue is free again.',
         ],
     ],
 ];
