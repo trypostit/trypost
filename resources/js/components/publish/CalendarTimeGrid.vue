@@ -98,8 +98,7 @@ const visibleItems = (
         ? items.slice(0, MAX_CHIPS - 1)
         : items;
 
-const hourLabel = (hour: number): string =>
-    `${String(hour).padStart(2, '0')}`;
+const hourLabel = (hour: number): string => String(hour).padStart(2, '0');
 
 const hourSlots = computed(() =>
     props.days.map((day) =>
