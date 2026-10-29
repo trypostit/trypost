@@ -15,6 +15,16 @@ return [
     'more' => '+:count mais',
     'less' => 'Ver menos',
     'empty_day' => 'Nada planejado para este dia.',
+    'post_status' => [
+        'draft' => 'Rascunho',
+        'pending_approval' => 'Aguardando aprovação',
+        'queue' => 'Na fila',
+        'custom' => 'Horário personalizado',
+        'recurring' => 'Recorrente',
+        'publishing' => 'Publicando',
+        'published' => 'Publicado',
+        'failed' => 'Falhou',
+    ],
     'status' => [
         'label' => 'Status',
         'all' => 'Todos os posts',

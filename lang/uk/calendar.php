@@ -15,6 +15,16 @@ return [
     'more' => '+:count ще',
     'less' => 'Згорнути',
     'empty_day' => 'На цей день нічого не заплановано.',
+    'post_status' => [
+        'draft' => 'Чернетка',
+        'pending_approval' => 'Очікує схвалення',
+        'queue' => 'У черзі',
+        'custom' => 'Свій час',
+        'recurring' => 'Повторюваний',
+        'publishing' => 'Публікується',
+        'published' => 'Опубліковано',
+        'failed' => 'Помилка',
+    ],
     'status' => [
         'label' => 'Статус',
         'all' => 'Усі дописи',

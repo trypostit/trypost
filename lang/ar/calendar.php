@@ -15,6 +15,16 @@ return [
     'more' => '+:count المزيد',
     'less' => 'عرض أقل',
     'empty_day' => 'لا شيء مخطط لهذا اليوم.',
+    'post_status' => [
+        'draft' => 'مسودة',
+        'pending_approval' => 'بانتظار الموافقة',
+        'queue' => 'في قائمة الانتظار',
+        'custom' => 'وقت مخصص',
+        'recurring' => 'متكرر',
+        'publishing' => 'قيد النشر',
+        'published' => 'منشور',
+        'failed' => 'فشل',
+    ],
     'status' => [
         'label' => 'الحالة',
         'all' => 'كل المنشورات',

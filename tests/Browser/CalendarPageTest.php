@@ -355,6 +355,69 @@ test('show posting times renders empty slots in the week and month views', funct
     $month->assertNoJavaScriptErrors();
 });
 
+test('in the month a post shows its network in color and a status icon with a tooltip, and a free posting time reads as a hatched empty slot', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $schedule = PostingSchedule::empty();
+
+    foreach (range(0, 6) as $weekday) {
+        $schedule = $schedule->withTime($weekday, '18:00');
+    }
+
+    $linkedin->update(['posting_schedule' => $schedule]);
+
+    $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(9);
+    $scheduled = calendarPagePost($linkedin, $day->copy()->setTime(15, 0));
+    $scheduled->update(['content' => '<p>Launch recap</p>']);
+    $draft = calendarPagePost($linkedin, $day->copy()->setTime(10, 0), PostStatus::Draft);
+    $pending = calendarPagePost($linkedin, $day->copy()->addDay()->setTime(12, 0), PostStatus::PendingApproval);
+    $failed = calendarPagePost($linkedin, $day->copy()->addDays(2)->setTime(13, 0), PostStatus::Failed);
+    $slotKey = "{$linkedin->id}-{$day->copy()->setTime(18, 0)->getTimestamp()}";
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $day->format('Y-m-d'), 'slots' => 1]))->resize(1440, 900);
+    waitFor($page, "@calendar-posting-slot-{$slotKey}");
+    waitFor($page, "@calendar-post-{$scheduled->id}");
+
+    $page->assertDontSeeIn("@calendar-post-{$scheduled->id}", 'Launch recap')
+        ->assertPresent("@calendar-post-draft-{$draft->id}")
+        ->assertPresent("@calendar-post-pending-{$pending->id}")
+        ->assertPresent("@calendar-post-failed-{$failed->id}")
+        ->assertMissing("@calendar-post-pending-{$scheduled->id}")
+        ->assertMissing("@calendar-post-failed-{$scheduled->id}");
+
+    $styles = $page->script(<<<JS
+        (() => {
+            const chip = (id) => document.querySelector('[data-testid="' + id + '"]');
+            const style = (id) => getComputedStyle(chip(id));
+
+            return {
+                postIcon: getComputedStyle(chip('calendar-post-{$scheduled->id}').querySelector('svg')).color,
+                draftIcon: getComputedStyle(chip('calendar-post-{$draft->id}').querySelector('svg')).color,
+                draftBorder: style('calendar-post-{$draft->id}').borderStyle,
+                slotBorder: style('calendar-posting-slot-{$slotKey}').borderStyle,
+                slotHatched: style('calendar-posting-slot-{$slotKey}').backgroundImage.startsWith('linear-gradient'),
+                slotIcons: chip('calendar-posting-slot-{$slotKey}').querySelectorAll('svg').length,
+            };
+        })()
+    JS);
+
+    expect($styles)->toMatchArray([
+        'postIcon' => 'rgb(10, 102, 194)',
+        'draftBorder' => 'solid',
+        'slotBorder' => 'dashed',
+        'slotHatched' => true,
+        'slotIcons' => 1,
+        'draftIcon' => 'rgb(10, 102, 194)',
+    ]);
+
+    $page->hover("@calendar-post-pending-{$pending->id}");
+    waitForText($page, '[data-slot="tooltip-content"]', __('posts.status.pending_approval'));
+    $page->assertSee(__('posts.status.pending_approval'));
+
+    $page->assertNoJavaScriptErrors();
+});
+
 test('clicking a scheduled post chip in the month view opens its timeline card in a popover', function () {
     [$user, $linkedin] = calendarPageSetup();
     $at = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10)->setTime(10, 0);

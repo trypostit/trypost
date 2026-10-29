@@ -15,6 +15,16 @@ return [
     'more' => '+:count개 더보기',
     'less' => '접기',
     'empty_day' => '이 날 예정된 게시물이 없습니다.',
+    'post_status' => [
+        'draft' => '초안',
+        'pending_approval' => '승인 대기 중',
+        'queue' => '대기열에 있음',
+        'custom' => '지정 시간',
+        'recurring' => '반복',
+        'publishing' => '게시 중',
+        'published' => '게시됨',
+        'failed' => '실패',
+    ],
     'status' => [
         'label' => '상태',
         'all' => '모든 게시물',

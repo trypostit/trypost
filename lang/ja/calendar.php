@@ -15,6 +15,16 @@ return [
     'more' => '他 :count 件',
     'less' => '閉じる',
     'empty_day' => 'この日の予定はありません。',
+    'post_status' => [
+        'draft' => '下書き',
+        'pending_approval' => '承認待ち',
+        'queue' => 'キュー内',
+        'custom' => '指定の時刻',
+        'recurring' => '繰り返し',
+        'publishing' => '公開中',
+        'published' => '公開済み',
+        'failed' => '失敗',
+    ],
     'status' => [
         'label' => 'ステータス',
         'all' => 'すべての投稿',

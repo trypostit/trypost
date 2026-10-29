@@ -101,7 +101,7 @@ const newPost = (): void => {
         v-calendar-target="dropTarget"
         :is="canCreatePost ? 'button' : 'div'"
         :type="canCreatePost ? 'button' : undefined"
-        class="group/slot flex shrink-0 items-center rounded-lg border border-dashed border-border-strong text-xs font-medium text-muted-foreground transition-control enabled:hover:bg-secondary enabled:hover:text-foreground enabled:focus-visible:bg-secondary enabled:focus-visible:text-foreground"
+        class="group/slot flex shrink-0 items-center rounded-lg border border-dashed border-border-strong bg-[linear-gradient(135deg,transparent_45%,color-mix(in_srgb,var(--color-border)_60%,transparent)_45%_55%,transparent_55%)] bg-size-[8px_8px] text-xs font-medium text-subtle-foreground transition-control enabled:hover:bg-secondary enabled:hover:text-foreground enabled:focus-visible:bg-secondary enabled:focus-visible:text-foreground"
         :class="[
             compact
                 ? 'size-7 justify-center'
@@ -124,6 +124,7 @@ const newPost = (): void => {
         <PlatformBrandIcon
             v-if="channel"
             :platform="channel.platform"
+            class="opacity-60"
             :class="compact ? 'size-3.5' : 'shrink-0'"
             :data-testid="`calendar-posting-slot-icon-${testKey}`"
         />

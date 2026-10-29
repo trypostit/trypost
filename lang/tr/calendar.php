@@ -15,6 +15,16 @@ return [
     'more' => '+:count daha',
     'less' => 'Daha az göster',
     'empty_day' => 'Bu gün için planlanmış bir şey yok.',
+    'post_status' => [
+        'draft' => 'Taslak',
+        'pending_approval' => 'Onay bekliyor',
+        'queue' => 'Kuyrukta',
+        'custom' => 'Özel saat',
+        'recurring' => 'Yinelenen',
+        'publishing' => 'Yayınlanıyor',
+        'published' => 'Yayınlandı',
+        'failed' => 'Başarısız',
+    ],
     'status' => [
         'label' => 'Durum',
         'all' => 'Tüm gönderiler',

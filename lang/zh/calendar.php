@@ -15,6 +15,16 @@ return [
     'more' => '还有 :count 项',
     'less' => '收起',
     'empty_day' => '这一天没有安排。',
+    'post_status' => [
+        'draft' => '草稿',
+        'pending_approval' => '待审批',
+        'queue' => '在队列中',
+        'custom' => '自定义时间',
+        'recurring' => '重复',
+        'publishing' => '发布中',
+        'published' => '已发布',
+        'failed' => '已失败',
+    ],
     'status' => [
         'label' => '状态',
         'all' => '所有帖子',

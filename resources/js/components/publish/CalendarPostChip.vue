@@ -1,16 +1,31 @@
 <script setup lang="ts">
-import { IconPlayerPlayFilled, IconRepeat } from '@tabler/icons-vue';
+import {
+    IconAlertCircle,
+    IconCircleCheck,
+    IconHourglass,
+    IconListNumbers,
+    IconPencil,
+    IconPin,
+    IconPlayerPlayFilled,
+    IconRepeat,
+    IconSend,
+} from '@tabler/icons-vue';
 import { Presence } from 'reka-ui';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, type Component } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
-import PostScheduleModeBadge from '@/components/posts/PostScheduleModeBadge.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
     HINT_ID_PREFIX,
     useCalendarDragContext,
@@ -21,20 +36,16 @@ import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
-import { PostStatus } from '@/types/post';
+import { PostStatus, ScheduleMode } from '@/types/post';
 import type { CalendarPost, PublishTab } from '@/types/publish';
 
 defineOptions({ inheritAttrs: false });
 
-const props = withDefaults(
-    defineProps<{
-        post: CalendarPost;
-        timezone: string;
-        layout?: 'month' | 'week';
-        compact?: boolean;
-    }>(),
-    { layout: 'month' },
-);
+const props = defineProps<{
+    post: CalendarPost;
+    timezone: string;
+    compact?: boolean;
+}>();
 
 const { draggingPostId, vCalendarPost } = useCalendarDragContext();
 
@@ -76,7 +87,6 @@ const SENT_STATUSES: readonly string[] = [
 ];
 
 const STATUS_CLASSES: Record<string, string> = {
-    draft: 'border-dashed',
     failed: 'border-destructive/40 bg-destructive/5',
 };
 
@@ -119,10 +129,47 @@ const focusPopover = (event: Event): void => {
     (event.target as HTMLElement).focus();
 };
 
-const scheduleMode = computed(() =>
-    props.post.status === PostStatus.Scheduled
-        ? (props.post.schedule_mode ?? null)
-        : null,
+type StatusKey =
+    | 'draft'
+    | 'pending_approval'
+    | 'queue'
+    | 'custom'
+    | 'recurring'
+    | 'publishing'
+    | 'published'
+    | 'failed';
+
+const STATUS_MARKERS: Record<StatusKey, { icon: Component; tone: string }> = {
+    draft: { icon: IconPencil, tone: 'text-muted-foreground' },
+    pending_approval: { icon: IconHourglass, tone: 'text-warning' },
+    queue: { icon: IconListNumbers, tone: 'text-muted-foreground' },
+    custom: { icon: IconPin, tone: 'text-muted-foreground' },
+    recurring: { icon: IconRepeat, tone: 'text-muted-foreground' },
+    publishing: { icon: IconSend, tone: 'text-muted-foreground' },
+    published: { icon: IconCircleCheck, tone: 'text-success' },
+    failed: { icon: IconAlertCircle, tone: 'text-destructive' },
+};
+
+const statusKey = computed((): StatusKey => {
+    const { status, schedule_mode, recurrence_frequency } = props.post;
+
+    if (status !== PostStatus.Scheduled) {
+        return status as StatusKey;
+    }
+
+    if (recurrence_frequency) {
+        return 'recurring';
+    }
+
+    return schedule_mode === ScheduleMode.Queue ? 'queue' : 'custom';
+});
+
+const statusMarker = computed(() => STATUS_MARKERS[statusKey.value]);
+
+const statusTestId = computed(() =>
+    statusKey.value === 'queue' || statusKey.value === 'custom'
+        ? `post-schedule-mode-${props.post.id}`
+        : `calendar-post-${statusKey.value.replace('_approval', '')}-${props.post.id}`,
 );
 </script>
 
@@ -157,11 +204,9 @@ const scheduleMode = computed(() =>
                     '[&[data-calendar-draggable=true]]:cursor-grab',
                     compact
                         ? 'size-7 items-center justify-center'
-                        : layout === 'week'
-                          ? 'items-start p-1.5'
-                          : 'h-7 items-center px-1',
+                        : 'h-7 items-center px-1',
                 ]"
-                :aria-label="`${channels} · ${time} · ${text || $t('calendar.no_content')}`"
+                :aria-label="`${channels} · ${time} · ${$t(`calendar.post_status.${statusKey}`)} · ${text || $t('calendar.no_content')}`"
                 :data-testid="`calendar-post-${post.id}`"
             >
                 <template v-if="compact">
@@ -173,43 +218,45 @@ const scheduleMode = computed(() =>
                     />
                 </template>
                 <template v-else>
-                    <span class="flex min-w-0 flex-1 flex-col gap-1">
-                        <span class="flex min-w-0 items-center gap-1">
-                            <PlatformBrandIcon
-                                v-if="post.platform"
-                                :platform="post.platform"
-                                class="size-4 shrink-0"
-                            />
-                            <span
-                                class="truncate text-xs font-medium text-muted-foreground"
-                                >{{ time }}</span
-                            >
-                            <IconRepeat
-                                v-if="scheduleMode && post.recurrence_frequency"
-                                class="size-3 shrink-0 text-muted-foreground"
-                                :aria-label="$t('posts.recurrence.marker')"
-                                :data-testid="`calendar-post-recurring-${post.id}`"
-                            />
-                            <PostScheduleModeBadge
-                                v-else-if="scheduleMode"
-                                :post-id="post.id"
-                                :mode="scheduleMode"
-                                compact
-                                plain
-                            />
-                        </span>
+                    <span class="flex min-w-0 flex-1 items-center gap-1">
+                        <PlatformBrandIcon
+                            v-if="post.platform"
+                            :platform="post.platform"
+                            colored
+                            class="size-4 shrink-0"
+                        />
                         <span
-                            v-if="layout === 'week'"
-                            class="line-clamp-2 text-xs break-words text-foreground"
-                            :class="{ 'text-muted-foreground': !text }"
-                            :data-testid="`calendar-post-text-${post.id}`"
-                            >{{ text || $t('calendar.no_content') }}</span
+                            class="shrink-0 text-xs font-medium text-muted-foreground"
+                            >{{ time }}</span
                         >
                     </span>
+                    <TooltipProvider :delay-duration="200">
+                        <Tooltip>
+                            <TooltipTrigger as-child>
+                                <span
+                                    class="flex shrink-0 items-center"
+                                    :class="statusMarker.tone"
+                                    :aria-label="
+                                        $t(`calendar.post_status.${statusKey}`)
+                                    "
+                                    :data-testid="statusTestId"
+                                    :data-mode="statusKey"
+                                >
+                                    <component
+                                        :is="statusMarker.icon"
+                                        class="size-3.5"
+                                        aria-hidden="true"
+                                    />
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent>{{
+                                $t(`calendar.post_status.${statusKey}`)
+                            }}</TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
                     <span
                         v-if="thumbnail"
-                        class="relative shrink-0 overflow-hidden rounded bg-secondary"
-                        :class="layout === 'week' ? 'size-9' : 'size-5'"
+                        class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
                     >
                         <img
                             v-if="isImage(thumbnail)"

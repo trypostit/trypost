@@ -252,11 +252,6 @@ watch(
                                 v-if="item.post"
                                 :post="item.post"
                                 :timezone="timezone"
-                                :layout="
-                                    isStacked(column, hour)
-                                        ? 'month'
-                                        : 'week'
-                                "
                                 :compact="iconOnly"
                                 :class="[
                                     chipClass(column, hour),
