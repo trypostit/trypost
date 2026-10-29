@@ -46,7 +46,7 @@ class PostScheduleController extends Controller
             session()->flash('flash.bannerStyle', 'danger');
         }
 
-        if ($scheduleAction !== ScheduleAction::Reschedule && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {
+        if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {
             $queue = $this->publishPageReturnUrl(['tab' => 'queue']);
 
             return $queue ? redirect($queue) : back();

@@ -126,7 +126,7 @@ test('the weekly goal shows its progress, fills the pie and opens a popover with
         ->toBe('1 '.__('posts.publish.goal_popover.sent').'·0 '.__('posts.publish.goal_popover.scheduled').'·2 '.__('posts.publish.goal_popover.to_do'));
 });
 
-test('a draft is added to the queue from the drafts tab', function () {
+test('a draft is added to the queue from the drafts tab, which stays open', function () {
     [$user, $workspace, $channel] = publishPageSetup();
     $draft = publishPagePost($user, $workspace, $channel, ['status' => 'draft', 'queue' => null]);
     $this->actingAs($user);
@@ -143,7 +143,10 @@ test('a draft is added to the queue from the drafts tab', function () {
     expect($draft->refresh()->status)->toBe(PostStatus::Scheduled)
         ->and($draft->schedule_mode)->toBe(ScheduleMode::Queue);
 
-    $page->assertNoJavaScriptErrors();
+    waitForGone($page, "@post-card-{$draft->id}");
+    $page->assertPathIs(route('app.channels.publish', $channel, false))
+        ->assertScript("new URLSearchParams(location.search).get('tab')", 'drafts')
+        ->assertNoJavaScriptErrors();
 });
 
 test('add to queue explains how to set up the queue when the channel has no posting times', function () {
