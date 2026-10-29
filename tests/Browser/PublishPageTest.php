@@ -175,7 +175,7 @@ test('add to queue explains how to set up the queue when the channel has no post
     $page->click("@post-queue-setup-action-{$draft->id}");
     waitForPublishPageTestId($page, 'channel-settings-page');
 
-    $page->assertPathIs(parse_url(route('app.channels.settings', $channel), PHP_URL_PATH))
+    $page->assertPathIs(route('app.channels.settings', $channel, absolute: false))
         ->assertNoJavaScriptErrors();
 });
 
@@ -228,7 +228,7 @@ test('editing a draft from a channel page keeps the channel page and tab', funct
     $page->click("@post-edit-{$draft->id}");
     waitForPublishPageTestId($page, 'post-composer-dialog');
 
-    expect($page->script('location.pathname'))->toBe(parse_url(route('app.channels.publish', $channel), PHP_URL_PATH))
+    expect($page->script('location.pathname'))->toBe(route('app.channels.publish', $channel, absolute: false))
         ->and($page->script('new URLSearchParams(location.search).get("tab")'))->toBe('drafts')
         ->and($page->script('new URLSearchParams(location.search).get("edit")'))->toBe($draft->id);
     $page->assertVisible('@post-composer-dialog')->assertNoJavaScriptErrors();
@@ -255,7 +255,7 @@ test('saving a queued post edited on a channel page returns to that page and tab
     JS);
     waitForPublishPageTestId($page, "post-card-{$queued->id}");
 
-    expect($page->script('location.pathname'))->toBe(parse_url(route('app.channels.publish', $channel), PHP_URL_PATH))
+    expect($page->script('location.pathname'))->toBe(route('app.channels.publish', $channel, absolute: false))
         ->and($page->script('new URLSearchParams(location.search).get("tab")'))->toBe('queue')
         ->and($page->script('new URLSearchParams(location.search).has("edit")'))->toBeFalse();
     $page->assertVisible("@post-card-{$queued->id}")->assertNoJavaScriptErrors();
@@ -298,7 +298,7 @@ test('a sent card shows the metrics band in order and links to the publication i
     expect($page->script("[...document.querySelectorAll('[data-testid=\"post-metrics-{$post->id}\"] dd')].map((value) => value.textContent.trim())"))
         ->toBe(['40', '7', '5.5%', '900', '3'])
         ->and($page->script("new URL(document.querySelector('[data-testid=\"post-insights-{$post->id}\"]').href).pathname"))
-        ->toBe(parse_url(route('app.channels.insights', $account), PHP_URL_PATH));
+        ->toBe(route('app.channels.insights', $account, absolute: false));
 
     $page->assertNoJavaScriptErrors();
 });

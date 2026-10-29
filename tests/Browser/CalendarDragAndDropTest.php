@@ -1699,7 +1699,7 @@ test('the click that ends a real mouse drag does not follow the draft link', fun
     waitFor($page, "@calendar-slot-{$key}-11 @calendar-post-{$draft->id}");
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    $page->assertPathIs(parse_url(calendarDragWeekUrl($day), PHP_URL_PATH))
+    $page->assertPathIs(route('app.calendar', ['view' => 'week'], absolute: false))
         ->assertNoJavaScriptErrors();
 });
 

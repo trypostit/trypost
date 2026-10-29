@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Uri;
 
 function composerReturnPageChannel(): SocialAccount
 {
@@ -37,7 +38,8 @@ function composerReturnPageChannel(): SocialAccount
 
 function assertComposerReturnedTo(mixed $page, string $url): void
 {
-    parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+    $uri = Uri::of($url);
+    $query = $uri->query()->all();
     ksort($query);
     $sortedSearch = "[...new URLSearchParams(window.location.search)].sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `\${key}=\${value}`).join('&')";
     $expected = Arr::query($query);
@@ -45,7 +47,7 @@ function assertComposerReturnedTo(mixed $page, string $url): void
     waitForGone($page, '@post-composer-dialog');
     waitForCondition($page, "{$sortedSearch} === ".json_encode($expected));
 
-    $page->assertPathIs((string) parse_url($url, PHP_URL_PATH))
+    $page->assertPathIs("/{$uri->path()}")
         ->assertScript($sortedSearch, $expected)
         ->assertNoJavaScriptErrors();
 }
