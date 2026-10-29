@@ -213,6 +213,44 @@ test('a post sent to the queue at an instant that is not a slot is refused inste
         ->and($post->scheduled_at->toIso8601String())->toBe($queuedAt);
 });
 
+test('a post sent to a slot past the queue window becomes custom at that slot', function () {
+    $post = rescheduleQueued($this->channel, $this->user);
+    $slot = CarbonImmutable::parse('2027-02-03 09:00', 'UTC');
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom)
+        ->and($post->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
+});
+
+test('a post sent to a slot after it started publishing shows the finalized banner and keeps its time', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $at = $post->scheduled_at->toIso8601String();
+    $retrievals = 0;
+
+    Post::retrieved(function (Post $retrieved) use ($post, &$retrievals): void {
+        if ($retrieved->id === $post->id && ++$retrievals === 3) {
+            Post::query()->whereKey($post->id)->toBase()->update(['status' => PostStatus::Publishing->value]);
+        }
+    });
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-07T09:00:00Z', 'queue_slot' => true])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('flash.banner', __('posts.flash.cannot_edit_finalized'));
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Publishing)
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom)
+        ->and($post->scheduled_at->toIso8601String())->toBe($at);
+});
+
 test('a draft sent to a slot stays a draft with that date', function () {
     $draft = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-06 10:00', 'UTC')]);
     $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');

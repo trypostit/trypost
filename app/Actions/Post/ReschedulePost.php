@@ -19,8 +19,9 @@ class ReschedulePost
     /**
      * Moves a post to the instant it receives. A draft stays a draft and only changes its date.
      * A scheduled post sent with `$queueSlot` goes into its channel's queue at that free slot
-     * (MoveChannelPostToQueueSlot, which refuses a taken slot or an instant that is not one);
-     * otherwise a queued post becomes custom at the instant it receives.
+     * (MoveChannelPostToQueueSlot, which refuses a taken slot or an instant that is not one).
+     * A slot past the queue window (BuildPublishPageProps::MAX_QUEUE_DAYS) counts as a custom
+     * time, like any other drop: a queued post becomes custom at the instant it receives.
      * The write goes through UpdatePost with the acting user, so PostApproval still decides.
      * The post is re-read under its approval lock: a post waiting for approval, or a scheduled
      * one due within a minute, keeps its time. The channel queue lock is taken inside the
@@ -43,12 +44,8 @@ class ReschedulePost
                 throw ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.publishing_soon')]);
             }
 
-            if ($queueSlot && $post->status === PostStatus::Scheduled) {
-                MoveChannelPostToQueueSlot::handle($post->socialAccount, $post->id, CarbonImmutable::parse($scheduledAt)->utc(), $actor);
-
-                $post->refresh();
-
-                return ['post' => $post, 'action' => $post->status === PostStatus::PendingApproval ? PostAction::PendingApproval : PostAction::Scheduled];
+            if ($queueSlot && $post->status === PostStatus::Scheduled && self::withinQueueWindow($scheduledAt)) {
+                return MoveChannelPostToQueueSlot::handle($post->socialAccount, $post->id, CarbonImmutable::parse($scheduledAt)->utc(), $actor);
             }
 
             return UpdatePost::execute($workspace, $post, [
@@ -56,5 +53,10 @@ class ReschedulePost
                 'scheduled_at' => $scheduledAt,
             ], $actor);
         });
+    }
+
+    private static function withinQueueWindow(string $scheduledAt): bool
+    {
+        return CarbonImmutable::parse($scheduledAt)->lessThanOrEqualTo(now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS));
     }
 }
