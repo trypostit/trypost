@@ -13,6 +13,7 @@ use App\Support\PostStatusRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -86,37 +87,60 @@ trait RendersPublishPage
     }
 
     /**
-     * The page the request was sent from on this app's host, whatever host the
-     * Referer names.
+     * The page the request was sent from on this app, whatever host the Referer
+     * names. Its query string is kept as sent, minus the keys in `$except`, with
+     * `$extraQuery` replacing or adding keys.
      *
      * @param  list<string>  $except
      * @param  array<string, string>  $extraQuery
      */
     private function previousUrl(array $except = [], array $extraQuery = []): string
     {
-        $previous = parse_url(url()->previous());
+        $previous = $this->previousUrlParts();
+        $path = data_get($previous, 'path');
 
-        parse_str(data_get($previous, 'query', ''), $query);
+        $pairs = collect(explode('&', (string) data_get($previous, 'query')))
+            ->reject(fn (string $pair): bool => blank($pair) || in_array($this->queryKey($pair), $except, true))
+            ->map(fn (string $pair): string => array_key_exists($this->queryKey($pair), $extraQuery)
+                ? Arr::query([$this->queryKey($pair) => $extraQuery[$this->queryKey($pair)]])
+                : $pair);
 
-        $query = [...Arr::except($query, $except), ...$extraQuery];
-        $url = url(data_get($previous, 'path', '/'));
+        $added = array_diff_key($extraQuery, array_flip($pairs->map(fn (string $pair): string => $this->queryKey($pair))->all()));
+        $query = $pairs->when($added !== [], fn (Collection $pairs): Collection => $pairs->push(Arr::query($added)))->implode('&');
+        $url = url(filled($path) ? $path : '/');
 
-        if ($query === []) {
-            return $url;
-        }
-
-        $queryString = Arr::query($query);
-
-        return "{$url}?{$queryString}";
+        return filled($query) ? "{$url}?{$query}" : $url;
     }
 
     private function previousRouteName(): ?string
     {
+        $path = data_get($this->previousUrlParts(), 'path');
+
         try {
-            return Route::getRoutes()->match(Request::create(data_get(parse_url(url()->previous()), 'path', '/')))->getName();
+            return Route::getRoutes()->match(Request::create(filled($path) ? $path : '/'))->getName();
         } catch (HttpExceptionInterface) {
             return null;
         }
+    }
+
+    /**
+     * The Referer split by parse_url(), its path relative to this app's root
+     * (base path included) when it is a page of this app.
+     *
+     * @return array<string, int|string>
+     */
+    private function previousUrlParts(): array
+    {
+        $previous = url()->previous();
+        $root = url('/');
+        $onThisApp = $previous === $root || Str::startsWith($previous, ["{$root}/", "{$root}?"]);
+
+        return parse_url($onThisApp ? Str::after($previous, $root) : $previous) ?: [];
+    }
+
+    private function queryKey(string $pair): string
+    {
+        return urldecode(Str::before($pair, '='));
     }
 
     /**

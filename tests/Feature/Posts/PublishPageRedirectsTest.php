@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostingSchedule;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\URL;
 use Inertia\Testing\AssertableInertia;
 
 beforeEach(function () {
@@ -151,6 +152,37 @@ test('a page named by a referer on another host is returned to on this app', fun
         ])
         ->assertRedirect(route('app.calendar', ['view' => 'week', 'week' => '2026-10-25']));
 });
+
+test('a page with a dotted query key is returned to with that key as it was', function () {
+    $post = publishRedirectPost($this->channel);
+    $from = route('app.create.ideas.index', ['columns.unassigned_page' => 2]);
+
+    $this->actingAs($this->user)
+        ->from($from)
+        ->put(route('app.posts.update', $post), publishRedirectUpdatePayload($post, 'draft'))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect($from);
+});
+
+test('on an app served from a subfolder a page is returned to without doubling the base path', function (string $origin, array $originQuery, array $expectedQuery) {
+    $post = publishRedirectPost($this->channel);
+    $update = route('app.posts.update', $post);
+    $root = rtrim(config('app.url'), '/').'/trypost';
+    URL::forceRootUrl($root);
+    $origin = match ($origin) {
+        'calendar' => route('app.calendar', $originQuery),
+        'all channels' => route('app.posts.index', $originQuery),
+    };
+
+    $this->actingAs($this->user)
+        ->from($origin)
+        ->put($update, publishRedirectUpdatePayload($post, 'draft'))
+        ->assertSessionHasNoErrors()
+        ->assertRedirect(blank($expectedQuery) ? $origin : route('app.posts.index', $expectedQuery));
+})->with([
+    'calendar' => ['calendar', ['view' => 'week', 'week' => '2026-10-25'], []],
+    'all channels' => ['all channels', ['tab' => 'drafts', 'edit' => 'x'], ['tab' => 'drafts']],
+]);
 
 test('deleting from the channel page returns to that page', function () {
     $post = publishRedirectPost($this->channel);
