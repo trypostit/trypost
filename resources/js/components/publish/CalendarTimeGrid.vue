@@ -98,7 +98,9 @@ const visibleItems = (
         ? items.slice(0, MAX_CHIPS - 1)
         : items;
 
-const hourLabel = (hour: number): string => String(hour).padStart(2, '0');
+const HOUR_LABELS = HOURS.map((hour) => dayjs.utc().hour(hour).format('HH'));
+
+const hourLabel = (hour: number): string => HOUR_LABELS[hour];
 
 const hourSlots = computed(() =>
     props.days.map((day) =>
