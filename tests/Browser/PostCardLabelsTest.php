@@ -221,3 +221,25 @@ test('a rejected change rolls the card back and shows an error', function () {
     $page->assertSeeIn('@post-labels-error-toast', __('posts.publish.actions.edit_labels_failed'))
         ->assertMissing("@post-label-chip-{$post->id}-{$label->id}");
 });
+
+test('the first label of the card picker sits apart from its search box', function () {
+    [$user, $workspace, $channel] = cardLabelsSetup();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Campaign']);
+    $post = cardLabelsPost($user, $workspace, $channel);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    openCardLabelsPicker($page, $post->id);
+
+    $gap = $page->script(<<<JS
+        (() => {
+            const search = document.querySelector('[data-testid="post-labels-{$post->id}-search"]').getBoundingClientRect();
+            const option = document.querySelector('[data-testid="post-labels-{$post->id}-option-{$label->id}"]').getBoundingClientRect();
+
+            return Math.round(option.top - search.bottom);
+        })()
+    JS);
+
+    expect($gap)->toBe(8);
+    $page->assertNoJavaScriptErrors();
+});

@@ -168,7 +168,7 @@ const clear = (): void => {
             <IconTag class="size-4" />
         </template>
         <template #before-options="{ search }">
-            <div v-if="showUntagged && labels.length > 0" class="pt-2">
+            <div v-if="showUntagged && labels.length > 0">
                 <label
                     v-if="matchesSearch(search, [$t('posts.label_filter_untagged')])"
                     class="flex min-h-8 cursor-pointer items-center gap-3 rounded-lg px-2 py-1.5 text-sm leading-5 transition-control hover:bg-accent"
