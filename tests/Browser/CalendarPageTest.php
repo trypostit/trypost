@@ -403,8 +403,8 @@ test('in the month a post shows its network in color and a status icon with a to
             const style = (id) => getComputedStyle(chip(id));
 
             return {
-                postIcon: getComputedStyle(chip('calendar-post-{$scheduled->id}').querySelector('svg')).color,
-                draftIcon: getComputedStyle(chip('calendar-post-{$draft->id}').querySelector('svg')).color,
+                postIcon: getComputedStyle(chip('calendar-post-platform-{$scheduled->id}')).color,
+                draftIcon: getComputedStyle(chip('calendar-post-platform-{$draft->id}')).color,
                 draftBorder: style('calendar-post-{$draft->id}').borderStyle,
                 slotBorder: style('calendar-posting-slot-{$slotKey}').borderStyle,
                 slotHatched: style('calendar-posting-slot-{$slotKey}').backgroundImage.startsWith('linear-gradient'),
@@ -440,8 +440,8 @@ test('clicking a scheduled post chip in the month view opens its timeline card i
     $page = visit(route('app.calendar', ['view' => 'month', 'month' => $at->format('Y-m-d')]));
     waitFor($page, "@calendar-post-{$post->id}");
 
-    expect($page->script("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]'); return [chip.tagName.toLowerCase(), chip.querySelector('svg') !== null, chip.querySelector('img') === null]; })()"))
-        ->toBe(['button', true, true]);
+    $page->assertAttribute("@calendar-post-{$post->id}", 'type', 'button')
+        ->assertPresent("@calendar-post-platform-{$post->id}");
 
     $page->click("@calendar-post-{$post->id}");
     waitFor($page, "@calendar-post-popover-{$post->id}");

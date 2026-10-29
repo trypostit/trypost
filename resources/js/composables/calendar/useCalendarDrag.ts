@@ -19,6 +19,7 @@ import {
     needsCustomTimeConfirmation,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
+import { calendarDayKey } from '@/lib/calendarItems';
 import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type {
@@ -282,10 +283,9 @@ export const useCalendarDrag = (
     ): Record<string, unknown> => {
         const posts: Record<string, CalendarPost[]> = {};
         const place = (post: CalendarPost): void => {
-            const key = dayjs
-                .utc(post.calendar_at)
-                .tz(options.timezone.value)
-                .format('YYYY-MM-DD');
+            const key = calendarDayKey(
+                dayjs.utc(post.calendar_at).tz(options.timezone.value),
+            );
 
             posts[key] = [...(posts[key] ?? []), post];
         };

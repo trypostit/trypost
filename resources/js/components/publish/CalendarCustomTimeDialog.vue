@@ -23,6 +23,14 @@ const zone = ref('');
 
 let resolveChoice: ((confirmed: boolean) => void) | null = null;
 
+const escapeHtml = (value: string): string =>
+    value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+
 const readSkip = (): boolean => {
     try {
         return window.localStorage.getItem(STORAGE_KEY) === 'true';
@@ -55,9 +63,11 @@ const confirm = (
     }
 
     resolveChoice?.(false);
-    fromTime.value = date.formatMonthDayTimeInTimezone(from, timezone);
-    toTime.value = date.formatMonthDayTimeInTimezone(to, timezone);
-    zone.value = timezone;
+    fromTime.value = escapeHtml(
+        date.formatMonthDayTimeInTimezone(from, timezone),
+    );
+    toTime.value = escapeHtml(date.formatMonthDayTimeInTimezone(to, timezone));
+    zone.value = escapeHtml(timezone);
     skipNextTime.value = false;
     isOpen.value = true;
 

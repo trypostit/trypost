@@ -235,7 +235,7 @@ test('a card label shows its name as typed, in a chip as tall as the label butto
     $chip = $page->script(<<<JS
         (() => {
             const chip = document.querySelector('[data-testid="post-label-chip-{$post->id}-{$label->id}"]');
-            const button = document.querySelector('[data-testid="post-labels-{$post->id}-trigger"] > span:last-child');
+            const button = document.querySelector('[data-testid="post-labels-{$post->id}-edit"]');
             const style = getComputedStyle(chip);
 
             return {

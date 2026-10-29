@@ -216,6 +216,7 @@ const statusTestId = computed(() =>
                         :platform="post.platform"
                         colored
                         class="size-4 shrink-0"
+                        :data-testid="`calendar-post-platform-${post.id}`"
                     />
                 </template>
                 <template v-else>
@@ -225,6 +226,7 @@ const statusTestId = computed(() =>
                             :platform="post.platform"
                             colored
                             class="size-4 shrink-0"
+                            :data-testid="`calendar-post-platform-${post.id}`"
                         />
                         <span
                             class="shrink-0 text-xs font-medium text-muted-foreground"
