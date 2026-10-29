@@ -441,14 +441,33 @@ export const useCalendarDrag = (
             announceMoved();
         };
 
+        /**
+         * Reloads the page shown instead of reading a move's answer. Inertia
+         * reloads asynchronously, so an answer that lands after the user moved
+         * to another page of the same path (a filter, a period) is dropped like
+         * a stale move answer instead of bringing the old page back.
+         */
         const reloadInstead = (settleFromIt: boolean): void => {
             staleResponse = true;
+
+            let shown: CalendarPost | null | undefined;
+
             router.reload({
                 only: props(),
                 reset,
-                onSuccess: (reloadedPage) => {
-                    if (settleFromIt) {
-                        settleFromReload(postIn(reloadedPage.props, post.id));
+                onBeforeUpdate: (response) => {
+                    if (response.url !== page.url) {
+                        response.props = { ...page.props };
+                        response.url = page.url;
+
+                        return;
+                    }
+
+                    shown = postIn(response.props, post.id);
+                },
+                onSuccess: () => {
+                    if (settleFromIt && shown !== undefined) {
+                        settleFromReload(shown);
                     }
                 },
                 onFinish: () => forget(post.id),

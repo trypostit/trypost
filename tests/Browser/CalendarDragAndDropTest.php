@@ -2888,3 +2888,60 @@ test('a touch press held on a post drags it into No Date', function () {
         ->and($post->status)->toBe(PostStatus::Draft);
     $page->assertNoJavaScriptErrors();
 });
+
+test('the reload that settles a move answered after a view change never brings back the page a filter change left', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day))->resize(1600, 900);
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+
+    $page->click('@calendar-view-trigger');
+    waitFor($page, '@calendar-view-month');
+    $page->click('@calendar-view-month');
+    waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
+    waitFor($page, '@calendar-month-grid');
+
+    $page->script(<<<'JS'
+        (() => {
+            window.__heldGets = [];
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, ...rest) {
+                this.__get = method.toUpperCase() === 'GET';
+
+                return open.call(this, method, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (!this.__get) {
+                    return send.call(this, body);
+                }
+
+                window.__heldGets.push(() => send.call(this, body));
+            };
+        })()
+    JS);
+    $page->click('@calendar-status-filter');
+    waitFor($page, '@calendar-status-drafts');
+    $page->click('@calendar-status-drafts');
+    waitForCondition($page, 'window.__heldGets.length === 1');
+
+    $page->script('window.__heldRequests[0]()');
+    waitForCondition($page, 'window.__heldGets.length === 2');
+
+    $page->script('window.__heldGets[0]()');
+    waitForCondition($page, "new URLSearchParams(location.search).get('status') === 'drafts'");
+    $page->script('window.__heldGets[1]()');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
+
+    $page->assertScript("new URLSearchParams(location.search).get('status')", 'drafts')
+        ->assertNoJavaScriptErrors();
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue();
+});
