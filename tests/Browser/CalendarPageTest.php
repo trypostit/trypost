@@ -588,6 +588,26 @@ test('the three days view shows three columns, and only the phone picker offers 
     $page->assertMissing("@calendar-post-{$post->id}")->assertNoJavaScriptErrors();
 });
 
+test('on a phone the calendar tab of the view switch keeps the three days view, on a desktop it opens the month', function () {
+    [$user] = calendarPageSetup();
+
+    $this->actingAs($user);
+
+    $calendarTabPath = 'new URL(document.querySelector(\'[data-testid="schedule-view-calendar"]\').href).pathname';
+
+    $page = visit(route('app.calendar', ['view' => 'days']))->resize(390, 844);
+    waitFor($page, '@schedule-view-calendar');
+    $page->assertScript($calendarTabPath, route('app.calendar', ['view' => 'days'], false))
+        ->click('@schedule-view-calendar');
+    waitFor($page, '@calendar-time-grid');
+    $page->assertPathIs(route('app.calendar', ['view' => 'days'], false));
+
+    $page->resize(1280, 900);
+    waitForState($page, '@schedule-view-calendar', 'new URL(element.href).pathname.endsWith("/month")');
+    $page->assertScript($calendarTabPath, route('app.calendar', ['view' => 'month'], false))
+        ->assertNoJavaScriptErrors();
+});
+
 test('on a phone the month shows its weeks in columns with the posts of each day as icon tiles', function () {
     [$user, $linkedin, $x] = calendarPageSetup();
     $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(12);

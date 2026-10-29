@@ -631,7 +631,9 @@ const goToDay = (key: string): void => {
                         <ScheduleViewSwitch
                             active-view="calendar"
                             :list-href="listHref"
-                            :calendar-href="calendarUrl('month')"
+                            :calendar-href="
+                                calendarUrl(isDesktop ? 'month' : 'days')
+                            "
                             :grid-href="
                                 channel?.has_grid
                                     ? grid.url(channel.id)
