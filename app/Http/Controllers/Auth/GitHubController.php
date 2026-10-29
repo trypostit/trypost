@@ -103,7 +103,7 @@ class GitHubController extends Controller
             return redirect()->route('app.invites.show', $invite);
         }
 
-        return redirect()->route('app.calendar');
+        return redirect()->intended(route('app.calendar'));
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $githubUser): RedirectResponse
