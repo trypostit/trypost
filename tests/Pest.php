@@ -50,11 +50,7 @@ pest()->extend(TestCase::class)
 
 pest()->extend(BrowserTestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(function (): void {
-        fakePwnedPasswords();
-        browserTimelinePage(forget: true);
-    })
-    ->afterEach(fn () => saveBrowserTimelineOnFailure($this))
+    ->beforeEach(fn () => fakePwnedPasswords())
     ->in('Browser');
 
 pest()->in('Feature/Social')
@@ -85,6 +81,22 @@ pest()->tia()->locally();
 */
 
 pest()->browser()->timeout(15000);
+
+/*
+|--------------------------------------------------------------------------
+| Browser Traces
+|--------------------------------------------------------------------------
+|
+| On CI each browser test records a Playwright trace, kept only when the test
+| fails, in tests/Browser/Traces (uploaded with the screenshots). Open one
+| with `npx playwright show-trace <file>.zip`. Set here and not with --trace,
+| which does not reach the parallel workers.
+|
+*/
+
+if (filled(getenv('CI'))) {
+    pest()->browser()->trace(open: false);
+}
 
 /*
 |--------------------------------------------------------------------------
@@ -705,125 +717,12 @@ function waitForWebFonts(mixed $page): void
 }
 
 /**
- * The page the shared wait helpers last touched, so a failing test can save
- * its timeline. `forget` clears it between tests.
- */
-function browserTimelinePage(mixed $page = null, bool $forget = false): mixed
-{
-    static $current = null;
-
-    if ($forget) {
-        $current = null;
-    } elseif ($page !== null) {
-        $current = $page;
-    }
-
-    return $current;
-}
-
-/**
- * Records, inside the page, the last 200 things that happened in it: Inertia
- * visits, history moves, clicks and XHR answers. It costs a few listeners and
- * an array, and is only read when the test fails. A full page load starts it
- * again at the next wait.
- */
-function recordBrowserTimeline(mixed $page): void
-{
-    browserTimelinePage($page);
-
-    $page->script(<<<'JS'
-        (() => {
-            if (window.__browserTimeline) {
-                return;
-            }
-
-            const timeline = (window.__browserTimeline = []);
-            const started = performance.now();
-            const log = (type, detail = {}) => {
-                timeline.push({ ms: Math.round(performance.now() - started), type, url: location.pathname + location.search, ...detail });
-                timeline.splice(0, Math.max(0, timeline.length - 200));
-            };
-
-            ['start', 'finish', 'navigate', 'success', 'error', 'cancel', 'httpException', 'networkError'].forEach((name) => {
-                document.addEventListener(`inertia:${name}`, (event) => {
-                    const visit = event.detail?.visit;
-
-                    log(`inertia:${name}`, visit ? { method: visit.method, to: String(visit.url), async: visit.async, only: visit.only, replace: visit.replace, completed: visit.completed, cancelled: visit.cancelled, interrupted: visit.interrupted } : {});
-                });
-            });
-
-            ['pushState', 'replaceState'].forEach((method) => {
-                const original = history[method].bind(history);
-                history[method] = (state, title, url) => {
-                    log(`history.${method}`, { to: url === undefined ? null : String(url) });
-
-                    return original(state, title, url);
-                };
-            });
-
-            const back = history.back.bind(history);
-            history.back = () => {
-                log('history.back');
-                back();
-            };
-            window.addEventListener('popstate', () => log('popstate'));
-
-            document.addEventListener('click', (event) => {
-                const target = event.target instanceof Element ? event.target.closest('[data-testid]') : null;
-
-                log('click', { testid: target?.dataset.testid ?? null });
-            }, true);
-
-            const open = XMLHttpRequest.prototype.open;
-            XMLHttpRequest.prototype.open = function (method, url, ...rest) {
-                this.__timeline = { method, url: String(url) };
-                this.addEventListener('loadend', () => log('xhr', { ...this.__timeline, status: this.status }));
-
-                return open.call(this, method, url, ...rest);
-            };
-        })()
-    JS);
-}
-
-/**
- * Saves the timeline of a failed browser test next to its screenshot, in the
- * folder CI uploads, as `<test>.timeline.json`.
- */
-function saveBrowserTimelineOnFailure(TestCase $test): void
-{
-    $page = browserTimelinePage();
-    browserTimelinePage(forget: true);
-    $status = $test->status();
-
-    if ($page === null || ! ($status->isFailure() || $status->isError())) {
-        return;
-    }
-
-    try {
-        $timeline = $page->script('JSON.stringify(window.__browserTimeline ?? [], null, 2)');
-    } catch (Throwable) {
-        return;
-    }
-
-    $name = str_replace('__pest_evaluable_', '', $test->name());
-    $directory = base_path('tests/Browser/Screenshots');
-
-    if (! is_dir($directory)) {
-        mkdir($directory, 0755, true);
-    }
-
-    file_put_contents("{$directory}/{$name}.timeline.json", $timeline);
-}
-
-/**
  * Wait until a JavaScript expression is true in the page, for up to 15
  * seconds. Assertions do not wait for the SPA to paint, and a blocking
  * sleep() would starve the server that serves the page, so the page polls.
  */
 function waitForCondition(mixed $page, string $condition): void
 {
-    recordBrowserTimeline($page);
-
     $page->script(<<<JS
         (async () => {
             for (let i = 0; i < 300; i++) {
