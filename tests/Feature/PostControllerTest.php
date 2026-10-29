@@ -1068,6 +1068,18 @@ test('destroy returns to the page it came from even when its query names a route
         ->assertRedirect(route('app.calendar', ['view' => 'week']));
 });
 
+test('destroy returns to a page without its optional route parameter as it was, without filling it from the query', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['week' => '2026-10-26']).'&view=month')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
+});
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

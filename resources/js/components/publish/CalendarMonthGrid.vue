@@ -133,6 +133,7 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                         'bg-accent': isPast(day),
                         'bg-primary/15': isDayOver(day),
                     }"
+                    :data-drop-over="isDayOver(day) || undefined"
                     :data-testid="`calendar-day-${dayKey(day)}`"
                 >
                     <div class="flex items-center justify-between">

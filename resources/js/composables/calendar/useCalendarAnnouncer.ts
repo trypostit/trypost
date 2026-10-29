@@ -12,7 +12,11 @@ export const useCalendarAnnouncer = (
     timezone: Readonly<Ref<string>>,
 ): {
     announcement: Ref<string>;
-    describeInstant: (at: string, target: CalendarDropTarget) => string;
+    describeInstant: (
+        at: string,
+        target: CalendarDropTarget,
+        previousAt: string | null,
+    ) => string;
     hooks: Required<CalendarDragLifecycle>;
 } => {
     const announcement = ref('');
@@ -29,8 +33,24 @@ export const useCalendarAnnouncer = (
               });
     };
 
-    const describeInstant = (at: string, target: CalendarDropTarget): string =>
-        describeAt(at, target.kind === 'day');
+    const clockOf = (at: string): string =>
+        dayjs.utc(at).tz(timezone.value).format('HH:mm');
+
+    /**
+     * A day drop keeps the post's clock time, so it names the date only, unless
+     * the time changed too (today after that time moves it to a few minutes
+     * from now), which the user has to hear.
+     */
+    const describeInstant = (
+        at: string,
+        target: CalendarDropTarget,
+        previousAt: string | null,
+    ): string =>
+        describeAt(
+            at,
+            target.kind === 'day' &&
+                (previousAt === null || clockOf(previousAt) === clockOf(at)),
+        );
 
     const describeTarget = (target: CalendarDropTarget): string => {
         switch (target.kind) {
@@ -97,7 +117,7 @@ export const useCalendarAnnouncer = (
             return;
         }
 
-        const to = describeInstant(scheduledAt, target);
+        const to = describeInstant(scheduledAt, target, post.scheduled_at);
 
         announce(
             post.scheduled_at

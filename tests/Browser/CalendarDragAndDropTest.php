@@ -473,10 +473,13 @@ test('month drop on today after that time lands five minutes from now', function
     waitFor($page, "@calendar-day-{$today->format('Y-m-d')} @calendar-post-{$post->id}");
     waitForGone($page, '@calendar-grid[aria-busy]');
 
+    waitFor($page, '@calendar-reschedule-success-toast');
+
     $scheduledAt = $post->refresh()->scheduled_at;
     expect($scheduledAt->between(now()->addMinutes(3), now()->addMinutes(6)))->toBeTrue()
         ->and($scheduledAt->second)->toBe(0);
-    $page->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@calendar-reschedule-success-toast', $scheduledAt->format('g:i A'))
+        ->assertNoJavaScriptErrors();
 });
 
 test('drafts move and stay drafts; the No Date panel takes and gives them', function () {
@@ -550,10 +553,10 @@ test('a scheduled post is not taken by the No Date panel', function () {
         query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
         await down(center('@calendar-post-{$post->id}'));
         await move(center('@calendar-undated-panel'));
-        const highlighted = query('@calendar-undated-panel').classList.contains('border-primary');
+        const highlighted = query('@calendar-undated-panel').hasAttribute('data-drop-over');
         await up(center('@calendar-undated-panel'));
 
-        return { highlighted, dragging: state().dragging, after: query('@calendar-undated-panel').classList.contains('border-primary') };
+        return { highlighted, dragging: state().dragging, after: query('@calendar-undated-panel').hasAttribute('data-drop-over') };
     JS);
 
     waitForGone($page, '@calendar-grid[aria-busy]');
@@ -960,15 +963,15 @@ test('mid-drag the preview, placeholder, hovered cell and hovered slot show the 
         await move(center('@calendar-slot-{$key}-12'));
         const overCell = {
             ...state(),
-            placeholder: origin().classList.contains('bg-muted') && getComputedStyle(origin().firstElementChild).visibility === 'hidden',
-            cell: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15'),
+            placeholder: origin().hasAttribute('data-dragging') && getComputedStyle(origin().firstElementChild).visibility === 'hidden',
+            cell: query('@calendar-slot-{$key}-12').hasAttribute('data-drop-over'),
             dimmed: getComputedStyle(query('@calendar-post-{$other->id}')).opacity,
         };
         await move(center('@calendar-posting-slot-{$slotKey}'));
         const overSlot = {
-            slot: query('@calendar-posting-slot-{$slotKey}').classList.contains('bg-accent'),
-            cell: query('@calendar-slot-{$key}-15').classList.contains('bg-primary/15'),
-            previous: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15'),
+            slot: query('@calendar-posting-slot-{$slotKey}').hasAttribute('data-drop-over'),
+            cell: query('@calendar-slot-{$key}-15').hasAttribute('data-drop-over'),
+            previous: query('@calendar-slot-{$key}-12').hasAttribute('data-drop-over'),
         };
 
         return { overCell, overSlot };
@@ -1036,7 +1039,7 @@ test('Esc cancels a drag', function () {
         await down(center('@calendar-post-{$post->id}'));
         await move(center('@calendar-slot-{$key}-12'));
 
-        return state().dragging && query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15');
+        return state().dragging && query('@calendar-slot-{$key}-12').hasAttribute('data-drop-over');
     JS);
 
     expect($over)->toBeTrue();
@@ -1047,7 +1050,7 @@ test('Esc cancels a drag', function () {
     $after = calendarGesture($page, <<<JS
         await up(center('@calendar-slot-{$key}-12'));
 
-        return query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15');
+        return query('@calendar-slot-{$key}-12').hasAttribute('data-drop-over');
     JS);
 
     waitForGone($page, '@calendar-grid[aria-busy]');
@@ -1087,7 +1090,7 @@ test('a drag ends when the window loses focus or the mouse button is already up'
         const buttonless = state().dragging;
         await up(center('@calendar-slot-{$key}-13'));
 
-        return { dragging, blurred, again, buttonless, cell: query('@calendar-slot-{$key}-12').classList.contains('bg-primary/15') };
+        return { dragging, blurred, again, buttonless, cell: query('@calendar-slot-{$key}-12').hasAttribute('data-drop-over') };
     JS);
 
     waitForGone($page, '@calendar-grid[aria-busy]');
@@ -1249,7 +1252,7 @@ test('the No Date panel highlights for a scheduled post, refuses it and announce
         query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
         await down(center('@calendar-post-{$post->id}'));
         await move(center('@calendar-undated-panel'));
-        const highlighted = query('@calendar-undated-panel').classList.contains('border-primary');
+        const highlighted = query('@calendar-undated-panel').hasAttribute('data-drop-over');
         await up(center('@calendar-undated-panel'));
 
         return highlighted;
@@ -1837,7 +1840,7 @@ test('a month drop on today is refused when five minutes from now is already tom
         query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
         await down(center('@calendar-post-{$post->id}'));
         await move(center('@calendar-day-{$today}'));
-        const over = query('@calendar-day-{$today}').classList.contains('bg-primary/15');
+        const over = query('@calendar-day-{$today}').hasAttribute('data-drop-over');
         const clock = Date.now();
         await up(center('@calendar-day-{$today}'));
 
@@ -2182,7 +2185,7 @@ test('the hour skipped by the start of daylight saving is not highlighted and of
 
     $cells = $page->script(<<<JS
         ({
-            skippedOver: document.querySelector('[data-testid="calendar-slot-{$key}-02"]').classList.contains('bg-primary/15'),
+            skippedOver: document.querySelector('[data-testid="calendar-slot-{$key}-02"]').hasAttribute('data-drop-over'),
             skippedAdd: document.querySelector('[data-testid="calendar-add-{$key}-02"]') !== null,
             nextAdd: document.querySelector('[data-testid="calendar-add-{$key}-03"]') !== null,
         })

@@ -330,7 +330,10 @@ test('posting slots load only when enabled, cover the visible range and follow t
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'week']))
-        ->assertInertia(fn (AssertableInertia $page) => $page->missing('slots'));
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->missing('slots')
+            ->reloadOnly('slots', fn (AssertableInertia $reload) => $reload
+                ->where('slots.2026-10-05.0.at', '2026-10-05T12:00:00+00:00')));
 
     $this->actingAs($this->user)
         ->get(route('app.calendar', ['view' => 'week', 'slots' => 1]))

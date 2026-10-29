@@ -125,26 +125,28 @@ class BuildCalendarPageProps
                 ->through(fn (Post $post): array => PostCardResource::make($post)->resolve()));
         }
 
-        if ($request->boolean('slots')) {
-            $props['slots'] = fn (): array => self::slots(
-                $workspace,
-                match (true) {
-                    $channel !== null => collect([$channel]),
-                    $requestedChannelIds !== [] => $filterAccounts()->whereIn('id', $requestedChannelIds)->values(),
-                    default => $filterAccounts(),
-                },
-                $timezone,
-                $rangeStart,
-                $rangeEnd,
-                $labelIds === [] && ! $untagged && in_array($status, [self::STATUS_ALL, 'scheduled'], true),
-            );
-        }
+        $slots = fn (): array => self::slots(
+            $workspace,
+            match (true) {
+                $channel !== null => collect([$channel]),
+                $requestedChannelIds !== [] => $filterAccounts()->whereIn('id', $requestedChannelIds)->values(),
+                default => $filterAccounts(),
+            },
+            $timezone,
+            $rangeStart,
+            $rangeEnd,
+            $labelIds === [] && ! $untagged && in_array($status, [self::STATUS_ALL, 'scheduled'], true),
+        );
+
+        $props['slots'] = $request->boolean('slots') ? $slots : Inertia::optional($slots);
 
         return $props;
     }
 
     /**
      * Empty posting slots of the visible range, bucketed by day of the display time zone.
+     * Sent eagerly with `slots=1`, else only when a partial reload asks for them by name, so a
+     * reload that follows a URL without it (a move answered with back()) still refreshes them.
      * `queueable` says whether a queued post may take the slot (within the queue window);
      * a later slot still opens the composer, and a post dropped there gets a custom time.
      *
@@ -161,9 +163,13 @@ class BuildCalendarPageProps
 
         foreach (BuildQueueTimeline::handle($workspace, $channels, $timezone, $rangeEnd) as $day) {
             foreach (data_get($day, 'items', []) as $item) {
+                if (data_get($item, 'type') !== 'slot') {
+                    continue;
+                }
+
                 $slotAt = CarbonImmutable::parse(data_get($item, 'at'));
 
-                if (data_get($item, 'type') !== 'slot' || $slotAt->lessThan($rangeStart)) {
+                if ($slotAt->lessThan($rangeStart)) {
                     continue;
                 }
 

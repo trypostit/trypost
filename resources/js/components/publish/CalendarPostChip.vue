@@ -207,6 +207,7 @@ const statusTestId = computed(() =>
                         : 'h-7 items-center px-1',
                 ]"
                 :aria-label="`${channels} · ${time} · ${$t(`calendar.post_status.${statusKey}`)} · ${text || $t('calendar.no_content')}`"
+                :data-dragging="isDragging || undefined"
                 :data-testid="`calendar-post-${post.id}`"
             >
                 <template v-if="compact">

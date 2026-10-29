@@ -213,6 +213,7 @@ watch(
                             hour > 0 && (index > 0 || hour % 2 === 1),
                     }"
                     :style="{ height: `${ROW_HEIGHT}px` }"
+                    :data-drop-over="isHourOver(index, hour) || undefined"
                     :data-testid="`calendar-slot-${column.key}-${hourLabel(hour)}`"
                 >
                     <div

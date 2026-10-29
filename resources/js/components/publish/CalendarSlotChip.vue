@@ -109,6 +109,7 @@ const newPost = (): void => {
                 : 'h-7 w-full min-w-0 gap-1.5 px-1.5',
             { 'bg-accent': isOver },
         ]"
+        :data-drop-over="isOver || undefined"
         :title="channel?.display_label"
         :aria-label="
             channel

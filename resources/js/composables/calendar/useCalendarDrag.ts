@@ -152,7 +152,11 @@ export const useCalendarDrag = (
         requiresApproval: Readonly<Ref<boolean>>;
         reloadProps: string[];
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
-        describeInstant: (at: string, target: CalendarDropTarget) => string;
+        describeInstant: (
+            at: string,
+            target: CalendarDropTarget,
+            previousAt: string | null,
+        ) => string;
     } & CalendarDragLifecycle,
 ): CalendarDrag => {
     const page = usePage();
@@ -277,7 +281,11 @@ export const useCalendarDrag = (
             return trans('calendar.reschedule.toast.undated');
         }
 
-        const time = options.describeInstant(scheduledAt, target);
+        const time = options.describeInstant(
+            scheduledAt,
+            target,
+            post.scheduled_at,
+        );
         const message = trans(
             post.status === PostStatus.Draft
                 ? 'calendar.reschedule.toast.moved_draft'

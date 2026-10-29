@@ -49,6 +49,7 @@ const plainText = (draft: UndatedDraft): string =>
         v-calendar-target="UNDATED_TARGET"
         class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl border bg-muted md:w-[360px]"
         :class="isOver ? 'border-primary' : 'border-transparent'"
+        :data-drop-over="isOver || undefined"
         data-testid="calendar-undated-panel"
     >
         <div class="flex shrink-0 items-start gap-4 px-4 pt-4 pb-3">
