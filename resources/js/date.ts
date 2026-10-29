@@ -231,15 +231,18 @@ export default {
     },
 
     /**
-     * Short month, day and time (e.g. "Oct 1 4:21 PM") of a UTC instant in an
-     * explicit time zone.
+     * Short month and day in the active locale's order, then the time ("Oct 1,
+     * 4:21 PM", "1 de out., 16:21") of a UTC instant in an explicit time zone.
      */
-    formatMonthDayTimeInTimezone(date: string, timezone: string) {
-        return dayjs
-            .utc(date)
-            .tz(timezone)
-            .locale(activeLocale.value.toLowerCase())
-            .format(`MMM D ${timeToken()}`);
+    formatMonthDayTimeInTimezone(date: string, timezone: string): string {
+        const instant = dayjs.utc(date);
+        const day = new Intl.DateTimeFormat(activeLocale.value, {
+            month: 'short',
+            day: 'numeric',
+            timeZone: timezone,
+        }).format(instant.toDate());
+
+        return `${day}, ${instant.tz(timezone).locale(activeLocale.value.toLowerCase()).format(timeToken())}`;
     },
 
     /**

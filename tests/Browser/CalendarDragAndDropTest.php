@@ -248,8 +248,9 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
 
     expect($page->script('document.activeElement?.dataset.testid'))->toBe('calendar-custom-time-cancel');
     $page->assertSeeIn('@calendar-custom-time-dialog', __('calendar.reschedule.custom_time.title'))
-        ->assertSeeIn('@calendar-custom-time-description', "{$queuedAt->format('M j g:i A')} (UTC)")
-        ->assertSeeIn('@calendar-custom-time-description', "{$day->setTime(11, 0)->format('M j g:i A')} (UTC)");
+        ->assertSeeIn('@calendar-custom-time-description', "{$queuedAt->format('M j, g:i A')} (UTC)")
+        ->assertSeeIn('@calendar-custom-time-description', "{$day->setTime(11, 0)->format('M j, g:i A')} (UTC)")
+        ->assertDontSeeIn('@calendar-custom-time-description', 'posting times');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
     $styles = $page->script(<<<'JS'
@@ -1532,6 +1533,36 @@ function calendarDragHoldRequests(mixed $page): void
 }
 
 /**
+ * Sends every PUT at once but holds its answer until `window.__releaseHeldResponses()`,
+ * so the request still carries the page it was sent from.
+ */
+function calendarDragHoldResponses(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            window.__heldResponses = [];
+            const open = XMLHttpRequest.prototype.open;
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.open = function (method, ...rest) {
+                this.__method = method.toUpperCase();
+
+                return open.call(this, method, ...rest);
+            };
+            XMLHttpRequest.prototype.send = function (body) {
+                if (this.__method === 'PUT') {
+                    const onload = this.onload;
+
+                    this.onload = (...args) => window.__heldResponses.push(() => onload.apply(this, args));
+                }
+
+                return send.call(this, body);
+            };
+            window.__releaseHeldResponses = () => window.__heldResponses.splice(0).forEach((release) => release());
+        })()
+    JS);
+}
+
+/**
  * Sends every PUT the page makes to a closed port, so it fails as a network error.
  */
 function calendarDragBreakNetwork(mixed $page): void
@@ -1716,8 +1747,8 @@ test('the custom time dialog, the toast and the announcement use the display zon
     calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-20");
     waitFor($page, '@calendar-custom-time-dialog');
 
-    $page->assertSeeIn('@calendar-custom-time-description', "{$tokyoFrom->format('M j g:i A')} (Asia/Tokyo)")
-        ->assertSeeIn('@calendar-custom-time-description', "{$tokyoTo->format('M j g:i A')} (Asia/Tokyo)");
+    $page->assertSeeIn('@calendar-custom-time-description', "{$tokyoFrom->format('M j, g:i A')} (Asia/Tokyo)")
+        ->assertSeeIn('@calendar-custom-time-description', "{$tokyoTo->format('M j, g:i A')} (Asia/Tokyo)");
     $page->click('@calendar-custom-time-confirm');
     waitFor($page, '@calendar-reschedule-success-toast');
     waitForGone($page, '@calendar-grid[aria-busy]');
@@ -1747,8 +1778,8 @@ test('the custom time dialog follows the user\'s 24-hour clock', function () {
 
     $description = $page->script('document.querySelector(\'[data-testid="calendar-custom-time-description"]\').textContent');
 
-    expect($description)->toContain("{$tokyoFrom->format('M j')} 18:25 (Asia/Tokyo)")
-        ->toContain("{$tokyoFrom->format('M j')} 20:00 (Asia/Tokyo)")
+    expect($description)->toContain("{$tokyoFrom->format('M j')}, 18:25 (Asia/Tokyo)")
+        ->toContain("{$tokyoFrom->format('M j')}, 20:00 (Asia/Tokyo)")
         ->not->toContain('AM')
         ->not->toContain('PM');
     $page->click('@calendar-custom-time-cancel');
@@ -2302,4 +2333,76 @@ test('a move cancelled by going Back sends nothing more and announces the return
     $page->assertMissing('@calendar-reschedule-error-toast')
         ->assertMissing('@calendar-reschedule-success-toast')
         ->assertNoJavaScriptErrors();
+});
+
+test('a move still saving when the week changes does not bring the old week back', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $nextWeek = $day->addWeek()->startOfWeek()->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragHoldResponses($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitForCondition($page, 'window.__heldResponses.length === 1');
+
+    $page->click('@calendar-next');
+    waitFor($page, "@calendar-column-{$nextWeek}");
+    $page->script('window.__releaseHeldResponses()');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue();
+    $page->assertScript("new URLSearchParams(location.search).get('week')", $nextWeek)
+        ->assertPresent("@calendar-column-{$nextWeek}")
+        ->assertMissing("@calendar-column-{$key}")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a move by a member who needs approval says so even when the status filter hides the post afterwards', function () {
+    [$owner, $channel] = calendarDragSetup();
+    $member = User::factory()->create(['account_id' => $owner->account_id, 'timezone' => 'UTC']);
+    $channel->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $channel->workspace_id]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 0), attributes: ['user_id' => $member->id]);
+    $this->actingAs($member);
+
+    $page = visit(calendarDragWeekUrl($day, ['status' => 'scheduled']));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitForGoneOrShown($page, gone: '@calendar-grid[aria-busy]', shown: '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $page->assertPresent('@calendar-reschedule-approval-toast')
+        ->assertMissing('@calendar-reschedule-success-toast');
+    expect($post->refresh()->status)->toBe(PostStatus::PendingApproval);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the custom time dialog writes the dates in the order of the user\'s language', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $user->update(['locale' => Locale::PortugueseBrazil]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $queuedAt = $day->setTime(9, 25);
+    $post = calendarDragPost($channel, $queuedAt, mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-custom-time-dialog');
+
+    $expected = $page->script("new Intl.DateTimeFormat('pt-BR', { month: 'short', day: 'numeric', timeZone: 'UTC' }).format(new Date('{$queuedAt->format('Y-m-d\\TH:i:s')}Z'))");
+
+    expect($page->script('document.querySelector(\'[data-testid="calendar-custom-time-description"]\').textContent'))
+        ->toContain("{$expected}, 9:25 AM (UTC)");
+    $page->assertNoJavaScriptErrors();
 });

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Actions\Post\Queue\BuildQueueTimeline;
+use App\Actions\Post\Queue\MoveChannelPostToQueueSlot;
 use App\Enums\Post\Status as PostStatus;
 use App\Http\Resources\App\PostCardResource;
 use App\Http\Resources\App\SocialAccountResource;
@@ -143,7 +144,8 @@ class BuildCalendarPageProps
     }
 
     /**
-     * Empty posting slots of the visible range, bucketed by day of the display time zone.
+     * Empty posting slots of the visible range within the queue window, bucketed by day of the
+     * display time zone.
      *
      * @param  Collection<int, SocialAccount>  $channels
      * @return array<string, list<array{at: string, channel_id: string}>>
@@ -158,7 +160,9 @@ class BuildCalendarPageProps
 
         foreach (BuildQueueTimeline::handle($workspace, $channels, $timezone, $rangeEnd) as $day) {
             foreach (data_get($day, 'items', []) as $item) {
-                if (data_get($item, 'type') !== 'slot' || CarbonImmutable::parse(data_get($item, 'at'))->lessThan($rangeStart)) {
+                $slotAt = CarbonImmutable::parse(data_get($item, 'at'));
+
+                if (data_get($item, 'type') !== 'slot' || $slotAt->lessThan($rangeStart) || ! MoveChannelPostToQueueSlot::withinQueueWindow($slotAt)) {
                     continue;
                 }
 

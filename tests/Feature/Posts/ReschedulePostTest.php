@@ -593,6 +593,30 @@ test('reschedule is refused when the post went to approval after the request was
         ->and($post->approved_by)->toBeNull();
 });
 
+test('a null time is refused when the draft was scheduled after the request was validated', function () {
+    $post = reschedulePost($this->channel, $this->user, ['scheduled_at' => CarbonImmutable::parse('2026-10-07 10:00', 'UTC')]);
+    $flipped = false;
+
+    Post::retrieved(function (Post $retrieved) use ($post, &$flipped): void {
+        if ($flipped || $retrieved->id !== $post->id) {
+            return;
+        }
+
+        $flipped = true;
+        Post::query()->whereKey($post->id)->toBase()->update(['status' => PostStatus::Scheduled->value, 'schedule_mode' => ScheduleMode::Custom->value]);
+    });
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null, 'queue_slot' => true])
+        ->assertRedirect()
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.required')]);
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->equalTo(CarbonImmutable::parse('2026-10-07 10:00', 'UTC')))->toBeTrue();
+});
+
 test('reschedule refuses a time past the 2038 ceiling before it reaches the post', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

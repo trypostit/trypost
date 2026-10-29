@@ -1,5 +1,4 @@
-import type { Page } from '@inertiajs/core';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import {
     computed,
@@ -156,6 +155,7 @@ export const useCalendarDrag = (
         describeInstant: (at: string, target: CalendarDropTarget) => string;
     } & CalendarDragLifecycle,
 ): CalendarDrag => {
+    const page = usePage();
     const overTarget = ref<string | null>(null);
     const hoveredTarget = ref<string | null>(null);
     const draggingPostId = ref<string | null>(null);
@@ -259,14 +259,6 @@ export const useCalendarDrag = (
         movedPosts.value = rest;
     };
 
-    const reloadedPost = (page: Page, postId: string): CalendarPost | undefined =>
-        Object.values(
-            (page.props.posts as Record<string, CalendarPost[]> | undefined) ??
-                {},
-        )
-            .flat()
-            .find((reloaded) => reloaded.id === postId);
-
     const rollback = (postId: string, message?: string): void => {
         forget(postId);
         toast.error(message ?? trans('calendar.reschedule.error'), {
@@ -296,6 +288,14 @@ export const useCalendarDrag = (
             ? `${message} ${trans('calendar.reschedule.toast.unqueued_suffix')}`
             : message;
     };
+
+    const isSameInstant = (
+        stored: string | null,
+        requested: string | null,
+    ): boolean =>
+        stored === null || requested === null
+            ? stored === requested
+            : dayjs.utc(stored).isSame(dayjs.utc(requested));
 
     const move = async (
         post: PostCard,
@@ -341,15 +341,14 @@ export const useCalendarDrag = (
             return false;
         };
 
-        const isAtNewInstant = (page: Page): boolean => {
-            const reloaded = reloadedPost(page, post.id);
+        let reloaded: CalendarPost | null | undefined;
+        let leftThePage = false;
 
-            return (
-                !reloaded ||
-                (scheduledAt !== null &&
-                    reloaded.scheduled_at !== null &&
-                    dayjs.utc(reloaded.scheduled_at).isSame(dayjs.utc(scheduledAt)))
-            );
+        const announceApproval = (): void => {
+            toast.success(trans('posts.approvals.requested'), {
+                testId: 'calendar-reschedule-approval-toast',
+            });
+            confirm();
         };
 
         router.put(
@@ -365,24 +364,62 @@ export const useCalendarDrag = (
                 preserveState: true,
                 only: [...options.reloadProps, 'flash'],
                 reset: ['undatedDrafts'],
-                onSuccess: (page) => {
+                onBeforeUpdate: (response) => {
+                    reloaded =
+                        Object.values(
+                            (response.props.posts as
+                                | Record<string, CalendarPost[]>
+                                | undefined) ?? {},
+                        )
+                            .flat()
+                            .find((candidate) => candidate.id === post.id) ??
+                        null;
+
+                    if (response.url === page.url) {
+                        return;
+                    }
+
+                    leftThePage = true;
+                    response.props = {
+                        ...page.props,
+                        flash: response.props.flash,
+                    };
+                    response.url = page.url;
+                },
+                onSuccess: () => {
+                    if (leftThePage) {
+                        router.reload({
+                            only: options.reloadProps,
+                            reset: ['undatedDrafts'],
+                        });
+                    }
+
                     if (settled) {
                         return;
                     }
 
-                    if (
-                        reloadedPost(page, post.id)?.status ===
-                        PostStatus.PendingApproval
-                    ) {
-                        toast.success(trans('posts.approvals.requested'), {
-                            testId: 'calendar-reschedule-approval-toast',
-                        });
+                    if (reloaded === undefined) {
                         confirm();
 
                         return;
                     }
 
-                    if (!isAtNewInstant(page)) {
+                    const leftTheFilteredList =
+                        reloaded === null && scheduledAt !== null;
+
+                    if (
+                        leftTheFilteredList ||
+                        reloaded?.status === PostStatus.PendingApproval
+                    ) {
+                        announceApproval();
+
+                        return;
+                    }
+
+                    if (
+                        reloaded &&
+                        !isSameInstant(reloaded.scheduled_at, scheduledAt)
+                    ) {
                         reject();
 
                         return;

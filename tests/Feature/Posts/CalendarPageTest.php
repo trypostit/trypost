@@ -300,6 +300,23 @@ test('undated drafts are paginated with the default page size', function () {
         ->assertInertia(fn (AssertableInertia $page) => $page->has('undatedDrafts.data', 1));
 });
 
+test('posting slots stop at the queue window, since a later slot cannot take a queued post', function () {
+    $schedule = PostingSchedule::empty();
+
+    foreach (range(0, 6) as $weekday) {
+        $schedule = $schedule->withTime($weekday, '09:00');
+    }
+
+    $this->linkedin->update(['timezone' => 'UTC', 'posting_schedule' => $schedule]);
+
+    $this->actingAs($this->user)
+        ->get(route('app.calendar', ['view' => 'month', 'month' => '2027-01-01', 'slots' => 1, 'tz' => 'UTC']))
+        ->assertInertia(fn (AssertableInertia $page) => $page
+            ->has('slots.2027-01-03', 1)
+            ->missing('slots.2027-01-04')
+            ->where('slots', fn (mixed $slots): bool => collect($slots)->keys()->max() === '2027-01-03'));
+});
+
 test('posting slots load only when enabled, cover the visible range and follow the display time zone', function () {
     $this->linkedin->update([
         'timezone' => 'America/Sao_Paulo',

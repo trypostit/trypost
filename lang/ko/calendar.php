@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => '게시물을 지정한 시간으로 이동',
-            'description' => '이 게시물을 대기열 시간<strong>:from <i>(:zone)</i></strong>에서 게시 시간에 없는 지정 시간<strong>:to <i>(:zone)</i></strong>으로 이동합니다.',
+            'description' => '이 게시물을 대기열 시간<strong>:from <i>(:zone)</i></strong>에서 지정 시간<strong>:to <i>(:zone)</i></strong>으로 이동합니다.',
             'unqueued' => '게시물은 선택한 새 시간에 게시되지만 대기열 자리는 차지하지 않습니다.',
             'dont_show_again' => '다시 표시하지 않기',
             'cancel' => '취소',

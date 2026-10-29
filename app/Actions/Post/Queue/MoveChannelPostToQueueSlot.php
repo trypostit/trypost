@@ -12,6 +12,7 @@ use App\Models\Post;
 use App\Models\SocialAccount;
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Validation\ValidationException;
 
 class MoveChannelPostToQueueSlot
@@ -43,9 +44,16 @@ class MoveChannelPostToQueueSlot
         });
     }
 
+    /**
+     * Whether a posting slot is close enough to take a queued post (BuildPublishPageProps::MAX_QUEUE_DAYS).
+     */
+    public static function withinQueueWindow(CarbonInterface $slotAt): bool
+    {
+        return $slotAt->lessThanOrEqualTo(now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS));
+    }
+
     private static function isFreeSlot(SocialAccount $channel, Post $post, CarbonImmutable $slotAt): bool
     {
-        return $slotAt->lessThanOrEqualTo(now()->addDays(BuildPublishPageProps::MAX_QUEUE_DAYS))
-            && ReflowChannelQueue::isFreeSlot($channel, $slotAt, $post->id);
+        return self::withinQueueWindow($slotAt) && ReflowChannelQueue::isFreeSlot($channel, $slotAt, $post->id);
     }
 }

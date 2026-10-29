@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Beitrag auf eine eigene Uhrzeit verschieben',
-            'description' => 'Du verschiebst diesen Beitrag von einem Platz in der Warteschlange, <strong>:from <i>(:zone)</i></strong>, auf eine eigene Uhrzeit, <strong>:to <i>(:zone)</i></strong>, die nicht zu deinen Veröffentlichungszeiten gehört.',
+            'description' => 'Du verschiebst diesen Beitrag von einem Platz in der Warteschlange, <strong>:from <i>(:zone)</i></strong>, auf eine eigene Uhrzeit, <strong>:to <i>(:zone)</i></strong>.',
             'unqueued' => 'Der Beitrag wird zur neu gewählten Zeit veröffentlicht, belegt aber keinen Platz in deiner Warteschlange.',
             'dont_show_again' => 'Nicht mehr zeigen',
             'cancel' => 'Abbrechen',
