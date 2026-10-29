@@ -94,7 +94,8 @@ trait RendersPublishPage
     /**
      * The page the request was sent from, rebuilt with route() from the route its
      * Referer matched, so it always points at this app, at the same route
-     * parameters (a query key, named or numeric, never replaces or fills one). Its query is
+     * parameters (a query key, named or numeric, never replaces or fills one: a key named like
+     * an optional parameter the path left out stays in the query, where the page reads it). Its query is
      * read form-encoded, as PHP reads it (`+` is a space, dots stay in keys), and kept, minus the
      * keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
      * that matches no route of the app, or cannot be read, returns to the home page.
@@ -112,7 +113,7 @@ trait RendersPublishPage
             $query = Arr::where(
                 Arr::except(
                     QueryString::extract(Uri::of(url()->previous())->query()->value(), encType: PHP_QUERY_RFC1738),
-                    [...$except, ...$route->parameterNames()],
+                    [...$except, ...array_keys($route->parameters())],
                 ),
                 fn (mixed $value, int|string $key): bool => is_string($key),
             );
@@ -120,7 +121,11 @@ trait RendersPublishPage
             return route('app.home');
         }
 
-        return route($route->getName(), [...$query, ...$extraQuery, ...$route->parameters()]);
+        $unboundParameters = array_diff($route->parameterNames(), array_keys($route->parameters()));
+        $url = route($route->getName(), [...Arr::except($query, $unboundParameters), ...$extraQuery, ...$route->parameters()]);
+        $keptAsQuery = Arr::only($query, $unboundParameters);
+
+        return $keptAsQuery === [] ? $url : (string) Uri::of($url)->withQuery($keptAsQuery);
     }
 
     /**

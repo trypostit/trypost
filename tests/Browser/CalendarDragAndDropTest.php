@@ -2776,3 +2776,38 @@ test('a custom time confirmed after its time has passed sends nothing and return
     $page->assertMissing('@calendar-reschedule-error-toast')
         ->assertNoJavaScriptErrors();
 });
+
+test('a move that does not touch No Date leaves the open No Date list as it is', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $draft = calendarDragPost($channel, null, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script(<<<'JS'
+        (() => {
+            window.__partialData = [];
+            const setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+            XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+                if (name.toLowerCase() === 'x-inertia-partial-data') {
+                    window.__partialData.push(String(value));
+                }
+
+                return setRequestHeader.call(this, name, value);
+            };
+        })()
+    JS);
+
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $page->assertScript("window.__partialData.length > 0 && window.__partialData.every((props) => !props.split(',').includes('undatedDrafts'))", true)
+        ->assertPresent("@calendar-undated-{$draft->id}")
+        ->assertNoJavaScriptErrors();
+});

@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Uri;
 
 beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -1068,7 +1069,7 @@ test('destroy returns to the page it came from even when its query names a route
         ->assertRedirect(route('app.calendar', ['view' => 'week']));
 });
 
-test('destroy returns to a page without its optional route parameter as it was, without filling it from the query', function () {
+test('destroy keeps a query key named like an optional route parameter in the query, where the page reads it', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
@@ -1077,7 +1078,7 @@ test('destroy returns to a page without its optional route parameter as it was, 
     $this->actingAs($this->user)
         ->from(route('app.calendar', ['week' => '2026-10-26']).'&view=month')
         ->delete(route('app.posts.destroy', $post))
-        ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
+        ->assertRedirect((string) Uri::of(route('app.calendar', ['week' => '2026-10-26']))->withQuery(['view' => 'month']));
 });
 
 test('destroy ignores a numeric query key of the page it returns to', function () {

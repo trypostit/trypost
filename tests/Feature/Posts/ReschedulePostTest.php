@@ -631,6 +631,15 @@ test('reschedule refuses a time past the 2038 ceiling before it reaches the post
         ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.too_far')]);
 });
 
+test('reschedule refuses a time sent as a number', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => 20301231])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('scheduled_at');
+});
+
 test('reschedule refuses a malformed time', function () {
     $post = rescheduleCustom($this->channel, $this->user);
     $at = $post->scheduled_at->toIso8601String();

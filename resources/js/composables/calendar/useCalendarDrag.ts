@@ -385,6 +385,13 @@ export const useCalendarDrag = (
 
         const moveId = ++movesSent;
         const component = page.component;
+        const touchesNoDate =
+            target.kind === 'undated' || post.scheduled_at === null;
+        const props = (): string[] =>
+            options
+                .reloadProps()
+                .filter((prop) => touchesNoDate || prop !== 'undatedDrafts');
+        const reset = touchesNoDate ? ['undatedDrafts'] : [];
         let reloaded: CalendarPost | null | undefined;
         let staleResponse = false;
 
@@ -430,8 +437,8 @@ export const useCalendarDrag = (
         const reloadInstead = (settleFromIt: boolean): void => {
             staleResponse = true;
             router.reload({
-                only: options.reloadProps(),
-                reset: ['undatedDrafts'],
+                only: props(),
+                reset,
                 onSuccess: (reloadedPage) => {
                     if (settleFromIt) {
                         settleFromReload(postIn(reloadedPage.props, post.id));
@@ -452,8 +459,8 @@ export const useCalendarDrag = (
                 async: true,
                 preserveScroll: true,
                 preserveState: true,
-                only: [...options.reloadProps(), 'flash'],
-                reset: ['undatedDrafts'],
+                only: [...props(), 'flash'],
+                reset,
                 onBeforeUpdate: (response) => {
                     reloaded = postIn(response.props, post.id);
 
