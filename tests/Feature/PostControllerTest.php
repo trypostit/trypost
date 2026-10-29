@@ -1034,7 +1034,7 @@ test('destroy never sends the browser to another host named in the referer path'
     $this->actingAs($this->user)
         ->from('https://evil.example//evil.com/x')
         ->delete(route('app.posts.destroy', $post))
-        ->assertRedirect(url('/evil.com/x'));
+        ->assertRedirect(route('app.home'));
 
     expect(Post::find($post->id))->toBeNull();
 });

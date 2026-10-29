@@ -846,6 +846,7 @@ view turns a forgotten variable into a runtime-only failure.
 - ALWAYS use Wayfinder-generated route helpers in Vue pages (e.g. `register()`, `login()`, `dashboard()`). NEVER hardcode URL strings like `href="/register"`.
 - After creating or modifying PHP routes/controllers, run `php artisan wayfinder:generate` to regenerate the TypeScript route helpers.
 - Import routes from `@/routes/...` (e.g. `import { store } from '@/routes/login'`).
+- On the backend, every URL of the app comes from Laravel's helpers (owner decision October 2026): `route()` / `redirect()->route()` for pages, `Illuminate\Support\Uri` to read or change a query. Never `url('/...')`, `redirect('/...')`, a path or query string built by hand, or `parse_url()` on our own URLs. A page rebuilt from the Referer goes through the route it matches (`RendersPublishPage::previousUrl()`), so it can never point at another host.
 
 ## Pagination
 

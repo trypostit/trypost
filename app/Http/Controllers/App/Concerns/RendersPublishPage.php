@@ -12,10 +12,10 @@ use App\Models\Workspace;
 use App\Support\PostStatusRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
-use Illuminate\Support\Collection;
+use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Str;
+use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
@@ -48,7 +48,7 @@ trait RendersPublishPage
     /**
      * Where a post saved or deleted from a composer or post dialog returns: the
      * Publish page it came from on the tab given, or any other page of the app
-     * exactly as it was.
+     * as it was.
      *
      * @param  array<string, string>  $publishQuery
      */
@@ -60,21 +60,16 @@ trait RendersPublishPage
     /**
      * The Publish page (all channels or one channel) the request was sent from,
      * with its tab, time zone and filters, minus the composer and notes context.
+     * Null when the request came from any other page.
      *
      * @param  array<string, string>  $extraQuery
      */
     private function publishPageReturnUrl(array $extraQuery = []): ?string
     {
-        return in_array($this->previousRouteName(), self::PUBLISH_PAGE_ROUTES, true)
-            ? $this->publishPageUrl($extraQuery)
-            : null;
-    }
+        if (! in_array($this->previousRoute()?->getName(), self::PUBLISH_PAGE_ROUTES, true)) {
+            return null;
+        }
 
-    /**
-     * @param  array<string, string>  $extraQuery
-     */
-    private function publishPageUrl(array $extraQuery): string
-    {
         return $this->previousUrl(
             except: ['edit', 'notes', 'note', 'post', 'compose', 'date', 'ai', 'assistant'],
             extraQuery: $extraQuery,
@@ -82,61 +77,43 @@ trait RendersPublishPage
     }
 
     /**
-     * The page the request was sent from on this app, whatever host the Referer
-     * names: its path always resolves on this app, so `//other.host/x` is read as
-     * `/other.host/x`. Its query string is kept as sent, minus the keys in
-     * `$except`, with `$extraQuery` replacing or adding keys.
+     * The page the request was sent from, rebuilt with route() from the route its
+     * Referer matches, so it always points at this app. Its query is kept, minus
+     * the keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
+     * that matches no route of the app returns to the home page.
      *
      * @param  list<string>  $except
      * @param  array<string, string>  $extraQuery
      */
     private function previousUrl(array $except = [], array $extraQuery = []): string
     {
-        $previous = $this->previousUrlParts();
-        $path = data_get($previous, 'path');
+        $route = $this->previousRoute();
 
-        $pairs = collect(explode('&', (string) data_get($previous, 'query')))
-            ->reject(fn (string $pair): bool => blank($pair) || in_array($this->queryKey($pair), $except, true))
-            ->map(fn (string $pair): string => array_key_exists($this->queryKey($pair), $extraQuery)
-                ? Arr::query([$this->queryKey($pair) => $extraQuery[$this->queryKey($pair)]])
-                : $pair);
-
-        $added = array_diff_key($extraQuery, array_flip($pairs->map(fn (string $pair): string => $this->queryKey($pair))->all()));
-        $query = $pairs->when($added !== [], fn (Collection $pairs): Collection => $pairs->push(Arr::query($added)))->implode('&');
-        $url = url('/'.ltrim((string) $path, '/'));
-
-        return filled($query) ? "{$url}?{$query}" : $url;
-    }
-
-    private function previousRouteName(): ?string
-    {
-        $path = data_get($this->previousUrlParts(), 'path');
-
-        try {
-            return Route::getRoutes()->match(Request::create(filled($path) ? $path : '/'))->getName();
-        } catch (HttpExceptionInterface) {
-            return null;
+        if (blank($route?->getName())) {
+            return route('app.home');
         }
+
+        $query = Uri::of(url()->previous())->query()->except($except);
+
+        return route($route->getName(), [...$route->parameters(), ...$query, ...$extraQuery]);
     }
 
     /**
-     * The Referer split by parse_url(), its path relative to this app's root
-     * (base path included) when it is a page of this app.
-     *
-     * @return array<string, int|string>
+     * The route of the page the request was sent from. The Referer is read
+     * relative to this app's root, so an app served from a subfolder matches too.
      */
-    private function previousUrlParts(): array
+    private function previousRoute(): ?RoutingRoute
     {
         $previous = url()->previous();
-        $root = url('/');
-        $onThisApp = $previous === $root || Str::startsWith($previous, ["{$root}/", "{$root}?"]);
+        $path = Str::startsWith($previous, url('/'))
+            ? Str::after($previous, url('/'))
+            : Uri::of($previous)->path();
 
-        return parse_url($onThisApp ? Str::after($previous, $root) : $previous) ?: [];
-    }
-
-    private function queryKey(string $pair): string
-    {
-        return urldecode(Str::before($pair, '='));
+        try {
+            return Route::getRoutes()->match(Request::create(Str::start((string) $path, '/')));
+        } catch (HttpExceptionInterface) {
+            return null;
+        }
     }
 
     /**
