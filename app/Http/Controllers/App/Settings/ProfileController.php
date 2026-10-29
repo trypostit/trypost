@@ -97,6 +97,6 @@ class ProfileController extends Controller
             return to_route('app.profile.edit');
         }
 
-        return to_route('login');
+        return redirect()->route('login');
     }
 }

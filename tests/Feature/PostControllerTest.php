@@ -494,7 +494,7 @@ test('store post creates one independent draft per selected account', function (
         ]),
     );
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'Shared caption',
         'media' => [],
@@ -523,7 +523,7 @@ test('store post schedules each selected account independently', function () {
     ]);
     $date = now()->addDay()->startOfMinute()->toIso8601String();
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'status' => 'scheduled',
         'content' => 'Scheduled caption',
         'media' => [],
@@ -549,7 +549,7 @@ test('saving a zero-target legacy draft creates independent posts and removes th
     $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
     $accounts = [$this->socialAccount, $other];
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'recover_post_id' => $legacy->id,
         'status' => 'draft',
         'content' => 'Recovered caption',
@@ -847,7 +847,7 @@ test('publish now updates scheduled_at to current time', function () {
         'scheduled_at' => now()->addDays(7),
     ]);
 
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))->put(route('app.posts.update', $post), [
         'status' => 'publishing',
         'content' => 'Test content',
         'content_type' => ContentType::LinkedInPost->value,
@@ -1018,7 +1018,7 @@ test('destroy post deletes the post and redirects to posts index', function () {
         'user_id' => $this->user->id,
     ]);
 
-    $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))
         ->delete(route('app.posts.destroy', $post));
 
     $response->assertRedirect(route('app.posts.index'));
@@ -1289,7 +1289,7 @@ test('update post goes back to the queue after publishing without opening the po
         'content' => 'Test',
     ]);
 
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))->put(route('app.posts.update', $post), [
         'status' => 'publishing',
         'content' => 'Test',
         'content_type' => ContentType::LinkedInPost->value,
@@ -1641,23 +1641,24 @@ test('saving a draft from the calendar stays on the calendar', function () {
         ->assertRedirect($calendar);
 });
 
-test('a new draft from the publish list, or from outside the app, goes to the drafts tab', function (?string $from) {
-    $request = $this->actingAs($this->user);
-
-    if ($from !== null) {
-        $request = $request->from($from);
-    }
-
-    $request->post(route('app.posts.store'), [
+test('a new draft from the publish list, or from outside the app, goes to the drafts tab', function (string $from) {
+    $this->actingAs($this->user)->from($from)->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'New draft',
         'destinations' => [['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value]],
     ])->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
 })->with([
     'the queue tab' => fn () => route('app.posts.index', ['tab' => 'queue', 'compose' => 1]),
-    'no page' => null,
     'a page outside the app' => fn () => route('login'),
 ]);
+
+test('a post saved with no page to return to lands on the app home', function () {
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => 'draft',
+        'content' => 'New draft',
+        'destinations' => [['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value]],
+    ])->assertRedirect(route('app.home'));
+});
 
 test('every way of scheduling from the editor lands on the queue tab', function (array $schedule) {
     $this->socialAccount->update(['posting_schedule' => PostingSchedule::empty()->withTime(1, '10:00')]);

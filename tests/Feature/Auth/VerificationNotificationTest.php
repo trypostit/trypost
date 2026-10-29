@@ -12,8 +12,11 @@ test('sends verification notification', function () {
     $user = User::factory()->unverified()->create();
 
     $this->actingAs($user)
+        ->from(route('verification.notice'))
         ->post(route('verification.send'))
-        ->assertRedirect(route('app.home'));
+        ->assertRedirect(route('verification.notice'))
+        ->assertSessionHas('status', 'verification-link-sent')
+        ->assertSessionHas('flash.success', __('settings.profile.verification_sent'));
 
     Notification::assertSentTo($user, VerifyEmail::class);
 });

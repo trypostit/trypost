@@ -47,8 +47,7 @@ trait RendersPublishPage
     /**
      * Where a post saved or deleted from a composer or post dialog returns: the
      * Publish page it came from on the tab given, any other page of the app
-     * exactly as it was, or the Publish list when it came from outside the app
-     * or from nowhere known (`url()->previous()` then falls back to `app.home`).
+     * exactly as it was, or the Publish list when it came from outside the app.
      *
      * @param  array<string, string>  $publishQuery
      */
@@ -58,7 +57,7 @@ trait RendersPublishPage
 
         return match (true) {
             in_array($previousRoute, self::PUBLISH_PAGE_ROUTES, true) => $this->publishPageUrl($publishQuery),
-            $previousRoute === 'app.home', ! Str::startsWith($previousRoute, 'app.') => route('app.posts.index', $publishQuery),
+            ! Str::startsWith($previousRoute, 'app.') => route('app.posts.index', $publishQuery),
             default => $this->previousUrl(),
         };
     }
