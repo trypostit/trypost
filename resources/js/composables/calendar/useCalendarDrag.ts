@@ -174,8 +174,6 @@ export const useCalendarDrag = (
     let scroller: HTMLElement | null = null;
     let pointerMoved = false;
     let stopEscape: (() => void) | null = null;
-    let movesSent = 0;
-    let newestMoveShown = 0;
 
     const isDraggable = (post: PostCard): boolean =>
         !movingPostIds.value.includes(post.id) &&
@@ -446,7 +444,6 @@ export const useCalendarDrag = (
             return false;
         };
 
-        const moveId = ++movesSent;
         const component = page.component;
         const touchesNoDate =
             target.kind === 'undated' || post.scheduled_at === null;
@@ -552,9 +549,7 @@ export const useCalendarDrag = (
                 onBeforeUpdate: (response) => {
                     reloaded = postIn(response.props, post.id);
 
-                    if (response.url === page.url && moveId >= newestMoveShown) {
-                        newestMoveShown = moveId;
-
+                    if (response.url === page.url) {
                         return;
                     }
 
