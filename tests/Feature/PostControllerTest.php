@@ -1056,6 +1056,18 @@ test('destroy with a referer that cannot be read deletes the post and returns ho
     'a page of the app the URI parser refuses' => 'https://user@:pass@app.trypost.test/schedule',
 ]);
 
+test('destroy returns to the page it came from even when its query names a route parameter', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['view' => 'week']).'?view=month')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['view' => 'week']));
+});
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

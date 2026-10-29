@@ -50,13 +50,15 @@ trait RendersPublishPage
     /**
      * Where a post saved or deleted from a composer or post dialog returns: the
      * Publish page it came from on the tab given, or any other page of the app
-     * as it was.
+     * as it was. The Referer is matched once for both.
      *
      * @param  array<string, string>  $publishQuery
      */
     private function originPageUrl(array $publishQuery = []): string
     {
-        return $this->publishPageReturnUrl($publishQuery) ?? $this->previousUrl();
+        $route = $this->previousRoute();
+
+        return $this->publishPageUrl($route, $publishQuery) ?? $this->previousUrl($route);
     }
 
     /**
@@ -68,11 +70,20 @@ trait RendersPublishPage
      */
     private function publishPageReturnUrl(array $extraQuery = []): ?string
     {
-        if (! in_array($this->previousRoute()?->getName(), self::PUBLISH_PAGE_ROUTES, true)) {
+        return $this->publishPageUrl($this->previousRoute(), $extraQuery);
+    }
+
+    /**
+     * @param  array<string, string>  $extraQuery
+     */
+    private function publishPageUrl(?RoutingRoute $route, array $extraQuery): ?string
+    {
+        if (! in_array($route?->getName(), self::PUBLISH_PAGE_ROUTES, true)) {
             return null;
         }
 
         return $this->previousUrl(
+            $route,
             except: ['edit', 'notes', 'note', 'post', 'compose', 'date', 'ai', 'assistant'],
             extraQuery: $extraQuery,
         );
@@ -80,17 +91,16 @@ trait RendersPublishPage
 
     /**
      * The page the request was sent from, rebuilt with route() from the route its
-     * Referer matches, so it always points at this app. Its query is kept, minus
-     * the keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
+     * Referer matched, so it always points at this app, at the same route
+     * parameters (a query key never replaces one). Its query is kept, minus the
+     * keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
      * that matches no route of the app, or cannot be read, returns to the home page.
      *
      * @param  list<string>  $except
      * @param  array<string, string>  $extraQuery
      */
-    private function previousUrl(array $except = [], array $extraQuery = []): string
+    private function previousUrl(?RoutingRoute $route, array $except = [], array $extraQuery = []): string
     {
-        $route = $this->previousRoute();
-
         if (blank($route?->getName())) {
             return route('app.home');
         }
@@ -101,7 +111,7 @@ trait RendersPublishPage
             return route('app.home');
         }
 
-        return route($route->getName(), [...$route->parameters(), ...$query, ...$extraQuery]);
+        return route($route->getName(), [...$query, ...$extraQuery, ...$route->parameters()]);
     }
 
     /**

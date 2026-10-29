@@ -166,7 +166,7 @@ test('an overflowing week hour expands in place', function () {
     $page->assertVisible("@calendar-post-{$posts[2]->id}")
         ->assertVisible("@calendar-post-{$posts[3]->id}")
         ->assertMissing("@calendar-more-{$dayKey}-11")
-        ->assertScript('location.pathname', parse_url(route('app.calendar', ['view' => 'week']), PHP_URL_PATH))
+        ->assertScript('location.pathname', route('app.calendar', ['view' => 'week'], absolute: false))
         ->assertNoJavaScriptErrors();
 });
 
@@ -226,6 +226,25 @@ test('the no date panel slides open and closed, pushing the calendar aside gradu
         ->and(end($closing))->toBe(0);
 
     $page->assertMissing('@calendar-undated-panel')->assertNoJavaScriptErrors();
+});
+
+test('an undated draft without a channel says so in the language of the user', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $user->update(['locale' => Locale::PortugueseBrazil]);
+    $draft = Post::factory()->draft()->create([
+        'workspace_id' => $linkedin->workspace_id,
+        'user_id' => $user->id,
+        'scheduled_at' => null,
+    ]);
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'undated' => 1]));
+    waitFor($page, "@calendar-undated-{$draft->id}");
+
+    $page->assertSeeIn("@calendar-undated-{$draft->id}", 'Sem canal')
+        ->assertScript("document.querySelector('[data-testid=\"calendar-drag-hint-{$draft->id}\"]').textContent.includes('Sem canal')", true)
+        ->assertNoJavaScriptErrors();
 });
 
 test('the no date panel lists undated drafts and a card opens the composer', function () {
