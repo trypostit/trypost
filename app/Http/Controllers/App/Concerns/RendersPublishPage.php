@@ -21,6 +21,8 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 trait RendersPublishPage
 {
+    private const array PUBLISH_PAGE_ROUTES = ['app.posts.index', 'app.channels.publish'];
+
     private function renderPublishPage(Request $request, Workspace $workspace, ?SocialAccount $channel = null): Response|RedirectResponse
     {
         $composerPost = null;
@@ -43,6 +45,25 @@ trait RendersPublishPage
     }
 
     /**
+     * Where a post saved or deleted from a composer or post dialog returns: the
+     * Publish page it came from on the tab given, any other page of the app
+     * exactly as it was, or the Publish list when it came from outside the app
+     * or from nowhere known (`url()->previous()` then falls back to `app.home`).
+     *
+     * @param  array<string, string>  $publishQuery
+     */
+    private function originPageUrl(array $publishQuery = []): string
+    {
+        $previousRoute = (string) $this->previousRouteName();
+
+        return match (true) {
+            in_array($previousRoute, self::PUBLISH_PAGE_ROUTES, true) => $this->publishPageUrl($publishQuery),
+            $previousRoute === 'app.home', ! Str::startsWith($previousRoute, 'app.') => route('app.posts.index', $publishQuery),
+            default => $this->previousUrl(),
+        };
+    }
+
+    /**
      * The Publish page (all channels or one channel) the request was sent from,
      * with its tab, time zone and filters, minus the composer and notes context.
      *
@@ -50,21 +71,37 @@ trait RendersPublishPage
      */
     private function publishPageReturnUrl(array $extraQuery = []): ?string
     {
-        if (! in_array($this->previousRouteName(), ['app.posts.index', 'app.channels.publish'], true)) {
-            return null;
-        }
+        return in_array($this->previousRouteName(), self::PUBLISH_PAGE_ROUTES, true)
+            ? $this->publishPageUrl($extraQuery)
+            : null;
+    }
 
+    /**
+     * @param  array<string, string>  $extraQuery
+     */
+    private function publishPageUrl(array $extraQuery): string
+    {
+        return $this->previousUrl(
+            except: ['edit', 'notes', 'note', 'post', 'compose', 'date', 'ai', 'assistant'],
+            extraQuery: $extraQuery,
+        );
+    }
+
+    /**
+     * The page the request was sent from on this app's host, whatever host the
+     * Referer names.
+     *
+     * @param  list<string>  $except
+     * @param  array<string, string>  $extraQuery
+     */
+    private function previousUrl(array $except = [], array $extraQuery = []): string
+    {
         $previous = parse_url(url()->previous());
-        $path = data_get($previous, 'path', '/');
 
         parse_str(data_get($previous, 'query', ''), $query);
 
-        $query = [
-            ...Arr::except($query, ['edit', 'notes', 'note', 'post', 'compose', 'date', 'ai', 'assistant']),
-            ...$extraQuery,
-        ];
-
-        $url = url($path);
+        $query = [...Arr::except($query, $except), ...$extraQuery];
+        $url = url(data_get($previous, 'path', '/'));
 
         if ($query === []) {
             return $url;
@@ -73,16 +110,6 @@ trait RendersPublishPage
         $queryString = Arr::query($query);
 
         return "{$url}?{$queryString}";
-    }
-
-    /**
-     * The calendar (all channels or one channel) the request was sent from, as it was.
-     */
-    private function calendarReturnUrl(): ?string
-    {
-        return in_array($this->previousRouteName(), ['app.calendar', 'app.channels.calendar'], true)
-            ? url()->previous()
-            : null;
     }
 
     private function previousRouteName(): ?string

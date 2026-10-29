@@ -1641,7 +1641,7 @@ test('saving a draft from the calendar stays on the calendar', function () {
         ->assertRedirect($calendar);
 });
 
-test('a new draft goes to the drafts tab, from the publish list or anywhere else', function (?string $from) {
+test('a new draft from the publish list, or from outside the app, goes to the drafts tab', function (?string $from) {
     $request = $this->actingAs($this->user);
 
     if ($from !== null) {
@@ -1655,7 +1655,8 @@ test('a new draft goes to the drafts tab, from the publish list or anywhere else
     ])->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
 })->with([
     'the queue tab' => fn () => route('app.posts.index', ['tab' => 'queue', 'compose' => 1]),
-    'insights' => fn () => route('app.insights'),
+    'no page' => null,
+    'a page outside the app' => fn () => route('login'),
 ]);
 
 test('every way of scheduling from the editor lands on the queue tab', function (array $schedule) {
