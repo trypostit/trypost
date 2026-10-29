@@ -1,13 +1,11 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
-    IconChevronDown,
     IconLayoutSidebarRightCollapse,
     IconLayoutSidebarRightExpand,
     IconPlus,
 } from '@tabler/icons-vue';
 import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
-import { trans } from 'laravel-vue-i18n';
 import {
     computed,
     onMounted,
@@ -25,24 +23,24 @@ import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
 import CalendarCustomTimeDialog from '@/components/publish/CalendarCustomTimeDialog.vue';
+import CalendarDragAnnouncer from '@/components/publish/CalendarDragAnnouncer.vue';
+import CalendarMonthGrid from '@/components/publish/CalendarMonthGrid.vue';
 import CalendarPeriodPicker from '@/components/publish/CalendarPeriodPicker.vue';
-import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
-import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
 import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
 import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
+import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
 import {
     calendarDragKey,
-    calendarTargetKey,
     useCalendarDrag,
+    useCalendarOverlay,
 } from '@/composables/calendar/useCalendarDrag';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import {
     deletePostCardKey,
     postCardLabelsKey,
@@ -54,8 +52,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
-import type { CalendarDropTarget } from '@/lib/calendarDrop';
-import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
+import { calendarDayKey } from '@/lib/calendarItems';
 import { calendar } from '@/routes/app';
 import {
     calendar as channelCalendar,
@@ -77,7 +74,6 @@ import type {
     PublishScope,
     PublishSocialAccount,
     ScrollUndatedDrafts,
-    UndatedDraft,
 } from '@/types/publish';
 
 interface Props {
@@ -109,7 +105,6 @@ const { showSlots, setShowSlots } = useShowPostingSlots();
 
 const VIEWS: readonly CalendarView[] = ['days', 'week', 'month'];
 const DAYS_SPAN = 3;
-const MONTH_CHIPS = 3;
 const RELOAD_PROPS = [
     'posts',
     'currentDay',
@@ -166,110 +161,8 @@ const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
     customTimeDialog.value?.confirm(from, to, timezone.value) ??
     Promise.resolve(false);
 
-const announcement = ref('');
-let lastOverAnnouncement = '';
-
-const describeAt = (at: string, dateOnly: boolean): string => {
-    const day = date.formatWeekdayMonthDay(at, timezone.value);
-
-    return dateOnly
-        ? day
-        : trans('calendar.reschedule.announce.date_time', {
-              date: day,
-              time: date.formatTimeInTimezone(at, timezone.value),
-          });
-};
-
-const describeInstant = (at: string, target: CalendarDropTarget): string =>
-    describeAt(at, target.kind === 'day');
-
-const describeTarget = (target: CalendarDropTarget): string => {
-    switch (target.kind) {
-        case 'undated':
-            return trans('calendar.no_date');
-        case 'day':
-            return describeAt(
-                dayjs.tz(target.dayKey, timezone.value).utc().format(),
-                true,
-            );
-        default:
-            return describeAt(target.at, false);
-    }
-};
-
-const channelLabel = (post: PostCard): string =>
-    post.social_account?.display_label ??
-    (post.platform ? getPlatformLabel(post.platform) : '');
-
-const announce = (message: string): void => {
-    lastOverAnnouncement = '';
-    announcement.value = message;
-};
-
-const announceOver = (
-    post: PostCard,
-    target: CalendarDropTarget | null,
-    accepts: boolean,
-): void => {
-    if (!target || !accepts) {
-        return;
-    }
-
-    const message = post.scheduled_at
-        ? trans('calendar.reschedule.announce.over', {
-              from: describeAt(post.scheduled_at, false),
-              target: describeTarget(target),
-          })
-        : trans('calendar.reschedule.announce.over_undated', {
-              channel: channelLabel(post),
-              target: describeTarget(target),
-          });
-
-    if (message === lastOverAnnouncement) {
-        return;
-    }
-
-    lastOverAnnouncement = message;
-    announcement.value = message;
-};
-
-const announceDrop = (
-    post: PostCard,
-    target: CalendarDropTarget,
-    scheduledAt: string | null,
-): void => {
-    if (scheduledAt === null) {
-        announce(
-            trans('calendar.reschedule.announce.undated', {
-                from: describeAt(post.scheduled_at ?? '', false),
-            }),
-        );
-
-        return;
-    }
-
-    const to = describeInstant(scheduledAt, target);
-
-    announce(
-        post.scheduled_at
-            ? trans('calendar.reschedule.announce.moved', {
-                  from: describeAt(post.scheduled_at, false),
-                  to,
-              })
-            : trans('calendar.reschedule.announce.from_undated', {
-                  channel: channelLabel(post),
-                  to,
-              }),
-    );
-};
-
-const clearAnnouncement = (): void => {
-    lastOverAnnouncement = '';
-    announcement.value = '';
-};
-
-const announceReturn = (): void =>
-    announce(trans('calendar.reschedule.announce.returned'));
+const { announcement, describeInstant, hooks } =
+    useCalendarAnnouncer(timezone);
 
 const calendarDrag = useCalendarDrag({
     timezone,
@@ -278,73 +171,22 @@ const calendarDrag = useCalendarDrag({
     reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
     confirmCustomTime,
     describeInstant,
-    onDragStart: clearAnnouncement,
-    onOver: announceOver,
-    onConfirmed: announceDrop,
-    onRejected: announceReturn,
-    onCancel: announceReturn,
+    ...hooks,
 });
 
 provide(calendarDragKey, calendarDrag);
 
-const {
-    overTarget,
-    draggingPostId,
-    movedPosts,
-    vCalendarTarget,
-} = calendarDrag;
+const { movedPosts } = calendarDrag;
 
 const isRescheduling = computed(
     () => Object.keys(movedPosts.value).length > 0,
 );
 
-const dayTargetKey = (day: dayjs.Dayjs): string =>
-    calendarTargetKey({ kind: 'day', dayKey: dayKey(day) });
-
-const isDayOver = (day: dayjs.Dayjs): boolean =>
-    overTarget.value === dayTargetKey(day);
-
-const displayedPosts = computed<Record<string, CalendarPost[]>>(() => {
-    const moved = movedPosts.value;
-
-    if (Object.keys(moved).length === 0) {
-        return props.posts;
-    }
-
-    const grouped: Record<string, CalendarPost[]> = {};
-    const place = (post: CalendarPost): void => {
-        const key = dayjs
-            .utc(post.calendar_at)
-            .tz(timezone.value)
-            .format('YYYY-MM-DD');
-
-        grouped[key] = [...(grouped[key] ?? []), post];
-    };
-
-    Object.values(props.posts)
-        .flat()
-        .filter((post) => !moved[post.id])
-        .forEach(place);
-    Object.values(moved)
-        .filter((post) => post.scheduled_at !== null)
-        .forEach(place);
-
-    return grouped;
-});
-
-const displayedUndatedDrafts = computed<UndatedDraft[] | null>(() => {
-    if (!props.undatedDrafts) {
-        return null;
-    }
-
-    const moved = movedPosts.value;
-
-    return [
-        ...Object.values(moved)
-            .filter((post) => post.scheduled_at === null)
-            .map((post): UndatedDraft => ({ ...post, scheduled_at: null })),
-        ...props.undatedDrafts.data.filter((draft) => !moved[draft.id]),
-    ];
+const { displayedPosts, displayedUndatedDrafts } = useCalendarOverlay({
+    movedPosts,
+    posts: () => props.posts,
+    undatedDrafts: () => props.undatedDrafts,
+    timezone,
 });
 
 const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
@@ -475,14 +317,6 @@ const compactFilters = computed(
     () => !isDesktop.value || filtersCollapsed.value,
 );
 
-const weekdayNames = computed(() => {
-    const start = localized().startOf('week');
-
-    return Array.from({ length: 7 }, (_, index) =>
-        start.add(index, 'day').format(isDesktop.value ? 'dddd' : 'ddd'),
-    );
-});
-
 const periodStart = computed(() =>
     localized(props.view === 'days' ? props.currentDay : props.currentWeekStart),
 );
@@ -571,15 +405,6 @@ const navigate = (direction: number): void => {
 
 const switchView = (view: CalendarView): void => visit(calendarUrl(view));
 
-const dayKey = (day: dayjs.Dayjs): string => day.format('YYYY-MM-DD');
-
-const isToday = (day: dayjs.Dayjs): boolean => dayKey(day) === todayKey.value;
-
-const isPast = (day: dayjs.Dayjs): boolean => dayKey(day) < todayKey.value;
-
-const isCurrentMonth = (day: dayjs.Dayjs): boolean =>
-    day.month() === monthDate.value.month();
-
 const visibleSlots = computed<Record<string, CalendarSlot[]>>(() =>
     showSlots.value ? (props.slots ?? {}) : {},
 );
@@ -591,12 +416,6 @@ const slotChannels = computed<Record<string, PublishSocialAccount>>(() =>
         ),
     ),
 );
-
-const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
-    calendarItems(
-        displayedPosts.value[dayKey(day)] ?? [],
-        visibleSlots.value[dayKey(day)] ?? [],
-    );
 
 const composerAccounts = (): string[] =>
     props.channel ? [props.channel.id] : [];
@@ -610,25 +429,7 @@ const composeAt = (utcIso: string): void =>
         socialAccountIds: composerAccounts(),
     });
 
-const composeOn = (day: dayjs.Dayjs): void =>
-    composeAt(dayjs.tz(`${dayKey(day)}T09:00`, timezone.value).utc().format());
-
 const expandedDays = ref<string[]>([]);
-
-const toggleDay = (key: string): void => {
-    expandedDays.value = expandedDays.value.includes(key)
-        ? expandedDays.value.filter((day) => day !== key)
-        : [...expandedDays.value, key];
-};
-
-const isDayExpanded = (day: dayjs.Dayjs): boolean =>
-    expandedDays.value.includes(dayKey(day));
-
-const hiddenCount = (day: dayjs.Dayjs): number =>
-    itemsFor(day).length - MONTH_CHIPS;
-
-const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
-    isDayExpanded(day) ? itemsFor(day) : itemsFor(day).slice(0, MONTH_CHIPS);
 
 const mobileTitle = computed(() => {
     if (props.view === 'month') {
@@ -651,7 +452,7 @@ const mobileTitle = computed(() => {
 
 const dayKeys = computed(() =>
     (props.view === 'month' ? calendarWeeks.value.flat() : periodDays.value).map(
-        dayKey,
+        calendarDayKey,
     ),
 );
 
@@ -883,167 +684,20 @@ const goToDay = (key: string): void => {
                         @compose="composeAt"
                     />
 
-                    <div
+                    <CalendarMonthGrid
                         v-else
-                        class="flex flex-1 flex-col overflow-y-auto overscroll-contain"
-                        data-calendar-scroller
-                        data-testid="calendar-month-grid"
-                    >
-                        <div
-                            class="sticky top-0 z-10 grid grid-cols-7 border-b border-border-strong bg-card"
-                        >
-                            <div
-                                v-for="(name, index) in weekdayNames"
-                                :key="name"
-                                class="border-border-strong p-1.5 text-center text-sm font-medium text-muted-foreground capitalize md:p-2.5"
-                                :class="{ 'border-l': index > 0 }"
-                            >
-                                {{ name }}
-                            </div>
-                        </div>
-
-                        <div class="flex flex-1 flex-col">
-                            <div
-                                v-for="(week, weekIndex) in calendarWeeks"
-                                :key="weekIndex"
-                                class="grid min-h-40 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
-                                :class="{ 'border-t': weekIndex > 0 }"
-                            >
-                                <div
-                                    v-for="(day, index) in week"
-                                    :key="dayKey(day)"
-                                    v-calendar-target="{
-                                        kind: 'day',
-                                        dayKey: dayKey(day),
-                                    }"
-                                    class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
-                                    :class="{
-                                        'border-l': index > 0,
-                                        'bg-accent': isPast(day),
-                                        'bg-primary/15': isDayOver(day),
-                                    }"
-                                    :data-testid="`calendar-day-${dayKey(day)}`"
-                                >
-                                    <div class="flex items-center justify-between">
-                                        <span
-                                            class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium"
-                                            :class="{
-                                                'bg-primary text-primary-foreground':
-                                                    isToday(day),
-                                                'text-subtle-foreground':
-                                                    !isToday(day) &&
-                                                    !isCurrentMonth(day),
-                                                'text-muted-foreground':
-                                                    !isToday(day) &&
-                                                    isCurrentMonth(day),
-                                            }"
-                                        >
-                                            {{ day.format('D') }}
-                                        </span>
-                                        <button
-                                            v-if="
-                                                canCreatePost &&
-                                                !isPast(day) &&
-                                                !draggingPostId
-                                            "
-                                            type="button"
-                                            :aria-label="$t('calendar.new_post')"
-                                            class="flex size-6 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
-                                            :data-testid="`calendar-add-${dayKey(day)}`"
-                                            @click="composeOn(day)"
-                                        >
-                                            <IconPlus class="size-3.5" />
-                                        </button>
-                                    </div>
-
-                                    <div class="relative min-h-0 flex-1">
-                                    <div
-                                        class="flex flex-col gap-1"
-                                        :class="{
-                                            'absolute inset-0 overflow-y-auto overscroll-contain':
-                                                isDayExpanded(day),
-                                        }"
-                                        :data-testid="`calendar-items-${dayKey(day)}`"
-                                    >
-                                        <template
-                                            v-for="item in visibleMonthItems(day)"
-                                            :key="item.key"
-                                        >
-                                            <CalendarPostChip
-                                                v-if="item.post"
-                                                :post="item.post"
-                                                :timezone="timezone"
-                                                :compact="!isDesktop"
-                                                :class="{
-                                                    'opacity-50':
-                                                        isDayOver(day) &&
-                                                        item.post.id !==
-                                                            draggingPostId,
-                                                }"
-                                            />
-                                            <CalendarSlotChip
-                                                v-else-if="item.slot"
-                                                :posting-slot="item.slot"
-                                                :channel="
-                                                    slotChannels[
-                                                        item.slot.channel_id
-                                                    ] ?? null
-                                                "
-                                                :timezone="timezone"
-                                                :can-create-post="canCreatePost"
-                                                :compact="!isDesktop"
-                                            />
-                                        </template>
-                                    </div>
-                                    </div>
-                                    <button
-                                        v-if="hiddenCount(day) > 0"
-                                        type="button"
-                                        class="inline-flex shrink-0 items-center gap-1 rounded-md text-xs font-medium text-foreground transition-control hover:bg-accent"
-                                        :class="
-                                            isDesktop
-                                                ? 'h-6 self-end px-2'
-                                                : 'h-7 min-w-7 justify-center self-start px-1'
-                                        "
-                                        :aria-expanded="isDayExpanded(day)"
-                                        :aria-label="
-                                            isDesktop
-                                                ? undefined
-                                                : isDayExpanded(day)
-                                                  ? $t('calendar.less')
-                                                  : $t('calendar.more', {
-                                                        count: String(
-                                                            hiddenCount(day),
-                                                        ),
-                                                    })
-                                        "
-                                        :data-testid="`calendar-more-${dayKey(day)}`"
-                                        @click="toggleDay(dayKey(day))"
-                                    >
-                                        <IconChevronDown
-                                            v-if="isDesktop || isDayExpanded(day)"
-                                            class="size-3.5 transition-transform"
-                                            :class="{
-                                                'rotate-180': isDayExpanded(day),
-                                            }"
-                                        />
-                                        <template v-if="isDesktop">{{
-                                            isDayExpanded(day)
-                                                ? $t('calendar.less')
-                                                : $t('calendar.more', {
-                                                      count: String(
-                                                          hiddenCount(day),
-                                                      ),
-                                                  })
-                                        }}</template>
-                                        <template v-else-if="!isDayExpanded(day)"
-                                            >+{{ hiddenCount(day) }}</template
-                                        >
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        v-model:expanded-days="expandedDays"
+                        :weeks="calendarWeeks"
+                        :month="monthDate"
+                        :posts="displayedPosts"
+                        :slots="visibleSlots"
+                        :channels="slotChannels"
+                        :timezone="timezone"
+                        :now="now"
+                        :can-create-post="canCreatePost"
+                        :is-desktop="isDesktop"
+                        @compose="composeAt"
+                    />
                 </div>
 
                 <Transition
@@ -1069,14 +723,7 @@ const goToDay = (key: string): void => {
 
     <CalendarCustomTimeDialog ref="customTimeDialog" />
 
-    <div
-        class="sr-only"
-        aria-live="polite"
-        aria-atomic="true"
-        data-testid="calendar-drag-announcer"
-    >
-        {{ announcement }}
-    </div>
+    <CalendarDragAnnouncer :text="announcement" />
 
     <ConfirmDeleteModal
         ref="deleteModal"

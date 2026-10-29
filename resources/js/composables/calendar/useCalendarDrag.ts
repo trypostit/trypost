@@ -2,9 +2,11 @@ import type { Page } from '@inertiajs/core';
 import { router } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import {
+    computed,
     inject,
     onBeforeUnmount,
     ref,
+    type ComputedRef,
     type Directive,
     type InjectionKey,
     type Ref,
@@ -22,7 +24,12 @@ import {
 } from '@/lib/calendarDrop';
 import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
-import type { CalendarPost, PostCard } from '@/types/publish';
+import type {
+    CalendarPost,
+    PostCard,
+    ScrollUndatedDrafts,
+    UndatedDraft,
+} from '@/types/publish';
 
 const CALENDAR_AUTO_SCROLL_STEP = 20;
 
@@ -760,4 +767,62 @@ export const useCalendarDrag = (
         vCalendarPost,
         vCalendarTarget,
     };
+};
+
+export const useCalendarOverlay = (options: {
+    movedPosts: Readonly<Ref<Record<string, CalendarPost>>>;
+    posts: () => Record<string, CalendarPost[]>;
+    undatedDrafts: () => ScrollUndatedDrafts | undefined;
+    timezone: Readonly<Ref<string>>;
+}): {
+    displayedPosts: ComputedRef<Record<string, CalendarPost[]>>;
+    displayedUndatedDrafts: ComputedRef<UndatedDraft[] | null>;
+} => {
+    const displayedPosts = computed<Record<string, CalendarPost[]>>(() => {
+        const moved = options.movedPosts.value;
+        const posts = options.posts();
+
+        if (Object.keys(moved).length === 0) {
+            return posts;
+        }
+
+        const grouped: Record<string, CalendarPost[]> = {};
+        const place = (post: CalendarPost): void => {
+            const key = dayjs
+                .utc(post.calendar_at)
+                .tz(options.timezone.value)
+                .format('YYYY-MM-DD');
+
+            grouped[key] = [...(grouped[key] ?? []), post];
+        };
+
+        Object.values(posts)
+            .flat()
+            .filter((post) => !moved[post.id])
+            .forEach(place);
+        Object.values(moved)
+            .filter((post) => post.scheduled_at !== null)
+            .forEach(place);
+
+        return grouped;
+    });
+
+    const displayedUndatedDrafts = computed<UndatedDraft[] | null>(() => {
+        const undatedDrafts = options.undatedDrafts();
+
+        if (!undatedDrafts) {
+            return null;
+        }
+
+        const moved = options.movedPosts.value;
+
+        return [
+            ...Object.values(moved)
+                .filter((post) => post.scheduled_at === null)
+                .map((post): UndatedDraft => ({ ...post, scheduled_at: null })),
+            ...undatedDrafts.data.filter((draft) => !moved[draft.id]),
+        ];
+    });
+
+    return { displayedPosts, displayedUndatedDrafts };
 };
