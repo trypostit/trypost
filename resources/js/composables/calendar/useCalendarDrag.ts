@@ -148,7 +148,6 @@ export const useCalendarDragContext = (): CalendarDragContext =>
 export const useCalendarDrag = (
     options: {
         timezone: Readonly<Ref<string>>;
-        now: Readonly<Ref<dayjs.Dayjs>>;
         canCreatePost: Readonly<Ref<boolean>>;
         reloadProps: string[];
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
@@ -397,6 +396,7 @@ export const useCalendarDrag = (
                         router.reload({
                             only: options.reloadProps,
                             reset: ['undatedDrafts'],
+                            onFinish: () => forget(post.id),
                         });
                     }
 
@@ -444,7 +444,11 @@ export const useCalendarDrag = (
                 onHttpException: () => fail(),
                 onNetworkError: () => fail(),
                 onCancel: reject,
-                onFinish: () => forget(post.id),
+                onFinish: () => {
+                    if (!staleResponse) {
+                        forget(post.id);
+                    }
+                },
             },
         );
     };

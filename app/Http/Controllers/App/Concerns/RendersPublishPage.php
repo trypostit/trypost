@@ -18,6 +18,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response;
+use League\Uri\Contracts\UriException;
+use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 trait RendersPublishPage
@@ -80,7 +82,7 @@ trait RendersPublishPage
      * The page the request was sent from, rebuilt with route() from the route its
      * Referer matches, so it always points at this app. Its query is kept, minus
      * the keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
-     * that matches no route of the app returns to the home page.
+     * that matches no route of the app, or cannot be read, returns to the home page.
      *
      * @param  list<string>  $except
      * @param  array<string, string>  $extraQuery
@@ -93,7 +95,11 @@ trait RendersPublishPage
             return route('app.home');
         }
 
-        $query = Uri::of(url()->previous())->query()->except($except);
+        try {
+            $query = Uri::of(url()->previous())->query()->except($except);
+        } catch (UriException) {
+            return route('app.home');
+        }
 
         return route($route->getName(), [...$route->parameters(), ...$query, ...$extraQuery]);
     }
@@ -107,7 +113,7 @@ trait RendersPublishPage
     {
         try {
             return Route::getRoutes()->match(Request::create(url()->previous(), server: request()->server->all()));
-        } catch (HttpExceptionInterface) {
+        } catch (HttpExceptionInterface|BadRequestException) {
             return null;
         }
     }

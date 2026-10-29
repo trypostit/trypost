@@ -2495,7 +2495,7 @@ test('a post that comes due while it is being dragged goes back without a reques
         ->assertNoJavaScriptErrors();
 });
 
-test('an older move answered after a newer one does not put the newer card back', function () {
+test('an older move answered after a newer one keeps both cards where they were dropped', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
     $key = $day->format('Y-m-d');
@@ -2506,22 +2506,42 @@ test('an older move answered after a newer one does not put the newer card back'
     $page = visit(calendarDragWeekUrl($day));
     calendarDragAssertLive($page, "@calendar-post-{$first->id}");
     calendarDragAssertLive($page, "@calendar-post-{$second->id}");
-    calendarDragHoldResponses($page);
+    calendarDragHoldRequests($page);
 
     calendarDragOnto($page, "@calendar-post-{$first->id}", "@calendar-slot-{$key}-13");
-    waitForCondition($page, 'window.__heldResponses.length === 1');
+    waitForCondition($page, 'window.__heldRequests.length === 1');
     calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$key}-14");
-    waitForCondition($page, 'window.__heldResponses.length === 2');
+    waitForCondition($page, 'window.__heldRequests.length === 2');
 
-    $page->script('window.__heldResponses[1]()');
+    $page->script('window.__heldRequests[1]()');
     waitFor($page, '@calendar-reschedule-success-toast');
-    $page->script('window.__heldResponses[0]()');
+    $page->script(<<<'JS'
+        (() => {
+            window.__heldReloads = [];
+            const send = XMLHttpRequest.prototype.send;
+            XMLHttpRequest.prototype.send = function (body) {
+                if (this.__method !== 'GET') {
+                    return send.call(this, body);
+                }
+
+                window.__heldReloads.push(() => send.call(this, body));
+            };
+        })()
+    JS);
+    $page->script('window.__heldRequests[0]()');
+    waitForCondition($page, 'window.__heldReloads.length === 1');
+    $page->script('new Promise((resolve) => setTimeout(resolve, 200))');
+
+    expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13");
+
+    $page->script('window.__heldReloads.splice(0).forEach((release) => release())');
     waitForGone($page, '@calendar-grid[aria-busy]');
     waitFor($page, "@calendar-slot-{$key}-13 @calendar-post-{$first->id}");
     waitFor($page, "@calendar-slot-{$key}-14 @calendar-post-{$second->id}");
 
     expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13")
         ->and(calendarDragCellOf($page, $second))->toBe("calendar-slot-{$key}-14")
+        ->and($first->refresh()->scheduled_at->equalTo($day->setTime(13, 0)))->toBeTrue()
         ->and($second->refresh()->scheduled_at->equalTo($day->setTime(14, 0)))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });

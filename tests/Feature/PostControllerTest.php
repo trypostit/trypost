@@ -1039,6 +1039,23 @@ test('destroy never sends the browser to another host named in the referer path'
     expect(Post::find($post->id))->toBeNull();
 });
 
+test('destroy with a referer that cannot be read deletes the post and returns home', function (string $referer) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from($referer)
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.home'));
+
+    expect(Post::find($post->id))->toBeNull();
+})->with([
+    'no host' => 'http://:80/x',
+    'a page of the app the URI parser refuses' => 'https://user@:pass@app.trypost.test/schedule',
+]);
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
