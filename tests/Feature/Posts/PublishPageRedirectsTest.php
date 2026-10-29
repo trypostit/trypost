@@ -175,6 +175,7 @@ test('on an app served from a subfolder a page is returned to without doubling t
     };
 
     $this->actingAs($this->user)
+        ->withServerVariables(['SCRIPT_NAME' => '/trypost/index.php', 'SCRIPT_FILENAME' => public_path('index.php')])
         ->from($origin)
         ->put($update, publishRedirectUpdatePayload($post, 'draft'))
         ->assertSessionHasNoErrors()

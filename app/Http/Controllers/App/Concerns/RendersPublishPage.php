@@ -99,18 +99,14 @@ trait RendersPublishPage
     }
 
     /**
-     * The route of the page the request was sent from. The Referer is read
-     * relative to this app's root, so an app served from a subfolder matches too.
+     * The route of the page the request was sent from. The Referer is read as a
+     * request served by this one's script, so an app served from a subfolder
+     * matches its routes without the subfolder.
      */
     private function previousRoute(): ?RoutingRoute
     {
-        $previous = url()->previous();
-        $path = Str::startsWith($previous, url('/'))
-            ? Str::after($previous, url('/'))
-            : Uri::of($previous)->path();
-
         try {
-            return Route::getRoutes()->match(Request::create(Str::start((string) $path, '/')));
+            return Route::getRoutes()->match(Request::create(url()->previous(), server: request()->server->all()));
         } catch (HttpExceptionInterface) {
             return null;
         }
