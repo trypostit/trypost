@@ -166,7 +166,6 @@ const { announcement, describeInstant, hooks } =
 
 const calendarDrag = useCalendarDrag({
     timezone,
-    now,
     canCreatePost,
     reloadProps: [...RELOAD_PROPS, 'undatedDrafts'],
     confirmCustomTime,

@@ -260,7 +260,7 @@ export default {
             timeZone: timezone,
         }).format(instant.toDate());
 
-        return `${day}, ${instant.tz(timezone).locale(activeLocale.value.toLowerCase()).format(timeToken())}`;
+        return `${day}, ${this.formatTimeInTimezone(date, timezone)}`;
     },
 
     /**
