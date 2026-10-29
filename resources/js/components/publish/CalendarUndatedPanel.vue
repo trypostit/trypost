@@ -104,66 +104,66 @@ const plainText = (draft: UndatedDraft): string =>
             >
                 <div id="calendar-undated-list" class="flex flex-col gap-2">
                     <template v-for="draft in drafts" :key="draft.id">
-                    <span
-                        v-if="draft.social_account"
-                        :id="`${HINT_ID_PREFIX}${draft.id}`"
-                        hidden
-                        :data-testid="`calendar-drag-hint-${draft.id}`"
-                        >{{
-                            $t('calendar.reschedule.drag_hint_undated', {
-                                channel: draft.social_account.display_label,
-                            })
-                        }}</span
-                    >
-                    <Link
-                        v-calendar-post="draft"
-                        :href="editPost.url(draft.id)"
-                        class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
-                        :class="
-                            draggingPostId === draft.id
-                                ? 'border-transparent bg-secondary *:invisible'
-                                : 'border-dashed border-border-strong bg-card hover:bg-secondary'
-                        "
-                        :data-testid="`calendar-undated-${draft.id}`"
-                    >
-                        <div class="flex min-w-0 items-center gap-2">
-                            <img
-                                v-if="draft.platform"
-                                :src="getPlatformLogo(draft.platform)"
-                                :alt="getPlatformLabel(draft.platform)"
-                                class="size-4 shrink-0 rounded-sm"
-                            />
-                            <span
-                                class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
-                            >
-                                {{
-                                    draft.social_account?.display_label ??
-                                    $t('calendar.undated.no_channel')
-                                }}
-                            </span>
-                            <Badge variant="info" class="shrink-0">
-                                <IconEdit />
-                                {{ $t('calendar.undated.draft') }}
-                            </Badge>
-                        </div>
-                        <div
-                            v-if="plainText(draft) || thumbnail(draft)"
-                            class="flex min-w-0 items-end gap-2"
+                        <span
+                            v-if="draft.social_account"
+                            :id="`${HINT_ID_PREFIX}${draft.id}`"
+                            hidden
+                            :data-testid="`calendar-drag-hint-${draft.id}`"
+                            >{{
+                                $t('calendar.reschedule.drag_hint_undated', {
+                                    channel: draft.social_account.display_label,
+                                })
+                            }}</span
                         >
-                            <p
-                                class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
+                        <Link
+                            v-calendar-post="draft"
+                            :href="editPost.url(draft.id)"
+                            class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
+                            :class="
+                                draggingPostId === draft.id
+                                    ? 'border-transparent bg-secondary *:invisible'
+                                    : 'border-dashed border-border-strong bg-card hover:bg-secondary'
+                            "
+                            :data-testid="`calendar-undated-${draft.id}`"
+                        >
+                            <div class="flex min-w-0 items-center gap-2">
+                                <img
+                                    v-if="draft.platform"
+                                    :src="getPlatformLogo(draft.platform)"
+                                    :alt="getPlatformLabel(draft.platform)"
+                                    class="size-4 shrink-0 rounded-sm"
+                                />
+                                <span
+                                    class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
+                                >
+                                    {{
+                                        draft.social_account?.display_label ??
+                                        $t('calendar.undated.no_channel')
+                                    }}
+                                </span>
+                                <Badge variant="info" class="shrink-0">
+                                    <IconEdit />
+                                    {{ $t('calendar.undated.draft') }}
+                                </Badge>
+                            </div>
+                            <div
+                                v-if="plainText(draft) || thumbnail(draft)"
+                                class="flex min-w-0 items-end gap-2"
                             >
-                                {{ plainText(draft) }}
-                            </p>
-                            <img
-                                v-if="thumbnail(draft)"
-                                :src="thumbnail(draft)!"
-                                alt=""
-                                loading="lazy"
-                                class="size-8 shrink-0 rounded object-cover"
-                            />
-                        </div>
-                    </Link>
+                                <p
+                                    class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
+                                >
+                                    {{ plainText(draft) }}
+                                </p>
+                                <img
+                                    v-if="thumbnail(draft)"
+                                    :src="thumbnail(draft)!"
+                                    alt=""
+                                    loading="lazy"
+                                    class="size-8 shrink-0 rounded object-cover"
+                                />
+                            </div>
+                        </Link>
                     </template>
                 </div>
 
