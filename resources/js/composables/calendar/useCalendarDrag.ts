@@ -183,7 +183,7 @@ export const useCalendarDrag = (
         post: PostCard,
         target: CalendarDropTarget,
     ): string | null | undefined =>
-        dropInstant(post, target, options.timezone.value, options.now.value);
+        dropInstant(post, target, options.timezone.value, dayjs());
 
     const placePreview = (input: { clientX: number; clientY: number }): void => {
         if (preview) {
@@ -411,7 +411,9 @@ export const useCalendarDrag = (
                     }
 
                     const leftTheFilteredList =
-                        reloaded === null && scheduledAt !== null;
+                        reloaded === null &&
+                        scheduledAt !== null &&
+                        post.status !== PostStatus.Draft;
 
                     if (
                         leftTheFilteredList ||

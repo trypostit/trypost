@@ -54,12 +54,7 @@ trait RendersPublishPage
      */
     private function originPageUrl(array $publishQuery = []): string
     {
-        $previousRoute = (string) $this->previousRouteName();
-
-        return match (true) {
-            in_array($previousRoute, self::PUBLISH_PAGE_ROUTES, true) => $this->publishPageUrl($publishQuery),
-            default => $this->previousUrl(),
-        };
+        return $this->publishPageReturnUrl($publishQuery) ?? $this->previousUrl();
     }
 
     /**
@@ -88,8 +83,9 @@ trait RendersPublishPage
 
     /**
      * The page the request was sent from on this app, whatever host the Referer
-     * names. Its query string is kept as sent, minus the keys in `$except`, with
-     * `$extraQuery` replacing or adding keys.
+     * names: its path always resolves on this app, so `//other.host/x` is read as
+     * `/other.host/x`. Its query string is kept as sent, minus the keys in
+     * `$except`, with `$extraQuery` replacing or adding keys.
      *
      * @param  list<string>  $except
      * @param  array<string, string>  $extraQuery
@@ -107,7 +103,7 @@ trait RendersPublishPage
 
         $added = array_diff_key($extraQuery, array_flip($pairs->map(fn (string $pair): string => $this->queryKey($pair))->all()));
         $query = $pairs->when($added !== [], fn (Collection $pairs): Collection => $pairs->push(Arr::query($added)))->implode('&');
-        $url = url(filled($path) ? $path : '/');
+        $url = url('/'.ltrim((string) $path, '/'));
 
         return filled($query) ? "{$url}?{$query}" : $url;
     }

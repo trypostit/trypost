@@ -2525,3 +2525,23 @@ test('an older move answered after a newer one does not put the newer card back'
         ->and($second->refresh()->scheduled_at->equalTo($day->setTime(14, 0)))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
+
+test('a No Date draft dropped on a day while the status filter hides drafts says it moved, not that it went for approval', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = now('UTC')->startOfMonth()->addMonth()->addDays(4)->startOfDay();
+    $draft = calendarDragPost($channel, null, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $day->format('Y-m-d'), 'undated' => 1, 'status' => 'scheduled']));
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    calendarDragOnto($page, "@calendar-undated-{$draft->id}", "@calendar-day-{$day->format('Y-m-d')}");
+    waitForGoneOrShown($page, gone: '@calendar-grid[aria-busy]', shown: '@calendar-reschedule-approval-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $page->assertMissing('@calendar-reschedule-approval-toast')
+        ->assertPresent('@calendar-reschedule-success-toast');
+    $draft->refresh();
+    expect($draft->scheduled_at->equalTo($day->setTime(9, 0)))->toBeTrue()
+        ->and($draft->status)->toBe(PostStatus::Draft);
+    $page->assertNoJavaScriptErrors();
+});

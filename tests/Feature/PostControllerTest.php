@@ -1025,6 +1025,20 @@ test('destroy post deletes the post and redirects to posts index', function () {
     expect(Post::find($post->id))->toBeNull();
 });
 
+test('destroy never sends the browser to another host named in the referer path', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from('https://evil.example//evil.com/x')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(url('/evil.com/x'));
+
+    expect(Post::find($post->id))->toBeNull();
+});
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
