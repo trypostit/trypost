@@ -1149,6 +1149,16 @@ Browser tests live in `tests/Browser` and run on `pestphp/pest-plugin-browser` d
 - A new test for a fix must fail without the fix. Check it by removing the change, running the test, and restoring it.
 - CI runs them in three shards, each in parallel with three processes (`./vendor/bin/pest tests/Browser --compact --parallel --processes=3 --shard=N/3`), leaving a CPU of the 4-vCPU runner to the database and the app server, against `npm run build` output, so keep them independent of a running dev server and of each other. Run them in parallel through `./vendor/bin/pest`, never `php artisan test --parallel`, which does not start the Playwright server. A test that only passes alone has a race: wait for the state you assert (poll the DOM or the database) instead of assuming timing.
 
+## Laravel helpers over native PHP
+
+Whenever Laravel has a helper for something, use it instead of a native PHP function or a hand-written equivalent (owner decision October 2026). The helper already handles the edge cases (encoding, base paths, nulls, empty strings) that a hand-written version gets wrong.
+
+- **URLs and routes:** `route()`, `redirect()->route()`, `url()->previous()`, `Illuminate\Support\Uri` and `Request`. Never `parse_url()`, `http_build_query()`, `explode('&', ...)` or string concatenation to build or read a URL of the app (see "Routing (Wayfinder)").
+- **Values:** `blank()`, `filled()`, `transform()`, `data_get()` / `data_set()`, `Arr::*` and collections, instead of `=== null` / `empty()` / `isset()` checks and `array_*` loops.
+- **Dates:** `now()`, Carbon and `CarbonImmutable`, never `time()`, `date()` or `strtotime()`.
+- **Strings are not a parser.** `Str` is for text (slugs, case, limits). Taking a URL, path or query apart with `Str::after`, `Str::before` or `Str::startsWith` is the same hand-written parsing in another form: reach for the helper that understands the structure (`Uri`, `Request`, `route()`) instead.
+- A native function is fine when Laravel has no equivalent; say so in the code review, not in a comment.
+
 ## Array Data Access
 
 - In Action classes and similar service classes, ALWAYS use Laravel's `data_get()` helper instead of direct array access.
