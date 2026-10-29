@@ -46,7 +46,7 @@ test('google callback logs in existing user by email', function () {
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
 
@@ -151,7 +151,7 @@ test('google registration with an invite param completes it instead of creating 
     expect($user->workspaces()->count())->toBe(0);
 });
 
-test('google login with a pending invite sends an existing user there instead of app.home', function () {
+test('google login with a pending invite sends an existing user there instead of the calendar', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -230,7 +230,7 @@ test('github registration with an invite param completes it instead of creating 
     expect($user->workspaces()->count())->toBe(0);
 });
 
-test('github login with a pending invite sends an existing user there instead of app.home', function () {
+test('github login with a pending invite sends an existing user there instead of the calendar', function () {
     $inviterAccount = Account::factory()->create();
     $inviter = User::factory()->create(['account_id' => $inviterAccount->id]);
     $inviterAccount->update(['owner_id' => $inviter->id]);
@@ -467,7 +467,7 @@ test('google login for an existing user is never blocked by the self-hosted gate
 
     $response = $this->get(route('auth.google.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
 
@@ -547,7 +547,7 @@ test('github login for an existing user is never blocked by the self-hosted gate
 
     $response = $this->get(route('auth.github.callback'));
 
-    $response->assertRedirect(route('app.home'));
+    $response->assertRedirect(route('app.calendar'));
     $this->assertAuthenticatedAs($user);
 });
 

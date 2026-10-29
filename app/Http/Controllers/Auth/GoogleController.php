@@ -95,7 +95,7 @@ class GoogleController extends Controller
             return redirect()->route('app.invites.show', $invite);
         }
 
-        return redirect()->route('app.home');
+        return redirect()->route('app.calendar');
     }
 
     private function registerNewUser(\Laravel\Socialite\Contracts\User $googleUser): RedirectResponse
