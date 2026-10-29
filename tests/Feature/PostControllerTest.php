@@ -1092,6 +1092,18 @@ test('destroy ignores a numeric query key of the page it returns to', function (
         ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
 });
 
+test('destroy returns to a page whose query has a form-encoded space with the same value', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['view' => 'week']).'?search=foo+bar')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['view' => 'week', 'search' => 'foo bar']));
+});
+
 test('destroy post with redirect param redirects to calendar', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,

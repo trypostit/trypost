@@ -20,6 +20,7 @@ use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response;
 use League\Uri\Contracts\UriException;
+use League\Uri\QueryString;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -93,7 +94,8 @@ trait RendersPublishPage
     /**
      * The page the request was sent from, rebuilt with route() from the route its
      * Referer matched, so it always points at this app, at the same route
-     * parameters (a query key, named or numeric, never replaces or fills one). Its query is kept, minus the
+     * parameters (a query key, named or numeric, never replaces or fills one). Its query is
+     * read form-encoded, as PHP reads it (`+` is a space, dots stay in keys), and kept, minus the
      * keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
      * that matches no route of the app, or cannot be read, returns to the home page.
      *
@@ -108,7 +110,10 @@ trait RendersPublishPage
 
         try {
             $query = Arr::where(
-                Uri::of(url()->previous())->query()->except([...$except, ...$route->parameterNames()]),
+                Arr::except(
+                    QueryString::extract(Uri::of(url()->previous())->query()->value(), encType: PHP_QUERY_RFC1738),
+                    [...$except, ...$route->parameterNames()],
+                ),
                 fn (mixed $value, int|string $key): bool => is_string($key),
             );
         } catch (UriException) {

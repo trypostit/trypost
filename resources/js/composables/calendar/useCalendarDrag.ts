@@ -300,6 +300,16 @@ export const useCalendarDrag = (
             : message;
     };
 
+    const postIn = (
+        props: Record<string, unknown>,
+        postId: string,
+    ): CalendarPost | null =>
+        Object.values(
+            (props.posts as Record<string, CalendarPost[]> | undefined) ?? {},
+        )
+            .flat()
+            .find((candidate) => candidate.id === postId) ?? null;
+
     const isSameInstant = (
         stored: string | null,
         requested: string | null,
@@ -308,17 +318,38 @@ export const useCalendarDrag = (
             ? stored === requested
             : dayjs.utc(stored).isSame(dayjs.utc(requested));
 
+    /**
+     * The custom time dialog can stay open for a while: once confirmed, the drop
+     * is checked again against the clock, and its time worked out again.
+     */
+    const confirmedInstant = async (
+        post: PostCard,
+        target: CalendarDropTarget,
+        droppedAt: string | null,
+    ): Promise<string | null | undefined> => {
+        if (
+            !needsCustomTimeConfirmation(post, target) ||
+            !post.scheduled_at ||
+            !droppedAt
+        ) {
+            return droppedAt;
+        }
+
+        if (!(await options.confirmCustomTime(post.scheduled_at, droppedAt))) {
+            return undefined;
+        }
+
+        return isDraggable(post) ? instantFor(post, target) : undefined;
+    };
+
     const move = async (
         post: PostCard,
         target: CalendarDropTarget,
-        scheduledAt: string | null,
+        droppedAt: string | null,
     ): Promise<void> => {
-        if (
-            needsCustomTimeConfirmation(post, target) &&
-            post.scheduled_at &&
-            scheduledAt &&
-            !(await options.confirmCustomTime(post.scheduled_at, scheduledAt))
-        ) {
+        const scheduledAt = await confirmedInstant(post, target, droppedAt);
+
+        if (scheduledAt === undefined) {
             options.onCancel?.(post);
 
             return;
@@ -357,20 +388,57 @@ export const useCalendarDrag = (
         let reloaded: CalendarPost | null | undefined;
         let staleResponse = false;
 
-        const reloadInstead = (): void => {
-            staleResponse = true;
-            router.reload({
-                only: options.reloadProps(),
-                reset: ['undatedDrafts'],
-                onFinish: () => forget(post.id),
-            });
-        };
-
         const announceApproval = (): void => {
             toast.success(trans('posts.approvals.requested'), {
                 testId: 'calendar-reschedule-approval-toast',
             });
             confirm();
+        };
+
+        const announceMoved = (): void => {
+            confirm();
+            toast.success(successMessage(post, target, scheduledAt), {
+                testId: 'calendar-reschedule-success-toast',
+            });
+        };
+
+        /**
+         * Settles a move from a reload of the page now shown, when the move's
+         * own answer could not be read: the post at the asked time was moved,
+         * at another time it was not, and outside this page nothing is known.
+         */
+        const settleFromReload = (shown: CalendarPost | null): void => {
+            if (settled || shown === null) {
+                return;
+            }
+
+            if (!isSameInstant(shown.scheduled_at, scheduledAt)) {
+                reject();
+
+                return;
+            }
+
+            if (shown.status === PostStatus.PendingApproval) {
+                announceApproval();
+
+                return;
+            }
+
+            announceMoved();
+        };
+
+        const reloadInstead = (settleFromIt: boolean): void => {
+            staleResponse = true;
+            router.reload({
+                only: options.reloadProps(),
+                reset: ['undatedDrafts'],
+                onSuccess: (reloadedPage) => {
+                    if (settleFromIt) {
+                        settleFromReload(postIn(reloadedPage.props, post.id));
+                    }
+                },
+                onFinish: () => forget(post.id),
+            });
         };
 
         router.put(
@@ -387,15 +455,7 @@ export const useCalendarDrag = (
                 only: [...options.reloadProps(), 'flash'],
                 reset: ['undatedDrafts'],
                 onBeforeUpdate: (response) => {
-                    reloaded =
-                        Object.values(
-                            (response.props.posts as
-                                | Record<string, CalendarPost[]>
-                                | undefined) ?? {},
-                        )
-                            .flat()
-                            .find((candidate) => candidate.id === post.id) ??
-                        null;
+                    reloaded = postIn(response.props, post.id);
 
                     if (response.url === page.url && moveId >= newestMoveShown) {
                         newestMoveShown = moveId;
@@ -414,14 +474,14 @@ export const useCalendarDrag = (
                 onSuccess: () => {
                     if (reloaded === undefined) {
                         if (page.component === component) {
-                            reloadInstead();
+                            reloadInstead(true);
                         }
 
                         return;
                     }
 
                     if (staleResponse) {
-                        reloadInstead();
+                        reloadInstead(false);
                     }
 
                     if (settled) {
@@ -457,10 +517,7 @@ export const useCalendarDrag = (
                         return;
                     }
 
-                    confirm();
-                    toast.success(successMessage(post, target, scheduledAt), {
-                        testId: 'calendar-reschedule-success-toast',
-                    });
+                    announceMoved();
                 },
                 onError: (errors) => {
                     fail(Object.values(errors)[0]);

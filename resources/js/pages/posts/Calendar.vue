@@ -290,7 +290,7 @@ const closeUndated = (): void => {
 
 const toggleSlots = (value: boolean): void => {
     setShowSlots(value);
-    reload(['slots']);
+    reload(value ? ['slots'] : ['filters']);
 };
 
 onMounted(() => {

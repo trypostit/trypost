@@ -2703,3 +2703,76 @@ test('a move answered after the view changed is not announced as done without kn
     $page->assertMissing('@calendar-reschedule-success-toast')
         ->assertNoJavaScriptErrors();
 });
+
+test('a move answered after the view changed is still confirmed when the new view shows it moved', function () {
+    $day = now('UTC')->addDay()->startOfDay()->toImmutable();
+
+    if (! $day->isSameMonth(now('UTC'))) {
+        $this->markTestSkipped('The month view opens on the current month, which has no day left after today.');
+    }
+
+    [$user, $channel] = calendarDragSetup();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-12");
+    waitForCondition($page, 'window.__heldRequests.length === 1');
+
+    $page->click('@calendar-view-trigger');
+    waitFor($page, '@calendar-view-month');
+    $page->click('@calendar-view-month');
+    waitForPath($page, route('app.calendar', ['view' => 'month'], absolute: false));
+    waitFor($page, "@calendar-day-{$key}");
+
+    $page->script('window.__releaseHeldRequests()');
+    waitFor($page, '@calendar-reschedule-success-toast');
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(12, 0)))->toBeTrue();
+    $page->assertPresent('@calendar-reschedule-success-toast')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a custom time confirmed after its time has passed sends nothing and returns the card', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-custom-time-dialog');
+
+    $later = $day->addDay()->getTimestampMs();
+    $page->script(<<<JS
+        (() => {
+            const RealDate = Date;
+            const shift = {$later} - RealDate.now();
+            window.Date = class extends RealDate {
+                constructor(...args) {
+                    super(...(args.length ? args : [RealDate.now() + shift]));
+                }
+
+                static now() {
+                    return RealDate.now() + shift;
+                }
+            };
+        })()
+    JS);
+    $page->click('@calendar-custom-time-confirm');
+    waitForGone($page, '@calendar-custom-time-dialog');
+    waitForCondition($page, 'window.__announcements.length >= 2');
+
+    expect(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'))
+        ->and($post->refresh()->scheduled_at->equalTo($day->setTime(9, 25)))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
+    $page->assertMissing('@calendar-reschedule-error-toast')
+        ->assertNoJavaScriptErrors();
+});

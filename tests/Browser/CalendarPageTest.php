@@ -314,13 +314,28 @@ test('show posting times renders empty slots in the week and month views', funct
     expect($page->script("document.querySelector('[data-testid=\"calendar-posting-slot-{$slotKey}\"]').closest('[data-testid^=\"calendar-slot-\"]').dataset.testid"))
         ->toBe("calendar-slot-{$day->format('Y-m-d')}-15");
 
+    $page->script(<<<'JS'
+        (() => {
+            window.__partialData = [];
+            const setRequestHeader = XMLHttpRequest.prototype.setRequestHeader;
+            XMLHttpRequest.prototype.setRequestHeader = function (name, value) {
+                if (name.toLowerCase() === 'x-inertia-partial-data') {
+                    window.__partialData.push(String(value));
+                }
+
+                return setRequestHeader.call(this, name, value);
+            };
+        })()
+    JS);
     $page->click('@calendar-menu');
     waitFor($page, '@calendar-toggle-slots');
     $page->click('@calendar-toggle-slots');
     waitForCondition($page, "!document.querySelector('[data-testid^=\"calendar-posting-slot-\"]')");
+    waitForCondition($page, 'window.__partialData.length > 0');
 
     $page->assertMissing("@calendar-posting-slot-{$slotKey}")
-        ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false');
+        ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false')
+        ->assertScript("window.__partialData.some((props) => props.split(',').includes('slots'))", false);
 
     $page->refresh();
     waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-15");
