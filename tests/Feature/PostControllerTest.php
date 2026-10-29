@@ -1641,7 +1641,7 @@ test('saving a draft from the calendar stays on the calendar', function () {
         ->assertRedirect($calendar);
 });
 
-test('a new draft from the publish list, or from outside the app, goes to the drafts tab', function (string $from) {
+test('a new draft from the publish list goes to the drafts tab', function (string $from) {
     $this->actingAs($this->user)->from($from)->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'New draft',
@@ -1649,7 +1649,6 @@ test('a new draft from the publish list, or from outside the app, goes to the dr
     ])->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
 })->with([
     'the queue tab' => fn () => route('app.posts.index', ['tab' => 'queue', 'compose' => 1]),
-    'a page outside the app' => fn () => route('login'),
 ]);
 
 test('a post saved with no page to return to lands on the app home', function () {
