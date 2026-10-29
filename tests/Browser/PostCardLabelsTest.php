@@ -243,3 +243,41 @@ test('the first label of the card picker sits apart from its search box', functi
     expect($gap)->toBe(8);
     $page->assertNoJavaScriptErrors();
 });
+
+test('a card label shows its name as typed, in a chip as tall as the label button beside it', function () {
+    [$user, $workspace, $channel] = cardLabelsSetup();
+    $label = WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id, 'name' => 'Coca Cola']);
+    $post = cardLabelsPost($user, $workspace, $channel);
+    $post->labels()->attach($label);
+    $this->actingAs($user);
+
+    $page = visit(route('app.posts.index'));
+    waitForCardLabelsTestId($page, "post-label-chip-{$post->id}-{$label->id}");
+
+    $chip = $page->script(<<<JS
+        (() => {
+            const chip = document.querySelector('[data-testid="post-label-chip-{$post->id}-{$label->id}"]');
+            const button = document.querySelector('[data-testid="post-labels-{$post->id}-trigger"] > span:last-child');
+            const style = getComputedStyle(chip);
+
+            return {
+                text: chip.innerText.trim(),
+                transform: style.textTransform,
+                fontSize: style.fontSize,
+                radius: style.borderTopLeftRadius,
+                shadow: style.boxShadow,
+                sameHeight: Math.round(chip.getBoundingClientRect().height) === Math.round(button.getBoundingClientRect().height),
+            };
+        })()
+    JS);
+
+    expect($chip)->toBe([
+        'text' => 'Coca Cola',
+        'transform' => 'none',
+        'fontSize' => '12px',
+        'radius' => '6px',
+        'shadow' => 'none',
+        'sameHeight' => true,
+    ]);
+    $page->assertNoJavaScriptErrors();
+});
