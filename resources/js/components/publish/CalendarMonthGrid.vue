@@ -9,6 +9,7 @@ import {
     useCalendarDragContext,
 } from '@/composables/calendar/useCalendarDrag';
 import dayjs from '@/dayjs';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import {
     calendarDayKey as dayKey,
     calendarItems,
@@ -66,11 +67,30 @@ const isPast = (day: dayjs.Dayjs): boolean => dayKey(day) < todayKey.value;
 const isCurrentMonth = (day: dayjs.Dayjs): boolean =>
     day.month() === props.month.month();
 
+const itemsByDay = computed<Record<string, CalendarItem[]>>(() =>
+    Object.fromEntries(
+        props.weeks
+            .flat()
+            .map((day) => [
+                dayKey(day),
+                calendarItems(
+                    props.posts[dayKey(day)] ?? [],
+                    props.slots[dayKey(day)] ?? [],
+                ),
+            ]),
+    ),
+);
+
+const dayTargets = computed<Record<string, CalendarDropTarget>>(() =>
+    Object.fromEntries(
+        props.weeks
+            .flat()
+            .map((day) => [dayKey(day), { kind: 'day', dayKey: dayKey(day) }]),
+    ),
+);
+
 const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
-    calendarItems(
-        props.posts[dayKey(day)] ?? [],
-        props.slots[dayKey(day)] ?? [],
-    );
+    itemsByDay.value[dayKey(day)] ?? [];
 
 const composeOn = (day: dayjs.Dayjs): void =>
     emit(
@@ -123,10 +143,7 @@ const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
                 <div
                     v-for="(day, index) in week"
                     :key="dayKey(day)"
-                    v-calendar-target="{
-                        kind: 'day',
-                        dayKey: dayKey(day),
-                    }"
+                    v-calendar-target="dayTargets[dayKey(day)]"
                     class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
                     :class="{
                         'border-l': index > 0,

@@ -2804,7 +2804,7 @@ test('a move that does not touch No Date leaves the open No Date list as it is',
         ->assertNoJavaScriptErrors();
 });
 
-test('a draft already in No Date dropped back on the panel is refused and nothing is sent', function () {
+test('a draft already in No Date is not highlighted as a drop on the panel, is refused and nothing is sent', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
     $draft = calendarDragPost($channel, null, PostStatus::Draft);
@@ -2816,16 +2816,20 @@ test('a draft already in No Date dropped back on the panel is refused and nothin
     calendarDragWatchAnnouncer($page);
     calendarDragHoldRequests($page);
 
-    calendarGesture($page, <<<JS
+    $highlighted = calendarGesture($page, <<<JS
         const start = center('@calendar-undated-{$draft->id}');
         await down(start);
         await move(at(start, 0, 40));
         await move(at(start, 0, 80));
+        const highlighted = query('@calendar-undated-panel').hasAttribute('data-drop-over');
         await up(at(start, 0, 80));
+
+        return highlighted;
     JS);
     waitForCondition($page, 'window.__announcements.length >= 1');
 
-    expect(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'))
+    expect($highlighted)->toBeFalse()
+        ->and(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'))
         ->and($page->script('window.__heldRequests.length'))->toBe(0)
         ->and($draft->refresh()->scheduled_at)->toBeNull();
     $page->assertPresent("@calendar-undated-{$draft->id}")

@@ -30,11 +30,11 @@ const emit = defineEmits<{
 
 const UNDATED_TARGET: CalendarDropTarget = { kind: 'undated' };
 
-const { hoveredTarget, draggingPostId, vCalendarPost, vCalendarTarget } =
+const { overTarget, draggingPostId, vCalendarPost, vCalendarTarget } =
     useCalendarDragContext();
 
 const isOver = computed(
-    () => hoveredTarget.value === calendarTargetKey(UNDATED_TARGET),
+    () => overTarget.value === calendarTargetKey(UNDATED_TARGET),
 );
 
 const thumbnail = (draft: UndatedDraft): string | null =>
