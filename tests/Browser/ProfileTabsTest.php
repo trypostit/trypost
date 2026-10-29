@@ -137,7 +137,7 @@ test('logging out other devices asks for a plain confirmation without a password
     $table = config('session.table', 'sessions');
     DB::table($table)->insert([
         ['id' => 'phone', 'user_id' => $user->id, 'ip_address' => '203.0.113.9', 'user_agent' => 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1', 'payload' => '', 'last_activity' => now()->subHour()->timestamp],
-        ['id' => 'laptop', 'user_id' => $user->id, 'ip_address' => '203.0.113.10', 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0', 'payload' => '', 'last_activity' => now()->subDay()->timestamp],
+        ['id' => 'laptop', 'user_id' => $user->id, 'ip_address' => '203.0.113.10', 'user_agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:130.0) Gecko/20100101 Firefox/130.0', 'payload' => '', 'last_activity' => now()->subHours(3)->timestamp],
     ]);
     $this->actingAs($user);
 

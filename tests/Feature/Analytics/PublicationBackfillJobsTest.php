@@ -539,7 +539,7 @@ test('a transient failure dispatches a delayed retry and preserves the cursor', 
 
 test('a rate limited failure waits for the provider retry time when it is later than the backoff', function () {
     Bus::fake();
-    $this->freezeTime();
+    $this->travelTo(CarbonImmutable::parse('2026-10-07 12:00:00', 'UTC'));
     $account = SocialAccount::factory()->instagram()->create();
     $state = AnalyticsSyncState::factory()->create([
         'social_account_id' => $account->id,
