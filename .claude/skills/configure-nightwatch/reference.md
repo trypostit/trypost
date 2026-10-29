@@ -21,49 +21,36 @@
 ### High-Traffic Applications
 
 ```bash
-
 # Conservative sampling
-
 NIGHTWATCH_REQUEST_SAMPLE_RATE=0.01          # 1% of requests
-
 NIGHTWATCH_COMMAND_SAMPLE_RATE=0.1           # 10% of commands
-
 NIGHTWATCH_EXCEPTION_SAMPLE_RATE=1.0         # Always capture exceptions
 
 # Filter noisy events
-
 NIGHTWATCH_IGNORE_CACHE_EVENTS=true
 NIGHTWATCH_IGNORE_QUERIES=true               # Or filter specific queries programmatically
-
 ```
 
 ### Privacy-Conscious Applications
 
 ```bash
-
 # Disable sensitive data collection
-
 NIGHTWATCH_CAPTURE_REQUEST_PAYLOAD=false
 NIGHTWATCH_REDACT_HEADERS=Authorization,Cookie,Proxy-Authorization,X-XSRF-TOKEN
 
 # Or use redaction in AppServiceProvider
-
 ```
 
 ### Balanced Configuration (Recommended Start)
 
 ```bash
-
 # Sample rates
-
 NIGHTWATCH_REQUEST_SAMPLE_RATE=0.1
 NIGHTWATCH_COMMAND_SAMPLE_RATE=1.0
 NIGHTWATCH_EXCEPTION_SAMPLE_RATE=1.0
 
 # Filter obvious noise programmatically
-
 # Redact PII as needed
-
 ```
 
 ---
