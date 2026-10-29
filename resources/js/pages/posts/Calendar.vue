@@ -35,7 +35,6 @@ import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnounce
 import {
     calendarDragKey,
     useCalendarDrag,
-    useCalendarOverlay,
 } from '@/composables/calendar/useCalendarDrag';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
@@ -183,18 +182,11 @@ const calendarDrag = useCalendarDrag({
 
 provide(calendarDragKey, calendarDrag);
 
-const { movedPosts } = calendarDrag;
+const { movingPostIds } = calendarDrag;
 
-const isRescheduling = computed(
-    () => Object.keys(movedPosts.value).length > 0,
-);
+const isRescheduling = computed(() => movingPostIds.value.length > 0);
 
-const { displayedPosts, displayedUndatedDrafts } = useCalendarOverlay({
-    movedPosts,
-    posts: () => props.posts,
-    undatedDrafts: () => props.undatedDrafts,
-    timezone,
-});
+const undatedDraftList = computed(() => props.undatedDrafts?.data ?? null);
 
 const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
@@ -700,7 +692,7 @@ const goToDay = (key: string): void => {
                     <CalendarTimeGrid
                         v-if="view !== 'month'"
                         :days="periodDays"
-                        :posts="displayedPosts"
+                        :posts="posts"
                         :slots="visibleSlots"
                         :channels="slotChannels"
                         :timezone="timezone"
@@ -714,7 +706,7 @@ const goToDay = (key: string): void => {
                         v-model:expanded-days="expandedDays"
                         :weeks="calendarWeeks"
                         :month="monthDate"
-                        :posts="displayedPosts"
+                        :posts="posts"
                         :slots="visibleSlots"
                         :channels="slotChannels"
                         :timezone="timezone"
@@ -737,7 +729,7 @@ const goToDay = (key: string): void => {
                         data-testid="calendar-undated-slide"
                     >
                         <CalendarUndatedPanel
-                            :drafts="displayedUndatedDrafts"
+                            :drafts="undatedDraftList"
                             @close="closeUndated"
                         />
                     </div>

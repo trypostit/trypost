@@ -1,11 +1,9 @@
 import { router, usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import {
-    computed,
     inject,
     onBeforeUnmount,
     ref,
-    type ComputedRef,
     type Directive,
     type InjectionKey,
     type Ref,
@@ -36,7 +34,7 @@ export interface CalendarDrag {
     overTarget: Ref<string | null>;
     hoveredTarget: Ref<string | null>;
     draggingPostId: Ref<string | null>;
-    movedPosts: Ref<Record<string, CalendarPost>>;
+    movingPostIds: Ref<string[]>;
     vCalendarPost: Directive<HTMLElement, PostCard>;
     vCalendarTarget: Directive<HTMLElement, CalendarDropTarget | null>;
 }
@@ -163,9 +161,9 @@ export const useCalendarDrag = (
     const overTarget = ref<string | null>(null);
     const hoveredTarget = ref<string | null>(null);
     const draggingPostId = ref<string | null>(null);
-    const movedPosts = ref<Record<string, CalendarPost>>({});
+    const movingPostIds = ref<string[]>([]);
 
-    const posts = new Map<Element, PostCard>();
+    const posts = new Map<HTMLElement, PostCard>();
     const targets = new Map<Element, CalendarDropTarget>();
     const postCleanups = new Map<HTMLElement, () => void>();
 
@@ -180,7 +178,7 @@ export const useCalendarDrag = (
     let newestMoveShown = 0;
 
     const isDraggable = (post: PostCard): boolean =>
-        !(post.id in movedPosts.value) &&
+        !movingPostIds.value.includes(post.id) &&
         canDragCalendarPost(post, dayjs(), options.canCreatePost.value);
 
     const instantFor = (
@@ -259,11 +257,72 @@ export const useCalendarDrag = (
         schedule_mode: movedScheduleMode(post, target),
     });
 
+    /**
+     * Ends a move: the post's cards may be dragged again. A card mounted in its
+     * new cell while the move was on its way registered as not draggable, and
+     * nothing re-renders it when the move lands, so its cards are synced here.
+     */
     const forget = (postId: string): void => {
-        const rest = { ...movedPosts.value };
+        movingPostIds.value = movingPostIds.value.filter((id) => id !== postId);
 
-        delete rest[postId];
-        movedPosts.value = rest;
+        posts.forEach((card, el) => {
+            if (card.id === postId) {
+                syncPost(el, card);
+            }
+        });
+    };
+
+    /**
+     * The page props with a post shown where it was dropped, for Inertia's
+     * optimistic update: it is applied at once, kept while other moves of the
+     * same props are in flight, and rolled back when the move fails.
+     */
+    const movedProps = (
+        props: Record<string, unknown>,
+        moved: CalendarPost,
+        touchesNoDate: boolean,
+    ): Record<string, unknown> => {
+        const posts: Record<string, CalendarPost[]> = {};
+        const place = (post: CalendarPost): void => {
+            const key = dayjs
+                .utc(post.calendar_at)
+                .tz(options.timezone.value)
+                .format('YYYY-MM-DD');
+
+            posts[key] = [...(posts[key] ?? []), post];
+        };
+
+        Object.values((props.posts ?? {}) as Record<string, CalendarPost[]>)
+            .flat()
+            .filter((post) => post.id !== moved.id)
+            .forEach(place);
+
+        if (moved.scheduled_at !== null) {
+            place(moved);
+        }
+
+        const undatedDrafts = props.undatedDrafts as
+            | ScrollUndatedDrafts
+            | undefined;
+
+        if (!touchesNoDate || !undatedDrafts) {
+            return { posts };
+        }
+
+        return {
+            posts,
+            undatedDrafts: {
+                ...undatedDrafts,
+                data: [
+                    ...(moved.scheduled_at === null
+                        ? [{ ...moved, scheduled_at: null } as UndatedDraft]
+                        : []),
+                    ...undatedDrafts.data.filter(
+                        (draft) => draft.id !== moved.id,
+                    ),
+                ],
+            },
+        };
     };
 
     const rollback = (postId: string, message?: string): void => {
@@ -362,10 +421,7 @@ export const useCalendarDrag = (
             return;
         }
 
-        movedPosts.value = {
-            ...movedPosts.value,
-            [post.id]: movedPost(post, target, scheduledAt),
-        };
+        movingPostIds.value = [...movingPostIds.value, post.id];
 
         let settled = false;
 
@@ -487,6 +543,12 @@ export const useCalendarDrag = (
                 preserveState: true,
                 only: [...props(), 'flash'],
                 reset,
+                optimistic: (pageProps) =>
+                    movedProps(
+                        pageProps,
+                        movedPost(post, target, scheduledAt),
+                        touchesNoDate,
+                    ),
                 onBeforeUpdate: (response) => {
                     reloaded = postIn(response.props, post.id);
 
@@ -926,66 +988,8 @@ export const useCalendarDrag = (
         overTarget,
         hoveredTarget,
         draggingPostId,
-        movedPosts,
+        movingPostIds,
         vCalendarPost,
         vCalendarTarget,
     };
-};
-
-export const useCalendarOverlay = (options: {
-    movedPosts: Readonly<Ref<Record<string, CalendarPost>>>;
-    posts: () => Record<string, CalendarPost[]>;
-    undatedDrafts: () => ScrollUndatedDrafts | undefined;
-    timezone: Readonly<Ref<string>>;
-}): {
-    displayedPosts: ComputedRef<Record<string, CalendarPost[]>>;
-    displayedUndatedDrafts: ComputedRef<UndatedDraft[] | null>;
-} => {
-    const displayedPosts = computed<Record<string, CalendarPost[]>>(() => {
-        const moved = options.movedPosts.value;
-        const posts = options.posts();
-
-        if (Object.keys(moved).length === 0) {
-            return posts;
-        }
-
-        const grouped: Record<string, CalendarPost[]> = {};
-        const place = (post: CalendarPost): void => {
-            const key = dayjs
-                .utc(post.calendar_at)
-                .tz(options.timezone.value)
-                .format('YYYY-MM-DD');
-
-            grouped[key] = [...(grouped[key] ?? []), post];
-        };
-
-        Object.values(posts)
-            .flat()
-            .filter((post) => !moved[post.id])
-            .forEach(place);
-        Object.values(moved)
-            .filter((post) => post.scheduled_at !== null)
-            .forEach(place);
-
-        return grouped;
-    });
-
-    const displayedUndatedDrafts = computed<UndatedDraft[] | null>(() => {
-        const undatedDrafts = options.undatedDrafts();
-
-        if (!undatedDrafts) {
-            return null;
-        }
-
-        const moved = options.movedPosts.value;
-
-        return [
-            ...Object.values(moved)
-                .filter((post) => post.scheduled_at === null)
-                .map((post): UndatedDraft => ({ ...post, scheduled_at: null })),
-            ...undatedDrafts.data.filter((draft) => !moved[draft.id]),
-        ];
-    });
-
-    return { displayedPosts, displayedUndatedDrafts };
 };
