@@ -5,7 +5,7 @@ import type { PostCard } from '@/types/publish';
 export type CalendarDropTarget =
     | { kind: 'hour'; at: string }
     | { kind: 'day'; dayKey: string }
-    | { kind: 'slot'; at: string; channelId: string }
+    | { kind: 'slot'; at: string; channelId: string; queueable: boolean }
     | { kind: 'undated' };
 
 const DRAFT_DAY_CLOCK = '09:00';
@@ -101,6 +101,7 @@ export const entersQueueSlot = (
 ): boolean =>
     post.status === PostStatus.Scheduled &&
     target.kind === 'slot' &&
+    target.queueable &&
     target.channelId === post.social_account_id;
 
 export const needsCustomTimeConfirmation = (

@@ -144,11 +144,12 @@ class BuildCalendarPageProps
     }
 
     /**
-     * Empty posting slots of the visible range within the queue window, bucketed by day of the
-     * display time zone.
+     * Empty posting slots of the visible range, bucketed by day of the display time zone.
+     * `queueable` says whether a queued post may take the slot (within the queue window);
+     * a later slot still opens the composer, and a post dropped there gets a custom time.
      *
      * @param  Collection<int, SocialAccount>  $channels
-     * @return array<string, list<array{at: string, channel_id: string}>>
+     * @return array<string, list<array{at: string, channel_id: string, queueable: bool}>>
      */
     private static function slots(Workspace $workspace, Collection $channels, string $timezone, CarbonImmutable $rangeStart, CarbonImmutable $rangeEnd, bool $visible): array
     {
@@ -162,11 +163,15 @@ class BuildCalendarPageProps
             foreach (data_get($day, 'items', []) as $item) {
                 $slotAt = CarbonImmutable::parse(data_get($item, 'at'));
 
-                if (data_get($item, 'type') !== 'slot' || $slotAt->lessThan($rangeStart) || ! MoveChannelPostToQueueSlot::withinQueueWindow($slotAt)) {
+                if (data_get($item, 'type') !== 'slot' || $slotAt->lessThan($rangeStart)) {
                     continue;
                 }
 
-                $slots[data_get($day, 'date')][] = ['at' => data_get($item, 'at'), 'channel_id' => data_get($item, 'channel_id')];
+                $slots[data_get($day, 'date')][] = [
+                    'at' => data_get($item, 'at'),
+                    'channel_id' => data_get($item, 'channel_id'),
+                    'queueable' => MoveChannelPostToQueueSlot::withinQueueWindow($slotAt),
+                ];
             }
         }
 

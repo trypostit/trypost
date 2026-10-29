@@ -41,6 +41,7 @@ const dropTarget = computed(
         kind: 'slot',
         at: props.postingSlot.at,
         channelId: props.postingSlot.channel_id,
+        queueable: props.postingSlot.queueable,
     }),
 );
 

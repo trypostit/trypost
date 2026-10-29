@@ -389,6 +389,12 @@ test('dropping a queued post on a free slot of its channel moves it there in the
     waitFor($page, "@calendar-slot-{$slotAt->format('Y-m-d')}-09 @calendar-post-{$post->id}");
     waitForGone($page, '@calendar-grid[aria-busy]');
 
+    waitFor($page, '@calendar-reschedule-success-toast');
+
+    $toast = $page->script('document.querySelector(\'[data-testid="calendar-reschedule-success-toast"]\')?.textContent ?? ""');
+
+    expect($toast)->toContain('Rescheduled your post')
+        ->not->toContain(__('calendar.reschedule.toast.unqueued_suffix'));
     $page->assertMissing('@calendar-custom-time-dialog');
     $post->refresh();
     expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
@@ -1118,9 +1124,11 @@ function calendarDragAnnouncements(mixed $page): array
 
 function calendarDragWhen(CarbonImmutable $at, bool $dateOnly = false): string
 {
+    $date = $at->format($at->year === now('UTC')->year ? 'l, F j' : 'l, F j, Y');
+
     return $dateOnly
-        ? $at->format('l, F j')
-        : __('calendar.reschedule.announce.date_time', ['date' => $at->format('l, F j'), 'time' => $at->format('g:i A')]);
+        ? $date
+        : __('calendar.reschedule.announce.date_time', ['date' => $date, 'time' => $at->format('g:i A')]);
 }
 
 test('a drop in the week view announces the target once and then the move once', function () {
@@ -2404,5 +2412,116 @@ test('the custom time dialog writes the dates in the order of the user\'s langua
 
     expect($page->script('document.querySelector(\'[data-testid="calendar-custom-time-description"]\').textContent'))
         ->toContain("{$expected}, 9:25 AM (UTC)");
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a queued post dropped on its channel\'s slot past the queue window asks first and becomes custom', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = calendarDragDay()->addWeeks(15);
+    $slotAt = $day->addDay()->setTime(9, 25);
+    $slotKey = calendarDragSlotKey($channel, $slotAt);
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-posting-slot-{$slotKey}");
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-posting-slot-{$slotKey}");
+    waitFor($page, '@calendar-custom-time-dialog');
+    $page->click('@calendar-custom-time-confirm');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unqueued_suffix'));
+    $post->refresh();
+    expect($post->scheduled_at->equalTo($slotAt))->toBeTrue()
+        ->and($post->schedule_mode)->toBe(ScheduleMode::Custom);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the custom time dialog shows the year of a date in another year', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $day = now('UTC')->addYear()->startOfYear()->addWeeks(2)->startOfWeek()->addDays(2)->toImmutable();
+    $key = $day->format('Y-m-d');
+    $queuedAt = $day->setTime(9, 25);
+    $post = calendarDragPost($channel, $queuedAt, mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-custom-time-dialog');
+
+    $page->assertSeeIn('@calendar-custom-time-description', "{$queuedAt->format('M j, Y, g:i A')} (UTC)")
+        ->assertNoJavaScriptErrors();
+});
+
+test('a post that comes due while it is being dragged goes back without a request', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragWatchAnnouncer($page);
+    $due = $day->setTime(10, 30)->getTimestampMs();
+
+    calendarGesture($page, <<<JS
+        query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+        const RealDate = Date;
+        const shift = {$due} - RealDate.now();
+        window.Date = class extends RealDate {
+            constructor(...args) {
+                super(...(args.length ? args : [RealDate.now() + shift]));
+            }
+
+            static now() {
+                return RealDate.now() + shift;
+            }
+        };
+        await up(center('@calendar-slot-{$key}-12'));
+    JS);
+    waitFor($page, "@calendar-slot-{$key}-10 @calendar-post-{$post->id}");
+
+    expect($post->refresh()->scheduled_at->equalTo($day->setTime(10, 30)))->toBeTrue()
+        ->and(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'));
+    $page->assertMissing('@calendar-reschedule-success-toast')
+        ->assertMissing('@calendar-reschedule-error-toast')
+        ->assertNoJavaScriptErrors();
+});
+
+test('an older move answered after a newer one does not put the newer card back', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $first = calendarDragPost($channel, $day->setTime(10, 0));
+    $second = calendarDragPost($channel, $day->setTime(11, 0));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    calendarDragAssertLive($page, "@calendar-post-{$first->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$second->id}");
+    calendarDragHoldResponses($page);
+
+    calendarDragOnto($page, "@calendar-post-{$first->id}", "@calendar-slot-{$key}-13");
+    waitForCondition($page, 'window.__heldResponses.length === 1');
+    calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$key}-14");
+    waitForCondition($page, 'window.__heldResponses.length === 2');
+
+    $page->script('window.__heldResponses[1]()');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    $page->script('window.__heldResponses[0]()');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+    waitFor($page, "@calendar-slot-{$key}-13 @calendar-post-{$first->id}");
+    waitFor($page, "@calendar-slot-{$key}-14 @calendar-post-{$second->id}");
+
+    expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13")
+        ->and(calendarDragCellOf($page, $second))->toBe("calendar-slot-{$key}-14")
+        ->and($second->refresh()->scheduled_at->equalTo($day->setTime(14, 0)))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });

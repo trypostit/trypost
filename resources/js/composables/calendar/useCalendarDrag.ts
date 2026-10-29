@@ -172,10 +172,12 @@ export const useCalendarDrag = (
     let scroller: HTMLElement | null = null;
     let pointerMoved = false;
     let stopEscape: (() => void) | null = null;
+    let movesSent = 0;
+    let newestMoveShown = 0;
 
     const isDraggable = (post: PostCard): boolean =>
         !(post.id in movedPosts.value) &&
-        canDragCalendarPost(post, options.now.value, options.canCreatePost.value);
+        canDragCalendarPost(post, dayjs(), options.canCreatePost.value);
 
     const instantFor = (
         post: PostCard,
@@ -284,7 +286,8 @@ export const useCalendarDrag = (
         );
 
         return post.status === PostStatus.Scheduled &&
-            post.schedule_mode === ScheduleMode.Queue
+            post.schedule_mode === ScheduleMode.Queue &&
+            !entersQueueSlot(post, target)
             ? `${message} ${trans('calendar.reschedule.toast.unqueued_suffix')}`
             : message;
     };
@@ -341,8 +344,9 @@ export const useCalendarDrag = (
             return false;
         };
 
+        const moveId = ++movesSent;
         let reloaded: CalendarPost | null | undefined;
-        let leftThePage = false;
+        let staleResponse = false;
 
         const announceApproval = (): void => {
             toast.success(trans('posts.approvals.requested'), {
@@ -375,11 +379,13 @@ export const useCalendarDrag = (
                             .find((candidate) => candidate.id === post.id) ??
                         null;
 
-                    if (response.url === page.url) {
+                    if (response.url === page.url && moveId >= newestMoveShown) {
+                        newestMoveShown = moveId;
+
                         return;
                     }
 
-                    leftThePage = true;
+                    staleResponse = true;
                     response.props = {
                         ...page.props,
                         flash: response.props.flash,
@@ -387,7 +393,7 @@ export const useCalendarDrag = (
                     response.url = page.url;
                 },
                 onSuccess: () => {
-                    if (leftThePage) {
+                    if (staleResponse) {
                         router.reload({
                             only: options.reloadProps,
                             reset: ['undatedDrafts'],
@@ -585,7 +591,7 @@ export const useCalendarDrag = (
             ? instantFor(post, hovered.target)
             : undefined;
 
-        if (!hovered || scheduledAt === undefined) {
+        if (!hovered || scheduledAt === undefined || !isDraggable(post)) {
             options.onCancel?.(post);
 
             return;

@@ -27,6 +27,18 @@ const getUserTimezone = (): string => userTimezone.value;
 const userNow = () =>
     localized(dayjs().tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'));
 
+/**
+ * `{ year: 'numeric' }` when the instant falls in another year than now, in
+ * that zone, so an `Intl` date shows the year only when it is not obvious.
+ */
+const yearUnlessCurrent = (
+    instant: dayjs.Dayjs,
+    timezone: string,
+): Intl.DateTimeFormatOptions =>
+    instant.tz(timezone).year() === dayjs().tz(timezone).year()
+        ? {}
+        : { year: 'numeric' };
+
 /** Resolve scheduled local datetime for platform previews, else now. */
 const resolvePreviewPostedAt = (postedAt?: string | null) => {
     if (postedAt) {
@@ -144,15 +156,19 @@ export default {
 
     /**
      * Weekday + month + day of a UTC instant in an explicit time zone, in the
-     * active locale's order ("Thursday, October 29").
+     * active locale's order ("Thursday, October 29"), with the year only when
+     * it is not the current one.
      */
     formatWeekdayMonthDay(date: string, timezone: string): string {
+        const instant = dayjs.utc(date);
+
         return new Intl.DateTimeFormat(activeLocale.value, {
             weekday: 'long',
             month: 'long',
             day: 'numeric',
+            ...yearUnlessCurrent(instant, timezone),
             timeZone: timezone,
-        }).format(dayjs.utc(date).toDate());
+        }).format(instant.toDate());
     },
 
     /**
@@ -232,13 +248,15 @@ export default {
 
     /**
      * Short month and day in the active locale's order, then the time ("Oct 1,
-     * 4:21 PM", "1 de out., 16:21") of a UTC instant in an explicit time zone.
+     * 4:21 PM", "1 de out., 16:21") of a UTC instant in an explicit time zone,
+     * with the year only when it is not the current one.
      */
     formatMonthDayTimeInTimezone(date: string, timezone: string): string {
         const instant = dayjs.utc(date);
         const day = new Intl.DateTimeFormat(activeLocale.value, {
             month: 'short',
             day: 'numeric',
+            ...yearUnlessCurrent(instant, timezone),
             timeZone: timezone,
         }).format(instant.toDate());
 
