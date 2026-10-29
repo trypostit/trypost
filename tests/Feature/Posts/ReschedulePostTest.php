@@ -348,6 +348,28 @@ test('reschedule with a null time takes a queued post out of the queue and frees
         ->and(Post::query()->where('social_account_id', $this->channel->id)->where('status', PostStatus::Scheduled)->where('scheduled_at', $slot)->exists())->toBeFalse();
 });
 
+test('reschedule with a null time takes a recurring post off the schedule, drops its rule like any move to drafts and starts no next occurrence', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $post->forceFill([
+        'recurrence_frequency' => RecurrenceFrequency::Week,
+        'recurrence_interval' => 1,
+        'recurrence_remaining' => 3,
+    ])->save();
+    $posts = Post::query()->count();
+
+    $this->actingAs($this->user)
+        ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => null])
+        ->assertSessionHasNoErrors();
+
+    $post->refresh();
+
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull()
+        ->and($post->recurrence_frequency)->toBeNull()
+        ->and($post->recurrence_remaining)->toBeNull()
+        ->and(Post::query()->count())->toBe($posts);
+});
+
 test('a member who needs approval takes a post off the schedule without asking for approval', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, membershipPivot('approval'));

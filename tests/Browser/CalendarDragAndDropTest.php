@@ -1255,7 +1255,9 @@ test('the No Date panel highlights for a scheduled post, takes it and announces 
     expect($highlighted)->toBeTrue()
         ->and(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.undated', ['from' => calendarDragWhen($from)]))
         ->and($post->refresh()->scheduled_at)->toBeNull();
-    $page->assertNoJavaScriptErrors();
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unscheduled'))
+        ->assertDontSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unqueued_suffix'))
+        ->assertNoJavaScriptErrors();
 });
 
 test('dropping a dated draft on No Date announces it and toasts', function () {
@@ -2800,4 +2802,89 @@ test('a move that does not touch No Date leaves the open No Date list as it is',
     $page->assertScript("window.__partialData.length > 0 && window.__partialData.every((props) => !props.split(',').includes('undatedDrafts'))", true)
         ->assertPresent("@calendar-undated-{$draft->id}")
         ->assertNoJavaScriptErrors();
+});
+
+test('a draft already in No Date dropped back on the panel is refused and nothing is sent', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $draft = calendarDragPost($channel, null, PostStatus::Draft);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-undated-{$draft->id}");
+    calendarDragAssertLive($page, "@calendar-undated-{$draft->id}");
+    calendarDragWatchAnnouncer($page);
+    calendarDragHoldRequests($page);
+
+    calendarGesture($page, <<<JS
+        const start = center('@calendar-undated-{$draft->id}');
+        await down(start);
+        await move(at(start, 0, 40));
+        await move(at(start, 0, 80));
+        await up(at(start, 0, 80));
+    JS);
+    waitForCondition($page, 'window.__announcements.length >= 1');
+
+    expect(calendarDragAnnouncements($page))->toContain(__('calendar.reschedule.announce.returned'))
+        ->and($page->script('window.__heldRequests.length'))->toBe(0)
+        ->and($draft->refresh()->scheduled_at)->toBeNull();
+    $page->assertPresent("@calendar-undated-{$draft->id}")
+        ->assertMissing('@calendar-reschedule-success-toast')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a member who needs approval takes a post off the schedule into No Date with the usual toast', function () {
+    [$owner, $channel] = calendarDragSetup();
+    $member = User::factory()->create(['account_id' => $owner->account_id, 'timezone' => 'UTC']);
+    $channel->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $channel->workspace_id]);
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(10, 0), attributes: ['user_id' => $member->id]);
+    $this->actingAs($member);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]));
+    waitFor($page, "@calendar-post-{$post->id}");
+    waitFor($page, '@calendar-undated-empty');
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", '@calendar-undated-panel');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitFor($page, "@calendar-undated-{$post->id}");
+
+    $page->assertSeeIn('@calendar-reschedule-success-toast', __('calendar.reschedule.toast.unscheduled'))
+        ->assertMissing('@calendar-reschedule-approval-toast')
+        ->assertNoJavaScriptErrors();
+    $post->refresh();
+    expect($post->status)->toBe(PostStatus::Draft)
+        ->and($post->scheduled_at)->toBeNull();
+});
+
+test('a touch press held on a post drags it into No Date', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day, ['undated' => 1]))->on()->iPadPro()->resize(1366, 1024);
+    waitFor($page, "@calendar-post-{$post->id}");
+    waitFor($page, '@calendar-undated-empty');
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]').scrollIntoView({ block: 'center' })");
+
+    $held = calendarGesture($page, <<<JS
+        const start = center('@calendar-post-{$post->id}');
+        await down(start);
+        await pause(350);
+        const held = state().dragging;
+        await move(center('@calendar-undated-panel'));
+        await up(center('@calendar-undated-panel'));
+
+        return held;
+    JS, 'touch');
+    waitFor($page, "@calendar-undated-{$post->id}");
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    expect($held)->toBeTrue()
+        ->and($post->refresh()->scheduled_at)->toBeNull()
+        ->and($post->status)->toBe(PostStatus::Draft);
+    $page->assertNoJavaScriptErrors();
 });

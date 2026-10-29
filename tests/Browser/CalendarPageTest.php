@@ -331,11 +331,12 @@ test('show posting times renders empty slots in the week and month views', funct
     waitFor($page, '@calendar-toggle-slots');
     $page->click('@calendar-toggle-slots');
     waitForCondition($page, "!document.querySelector('[data-testid^=\"calendar-posting-slot-\"]')");
-    waitForCondition($page, 'window.__partialData.length > 0');
+    waitForCondition($page, "!new URLSearchParams(location.search).has('slots')");
 
     $page->assertMissing("@calendar-posting-slot-{$slotKey}")
         ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false')
-        ->assertScript("window.__partialData.some((props) => props.split(',').includes('slots'))", false);
+        ->assertScript("new URLSearchParams(location.search).has('slots')", false)
+        ->assertScript('window.__partialData.length', 0);
 
     $page->refresh();
     waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-15");

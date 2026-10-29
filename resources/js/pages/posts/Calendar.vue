@@ -290,7 +290,18 @@ const closeUndated = (): void => {
 
 const toggleSlots = (value: boolean): void => {
     setShowSlots(value);
-    reload(value ? ['slots'] : ['filters']);
+
+    if (value) {
+        reload(['slots']);
+
+        return;
+    }
+
+    router.replace({
+        url: calendarUrl(props.view, currentDateQuery()),
+        preserveScroll: true,
+        preserveState: true,
+    });
 };
 
 onMounted(() => {
