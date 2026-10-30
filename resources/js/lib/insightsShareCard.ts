@@ -6,11 +6,13 @@
  * no CORS header and one such image would stop the canvas exporting.
  */
 
-export type ShareShape = 'line' | 'bar';
+/** A line or columns over time, or one horizontal bar per channel. */
+export type ShareShape = 'line' | 'bar' | 'rows';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
-export type SharePoint = { label: string; value: number | null };
+/** A bucket over time, or a channel for `rows`, which may bring its own color. */
+export type SharePoint = { label: string; value: number | null; color?: string };
 
 /** One number of the Summary, as its card prints it. */
 export type ShareTile = { label: string; figure: string; change: ShareChange | null };
@@ -468,6 +470,109 @@ const traceMonotone = (
     });
 };
 
+const MAX_ROWS = 12;
+
+/** A channel color the page gives as a CSS token (`var(--series-3)`), read as the color it stands for. */
+const resolveColor = (color: string | undefined, fallback: string): string => {
+    const token = color?.match(/^var\((--[\w-]+)\)$/)?.[1];
+
+    if (!token) {
+        return color ?? fallback;
+    }
+
+    return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+};
+
+/**
+ * One horizontal bar per channel from zero, losses to the left, in each
+ * channel's color, like the page's Bar and Growth views. The channels with
+ * the largest values keep their place when they do not all fit.
+ */
+const paintRows = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    area: { x: number; y: number; width: number; height: number },
+): void => {
+    const ranked = options.points
+        .map((point, index) => ({ ...point, index }))
+        .filter((point): point is SharePoint & { index: number; value: number } => point.value !== null)
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+        .slice(0, MAX_ROWS)
+        .sort((a, b) => a.index - b.index);
+    const values = ranked.map((point) => point.value);
+    const [low, high] = domain(values, 'bar');
+    const step = Math.max(1, niceStep(high - low || 1, 4));
+    const top = Math.ceil(high / step) * step;
+    const bottom = Math.floor(low / step) * step;
+    const span = top - bottom || 1;
+    const labelWidth = 220;
+    const plot = { x: area.x + labelWidth, width: area.width - labelWidth, y: area.y, height: area.height - 44 };
+    const x = (value: number): number => plot.x + ((value - bottom) / span) * plot.width;
+    const rowHeight = plot.height / Math.max(ranked.length, 1);
+    const thickness = Math.min(rowHeight * 0.55, 28);
+    const labelSize = Math.min(22, Math.max(14, rowHeight * 0.55));
+
+    context.setLineDash(CHART.gridDash);
+    context.lineWidth = CHART.gridWidth;
+    context.font = `500 ${CHART.tickSize}px ${SANS}`;
+    context.textAlign = 'center';
+    context.fillStyle = MUTED;
+
+    for (let value = bottom; value <= top + step / 1000; value += step) {
+        context.strokeStyle = CHART.grid;
+        context.beginPath();
+        context.moveTo(x(value), plot.y);
+        context.lineTo(x(value), plot.y + plot.height);
+        context.stroke();
+        context.fillText(options.tick(value), x(value), plot.y + plot.height + 36);
+    }
+
+    context.setLineDash([]);
+
+    const zero = x(Math.max(0, bottom));
+
+    ranked.forEach((point, row) => {
+        const centre = plot.y + rowHeight * (row + 0.5);
+
+        context.textAlign = 'left';
+        context.textBaseline = 'middle';
+        context.fillStyle = MUTED;
+        context.font = `500 ${labelSize}px ${SANS}`;
+        context.fillText(ellipsise(context, point.label, labelWidth - 24), area.x, centre);
+        context.textBaseline = 'alphabetic';
+
+        if (point.value === 0) {
+            return;
+        }
+
+        const end = x(point.value);
+        const length = Math.abs(end - zero);
+        const radius = Math.min(CHART.barRadius, thickness / 2, length);
+        const startX = Math.min(end, zero);
+        const topY = centre - thickness / 2;
+
+        context.fillStyle = resolveColor(point.color, options.tint.strong);
+        context.beginPath();
+
+        if (end > zero) {
+            context.moveTo(startX, topY);
+            context.lineTo(end - radius, topY);
+            context.arcTo(end, topY, end, topY + radius, radius);
+            context.arcTo(end, topY + thickness, end - radius, topY + thickness, radius);
+            context.lineTo(startX, topY + thickness);
+        } else {
+            context.moveTo(zero, topY);
+            context.lineTo(end + radius, topY);
+            context.arcTo(end, topY, end, topY + radius, radius);
+            context.arcTo(end, topY + thickness, end + radius, topY + thickness, radius);
+            context.lineTo(zero, topY + thickness);
+        }
+
+        context.closePath();
+        context.fill();
+    });
+};
+
 const paintChart = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
@@ -506,6 +611,12 @@ const paintChart = (
         .filter((value): value is number => value !== null);
 
     if (values.length === 0) {
+        return;
+    }
+
+    if (options.shape === 'rows') {
+        paintRows(context, options, { x: left, y: plot.y, width: right - left, height: plot.height + 40 });
+
         return;
     }
 

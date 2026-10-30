@@ -98,3 +98,21 @@ test('the channel metrics card shares the channel’s series', function () {
 
     $page->assertVisible('@share-chart-post')->assertNoJavaScriptErrors();
 });
+
+test('the followers share card follows the chart mode the user picked', function (string $mode, string $shape) {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, "@followers-{$mode}");
+    $page->click("@followers-{$mode}");
+    $page->click('@share-followers');
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+
+    $page->assertAttribute('@share-chart-preview', 'data-shape', $shape)
+        ->assertNoJavaScriptErrors();
+})->with([
+    'bar' => ['bar', 'rows'],
+    'line' => ['line', 'line'],
+    'growth' => ['growth', 'rows'],
+]);

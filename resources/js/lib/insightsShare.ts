@@ -66,14 +66,22 @@ const metricCaption = (
         { metric, value, range },
     );
 
+/** How the page's Followers card is drawn: per channel, over time, or the change per channel. */
+export type FollowersShareMode = 'bar' | 'line' | 'growth';
+
+const accountLabel = (account: WorkspaceAnalyticsReport['followers']['accounts'][number]): string =>
+    account.username ? `@${account.username}` : (account.name ?? account.platform);
+
 /**
- * The workspace's followers over the period: every channel added up, each
- * carrying its last known count over the days it has no reading, like the
- * page's line chart.
+ * The workspace's followers the way the card shows them: one bar per channel
+ * (Bar), every channel added up over the period, each carrying its last known
+ * count over the days it has no reading (Line), or each channel's change (Growth).
  */
 export const followersShareOption = (
     followers: WorkspaceAnalyticsReport['followers'],
     range: string,
+    mode: FollowersShareMode,
+    colors: Record<string, string>,
 ): ShareMetricOption => {
     const keys = followers.accounts.map((account) => account.social_account_key);
     const lastKnown: Record<string, number> = {};
@@ -100,6 +108,14 @@ export const followersShareOption = (
     const label = trans('analytics.dashboard.followers');
     const figure =
         followers.total === null ? '—' : formatNumberCompact(followers.total);
+    const rows =
+        mode === 'line'
+            ? null
+            : followers.accounts.map((account) => ({
+                  label: accountLabel(account),
+                  value: mode === 'bar' ? account.value : (account.net ?? null),
+                  color: colors[account.social_account_key],
+              }));
 
     return {
         key: 'followers',
@@ -109,8 +125,8 @@ export const followersShareOption = (
             ? shareChange(net, true)
             : null,
         comparison: null,
-        points,
-        shape: 'line',
+        points: rows ?? points,
+        shape: rows ? 'rows' : 'line',
         tick: (value) => formatNumberCompact(value),
         tiles: [],
         caption: metricCaption({ channel: null }, label, figure, range),

@@ -96,7 +96,12 @@ const rangeLabel = computed(
 );
 const page = usePage();
 const buildShareOptions = () => [
-    followersShareOption(props.followers, rangeLabel.value),
+    followersShareOption(
+        props.followers,
+        rangeLabel.value,
+        mode.value,
+        props.colors,
+    ),
 ];
 </script>
 

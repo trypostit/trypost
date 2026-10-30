@@ -254,6 +254,7 @@ const createPost = async (): Promise<void> => {
                 role="img"
                 :aria-label="`${selected?.label ?? ''} ${selected?.figure ?? ''}`"
                 :data-state="painted ? 'ready' : 'loading'"
+                :data-shape="selected?.shape"
                 data-testid="share-chart-preview"
             />
 
