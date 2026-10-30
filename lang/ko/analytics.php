@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => ':range 우리 숫자 📈 :metrics',
         'caption_summary_channel' => ':channel의 :range 숫자 📈 :metrics',
         'export_failed' => '이미지를 만들지 못했어요. 다시 시도하세요.',
+        'colors' => [
+            'violet' => '바이올렛',
+            'blue' => '파랑',
+            'green' => '초록',
+            'peach' => '피치',
+            'yellow' => '노랑',
+        ],
     ],
 ];

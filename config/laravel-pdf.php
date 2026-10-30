@@ -157,7 +157,7 @@ return [
      * @see https://github.com/chrome-php/chrome
      */
     'chrome' => [
-        'chrome_binary' => env('LARAVEL_PDF_CHROME_BINARY'),
+        'chrome_binary' => env('LARAVEL_PDF_CHROME_BINARY') ?: null,
 
         'no_sandbox' => env('LARAVEL_PDF_CHROME_NO_SANDBOX', false),
 

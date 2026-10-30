@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => 'Τα νούμερά μας για :range 📈 :metrics',
         'caption_summary_channel' => 'Τα νούμερά μας στο :channel για :range 📈 :metrics',
         'export_failed' => 'Η εικόνα δεν δημιουργήθηκε. Δοκιμάστε ξανά.',
+        'colors' => [
+            'violet' => 'Βιολετί',
+            'blue' => 'Μπλε',
+            'green' => 'Πράσινο',
+            'peach' => 'Ροδακινί',
+            'yellow' => 'Κίτρινο',
+        ],
     ],
 ];

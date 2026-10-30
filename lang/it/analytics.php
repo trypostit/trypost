@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => 'I nostri numeri del :range 📈 :metrics',
         'caption_summary_channel' => 'I nostri numeri su :channel del :range 📈 :metrics',
         'export_failed' => 'Impossibile creare l’immagine. Riprova.',
+        'colors' => [
+            'violet' => 'Viola',
+            'blue' => 'Blu',
+            'green' => 'Verde',
+            'peach' => 'Pesca',
+            'yellow' => 'Giallo',
+        ],
     ],
 ];

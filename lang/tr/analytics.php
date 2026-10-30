@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => ':range rakamlarımız 📈 :metrics',
         'caption_summary_channel' => ':channel üzerinde :range rakamlarımız 📈 :metrics',
         'export_failed' => 'Görsel oluşturulamadı. Tekrar dene.',
+        'colors' => [
+            'violet' => 'Mor',
+            'blue' => 'Mavi',
+            'green' => 'Yeşil',
+            'peach' => 'Şeftali',
+            'yellow' => 'Sarı',
+        ],
     ],
 ];

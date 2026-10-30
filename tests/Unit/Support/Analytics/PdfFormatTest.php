@@ -30,3 +30,12 @@ test('numbers and dates follow the report language', function () {
     expect($format->metric(3.48, 'engagement_rate'))->toBe('3,48%')
         ->and($format->span(['start' => '2026-10-01', 'end' => '2026-10-30']))->toBe('1 out 2026 – 30 out 2026');
 });
+
+test('large numbers use the compact words of the report language, like the page', function (string $locale, string $expected) {
+    expect((new PdfFormat($locale))->metric(12345, 'followers'))->toBe($expected);
+})->with([
+    'English' => ['en', '12.3K'],
+    'Portuguese' => ['pt-BR', "12,3\u{00A0}mil"],
+    'Japanese' => ['ja', '1.2万'],
+    'Russian' => ['ru', "12,3\u{00A0}тыс."],
+]);

@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Dto\RemoteFile;
+use App\Jobs\Analytics\GenerateInsightsPdf;
 use App\Jobs\Media\AdoptWorkspaceLibraryJob;
 use App\Jobs\Media\ImportRemoteMedia;
 use App\Jobs\RssFeed\FetchRssFeed;
@@ -78,4 +79,27 @@ test('the library adoption is worked only by its own supervisor, which outlives 
         ->and(config('horizon.defaults.media-adoption.timeout'))->toBeGreaterThan((new ReflectionClass(AdoptWorkspaceLibraryJob::class))->getProperty('timeout')->getDefaultValue())
         ->and(config('horizon.environments.production.media-adoption.maxProcesses'))->toBe(20)
         ->and(config('horizon.environments.local.media-adoption'))->toBeArray();
+});
+
+test('the insights PDF is rendered only by its own supervisor, which outlives the render', function () {
+    config()->set('queue.default', 'redis');
+    $others = collect(config('horizon.defaults'))
+        ->except('insights-pdf')
+        ->flatMap(fn (array $supervisor): array => (array) data_get($supervisor, 'queue', []))
+        ->all();
+    $job = new GenerateInsightsPdf('export', 'user', 'workspace', null, [], ['name' => null, 'sections' => ['summary'], 'columns' => []]);
+
+    expect(config('horizon.defaults.insights-pdf.queue'))->toBe([GenerateInsightsPdf::QUEUE])
+        ->and($others)->not->toContain(GenerateInsightsPdf::QUEUE)
+        ->and($job->queue)->toBe(GenerateInsightsPdf::QUEUE)
+        ->and($job->timeout)->toBeLessThan(config('horizon.defaults.insights-pdf.timeout'))
+        ->and(config('horizon.defaults.insights-pdf.timeout'))->toBeLessThan(config('queue.connections.redis.retry_after'));
+});
+
+test('the PDF render stays below a short retry_after so the database queue never reserves it twice', function () {
+    config()->set(['queue.default' => 'database', 'queue.connections.database.retry_after' => 90]);
+
+    $job = new GenerateInsightsPdf('export', 'user', 'workspace', null, [], ['name' => null, 'sections' => ['summary'], 'columns' => []]);
+
+    expect($job->timeout)->toBe(60);
 });

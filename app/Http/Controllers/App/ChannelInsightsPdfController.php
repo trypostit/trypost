@@ -39,7 +39,7 @@ class ChannelInsightsPdfController extends Controller
             $request->boolean('remove_logo'),
         );
 
-        return (new InsightsPdfExportResource($id, InsightsPdfExports::find($id)))
+        return (new InsightsPdfExportResource($id, InsightsPdfExports::find($id), $workspace))
             ->response()
             ->setStatusCode(Response::HTTP_ACCEPTED);
     }

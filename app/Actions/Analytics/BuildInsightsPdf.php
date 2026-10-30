@@ -18,7 +18,9 @@ use App\Support\Analytics\Pdf\PdfFormat;
 use App\Support\Analytics\Pdf\PdfImages;
 use App\Support\Analytics\Pdf\SvgChart;
 use App\Support\Mail\RecipientTime;
+use Collator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -214,10 +216,11 @@ class BuildInsightsPdf
     private function sortPerformance(array $rows, string $sort, string $direction): array
     {
         $name = fn (array $row): string => (string) (data_get($row, 'username') ?? data_get($row, 'name') ?? data_get($row, 'platform'));
+        $collator = new Collator(App::getLocale());
 
-        usort($rows, function (array $left, array $right) use ($sort, $direction, $name): int {
+        usort($rows, function (array $left, array $right) use ($sort, $direction, $name, $collator): int {
             if ($sort === 'channel') {
-                $order = strcasecmp($name($left), $name($right));
+                $order = (int) $collator->compare($name($left), $name($right));
                 $order = $direction === 'desc' ? -$order : $order;
             } else {
                 $leftValue = data_get($left, "{$sort}.value");

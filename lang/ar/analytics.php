@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => 'أرقامنا للفترة :range 📈 :metrics',
         'caption_summary_channel' => 'أرقامنا على :channel للفترة :range 📈 :metrics',
         'export_failed' => 'تعذّر إنشاء الصورة. حاول مرة أخرى.',
+        'colors' => [
+            'violet' => 'بنفسجي',
+            'blue' => 'أزرق',
+            'green' => 'أخضر',
+            'peach' => 'خوخي',
+            'yellow' => 'أصفر',
+        ],
     ],
 ];

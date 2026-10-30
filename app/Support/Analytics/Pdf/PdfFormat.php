@@ -6,6 +6,7 @@ namespace App\Support\Analytics\Pdf;
 
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Number;
+use MessageFormatter;
 
 /**
  * Formats Insights numbers and dates for the PDF the way the Insights page shows
@@ -24,11 +25,10 @@ class PdfFormat
         return $metric === 'engagement_rate' ? $this->percent($value) : $this->compact($value);
     }
 
+    /** ICU's compact notation, the `Intl` format the page uses: "12.3K", "1.2万", "12,3 тыс.". */
     public function compact(int|float $value): string
     {
-        return Number::withLocale($this->locale, fn (): string => abs($value) < 1000
-            ? (string) Number::format($value, maxPrecision: 2)
-            : (string) Number::abbreviate($value, maxPrecision: 1));
+        return (string) MessageFormatter::formatMessage($this->locale, '{0, number, ::compact-short .#}', [$value]);
     }
 
     /** A whole number with grouping, for axes whose values sit close together. */
@@ -57,7 +57,7 @@ class PdfFormat
         $size = abs($change);
         $label = $metric === 'followers'
             ? $this->compact($size)
-            : ($size >= 1000 ? Number::withLocale($this->locale, fn (): string => (string) Number::abbreviate($size, maxPrecision: 1)).'%' : $this->percent($size));
+            : ($size >= 1000 ? "{$this->compact($size)}%" : $this->percent($size));
 
         return [
             'label' => "{$sign}{$label}",

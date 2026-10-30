@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => 'Наші цифри за :range 📈 :metrics',
         'caption_summary_channel' => 'Наші цифри в :channel за :range 📈 :metrics',
         'export_failed' => 'Не вдалося створити зображення. Спробуйте ще раз.',
+        'colors' => [
+            'violet' => 'Фіолетовий',
+            'blue' => 'Синій',
+            'green' => 'Зелений',
+            'peach' => 'Персиковий',
+            'yellow' => 'Жовтий',
+        ],
     ],
 ];

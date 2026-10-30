@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => '我们 :range 的数据 📈 :metrics',
         'caption_summary_channel' => '我们在 :channel 上 :range 的数据 📈 :metrics',
         'export_failed' => '无法生成图片，请重试。',
+        'colors' => [
+            'violet' => '紫色',
+            'blue' => '蓝色',
+            'green' => '绿色',
+            'peach' => '桃色',
+            'yellow' => '黄色',
+        ],
     ],
 ];

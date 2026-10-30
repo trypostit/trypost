@@ -71,7 +71,7 @@ deixa de existir, pode sobrar para o código novo.
 2. **Drene todas as filas** com o código antigo (o `--force` processa mesmo em
    manutenção):
    ```bash
-   php artisan queue:work redis --queue=social-linkedin,social-linkedin-page,social-x,social-tiktok,social-youtube,social-facebook,social-instagram,social-instagram-facebook,social-threads,social-pinterest,social-bluesky,social-mastodon,social-telegram,social-discord,social-google_business,default,posthog,broadcasts,analytics,webhooks,media-imports,media-adoption,rss-feeds --force --stop-when-empty
+   php artisan queue:work redis --queue=social-linkedin,social-linkedin-page,social-x,social-tiktok,social-youtube,social-facebook,social-instagram,social-instagram-facebook,social-threads,social-pinterest,social-bluesky,social-mastodon,social-telegram,social-discord,social-google_business,default,posthog,broadcasts,analytics,webhooks,media-imports,media-adoption,rss-feeds,insights-pdf --force --stop-when-empty
    ```
    Confira a lista de filas em `config/horizon.php`. Espere também os jobs com
    atraso das filas `social-*`, `default`, `broadcasts`, `posthog` e `webhooks`

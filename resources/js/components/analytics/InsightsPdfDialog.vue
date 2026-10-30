@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router, useHttp, usePage } from '@inertiajs/vue3';
+import { useHttp, usePage } from '@inertiajs/vue3';
 import { IconPhoto, IconUpload } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
@@ -28,6 +28,8 @@ type PdfExport = {
     status: 'pending' | 'ready' | 'failed';
     download_url: string | null;
 };
+
+type StartedPdfExport = PdfExport & { report_logo_url: string | null };
 
 const props = defineProps<{
     query: Record<string, string | string[]>;
@@ -66,7 +68,7 @@ const http = useHttp<
         sections: string[];
         columns: string[];
     },
-    PdfExport
+    StartedPdfExport
 >({
     name: '',
     logo: null,
@@ -86,6 +88,8 @@ let pollTimer: ReturnType<typeof setTimeout> | null = null;
 let waitingSince = 0;
 let generation = 0;
 let previewUrl: string | null = null;
+/** The cover logo the last export saved, until the page props catch up. */
+let savedLogoUrl: string | null | undefined;
 
 const releasePreview = (): void => {
     if (previewUrl) {
@@ -112,10 +116,15 @@ const reset = (): void => {
     http.sections = [...props.sections];
     http.columns = [...props.readColumns()];
     http.clearErrors();
-    customLogo.value = props.logoUrl;
+    customLogo.value = savedLogoUrl === undefined ? props.logoUrl : savedLogoUrl;
 };
 
+/** A PDF being prepared keeps going with the dialog closed, and downloads when ready. */
 watch(open, (isOpen) => {
+    if (preparing.value) {
+        return;
+    }
+
     if (isOpen) {
         reset();
     } else {
@@ -187,6 +196,7 @@ const poll = (id: string, round: number): void => {
 
                 if (result.status === 'ready' && result.download_url) {
                     window.location.assign(result.download_url);
+                    preparing.value = false;
                     open.value = false;
 
                     return;
@@ -227,9 +237,7 @@ const createPdf = (): void => {
                 return;
             }
 
-            if (http.logo || http.remove_logo) {
-                router.reload({ only: ['reportLogoUrl'] });
-            }
+            savedLogoUrl = result.report_logo_url;
 
             preparing.value = true;
             waitingSince = Date.now();
@@ -378,7 +386,12 @@ const createPdf = (): void => {
             </div>
 
             <DialogFooter>
-                <Button type="button" variant="ghost" @click="closeDialog">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    data-testid="insights-pdf-close"
+                    @click="closeDialog"
+                >
                     {{ preparing ? $t('common.close') : $t('common.cancel') }}
                 </Button>
                 <Button

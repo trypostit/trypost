@@ -475,5 +475,12 @@ return [
         'caption_summary_workspace' => ':rangeの数字 📈 :metrics',
         'caption_summary_channel' => ':channelの:rangeの数字 📈 :metrics',
         'export_failed' => '画像を作成できませんでした。もう一度お試しください。',
+        'colors' => [
+            'violet' => 'バイオレット',
+            'blue' => 'ブルー',
+            'green' => 'グリーン',
+            'peach' => 'ピーチ',
+            'yellow' => 'イエロー',
+        ],
     ],
 ];

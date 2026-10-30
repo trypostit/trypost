@@ -19,14 +19,24 @@ use Throwable;
 /**
  * Renders an Insights PDF with the local Chromium and keeps it on the default disk
  * until it is downloaded or pruned. Runs in the language of the user who asked.
+ *
+ * Runs on its own queue, one render at a time, so Chromium never competes with
+ * publishing. The timeout stays below the connection's `retry_after`, so a slow
+ * render is never reserved twice.
  */
 class GenerateInsightsPdf implements ShouldQueue
 {
     use Queueable;
 
+    public const string QUEUE = 'insights-pdf';
+
+    private const int MAX_SECONDS = 240;
+
+    private const int RETRY_AFTER_HEADROOM_SECONDS = 30;
+
     public int $tries = 1;
 
-    public int $timeout = 240;
+    public int $timeout;
 
     /**
      * @param  array<string, mixed>  $query  The filters of the page the export was asked from.
@@ -40,7 +50,19 @@ class GenerateInsightsPdf implements ShouldQueue
         public array $query,
         public array $options,
     ) {
-        $this->onQueue('insights-pdf');
+        $this->onQueue(self::QUEUE);
+        $this->timeout = self::timeoutSeconds();
+    }
+
+    public static function timeoutSeconds(): int
+    {
+        $retryAfter = config('queue.connections.'.config('queue.default').'.retry_after');
+
+        if (! is_numeric($retryAfter)) {
+            return self::MAX_SECONDS;
+        }
+
+        return max(1, min(self::MAX_SECONDS, (int) $retryAfter - self::RETRY_AFTER_HEADROOM_SECONDS));
     }
 
     public function handle(BuildInsightsPdf $pdf): void

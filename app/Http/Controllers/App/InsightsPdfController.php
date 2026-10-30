@@ -40,7 +40,7 @@ class InsightsPdfController extends Controller
             $request->boolean('remove_logo'),
         );
 
-        return (new InsightsPdfExportResource($id, InsightsPdfExports::find($id)))
+        return (new InsightsPdfExportResource($id, InsightsPdfExports::find($id), $workspace))
             ->response()
             ->setStatusCode(Response::HTTP_ACCEPTED);
     }
@@ -49,7 +49,7 @@ class InsightsPdfController extends Controller
     {
         $entry = InsightsPdfExports::findFor($request->user(), $export);
 
-        abort_if($entry === null, Response::HTTP_NOT_FOUND);
+        abort_if(blank($entry), Response::HTTP_NOT_FOUND);
 
         return new InsightsPdfExportResource($export, $entry);
     }

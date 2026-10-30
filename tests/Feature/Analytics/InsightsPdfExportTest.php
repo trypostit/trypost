@@ -490,3 +490,51 @@ test('a channel post table cut at the top posts says how many were left out', fu
         __('analytics.insights.export.pdf.posts_note', ['shown' => ListChannelPublicationPerformance::TOP_POSTS, 'total' => $total]),
     ]);
 });
+
+test('the channel sort orders accented names like the page, not by bytes', function () {
+    AnalyticsPublication::query()->where('social_account_id', $this->instagram->id)->update(['account_username' => 'zeta']);
+    $facebook = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::Facebook]);
+    AnalyticsPublication::factory()->create([
+        'account_username' => 'élan',
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $facebook->id,
+        'social_account_key' => $facebook->id,
+        'platform' => Platform::Facebook,
+        'network' => Platform::Facebook->network(),
+        'provider_published_at' => CarbonImmutable::parse('2026-09-16 12:00:00', 'UTC'),
+    ]);
+
+    $data = app(BuildInsightsPdf::class)->forWorkspace(
+        $this->workspace,
+        $this->user,
+        ['range' => 'custom', 'start' => '2026-09-01', 'end' => '2026-09-30', 'sort' => 'channel', 'direction' => 'asc'],
+        ['name' => null, 'sections' => ['performance'], 'columns' => ['reactions']],
+    );
+
+    expect(array_map(fn (array $row): string => data_get($row, 'account.network'), data_get($data, 'performance.rows')))
+        ->toBe([Platform::Facebook->label(), Platform::Instagram->label()]);
+});
+
+test('starting an export answers with the cover logo it saved', function () {
+    $this->actingAs($this->user)
+        ->post(route('app.insights.pdf.store'), [
+            'range' => 'custom',
+            'start' => '2026-09-01',
+            'end' => '2026-09-30',
+            'sections' => ['summary'],
+            'logo' => UploadedFile::fake()->image('brand.png', 200, 200),
+        ], ['Accept' => 'application/json'])
+        ->assertStatus(Response::HTTP_ACCEPTED)
+        ->assertJsonPath('report_logo_url', $this->workspace->fresh()->getFirstMediaUrl('report_logo'));
+
+    $this->actingAs($this->user)
+        ->post(route('app.insights.pdf.store'), [
+            'range' => 'custom',
+            'start' => '2026-09-01',
+            'end' => '2026-09-30',
+            'sections' => ['summary'],
+            'remove_logo' => true,
+        ], ['Accept' => 'application/json'])
+        ->assertStatus(Response::HTTP_ACCEPTED)
+        ->assertJsonPath('report_logo_url', null);
+});

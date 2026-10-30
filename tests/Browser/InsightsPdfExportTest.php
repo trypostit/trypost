@@ -5,10 +5,12 @@ declare(strict_types=1);
 use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
+use App\Jobs\Analytics\GenerateInsightsPdf;
 use App\Models\AnalyticsAccountDailySnapshot;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Support\Analytics\InsightsPdfExports;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -112,4 +114,40 @@ test('a channel PDF offers the channel page sections and starts the export', fun
 
     Pdf::assertViewHas('scope', 'channel');
     $page->assertNoJavaScriptErrors();
+});
+
+test('closing the dialog while the PDF is prepared keeps the export going', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class, GenerateInsightsPdf::class]);
+    $this->actingAs(insightsPdfBrowserUser());
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@insights-export');
+    $page->click('@insights-export');
+    waitFor($page, '@insights-export-pdf');
+    $page->click('@insights-export-pdf');
+    waitFor($page, '@insights-pdf-dialog');
+    $page->click('@insights-pdf-create');
+    waitFor($page, '@insights-pdf-preparing');
+
+    $page->click('@insights-pdf-close');
+    waitForGone($page, '@insights-pdf-dialog');
+    $page->click('@insights-export');
+    waitFor($page, '@insights-export-pdf');
+    $page->click('@insights-export-pdf');
+    waitFor($page, '@insights-pdf-preparing');
+    $page->assertPresent('@insights-pdf-preparing')
+        ->assertMissing('@insights-pdf-create');
+
+    $exportId = '';
+    Queue::assertPushed(GenerateInsightsPdf::class, function (GenerateInsightsPdf $job) use (&$exportId): bool {
+        $exportId = $job->exportId;
+
+        return true;
+    });
+    Storage::put(InsightsPdfExports::path($exportId), '%PDF-1.4');
+    InsightsPdfExports::markReady($exportId);
+
+    waitForGone($page, '@insights-pdf-dialog');
+    $page->assertMissing('@insights-pdf-dialog')
+        ->assertNoJavaScriptErrors();
 });

@@ -288,7 +288,7 @@ const createPost = async (): Promise<void> => {
                             type="button"
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
-                            :aria-label="swatch.key"
+                            :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
                             class="grid size-6 cursor-pointer place-items-center rounded-full border border-foreground/20 ring-offset-2 ring-offset-background transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                             :class="tint.key === swatch.key ? 'ring-2 ring-foreground' : ''"
                             :style="{ backgroundColor: swatch.ground }"

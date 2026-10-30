@@ -56,6 +56,7 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     $page->click('@share-followers');
     waitFor($page, '@share-chart-preview');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
 
     $page->click('@share-chart-color-green')
         ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true')
@@ -76,6 +77,7 @@ test('the summary share card holds every number of the Summary', function () {
     waitFor($page, '@share-summary');
     $page->click('@share-summary');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
 
     $page->assertMissing('@share-chart-metric')
         ->assertVisible('@share-chart-download')
@@ -92,6 +94,7 @@ test('the channel metrics card shares the channel’s series', function () {
     $page->click('@share-channel-metrics');
     waitFor($page, '@share-chart-dialog');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
 
     $page->assertVisible('@share-chart-post')->assertNoJavaScriptErrors();
 });
