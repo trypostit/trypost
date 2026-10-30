@@ -1,4 +1,5 @@
 import type { MediaItem } from '@/types/media';
+import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
 
 export interface Comparison {
@@ -14,6 +15,7 @@ export interface AccountIdentityData {
     username: string | null;
     avatar_url: string | null;
     status?: SocialAccountStatusValue | null;
+    verified_badge?: VerifiedBadge | null;
 }
 
 export interface FollowerAccount extends AccountIdentityData {
@@ -45,6 +47,7 @@ export interface TopPost {
     username: string | null;
     avatar_url: string | null;
     status?: SocialAccountStatusValue | null;
+    verified_badge?: VerifiedBadge | null;
     origin: string;
     content_type: string;
     availability: string;

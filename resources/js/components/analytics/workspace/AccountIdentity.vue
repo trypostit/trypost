@@ -2,7 +2,6 @@
 import { computed } from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import { useVerifiedBadges } from '@/composables/analytics/useVerifiedBadges';
 import {
     getPlatformLabel,
     getPlatformLogo,
@@ -17,7 +16,6 @@ const props = defineProps<{
     /** The name on top and the @handle below it. */
     withName?: boolean;
 }>();
-const verifiedBadge = useVerifiedBadges();
 const label = computed(() =>
     props.account.username
         ? `@${props.account.username}`
@@ -55,7 +53,7 @@ const handle = computed(() =>
             :size="avatarSize ?? 32"
             :status="account.status"
             :account-id="account.social_account_key"
-            :verified="verifiedBadge(account.social_account_key)"
+            :verified="account.verified_badge"
         />
         <img
             v-else

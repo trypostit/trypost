@@ -15,7 +15,6 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
-import { useVerifiedBadges } from '@/composables/analytics/useVerifiedBadges';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { accountColor } from '@/lib/analyticsColors';
 import type { AccountIdentityData } from '@/types/analytics';
@@ -109,7 +108,6 @@ const AVATAR_SIZE = 24;
 const AVATAR_OVERHANG = 4;
 const AVATAR_GAP = 8;
 const appContext = getCurrentInstance()?.appContext ?? null;
-const verifiedBadge = useVerifiedBadges();
 const avatarHosts: HTMLElement[] = [];
 
 const accountLabel = (account: AccountIdentityData): string =>
@@ -145,7 +143,7 @@ const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
         ring: 'card',
         status: account.status ?? null,
         accountId: account.social_account_key,
-        verified: verifiedBadge(account.social_account_key),
+        verified: account.verified_badge ?? null,
         reserveSpace: false,
     });
     avatar.appContext = appContext;
