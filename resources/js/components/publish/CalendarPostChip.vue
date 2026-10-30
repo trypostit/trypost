@@ -236,7 +236,6 @@ const chipClass = computed(() => [
                 :tab="tab"
                 :display-timezone="timezone"
                 :movable="false"
-                popover
             />
         </div>
     </div>

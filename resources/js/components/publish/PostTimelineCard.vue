@@ -95,7 +95,6 @@ const props = withDefaults(
         draggable?: boolean;
         gutterHandle?: boolean;
         movable?: boolean;
-        popover?: boolean;
     }>(),
     {
         canMoveUp: false,
@@ -103,7 +102,6 @@ const props = withDefaults(
         draggable: false,
         gutterHandle: false,
         movable: true,
-        popover: false,
     },
 );
 
@@ -168,7 +166,7 @@ const scheduleMode = computed(() => {
         : null;
 });
 
-const showNotes = computed(() => !props.popover && !isPublishing.value);
+const showNotes = computed(() => !isPublishing.value);
 const notesOpen = ref(openPostNotesId.value === props.post.id);
 const noteCount = ref(props.post.notes_count);
 
@@ -392,20 +390,10 @@ defineExpose({ openDetails });
     <div
         :data-testid="`post-card-${post.id}`"
         :data-post-id="post.id"
-        class="group/post relative"
-        :class="
-            popover
-                ? 'flex flex-col'
-                : 'grid grid-cols-1 gap-y-2 md:grid-cols-[71px_minmax(0,1fr)] md:gap-x-8'
-        "
+        class="group/post relative grid grid-cols-1 gap-y-2 md:grid-cols-[71px_minmax(0,1fr)] md:gap-x-8"
     >
         <div
-            class="flex flex-wrap items-center gap-2"
-            :class="
-                popover
-                    ? 'border-b border-border-strong px-4 py-3'
-                    : 'md:flex-col md:flex-nowrap md:items-start'
-            "
+            class="flex flex-wrap items-center gap-2 md:flex-col md:flex-nowrap md:items-start"
         >
             <span class="inline-flex items-center gap-1">
                 <IconGripVertical
@@ -421,16 +409,11 @@ defineExpose({ openDetails });
                 />
                 <time
                     v-if="time"
-                    class="text-sm text-foreground"
-                    :class="popover ? 'font-emphasis' : 'font-medium'"
+                    class="text-sm font-medium text-foreground"
                     :datetime="time"
                     :data-testid="`post-time-${post.id}`"
                 >
-                    {{
-                        popover
-                            ? date.formatDateTimeInTimezone(time, timezone)
-                            : formatTime(time)
-                    }}
+                    {{ formatTime(time) }}
                 </time>
                 <span v-else class="text-sm font-medium text-muted-foreground">
                     {{ $t('posts.publish.no_time') }}
@@ -485,26 +468,11 @@ defineExpose({ openDetails });
                 />
                 {{ $t(`posts.status.${post.status}`) }}
             </Badge>
-            <Button
-                v-if="popover && canCreatePost"
-                variant="ghost"
-                size="icon"
-                class="-my-1 ms-auto -me-2"
-                :aria-label="$t('posts.show.title')"
-                :data-testid="`post-details-expand-${post.id}`"
-                @click="openDetails"
-            >
-                <IconArrowsMaximize class="size-4" />
-            </Button>
         </div>
 
         <Collapsible v-model:open="notesOpen" as-child>
             <article
-                class="min-w-0 overflow-hidden"
-                :class="{
-                    'rounded-xl border bg-card': !popover,
-                    'border-border-strong': !popover,
-                }"
+                class="min-w-0 overflow-hidden rounded-xl border border-border-strong bg-card"
             >
                 <p
                     v-if="recurrence && post.scheduled_at"
@@ -521,7 +489,7 @@ defineExpose({ openDetails });
                     />
                 </p>
                 <div
-                    v-if="isPublishing && !popover"
+                    v-if="isPublishing"
                     class="relative flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-border-strong bg-secondary px-4 py-2.5 text-sm text-foreground"
                     role="status"
                     :data-testid="`post-publishing-${post.id}`"
@@ -578,7 +546,7 @@ defineExpose({ openDetails });
                 </div>
                 <div
                     class="relative flex gap-4 p-4 md:gap-6"
-                    :class="{ 'opacity-70': isPublishing && !popover }"
+                    :class="{ 'opacity-70': isPublishing }"
                 >
                     <div
                         :draggable="draggable ? 'false' : undefined"
@@ -610,12 +578,6 @@ defineExpose({ openDetails });
                                         getPlatformLabel(platform ?? '')
                                     }}
                                 </p>
-                                <p
-                                    v-if="popover && account?.handle_label"
-                                    class="truncate text-xs text-muted-foreground"
-                                >
-                                    {{ account.handle_label }}
-                                </p>
                             </div>
                             <Badge
                                 v-if="contentTypeKey"
@@ -637,7 +599,6 @@ defineExpose({ openDetails });
                             class="line-clamp-4 text-sm whitespace-pre-line text-foreground"
                             :class="{
                                 'text-muted-foreground': !preview,
-                                'leading-relaxed': popover,
                             }"
                         >
                             {{ preview || $t('calendar.no_content') }}
@@ -648,7 +609,7 @@ defineExpose({ openDetails });
                         class="relative z-10 grid w-24 shrink-0 content-start gap-2"
                         :class="[
                             thumbnails.length > 1 ? 'grid-cols-2' : '',
-                            popover ? 'w-36' : 'md:w-[180px]',
+                            'md:w-[180px]',
                         ]"
                     >
                         <button
@@ -729,12 +690,10 @@ defineExpose({ openDetails });
                 />
 
                 <div
-                    class="m-2 flex min-h-14 flex-wrap items-center gap-x-4 gap-y-2 rounded-xl bg-muted p-3 [&_[data-variant=ghost]:hover]:bg-secondary"
-                    :class="popover ? 'justify-end' : 'justify-between'"
+                    class="m-2 flex min-h-14 flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-xl bg-muted p-3 [&_[data-variant=ghost]:hover]:bg-secondary"
                     :data-testid="`post-footer-${post.id}`"
                 >
                     <p
-                        v-if="!popover"
                         class="min-w-0 truncate text-sm text-foreground"
                         :class="{ 'max-sm:hidden': post.origin === PostOrigin.Network }"
                     >

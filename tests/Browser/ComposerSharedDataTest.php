@@ -103,8 +103,8 @@ test('editing from the calendar opens the post with its board', function () {
     $page = visit(route('app.calendar', ['view' => 'month', 'month' => $post->scheduled_at->format('Y-m-d')]));
     waitForComposerSharedDataTestId($page, "calendar-post-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitForComposerSharedDataTestId($page, "post-edit-{$post->id}");
-    $page->click("@post-edit-{$post->id}");
+    waitForComposerSharedDataTestId($page, "post-details-edit-{$post->id}");
+    $page->click("@post-details-edit-{$post->id}");
     waitForComposerSharedDataTestId($page, 'pinterest-board-selected');
 
     $page->assertSeeIn('@pinterest-board-selected', 'Live board')

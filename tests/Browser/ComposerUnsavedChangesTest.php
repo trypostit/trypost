@@ -175,12 +175,13 @@ test('after saving a post edited from the calendar, a channel drafts tab or the 
     $before = (string) parse_url(route('app.settings.preferences'), PHP_URL_PATH);
 
     $page = visit(route('app.settings.preferences'))->resize(1280, 900)->navigate($list);
+    $edit = $from === 'calendar' ? "@post-details-edit-{$post->id}" : "@post-edit-{$post->id}";
     if ($from === 'calendar') {
         waitFor($page, "@calendar-post-{$post->id}");
         $page->click("@calendar-post-{$post->id}");
     }
-    waitFor($page, "@post-edit-{$post->id}");
-    $page->click("@post-edit-{$post->id}");
+    waitFor($page, $edit);
+    $page->click($edit);
     waitFor($page, '@instagram-share-to-feed');
 
     $page->click('@instagram-share-to-feed')

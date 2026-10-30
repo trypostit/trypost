@@ -475,8 +475,7 @@ test('clicking a scheduled post chip in the month view opens its details', funct
     $page->assertVisible("@post-details-{$post->id}")
         ->assertSeeIn("@post-details-{$post->id}", 'Details caption')
         ->assertPresent("@post-details-edit-{$post->id}")
-        ->assertPresent("@post-details-publish-now-{$post->id}")
-        ->assertMissing("@calendar-post-popover-{$post->id}");
+        ->assertPresent("@post-details-publish-now-{$post->id}");
 
     $page->keys("@post-details-{$post->id}", 'Escape');
     waitForGone($page, "@post-details-{$post->id}");
@@ -716,7 +715,6 @@ test('on a phone, tapping a post in the month opens its details directly', funct
     waitFor($page, "@post-details-{$post->id}");
 
     $page->assertVisible("@post-details-{$post->id}")
-        ->assertMissing("@calendar-post-popover-{$post->id}")
         ->assertNoJavaScriptErrors();
 });
 
