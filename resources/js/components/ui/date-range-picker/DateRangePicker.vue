@@ -8,7 +8,8 @@ import {
 import { IconCalendar } from "@tabler/icons-vue"
 import { trans } from "laravel-vue-i18n"
 import { computed, nextTick, ref, watch } from "vue"
-import { useWindowSize } from "@vueuse/core"
+import { createReusableTemplate, useWindowSize } from "@vueuse/core"
+import BottomSheet from "@/components/BottomSheet.vue"
 import { Button } from "@/components/ui/button"
 import {
   Popover,
@@ -16,18 +17,28 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { RangeCalendar } from "@/components/ui/range-calendar"
+import { useBelowBreakpoint } from "@/composables/useBreakpoint"
 import { useCalendarLocale } from "@/composables/useCalendarLocale"
 import { cn } from "@/lib/utils"
 import dayjs from "@/dayjs"
 import date from "@/date"
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   modelValue: { start: Date, end: Date }
   triggerClass?: string
   minDate?: Date
   maxDate?: Date
   disabled?: boolean
-}>()
+  align?: "start" | "center" | "end"
+  sheetBelowSm?: boolean
+}>(), {
+  align: "end",
+  sheetBelowSm: false,
+})
+
+const [DefinePanel, ReusePanel] = createReusableTemplate()
+const belowSm = useBelowBreakpoint("sm")
+const asSheet = computed(() => props.sheetBelowSm && belowSm.value)
 
 const emit = defineEmits<{
   'update:modelValue': [value: { start: Date, end: Date }]
@@ -139,6 +150,40 @@ watch(
 </script>
 
 <template>
+  <DefinePanel>
+      <div class="flex flex-col sm:flex-row">
+        <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
+          <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
+            <div v-if="groupIndex > 0" class="my-1 border-t border-border" />
+            <div class="space-y-0.5 px-2">
+              <Button
+                v-for="preset in group"
+                :key="preset.key"
+                :data-testid="`date-range-preset-${preset.key}`"
+                variant="ghost"
+                size="sm"
+                class="h-7 w-full justify-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                @click="applyPreset(preset)"
+              >
+                {{ preset.label }}
+              </Button>
+            </div>
+          </template>
+        </div>
+
+        <div class="flex shrink-0 justify-center">
+          <RangeCalendar
+            v-model="value"
+            initial-focus
+            :locale="calendarLocale"
+            :number-of-months="numberOfMonths"
+            :min-value="minimum"
+            :max-value="maximum"
+          />
+        </div>
+      </div>
+  </DefinePanel>
+
   <Popover v-model:open="isOpen">
     <PopoverTrigger as-child>
       <slot name="trigger">
@@ -168,38 +213,17 @@ watch(
         </Button>
       </slot>
     </PopoverTrigger>
-    <PopoverContent class="w-auto p-0" align="end">
-      <div class="flex flex-col sm:flex-row">
-        <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
-          <template v-for="(group, groupIndex) in presetGroups" :key="groupIndex">
-            <div v-if="groupIndex > 0" class="my-1 border-t border-border" />
-            <div class="space-y-0.5 px-2">
-              <Button
-                v-for="preset in group"
-                :key="preset.key"
-                :data-testid="`date-range-preset-${preset.key}`"
-                variant="ghost"
-                size="sm"
-                class="h-7 w-full justify-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                @click="applyPreset(preset)"
-              >
-                {{ preset.label }}
-              </Button>
-            </div>
-          </template>
-        </div>
-
-        <div class="shrink-0">
-          <RangeCalendar
-            v-model="value"
-            initial-focus
-            :locale="calendarLocale"
-            :number-of-months="numberOfMonths"
-            :min-value="minimum"
-            :max-value="maximum"
-          />
-        </div>
-      </div>
+    <PopoverContent v-if="!asSheet" class="w-auto p-0" :align="align">
+      <ReusePanel />
     </PopoverContent>
   </Popover>
+  <BottomSheet
+    v-if="asSheet"
+    v-model:open="isOpen"
+    :title="$t('common.date_range_picker.placeholder')"
+    test-id="date-range-picker-sheet"
+    content-class="pb-[max(1rem,env(safe-area-inset-bottom))]"
+  >
+    <ReusePanel />
+  </BottomSheet>
 </template>

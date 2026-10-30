@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { IconArrowUpRight } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
-import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
+import AppLogo from '@/components/AppLogo.vue';
+import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PublicationDetailsDialog from '@/components/publish/PublicationDetailsDialog.vue';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
@@ -13,7 +12,9 @@ import { isImage, isVideo } from '@/lib/mediaType';
 import { formatNumberCompact } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
+import { Platform } from '@/types/platform';
 
+import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 
@@ -74,6 +75,7 @@ const thumbnailFor = (post: TopPost): string | null => {
         :info="$t('analytics.insights.about.top_posts')"
         info-testid="analytics-top-posts-about"
         :range="range"
+        flush
     >
         <template #actions>
             <AnalyticsModeToggle
@@ -83,131 +85,117 @@ const thumbnailFor = (post: TopPost): string | null => {
             />
         </template>
 
-        <div
-            v-if="posts.length === 0"
-            data-testid="analytics-top-posts-empty"
-            class="rounded-lg border border-dashed border-border-strong bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-        >
-            {{
-                $t(
-                    filtered
-                        ? 'analytics.dashboard.filtered_no_posts'
-                        : 'analytics.dashboard.no_ranked_posts',
-                )
-            }}
+        <div v-if="posts.length === 0" class="px-4 pb-4 sm:px-5 sm:pb-5">
+            <div
+                data-testid="analytics-top-posts-empty"
+                class="rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground"
+            >
+                {{
+                    $t(
+                        filtered
+                            ? 'analytics.dashboard.filtered_no_posts'
+                            : 'analytics.dashboard.no_ranked_posts',
+                    )
+                }}
+            </div>
         </div>
         <div
             v-else
-            class="grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
+            class="grid border-t border-border sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
         >
             <article
                 v-for="(post, index) in posts"
                 :key="post.id"
-                class="relative flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-secondary transition-control has-[a:hover]:border-border-strong dark:bg-muted"
+                class="group relative flex min-w-0 flex-col gap-3 p-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] transition-colors duration-150 has-[button:hover]:bg-muted/60 has-[button:focus-visible]:bg-muted/60 sm:px-5"
                 data-testid="analytics-top-post"
             >
-                <div class="flex h-8 items-center justify-between gap-2 px-3">
-                    <span class="text-xs text-foreground">#{{ index + 1 }}</span>
-                    <span class="text-xs tabular-nums">
-                        <strong class="font-emphasis text-foreground">{{
-                            formatNumberCompact(post[metric] ?? 0)
-                        }}</strong>
-                        {{ ' ' }}
-                        <span class="font-medium text-muted-foreground">{{
+                <div class="mb-1 flex items-stretch justify-between gap-2">
+                    <div class="flex min-w-0 flex-col">
+                        <span
+                            class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
+                            >{{ formatNumberCompact(post[metric] ?? 0) }}</span
+                        >
+                        <span class="text-xs leading-4 text-muted-foreground">{{
                             $t(`analytics.dashboard.${metric}`)
                         }}</span>
-                    </span>
+                    </div>
+                    <div class="flex shrink-0 flex-col items-end justify-between gap-1">
+                        <span
+                            class="inline-flex h-6 min-w-7 items-center justify-center rounded-md bg-primary-selected px-1.5 text-xs font-semibold text-primary-text tabular-nums"
+                            :data-testid="`analytics-top-post-rank-${post.id}`"
+                            >#{{ index + 1 }}</span
+                        >
+                        <span
+                            class="text-xs leading-4 whitespace-nowrap text-muted-foreground"
+                            :data-testid="`analytics-top-post-date-${post.id}`"
+                            >{{ date.formatDayMonthYear(post.published_at) }}</span
+                        >
+                    </div>
+                </div>
+                <AccountIdentity
+                    :account="post"
+                    with-avatar
+                    with-name
+                    data-testid="analytics-top-post-channel"
+                />
+                <div class="flex min-h-[54px] gap-3">
+                    <p
+                        class="line-clamp-3 min-w-0 flex-1 text-sm leading-[18px] text-foreground"
+                    >
+                        {{ post.excerpt || $t('analytics.dashboard.no_excerpt') }}
+                    </p>
+                    <video
+                        v-if="post.media && isVideo(post.media)"
+                        :src="videoFrameUrl(post.media)"
+                        class="size-12 shrink-0 rounded-lg object-cover"
+                        muted
+                        playsinline
+                        preload="metadata"
+                        aria-hidden="true"
+                        :data-testid="`analytics-top-post-video-${post.id}`"
+                    />
+                    <img
+                        v-else-if="thumbnailFor(post)"
+                        :src="thumbnailFor(post)!"
+                        alt=""
+                        loading="lazy"
+                        class="size-12 shrink-0 rounded-lg object-cover"
+                    />
                 </div>
                 <div
-                    class="flex flex-1 flex-col gap-2 rounded-t-lg border-t border-border bg-card p-3"
+                    class="-mx-4 mt-auto -mb-4 flex min-h-11 items-center justify-center border-t border-border px-4 text-xs text-muted-foreground sm:-mx-5 sm:px-5"
                 >
-                    <div
-                        class="flex min-h-6 min-w-0 items-center justify-between gap-2"
+                    <span
+                        class="inline-flex min-w-0 items-center gap-1"
+                        :data-testid="`analytics-top-post-published-via-${post.id}`"
                     >
-                        <span
-                            class="inline-flex min-w-0 items-center gap-1 text-xs text-foreground"
-                            :title="
-                                post.username
-                                    ? `@${post.username}`
-                                    : (post.name ?? undefined)
-                            "
-                        >
-                            <ChannelAvatar
-                                :platform="post.platform"
-                                :src="post.avatar_url"
-                                :name="
-                                    post.username
-                                        ? `@${post.username}`
-                                        : (post.name ??
-                                          getPlatformLabel(post.platform))
-                                "
-                                :size="24"
-                                ring="card"
-                                :status="post.status"
-                                :account-id="post.social_account_key"
-                                data-testid="analytics-top-post-channel"
-                            />
-                            <span class="truncate">{{
-                                date.formatDateShort(post.published_at)
-                            }}</span>
-                        </span>
-                        <PublicationTypeBadge
-                            :platform="post.platform"
-                            :content-type="post.content_type"
-                            :test-id="`analytics-top-post-type-${post.id}`"
-                        />
-                    </div>
-                    <div class="flex min-h-[54px] gap-3">
-                        <p
-                            class="line-clamp-3 min-w-0 flex-1 text-xs text-foreground"
-                        >
-                            {{
-                                post.excerpt ||
-                                $t('analytics.dashboard.no_excerpt')
-                            }}
-                        </p>
-                        <video
-                            v-if="post.media && isVideo(post.media)"
-                            :src="videoFrameUrl(post.media)"
-                            class="size-11 shrink-0 rounded-md object-cover"
-                            muted
-                            playsinline
-                            preload="metadata"
-                            aria-hidden="true"
-                            :data-testid="`analytics-top-post-video-${post.id}`"
-                        />
-                        <img
-                            v-else-if="thumbnailFor(post)"
-                            :src="thumbnailFor(post)!"
-                            alt=""
-                            loading="lazy"
-                            class="size-11 shrink-0 rounded-md object-cover"
-                        />
-                    </div>
-                    <div
-                        class="mt-auto flex min-h-8 items-center justify-between gap-2 pt-2 text-xs text-muted-foreground"
-                    >
-                        <span class="line-clamp-1">{{
-                            post.origin === 'trypost'
-                                ? $t(
-                                      'analytics.dashboard.published_via_trypost',
-                                  )
-                                : $t('analytics.dashboard.published_on_network')
+                        <span class="truncate">{{
+                            $t('analytics.dashboard.published_via')
                         }}</span>
-                        <button
-                            type="button"
-                            data-testid="analytics-top-post-link"
-                            class="inline-flex h-6 shrink-0 items-center gap-0.5 rounded-md px-1.5 font-medium text-foreground transition-control after:absolute after:inset-0 hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
-                            @click="openDetails(post)"
-                        >
-                            {{ $t('analytics.detail.details') }}
-                            <IconArrowUpRight
-                                class="size-3.5"
-                                aria-hidden="true"
+                        <template v-if="post.origin === 'trypost'">
+                            <AppLogo variant="mark" class="text-[13px]" />
+                            <span class="shrink-0">TryPost</span>
+                        </template>
+                        <template v-else>
+                            <PlatformBrandIcon
+                                :platform="post.platform"
+                                class="size-3.5 shrink-0"
                             />
-                        </button>
-                    </div>
+                            <span
+                                v-if="post.platform !== Platform.X"
+                                class="shrink-0"
+                                >{{ getPlatformLabel(post.platform) }}</span
+                            >
+                        </template>
+                    </span>
                 </div>
+                <button
+                    type="button"
+                    data-testid="analytics-top-post-link"
+                    class="absolute inset-0 cursor-pointer focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+                    :aria-label="$t('analytics.detail.details')"
+                    @click="openDetails(post)"
+                />
             </article>
         </div>
         <PublicationDetailsDialog

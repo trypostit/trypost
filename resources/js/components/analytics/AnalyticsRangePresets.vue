@@ -108,6 +108,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     :model-value="selectedRange"
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
                     :max-date="bounds.max ? dayjs(bounds.max).toDate() : undefined"
+                    sheet-below-sm
                     @update:model-value="changeRange"
                 >
                     <template #trigger>
@@ -145,6 +146,7 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     :model-value="selectedRange"
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
                     :max-date="bounds.max ? dayjs(bounds.max).toDate() : undefined"
+                    align="start"
                     @update:model-value="changeRange"
                 >
                     <template #trigger>

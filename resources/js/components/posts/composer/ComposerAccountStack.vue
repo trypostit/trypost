@@ -18,6 +18,7 @@ defineProps<{
             :src="account.avatar_url"
             :name="account.display_name || account.username"
             :size="24"
+            shape="round"
             :reserve-space="false"
             avatar-class="border border-background"
         />

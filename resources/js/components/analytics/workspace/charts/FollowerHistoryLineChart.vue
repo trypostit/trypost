@@ -72,6 +72,11 @@ const tooltipTemplate = computed(() =>
         labelFormatter: formatDate,
     }),
 );
+const lineColor = (index: number): string =>
+    props.colors[props.accounts[index]?.social_account_key ?? ''] ??
+    accountColor(index);
+const crosshairColor = (_point: ChartPoint, index: number): string =>
+    lineColor(Math.floor(index / 2));
 </script>
 
 <template>
@@ -87,7 +92,7 @@ const tooltipTemplate = computed(() =>
         >
             <VisXYContainer
                 :data="chartData"
-                :padding="{ top: 16, right: 12, bottom: 0, left: 0 }"
+                :padding="{ top: 16, right: 12, bottom: 8, left: 0 }"
             >
                 <template
                     v-for="(account, index) in accounts"
@@ -96,21 +101,15 @@ const tooltipTemplate = computed(() =>
                     <VisLine
                         :x="xAccessor"
                         :y="valueAccessor(index)"
-                        :color="
-                            colors[account.social_account_key] ??
-                            accountColor(index)
-                        "
-                        :line-width="2.5"
+                        :color="lineColor(index)"
+                        :line-width="2"
                         curve-type="monotoneX"
                     />
                     <VisScatter
                         :x="xAccessor"
                         :y="valueAccessor(index)"
-                        :color="
-                            colors[account.social_account_key] ??
-                            accountColor(index)
-                        "
-                        :size="6"
+                        :color="lineColor(index)"
+                        :size="4"
                     />
                 </template>
                 <VisAxis
@@ -131,8 +130,10 @@ const tooltipTemplate = computed(() =>
                 />
                 <ChartCrosshair
                     :template="tooltipTemplate"
-                    color="var(--foreground)"
-                    :circle-radius="4"
+                    :color="crosshairColor"
+                    :circleRadius="5"
+                    strokeColor="var(--card)"
+                    :strokeWidth="2"
                 />
                 <ChartTooltip />
             </VisXYContainer>

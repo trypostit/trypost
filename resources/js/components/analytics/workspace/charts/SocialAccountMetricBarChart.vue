@@ -15,6 +15,7 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
+import { useVerifiedBadges } from '@/composables/analytics/useVerifiedBadges';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { accountColor } from '@/lib/analyticsColors';
 import type { AccountIdentityData } from '@/types/analytics';
@@ -108,6 +109,7 @@ const AVATAR_SIZE = 24;
 const AVATAR_OVERHANG = 4;
 const AVATAR_GAP = 8;
 const appContext = getCurrentInstance()?.appContext ?? null;
+const verifiedBadge = useVerifiedBadges();
 const avatarHosts: HTMLElement[] = [];
 
 const accountLabel = (account: AccountIdentityData): string =>
@@ -143,6 +145,7 @@ const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
         ring: 'card',
         status: account.status ?? null,
         accountId: account.social_account_key,
+        verified: verifiedBadge(account.social_account_key),
         reserveSpace: false,
     });
     avatar.appContext = appContext;
@@ -196,9 +199,9 @@ const barAttributes = {
                 :y="split ? splitAccessors : valueAccessor"
                 :color="colorAccessor"
                 orientation="horizontal"
-                :rounded-corners="2"
-                :bar-padding="0.27"
-                :bar-max-width="27"
+                :rounded-corners="4"
+                :bar-padding="0.4"
+                :bar-max-width="20"
                 :attributes="barAttributes"
             />
             <VisAxis
@@ -206,7 +209,7 @@ const barAttributes = {
                 :tick-format="formatCountTick"
                 :num-ticks="5"
                 :label="valueLabel"
-                label-font-size="12px"
+                label-font-size="11px"
                 label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"

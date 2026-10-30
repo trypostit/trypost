@@ -186,7 +186,7 @@ const svgDefs = computed(() =>
         .filter((spec) => spec.type === 'bar')
         .map(
             (spec) =>
-                `<pattern id="insights-hatch-${spec.metric}" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect width="5" height="5" fill="${spec.color}" fill-opacity="0.12"/><rect width="2" height="5" fill="${spec.color}"/></pattern>`,
+                `<pattern id="insights-hatch-${spec.metric}" patternUnits="userSpaceOnUse" width="5" height="5" patternTransform="rotate(45)"><rect width="5" height="5" style="fill: ${spec.color}" fill-opacity="0.12"/><rect width="2" height="5" style="fill: ${spec.color}"/></pattern>`,
         )
         .join(''),
 );
@@ -294,7 +294,7 @@ const numTicks = computed(() =>
                     :bar-padding="0.1"
                     :group-max-width="28"
                     :bar-min-height="0"
-                    :rounded-corners="2"
+                    :rounded-corners="4"
                     :attributes="groupedBarAttributes"
                 />
                 <VisStackedBar
@@ -308,8 +308,8 @@ const numTicks = computed(() =>
                     "
                     :data-step="1"
                     :bar-padding="0.35"
-                    :bar-max-width="18"
-                    :rounded-corners="2"
+                    :bar-max-width="16"
+                    :rounded-corners="4"
                     :attributes="barAttributes"
                 />
                 <VisLine
@@ -344,7 +344,9 @@ const numTicks = computed(() =>
             <ChartCrosshair
                 :template="tooltipTemplate"
                 color="var(--foreground)"
-                :circle-radius="3"
+                :circleRadius="5"
+                strokeColor="var(--card)"
+                :strokeWidth="2"
             />
             <ChartTooltip />
         </VisXYContainer>

@@ -625,6 +625,62 @@ test('on a phone the workspace insights range presets collapse into a dropdown',
         ->assertNoJavaScriptErrors();
 });
 
+test('the custom range calendar opens under Custom on desktop and as a bottom sheet on a phone', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = workspaceInsightsBrowserUser();
+    $account = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id]);
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $user->current_workspace_id,
+        'social_account_id' => $account->id,
+        'social_account_key' => $account->id,
+        'platform' => $account->platform,
+        'network' => $account->platform->network(),
+        'platform_user_id' => $account->platform_user_id,
+        'date' => now('UTC')->subDays(40)->toDateString(),
+        'followers_count' => 100,
+    ]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'))->resize(1440, 900);
+    waitFor($page, '@insights-range-custom');
+    $page->click('@insights-range-custom');
+    waitFor($page, '[data-slot="popover-content"]');
+
+    $alignment = $page->script(<<<'JS'
+        (() => {
+            const custom = document.querySelector('[data-testid="insights-range-custom"]').getBoundingClientRect();
+            const calendar = document.querySelector('[data-slot="popover-content"]').getBoundingClientRect();
+
+            return { offset: Math.abs(calendar.left - custom.left), below: calendar.top >= custom.bottom };
+        })()
+    JS);
+
+    expect($alignment['offset'])->toBeLessThanOrEqual(2)
+        ->and($alignment['below'])->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+
+    $phone = visit(route('app.insights'))->resize(390, 844);
+    waitFor($phone, '@insights-range-mobile-custom');
+    $phone->click('@insights-range-mobile-custom');
+    waitForState($phone, '@date-range-picker-sheet', 'element.getBoundingClientRect().bottom >= window.innerHeight - 1');
+
+    $sheet = $phone->script(<<<'JS'
+        (() => {
+            const sheet = document.querySelector('[data-testid="date-range-picker-sheet"]').getBoundingClientRect();
+
+            return {
+                fullWidth: Math.round(sheet.left) === 0 && Math.round(sheet.right) === window.innerWidth,
+                hasCalendar: Boolean(document.querySelector('[data-testid="date-range-picker-sheet"] [data-slot="range-calendar-grid"]')),
+                noPopover: !document.querySelector('[data-slot="popover-content"]'),
+            };
+        })()
+    JS);
+
+    expect($sheet)->toBe(['fullWidth' => true, 'hasCalendar' => true, 'noPopover' => true])
+        ->and(workspaceInsightsHasNoHorizontalOverflow($phone))->toBeTrue();
+    $phone->assertNoJavaScriptErrors();
+});
+
 test('charts keep their width while the sidebar animates and resize once it settles', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = User::factory()->create();
@@ -662,7 +718,7 @@ test('charts keep their width while the sidebar animates and resize once it sett
     $page->assertNoJavaScriptErrors();
 });
 
-test('top posts tag each post type like the channel table', function () {
+test('top posts name the network each post went out on and leave the post type out', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     $user = workspaceInsightsBrowserUser();
     $workspace = $user->currentWorkspace;
@@ -686,13 +742,29 @@ test('top posts tag each post type like the channel table', function () {
         AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publications[$key]->id, 'reactions_count' => 10]);
     }
 
+    $verified = SocialAccount::factory()->x()->create(['workspace_id' => $workspace->id, 'meta' => ['x_verified_type' => 'blue']]);
+    $publications['x'] = AnalyticsPublication::factory()->create([
+        'workspace_id' => $workspace->id,
+        'social_account_id' => $verified->id,
+        'social_account_key' => $verified->id,
+        'platform' => Platform::X,
+        'network' => Platform::X->network(),
+        'provider_published_at' => now()->subDays(3)->setTime(10, 0),
+    ]);
+    AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publications['x']->id, 'reactions_count' => 10]);
+
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, "analytics-top-post-type-{$publications['reel']->id}");
+    waitFor($page, "@analytics-top-post-published-via-{$publications['reel']->id}");
 
-    $page->assertScript("document.querySelector('[data-testid=\"analytics-top-post-type-{$publications['reel']->id}-icon\"]').classList.contains('tabler-icon-circle-play')", true)
-        ->assertMissing("@analytics-top-post-type-{$publications['image']->id}")
-        ->assertMissing("@analytics-top-post-type-{$publications['tiktok']->id}")
+    $page->assertSeeIn("@analytics-top-post-published-via-{$publications['reel']->id}", 'Published via')
+        ->assertSeeIn("@analytics-top-post-published-via-{$publications['reel']->id}", 'Instagram')
+        ->assertSeeIn("@analytics-top-post-published-via-{$publications['tiktok']->id}", 'TikTok')
+        ->assertPresent("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]")
+        ->assertMissing("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$publications['tiktok']->social_account_id}\"]")
+        ->assertScript("document.querySelectorAll('[data-testid=\"analytics-section\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]').length >= 4", true)
+        ->assertMissing("@analytics-top-post-type-{$publications['reel']->id}")
+        ->assertDontSee('Published on the social network')
         ->assertNoJavaScriptErrors();
 });
 

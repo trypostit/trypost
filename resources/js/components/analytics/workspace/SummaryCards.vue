@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { IconMinus, IconTrendingDown, IconTrendingUp } from '@tabler/icons-vue';
 import { computed } from 'vue';
 
+import MetricChange from '@/components/analytics/MetricChange.vue';
 import {
     formatNumberCompact,
     formatPercent,
@@ -64,6 +64,20 @@ const cards = computed(() =>
         : defaultCards.value,
 );
 
+const desktopColumns = computed((): string => {
+    const count = cards.value.length;
+
+    if (count <= 3) {
+        return 'lg:grid-cols-3';
+    }
+
+    if (count === 4 || (count > 5 && count <= 8)) {
+        return 'lg:grid-cols-4';
+    }
+
+    return 'lg:grid-cols-5';
+});
+
 const aboutKey = (key: string): string =>
     key === 'reactions' && props.network
         ? 'analytics.channel.metrics.reactions.about_network'
@@ -92,19 +106,21 @@ const changeLabel = (key: string, change: number | null): string | null => {
         :title="$t('analytics.dashboard.summary')"
         :subtitle="subtitle"
         :subtitle-testid="subtitleTestid"
+        flush
     >
         <div
-            class="grid grid-cols-2 gap-2 sm:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]"
+            class="grid grid-cols-2 border-t border-border md:grid-cols-3"
+            :class="desktopColumns"
             data-testid="analytics-summary"
         >
             <div
                 v-for="card in cards"
                 :key="card.key"
                 :data-testid="testId(card.key)"
-                class="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-card px-4 py-3"
+                class="flex min-w-0 flex-col gap-2 px-4 py-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] sm:px-5"
             >
-                <div class="flex min-h-6 items-center justify-between gap-1">
-                    <p class="truncate text-xs text-muted-foreground">
+                <div class="flex min-h-6 items-center gap-0.5">
+                    <p class="truncate text-sm text-muted-foreground">
                         {{ $t(card.label) }}
                     </p>
                     <InfoTip
@@ -112,37 +128,23 @@ const changeLabel = (key: string, change: number | null): string | null => {
                         :test-id="`${testId(card.key)}-about`"
                     />
                 </div>
-                <div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
                     <span
-                        class="font-heading text-xl leading-tight font-medium text-foreground tabular-nums"
+                        class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
                         >{{ display(card.metric.value, card.percent) }}</span
                     >
-                    <span
+                    <MetricChange
                         v-if="changeLabel(card.key, card.metric.change)"
                         :data-testid="`${testId(card.key)}-change`"
-                        class="inline-flex items-center gap-1 text-xs text-foreground tabular-nums"
-                    >
-                        <IconTrendingUp
-                            v-if="card.metric.change! > 0"
-                            class="size-4 shrink-0 text-success-text"
-                            aria-hidden="true"
-                        />
-                        <IconMinus
-                            v-else-if="card.metric.change === 0"
-                            class="size-4 shrink-0 text-muted-foreground"
-                            aria-hidden="true"
-                        />
-                        <IconTrendingDown
-                            v-else
-                            class="size-4 shrink-0 text-destructive-text"
-                            aria-hidden="true"
-                        />
-                        {{ changeLabel(card.key, card.metric.change) }}
-                    </span>
+                        :change="card.metric.change!"
+                        :label="changeLabel(card.key, card.metric.change)!"
+                    />
                 </div>
             </div>
         </div>
-        <p class="px-2 pt-3 pb-1 text-xs text-muted-foreground">
+        <p
+            class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5"
+        >
             {{ $t('analytics.dashboard.latest_snapshot_hint') }}
         </p>
     </AnalyticsSection>
