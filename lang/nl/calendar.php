@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Bericht naar een eigen tijd verplaatsen',
-            'description' => 'Je verplaatst dit bericht van zijn tijd in de wachtrij, <strong>:from <i>(:zone)</i></strong>, naar een eigen tijd, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Je verplaatst dit bericht van zijn tijd in de wachtrij, :from, naar een eigen tijd, :to.',
             'unqueued' => 'Het bericht wordt op de nieuwe tijd gepubliceerd, maar neemt geen plek in je wachtrij in.',
             'dont_show_again' => 'Niet meer tonen',
             'cancel' => 'Annuleren',

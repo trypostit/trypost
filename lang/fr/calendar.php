@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Déplacer la publication à une heure personnalisée',
-            'description' => 'Vous déplacez cette publication de son horaire dans la file d\'attente, <strong>:from <i>(:zone)</i></strong>, vers une heure personnalisée, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Vous déplacez cette publication de son horaire dans la file d\'attente, :from, vers une heure personnalisée, :to.',
             'unqueued' => 'La publication sera diffusée à la nouvelle heure choisie, mais n\'occupera pas de place dans votre file d\'attente.',
             'dont_show_again' => 'Ne plus afficher',
             'cancel' => 'Annuler',

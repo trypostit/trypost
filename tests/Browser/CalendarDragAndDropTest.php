@@ -280,7 +280,8 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
         (() => {
             const dialog = document.querySelector('[data-testid="calendar-custom-time-dialog"]');
             const title = dialog.querySelector('[data-slot="alert-dialog-title"]');
-            const strong = dialog.querySelector('[data-testid="calendar-custom-time-description"] strong');
+            const strong = dialog.querySelector('[data-testid="calendar-custom-time-from"]');
+            const zone = dialog.querySelector('[data-testid="calendar-custom-time-from-zone"]');
             const cancel = dialog.querySelector('[data-testid="calendar-custom-time-cancel"]');
             const confirm = dialog.querySelector('[data-testid="calendar-custom-time-confirm"]');
             const box = getComputedStyle(dialog);
@@ -291,7 +292,7 @@ test('dragging a queued post off its slot asks first; cancel leaves it', functio
                 gap: box.rowGap,
                 radius: box.borderTopLeftRadius,
                 title: [getComputedStyle(title).fontSize, getComputedStyle(title).lineHeight, getComputedStyle(title).fontWeight],
-                strong: [getComputedStyle(strong).fontWeight, getComputedStyle(strong.querySelector('i')).fontStyle],
+                strong: [getComputedStyle(strong).fontWeight, getComputedStyle(zone).fontStyle],
                 buttons: [cancel.offsetHeight, confirm.offsetHeight],
                 cancelFirst: cancel.offsetLeft + cancel.offsetWidth <= confirm.offsetLeft,
             };

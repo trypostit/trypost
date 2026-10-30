@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Gönderi özel bir saate taşınıyor',
-            'description' => 'Bu gönderiyi kuyruktaki bir saatten <strong>:from <i>(:zone)</i></strong> özel bir saate <strong>:to <i>(:zone)</i></strong> taşıyorsunuz.',
+            'description' => 'Bu gönderiyi kuyruktaki bir saatten :from özel bir saate :to taşıyorsunuz.',
             'unqueued' => 'Gönderi seçtiğiniz yeni saatte yayınlanır, ancak kuyruğunuzda yer kaplamaz.',
             'dont_show_again' => 'Bir daha gösterme',
             'cancel' => 'İptal',

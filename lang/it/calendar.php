@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Sposta il post a un orario personalizzato',
-            'description' => 'Stai spostando questo post dal suo orario in coda, <strong>:from <i>(:zone)</i></strong>, a un orario personalizzato, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Stai spostando questo post dal suo orario in coda, :from, a un orario personalizzato, :to.',
             'unqueued' => 'Il post verrà pubblicato al nuovo orario scelto, ma non occuperà un posto nella tua coda.',
             'dont_show_again' => 'Non mostrare più',
             'cancel' => 'Annulla',

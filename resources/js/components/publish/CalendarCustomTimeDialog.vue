@@ -3,6 +3,7 @@ import { usePage } from '@inertiajs/vue3';
 import { AlertDialogCancel } from 'reka-ui';
 import { ref } from 'vue';
 
+import TransSlots from '@/components/TransSlots.vue';
 import {
     AlertDialog,
     AlertDialogContent,
@@ -26,14 +27,6 @@ const toTime = ref('');
 const zone = ref('');
 
 let resolveChoice: ((confirmed: boolean) => void) | null = null;
-
-const escapeHtml = (value: string): string =>
-    value
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#39;');
 
 const readSkip = (): boolean => {
     try {
@@ -67,11 +60,9 @@ const confirm = (
     }
 
     resolveChoice?.(false);
-    fromTime.value = escapeHtml(
-        date.formatMonthDayTimeInTimezone(from, timezone),
-    );
-    toTime.value = escapeHtml(date.formatMonthDayTimeInTimezone(to, timezone));
-    zone.value = escapeHtml(timezone);
+    fromTime.value = date.formatMonthDayTimeInTimezone(from, timezone);
+    toTime.value = date.formatMonthDayTimeInTimezone(to, timezone);
+    zone.value = timezone;
     skipNextTime.value = false;
     isOpen.value = true;
 
@@ -115,17 +106,31 @@ defineExpose({ confirm });
                 as="div"
                 class="flex flex-col gap-4 px-6 text-sm leading-[21px] text-foreground"
             >
-                <p
-                    class="[&_strong]:font-[650]"
-                    data-testid="calendar-custom-time-description"
-                    v-html="
-                        $t('calendar.reschedule.custom_time.description', {
-                            from: fromTime,
-                            to: toTime,
-                            zone,
-                        })
-                    "
-                />
+                <p data-testid="calendar-custom-time-description">
+                    <TransSlots
+                        :message="
+                            $t('calendar.reschedule.custom_time.description')
+                        "
+                    >
+                        <template #from>
+                            <strong
+                                class="font-[650]"
+                                data-testid="calendar-custom-time-from"
+                                >{{ fromTime }}
+                                <i data-testid="calendar-custom-time-from-zone"
+                                    >({{ zone }})</i
+                                ></strong
+                            >
+                        </template>
+                        <template #to>
+                            <strong
+                                class="font-[650]"
+                                data-testid="calendar-custom-time-to"
+                                >{{ toTime }} <i>({{ zone }})</i></strong
+                            >
+                        </template>
+                    </TransSlots>
+                </p>
                 <p>{{ $t('calendar.reschedule.custom_time.unqueued') }}</p>
             </AlertDialogDescription>
             <Separator class="max-sm:mt-auto" />

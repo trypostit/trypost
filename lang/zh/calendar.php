@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => '将帖子移到自定义时间',
-            'description' => '你正在将此帖子从队列时间 <strong>:from <i>(:zone)</i></strong> 移到自定义时间 <strong>:to <i>(:zone)</i></strong>。',
+            'description' => '你正在将此帖子从队列时间 :from 移到自定义时间 :to。',
             'unqueued' => '帖子将在你选择的新时间发布,但不会占用队列中的位置。',
             'dont_show_again' => '不再显示',
             'cancel' => '取消',

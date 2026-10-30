@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Перенесення допису на інший час',
-            'description' => 'Допис переноситься з часу в черзі, <strong>:from <i>(:zone)</i></strong>, на власний час, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'Допис переноситься з часу в черзі, :from, на власний час, :to.',
             'unqueued' => 'Допис вийде у вибраний час, але не займе місце у вашій черзі.',
             'dont_show_again' => 'Не показувати',
             'cancel' => 'Скасувати',

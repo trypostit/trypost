@@ -44,7 +44,7 @@ return [
     'reschedule' => [
         'custom_time' => [
             'title' => 'Moving post to a custom time',
-            'description' => 'You\'re moving this post from its time in the queue, <strong>:from <i>(:zone)</i></strong>, to a custom time, <strong>:to <i>(:zone)</i></strong>.',
+            'description' => 'You\'re moving this post from its time in the queue, :from, to a custom time, :to.',
             'unqueued' => 'The post will be published at the new time you picked, but it won\'t use a spot in your queue.',
             'dont_show_again' => 'Don\'t show this again',
             'cancel' => 'Cancel',
