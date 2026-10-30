@@ -18,24 +18,26 @@ const props = defineProps<{
 
 const slots = useSlots();
 
-const segments = computed(() =>
-    props.message
-        .split(/(:[A-Za-z_]+)/)
-        .filter((segment) => segment !== '')
-        .map((segment) => {
-            const name = segment.slice(1);
+const PLACEHOLDER = /(:\w+)/;
 
-            return segment.startsWith(':') && slots[name]
-                ? { slot: name, text: '' }
-                : { slot: null, text: segment };
-        }),
+type Segment = { slot: string } | { text: string };
+
+const segments = computed((): Segment[] =>
+    props.message
+        .split(PLACEHOLDER)
+        .filter(Boolean)
+        .map((part) =>
+            part.startsWith(':') && slots[part.slice(1)]
+                ? { slot: part.slice(1) }
+                : { text: part },
+        ),
 );
 </script>
 
 <template>
     <span>
         <template v-for="(segment, index) in segments" :key="index">
-            <slot v-if="segment.slot" :name="segment.slot" />
+            <slot v-if="'slot' in segment" :name="segment.slot" />
             <template v-else>{{ segment.text }}</template>
         </template>
     </span>

@@ -82,10 +82,6 @@ const SENT_STATUSES: readonly string[] = [
     PostStatus.Failed,
 ];
 
-const STATUS_CLASSES: Record<string, string> = {
-    failed: 'border-destructive/40 bg-destructive/5',
-};
-
 const tab = computed((): PublishTab => {
     if (SENT_STATUSES.includes(props.post.status)) {
         return 'sent';
@@ -135,15 +131,21 @@ type StatusKey =
     | 'published'
     | 'failed';
 
-const STATUS_MARKERS: Record<StatusKey, { icon: Component; tone: string }> = {
-    draft: { icon: IconPencil, tone: 'text-muted-foreground' },
-    pending_approval: { icon: IconHourglass, tone: 'text-warning' },
-    queue: { icon: IconListNumbers, tone: 'text-muted-foreground' },
-    custom: { icon: IconPin, tone: 'text-muted-foreground' },
-    recurring: { icon: IconRepeat, tone: 'text-muted-foreground' },
-    publishing: { icon: IconSend, tone: 'text-muted-foreground' },
-    published: { icon: IconCircleCheck, tone: 'text-success' },
-    failed: { icon: IconAlertCircle, tone: 'text-destructive' },
+interface StatusMarker {
+    icon: Component;
+    tone: string;
+    testId: string;
+}
+
+const STATUS_MARKERS: Record<StatusKey, StatusMarker> = {
+    draft: { icon: IconPencil, tone: 'text-muted-foreground', testId: 'calendar-post-draft' },
+    pending_approval: { icon: IconHourglass, tone: 'text-warning', testId: 'calendar-post-pending' },
+    queue: { icon: IconListNumbers, tone: 'text-muted-foreground', testId: 'post-schedule-mode' },
+    custom: { icon: IconPin, tone: 'text-muted-foreground', testId: 'post-schedule-mode' },
+    recurring: { icon: IconRepeat, tone: 'text-muted-foreground', testId: 'calendar-post-recurring' },
+    publishing: { icon: IconSend, tone: 'text-muted-foreground', testId: 'calendar-post-publishing' },
+    published: { icon: IconCircleCheck, tone: 'text-success', testId: 'calendar-post-published' },
+    failed: { icon: IconAlertCircle, tone: 'text-destructive', testId: 'calendar-post-failed' },
 };
 
 const statusKey = computed((): StatusKey => {
@@ -162,11 +164,18 @@ const statusKey = computed((): StatusKey => {
 
 const statusMarker = computed(() => STATUS_MARKERS[statusKey.value]);
 
-const statusTestId = computed(() =>
-    statusKey.value === 'queue' || statusKey.value === 'custom'
-        ? `post-schedule-mode-${props.post.id}`
-        : `calendar-post-${statusKey.value.replace('_approval', '')}-${props.post.id}`,
+const statusLabelKey = computed(
+    () => `calendar.post_status.${statusKey.value}`,
 );
+
+const chipClass = computed(() => [
+    props.compact ? 'justify-center gap-0.5' : 'gap-1.5',
+    isDragging.value
+        ? 'border-transparent bg-muted *:invisible hover:bg-muted'
+        : props.post.status === PostStatus.Failed
+          ? 'border-destructive/40 bg-destructive/5'
+          : '',
+]);
 </script>
 
 <template>
@@ -186,21 +195,23 @@ const statusTestId = computed(() =>
                 v-calendar-post="post"
                 type="button"
                 v-bind="$attrs"
-                class="flex min-w-0 shrink-0 gap-1.5 rounded-lg border border-border-strong bg-card text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary"
-                :class="[
-                    isDragging
-                        ? 'border-transparent bg-muted *:invisible hover:bg-muted'
-                        : (STATUS_CLASSES[post.status] ?? ''),
-                    '[&[data-calendar-draggable=true]]:cursor-grab',
-                    compact
-                        ? 'h-7 items-center justify-center gap-0.5 px-1'
-                        : 'h-7 items-center px-1',
-                ]"
-                :aria-label="`${channels} · ${time} · ${$t(`calendar.post_status.${statusKey}`)} · ${text || $t('calendar.no_content')}`"
+                class="flex h-7 min-w-0 shrink-0 items-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary [&[data-calendar-draggable=true]]:cursor-grab"
+                :class="chipClass"
+                :aria-label="
+                    [
+                        channels,
+                        time,
+                        $t(statusLabelKey),
+                        text || $t('calendar.no_content'),
+                    ].join(' · ')
+                "
                 :data-dragging="isDragging || undefined"
                 :data-testid="`calendar-post-${post.id}`"
             >
-                <template v-if="compact">
+                <span
+                    class="flex min-w-0 items-center gap-1"
+                    :class="{ 'flex-1': !compact }"
+                >
                     <PlatformBrandIcon
                         v-if="post.platform"
                         :platform="post.platform"
@@ -209,81 +220,55 @@ const statusTestId = computed(() =>
                         :data-testid="`calendar-post-platform-${post.id}`"
                     />
                     <span
-                        class="flex shrink-0 items-center"
-                        :class="statusMarker.tone"
-                        :data-testid="statusTestId"
-                        :data-mode="statusKey"
+                        v-if="!compact"
+                        class="min-w-0 truncate text-xs font-medium text-muted-foreground"
+                        >{{ time }}</span
                     >
-                        <component
-                            :is="statusMarker.icon"
-                            class="size-3"
-                            aria-hidden="true"
-                        />
-                    </span>
-                </template>
-                <template v-else>
-                    <span class="flex min-w-0 flex-1 items-center gap-1">
-                        <PlatformBrandIcon
-                            v-if="post.platform"
-                            :platform="post.platform"
-                            colored
-                            class="size-4 shrink-0"
-                            :data-testid="`calendar-post-platform-${post.id}`"
-                        />
+                </span>
+                <Tooltip :delay-duration="200">
+                    <TooltipTrigger as-child>
                         <span
-                            class="min-w-0 truncate text-xs font-medium text-muted-foreground"
-                            >{{ time }}</span
+                            class="flex shrink-0 items-center"
+                            :class="statusMarker.tone"
+                            :aria-label="$t(statusLabelKey)"
+                            :data-testid="`${statusMarker.testId}-${post.id}`"
+                            :data-mode="statusKey"
                         >
-                    </span>
-                    <Tooltip :delay-duration="200">
-                            <TooltipTrigger as-child>
-                                <span
-                                    class="flex shrink-0 items-center"
-                                    :class="statusMarker.tone"
-                                    :aria-label="
-                                        $t(`calendar.post_status.${statusKey}`)
-                                    "
-                                    :data-testid="statusTestId"
-                                    :data-mode="statusKey"
-                                >
-                                    <component
-                                        :is="statusMarker.icon"
-                                        class="size-3.5"
-                                        aria-hidden="true"
-                                    />
-                                </span>
-                            </TooltipTrigger>
-                            <TooltipContent>{{
-                                $t(`calendar.post_status.${statusKey}`)
-                            }}</TooltipContent>
-                    </Tooltip>
-                    <span
-                        v-if="thumbnail"
-                        class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
-                        :data-testid="`calendar-post-thumbnail-${post.id}`"
-                    >
-                        <img
-                            v-if="isImage(thumbnail)"
-                            :src="thumbnail.url"
-                            alt=""
-                            loading="lazy"
-                            class="size-full object-cover"
-                        />
-                        <template v-else>
-                            <video
-                                :src="videoFrameUrl(thumbnail)"
-                                class="size-full object-cover"
-                                muted
-                                playsinline
-                                preload="metadata"
-                            />
-                            <IconPlayerPlayFilled
+                            <component
+                                :is="statusMarker.icon"
+                                :class="compact ? 'size-3' : 'size-3.5'"
                                 aria-hidden="true"
-                                class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
                             />
-                        </template>
-                    </span>
-                </template>
+                        </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{{ $t(statusLabelKey) }}</TooltipContent>
+                </Tooltip>
+                <span
+                    v-if="!compact && thumbnail"
+                    class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
+                    :data-testid="`calendar-post-thumbnail-${post.id}`"
+                >
+                    <img
+                        v-if="isImage(thumbnail)"
+                        :src="thumbnail.url"
+                        alt=""
+                        loading="lazy"
+                        class="size-full object-cover"
+                    />
+                    <template v-else>
+                        <video
+                            :src="videoFrameUrl(thumbnail)"
+                            class="size-full object-cover"
+                            muted
+                            playsinline
+                            preload="metadata"
+                        />
+                        <IconPlayerPlayFilled
+                            aria-hidden="true"
+                            class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
+                        />
+                    </template>
+                </span>
             </button>
         </PopoverTrigger>
         <PopoverContent
