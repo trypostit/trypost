@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { IconCamera } from '@tabler/icons-vue';
+import { IconShare2 } from '@tabler/icons-vue';
 import { ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
@@ -44,7 +44,7 @@ const openDialog = (): void => {
                         :data-testid="testId"
                         @click="openDialog"
                     >
-                        <IconCamera aria-hidden="true" />
+                        <IconShare2 aria-hidden="true" />
                     </Button>
                 </TooltipTrigger>
                 <TooltipContent>{{ $t('analytics.share.button') }}</TooltipContent>
