@@ -427,6 +427,9 @@ test('in the month a post shows its network in color and a status icon with a to
                 slotBorder: style('calendar-posting-slot-{$slotKey}').borderStyle,
                 slotHatched: style('calendar-posting-slot-{$slotKey}').backgroundImage.startsWith('linear-gradient'),
                 slotIcons: chip('calendar-posting-slot-{$slotKey}').querySelectorAll('svg').length,
+                failedChipLooksScheduled: ['borderColor', 'backgroundColor'].every((key) => style('calendar-post-{$failed->id}')[key] === style('calendar-post-{$scheduled->id}')[key]),
+                failedIconColored: style('calendar-post-failed-{$failed->id}').color !== style('post-schedule-mode-{$scheduled->id}').color,
+                pendingIconMuted: style('calendar-post-pending-{$pending->id}').color === style('post-schedule-mode-{$scheduled->id}').color,
             };
         })()
     JS);
@@ -438,6 +441,9 @@ test('in the month a post shows its network in color and a status icon with a to
         'slotHatched' => true,
         'slotIcons' => 1,
         'draftIcon' => 'rgb(10, 102, 194)',
+        'failedChipLooksScheduled' => true,
+        'failedIconColored' => true,
+        'pendingIconMuted' => true,
     ]);
 
     $page->hover("@calendar-post-pending-{$pending->id}");

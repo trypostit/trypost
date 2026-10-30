@@ -139,7 +139,7 @@ interface StatusMarker {
 
 const STATUS_MARKERS: Record<StatusKey, StatusMarker> = {
     draft: { icon: IconPencil, tone: 'text-muted-foreground', testId: 'calendar-post-draft' },
-    pending_approval: { icon: IconHourglass, tone: 'text-warning', testId: 'calendar-post-pending' },
+    pending_approval: { icon: IconHourglass, tone: 'text-muted-foreground', testId: 'calendar-post-pending' },
     queue: { icon: IconListNumbers, tone: 'text-muted-foreground', testId: 'post-schedule-mode' },
     custom: { icon: IconPin, tone: 'text-muted-foreground', testId: 'post-schedule-mode' },
     recurring: { icon: IconRepeat, tone: 'text-muted-foreground', testId: 'calendar-post-recurring' },
@@ -172,9 +172,7 @@ const chipClass = computed(() => [
     props.compact ? 'justify-center gap-0.5' : 'gap-1.5',
     isDragging.value
         ? 'border-transparent bg-muted *:invisible hover:bg-muted'
-        : props.post.status === PostStatus.Failed
-          ? 'border-destructive/40 bg-destructive/5'
-          : '',
+        : '',
 ]);
 </script>
 
