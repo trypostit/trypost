@@ -10,23 +10,16 @@ import {
     IconRepeat,
     IconSend,
 } from '@tabler/icons-vue';
-import { Presence } from 'reka-ui';
-import { computed, ref, watch, type Component } from 'vue';
+import { computed, nextTick, ref, type Component } from 'vue';
 
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostTimelineCard from '@/components/publish/PostTimelineCard.vue';
-import {
-    Popover,
-    PopoverContent,
-    PopoverTrigger,
-} from '@/components/ui/popover';
 import {
     Tooltip,
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
-import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { isImage, isVideo } from '@/lib/mediaType';
@@ -47,34 +40,17 @@ const { draggingPostId, vCalendarPost } = useCalendarDragContext();
 
 const isDragging = computed(() => draggingPostId.value === props.post.id);
 
-const open = ref(false);
-const detailsOpen = ref(false);
-const isPhone = useBelowBreakpoint('sm');
 const card = ref<InstanceType<typeof PostTimelineCard> | null>(null);
+const cardMounted = ref(false);
 
-const onOpenChange = (value: boolean): void => {
-    if (value && isPhone.value) {
-        card.value?.openDetails();
-
-        return;
-    }
-
-    open.value = value;
-};
-
-watch(
-    () => [props.post.status, props.post.calendar_at, props.post.schedule_mode],
-    () => {
-        open.value = false;
-    },
-);
-
-const onDetails = (value: boolean): void => {
-    detailsOpen.value = value;
-
-    if (value) {
-        open.value = false;
-    }
+/**
+ * A click opens the post's details. The card that holds the details dialog
+ * mounts on the first click only, so a busy calendar doesn't mount one per chip.
+ */
+const openDetails = async (): Promise<void> => {
+    cardMounted.value = true;
+    await nextTick();
+    card.value?.openDetails();
 };
 
 const SENT_STATUSES: readonly string[] = [
@@ -115,11 +91,6 @@ const thumbnail = computed(
             (item) => isImage(item) || isVideo(item),
         ) ?? null,
 );
-
-const focusPopover = (event: Event): void => {
-    event.preventDefault();
-    (event.target as HTMLElement).focus();
-};
 
 type StatusKey =
     | 'draft'
@@ -177,108 +148,88 @@ const chipClass = computed(() => [
 </script>
 
 <template>
-    <Popover :open="open" @update:open="onOpenChange">
-        <Teleport to="body">
-            <Presence :present="open">
-                <div
-                    :data-state="open ? 'open' : 'closed'"
-                    class="motion-dialog-overlay fixed inset-0 z-50 bg-black/50"
-                    :data-testid="`calendar-post-overlay-${post.id}`"
-                    aria-hidden="true"
-                />
-            </Presence>
-        </Teleport>
-        <PopoverTrigger as-child>
-            <button
-                v-calendar-post="post"
-                type="button"
-                v-bind="$attrs"
-                class="flex h-7 min-w-0 shrink-0 items-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-secondary [&[data-calendar-draggable=true]]:cursor-grab"
-                :class="chipClass"
-                :aria-label="
-                    [
-                        channels,
-                        time,
-                        $t(statusLabelKey),
-                        text || $t('calendar.no_content'),
-                    ].join(' · ')
-                "
-                :data-dragging="isDragging || undefined"
-                :data-testid="`calendar-post-${post.id}`"
-            >
-                <span
-                    class="flex min-w-0 items-center gap-1"
-                    :class="{ 'flex-1': !compact }"
-                >
-                    <PlatformBrandIcon
-                        v-if="post.platform"
-                        :platform="post.platform"
-                        colored
-                        class="size-4 shrink-0"
-                        :data-testid="`calendar-post-platform-${post.id}`"
-                    />
-                    <span
-                        v-if="!compact"
-                        class="min-w-0 truncate text-xs font-medium text-muted-foreground"
-                        >{{ time }}</span
-                    >
-                </span>
-                <Tooltip :delay-duration="200">
-                    <TooltipTrigger as-child>
-                        <span
-                            class="flex shrink-0 items-center"
-                            :class="statusMarker.tone"
-                            :aria-label="$t(statusLabelKey)"
-                            :data-testid="`${statusMarker.testId}-${post.id}`"
-                            :data-mode="statusKey"
-                        >
-                            <component
-                                :is="statusMarker.icon"
-                                :class="compact ? 'size-3' : 'size-3.5'"
-                                aria-hidden="true"
-                            />
-                        </span>
-                    </TooltipTrigger>
-                    <TooltipContent>{{ $t(statusLabelKey) }}</TooltipContent>
-                </Tooltip>
-                <span
-                    v-if="!compact && thumbnail"
-                    class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
-                    :data-testid="`calendar-post-thumbnail-${post.id}`"
-                >
-                    <img
-                        v-if="isImage(thumbnail)"
-                        :src="thumbnail.url"
-                        alt=""
-                        loading="lazy"
-                        class="size-full object-cover"
-                    />
-                    <template v-else>
-                        <video
-                            :src="videoFrameUrl(thumbnail)"
-                            class="size-full object-cover"
-                            muted
-                            playsinline
-                            preload="metadata"
-                        />
-                        <IconPlayerPlayFilled
-                            aria-hidden="true"
-                            class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
-                        />
-                    </template>
-                </span>
-            </button>
-        </PopoverTrigger>
-        <PopoverContent
-            side="right"
-            align="start"
-            :collision-padding="16"
-            class="max-h-(--reka-popover-content-available-height) w-[min(28rem,calc(100vw-2rem))] overflow-y-auto border border-border-strong p-0"
-            :class="{ hidden: !open }"
-            :force-mount="detailsOpen || isPhone"
-            :data-testid="`calendar-post-popover-${post.id}`"
-            @open-auto-focus="focusPopover"
+    <div class="contents">
+        <button
+            v-calendar-post="post"
+            type="button"
+            v-bind="$attrs"
+            class="flex h-7 min-w-0 shrink-0 items-center rounded-lg border border-border-strong bg-card px-1 text-start transition-control hover:bg-secondary focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring [&[data-calendar-draggable=true]]:cursor-grab"
+            :class="chipClass"
+            :aria-label="
+                [
+                    channels,
+                    time,
+                    $t(statusLabelKey),
+                    text || $t('calendar.no_content'),
+                ].join(' · ')
+            "
+            :data-dragging="isDragging || undefined"
+            :data-testid="`calendar-post-${post.id}`"
+            @click="openDetails"
         >
+            <span
+                class="flex min-w-0 items-center gap-1"
+                :class="{ 'flex-1': !compact }"
+            >
+                <PlatformBrandIcon
+                    v-if="post.platform"
+                    :platform="post.platform"
+                    colored
+                    class="size-4 shrink-0"
+                    :data-testid="`calendar-post-platform-${post.id}`"
+                />
+                <span
+                    v-if="!compact"
+                    class="min-w-0 truncate text-xs font-medium text-muted-foreground"
+                    >{{ time }}</span
+                >
+            </span>
+            <Tooltip :delay-duration="200">
+                <TooltipTrigger as-child>
+                    <span
+                        class="flex shrink-0 items-center"
+                        :class="statusMarker.tone"
+                        :aria-label="$t(statusLabelKey)"
+                        :data-testid="`${statusMarker.testId}-${post.id}`"
+                        :data-mode="statusKey"
+                    >
+                        <component
+                            :is="statusMarker.icon"
+                            :class="compact ? 'size-3' : 'size-3.5'"
+                            aria-hidden="true"
+                        />
+                    </span>
+                </TooltipTrigger>
+                <TooltipContent>{{ $t(statusLabelKey) }}</TooltipContent>
+            </Tooltip>
+            <span
+                v-if="!compact && thumbnail"
+                class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
+                :data-testid="`calendar-post-thumbnail-${post.id}`"
+            >
+                <img
+                    v-if="isImage(thumbnail)"
+                    :src="thumbnail.url"
+                    alt=""
+                    loading="lazy"
+                    class="size-full object-cover"
+                />
+                <template v-else>
+                    <video
+                        :src="videoFrameUrl(thumbnail)"
+                        class="size-full object-cover"
+                        muted
+                        playsinline
+                        preload="metadata"
+                    />
+                    <IconPlayerPlayFilled
+                        aria-hidden="true"
+                        class="absolute top-1/2 left-1/2 size-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/60 p-0.5 text-white"
+                    />
+                </template>
+            </span>
+        </button>
+        <div v-if="cardMounted" hidden>
             <PostTimelineCard
                 ref="card"
                 :post="post"
@@ -286,8 +237,7 @@ const chipClass = computed(() => [
                 :display-timezone="timezone"
                 :movable="false"
                 popover
-                @details="onDetails"
             />
-        </PopoverContent>
-    </Popover>
+        </div>
+    </div>
 </template>

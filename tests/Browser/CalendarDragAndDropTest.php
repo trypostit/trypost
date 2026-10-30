@@ -1072,16 +1072,16 @@ test('a tap still opens the post', function () {
     waitFor($page, "@calendar-post-{$post->id}");
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     $page->page()->locator("[data-testid=\"calendar-post-{$post->id}\"]")->tap();
-    waitFor($page, "@calendar-post-popover-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
 
-    $page->assertVisible("@calendar-post-popover-{$post->id}")
+    $page->assertVisible("@post-details-{$post->id}")
         ->assertMissing('@calendar-drag-preview');
-    $page->keys("@calendar-post-popover-{$post->id}", 'Escape');
-    waitForGone($page, "@calendar-post-overlay-{$post->id}");
+    $page->keys("@post-details-{$post->id}", 'Escape');
+    waitForGone($page, "@post-details-{$post->id}");
 
     $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@calendar-post-popover-{$post->id}");
-    $page->assertVisible("@calendar-post-popover-{$post->id}")
+    waitFor($page, "@post-details-{$post->id}");
+    $page->assertVisible("@post-details-{$post->id}")
         ->assertNoJavaScriptErrors();
 });
 
@@ -1223,9 +1223,9 @@ test('the release after Esc does not open the post it started from', function ()
     JS);
 
     expect($dragging)->toBeTrue();
-    $page->assertMissing("@calendar-post-popover-{$post->id}");
+    $page->assertMissing("@post-details-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@calendar-post-popover-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
     $page->assertNoJavaScriptErrors();
 });
 
@@ -1848,12 +1848,12 @@ test('the click that ends a real mouse drag does not open the post', function ()
     $opened = calendarGesture($page, <<<JS
         await pause(300);
 
-        return query('@calendar-post-popover-{$post->id}') !== null;
+        return query('@post-details-{$post->id}') !== null;
     JS);
 
     expect($opened)->toBeFalse()
         ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
-    $page->assertMissing("@calendar-post-overlay-{$post->id}")
+    $page->assertMissing("@post-details-{$post->id}")
         ->assertNoJavaScriptErrors();
 });
 

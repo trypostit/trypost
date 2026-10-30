@@ -453,11 +453,11 @@ test('in the month a post shows its network in color and a status icon with a to
     $page->assertNoJavaScriptErrors();
 });
 
-test('clicking a scheduled post chip in the month view opens its timeline card in a popover', function () {
+test('clicking a scheduled post chip in the month view opens its details', function () {
     [$user, $linkedin] = calendarPageSetup();
     $at = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10)->setTime(10, 0);
     $post = calendarPagePost($linkedin, $at);
-    $post->update(['content' => '<p>Popover caption</p>']);
+    $post->update(['content' => '<p>Details caption</p>']);
 
     $this->actingAs($user);
 
@@ -466,53 +466,29 @@ test('clicking a scheduled post chip in the month view opens its timeline card i
 
     $page->assertAttribute("@calendar-post-{$post->id}", 'type', 'button')
         ->assertPresent("@calendar-post-platform-{$post->id}")
-        ->assertMissing("@calendar-post-thumbnail-{$post->id}");
+        ->assertMissing("@calendar-post-thumbnail-{$post->id}")
+        ->assertMissing("@post-card-{$post->id}");
 
     $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@calendar-post-popover-{$post->id}");
-
-    $page->assertPresent("[data-testid=\"calendar-post-popover-{$post->id}\"] [data-testid=\"post-card-{$post->id}\"]")
-        ->assertSeeIn("@calendar-post-popover-{$post->id}", 'Popover caption')
-        ->assertPresent("@post-edit-{$post->id}")
-        ->assertPresent("@post-publish-now-{$post->id}");
-
-    $page->keys("@calendar-post-popover-{$post->id}", 'Escape');
-    waitForGone($page, "@calendar-post-popover-{$post->id}");
-
-    $page->assertMissing("@calendar-post-popover-{$post->id}");
-    expect($page->script('document.activeElement?.dataset.testid'))->toBe("calendar-post-{$post->id}");
-
-    $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@calendar-post-overlay-{$post->id}");
-
-    $page->assertVisible("@calendar-post-overlay-{$post->id}");
-    $page->script("document.querySelector('[data-testid=\"calendar-post-overlay-{$post->id}\"]').dispatchEvent(new PointerEvent('pointerdown', {bubbles: true, pointerType: 'mouse'}))");
-    waitForGone($page, "@calendar-post-popover-{$post->id}");
-
-    $page->assertMissing("@calendar-post-popover-{$post->id}");
-
-    $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@post-details-expand-{$post->id}");
-
-    $page->script("document.querySelector('[data-testid=\"post-card-menu-{$post->id}\"]').dispatchEvent(new PointerEvent('pointermove', {bubbles: true, pointerType: 'mouse'}))");
-    waitFor($page, "@post-card-menu-tooltip-{$post->id}");
-    $page->assertSeeIn("@post-card-menu-tooltip-{$post->id}", __('posts.publish.actions.more'));
-
-    $page->click("@post-details-expand-{$post->id}");
     waitFor($page, "@post-details-{$post->id}");
 
     $page->assertVisible("@post-details-{$post->id}")
+        ->assertSeeIn("@post-details-{$post->id}", 'Details caption')
+        ->assertPresent("@post-details-edit-{$post->id}")
+        ->assertPresent("@post-details-publish-now-{$post->id}")
         ->assertMissing("@calendar-post-popover-{$post->id}");
 
     $page->keys("@post-details-{$post->id}", 'Escape');
     waitForGone($page, "@post-details-{$post->id}");
-    waitForGone($page, "@calendar-post-popover-{$post->id}");
+    expect($page->script('document.activeElement?.dataset.testid'))->toBe("calendar-post-{$post->id}");
 
-    expect($page->script("document.querySelector('[data-testid=\"calendar-post-popover-{$post->id}\"]') === null"))->toBeTrue();
-    $page->assertNoJavaScriptErrors();
+    $page->click("@calendar-post-{$post->id}");
+    waitFor($page, "@post-details-{$post->id}");
+    $page->assertVisible("@post-details-{$post->id}")
+        ->assertNoJavaScriptErrors();
 });
 
-test('a published post popover shows its metrics, go to post and the sent menu', function () {
+test('a published post opens details with its metrics, go to post and the sent menu', function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     [$user] = calendarPageSetup();
     $instagram = SocialAccount::factory()->instagram()->create(['workspace_id' => $user->current_workspace_id, 'timezone' => 'UTC']);
@@ -544,28 +520,18 @@ test('a published post popover shows its metrics, go to post and the sent menu',
     $page = visit(route('app.calendar', ['view' => 'month']));
     waitFor($page, "@calendar-post-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@calendar-post-popover-{$post->id}");
-
-    $page->assertPresent("[data-testid=\"calendar-post-popover-{$post->id}\"] [data-testid=\"post-metrics-{$post->id}\"]")
-        ->assertPresent("@post-view-{$post->id}")
-        ->assertMissing("@post-edit-{$post->id}");
-
-    $page->script("document.querySelector('[data-testid=\"post-view-{$post->id}\"]').dispatchEvent(new PointerEvent('pointermove', {bubbles: true, pointerType: 'mouse'}))");
-    waitFor($page, "@post-view-tooltip-{$post->id}");
-    $page->assertSeeIn("@post-view-tooltip-{$post->id}", __('posts.publish.actions.open_on_network', ['network' => 'Instagram']));
-
-    $page->click("@post-card-menu-{$post->id}");
-    waitFor($page, "@post-card-menu-content-{$post->id}");
-
-    expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"post-card-menu-content-{$post->id}\"] [role=\"menuitem\"]')).map((element) => element.dataset.testid)"))
-        ->toBe(["post-duplicate-{$post->id}", "post-details-open-{$post->id}", "post-share-link-{$post->id}", "post-copy-link-{$post->id}"]);
-
-    $page->click("@post-details-open-{$post->id}");
     waitFor($page, "@post-details-{$post->id}");
 
-    $page->assertVisible("@post-details-{$post->id}")
-        ->assertMissing("@calendar-post-popover-{$post->id}")
-        ->assertNoJavaScriptErrors();
+    $page->assertPresent("@post-details-metrics-{$post->id}")
+        ->assertPresent("@post-details-view-{$post->id}")
+        ->assertMissing("@post-details-edit-{$post->id}");
+
+    $page->click("@post-card-menu-details-{$post->id}");
+    waitFor($page, "@post-card-menu-content-details-{$post->id}");
+
+    expect($page->script("Array.from(document.querySelectorAll('[data-testid=\"post-card-menu-content-details-{$post->id}\"] [role=\"menuitem\"]')).map((element) => element.dataset.testid)"))
+        ->toBe(["post-duplicate-details-{$post->id}", "post-share-link-details-{$post->id}", "post-copy-link-details-{$post->id}"]);
+    $page->assertNoJavaScriptErrors();
 });
 
 test('an overflowing month day expands and collapses back, scrolling inside its cell', function () {
@@ -614,7 +580,7 @@ test('an overflowing month day expands and collapses back, scrolling inside its 
         ->assertNoJavaScriptErrors();
 });
 
-test('a popover action reloads the calendar and closes the popover', function () {
+test('a details action reloads the calendar and the details show the new status', function () {
     [$user, $linkedin] = calendarPageSetup();
     $at = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10)->setTime(10, 0);
     $post = calendarPagePost($linkedin, $at);
@@ -624,16 +590,19 @@ test('a popover action reloads the calendar and closes the popover', function ()
     $page = visit(route('app.calendar', ['view' => 'month', 'month' => $at->format('Y-m-d')]));
     waitFor($page, "@calendar-post-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitFor($page, "@post-card-menu-{$post->id}");
-    $page->click("@post-card-menu-{$post->id}");
-    waitFor($page, "@post-move-drafts-{$post->id}");
-    $page->click("@post-move-drafts-{$post->id}");
-    waitForGone($page, "@calendar-post-popover-{$post->id}");
+    waitFor($page, "@post-card-menu-details-{$post->id}");
+    $page->click("@post-card-menu-details-{$post->id}");
+    waitFor($page, "@post-move-drafts-details-{$post->id}");
+    $page->click("@post-move-drafts-details-{$post->id}");
+    waitForText($page, "@post-details-status-{$post->id}", __('posts.status.draft'));
+    waitFor($page, "@calendar-post-draft-{$post->id}");
 
-    $page->assertMissing("@calendar-post-popover-{$post->id}")
-        ->assertVisible("@calendar-post-{$post->id}")
-        ->assertNoJavaScriptErrors();
     expect($post->refresh()->status)->toBe(PostStatus::Draft);
+
+    $page->keys("@post-details-{$post->id}", 'Escape');
+    waitForGone($page, "@post-details-{$post->id}");
+    $page->assertVisible("@calendar-post-{$post->id}")
+        ->assertNoJavaScriptErrors();
 });
 
 test('on a phone the week shows its seven days in columns with their posts', function () {
