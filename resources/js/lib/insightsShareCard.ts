@@ -285,87 +285,98 @@ const paintLogo = (
     context.stroke();
 };
 
-/** The signature on the tint, under the panel: whoever sees the post sees where it came from. */
+/** The middle of the band under the panel, where the networks and the signature sit. */
+const footerCentre = (height: number): number => height - PANEL_BOTTOM / 2;
+
+/**
+ * The signature on the tint, right of the band under the panel: whoever sees
+ * the post sees where it came from. Returns where it starts.
+ */
 const paintMark = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
     width: number,
     height: number,
-): void => {
+): number => {
     const logo = 32;
     const gap = 12;
-    const baseline = height - PANEL_BOTTOM / 2 + 9;
+    const centre = footerCentre(height);
 
     context.font = `600 24px ${SANS}`;
     context.textAlign = 'left';
+    context.textBaseline = 'middle';
 
     const textWidth = context.measureText(options.mark).width;
     const start = width - PANEL.x - textWidth - logo - gap;
 
-    paintLogo(context, start, baseline - logo + 8, logo);
+    paintLogo(context, start, centre - logo / 2, logo);
     context.fillStyle = INK;
-    context.fillText(options.mark, start + logo + gap, baseline);
+    context.fillText(options.mark, start + logo + gap, centre + 1);
+    context.textBaseline = 'alphabetic';
+
+    return start;
 };
 
-const LOGO_SIZE = 44;
-const LOGO_OVERLAP = 12;
-const MAX_LOGOS = 5;
+const LOGO_SIZE = 40;
+const LOGO_GAP = 10;
 
-/** The networks as overlapping round logos with the ink border, like a cover's badge. */
+/**
+ * The networks the numbers come from, side by side on the tint, left of the
+ * signature, each round with the ink border like a cover's badge. Only when
+ * they do not fit does the rest collapse into "+N".
+ */
 const paintLogos = (
     context: CanvasRenderingContext2D,
     logos: HTMLImageElement[],
-    x: number,
+    left: number,
+    right: number,
     centre: number,
-): number => {
-    const shown = logos.slice(0, MAX_LOGOS);
+): void => {
+    const step = LOGO_SIZE + LOGO_GAP;
+    const fits = Math.max(Math.floor((right - left + LOGO_GAP) / step), 0);
+    const shown = logos.length > fits ? logos.slice(0, Math.max(fits - 1, 0)) : logos;
     const hidden = logos.length - shown.length;
-    let left = x;
+    const top = centre - LOGO_SIZE / 2;
+    let x = left;
+
+    const ring = (): void => {
+        context.strokeStyle = INK;
+        context.lineWidth = BORDER;
+        context.stroke();
+    };
 
     shown.forEach((logo) => {
-        const top = centre - LOGO_SIZE / 2;
-
         context.save();
         context.beginPath();
-        context.arc(left + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
+        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
         context.fillStyle = '#ffffff';
         context.fill();
         context.clip();
-        context.drawImage(logo, left, top, LOGO_SIZE, LOGO_SIZE);
+        context.drawImage(logo, x, top, LOGO_SIZE, LOGO_SIZE);
         context.restore();
         context.beginPath();
-        context.arc(left + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
-        context.strokeStyle = INK;
-        context.lineWidth = BORDER;
-        context.stroke();
-        left += LOGO_SIZE - LOGO_OVERLAP;
+        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
+        ring();
+        x += step;
     });
 
     if (hidden > 0) {
-        const label = `+${hidden}`;
-
-        context.font = `700 18px ${SANS}`;
-
-        const width = Math.max(LOGO_SIZE, context.measureText(label).width + 22);
-
-        roundedRect(context, left, centre - LOGO_SIZE / 2, width, LOGO_SIZE, LOGO_SIZE / 2);
-        context.fillStyle = '#f3f2f0';
+        context.beginPath();
+        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
+        context.fillStyle = '#ffffff';
         context.fill();
-        context.strokeStyle = INK;
-        context.lineWidth = BORDER;
-        context.stroke();
+        ring();
         context.fillStyle = INK;
+        context.font = `600 16px ${SANS}`;
         context.textAlign = 'center';
         context.textBaseline = 'middle';
-        context.fillText(label, left + width / 2, centre + 1);
+        context.fillText(`+${hidden}`, x + LOGO_SIZE / 2, centre + 1);
         context.textBaseline = 'alphabetic';
-        left += width - LOGO_OVERLAP;
+        context.textAlign = 'left';
     }
-
-    return shown.length > 0 ? left + LOGO_OVERLAP + 16 : x;
 };
 
-/** The networks' logos and the subject on one line, what and when under it. */
+/** The workspace or channel name, what and when under it. */
 const paintIdentity = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
@@ -374,19 +385,14 @@ const paintIdentity = (
     limit: number,
     detail: string,
 ): void => {
-    const centre = top + LOGO_SIZE / 2;
-    const textLeft = paintLogos(context, options.logos, left, centre);
-
     context.textAlign = 'left';
-    context.textBaseline = 'middle';
     context.fillStyle = INK;
     context.font = `600 36px ${HEADING}`;
-    context.fillText(ellipsise(context, options.subject, limit - (textLeft - left)), textLeft, centre + 1);
-    context.textBaseline = 'alphabetic';
+    context.fillText(ellipsise(context, options.subject, limit), left, top + 34);
 
     context.fillStyle = MUTED;
     context.font = `500 22px ${SANS}`;
-    context.fillText(ellipsise(context, detail, limit), left, top + LOGO_SIZE + 40);
+    context.fillText(ellipsise(context, detail, limit), left, top + 76);
 };
 
 /** The change as the page's `MetricChange`: the trending icon and the label, in the tone's color. */
@@ -788,7 +794,9 @@ export const drawShareCard = (
         paintChart(context, options, panel);
     }
 
-    paintMark(context, options, width, height);
+    const markStart = paintMark(context, options, width, height);
+
+    paintLogos(context, options.logos, PANEL.x, markStart - 32, footerCentre(height));
 };
 
 /** The card at download resolution, off screen, as a PNG file. */
