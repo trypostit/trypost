@@ -5,46 +5,20 @@ interface Label {
     color: string;
 }
 
-withDefaults(
-    defineProps<{
-        label: Label;
-        interactive?: boolean;
-        selected?: boolean;
-        disabled?: boolean;
-    }>(),
-    {
-        interactive: false,
-        selected: false,
-        disabled: false,
-    },
-);
-
-defineEmits<{ click: [] }>();
+defineProps<{
+    label: Label;
+}>();
 </script>
 
 <template>
-    <component
-        :is="interactive ? 'button' : 'span'"
-        :type="interactive ? 'button' : undefined"
-        :disabled="interactive && disabled"
-        class="inline-flex items-center gap-1.5 rounded-full border border-border px-2 py-0.5 text-[10px] font-bold tracking-widest text-foreground uppercase shadow-2xs"
-        :class="[
-            selected
-                ? 'border-primary-strong bg-primary-subtle text-foreground shadow-sm'
-                : 'bg-card',
-            interactive
-                ? 'cursor-pointer transition-transform hover:-translate-y-0.5 disabled:cursor-not-allowed'
-                : '',
-            interactive && !selected && !disabled
-                ? 'opacity-80 hover:opacity-100'
-                : '',
-        ]"
-        @click="interactive && !disabled ? $emit('click') : undefined"
+    <span
+        class="inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md border border-border-strong bg-card px-2 text-xs font-medium text-foreground"
     >
         <span
             class="size-2 shrink-0 rounded-full"
             :style="{ backgroundColor: label.color }"
+            aria-hidden="true"
         />
         <span class="truncate">{{ label.name }}</span>
-    </component>
+    </span>
 </template>

@@ -15,13 +15,13 @@
         "ai-sdk-development",
         "cashier-stripe-development",
         "laravel-best-practices",
+        "testing-best-practices",
         "configuring-horizon",
         "mcp-development",
         "configure-nightwatch",
         "passport-development",
         "socialite-development",
         "wayfinder-development",
-        "pest-testing",
         "inertia-vue-development",
         "tailwindcss-development"
     ]

@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
-    IconChevronDown,
     IconLayoutSidebarRightCollapse,
     IconLayoutSidebarRightExpand,
     IconPlus,
 } from '@tabler/icons-vue';
-import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
+import {
+    useEventListener,
+    useSwipe,
+    type UseSwipeDirection,
+} from '@vueuse/core';
 import {
     computed,
     onMounted,
@@ -23,14 +26,21 @@ import ConfirmDeleteModal from '@/components/ConfirmDeleteModal.vue';
 import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import ScheduleViewSwitch from '@/components/posts/ScheduleViewSwitch.vue';
+import CalendarCustomTimeDialog from '@/components/publish/CalendarCustomTimeDialog.vue';
+import CalendarDragAnnouncer from '@/components/publish/CalendarDragAnnouncer.vue';
+import CalendarMonthGrid from '@/components/publish/CalendarMonthGrid.vue';
 import CalendarPeriodPicker from '@/components/publish/CalendarPeriodPicker.vue';
-import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
-import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
 import CalendarTimeGrid from '@/components/publish/CalendarTimeGrid.vue';
 import CalendarUndatedPanel from '@/components/publish/CalendarUndatedPanel.vue';
 import PublishFilterMenu from '@/components/publish/PublishFilterMenu.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { Button } from '@/components/ui/button';
+import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
+import {
+    calendarDragKey,
+    DRAG_HINT_ID,
+    useCalendarDrag,
+} from '@/composables/calendar/useCalendarDrag';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
 import { useCollapseWhenTruncated } from '@/composables/useCollapseWhenTruncated';
 import { useDisplayTimezone } from '@/composables/useDisplayTimezone';
@@ -46,7 +56,7 @@ import date from '@/date';
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
+import { calendarDayKey } from '@/lib/calendarItems';
 import { calendar } from '@/routes/app';
 import {
     calendar as channelCalendar,
@@ -94,12 +104,12 @@ interface Props {
 
 const props = defineProps<Props>();
 const page = usePage();
-const { canCreatePost, canManageAccounts } = useWorkspaceAbilities();
+const { canCreatePost, canManageAccounts, requiresApproval } =
+    useWorkspaceAbilities();
 const { showSlots, setShowSlots } = useShowPostingSlots();
 
 const VIEWS: readonly CalendarView[] = ['days', 'week', 'month'];
 const DAYS_SPAN = 3;
-const MONTH_CHIPS = 3;
 const RELOAD_PROPS = [
     'posts',
     'currentDay',
@@ -108,10 +118,19 @@ const RELOAD_PROPS = [
     'view',
     'displayTimezone',
     'filters',
-    'slots',
 ];
 
+/**
+ * The props a reload of this page asks for. The posting slots are an optional
+ * prop, so they are only asked for (and built) while the viewer shows them.
+ */
+const reloadProps = (): string[] =>
+    showSlots.value ? [...RELOAD_PROPS, 'slots'] : RELOAD_PROPS;
+
 const deleteModal = ref<InstanceType<typeof ConfirmDeleteModal> | null>(null);
+const customTimeDialog = ref<InstanceType<
+    typeof CalendarCustomTimeDialog
+> | null>(null);
 
 provide(deletePostCardKey, (post: PostCard) => {
     deleteModal.value?.open({ url: destroyPost.url(post.id) });
@@ -137,7 +156,7 @@ const { timezone, setTimezone } = useDisplayTimezone(
     props.displayTimezone,
     props.timezones.map((option) => option.value),
     undefined,
-    RELOAD_PROPS,
+    reloadProps,
 );
 
 provideViewTimezone(timezone);
@@ -148,6 +167,39 @@ watch(
         timezone.value = value;
     },
 );
+
+const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
+    customTimeDialog.value?.confirm(from, to, timezone.value) ??
+    Promise.resolve(false);
+
+const { announcement, describeInstant, hooks } =
+    useCalendarAnnouncer(timezone);
+
+const CALENDAR_VIEWS: CalendarView[] = ['days', 'week', 'month'];
+
+const calendarDrag = useCalendarDrag({
+    timezone,
+    canCreatePost,
+    requiresApproval,
+    reloadProps: () => [...reloadProps(), 'undatedDrafts'],
+    isCalendarPath: (pathname) =>
+        CALENDAR_VIEWS.some(
+            (view) =>
+                new URL(calendarUrl(view), window.location.origin).pathname ===
+                pathname,
+        ),
+    confirmCustomTime,
+    describeInstant,
+    ...hooks,
+});
+
+provide(calendarDragKey, calendarDrag);
+
+const { movingPostIds } = calendarDrag;
+
+const isRescheduling = computed(() => movingPostIds.value.length > 0);
+
+const undatedDraftList = computed(() => props.undatedDrafts?.data ?? null);
 
 const selectedLabelIds = ref<string[]>(props.filters.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters.untagged ?? false);
@@ -201,17 +253,22 @@ const visit = (url: string): void => {
     router.get(
         url,
         {},
-        { preserveState: true, preserveScroll: true, only: RELOAD_PROPS },
+        { preserveState: true, preserveScroll: true, only: reloadProps() },
     );
 };
 
-const reload = (only: string[], reset: string[] = []): void => {
+const reload = (
+    only: string[],
+    reset: string[] = [],
+    preserveUrl = false,
+): void => {
     router.get(
         calendarUrl(props.view, currentDateQuery()),
         {},
         {
             preserveState: true,
             preserveScroll: true,
+            preserveUrl,
             replace: true,
             only,
             reset,
@@ -221,7 +278,7 @@ const reload = (only: string[], reset: string[] = []): void => {
 
 watch(
     [selectedLabelIds, selectedUntagged, selectedChannelIds, selectedStatus],
-    () => reload([...RELOAD_PROPS, 'undatedDrafts'], ['undatedDrafts']),
+    () => reload([...reloadProps(), 'undatedDrafts'], ['undatedDrafts']),
     { deep: true },
 );
 
@@ -238,8 +295,28 @@ const closeUndated = (): void => {
 
 const toggleSlots = (value: boolean): void => {
     setShowSlots(value);
-    reload(['slots']);
+
+    if (value) {
+        reload(['slots']);
+
+        return;
+    }
+
+    reload(['displayTimezone']);
 };
+
+/**
+ * A full visit back to the calendar (after saving or deleting a post) brings no
+ * posting times unless its URL asks for them, so they are loaded again.
+ */
+watch(
+    () => props.slots,
+    (slots) => {
+        if (showSlots.value && slots === undefined) {
+            reload(['slots'], [], true);
+        }
+    },
+);
 
 onMounted(() => {
     clock = setInterval(() => {
@@ -247,16 +324,7 @@ onMounted(() => {
     }, 60_000);
 
     if (showSlots.value && props.slots === undefined) {
-        router.get(
-            calendarUrl(props.view, currentDateQuery()),
-            {},
-            {
-                preserveState: true,
-                preserveScroll: true,
-                preserveUrl: true,
-                only: ['slots'],
-            },
-        );
+        reload(['slots'], [], true);
     }
 });
 
@@ -285,14 +353,6 @@ const { collapsed: filtersCollapsed, expand: showAllFilters } =
 const compactFilters = computed(
     () => !isDesktop.value || filtersCollapsed.value,
 );
-
-const weekdayNames = computed(() => {
-    const start = localized().startOf('week');
-
-    return Array.from({ length: 7 }, (_, index) =>
-        start.add(index, 'day').format(isDesktop.value ? 'dddd' : 'ddd'),
-    );
-});
 
 const periodStart = computed(() =>
     localized(props.view === 'days' ? props.currentDay : props.currentWeekStart),
@@ -382,15 +442,6 @@ const navigate = (direction: number): void => {
 
 const switchView = (view: CalendarView): void => visit(calendarUrl(view));
 
-const dayKey = (day: dayjs.Dayjs): string => day.format('YYYY-MM-DD');
-
-const isToday = (day: dayjs.Dayjs): boolean => dayKey(day) === todayKey.value;
-
-const isPast = (day: dayjs.Dayjs): boolean => dayKey(day) < todayKey.value;
-
-const isCurrentMonth = (day: dayjs.Dayjs): boolean =>
-    day.month() === monthDate.value.month();
-
 const visibleSlots = computed<Record<string, CalendarSlot[]>>(() =>
     showSlots.value ? (props.slots ?? {}) : {},
 );
@@ -402,12 +453,6 @@ const slotChannels = computed<Record<string, PublishSocialAccount>>(() =>
         ),
     ),
 );
-
-const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
-    calendarItems(
-        props.posts[dayKey(day)] ?? [],
-        visibleSlots.value[dayKey(day)] ?? [],
-    );
 
 const composerAccounts = (): string[] =>
     props.channel ? [props.channel.id] : [];
@@ -421,25 +466,7 @@ const composeAt = (utcIso: string): void =>
         socialAccountIds: composerAccounts(),
     });
 
-const composeOn = (day: dayjs.Dayjs): void =>
-    composeAt(dayjs.tz(`${dayKey(day)}T09:00`, timezone.value).utc().format());
-
 const expandedDays = ref<string[]>([]);
-
-const toggleDay = (key: string): void => {
-    expandedDays.value = expandedDays.value.includes(key)
-        ? expandedDays.value.filter((day) => day !== key)
-        : [...expandedDays.value, key];
-};
-
-const isDayExpanded = (day: dayjs.Dayjs): boolean =>
-    expandedDays.value.includes(dayKey(day));
-
-const hiddenCount = (day: dayjs.Dayjs): number =>
-    itemsFor(day).length - MONTH_CHIPS;
-
-const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
-    isDayExpanded(day) ? itemsFor(day) : itemsFor(day).slice(0, MONTH_CHIPS);
 
 const mobileTitle = computed(() => {
     if (props.view === 'month') {
@@ -462,7 +489,7 @@ const mobileTitle = computed(() => {
 
 const dayKeys = computed(() =>
     (props.view === 'month' ? calendarWeeks.value.flat() : periodDays.value).map(
-        dayKey,
+        calendarDayKey,
     ),
 );
 
@@ -519,9 +546,33 @@ const swipeStep = (direction: UseSwipeDirection): number => {
 
 const periodSwipeTarget = ref<HTMLElement | null>(null);
 
+/**
+ * A touch that dragged a post is not a period swipe, even when it moved sideways.
+ */
+let touchDraggedPost = false;
+
+useEventListener(
+    periodSwipeTarget,
+    'touchstart',
+    () => {
+        touchDraggedPost = false;
+    },
+    { passive: true },
+);
+
+watch(calendarDrag.draggingPostId, (postId) => {
+    if (postId !== null) {
+        touchDraggedPost = true;
+    }
+});
+
 useSwipe(periodSwipeTarget, {
     threshold: 48,
     onSwipeEnd: (_event, direction) => {
+        if (touchDraggedPost) {
+            return;
+        }
+
         const step = swipeStep(direction);
 
         if (step !== 0) {
@@ -641,7 +692,9 @@ const goToDay = (key: string): void => {
                         <ScheduleViewSwitch
                             active-view="calendar"
                             :list-href="listHref"
-                            :calendar-href="calendarUrl('month')"
+                            :calendar-href="
+                                calendarUrl(isDesktop ? 'month' : 'days')
+                            "
                             :grid-href="
                                 channel?.has_grid
                                     ? grid.url(channel.id)
@@ -679,6 +732,7 @@ const goToDay = (key: string): void => {
                     ref="periodSwipeTarget"
                     class="mb-4 flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border-strong md:mb-6"
                     :class="{ 'max-md:hidden': undatedOpen }"
+                    :aria-busy="isRescheduling || undefined"
                     data-testid="calendar-grid"
                 >
                     <CalendarTimeGrid
@@ -693,151 +747,20 @@ const goToDay = (key: string): void => {
                         @compose="composeAt"
                     />
 
-                    <div
+                    <CalendarMonthGrid
                         v-else
-                        class="flex flex-1 flex-col overflow-y-auto overscroll-contain"
-                        data-testid="calendar-month-grid"
-                    >
-                        <div
-                            class="sticky top-0 z-10 grid grid-cols-7 border-b border-border-strong bg-card"
-                        >
-                            <div
-                                v-for="(name, index) in weekdayNames"
-                                :key="name"
-                                class="border-border-strong p-1.5 text-center text-sm font-medium text-muted-foreground capitalize md:p-2.5"
-                                :class="{ 'border-l': index > 0 }"
-                            >
-                                {{ name }}
-                            </div>
-                        </div>
-
-                        <div class="flex flex-1 flex-col">
-                            <div
-                                v-for="(week, weekIndex) in calendarWeeks"
-                                :key="weekIndex"
-                                class="grid min-h-40 flex-1 auto-rows-[minmax(0,1fr)] grid-cols-7 border-border-strong md:min-h-[208px]"
-                                :class="{ 'border-t': weekIndex > 0 }"
-                            >
-                                <div
-                                    v-for="(day, index) in week"
-                                    :key="dayKey(day)"
-                                    class="group flex min-h-0 min-w-0 flex-col gap-1 border-border-strong p-1 md:p-2"
-                                    :class="{
-                                        'border-l': index > 0,
-                                        'bg-accent': isPast(day),
-                                    }"
-                                    :data-testid="`calendar-day-${dayKey(day)}`"
-                                >
-                                    <div class="flex items-center justify-between">
-                                        <span
-                                            class="inline-flex size-6 items-center justify-center rounded-full text-sm font-medium"
-                                            :class="{
-                                                'bg-primary text-primary-foreground':
-                                                    isToday(day),
-                                                'text-subtle-foreground':
-                                                    !isToday(day) &&
-                                                    !isCurrentMonth(day),
-                                                'text-muted-foreground':
-                                                    !isToday(day) &&
-                                                    isCurrentMonth(day),
-                                            }"
-                                        >
-                                            {{ day.format('D') }}
-                                        </span>
-                                        <button
-                                            v-if="canCreatePost && !isPast(day)"
-                                            type="button"
-                                            :aria-label="$t('calendar.new_post')"
-                                            class="flex size-6 items-center justify-center rounded-md border border-border-strong bg-card text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
-                                            :data-testid="`calendar-add-${dayKey(day)}`"
-                                            @click="composeOn(day)"
-                                        >
-                                            <IconPlus class="size-3.5" />
-                                        </button>
-                                    </div>
-
-                                    <div class="relative min-h-0 flex-1">
-                                    <div
-                                        class="flex flex-col gap-1"
-                                        :class="{
-                                            'absolute inset-0 overflow-y-auto overscroll-contain':
-                                                isDayExpanded(day),
-                                        }"
-                                        :data-testid="`calendar-items-${dayKey(day)}`"
-                                    >
-                                        <template
-                                            v-for="item in visibleMonthItems(day)"
-                                            :key="item.key"
-                                        >
-                                            <CalendarPostChip
-                                                v-if="item.post"
-                                                :post="item.post"
-                                                :timezone="timezone"
-                                                :compact="!isDesktop"
-                                            />
-                                            <CalendarSlotChip
-                                                v-else-if="item.slot"
-                                                :posting-slot="item.slot"
-                                                :channel="
-                                                    slotChannels[
-                                                        item.slot.channel_id
-                                                    ] ?? null
-                                                "
-                                                :timezone="timezone"
-                                                :can-create-post="canCreatePost"
-                                                :compact="!isDesktop"
-                                            />
-                                        </template>
-                                    </div>
-                                    </div>
-                                    <button
-                                        v-if="hiddenCount(day) > 0"
-                                        type="button"
-                                        class="inline-flex shrink-0 items-center gap-1 rounded-md text-xs font-medium text-foreground transition-control hover:bg-accent"
-                                        :class="
-                                            isDesktop
-                                                ? 'h-6 self-end px-2'
-                                                : 'h-7 min-w-7 justify-center self-start px-1'
-                                        "
-                                        :aria-expanded="isDayExpanded(day)"
-                                        :aria-label="
-                                            isDesktop
-                                                ? undefined
-                                                : isDayExpanded(day)
-                                                  ? $t('calendar.less')
-                                                  : $t('calendar.more', {
-                                                        count: String(
-                                                            hiddenCount(day),
-                                                        ),
-                                                    })
-                                        "
-                                        :data-testid="`calendar-more-${dayKey(day)}`"
-                                        @click="toggleDay(dayKey(day))"
-                                    >
-                                        <IconChevronDown
-                                            v-if="isDesktop || isDayExpanded(day)"
-                                            class="size-3.5 transition-transform"
-                                            :class="{
-                                                'rotate-180': isDayExpanded(day),
-                                            }"
-                                        />
-                                        <template v-if="isDesktop">{{
-                                            isDayExpanded(day)
-                                                ? $t('calendar.less')
-                                                : $t('calendar.more', {
-                                                      count: String(
-                                                          hiddenCount(day),
-                                                      ),
-                                                  })
-                                        }}</template>
-                                        <template v-else-if="!isDayExpanded(day)"
-                                            >+{{ hiddenCount(day) }}</template
-                                        >
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                        v-model:expanded-days="expandedDays"
+                        :weeks="calendarWeeks"
+                        :month="monthDate"
+                        :posts="posts"
+                        :slots="visibleSlots"
+                        :channels="slotChannels"
+                        :timezone="timezone"
+                        :now="now"
+                        :can-create-post="canCreatePost"
+                        :is-desktop="isDesktop"
+                        @compose="composeAt"
+                    />
                 </div>
 
                 <Transition
@@ -852,7 +775,7 @@ const goToDay = (key: string): void => {
                         data-testid="calendar-undated-slide"
                     >
                         <CalendarUndatedPanel
-                            :drafts="undatedDrafts?.data ?? null"
+                            :drafts="undatedDraftList"
                             @close="closeUndated"
                         />
                     </div>
@@ -860,6 +783,13 @@ const goToDay = (key: string): void => {
             </div>
         </div>
     </AppLayout>
+
+    <CalendarCustomTimeDialog ref="customTimeDialog" />
+
+    <CalendarDragAnnouncer :text="announcement" />
+    <span :id="DRAG_HINT_ID" hidden data-testid="calendar-drag-hint">{{
+        $t('calendar.reschedule.drag_hint')
+    }}</span>
 
     <ConfirmDeleteModal
         ref="deleteModal"

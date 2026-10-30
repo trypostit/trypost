@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Uri;
 
 beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
@@ -494,7 +495,7 @@ test('store post creates one independent draft per selected account', function (
         ]),
     );
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'Shared caption',
         'media' => [],
@@ -523,7 +524,7 @@ test('store post schedules each selected account independently', function () {
     ]);
     $date = now()->addDay()->startOfMinute()->toIso8601String();
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'status' => 'scheduled',
         'content' => 'Scheduled caption',
         'media' => [],
@@ -549,7 +550,7 @@ test('saving a zero-target legacy draft creates independent posts and removes th
     $other = SocialAccount::factory()->create(['workspace_id' => $this->workspace->id, 'platform' => Platform::LinkedIn]);
     $accounts = [$this->socialAccount, $other];
 
-    $this->actingAs($this->user)->post(route('app.posts.store'), [
+    $this->actingAs($this->user)->from(route('app.posts.index'))->post(route('app.posts.store'), [
         'recover_post_id' => $legacy->id,
         'status' => 'draft',
         'content' => 'Recovered caption',
@@ -847,7 +848,7 @@ test('publish now updates scheduled_at to current time', function () {
         'scheduled_at' => now()->addDays(7),
     ]);
 
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))->put(route('app.posts.update', $post), [
         'status' => 'publishing',
         'content' => 'Test content',
         'content_type' => ContentType::LinkedInPost->value,
@@ -1018,11 +1019,104 @@ test('destroy post deletes the post and redirects to posts index', function () {
         'user_id' => $this->user->id,
     ]);
 
-    $response = $this->actingAs($this->user)
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))
         ->delete(route('app.posts.destroy', $post));
 
     $response->assertRedirect(route('app.posts.index'));
     expect(Post::find($post->id))->toBeNull();
+});
+
+test('destroy never sends the browser to another host named in the referer path', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from('https://evil.example//evil.com/x')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.home'));
+
+    expect(Post::find($post->id))->toBeNull();
+});
+
+test('destroy with a referer that cannot be read deletes the post and returns home', function (string $referer) {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from($referer)
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.home'));
+
+    expect(Post::find($post->id))->toBeNull();
+})->with([
+    'no host' => 'http://:80/x',
+    'a page of the app the URI parser refuses' => 'https://user@:pass@app.trypost.test/schedule',
+]);
+
+test('destroy without a referer returns home, not to the last page loaded in full', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->withSession(['_previous' => ['url' => route('app.settings.preferences')]])
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.home'));
+
+    expect(Post::find($post->id))->toBeNull();
+});
+
+test('destroy returns to the page it came from even when its query names a route parameter', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['view' => 'week']).'?view=month')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['view' => 'week']));
+});
+
+test('destroy keeps a query key named like an optional route parameter in the query, where the page reads it', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['week' => '2026-10-26']).'&view=month')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect((string) Uri::of(route('app.calendar', ['week' => '2026-10-26']))->withQuery(['view' => 'month']));
+});
+
+test('destroy ignores a numeric query key of the page it returns to', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['week' => '2026-10-26']).'&0=foo')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['week' => '2026-10-26']));
+});
+
+test('destroy returns to a page whose query has a form-encoded space with the same value', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from(route('app.calendar', ['view' => 'week']).'?search=foo+bar')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.calendar', ['view' => 'week', 'search' => 'foo bar']));
 });
 
 test('destroy post with redirect param redirects to calendar', function () {
@@ -1289,7 +1383,7 @@ test('update post goes back to the queue after publishing without opening the po
         'content' => 'Test',
     ]);
 
-    $response = $this->actingAs($this->user)->put(route('app.posts.update', $post), [
+    $response = $this->actingAs($this->user)->from(route('app.posts.index'))->put(route('app.posts.update', $post), [
         'status' => 'publishing',
         'content' => 'Test',
         'content_type' => ContentType::LinkedInPost->value,
@@ -1641,22 +1735,23 @@ test('saving a draft from the calendar stays on the calendar', function () {
         ->assertRedirect($calendar);
 });
 
-test('a new draft goes to the drafts tab, from the publish list or anywhere else', function (?string $from) {
-    $request = $this->actingAs($this->user);
-
-    if ($from !== null) {
-        $request = $request->from($from);
-    }
-
-    $request->post(route('app.posts.store'), [
+test('a new draft from the publish list goes to the drafts tab', function (string $from) {
+    $this->actingAs($this->user)->from($from)->post(route('app.posts.store'), [
         'status' => 'draft',
         'content' => 'New draft',
         'destinations' => [['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value]],
     ])->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
 })->with([
     'the queue tab' => fn () => route('app.posts.index', ['tab' => 'queue', 'compose' => 1]),
-    'insights' => fn () => route('app.insights'),
 ]);
+
+test('a post saved with no page to return to lands on the app home', function () {
+    $this->actingAs($this->user)->post(route('app.posts.store'), [
+        'status' => 'draft',
+        'content' => 'New draft',
+        'destinations' => [['social_account_id' => $this->socialAccount->id, 'content_type' => ContentType::LinkedInPost->value]],
+    ])->assertRedirect(route('app.home'));
+});
 
 test('every way of scheduling from the editor lands on the queue tab', function (array $schedule) {
     $this->socialAccount->update(['posting_schedule' => PostingSchedule::empty()->withTime(1, '10:00')]);

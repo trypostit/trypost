@@ -98,7 +98,9 @@ export const syncLocale = (props: LocaleProps): void => {
 export const i18nConfig = (lang: string) => ({
     lang,
     resolve: async (locale: string) => {
-        const langs = import.meta.glob('../../lang/*.json');
+        const langs = import.meta.glob<{ default: Record<string, string> }>(
+            '../../lang/*.json',
+        );
 
         return await langs[`../../lang/php_${locale}.json`]();
     },

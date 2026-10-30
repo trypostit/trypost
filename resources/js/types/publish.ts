@@ -163,6 +163,7 @@ export const CALENDAR_STATUSES: readonly CalendarStatus[] = [
 export interface CalendarSlot {
     at: string;
     channel_id: string;
+    queueable: boolean;
 }
 
 export interface UndatedDraft extends Omit<PostCard, 'scheduled_at'> {

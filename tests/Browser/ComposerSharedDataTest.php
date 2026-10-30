@@ -103,8 +103,8 @@ test('editing from the calendar opens the post with its board', function () {
     $page = visit(route('app.calendar', ['view' => 'month', 'month' => $post->scheduled_at->format('Y-m-d')]));
     waitForComposerSharedDataTestId($page, "calendar-post-{$post->id}");
     $page->click("@calendar-post-{$post->id}");
-    waitForComposerSharedDataTestId($page, "post-edit-{$post->id}");
-    $page->click("@post-edit-{$post->id}");
+    waitForComposerSharedDataTestId($page, "post-details-edit-{$post->id}");
+    $page->click("@post-details-edit-{$post->id}");
     waitForComposerSharedDataTestId($page, 'pinterest-board-selected');
 
     $page->assertSeeIn('@pinterest-board-selected', 'Live board')
@@ -113,13 +113,14 @@ test('editing from the calendar opens the post with its board', function () {
 
 function clickComposerSharedDataNewPost(mixed $page): void
 {
-    $item = "document.querySelector('[data-testid=\"sidebar-new-post\"]')?.getBoundingClientRect().height > 0";
+    $menuOpen = "Boolean(document.querySelector('[data-testid=\"sidebar-new-menu\"][data-state=\"open\"]'))";
 
-    for ($attempt = 0; $attempt < 3 && ! $page->script("Boolean({$item})"); $attempt++) {
+    for ($attempt = 0; $attempt < 3 && ! $page->script($menuOpen); $attempt++) {
         $page->click('@sidebar-new');
-        waitForComposerSharedDataCondition($page, $item);
+        waitForCondition($page, $menuOpen);
     }
 
+    waitFor($page, '@sidebar-new-post');
     $page->click('@sidebar-new-post');
 }
 

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\App;
 
+use App\Actions\Post\ReschedulePost;
 use App\Actions\Post\UpdatePost;
 use App\Enums\Post\Action as PostAction;
-use App\Enums\Post\QueuePosition;
-use App\Enums\Post\Status as PostStatus;
+use App\Enums\Post\ScheduleAction;
 use App\Http\Controllers\App\Concerns\RendersPublishPage;
 use App\Http\Requests\App\Post\UpdatePostScheduleRequest;
 use App\Models\Post;
@@ -28,18 +28,20 @@ class PostScheduleController extends Controller
 
         $this->authorize('update', $post);
 
-        if ($request->validated('action') === 'publish_now' && ! PostStatusRules::blocksEditing($post)) {
+        $scheduleAction = $request->enum('action', ScheduleAction::class);
+
+        if ($scheduleAction === ScheduleAction::Reschedule && $request->boolean('queue_slot')) {
+            $this->authorize('publishDirectly', $workspace);
+        }
+
+        if ($scheduleAction === ScheduleAction::PublishNow && ! PostStatusRules::blocksEditing($post)) {
             PostStatusRules::assertStoredPostPublishable($post);
         }
 
-        $data = match ($request->validated('action')) {
-            'draft' => ['status' => PostStatus::Draft->value],
-            'publish_now' => ['status' => PostStatus::Publishing->value],
-            'queue_next' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Next->value],
-            'queue_top' => ['status' => PostStatus::Scheduled->value, 'queue' => QueuePosition::Top->value],
+        $result = match ($scheduleAction) {
+            ScheduleAction::Reschedule => ReschedulePost::execute($workspace, $post, $request->validated('scheduled_at'), $request->user(), $request->boolean('queue_slot')),
+            ScheduleAction::Draft, ScheduleAction::PublishNow, ScheduleAction::QueueNext, ScheduleAction::QueueTop => UpdatePost::execute($workspace, $post, $scheduleAction->postChanges(), $request->user()),
         };
-
-        $result = UpdatePost::execute($workspace, $post, $data, $request->user());
 
         $action = data_get($result, 'action');
 
@@ -48,7 +50,7 @@ class PostScheduleController extends Controller
             session()->flash('flash.bannerStyle', 'danger');
         }
 
-        if ($action === PostAction::Publishing || $action === PostAction::Scheduled) {
+        if ($scheduleAction === ScheduleAction::PublishNow && in_array($action, [PostAction::Publishing, PostAction::Scheduled], true)) {
             $queue = $this->publishPageReturnUrl(['tab' => 'queue']);
 
             return $queue ? redirect($queue) : back();

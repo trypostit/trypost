@@ -84,6 +84,22 @@ pest()->browser()->timeout(15000);
 
 /*
 |--------------------------------------------------------------------------
+| Browser Traces
+|--------------------------------------------------------------------------
+|
+| On CI each browser test records a Playwright trace, kept only when the test
+| fails, in tests/Browser/Traces (uploaded with the screenshots). Open one
+| with `npx playwright show-trace <file>.zip`. Set here and not with --trace,
+| which does not reach the parallel workers.
+|
+*/
+
+if (filled(getenv('CI'))) {
+    pest()->browser()->trace(open: false);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Expectations
 |--------------------------------------------------------------------------
 |

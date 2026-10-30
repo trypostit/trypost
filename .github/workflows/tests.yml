@@ -178,7 +178,9 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: playwright-artifacts-${{ matrix.shard }}
-          path: tests/Browser/Screenshots
+          path: |
+            tests/Browser/Screenshots
+            tests/Browser/Traces
           if-no-files-found: ignore
           retention-days: 7
 

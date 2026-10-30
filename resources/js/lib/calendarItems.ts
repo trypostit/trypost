@@ -24,3 +24,6 @@ export const calendarItems = (
             slot,
         })),
     ].sort((first, second) => dayjs(first.at).diff(dayjs(second.at)));
+
+export const calendarDayKey = (day: dayjs.Dayjs): string =>
+    day.format('YYYY-MM-DD');

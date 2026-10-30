@@ -4,9 +4,14 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import CalendarPostChip from '@/components/publish/CalendarPostChip.vue';
 import CalendarSlotChip from '@/components/publish/CalendarSlotChip.vue';
+import {
+    calendarTargetKey,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { wallClockIn, type CalendarDropTarget } from '@/lib/calendarDrop';
 import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
 import type {
     CalendarPost,
@@ -93,17 +98,60 @@ const visibleItems = (
         ? items.slice(0, MAX_CHIPS - 1)
         : items;
 
-const slotStart = (key: string, hour: number): dayjs.Dayjs =>
-    dayjs.tz(`${key} ${String(hour).padStart(2, '0')}:00`, props.timezone);
+const hourLabel = (hour: number): string => String(hour).padStart(2, '0');
 
-const isPastSlot = (key: string, hour: number): boolean =>
-    slotStart(key, hour).isBefore(props.now);
+const hourSlots = computed(() =>
+    props.days.map((day) =>
+        HOURS.map((hour) => {
+            const start = dayjs.tz(
+                `${day.format('YYYY-MM-DD')} ${hourLabel(hour)}:00`,
+                props.timezone,
+            );
+            const target: CalendarDropTarget | null =
+                wallClockIn(start, props.timezone).hour === hour
+                    ? { kind: 'hour', at: start.utc().format() }
+                    : null;
 
-const hourLabel = (hour: number): string =>
-    `${String(hour).padStart(2, '0')}`;
+            return {
+                start,
+                target,
+                key: target ? calendarTargetKey(target) : null,
+            };
+        }),
+    ),
+);
 
-const compose = (key: string, hour: number): void => {
-    emit('compose', slotStart(key, hour).utc().format());
+const pastHours = computed(() =>
+    hourSlots.value.map((hours) =>
+        hours.map(({ start }) => start.isBefore(props.now)),
+    ),
+);
+
+const isPastSlot = (column: number, hour: number): boolean =>
+    pastHours.value[column][hour];
+
+const { overTarget, draggingPostId, vCalendarTarget } =
+    useCalendarDragContext();
+
+const isHourOver = (column: number, hour: number): boolean =>
+    hourSlots.value[column][hour].key !== null &&
+    overTarget.value === hourSlots.value[column][hour].key;
+
+const isDimmed = (column: number, hour: number, item: CalendarItem): boolean =>
+    isHourOver(column, hour) && item.post?.id !== draggingPostId.value;
+
+const itemClass = (
+    column: { byHour: Map<number, CalendarItem[]> },
+    index: number,
+    hour: number,
+    item: CalendarItem,
+): string[] => [
+    chipClass(column, hour),
+    isDimmed(index, hour, item) ? 'opacity-50' : '',
+];
+
+const compose = (column: number, hour: number): void => {
+    emit('compose', hourSlots.value[column][hour].start.utc().format());
 };
 
 const scrollToCurrentHour = (): void => {
@@ -127,6 +175,7 @@ watch(
     <div
         ref="scroller"
         class="flex-1 overflow-y-auto overscroll-contain"
+        data-calendar-scroller
         data-testid="calendar-time-grid"
     >
         <div
@@ -163,13 +212,16 @@ watch(
                 <div
                     v-for="hour in HOURS"
                     :key="hour"
+                    v-calendar-target="hourSlots[index][hour].target"
                     class="group relative flex items-start justify-between gap-1 px-1 py-2 md:px-3"
                     :class="{
-                        'bg-accent': isPastSlot(column.key, hour),
+                        'bg-accent': isPastSlot(index, hour),
+                        'bg-primary/15': isHourOver(index, hour),
                         'border-t border-border-strong':
                             hour > 0 && (index > 0 || hour % 2 === 1),
                     }"
                     :style="{ height: `${ROW_HEIGHT}px` }"
+                    :data-drop-over="isHourOver(index, hour) || undefined"
                     :data-testid="`calendar-slot-${column.key}-${hourLabel(hour)}`"
                 >
                     <div
@@ -209,13 +261,8 @@ watch(
                                 v-if="item.post"
                                 :post="item.post"
                                 :timezone="timezone"
-                                :layout="
-                                    isStacked(column, hour)
-                                        ? 'month'
-                                        : 'week'
-                                "
                                 :compact="iconOnly"
-                                :class="chipClass(column, hour)"
+                                :class="itemClass(column, index, hour, item)"
                             />
                             <CalendarSlotChip
                                 v-else-if="item.slot"
@@ -224,7 +271,7 @@ watch(
                                 :timezone="timezone"
                                 :can-create-post="canCreatePost"
                                 :compact="iconOnly"
-                                :class="chipClass(column, hour)"
+                                :class="itemClass(column, index, hour, item)"
                             />
                         </template>
                         <button
@@ -247,12 +294,17 @@ watch(
                     </div>
 
                     <button
-                        v-if="canCreatePost && !isPastSlot(column.key, hour)"
+                        v-if="
+                            canCreatePost &&
+                            hourSlots[index][hour].target &&
+                            !isPastSlot(index, hour) &&
+                            !draggingPostId
+                        "
                         type="button"
                         :aria-label="$t('calendar.new_post')"
                         class="flex size-7 shrink-0 items-center justify-center rounded-lg border border-dashed border-border-strong text-muted-foreground opacity-0 transition-opacity duration-100 ease-in-out group-hover:opacity-100 hover:bg-accent hover:text-accent-foreground focus-visible:opacity-100 max-md:hidden [@media(hover:none)]:opacity-100"
                         :data-testid="`calendar-add-${column.key}-${hourLabel(hour)}`"
-                        @click="compose(column.key, hour)"
+                        @click="compose(index, hour)"
                     >
                         <IconPlus class="size-3.5" />
                     </button>

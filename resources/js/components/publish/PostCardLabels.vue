@@ -102,6 +102,7 @@ const update = (ids: string[]): void => {
                     <span
                         class="inline-flex size-6 shrink-0 items-center justify-center rounded-md border border-border-strong text-muted-foreground transition-control group-hover:bg-accent group-hover:text-foreground"
                         :class="{ 'bg-accent text-foreground': open }"
+                        :data-testid="`post-labels-${testKey}-edit`"
                     >
                         <IconTag class="size-3.5" aria-hidden="true" />
                     </span>

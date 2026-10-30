@@ -1,19 +1,26 @@
 <script setup lang="ts">
 import { InfiniteScroll, Link } from '@inertiajs/vue3';
 import { IconEdit, IconX } from '@tabler/icons-vue';
+import { computed } from 'vue';
 
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
+    calendarTargetKey,
+    HINT_ID_PREFIX,
+    useCalendarDragContext,
+} from '@/composables/calendar/useCalendarDrag';
+import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import type { CalendarDropTarget } from '@/lib/calendarDrop';
 import { isImage } from '@/lib/mediaType';
 import { htmlToPlainText } from '@/lib/utils';
 import { edit as editPost } from '@/routes/app/posts';
 import type { UndatedDraft } from '@/types/publish';
 
-defineProps<{
+const props = defineProps<{
     drafts: UndatedDraft[] | null;
 }>();
 
@@ -21,16 +28,47 @@ const emit = defineEmits<{
     close: [];
 }>();
 
-const thumbnail = (draft: UndatedDraft): string | null =>
-    (draft.media ?? []).find(isImage)?.url ?? null;
+const UNDATED_TARGET: CalendarDropTarget = { kind: 'undated' };
 
-const plainText = (draft: UndatedDraft): string =>
-    htmlToPlainText(draft.content ?? '').trim();
+const { overTarget, draggingPostId, vCalendarPost, vCalendarTarget } =
+    useCalendarDragContext();
+
+const isOver = computed(
+    () => overTarget.value === calendarTargetKey(UNDATED_TARGET),
+);
+
+interface DraftPreview {
+    text: string;
+    thumbnail: string | null;
+}
+
+/**
+ * Each draft's text and thumbnail, worked out when the list changes, not on
+ * every render (a drag re-renders the list).
+ */
+const previews = computed(
+    () =>
+        new Map<string, DraftPreview>(
+            (props.drafts ?? []).map((draft) => [
+                draft.id,
+                {
+                    text: htmlToPlainText(draft.content ?? '').trim(),
+                    thumbnail: (draft.media ?? []).find(isImage)?.url ?? null,
+                },
+            ]),
+        ),
+);
+
+const preview = (draft: UndatedDraft): DraftPreview =>
+    previews.value.get(draft.id) ?? { text: '', thumbnail: null };
 </script>
 
 <template>
     <aside
-        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl bg-muted md:w-[360px]"
+        v-calendar-target="UNDATED_TARGET"
+        class="flex min-h-0 w-full shrink-0 flex-col rounded-t-xl border bg-muted md:w-[360px]"
+        :class="isOver ? 'border-primary' : 'border-transparent'"
+        :data-drop-over="isOver || undefined"
         data-testid="calendar-undated-panel"
     >
         <div class="flex shrink-0 items-start gap-4 px-4 pt-4 pb-3">
@@ -84,51 +122,68 @@ const plainText = (draft: UndatedDraft): string =>
                 preserve-url
             >
                 <div id="calendar-undated-list" class="flex flex-col gap-2">
-                    <Link
-                        v-for="draft in drafts"
-                        :key="draft.id"
-                        :href="editPost.url(draft.id)"
-                        class="flex flex-col gap-1 rounded-lg border border-dashed border-border-strong bg-card px-2 py-2 text-start transition-control hover:bg-secondary"
-                        :data-testid="`calendar-undated-${draft.id}`"
-                    >
-                        <div class="flex min-w-0 items-center gap-2">
-                            <img
-                                v-if="draft.platform"
-                                :src="getPlatformLogo(draft.platform)"
-                                :alt="getPlatformLabel(draft.platform)"
-                                class="size-4 shrink-0 rounded-sm"
-                            />
-                            <span
-                                class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
-                            >
-                                {{
-                                    draft.social_account?.display_label ??
-                                    $t('calendar.undated.no_channel')
-                                }}
-                            </span>
-                            <Badge variant="info" class="shrink-0">
-                                <IconEdit />
-                                {{ $t('calendar.undated.draft') }}
-                            </Badge>
-                        </div>
-                        <div
-                            v-if="plainText(draft) || thumbnail(draft)"
-                            class="flex min-w-0 items-end gap-2"
+                    <template v-for="draft in drafts" :key="draft.id">
+                        <span
+                            v-if="draft.social_account"
+                            :id="`${HINT_ID_PREFIX}${draft.id}`"
+                            hidden
+                            :data-testid="`calendar-drag-hint-${draft.id}`"
+                            >{{
+                                $t('calendar.reschedule.drag_hint_undated', {
+                                    channel: draft.social_account.display_label,
+                                })
+                            }}</span
                         >
-                            <p
-                                class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
+                        <Link
+                            v-calendar-post="draft"
+                            :href="editPost.url(draft.id)"
+                            class="flex flex-col gap-1 rounded-lg border px-2 py-2 text-start transition-control [&[data-calendar-draggable=true]]:cursor-grab"
+                            :class="
+                                draggingPostId === draft.id
+                                    ? 'border-transparent bg-secondary *:invisible'
+                                    : 'border-dashed border-border-strong bg-card hover:bg-secondary'
+                            "
+                            :data-testid="`calendar-undated-${draft.id}`"
+                        >
+                            <div class="flex min-w-0 items-center gap-2">
+                                <img
+                                    v-if="draft.platform"
+                                    :src="getPlatformLogo(draft.platform)"
+                                    :alt="getPlatformLabel(draft.platform)"
+                                    class="size-4 shrink-0 rounded-sm"
+                                />
+                                <span
+                                    class="min-w-0 flex-1 truncate text-sm leading-[17.5px] font-emphasis text-foreground"
+                                >
+                                    {{
+                                        draft.social_account?.display_label ??
+                                        $t('calendar.undated.no_channel')
+                                    }}
+                                </span>
+                                <Badge variant="info" class="shrink-0">
+                                    <IconEdit />
+                                    {{ $t('calendar.undated.draft') }}
+                                </Badge>
+                            </div>
+                            <div
+                                v-if="preview(draft).text || preview(draft).thumbnail"
+                                class="flex min-w-0 items-end gap-2"
                             >
-                                {{ plainText(draft) }}
-                            </p>
-                            <img
-                                v-if="thumbnail(draft)"
-                                :src="thumbnail(draft)!"
-                                alt=""
-                                loading="lazy"
-                                class="size-8 shrink-0 rounded object-cover"
-                            />
-                        </div>
-                    </Link>
+                                <p
+                                    class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
+                                >
+                                    {{ preview(draft).text }}
+                                </p>
+                                <img
+                                    v-if="preview(draft).thumbnail"
+                                    :src="preview(draft).thumbnail!"
+                                    alt=""
+                                    loading="lazy"
+                                    class="size-8 shrink-0 rounded object-cover"
+                                />
+                            </div>
+                        </Link>
+                    </template>
                 </div>
 
                 <template #next="{ loading }">

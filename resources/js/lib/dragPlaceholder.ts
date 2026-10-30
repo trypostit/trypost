@@ -40,6 +40,35 @@ export const placeholderIndexAt = (
 };
 
 /**
+ * How far to scroll `container` this frame while the pointer rests within
+ * 48px of one of its edges: negative toward the start, 0 away from the edges.
+ */
+export const edgeScrollDelta = (
+    container: HTMLElement,
+    pointer: { clientX: number; clientY: number },
+    axis: DragAxis,
+    maxStep: number = AUTO_SCROLL_MAX_STEP,
+): number => {
+    const rect = container.getBoundingClientRect();
+    const vertical = axis === 'vertical';
+    const coordinate = vertical ? pointer.clientY : pointer.clientX;
+    const fromStart = coordinate - (vertical ? rect.top : rect.left);
+    const fromEnd = (vertical ? rect.bottom : rect.right) - coordinate;
+    const speed = (distance: number): number =>
+        Math.ceil(maxStep * (1 - Math.max(distance, 0) / AUTO_SCROLL_EDGE));
+
+    if (fromStart < AUTO_SCROLL_EDGE) {
+        return -speed(fromStart);
+    }
+
+    if (fromEnd < AUTO_SCROLL_EDGE) {
+        return speed(fromEnd);
+    }
+
+    return 0;
+};
+
+/**
  * Scrolls a container while the pointer rests near one of its edges during a
  * drag, calling `onScroll` after every step so the placeholder can follow.
  */
@@ -57,32 +86,10 @@ export const createDragAutoScroller = (
     let pointer: { clientX: number; clientY: number } | null = null;
     let frame = 0;
 
-    const step = (): number => {
-        if (!container || !pointer) {
-            return 0;
-        }
-
-        const rect = container.getBoundingClientRect();
-        const coordinate = axis === 'vertical' ? pointer.clientY : pointer.clientX;
-        const fromStart =
-            coordinate - (axis === 'vertical' ? rect.top : rect.left);
-        const fromEnd = (axis === 'vertical' ? rect.bottom : rect.right) - coordinate;
-        const speed = (distance: number): number =>
-            Math.ceil(
-                AUTO_SCROLL_MAX_STEP *
-                    (1 - Math.max(distance, 0) / AUTO_SCROLL_EDGE),
-            );
-
-        if (fromStart < AUTO_SCROLL_EDGE) {
-            return -speed(fromStart);
-        }
-
-        if (fromEnd < AUTO_SCROLL_EDGE) {
-            return speed(fromEnd);
-        }
-
-        return 0;
-    };
+    const step = (): number =>
+        container && pointer
+            ? edgeScrollDelta(container, pointer, axis)
+            : 0;
 
     const tick = (): void => {
         frame = 0;
@@ -134,12 +141,24 @@ export const createDragAutoScroller = (
 
 /**
  * Calls `onCancel` when Escape is pressed during a drag; returns the cleanup.
+ * When `swallow` answers true, the key stops there, so an open dialog under
+ * the drag does not close as well.
  */
-export const cancelDragOnEscape = (onCancel: () => void): (() => void) => {
+export const cancelDragOnEscape = (
+    onCancel: () => void,
+    swallow: () => boolean = () => false,
+): (() => void) => {
     const onKeydown = (event: KeyboardEvent): void => {
-        if (event.key === 'Escape') {
-            onCancel();
+        if (event.key !== 'Escape') {
+            return;
         }
+
+        if (swallow()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+
+        onCancel();
     };
 
     window.addEventListener('keydown', onKeydown, true);

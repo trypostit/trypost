@@ -158,7 +158,7 @@ test('existing google user login consumes the utm session so utms do not leak to
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.google.callback'))
-        ->assertRedirect(route('app.home'));
+        ->assertRedirect(route('app.calendar'));
 
     expect(session()->get('attribution_parameters'))->toBeNull();
 });
@@ -346,7 +346,7 @@ test('existing github user login consumes the utm session and skips signup succe
         ->andReturn($socialiteUser);
 
     $this->get(route('auth.github.callback'))
-        ->assertRedirect(route('app.home'));
+        ->assertRedirect(route('app.calendar'));
 
     expect(session()->get('attribution_parameters'))->toBeNull();
 });

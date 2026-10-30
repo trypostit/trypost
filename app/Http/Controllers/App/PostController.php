@@ -130,7 +130,7 @@ class PostController extends Controller
             default => [],
         };
 
-        return redirect($this->publishPageReturnUrl($tab) ?? route('app.posts.index', $tab))
+        return redirect($this->originPageUrl($tab))
             ->with('created_post_ids', $posts->pluck('id')->all());
     }
 
@@ -182,19 +182,13 @@ class PostController extends Controller
             return back();
         }
 
-        if ($action === PostAction::Publishing) {
-            return redirect($this->publishPageReturnUrl(['tab' => 'queue']) ?? route('app.posts.index', ['tab' => 'queue']));
-        }
+        $tab = match (true) {
+            in_array($action, [PostAction::Publishing, PostAction::Scheduled], true) => ['tab' => 'queue'],
+            $request->validated('status') === PostStatus::Draft->value => ['tab' => 'drafts'],
+            default => [],
+        };
 
-        if ($action === PostAction::Scheduled) {
-            return redirect($this->publishPageReturnUrl(['tab' => 'queue']) ?? route('app.posts.index', ['post' => $post->id]));
-        }
-
-        $publishPage = $this->publishPageReturnUrl(
-            $request->validated('status') === PostStatus::Draft->value ? ['tab' => 'drafts'] : [],
-        );
-
-        return $publishPage ? redirect($publishPage) : back();
+        return redirect($this->originPageUrl($tab));
     }
 
     public function destroy(Request $request, Post $post): RedirectResponse
@@ -224,7 +218,7 @@ class PostController extends Controller
             }
         }
 
-        return redirect($this->publishPageReturnUrl() ?? $this->calendarReturnUrl() ?? route('app.posts.index'));
+        return redirect($this->originPageUrl());
     }
 
     public function duplicate(Request $request, Post $post): RedirectResponse

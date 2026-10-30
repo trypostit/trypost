@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Post;
 
 use App\Actions\Post\Queue\BuildQueueTimeline;
+use App\Actions\Post\Queue\MoveChannelPostToQueueSlot;
 use App\Enums\Post\Status as PostStatus;
 use App\Http\Resources\App\PostCardResource;
 use App\Http\Resources\App\SocialAccountResource;
@@ -124,29 +125,33 @@ class BuildCalendarPageProps
                 ->through(fn (Post $post): array => PostCardResource::make($post)->resolve()));
         }
 
-        if ($request->boolean('slots')) {
-            $props['slots'] = fn (): array => self::slots(
-                $workspace,
-                match (true) {
-                    $channel !== null => collect([$channel]),
-                    $requestedChannelIds !== [] => $filterAccounts()->whereIn('id', $requestedChannelIds)->values(),
-                    default => $filterAccounts(),
-                },
-                $timezone,
-                $rangeStart,
-                $rangeEnd,
-                $labelIds === [] && ! $untagged && in_array($status, [self::STATUS_ALL, 'scheduled'], true),
-            );
-        }
+        $slots = fn (): array => self::slots(
+            $workspace,
+            match (true) {
+                $channel !== null => collect([$channel]),
+                $requestedChannelIds !== [] => $filterAccounts()->whereIn('id', $requestedChannelIds)->values(),
+                default => $filterAccounts(),
+            },
+            $timezone,
+            $rangeStart,
+            $rangeEnd,
+            $labelIds === [] && ! $untagged && in_array($status, [self::STATUS_ALL, 'scheduled'], true),
+        );
+
+        $props['slots'] = $request->boolean('slots') ? $slots : Inertia::optional($slots);
 
         return $props;
     }
 
     /**
      * Empty posting slots of the visible range, bucketed by day of the display time zone.
+     * Sent eagerly with `slots=1`, else only when a partial reload asks for them by name, so a
+     * reload that follows a URL without it (a move answered with back()) still refreshes them.
+     * `queueable` says whether a queued post may take the slot (within the queue window);
+     * a later slot still opens the composer, and a post dropped there gets a custom time.
      *
      * @param  Collection<int, SocialAccount>  $channels
-     * @return array<string, list<array{at: string, channel_id: string}>>
+     * @return array<string, list<array{at: string, channel_id: string, queueable: bool}>>
      */
     private static function slots(Workspace $workspace, Collection $channels, string $timezone, CarbonImmutable $rangeStart, CarbonImmutable $rangeEnd, bool $visible): array
     {
@@ -158,11 +163,21 @@ class BuildCalendarPageProps
 
         foreach (BuildQueueTimeline::handle($workspace, $channels, $timezone, $rangeEnd) as $day) {
             foreach (data_get($day, 'items', []) as $item) {
-                if (data_get($item, 'type') !== 'slot' || CarbonImmutable::parse(data_get($item, 'at'))->lessThan($rangeStart)) {
+                if (data_get($item, 'type') !== 'slot') {
                     continue;
                 }
 
-                $slots[data_get($day, 'date')][] = ['at' => data_get($item, 'at'), 'channel_id' => data_get($item, 'channel_id')];
+                $slotAt = CarbonImmutable::parse(data_get($item, 'at'));
+
+                if ($slotAt->lessThan($rangeStart)) {
+                    continue;
+                }
+
+                $slots[data_get($day, 'date')][] = [
+                    'at' => data_get($item, 'at'),
+                    'channel_id' => data_get($item, 'channel_id'),
+                    'queueable' => MoveChannelPostToQueueSlot::withinQueueWindow($slotAt),
+                ];
             }
         }
 
