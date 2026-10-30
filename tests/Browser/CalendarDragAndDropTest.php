@@ -775,6 +775,26 @@ test('a drag that ends on its own cell sends nothing', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a post in the repeated hour of a daylight saving change dropped on its own cell sends nothing', function () {
+    [$user, $channel] = calendarDragSetup();
+    $fallBack = CarbonImmutable::parse('first sunday of november this year', 'America/New_York');
+    $fallBack = $fallBack->isFuture() ? $fallBack : CarbonImmutable::parse('first sunday of november next year', 'America/New_York');
+    $key = $fallBack->format('Y-m-d');
+    $at = CarbonImmutable::parse("{$key} 06:30", 'UTC');
+    $post = calendarDragPost($channel, $at);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($fallBack, ['tz' => 'America/New_York']));
+    waitFor($page, "@calendar-slot-{$key}-01 @calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-01");
+
+    waitForGone($page, '@calendar-grid[aria-busy]');
+    $page->assertMissing('@calendar-reschedule-success-toast');
+    expect($post->refresh()->scheduled_at->equalTo($at))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('the custom time dialog footer fits a phone', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '09:25');
     $day = calendarDragDay();

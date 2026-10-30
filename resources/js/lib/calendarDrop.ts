@@ -82,15 +82,19 @@ const instantInHour = (
     return later.isBefore(start.add(1, 'hour')) ? later : undefined;
 };
 
-const isInHourOf = (post: PostCard, at: string): boolean => {
+const isInHourOf = (
+    post: PostCard,
+    at: string,
+    timezone: string,
+): boolean => {
     if (!post.scheduled_at) {
         return false;
     }
 
-    const start = dayjs.utc(at);
-    const current = dayjs.utc(post.scheduled_at);
+    const hourOf = (instant: string): string =>
+        dayjs.utc(instant).tz(timezone).format('YYYY-MM-DD HH');
 
-    return !current.isBefore(start) && current.isBefore(start.add(1, 'hour'));
+    return hourOf(post.scheduled_at) === hourOf(at);
 };
 
 export const dropInstant = (
@@ -103,7 +107,7 @@ export const dropInstant = (
         return post.scheduled_at !== null ? null : undefined;
     }
 
-    if (target.kind === 'hour' && isInHourOf(post, target.at)) {
+    if (target.kind === 'hour' && isInHourOf(post, target.at, timezone)) {
         return undefined;
     }
 

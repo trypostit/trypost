@@ -1054,8 +1054,21 @@ test('destroy with a referer that cannot be read deletes the post and returns ho
     expect(Post::find($post->id))->toBeNull();
 })->with([
     'no host' => 'http://:80/x',
-    'a page of the app the URI parser refuses' => 'https://user@:pass@app.trypost.test/schedule',
 ]);
+
+test('destroy with a referer carrying malformed credentials returns to its page on this app', function () {
+    $post = Post::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'user_id' => $this->user->id,
+    ]);
+
+    $this->actingAs($this->user)
+        ->from('https://user@:pass@elsewhere.test/schedule?tab=drafts')
+        ->delete(route('app.posts.destroy', $post))
+        ->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
+
+    expect(Post::find($post->id))->toBeNull();
+});
 
 test('destroy returns to the page it came from even when its query names a route parameter', function () {
     $post = Post::factory()->create([

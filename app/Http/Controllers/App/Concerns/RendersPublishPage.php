@@ -19,8 +19,6 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response;
-use League\Uri\Contracts\UriException;
-use League\Uri\QueryString;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -112,12 +110,12 @@ trait RendersPublishPage
         try {
             $query = Arr::where(
                 Arr::except(
-                    QueryString::extract(Uri::of(url()->previous())->query()->value(), encType: PHP_QUERY_RFC1738),
+                    Request::create(url()->previous())->query->all(),
                     [...$except, ...array_keys($route->parameters())],
                 ),
                 fn (mixed $value, int|string $key): bool => is_string($key),
             );
-        } catch (UriException) {
+        } catch (BadRequestException) {
             return route('app.home');
         }
 
