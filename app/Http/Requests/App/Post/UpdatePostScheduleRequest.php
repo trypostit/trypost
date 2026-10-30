@@ -21,12 +21,10 @@ class UpdatePostScheduleRequest extends FormRequest
      */
     public function rules(): array
     {
-        $notReschedule = Rule::excludeIf(fn (): bool => $this->input('action') !== ScheduleAction::Reschedule->value);
-
         return [
             'action' => ['required', Rule::enum(ScheduleAction::class)],
             'scheduled_at' => [
-                $notReschedule,
+                'exclude_unless:action,reschedule',
                 'present',
                 'nullable',
                 'date',
@@ -34,7 +32,7 @@ class UpdatePostScheduleRequest extends FormRequest
                 'before:2038-01-19',
             ],
             'queue_slot' => [
-                $notReschedule,
+                'exclude_unless:action,reschedule',
                 'sometimes',
                 'boolean',
             ],
