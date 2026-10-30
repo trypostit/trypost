@@ -823,6 +823,19 @@ export const useCalendarDrag = (
         }
     };
 
+    /**
+     * Esc ends a drag while the button is still down: the click the release
+     * then fires on the card it started from is swallowed like after a drop.
+     * A blur or a hidden tab does not: the release may never reach this window.
+     */
+    const cancelOnEscape = (): void => {
+        cancel();
+        window.addEventListener('pointerup', suppressNextClick, {
+            capture: true,
+            once: true,
+        });
+    };
+
     const onPointerCancel = (event: PointerEvent): void => {
         if (gesture && event.pointerId === gesture.pointerId) {
             cancel();
@@ -839,7 +852,10 @@ export const useCalendarDrag = (
         window.addEventListener('pointermove', onPointerMove);
         window.addEventListener('pointerup', onPointerUp);
         window.addEventListener('pointercancel', onPointerCancel);
-        stopEscape = cancelDragOnEscape(cancel, () => gesture?.active === true);
+        stopEscape = cancelDragOnEscape(
+            cancelOnEscape,
+            () => gesture?.active === true,
+        );
         window.addEventListener('contextmenu', preventWhileDragging);
         window.addEventListener('blur', cancel);
         document.addEventListener('visibilitychange', onVisibilityChange);

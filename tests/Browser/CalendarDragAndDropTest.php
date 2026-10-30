@@ -1130,6 +1130,40 @@ test('Esc cancels a drag', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('the release after Esc does not open the post it started from', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $page->script("document.querySelector('[data-testid=\"calendar-slot-{$key}-12\"]').scrollIntoView({ block: 'center' })");
+
+    $dragging = calendarGesture($page, <<<JS
+        await down(center('@calendar-post-{$post->id}'));
+        await move(center('@calendar-slot-{$key}-12'));
+
+        return state().dragging;
+    JS);
+    $page->keys("@calendar-post-{$post->id}", 'Escape');
+    waitForGone($page, '@calendar-drag-preview');
+
+    calendarGesture($page, <<<JS
+        fire('pointerup', center('@calendar-post-{$post->id}'));
+        query('@calendar-post-{$post->id}').click();
+        await frame();
+    JS);
+
+    expect($dragging)->toBeTrue();
+    $page->assertMissing("@calendar-post-popover-{$post->id}");
+    $page->click("@calendar-post-{$post->id}");
+    waitFor($page, "@calendar-post-popover-{$post->id}");
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a drag ends when the window loses focus or the mouse button is already up', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
