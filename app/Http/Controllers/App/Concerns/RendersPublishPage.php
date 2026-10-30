@@ -52,18 +52,12 @@ trait RendersPublishPage
     /**
      * Where a post saved or deleted from a composer or post dialog returns: the
      * Publish page it came from on the tab given, or any other page of the app
-     * as it was. The Referer is matched once for both. Without a Referer (a
-     * browser or extension that strips it) the page is unknown, and the session's
-     * last full page load is too old to stand for it: it returns to the home page.
+     * as it was. The Referer is matched once for both; without one, the home page.
      *
      * @param  array<string, string>  $publishQuery
      */
     private function originPageUrl(array $publishQuery = []): string
     {
-        if (blank(request()->header('referer'))) {
-            return route('app.home');
-        }
-
         $route = $this->previousRoute();
 
         return $this->publishPageUrl($route, $publishQuery) ?? $this->previousUrl($route);
@@ -138,10 +132,16 @@ trait RendersPublishPage
     /**
      * The route of the page the request was sent from. The Referer is read as a
      * request served by this one's script, so an app served from a subfolder
-     * matches its routes without the subfolder.
+     * matches its routes without the subfolder. Without a Referer (a browser or
+     * extension that strips it) the page is unknown: the session's last full page
+     * load, which url()->previous() falls back to, is too old to stand for it.
      */
     private function previousRoute(): ?RoutingRoute
     {
+        if (blank(request()->header('referer'))) {
+            return null;
+        }
+
         try {
             return Route::getRoutes()->match(Request::create(url()->previous(), server: request()->server->all()));
         } catch (HttpExceptionInterface|BadRequestException) {
