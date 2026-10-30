@@ -427,8 +427,8 @@ return [
                     'channels' => '{1} :count kanaal|[0,*] :count kanalen',
                 ],
                 'top_posts' => [
-                    'by_reactions' => 'Top 5 berichten op reacties',
-                    'by_comments' => 'Top 5 berichten op opmerkingen',
+                    'by_reactions' => '{1} Topbericht op reacties|[0,*] Top :count berichten op reacties',
+                    'by_comments' => '{1} Topbericht op opmerkingen|[0,*] Top :count berichten op opmerkingen',
                 ],
                 'posts_count' => '{1} :count bericht|[0,*] :count berichten',
                 'columns_note' => ':shown van :total statistieken. Kies de kolommen op de Insights-pagina.',

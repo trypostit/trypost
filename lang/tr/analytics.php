@@ -427,8 +427,8 @@ return [
                     'channels' => '{1} :count kanal|[0,*] :count kanal',
                 ],
                 'top_posts' => [
-                    'by_reactions' => 'En çok tepki alan 5 gönderi',
-                    'by_comments' => 'En çok yorum alan 5 gönderi',
+                    'by_reactions' => 'En çok tepki alan :count gönderi',
+                    'by_comments' => 'En çok yorum alan :count gönderi',
                 ],
                 'posts_count' => '{1} :count gönderi|[0,*] :count gönderi',
                 'columns_note' => ':total metrikten :shown tanesi gösteriliyor. Sütunları Insights sayfasında seç.',

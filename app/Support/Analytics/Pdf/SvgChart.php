@@ -36,6 +36,12 @@ class SvgChart
         $plotHeight = self::HEIGHT - self::TOP - self::BOTTOM;
         $known = array_values(array_filter($values, fn (int|float|null $value): bool => filled($value)));
         [$min, $max] = self::domain($known, $kind);
+        $lines = self::GRID_LINES;
+
+        if ($kind === 'line') {
+            $lines = (int) min(self::GRID_LINES, max(1, $max - $min));
+            $max = $min + ceil(($max - $min) / $lines) * $lines;
+        }
         $count = max(count($values), 1);
         $step = $plotWidth / $count;
         $y = fn (int|float $value): float => self::TOP + $plotHeight - (($value - $min) / max($max - $min, 1e-9)) * $plotHeight;
@@ -43,8 +49,8 @@ class SvgChart
 
         $parts = [];
 
-        for ($line = 0; $line <= self::GRID_LINES; $line++) {
-            $value = $min + ($max - $min) * $line / self::GRID_LINES;
+        for ($line = 0; $line <= $lines; $line++) {
+            $value = $min + ($max - $min) * $line / $lines;
             $lineY = round($y($value), 2);
             $parts[] = '<line x1="'.self::LEFT.'" x2="'.(self::WIDTH - self::RIGHT)."\" y1=\"{$lineY}\" y2=\"{$lineY}\" stroke=\"#eae8e5\" stroke-dasharray=\"3 3\"/>";
             $parts[] = '<text x="'.(self::LEFT - 6).'" y="'.($lineY + 3).'" text-anchor="end" font-size="9" fill="#5a5a59">'.e($tick($value)).'</text>';

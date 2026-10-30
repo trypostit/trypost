@@ -85,8 +85,8 @@ test('a workspace PDF renders the chosen sections and downloads once ready', fun
 
     Pdf::assertViewIs('pdf.insights.report');
     Pdf::assertViewHas('title', 'September report');
-    Pdf::assertSee(['September report', 'Launch day recap', __('analytics.insights.export.pdf.top_posts.by_reactions')]);
-    Pdf::assertDontSee(__('analytics.insights.export.pdf.top_posts.by_comments'));
+    Pdf::assertSee(['September report', 'Launch day recap', trans_choice('analytics.insights.export.pdf.top_posts.by_reactions', 1, ['count' => 1])]);
+    Pdf::assertDontSee(trans_choice('analytics.insights.export.pdf.top_posts.by_comments', 1, ['count' => 1]));
 
     $this->getJson(route('app.insights.pdf.show', $id))
         ->assertOk()
@@ -537,4 +537,46 @@ test('starting an export answers with the cover logo it saved', function () {
         ], ['Accept' => 'application/json'])
         ->assertStatus(Response::HTTP_ACCEPTED)
         ->assertJsonPath('report_logo_url', null);
+});
+
+test('a channel part leaves out what the report already shows', function () {
+    AnalyticsAccountDailySnapshot::factory()->create([
+        'workspace_id' => $this->workspace->id,
+        'social_account_id' => $this->instagram->id,
+        'social_account_key' => $this->instagram->id,
+        'platform' => Platform::Instagram,
+        'network' => Platform::Instagram->network(),
+        'platform_user_id' => $this->instagram->platform_user_id,
+        'date' => '2026-09-25',
+        'followers_count' => 520,
+    ]);
+
+    $data = app(BuildInsightsPdf::class)->forWorkspace(
+        $this->workspace,
+        $this->user,
+        ['range' => 'custom', 'start' => '2026-09-01', 'end' => '2026-09-30'],
+        ['name' => null, 'sections' => ['top_posts_reactions', 'performance', 'channels'], 'columns' => ['reactions']],
+    );
+    $part = data_get($data, 'channels.0');
+    $labels = array_column(data_get($part, 'summary'), 'label');
+
+    expect($labels)->not->toContain(__('analytics.channel.metrics.reactions.label'))
+        ->and($labels)->not->toContain(__('analytics.channel.metrics.net_followers.label'))
+        ->and($labels)->toContain(__('analytics.channel.metrics.followers.label'))
+        ->and(array_column(data_get($part, 'charts'), 'title'))->not->toContain(__('analytics.channel.series.net_followers'))
+        ->and(array_column(data_get($part, 'top_posts'), 'excerpt'))->not->toContain('Launch day recap')
+        ->and(array_column(data_get($data, 'top_reactions'), 'excerpt'))->toContain('Launch day recap');
+});
+
+test('without the Performance table a channel part keeps its metrics', function () {
+    $data = app(BuildInsightsPdf::class)->forWorkspace(
+        $this->workspace,
+        $this->user,
+        ['range' => 'custom', 'start' => '2026-09-01', 'end' => '2026-09-30'],
+        ['name' => null, 'sections' => ['channels'], 'columns' => ['reactions']],
+    );
+    $part = data_get($data, 'channels.0');
+
+    expect(array_column(data_get($part, 'summary'), 'label'))->toContain(__('analytics.channel.metrics.reactions.label'))
+        ->and(array_column(data_get($part, 'top_posts'), 'excerpt'))->toContain('Launch day recap');
 });

@@ -19,6 +19,7 @@ use App\Support\Analytics\Pdf\PdfImages;
 use App\Support\Analytics\Pdf\SvgChart;
 use App\Support\Mail\RecipientTime;
 use Collator;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
@@ -37,7 +38,10 @@ class BuildInsightsPdf
     public const int MAX_CHANNELS = 25;
 
     /** Top posts listed for each channel of the workspace PDF. */
-    private const int CHANNEL_TOP_POSTS = 5;
+    private const int CHANNEL_TOP_POSTS = 3;
+
+    /** Metrics that only restate another one the part shows: new followers are the followers' change. */
+    private const array RESTATED_METRICS = ['net_followers'];
 
     private const array SUMMARY_DEFAULTS = ['posts', 'followers', 'reactions', 'comments', 'engagement_rate'];
 
@@ -49,8 +53,6 @@ class BuildInsightsPdf
     ];
 
     private const string BAR_COLOR = '#7c3aed';
-
-    private const string LINE_COLOR = '#eb6834';
 
     private const int AVATAR_PIXELS = 72;
 
@@ -96,7 +98,18 @@ class BuildInsightsPdf
             'top_reactions' => in_array(PdfSection::TopPostsByReactions->value, $sections, true) ? $this->topPosts((array) data_get($report, 'top_posts.reactions', []), 'reactions', $user, $format) : null,
             'top_comments' => in_array(PdfSection::TopPostsByComments->value, $sections, true) ? $this->topPosts((array) data_get($report, 'top_posts.comments', []), 'comments', $user, $format) : null,
             'performance' => in_array(PdfSection::Performance->value, $sections, true) ? $this->performanceTable($performance, data_get($options, 'columns', []), $format) : null,
-            'channels' => in_array(PdfSection::Channels->value, $sections, true) ? $this->channelParts($workspace, $user, $range, $bounds, $channelAccounts->take(self::MAX_CHANNELS), $format) : null,
+            'channels' => in_array(PdfSection::Channels->value, $sections, true)
+                ? $this->channelParts(
+                    $workspace,
+                    $user,
+                    $range,
+                    $bounds,
+                    $channelAccounts->take(self::MAX_CHANNELS),
+                    $format,
+                    in_array(PdfSection::Performance->value, $sections, true) ? $this->performanceColumns(data_get($options, 'columns', [])) : [],
+                    $this->listedPostIds($report, $sections),
+                )
+                : null,
             'channels_total' => $channelAccounts->count(),
         ];
     }
@@ -124,7 +137,7 @@ class BuildInsightsPdf
             ...$this->cover($workspace, $user, $report, $options, $format, [$this->accountIdentity($account)]),
             'scope' => 'channel',
             'sections' => $sections,
-            'summary' => in_array(PdfSection::Summary->value, $sections, true) ? $this->summary($report, $metrics, $format) : null,
+            'summary' => in_array(PdfSection::Summary->value, $sections, true) ? $this->summary($report, array_values(array_diff($metrics, self::RESTATED_METRICS)), $format) : null,
             'metrics' => in_array(PdfSection::Metrics->value, $sections, true)
                 ? $this->charts($this->series->handle($account, $accountKey, $range, $user->week_starts_on, $filter, $availability), $format)
                 : null,
@@ -246,8 +259,8 @@ class BuildInsightsPdf
      */
     private function performanceTable(array $rows, array $requested, PdfFormat $format): array
     {
-        $chosen = array_values(array_intersect(BuildPublicationAnalyticsReport::PERFORMANCE_METRICS, $requested ?: self::DEFAULT_PERFORMANCE_COLUMNS));
-        $columns = array_slice($chosen, 0, self::MAX_COLUMNS);
+        $chosen = $this->chosenPerformanceColumns($requested);
+        $columns = $this->performanceColumns($requested);
 
         return [
             'columns' => array_map(fn (string $metric): string => __("analytics.channel.metrics.{$metric}.label"), $columns),
@@ -284,23 +297,77 @@ class BuildInsightsPdf
     }
 
     /**
+     * @param  list<string>  $requested
+     * @return list<string>
+     */
+    private function chosenPerformanceColumns(array $requested): array
+    {
+        return array_values(array_intersect(BuildPublicationAnalyticsReport::PERFORMANCE_METRICS, $requested ?: self::DEFAULT_PERFORMANCE_COLUMNS));
+    }
+
+    /**
+     * The metrics the Performance table prints, at most MAX_COLUMNS.
+     *
+     * @param  list<string>  $requested
+     * @return list<string>
+     */
+    private function performanceColumns(array $requested): array
+    {
+        return array_slice($this->chosenPerformanceColumns($requested), 0, self::MAX_COLUMNS);
+    }
+
+    /**
+     * The posts the workspace's top lists already show, so a channel part does not repeat them.
+     *
+     * @param  array<string, mixed>  $report
+     * @param  list<string>  $sections
+     * @return list<string>
+     */
+    private function listedPostIds(array $report, array $sections): array
+    {
+        return collect([
+            PdfSection::TopPostsByReactions->value => 'top_posts.reactions',
+            PdfSection::TopPostsByComments->value => 'top_posts.comments',
+        ])
+            ->filter(fn (string $path, string $section): bool => in_array($section, $sections, true))
+            ->flatMap(fn (string $path): array => Arr::pluck((array) data_get($report, $path, []), 'id'))
+            ->map(fn (mixed $id): string => (string) $id)
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Each channel's own part, without what the report already shows: the
+     * metrics of the Performance table, the posts of the top lists, and the
+     * new followers, which only restate the followers' change.
+     *
      * @param  array{min: ?string, max: ?string}  $bounds
      * @param  Collection<int, SocialAccount>  $accounts
+     * @param  list<string>  $shownMetrics
+     * @param  list<string>  $shownPostIds
      * @return list<array<string, mixed>>
      */
-    private function channelParts(Workspace $workspace, User $user, DateRange $range, array $bounds, Collection $accounts, PdfFormat $format): array
+    private function channelParts(Workspace $workspace, User $user, DateRange $range, array $bounds, Collection $accounts, PdfFormat $format, array $shownMetrics, array $shownPostIds): array
     {
+        $skippedMetrics = [...$shownMetrics, ...self::RESTATED_METRICS];
+
         return $accounts
-            ->map(function (SocialAccount $account) use ($workspace, $user, $range, $bounds, $format): array {
+            ->map(function (SocialAccount $account) use ($workspace, $user, $range, $bounds, $format, $skippedMetrics, $shownPostIds): array {
                 $accountKey = $this->accountKeys->for($account);
                 $availability = $this->availableMetrics->availability($account, $accountKey);
                 $report = $this->analytics->execute($workspace, $range, $bounds, $account, $accountKey, $user->week_starts_on);
+                $posts = collect((array) data_get($report, 'top_posts.reactions', []))
+                    ->reject(fn (array $post): bool => in_array((string) data_get($post, 'id'), $shownPostIds, true))
+                    ->take(self::CHANNEL_TOP_POSTS)
+                    ->values()
+                    ->all();
 
                 return [
                     'account' => $this->accountIdentity($account),
-                    'summary' => $this->summary($report, $this->availableMetrics->handle($account, $accountKey, $availability), $format),
+                    'summary' => $this->summary($report, array_values(array_diff($this->availableMetrics->handle($account, $accountKey, $availability), $skippedMetrics)), $format),
                     'charts' => $this->charts($this->series->handle($account, $accountKey, $range, $user->week_starts_on, null, $availability), $format),
-                    'top_posts' => $this->topPosts(array_slice((array) data_get($report, 'top_posts.reactions', []), 0, self::CHANNEL_TOP_POSTS), 'reactions', $user, $format),
+                    'top_posts' => $this->topPosts($posts, 'reactions', $user, $format),
                 ];
             })
             ->values()
@@ -308,7 +375,8 @@ class BuildInsightsPdf
     }
 
     /**
-     * One chart per metric of the channel's series: followers as a line, the rest as bars.
+     * One chart per metric of the channel's series, followers as a line, the rest
+     * as bars; new followers are left out, the followers line already shows them.
      *
      * @param  array<string, mixed>  $series
      * @return list<array{title: string, total: string, svg: string}>
@@ -328,11 +396,11 @@ class BuildInsightsPdf
                     array_map(fn (array $point): int|float|null => data_get($point, "values.{$metric}"), $points),
                     $labels,
                     $kind,
-                    $kind === 'line' ? self::LINE_COLOR : self::BAR_COLOR,
+                    self::BAR_COLOR,
                     fn (int|float $value): string => $kind === 'line' ? $format->number($value) : $format->metric($value, $metric),
                 ),
             ];
-        }, (array) data_get($series, 'metrics', [])));
+        }, array_values(array_diff((array) data_get($series, 'metrics', []), self::RESTATED_METRICS))));
     }
 
     /**

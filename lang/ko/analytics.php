@@ -427,8 +427,8 @@ return [
                     'channels' => '[0,*] 채널 :count개',
                 ],
                 'top_posts' => [
-                    'by_reactions' => '반응이 많은 게시물 5개',
-                    'by_comments' => '댓글이 많은 게시물 5개',
+                    'by_reactions' => '반응이 많은 게시물 :count개',
+                    'by_comments' => '댓글이 많은 게시물 :count개',
                 ],
                 'posts_count' => '[0,*] 게시물 :count개',
                 'columns_note' => '지표 :total개 중 :shown개를 표시합니다. 열은 Insights 페이지에서 선택하세요.',

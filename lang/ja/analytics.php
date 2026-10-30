@@ -427,8 +427,8 @@ return [
                     'channels' => '[0,*] :count件のチャンネル',
                 ],
                 'top_posts' => [
-                    'by_reactions' => 'リアクション数の上位5件の投稿',
-                    'by_comments' => 'コメント数の上位5件の投稿',
+                    'by_reactions' => 'リアクション数の上位:count件の投稿',
+                    'by_comments' => 'コメント数の上位:count件の投稿',
                 ],
                 'posts_count' => '[0,*] :count件の投稿',
                 'columns_note' => ':total件中:shown件の指標を表示しています。列はInsightsページで選べます。',

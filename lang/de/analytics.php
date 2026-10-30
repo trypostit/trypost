@@ -427,8 +427,8 @@ return [
                     'channels' => '{1} :count Kanal|[0,*] :count Kanäle',
                 ],
                 'top_posts' => [
-                    'by_reactions' => 'Top 5 Beiträge nach Reaktionen',
-                    'by_comments' => 'Top 5 Beiträge nach Kommentaren',
+                    'by_reactions' => '{1} Top-Beitrag nach Reaktionen|[0,*] Top :count Beiträge nach Reaktionen',
+                    'by_comments' => '{1} Top-Beitrag nach Kommentaren|[0,*] Top :count Beiträge nach Kommentaren',
                 ],
                 'posts_count' => '{1} :count Beitrag|[0,*] :count Beiträge',
                 'columns_note' => ':shown von :total Metriken. Die Spalten wählst du auf der Insights-Seite.',

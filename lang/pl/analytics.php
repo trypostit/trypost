@@ -427,8 +427,8 @@ return [
                     'channels' => ':count kanał|:count kanały|:count kanałów',
                 ],
                 'top_posts' => [
-                    'by_reactions' => '5 postów z największą liczbą reakcji',
-                    'by_comments' => '5 postów z największą liczbą komentarzy',
+                    'by_reactions' => ':count post z największą liczbą reakcji|:count posty z największą liczbą reakcji|:count postów z największą liczbą reakcji',
+                    'by_comments' => ':count post z największą liczbą komentarzy|:count posty z największą liczbą komentarzy|:count postów z największą liczbą komentarzy',
                 ],
                 'posts_count' => ':count post|:count posty|:count postów',
                 'columns_note' => 'Widoczne metryki: :shown z :total. Kolumny wybierzesz na stronie Insights.',

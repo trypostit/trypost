@@ -427,8 +427,8 @@ return [
                     'channels' => '{1} :count canal|[0,*] :count canales',
                 ],
                 'top_posts' => [
-                    'by_reactions' => '5 publicaciones con más reacciones',
-                    'by_comments' => '5 publicaciones con más comentarios',
+                    'by_reactions' => '{1} La publicación con más reacciones|[0,*] :count publicaciones con más reacciones',
+                    'by_comments' => '{1} La publicación con más comentarios|[0,*] :count publicaciones con más comentarios',
                 ],
                 'posts_count' => '{1} :count publicación|[0,*] :count publicaciones',
                 'columns_note' => 'Mostrando :shown de :total métricas. Elige las columnas en la página de Insights.',

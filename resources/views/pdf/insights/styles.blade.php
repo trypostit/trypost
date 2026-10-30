@@ -40,9 +40,10 @@
     .cover {
         display: flex;
         flex-direction: column;
-        min-height: 255mm;
-        padding: 18mm 4mm 0;
-        page-break-after: always;
+        padding: 4mm 0 0;
+        margin-bottom: 10mm;
+        padding-bottom: 8mm;
+        border-bottom: 1px solid var(--border);
     }
 
     .cover-logo { max-height: 56px; max-width: 220px; object-fit: contain; }
@@ -55,21 +56,23 @@
         background: conic-gradient(from 225deg, #855ed4 0 25%, #3660e0 0 50%, #f39200 0 75%, #ffcc33 0 100%);
     }
 
-    .cover-body { margin-top: 70mm; }
+    .cover-body { margin-top: 10mm; }
     .eyebrow { color: var(--primary-text); font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
-    .cover-title { font-size: 34px; line-height: 1.15; margin: 8px 0 14px; }
+    .cover-title { font-size: 28px; line-height: 1.15; margin: 6px 0 10px; }
     .cover-range { font-size: 14px; margin-bottom: 4px; }
-    .cover-channels { margin-top: 18mm; }
-    .cover-generated { margin-top: auto; padding-bottom: 6mm; }
+    .cover-channels { margin-top: 8mm; }
+    .cover-generated { margin-top: 6mm; }
 
     .chip-list { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 8px; }
 
     .section { break-inside: auto; margin-bottom: 9mm; }
-    .channel-part { page-break-before: always; }
+    .channel-part { padding-top: 8mm; border-top: 1px solid var(--border); }
+    .channel-head { break-after: avoid; }
 
     .heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .heading h2 { font-size: 15px; }
     .subheading { font-size: 12px; margin: 14px 0 8px; }
+    .keep-together { break-inside: avoid; }
 
     .channel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 

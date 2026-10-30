@@ -26,3 +26,12 @@ test('labels are escaped', function () {
     expect($svg)->toContain('&lt;b&gt;Oct&lt;/b&gt;')
         ->and($svg)->not->toContain('<b>');
 });
+
+test('a line of small counts gets whole-number ticks, never repeated ones', function () {
+    $svg = SvgChart::timeSeries([0, 0, 1, 1], ['a', 'b', 'c', 'd'], 'line', '#7c3aed', fn (int|float $value): string => (string) $value);
+
+    preg_match_all('/text-anchor="end"[^>]*>([^<]+)</', $svg, $ticks);
+
+    expect($ticks[1])->toBe(array_values(array_unique($ticks[1])))
+        ->and(array_filter($ticks[1], fn (string $tick): bool => str_contains($tick, '.')))->toBe([]);
+});

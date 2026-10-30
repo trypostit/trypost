@@ -427,8 +427,8 @@ return [
                     'channels' => '[0,*] :count 个渠道',
                 ],
                 'top_posts' => [
-                    'by_reactions' => '互动最多的 5 条帖子',
-                    'by_comments' => '评论最多的 5 条帖子',
+                    'by_reactions' => '互动最多的 :count 条帖子',
+                    'by_comments' => '评论最多的 :count 条帖子',
                 ],
                 'posts_count' => '[0,*] :count 条帖子',
                 'columns_note' => '显示 :total 项指标中的 :shown 项。可在 Insights 页面选择列。',

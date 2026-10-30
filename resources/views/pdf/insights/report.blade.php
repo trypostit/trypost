@@ -20,7 +20,7 @@
             <p class="cover-range">{{ $range }}</p>
             <p class="muted">{{ __('analytics.insights.export.compared_to') }} {{ $previous_range }}</p>
         </div>
-        @if (count($cover_channels))
+        @if (count($cover_channels) && ($performance ?? null) === null)
             <div class="cover-channels">
                 <p class="label">{{ trans_choice('analytics.insights.export.pdf.cover.channels', count($cover_channels), ['count' => count($cover_channels)]) }}</p>
                 <div class="chip-list">
@@ -43,14 +43,14 @@
     @if ($scope === 'workspace')
         @if ($top_reactions !== null)
             <section class="section">
-                @include('pdf.insights.heading', ['heading' => __('analytics.insights.export.pdf.top_posts.by_reactions'), 'subtitle' => $range])
+                @include('pdf.insights.heading', ['heading' => trans_choice('analytics.insights.export.pdf.top_posts.by_reactions', count($top_reactions), ['count' => count($top_reactions)]), 'subtitle' => $range])
                 @include('pdf.insights.top-posts', ['posts' => $top_reactions])
             </section>
         @endif
 
         @if ($top_comments !== null)
             <section class="section">
-                @include('pdf.insights.heading', ['heading' => __('analytics.insights.export.pdf.top_posts.by_comments'), 'subtitle' => $range])
+                @include('pdf.insights.heading', ['heading' => trans_choice('analytics.insights.export.pdf.top_posts.by_comments', count($top_comments), ['count' => count($top_comments)]), 'subtitle' => $range])
                 @include('pdf.insights.top-posts', ['posts' => $top_comments])
             </section>
         @endif
@@ -98,8 +98,12 @@
                     </div>
                     @include('pdf.insights.summary', ['cards' => $channel['summary']])
                     @include('pdf.insights.charts', ['charts' => $channel['charts']])
-                    <h3 class="subheading">{{ __('analytics.insights.export.pdf.top_posts.by_reactions') }}</h3>
-                    @include('pdf.insights.top-posts', ['posts' => $channel['top_posts']])
+                    @if (count($channel['top_posts']))
+                        <div class="keep-together">
+                            <h3 class="subheading">{{ trans_choice('analytics.insights.export.pdf.top_posts.by_reactions', count($channel['top_posts']), ['count' => count($channel['top_posts'])]) }}</h3>
+                            @include('pdf.insights.top-posts', ['posts' => $channel['top_posts']])
+                        </div>
+                    @endif
                 </section>
             @endforeach
             @if ($channels_total > count($channels))

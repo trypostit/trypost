@@ -427,8 +427,8 @@ return [
                     'channels' => '{1} :count channel|[0,*] :count channels',
                 ],
                 'top_posts' => [
-                    'by_reactions' => 'Top 5 posts by reactions',
-                    'by_comments' => 'Top 5 posts by comments',
+                    'by_reactions' => '{1} Top post by reactions|[0,*] Top :count posts by reactions',
+                    'by_comments' => '{1} Top post by comments|[0,*] Top :count posts by comments',
                 ],
                 'posts_count' => '{1} :count post|[0,*] :count posts',
                 'columns_note' => 'Showing :shown of :total metrics. Choose the columns on the Insights page.',
