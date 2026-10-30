@@ -751,6 +751,46 @@ test('a move by a member who needs approval says it was sent for approval', func
     $page->assertNoJavaScriptErrors();
 });
 
+test('a move answered while another is in flight is settled from the server, not from the guess on screen', function () {
+    [$owner, $channel] = calendarDragSetup();
+    $member = User::factory()->create(['account_id' => $owner->account_id, 'timezone' => 'UTC']);
+    $channel->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $channel->workspace_id]);
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $first = calendarDragPost($channel, $day->setTime(10, 0), attributes: ['user_id' => $member->id]);
+    $second = calendarDragPost($channel, $day->setTime(11, 0), attributes: ['user_id' => $member->id]);
+    $this->actingAs($member);
+
+    $page = visit(calendarDragWeekUrl($day));
+    calendarDragAssertLive($page, "@calendar-post-{$first->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$second->id}");
+    calendarDragHoldResponses($page);
+
+    calendarDragOnto($page, "@calendar-post-{$first->id}", "@calendar-slot-{$key}-12");
+    calendarDragAssertLive($page, "@calendar-post-{$second->id}");
+    calendarDragOnto($page, "@calendar-post-{$second->id}", "@calendar-slot-{$key}-13");
+    waitForCondition($page, 'window.__heldResponses.length === 2');
+
+    $page->script(<<<'JS'
+        (() => {
+            window.__toastsSeen = new Set();
+            new MutationObserver(() => document.querySelectorAll('[data-testid^="calendar-reschedule-"]').forEach((toast) => window.__toastsSeen.add(toast.dataset.testid)))
+                .observe(document.body, { childList: true, subtree: true });
+        })()
+    JS);
+    $page->script('window.__heldResponses.shift()()');
+    waitForCondition($page, 'window.__heldResponses.length === 1');
+    $page->script('window.__releaseHeldResponses()');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+    waitForCondition($page, 'window.__toastsSeen.has("calendar-reschedule-approval-toast")');
+
+    expect($page->script('[...window.__toastsSeen]'))->toBe(['calendar-reschedule-approval-toast'])
+        ->and($first->refresh()->status)->toBe(PostStatus::PendingApproval)
+        ->and($second->refresh()->status)->toBe(PostStatus::PendingApproval);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a drag that ends on its own cell sends nothing', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();
@@ -2787,6 +2827,51 @@ test('a custom time confirmed after its time has passed sends nothing and return
         ->and($post->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertMissing('@calendar-reschedule-error-toast')
         ->assertNoJavaScriptErrors();
+});
+
+test('a custom time confirmed while it is still ahead keeps the time the dialog showed', function () {
+    $now = now('UTC');
+
+    if ($now->hour >= 21 || $now->minute >= 50) {
+        $this->markTestSkipped('The current hour has no room for a drop five minutes out, or the post would fall on another day.');
+    }
+
+    $at = $now->addHours(2)->startOfHour()->addMinutes(25);
+    [$user, $channel] = calendarDragSetup(slotTime: $at->format('H:i'));
+    $key = $now->format('Y-m-d');
+    $post = calendarDragPost($channel, $at, mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($now->startOfDay()));
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-{$now->format('H')}");
+    waitFor($page, '@calendar-custom-time-dialog');
+    $shown = $page->script('document.querySelector(\'[data-testid="calendar-custom-time-description"]\').innerText');
+
+    $page->script(<<<'JS'
+        (() => {
+            const RealDate = Date;
+            const shift = 2 * 60 * 1000;
+            window.Date = class extends RealDate {
+                constructor(...args) {
+                    super(...(args.length ? args : [RealDate.now() + shift]));
+                }
+
+                static now() {
+                    return RealDate.now() + shift;
+                }
+            };
+        })()
+    JS);
+    $page->click('@calendar-custom-time-confirm');
+    waitFor($page, '@calendar-reschedule-success-toast');
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    $scheduledAt = $post->refresh()->scheduled_at;
+    expect($post->schedule_mode)->toBe(ScheduleMode::Custom)
+        ->and($shown)->toContain("{$scheduledAt->format('M j, g:i A')} (UTC)");
+    $page->assertNoJavaScriptErrors();
 });
 
 test('a move that does not touch No Date leaves the open No Date list as it is', function () {

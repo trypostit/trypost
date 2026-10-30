@@ -163,6 +163,7 @@ export const useCalendarDrag = (
     const hoveredTarget = ref<string | null>(null);
     const draggingPostId = ref<string | null>(null);
     const movingPostIds = ref<string[]>([]);
+    const waitingForServer: Array<() => void> = [];
 
     const posts = new Map<HTMLElement, PostCard>();
     const targets = new Map<Element, CalendarDropTarget>();
@@ -374,6 +375,18 @@ export const useCalendarDrag = (
             .flat()
             .find((candidate) => candidate.id === postId) ?? null;
 
+    /**
+     * While a move is in flight, Inertia shows its guess in place of the props
+     * another move's answer brought back. A move answered then settles when the
+     * last move in flight finishes: the page shows the server's props by then,
+     * and a failed move's guess has been rolled back.
+     */
+    const settleWaitingMoves = (): void => {
+        if (movingPostIds.value.length === 0) {
+            waitingForServer.splice(0).forEach((settle) => settle());
+        }
+    };
+
     const isSameInstant = (
         stored: string | null,
         requested: string | null,
@@ -384,7 +397,8 @@ export const useCalendarDrag = (
 
     /**
      * The custom time dialog can stay open for a while: once confirmed, the drop
-     * is checked again against the clock, and its time worked out again.
+     * is checked again against the clock. The time the dialog showed is sent
+     * while it is still ahead; once it has passed, it is worked out again.
      */
     const confirmedInstant = async (
         post: PostCard,
@@ -403,7 +417,13 @@ export const useCalendarDrag = (
             return undefined;
         }
 
-        return isDraggable(post) ? instantFor(post, target) : undefined;
+        if (!isDraggable(post)) {
+            return undefined;
+        }
+
+        return dayjs.utc(droppedAt).isAfter(dayjs())
+            ? droppedAt
+            : instantFor(post, target);
     };
 
     const move = async (
@@ -454,6 +474,7 @@ export const useCalendarDrag = (
         const reset = touchesNoDate ? ['undatedDrafts'] : [];
         let reloaded: CalendarPost | null | undefined;
         let staleResponse = false;
+        let guessed = false;
 
         const announceApproval = (): void => {
             toast.success(trans('posts.approvals.requested'), {
@@ -495,6 +516,42 @@ export const useCalendarDrag = (
         };
 
         /**
+         * Settles a move from the post as the server shows it: gone from a list
+         * it should still be on means it waits for approval (or was refused for
+         * a user who publishes directly), another time means it was refused.
+         */
+        const settleFrom = (shown: CalendarPost | null): void => {
+            if (settled) {
+                return;
+            }
+
+            const leftTheList =
+                shown === null &&
+                scheduledAt !== null &&
+                post.status !== PostStatus.Draft;
+
+            if (leftTheList && !options.requiresApproval.value) {
+                reject();
+
+                return;
+            }
+
+            if (leftTheList || shown?.status === PostStatus.PendingApproval) {
+                announceApproval();
+
+                return;
+            }
+
+            if (shown && !isSameInstant(shown.scheduled_at, scheduledAt)) {
+                reject();
+
+                return;
+            }
+
+            announceMoved();
+        };
+
+        /**
          * Reloads the page shown instead of reading a move's answer. Inertia
          * reloads asynchronously, so an answer that lands after the user moved
          * to another page of the same path (a filter, a period) is dropped like
@@ -523,7 +580,10 @@ export const useCalendarDrag = (
                         settleFromReload(shown);
                     }
                 },
-                onFinish: () => forget(post.id),
+                onFinish: () => {
+                    forget(post.id);
+                    settleWaitingMoves();
+                },
             });
         };
 
@@ -547,6 +607,7 @@ export const useCalendarDrag = (
                         touchesNoDate,
                     ),
                 onBeforeUpdate: (response) => {
+                    guessed = router.hasPendingOptimistic();
                     reloaded = postIn(response.props, post.id);
 
                     if (response.url === page.url) {
@@ -572,42 +633,15 @@ export const useCalendarDrag = (
 
                     if (staleResponse) {
                         reloadInstead(false);
-                    }
-
-                    if (settled) {
-                        return;
-                    }
-
-                    const leftTheList =
-                        reloaded === null &&
-                        scheduledAt !== null &&
-                        post.status !== PostStatus.Draft;
-
-                    if (leftTheList && !options.requiresApproval.value) {
-                        reject();
+                    } else if (guessed) {
+                        waitingForServer.push(() =>
+                            settleFrom(postIn(page.props, post.id)),
+                        );
 
                         return;
                     }
 
-                    if (
-                        leftTheList ||
-                        reloaded?.status === PostStatus.PendingApproval
-                    ) {
-                        announceApproval();
-
-                        return;
-                    }
-
-                    if (
-                        reloaded &&
-                        !isSameInstant(reloaded.scheduled_at, scheduledAt)
-                    ) {
-                        reject();
-
-                        return;
-                    }
-
-                    announceMoved();
+                    settleFrom(reloaded);
                 },
                 onError: (errors) => {
                     fail(Object.values(errors)[0]);
@@ -619,6 +653,8 @@ export const useCalendarDrag = (
                     if (!staleResponse) {
                         forget(post.id);
                     }
+
+                    settleWaitingMoves();
                 },
             },
         );
