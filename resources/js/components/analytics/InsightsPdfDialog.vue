@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useHttp, usePage } from '@inertiajs/vue3';
+import { echo } from '@laravel/echo-vue';
 import { IconPhoto, IconUpload } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
 import { computed, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
@@ -41,7 +42,11 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
-const POLL_INTERVAL_MS = 1500;
+/**
+ * The socket says when the PDF is done; this check is only the safety net for
+ * a socket that is down (a self-hosted install without Reverb, a lost connection).
+ */
+const POLL_INTERVAL_MS = 5000;
 
 const MAX_WAIT_MS = 5 * 60 * 1000;
 
@@ -85,6 +90,7 @@ const logoPreview = computed(
     (): string | null => customLogo.value ?? workspaceLogo.value,
 );
 let pollTimer: ReturnType<typeof setTimeout> | null = null;
+let listening: string | null = null;
 let waitingSince = 0;
 let generation = 0;
 let previewUrl: string | null = null;
@@ -102,6 +108,11 @@ const stopPolling = (): void => {
     if (pollTimer) {
         clearTimeout(pollTimer);
         pollTimer = null;
+    }
+
+    if (listening) {
+        echo().leave(listening);
+        listening = null;
     }
 };
 
@@ -179,7 +190,33 @@ const fail = (): void => {
     toast.error(trans('analytics.insights.export.pdf.failed'));
 };
 
-const poll = (id: string, round: number): void => {
+/** The socket and the status check both land here; the first one ends the wait. */
+const finish = (result: PdfExport, round: number): boolean => {
+    if (round !== generation) {
+        return true;
+    }
+
+    if (result.status === 'ready' && result.download_url) {
+        generation++;
+        stopPolling();
+        window.location.assign(result.download_url);
+        preparing.value = false;
+        open.value = false;
+
+        return true;
+    }
+
+    if (result.status === 'failed') {
+        generation++;
+        fail();
+
+        return true;
+    }
+
+    return false;
+};
+
+const poll = (id: string, round: number, delay: number): void => {
     if (Date.now() - waitingSince > MAX_WAIT_MS) {
         fail();
 
@@ -190,32 +227,27 @@ const poll = (id: string, round: number): void => {
         statusHttp
             .get(show.url(id))
             .then((result) => {
-                if (round !== generation) {
-                    return;
+                if (!finish(result, round)) {
+                    poll(id, round, POLL_INTERVAL_MS);
                 }
-
-                if (result.status === 'ready' && result.download_url) {
-                    window.location.assign(result.download_url);
-                    preparing.value = false;
-                    open.value = false;
-
-                    return;
-                }
-
-                if (result.status === 'failed') {
-                    fail();
-
-                    return;
-                }
-
-                poll(id, round);
             })
             .catch(() => {
                 if (round === generation) {
                     fail();
                 }
             });
-    }, POLL_INTERVAL_MS);
+    }, delay);
+};
+
+/** Waits on the export's socket, then checks once at once, in case it finished before the socket joined. */
+const waitFor = (id: string, round: number): void => {
+    listening = `insights-pdf.${id}`;
+    echo()
+        .private(listening)
+        .listen('.insights-pdf.finished', (result: PdfExport) => {
+            finish(result, round);
+        });
+    poll(id, round, 0);
 };
 
 const closeDialog = (): void => {
@@ -241,7 +273,7 @@ const createPdf = (): void => {
 
             preparing.value = true;
             waitingSince = Date.now();
-            poll(result.id, round);
+            waitFor(result.id, round);
         })
         .catch(() => {
             const shown = Object.keys(http.errors).some((field) =>

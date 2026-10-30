@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Jobs\Analytics;
 
 use App\Actions\Analytics\BuildInsightsPdf;
+use App\Events\InsightsPdfExportFinished;
 use App\Models\SocialAccount;
 use App\Models\User;
 use App\Models\Workspace;
@@ -93,10 +94,12 @@ class GenerateInsightsPdf implements ShouldQueue
 
         Storage::put(InsightsPdfExports::path($this->exportId), $content);
         InsightsPdfExports::markReady($this->exportId);
+        InsightsPdfExportFinished::dispatch($this->exportId, InsightsPdfExports::READY);
     }
 
     public function failed(?Throwable $exception): void
     {
         InsightsPdfExports::markFailed($this->exportId);
+        InsightsPdfExportFinished::dispatch($this->exportId, InsightsPdfExports::FAILED);
     }
 }

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 use App\Actions\Analytics\BuildInsightsPdf;
 use App\Actions\Analytics\ListChannelPublicationPerformance;
+use App\Broadcasting\InsightsPdfChannel;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
+use App\Events\InsightsPdfExportFinished;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Jobs\Analytics\GenerateInsightsPdf;
@@ -21,6 +23,7 @@ use App\Models\WorkspaceLabel;
 use App\Support\Analytics\InsightsPdfExports;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
@@ -579,4 +582,36 @@ test('without the Performance table a channel part keeps its metrics', function 
 
     expect(array_column(data_get($part, 'summary'), 'label'))->toContain(__('analytics.channel.metrics.reactions.label'))
         ->and(array_column(data_get($part, 'top_posts'), 'excerpt'))->toContain('Launch day recap');
+});
+
+test('a finished PDF is announced on its export channel, ready or failed', function () {
+    Event::fake([InsightsPdfExportFinished::class]);
+    $ready = InsightsPdfExports::start($this->user, 'report.pdf');
+
+    GenerateInsightsPdf::dispatch($ready, $this->user->id, $this->workspace->id, null, ['range' => 'custom', 'start' => '2026-09-01', 'end' => '2026-09-30'], ['name' => null, 'sections' => ['summary'], 'columns' => []]);
+
+    Event::assertDispatched(InsightsPdfExportFinished::class, fn (InsightsPdfExportFinished $event): bool => $event->exportId === $ready
+        && $event->status === InsightsPdfExports::READY
+        && $event->broadcastOn()[0]->name === "private-insights-pdf.{$ready}"
+        && data_get($event->broadcastWith(), 'download_url') === route('app.insights.pdf.download', $ready));
+
+    $this->mock(BuildInsightsPdf::class)->shouldReceive('forWorkspace')->andThrow(new RuntimeException('Chromium crashed'));
+    $failed = InsightsPdfExports::start($this->user, 'report.pdf');
+
+    expect(fn () => GenerateInsightsPdf::dispatch($failed, $this->user->id, $this->workspace->id, null, [], ['name' => null, 'sections' => ['summary'], 'columns' => []]))
+        ->toThrow(RuntimeException::class);
+
+    Event::assertDispatched(InsightsPdfExportFinished::class, fn (InsightsPdfExportFinished $event): bool => $event->exportId === $failed
+        && $event->status === InsightsPdfExports::FAILED
+        && data_get($event->broadcastWith(), 'download_url') === null);
+});
+
+test('only the user who asked for a PDF may listen on its channel', function () {
+    $id = InsightsPdfExports::start($this->user, 'report.pdf');
+    $member = User::factory()->create(['account_id' => $this->user->account_id]);
+    $this->workspace->members()->attach($member->id, membershipPivot('admin'));
+
+    expect((new InsightsPdfChannel)->join($this->user, $id))->toBeTrue()
+        ->and((new InsightsPdfChannel)->join($member, $id))->toBeFalse()
+        ->and((new InsightsPdfChannel)->join($this->user, (string) Str::uuid7()))->toBeFalse();
 });

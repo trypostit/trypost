@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
+use App\Broadcasting\InsightsPdfChannel;
 use App\Broadcasting\PostChannel;
 use App\Broadcasting\WebhookLogChannel;
 use App\Broadcasting\WorkspaceChannel;
 use Illuminate\Support\Facades\Broadcast;
+
+Broadcast::channel('insights-pdf.{export}', InsightsPdfChannel::class);
 
 Broadcast::channel('post.{post}', PostChannel::class);
 
