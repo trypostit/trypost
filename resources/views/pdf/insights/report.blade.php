@@ -3,9 +3,6 @@
 <head>
     <meta charset="utf-8">
     <title>{{ $title }}</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&family=Outfit:wght@400;500;600&display=block" rel="stylesheet">
     @include('pdf.insights.styles')
 </head>
 <body>
@@ -124,7 +121,7 @@
                     <table class="table posts-table">
                         <thead>
                             <tr>
-                                <th>{{ trans_choice('analytics.insights.export.pdf.posts_count', $posts['total'], ['count' => $posts['total']]) }}</th>
+                                <th>{{ trans_choice('analytics.insights.export.pdf.posts_count', count($posts['rows']), ['count' => count($posts['rows'])]) }}</th>
                                 @foreach ($posts['columns'] as $column)
                                     <th class="num">{{ $column }}</th>
                                 @endforeach
@@ -155,6 +152,9 @@
                         </tbody>
                     </table>
                     @include('pdf.insights.columns-note', ['hidden' => $posts['hidden'], 'shown' => count($posts['columns'])])
+                    @if ($posts['total'] > count($posts['rows']))
+                        <p class="note">{{ __('analytics.insights.export.pdf.posts_note', ['shown' => count($posts['rows']), 'total' => $posts['total']]) }}</p>
+                    @endif
                 @else
                     <p class="empty">{{ __('analytics.channel.no_posts') }}</p>
                 @endif

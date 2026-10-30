@@ -433,6 +433,7 @@ return [
                 'posts_count' => ':count публикация|:count публикации|:count публикаций',
                 'columns_note' => 'Показано метрик: :shown из :total. Столбцы выбираются на странице Insights.',
                 'channels_note' => 'Первые :shown из :total каналов.',
+                'posts_note' => 'Лучшие :shown из :total постов.',
                 'page' => ':page из :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Не удалось подготовить пост. Попробуйте ещё раз.',
         'caption_workspace' => ':metric в наших каналах: :value (:range) 📈',
         'caption_channel' => ':metric в :channel: :value (:range) 📈',
+        'previous' => 'vs :value в прошлом периоде',
+        'caption_summary_workspace' => 'Наши цифры за :range 📈 :metrics',
+        'caption_summary_channel' => 'Наши цифры в :channel за :range 📈 :metrics',
+        'export_failed' => 'Не удалось создать изображение. Попробуйте ещё раз.',
     ],
 ];

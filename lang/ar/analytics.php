@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} منشور واحد|{2} منشوران|[3,10] :count منشورات|[0,*] :count منشور',
                 'columns_note' => 'عرض :shown من أصل :total مقاييس. اختر الأعمدة في صفحة Insights.',
                 'channels_note' => 'عرض أول :shown من أصل :total قناة.',
+                'posts_note' => 'عرض أفضل :shown من أصل :total منشور.',
                 'page' => ':page من :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'تعذّر تجهيز المنشور. حاول مرة أخرى.',
         'caption_workspace' => ':metric عبر قنواتنا: :value (:range) 📈',
         'caption_channel' => ':metric على :channel: :value (:range) 📈',
+        'previous' => 'مقابل :value في الفترة السابقة',
+        'caption_summary_workspace' => 'أرقامنا للفترة :range 📈 :metrics',
+        'caption_summary_channel' => 'أرقامنا على :channel للفترة :range 📈 :metrics',
+        'export_failed' => 'تعذّر إنشاء الصورة. حاول مرة أخرى.',
     ],
 ];

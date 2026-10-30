@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} :count publicación|[0,*] :count publicaciones',
                 'columns_note' => 'Mostrando :shown de :total métricas. Elige las columnas en la página de Insights.',
                 'channels_note' => 'Mostrando los primeros :shown de :total canales.',
+                'posts_note' => 'Mostrando las :shown mejores publicaciones de :total.',
                 'page' => ':page de :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'No se pudo preparar la publicación. Inténtalo de nuevo.',
         'caption_workspace' => ':metric en nuestros canales: :value (:range) 📈',
         'caption_channel' => ':metric en :channel: :value (:range) 📈',
+        'previous' => 'vs :value en el periodo anterior',
+        'caption_summary_workspace' => 'Nuestros números de :range 📈 :metrics',
+        'caption_summary_channel' => 'Nuestros números en :channel de :range 📈 :metrics',
+        'export_failed' => 'No se pudo crear la imagen. Inténtalo de nuevo.',
     ],
 ];

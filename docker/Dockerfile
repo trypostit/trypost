@@ -46,6 +46,7 @@ RUN apk add --no-cache \
         font-noto \
         font-noto-cjk \
         font-noto-emoji \
+        font-inter \
         $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install -j"$(nproc)" \

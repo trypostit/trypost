@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Analytics\Pdf;
 
 use App\Services\Http\SafeHttpFetcher;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
@@ -15,11 +16,17 @@ use Throwable;
  * Inlines the avatars and post thumbnails the PDF shows, shrunk to the size they
  * are printed at, so the PDF stays small and Chromium loads no image. Our own
  * media is read from the disk; anything else goes through the SSRF-guarded
- * fetcher. An image that fails to load is left out instead of printed broken.
+ * fetcher. An image that fails to load is left out instead of printed broken,
+ * and every remote image shares one deadline, so slow CDNs cost the report
+ * its pictures, never the export.
  */
 class PdfImages
 {
     private const int MAX_BYTES = 8 * 1024 * 1024;
+
+    private const int REMOTE_SECONDS = 60;
+
+    private ?CarbonInterface $deadline = null;
 
     /** @var array<string, string|null> */
     private array $inlined = [];
@@ -34,7 +41,7 @@ class PdfImages
             return null;
         }
 
-        return $this->remember("remote:{$size}:{$url}", fn (): ?string => $this->fetcher->tryGetBody((string) $url, self::MAX_BYTES), $size);
+        return $this->remember("remote:{$size}:{$url}", fn (): ?string => $this->fetcher->tryFetch((string) $url, self::MAX_BYTES, $this->deadline ??= now()->addSeconds(self::REMOTE_SECONDS))?->body, $size);
     }
 
     public function stored(?string $path, int $size): ?string

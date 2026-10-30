@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} :count Beitrag|[0,*] :count Beiträge',
                 'columns_note' => ':shown von :total Metriken. Die Spalten wählst du auf der Insights-Seite.',
                 'channels_note' => 'Die ersten :shown von :total Kanälen.',
+                'posts_note' => 'Die besten :shown von :total Posts.',
                 'page' => ':page von :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Post konnte nicht vorbereitet werden. Versuche es erneut.',
         'caption_workspace' => ':metric auf unseren Kanälen: :value (:range) 📈',
         'caption_channel' => ':metric auf :channel: :value (:range) 📈',
+        'previous' => 'vs. :value im Vorzeitraum',
+        'caption_summary_workspace' => 'Unsere Zahlen für :range 📈 :metrics',
+        'caption_summary_channel' => 'Unsere Zahlen auf :channel für :range 📈 :metrics',
+        'export_failed' => 'Bild konnte nicht erstellt werden. Versuche es erneut.',
     ],
 ];

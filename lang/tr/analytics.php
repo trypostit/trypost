@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} :count gönderi|[0,*] :count gönderi',
                 'columns_note' => ':total metrikten :shown tanesi gösteriliyor. Sütunları Insights sayfasında seç.',
                 'channels_note' => ':total kanaldan ilk :shown tanesi gösteriliyor.',
+                'posts_note' => ':total gönderiden en iyi :shown tanesi gösteriliyor.',
                 'page' => ':page / :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Gönderi hazırlanamadı. Tekrar dene.',
         'caption_workspace' => 'Kanallarımızda :metric: :value (:range) 📈',
         'caption_channel' => ':channel üzerinde :metric: :value (:range) 📈',
+        'previous' => 'önceki dönemde :value',
+        'caption_summary_workspace' => ':range rakamlarımız 📈 :metrics',
+        'caption_summary_channel' => ':channel üzerinde :range rakamlarımız 📈 :metrics',
+        'export_failed' => 'Görsel oluşturulamadı. Tekrar dene.',
     ],
 ];

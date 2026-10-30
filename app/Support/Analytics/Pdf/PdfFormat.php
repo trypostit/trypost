@@ -17,7 +17,7 @@ class PdfFormat
 
     public function metric(int|float|null $value, string $metric): string
     {
-        if ($value === null) {
+        if (blank($value)) {
             return '—';
         }
 
@@ -49,7 +49,7 @@ class PdfFormat
      */
     public function change(int|float|null $change, string $metric): ?array
     {
-        if ($change === null) {
+        if (blank($change)) {
             return null;
         }
 
@@ -75,7 +75,7 @@ class PdfFormat
      */
     public function span(?array $range): string
     {
-        if ($range === null) {
+        if (blank($range)) {
             return '';
         }
 

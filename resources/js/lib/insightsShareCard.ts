@@ -12,15 +12,22 @@ export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
 export type SharePoint = { label: string; value: number | null };
 
+/** One number of the Summary, as its card prints it. */
+export type ShareTile = { label: string; figure: string; change: ShareChange | null };
+
 /** One metric a share dialog can draw, with the post text it opens the composer with. */
 export type ShareMetricOption = {
     key: string;
     label: string;
     figure: string;
     change: ShareChange | null;
+    /** What the change is measured against: "vs 120 in the previous period". */
+    comparison: string | null;
     points: SharePoint[];
     shape: ShareShape;
     tick: (value: number) => string;
+    /** Every number of the Summary, for the summary card. */
+    tiles: ShareTile[];
     caption: string;
 };
 
@@ -38,8 +45,12 @@ export type ShareCardOptions = {
     range: string;
     figure: string;
     change: ShareChange | null;
+    comparison: string | null;
     points: SharePoint[];
     shape: ShareShape;
+    tiles: ShareTile[];
+    /** The networks the numbers come from, as their logos, already loaded. */
+    logos: HTMLImageElement[];
     /** Formats an axis value the way the page does. */
     tick: (value: number) => string;
     /** The signature: "Made with TryPost", translated. */
@@ -87,6 +98,35 @@ export const loadShareFonts = async (): Promise<void> => {
         ),
     );
 };
+
+const loadedLogos = new Map<string, Promise<HTMLImageElement | null>>();
+
+/**
+ * The networks' logos from our own `/images/accounts`, loaded once. They are
+ * same-origin, so drawing them keeps the canvas exportable; a logo that fails
+ * to load is left out.
+ */
+export const loadShareLogos = (urls: string[]): Promise<HTMLImageElement[]> =>
+    Promise.all(
+        urls.map((url) => {
+            if (!loadedLogos.has(url)) {
+                loadedLogos.set(
+                    url,
+                    new Promise((resolve) => {
+                        const image = new Image();
+
+                        image.onload = () => resolve(image);
+                        image.onerror = () => resolve(null);
+                        image.src = url;
+                    }),
+                );
+            }
+
+            return loadedLogos.get(url)!;
+        }),
+    ).then((images) =>
+        images.filter((image): image is HTMLImageElement => image !== null),
+    );
 
 const ellipsise = (
     context: CanvasRenderingContext2D,
@@ -250,6 +290,88 @@ const paintMark = (
     context.fillText(options.mark, start + logo + gap, baseline);
 };
 
+const LOGO_SIZE = 44;
+const LOGO_OVERLAP = 12;
+const MAX_LOGOS = 5;
+
+/** The networks as overlapping round logos with the ink border, like a cover's badge. */
+const paintLogos = (
+    context: CanvasRenderingContext2D,
+    logos: HTMLImageElement[],
+    x: number,
+    centre: number,
+): number => {
+    const shown = logos.slice(0, MAX_LOGOS);
+    const hidden = logos.length - shown.length;
+    let left = x;
+
+    shown.forEach((logo) => {
+        const top = centre - LOGO_SIZE / 2;
+
+        context.save();
+        context.beginPath();
+        context.arc(left + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
+        context.fillStyle = '#ffffff';
+        context.fill();
+        context.clip();
+        context.drawImage(logo, left, top, LOGO_SIZE, LOGO_SIZE);
+        context.restore();
+        context.beginPath();
+        context.arc(left + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
+        context.strokeStyle = INK;
+        context.lineWidth = BORDER;
+        context.stroke();
+        left += LOGO_SIZE - LOGO_OVERLAP;
+    });
+
+    if (hidden > 0) {
+        const label = `+${hidden}`;
+
+        context.font = `700 18px ${SANS}`;
+
+        const width = Math.max(LOGO_SIZE, context.measureText(label).width + 22);
+
+        roundedRect(context, left, centre - LOGO_SIZE / 2, width, LOGO_SIZE, LOGO_SIZE / 2);
+        context.fillStyle = '#f3f2f0';
+        context.fill();
+        context.strokeStyle = INK;
+        context.lineWidth = BORDER;
+        context.stroke();
+        context.fillStyle = INK;
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        context.fillText(label, left + width / 2, centre + 1);
+        context.textBaseline = 'alphabetic';
+        left += width - LOGO_OVERLAP;
+    }
+
+    return shown.length > 0 ? left + LOGO_OVERLAP + 16 : x;
+};
+
+/** The networks' logos and the subject on one line, what and when under it. */
+const paintIdentity = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    left: number,
+    top: number,
+    limit: number,
+    detail: string,
+): void => {
+    const centre = top + LOGO_SIZE / 2;
+    const textLeft = paintLogos(context, options.logos, left, centre);
+
+    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillStyle = INK;
+    context.font = `700 34px ${SANS}`;
+    context.fillText(ellipsise(context, options.subject, limit - (textLeft - left)), textLeft, centre + 1);
+    context.textBaseline = 'alphabetic';
+
+    context.fillStyle = MUTED;
+    context.font = `500 22px ${SANS}`;
+    context.fillText(ellipsise(context, detail, limit), left, top + LOGO_SIZE + 40);
+};
+
 /** The change as the page's MetricChange: a soft pill with the arrow and the label. */
 const paintChange = (
     context: CanvasRenderingContext2D,
@@ -311,7 +433,10 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
     const high = Math.max(...values);
 
     if (shape === 'bar' || (low >= 0 && low <= high - low)) {
-        return [Math.min(0, low), high === Math.min(0, low) ? 1 : high];
+        const bottom = Math.min(0, low);
+        const top = Math.max(0, high);
+
+        return [bottom, top === bottom ? 1 : top];
     }
 
     const padding = Math.max((high - low) * 0.15, 1);
@@ -326,30 +451,31 @@ const paintChart = (
 ): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
-    const textLimit = panel.width - PANEL.padding * 2 - 360;
+    const textLimit = panel.width - PANEL.padding * 2 - 380;
 
-    context.textAlign = 'left';
-    context.fillStyle = MUTED;
-    context.font = `500 22px ${SANS}`;
-    context.fillText(ellipsise(context, `${options.metric} · ${options.range}`, textLimit), left, panel.y + 70);
-
-    context.fillStyle = INK;
-    context.font = `700 34px ${SANS}`;
-    context.fillText(ellipsise(context, options.subject, textLimit), left, panel.y + 114);
+    paintIdentity(context, options, left, panel.y + 40, textLimit, `${options.metric} · ${options.range}`);
 
     context.textAlign = 'right';
+    context.fillStyle = INK;
     context.font = `700 64px ${SANS}`;
-    context.fillText(options.figure, right, panel.y + 106);
+    context.fillText(options.figure, right, panel.y + 100);
 
     if (options.change) {
-        paintChange(context, options.change, right, panel.y + 124, 20, 'right');
+        paintChange(context, options.change, right, panel.y + 116, 20, 'right');
+    }
+
+    if (options.comparison) {
+        context.textAlign = 'right';
+        context.fillStyle = MUTED;
+        context.font = `500 18px ${SANS}`;
+        context.fillText(options.comparison, right, panel.y + (options.change ? 176 : 136));
     }
 
     const plot = {
         x: left + 72,
-        y: panel.y + 196,
+        y: panel.y + 212,
         width: right - left - 72,
-        height: panel.height - 196 - 76,
+        height: panel.height - 212 - 76,
     };
     const values = options.points
         .map((point) => point.value)
@@ -470,37 +596,76 @@ const paintChart = (
     context.textAlign = 'left';
 };
 
-/** One headline number, large, with what it is and how it moved. */
+const MAX_TILES = 8;
+
+/** How many columns the Summary's numbers take, like the page's grid. */
+const tileColumns = (count: number): number => {
+    if (count <= 3) {
+        return Math.max(count, 1);
+    }
+
+    return count === 4 ? 2 : count <= 6 ? 3 : 4;
+};
+
+/** Every number of the Summary, split by ink rules like a cover's settings panel. */
 const paintSummary = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
     panel: { x: number; y: number; width: number; height: number },
 ): void => {
     const left = panel.x + PANEL.padding;
-    const limit = panel.width - PANEL.padding * 2;
 
-    context.textAlign = 'left';
-    context.fillStyle = INK;
-    context.font = `700 34px ${SANS}`;
-    context.fillText(ellipsise(context, options.subject, limit), left, panel.y + 84);
+    paintIdentity(context, options, left, panel.y + 40, panel.width - PANEL.padding * 2, options.range);
 
-    context.fillStyle = MUTED;
-    context.font = `500 22px ${SANS}`;
-    context.fillText(options.range, left, panel.y + 124);
+    const tiles = options.tiles.slice(0, MAX_TILES);
+    const columns = tileColumns(tiles.length);
+    const rows = Math.ceil(tiles.length / columns);
+    const grid = { x: panel.x, y: panel.y + 168, width: panel.width, height: panel.height - 168 };
+    const tileHeight = grid.height / Math.max(rows, 1);
+    const figureSize = columns >= 4 ? 52 : rows === 1 ? 84 : 64;
+    /** The last row stretches its tiles over the whole width, so no tile is left empty. */
+    const rowSize = (row: number): number =>
+        row < rows - 1 ? columns : tiles.length - columns * (rows - 1);
 
-    context.fillStyle = options.tint.strong;
-    context.font = `700 28px ${SANS}`;
-    context.fillText(options.metric, left, panel.y + 262);
+    context.strokeStyle = INK;
+    context.lineWidth = BORDER;
+    context.beginPath();
 
-    context.fillStyle = INK;
-    context.font = `700 168px ${SANS}`;
-    context.fillText(options.figure, left - 6, panel.y + 424);
+    for (let row = 0; row < rows; row += 1) {
+        const top = grid.y + tileHeight * row;
+        const width = grid.width / rowSize(row);
 
-    if (options.change) {
-        const figureWidth = context.measureText(options.figure).width;
+        context.moveTo(grid.x, top);
+        context.lineTo(grid.x + grid.width, top);
 
-        paintChange(context, options.change, left + figureWidth + 28, panel.y + 340, 36, 'left');
+        for (let column = 1; column < rowSize(row); column += 1) {
+            context.moveTo(grid.x + width * column, top);
+            context.lineTo(grid.x + width * column, top + tileHeight);
+        }
     }
+
+    context.stroke();
+
+    tiles.forEach((tile, index) => {
+        const row = Math.floor(index / columns);
+        const width = grid.width / rowSize(row);
+        const x = grid.x + width * (index % columns) + 36;
+        const y = grid.y + tileHeight * row;
+        const limit = width - 72;
+
+        context.textAlign = 'left';
+        context.fillStyle = options.tint.strong;
+        context.font = `700 22px ${SANS}`;
+        context.fillText(ellipsise(context, tile.label, limit), x, y + 50);
+
+        context.fillStyle = tile.figure === '—' ? MUTED : INK;
+        context.font = `700 ${figureSize}px ${SANS}`;
+        context.fillText(ellipsise(context, tile.figure, limit), x - 2, y + 50 + figureSize + 6);
+
+        if (tile.change) {
+            paintChange(context, tile.change, x, y + 50 + figureSize + 26, 18, 'left');
+        }
+    });
 };
 
 export const drawShareCard = (

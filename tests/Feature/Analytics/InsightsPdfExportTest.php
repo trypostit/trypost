@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Actions\Analytics\BuildInsightsPdf;
+use App\Actions\Analytics\ListChannelPublicationPerformance;
 use App\Enums\SocialAccount\Platform;
 use App\Enums\User\Locale;
 use App\Enums\User\TimeFormat;
@@ -460,4 +461,32 @@ test('asking for PDFs is rate limited', function () {
     $this->actingAs($this->user)
         ->postJson(route('app.insights.pdf.store'), ['sections' => ['summary']])
         ->assertTooManyRequests();
+});
+
+test('a channel post table cut at the top posts says how many were left out', function () {
+    AnalyticsPublication::factory()
+        ->count(ListChannelPublicationPerformance::TOP_POSTS)
+        ->sequence(fn ($sequence): array => ['provider_published_at' => CarbonImmutable::parse('2026-09-10 12:00:00', 'UTC')->addMinutes($sequence->index)])
+        ->create([
+            'workspace_id' => $this->workspace->id,
+            'social_account_id' => $this->instagram->id,
+            'social_account_key' => $this->instagram->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+        ]);
+    $total = ListChannelPublicationPerformance::TOP_POSTS + 1;
+
+    $this->actingAs($this->user)
+        ->postJson(route('app.channels.insights.pdf.store', $this->instagram), [
+            'range' => 'custom',
+            'start' => '2026-09-01',
+            'end' => '2026-09-30',
+            'sections' => ['posts'],
+        ])
+        ->assertStatus(Response::HTTP_ACCEPTED);
+
+    Pdf::assertSee([
+        trans_choice('analytics.insights.export.pdf.posts_count', ListChannelPublicationPerformance::TOP_POSTS, ['count' => ListChannelPublicationPerformance::TOP_POSTS]),
+        __('analytics.insights.export.pdf.posts_note', ['shown' => ListChannelPublicationPerformance::TOP_POSTS, 'total' => $total]),
+    ]);
 });

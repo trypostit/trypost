@@ -68,20 +68,17 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     $page->assertNoJavaScriptErrors();
 });
 
-test('the summary share card lets the user pick the number to share', function () {
+test('the summary share card holds every number of the Summary', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
     waitFor($page, '@share-summary');
     $page->click('@share-summary');
-    waitFor($page, '@share-chart-metric');
-    $page->click('@share-chart-metric');
-    waitFor($page, '@share-chart-metric-reactions');
-    $page->click('@share-chart-metric-reactions');
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
 
-    waitForText($page, '@share-chart-metric', 'Reactions');
-    $page->assertVisible('@share-chart-download')
+    $page->assertMissing('@share-chart-metric')
+        ->assertVisible('@share-chart-download')
         ->assertVisible('@share-chart-copy')
         ->assertNoJavaScriptErrors();
 });

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { IconCheck, IconCopy, IconDownload } from '@tabler/icons-vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
@@ -22,10 +22,11 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
-import dayjs from '@/dayjs';
+import date from '@/date';
 import {
     drawShareCard,
     loadShareFonts,
+    loadShareLogos,
     SHARE_CARD_SIZE,
     SHARE_TINTS,
     shareCardFile,
@@ -40,6 +41,7 @@ const props = defineProps<{
     variant: 'chart' | 'summary';
     subject: string;
     range: string;
+    logos: string[];
     options: ShareMetricOption[];
     initialKey?: string;
 }>();
@@ -53,6 +55,7 @@ const selectedKey = ref<string>('');
 const copied = ref(false);
 const posting = ref(false);
 const painted = ref(false);
+const logoImages = shallowRef<HTMLImageElement[]>([]);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
 
 const selected = computed(
@@ -76,8 +79,11 @@ const cardOptions = (): ShareCardOptions | null => {
         range: props.range,
         figure: option.figure,
         change: option.change,
+        comparison: option.comparison,
         points: option.points,
         shape: option.shape,
+        tiles: option.tiles,
+        logos: logoImages.value,
         tick: option.tick,
         mark: trans('analytics.share.mark'),
     };
@@ -85,11 +91,12 @@ const cardOptions = (): ShareCardOptions | null => {
 
 const paint = async (): Promise<void> => {
     await nextTick();
+    await loadShareFonts();
+    logoImages.value = await loadShareLogos(props.logos);
 
     const options = cardOptions();
 
     if (canvas.value && options) {
-        await loadShareFonts();
         drawShareCard(canvas.value, options, PREVIEW_PIXELS);
         painted.value = true;
     }
@@ -113,7 +120,7 @@ watch([tint, selectedKey], () => {
 });
 
 const filename = (): string =>
-    `trypost-${(selected.value?.key ?? 'insights').replace(/_/g, '-')}-${dayjs().format('YYYY-MM-DD')}.png`;
+    `trypost-${(selected.value?.key ?? 'insights').replace(/_/g, '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
 
 const exportFile = (): Promise<File> | null => {
     const options = cardOptions();
@@ -122,30 +129,44 @@ const exportFile = (): Promise<File> | null => {
 };
 
 const download = async (): Promise<void> => {
-    const file = await exportFile();
+    try {
+        const file = await exportFile();
 
-    if (!file) {
-        return;
+        if (!file) {
+            return;
+        }
+
+        const url = URL.createObjectURL(file);
+        const link = document.createElement('a');
+
+        link.href = url;
+        link.download = file.name;
+        link.click();
+        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch {
+        toast.error(trans('analytics.share.export_failed'));
     }
-
-    const url = URL.createObjectURL(file);
-    const link = document.createElement('a');
-
-    link.href = url;
-    link.download = file.name;
-    link.click();
-    URL.revokeObjectURL(url);
 };
 
+/**
+ * The clipboard write starts right away, inside the click, with the image as a
+ * promise: Safari refuses a write that only starts after the PNG is encoded.
+ */
 const copyImage = async (): Promise<void> => {
-    const file = await exportFile();
-
     try {
-        if (!file || !('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
+        if (!('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
             throw new Error('Clipboard unavailable');
         }
 
-        await navigator.clipboard.write([new ClipboardItem({ 'image/png': file })]);
+        const image = exportFile();
+
+        if (!image) {
+            throw new Error('Nothing to copy');
+        }
+
+        await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': image.then((file) => file) }),
+        ]);
         copied.value = true;
     } catch {
         toast.error(trans('analytics.share.copy_failed'));
@@ -237,7 +258,7 @@ const createPost = async (): Promise<void> => {
                             class="h-8"
                             data-testid="share-chart-metric"
                         >
-                            <SelectValue />
+                            <SelectValue>{{ selected?.label }}</SelectValue>
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem

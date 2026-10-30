@@ -433,6 +433,7 @@ return [
                 'posts_count' => '[0,*] 게시물 :count개',
                 'columns_note' => '지표 :total개 중 :shown개를 표시합니다. 열은 Insights 페이지에서 선택하세요.',
                 'channels_note' => '채널 :total개 중 처음 :shown개를 표시합니다.',
+                'posts_note' => '게시물 :total개 중 상위 :shown개를 표시합니다.',
                 'page' => ':page / :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => '게시물을 준비하지 못했어요. 다시 시도하세요.',
         'caption_workspace' => '전체 채널 :metric: :value (:range) 📈',
         'caption_channel' => ':channel :metric: :value (:range) 📈',
+        'previous' => '이전 기간 :value',
+        'caption_summary_workspace' => ':range 우리 숫자 📈 :metrics',
+        'caption_summary_channel' => ':channel의 :range 숫자 📈 :metrics',
+        'export_failed' => '이미지를 만들지 못했어요. 다시 시도하세요.',
     ],
 ];

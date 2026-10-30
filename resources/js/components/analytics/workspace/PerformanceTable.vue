@@ -53,6 +53,10 @@ const span = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 const { columns, toggleColumn, sortBy, sortDirection, sortKey } =
     usePerformanceColumns();
+
+sortBy.value = 'posts';
+sortDirection.value = 'desc';
+
 type SortKey = PerformanceSortKey;
 const channelName = (row: PerformanceRow): string =>
     row.username ?? row.name ?? row.platform;

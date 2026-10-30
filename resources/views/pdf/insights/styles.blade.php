@@ -25,7 +25,7 @@
     }
 
     h1, h2, h3, .big, .chart-total {
-        font-family: Outfit, Inter, 'Noto Sans', sans-serif;
+        font-family: Inter, 'Noto Sans', 'Noto Sans CJK SC', sans-serif;
         font-weight: 500;
         margin: 0;
     }

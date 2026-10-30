@@ -265,6 +265,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                         subtitle-testid="insights-range-caption"
                         :network="getPlatformLabel(channel.platform)"
                         :channel="channelName(channel)"
+                        :platform="channel.platform"
                     />
                     <ChannelPublicationTable
                         v-if="filters"
@@ -279,6 +280,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                     <ChannelMetricsCard
                         :series="metricSeries"
                         :channel="channelName(channel)"
+                        :platform="channel.platform"
                     />
                 </template>
             </template>

@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} :count bericht|[0,*] :count berichten',
                 'columns_note' => ':shown van :total statistieken. Kies de kolommen op de Insights-pagina.',
                 'channels_note' => 'De eerste :shown van :total kanalen.',
+                'posts_note' => 'De beste :shown van :total posts.',
                 'page' => ':page van :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Kan de post niet voorbereiden. Probeer het opnieuw.',
         'caption_workspace' => ':metric op onze kanalen: :value (:range) 📈',
         'caption_channel' => ':metric op :channel: :value (:range) 📈',
+        'previous' => 'vs :value in de vorige periode',
+        'caption_summary_workspace' => 'Onze cijfers voor :range 📈 :metrics',
+        'caption_summary_channel' => 'Onze cijfers op :channel voor :range 📈 :metrics',
+        'export_failed' => 'Kan de afbeelding niet maken. Probeer het opnieuw.',
     ],
 ];

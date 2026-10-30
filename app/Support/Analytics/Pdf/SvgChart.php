@@ -34,7 +34,7 @@ class SvgChart
     {
         $plotWidth = self::WIDTH - self::LEFT - self::RIGHT;
         $plotHeight = self::HEIGHT - self::TOP - self::BOTTOM;
-        $known = array_values(array_filter($values, fn (int|float|null $value): bool => $value !== null));
+        $known = array_values(array_filter($values, fn (int|float|null $value): bool => filled($value)));
         [$min, $max] = self::domain($known, $kind);
         $count = max(count($values), 1);
         $step = $plotWidth / $count;
@@ -55,7 +55,7 @@ class SvgChart
             $zero = $y(0);
 
             foreach ($values as $index => $value) {
-                if ($value === null || (float) $value === 0.0) {
+                if (blank($value) || (float) $value === 0.0) {
                     continue;
                 }
 
@@ -70,7 +70,7 @@ class SvgChart
             $current = [];
 
             foreach ($values as $index => $value) {
-                if ($value === null) {
+                if (blank($value)) {
                     $segments[] = $current;
                     $current = [];
 

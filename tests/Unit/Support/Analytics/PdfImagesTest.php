@@ -50,3 +50,16 @@ test('a remote image on a private address is never requested', function () {
 
     Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '169.254.169.254'));
 });
+
+test('remote images stop being fetched once the shared deadline has passed', function () {
+    fakePublicDns();
+    Http::fake(['cdn.example.com/*' => Http::response(UploadedFile::fake()->image('avatar.png', 200, 200)->getContent(), 200, ['Content-Type' => 'image/png'])]);
+    $images = app(PdfImages::class);
+
+    expect($images->remote('https://cdn.example.com/first.png', 72))->toStartWith('data:image/jpeg;base64,');
+
+    $this->travel(61)->seconds();
+
+    expect($images->remote('https://cdn.example.com/second.png', 72))->toBeNull();
+    Http::assertSentCount(1);
+});

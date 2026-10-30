@@ -433,6 +433,7 @@ return [
                 'posts_count' => '{1} :count δημοσίευση|[0,*] :count δημοσιεύσεις',
                 'columns_note' => 'Εμφανίζονται :shown από :total μετρήσεις. Επιλέξτε στήλες στη σελίδα Insights.',
                 'channels_note' => 'Εμφανίζονται τα πρώτα :shown από :total κανάλια.',
+                'posts_note' => 'Εμφανίζονται οι κορυφαίες :shown από :total αναρτήσεις.',
                 'page' => ':page από :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Η ανάρτηση δεν ετοιμάστηκε. Δοκιμάστε ξανά.',
         'caption_workspace' => ':metric στα κανάλια μας: :value (:range) 📈',
         'caption_channel' => ':metric στο :channel: :value (:range) 📈',
+        'previous' => 'vs :value την προηγούμενη περίοδο',
+        'caption_summary_workspace' => 'Τα νούμερά μας για :range 📈 :metrics',
+        'caption_summary_channel' => 'Τα νούμερά μας στο :channel για :range 📈 :metrics',
+        'export_failed' => 'Η εικόνα δεν δημιουργήθηκε. Δοκιμάστε ξανά.',
     ],
 ];

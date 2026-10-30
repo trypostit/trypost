@@ -82,7 +82,7 @@ class InsightsPdfExports
     {
         $export = self::find($id);
 
-        if ($export === null) {
+        if (blank($export)) {
             return;
         }
 

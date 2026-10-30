@@ -47,7 +47,7 @@ class GenerateInsightsPdf implements ShouldQueue
     {
         $user = User::query()->findOrFail($this->userId);
         $workspace = Workspace::query()->findOrFail($this->workspaceId);
-        $account = $this->socialAccountId === null
+        $account = blank($this->socialAccountId)
             ? null
             : $workspace->socialAccounts()->findOrFail($this->socialAccountId);
 

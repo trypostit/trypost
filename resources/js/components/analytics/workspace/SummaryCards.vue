@@ -5,8 +5,12 @@ import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
-import date from '@/date';
-import { shareChange, summaryShareOptions } from '@/lib/insightsShare';
+import {
+    shareChange,
+    shareLogos,
+    shareRange,
+    summaryShareOption,
+} from '@/lib/insightsShare';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
 
@@ -20,6 +24,7 @@ const props = defineProps<{
     subtitleTestid?: string;
     network?: string;
     channel?: string;
+    platform?: string;
 }>();
 
 const defaultCards = computed(() => [
@@ -102,22 +107,25 @@ const page = usePage();
 const shareSubject = computed(
     () => props.channel ?? page.props.auth.currentWorkspace?.name ?? '',
 );
-const shareRangeLabel = computed(
-    () =>
-        `${date.formatDayMonthYear(props.report.range.start)} – ${date.formatDayMonthYear(props.report.range.end)}`,
+const shareRangeLabel = computed(() => shareRange(props.report.range));
+const shareLogoUrls = computed(() =>
+    shareLogos(
+        props.platform
+            ? [props.platform]
+            : props.report.followers.accounts.map((account) => account.platform),
+    ),
 );
-const shareOptions = computed(() =>
-    summaryShareOptions(
+const buildShareOptions = () => [
+    summaryShareOption(
         cards.value.map((card) => ({
-            key: card.key,
             label: trans(card.label),
-            value: display(card.metric.value, card.percent),
+            figure: display(card.metric.value, card.percent),
             change: shareChange(card.metric.change, card.key === 'followers'),
         })),
         { channel: props.channel ?? null },
         shareRangeLabel.value,
     ),
-);
+];
 </script>
 
 <template>
@@ -132,7 +140,8 @@ const shareOptions = computed(() =>
                 variant="summary"
                 :subject="shareSubject"
                 :range="shareRangeLabel"
-                :options="shareOptions"
+                :logos="shareLogoUrls"
+                :build="buildShareOptions"
                 test-id="share-summary"
             />
         </template>

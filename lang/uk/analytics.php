@@ -433,6 +433,7 @@ return [
                 'posts_count' => ':count допис|:count дописи|:count дописів',
                 'columns_note' => 'Показано метрик: :shown із :total. Стовпці вибирають на сторінці Insights.',
                 'channels_note' => 'Перші :shown із :total каналів.',
+                'posts_note' => 'Найкращі :shown із :total постів.',
                 'page' => ':page із :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => 'Не вдалося підготувати пост. Спробуйте ще раз.',
         'caption_workspace' => ':metric у наших каналах: :value (:range) 📈',
         'caption_channel' => ':metric у :channel: :value (:range) 📈',
+        'previous' => 'vs :value у попередньому періоді',
+        'caption_summary_workspace' => 'Наші цифри за :range 📈 :metrics',
+        'caption_summary_channel' => 'Наші цифри в :channel за :range 📈 :metrics',
+        'export_failed' => 'Не вдалося створити зображення. Спробуйте ще раз.',
     ],
 ];

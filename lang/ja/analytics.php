@@ -433,6 +433,7 @@ return [
                 'posts_count' => '[0,*] :count件の投稿',
                 'columns_note' => ':total件中:shown件の指標を表示しています。列はInsightsページで選べます。',
                 'channels_note' => ':total件中最初の:shown件のチャンネルを表示しています。',
+                'posts_note' => ':total件中、上位:shown件の投稿を表示しています。',
                 'page' => ':page / :total',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => '投稿を準備できませんでした。もう一度お試しください。',
         'caption_workspace' => '全チャンネルの:metric: :value (:range) 📈',
         'caption_channel' => ':channel の:metric: :value (:range) 📈',
+        'previous' => '前の期間は:value',
+        'caption_summary_workspace' => ':rangeの数字 📈 :metrics',
+        'caption_summary_channel' => ':channelの:rangeの数字 📈 :metrics',
+        'export_failed' => '画像を作成できませんでした。もう一度お試しください。',
     ],
 ];

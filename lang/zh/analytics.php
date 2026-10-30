@@ -433,6 +433,7 @@ return [
                 'posts_count' => '[0,*] :count 条帖子',
                 'columns_note' => '显示 :total 项指标中的 :shown 项。可在 Insights 页面选择列。',
                 'channels_note' => '显示 :total 个渠道中的前 :shown 个。',
+                'posts_note' => '显示 :total 个帖子中的前 :shown 个。',
                 'page' => '第 :page 页，共 :total 页',
             ],
         ],
@@ -470,5 +471,9 @@ return [
         'post_failed' => '无法准备帖子，请重试。',
         'caption_workspace' => '我们所有频道的:metric：:value（:range）📈',
         'caption_channel' => ':channel 的:metric：:value（:range）📈',
+        'previous' => '上一周期为 :value',
+        'caption_summary_workspace' => '我们 :range 的数据 📈 :metrics',
+        'caption_summary_channel' => '我们在 :channel 上 :range 的数据 📈 :metrics',
+        'export_failed' => '无法生成图片，请重试。',
     ],
 ];

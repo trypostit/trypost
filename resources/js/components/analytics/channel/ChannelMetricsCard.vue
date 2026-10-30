@@ -55,7 +55,11 @@ import {
     type Selection,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
-import { channelSeriesShareOptions } from '@/lib/insightsShare';
+import {
+    channelSeriesShareOptions,
+    shareLogos,
+    shareRange,
+} from '@/lib/insightsShare';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
 
 import ChannelMetricsChart from './ChannelMetricsChart.vue';
@@ -63,6 +67,7 @@ import ChannelMetricsChart from './ChannelMetricsChart.vue';
 const props = defineProps<{
     series?: ChannelMetricSeries;
     channel: string;
+    platform: string;
 }>();
 
 const METRIC_ICONS: Record<SeriesMetric, Component> = {
@@ -214,19 +219,20 @@ const previousCaption = computed(() =>
         : '',
 );
 const shareRangeLabel = computed(() =>
-    props.series
-        ? `${date.formatDayMonthYear(props.series.range.start)} – ${date.formatDayMonthYear(props.series.range.end)}`
-        : '',
+    props.series ? shareRange(props.series.range) : '',
 );
-const shareOptions = computed(() =>
+const shareLogoUrls = computed(() => shareLogos([props.platform]));
+const canShare = computed(
+    () => !!props.series?.metrics.some((metric) => metric !== 'growth_rate'),
+);
+const buildShareOptions = () =>
     props.series
         ? channelSeriesShareOptions(
               props.series,
               props.channel,
               shareRangeLabel.value,
           )
-        : [],
-);
+        : [];
 const shownTotals = computed(() =>
     chartMode.value === 'previous'
         ? chartSeries.value?.totals.previous
@@ -284,12 +290,13 @@ const changeMode = (value: string): void => {
         :title="$t('analytics.channel.metrics_card.title')"
         subtitle-testid="insights-metrics-caption"
     >
-        <template v-if="shareOptions.length" #actions>
+        <template v-if="canShare" #actions>
             <ShareChartButton
                 variant="chart"
                 :subject="channel"
                 :range="shareRangeLabel"
-                :options="shareOptions"
+                :logos="shareLogoUrls"
+                :build="buildShareOptions"
                 :initial-key="specs[0]?.metric"
                 test-id="share-channel-metrics"
             />

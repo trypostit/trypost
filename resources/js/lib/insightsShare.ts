@@ -1,10 +1,12 @@
 import { trans } from 'laravel-vue-i18n';
 
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { formatSeriesValue } from '@/lib/channelMetrics';
 import type {
     ShareChange,
     ShareMetricOption,
+    ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import type {
@@ -13,8 +15,21 @@ import type {
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
+/**
+ * Builders for the share dialog. They run when the dialog opens, never in a
+ * script-level computed, so every `trans()` here reads the loaded locale.
+ */
+
 /** Where the numbers come from: the whole workspace, or one channel by name. */
 export type ShareScope = { channel: string | null };
+
+export const shareRange = (range: { start: string; end: string }): string =>
+    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
+
+/** Each network once, as its logo, in the order the channels come. */
+export const shareLogos = (platforms: string[]): string[] => [
+    ...new Set(platforms.map((platform) => getPlatformLogo(platform))),
+];
 
 /** A change the way the page labels it: a count for followers, else a percentage. */
 export const shareChange = (
@@ -33,20 +48,29 @@ export const shareChange = (
     };
 };
 
-export const shareCaption = (
+const caption = (
+    scope: ShareScope,
+    keys: { workspace: string; channel: string },
+    replacements: Record<string, string>,
+): string =>
+    scope.channel === null
+        ? trans(keys.workspace, replacements)
+        : trans(keys.channel, { ...replacements, channel: scope.channel });
+
+const metricCaption = (
     scope: ShareScope,
     metric: string,
     value: string,
     range: string,
 ): string =>
-    scope.channel === null
-        ? trans('analytics.share.caption_workspace', { metric, value, range })
-        : trans('analytics.share.caption_channel', {
-              metric,
-              value,
-              range,
-              channel: scope.channel,
-          });
+    caption(
+        scope,
+        {
+            workspace: 'analytics.share.caption_workspace',
+            channel: 'analytics.share.caption_channel',
+        },
+        { metric, value, range },
+    );
 
 /**
  * The workspace's followers over the period: every channel added up, each
@@ -90,10 +114,12 @@ export const followersShareOption = (
         change: followers.accounts.some((account) => account.net !== null)
             ? shareChange(net, true)
             : null,
+        comparison: null,
         points,
         shape: 'line',
         tick: (value) => formatNumberCompact(value),
-        caption: shareCaption({ channel: null }, label, figure, range),
+        tiles: [],
+        caption: metricCaption({ channel: null }, label, figure, range),
     };
 };
 
@@ -106,47 +132,70 @@ export const channelSeriesShareOptions = (
     series.metrics
         .filter((metric) => metric !== 'growth_rate')
         .map((metric: SeriesMetric) => {
-        const label = trans(`analytics.channel.series.${metric}`);
-        const figure = formatSeriesValue(series.totals.current[metric], metric);
-        const current = series.totals.current[metric];
-        const previous = series.totals.previous[metric];
-        const isFollowers = metric === 'followers';
+            const label = trans(`analytics.channel.series.${metric}`);
+            const figure = formatSeriesValue(series.totals.current[metric], metric);
+            const current = series.totals.current[metric];
+            const previous = series.totals.previous[metric];
+            const isFollowers = metric === 'followers';
+            const known =
+                current !== null &&
+                current !== undefined &&
+                previous !== null &&
+                previous !== undefined;
 
-        return {
-            key: metric,
-            label,
-            figure,
-            change:
-                current === null || current === undefined || previous === null || previous === undefined
+            return {
+                key: metric,
+                label,
+                figure,
+                change: !known
                     ? null
                     : isFollowers
                       ? shareChange(current - previous, true)
                       : previous === 0
                         ? null
                         : shareChange(((current - previous) / previous) * 100),
-            points: series.current.map((point) => ({
-                label: date.formatMonthDay(point.start),
-                value: point.values[metric] ?? null,
-            })),
-            shape: isFollowers ? 'line' : 'bar',
-            tick: (value) => formatNumberCompact(value),
-            caption: shareCaption({ channel }, label, figure, range),
-        };
-    });
+                comparison: known
+                    ? trans('analytics.share.previous', {
+                          value: formatSeriesValue(previous, metric),
+                      })
+                    : null,
+                points: series.current.map((point) => ({
+                    label: date.formatMonthDay(point.start),
+                    value: point.values[metric] ?? null,
+                })),
+                shape: isFollowers ? 'line' : 'bar',
+                tick: (value) => formatNumberCompact(value),
+                tiles: [],
+                caption: metricCaption({ channel }, label, figure, range),
+            };
+        });
 
-/** One headline number per Summary card, as the card prints it. */
-export const summaryShareOptions = (
-    cards: { key: string; label: string; value: string; change: ShareChange | null }[],
+/** Every number of the Summary in one card, as the cards print them. */
+export const summaryShareOption = (
+    tiles: ShareTile[],
     scope: ShareScope,
     range: string,
-): ShareMetricOption[] =>
-    cards.map((card) => ({
-        key: card.key,
-        label: card.label,
-        figure: card.value,
-        change: card.change,
-        points: [],
-        shape: 'bar',
-        tick: (value) => formatNumberCompact(value),
-        caption: shareCaption(scope, card.label, card.value, range),
-    }));
+): ShareMetricOption => ({
+    key: 'summary',
+    label: trans('analytics.dashboard.summary'),
+    figure: '',
+    change: null,
+    comparison: null,
+    points: [],
+    shape: 'bar',
+    tick: (value) => formatNumberCompact(value),
+    tiles,
+    caption: caption(
+        scope,
+        {
+            workspace: 'analytics.share.caption_summary_workspace',
+            channel: 'analytics.share.caption_summary_channel',
+        },
+        {
+            range,
+            metrics: tiles
+                .map((tile) => `${tile.label} ${tile.figure}`)
+                .join(' · '),
+        },
+    ),
+});

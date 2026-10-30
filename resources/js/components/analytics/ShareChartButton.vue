@@ -1,22 +1,27 @@
 <script setup lang="ts">
 import { IconPhotoShare } from '@tabler/icons-vue';
-import { ref } from 'vue';
+import { ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 
-defineProps<{
+const props = defineProps<{
     variant: 'chart' | 'summary';
     subject: string;
     range: string;
-    options: ShareMetricOption[];
+    /** The networks' logo URLs, from `shareLogos()`. */
+    logos: string[];
+    /** Builds what the card can show; runs on open, so its labels read the loaded locale. */
+    build: () => ShareMetricOption[];
     initialKey?: string;
     testId: string;
 }>();
 
 const open = ref(false);
+const options = shallowRef<ShareMetricOption[]>([]);
 
 const openDialog = (): void => {
+    options.value = props.build();
     open.value = true;
 };
 </script>
@@ -38,6 +43,7 @@ const openDialog = (): void => {
             :variant="variant"
             :subject="subject"
             :range="range"
+            :logos="logos"
             :options="options"
             :initial-key="initialKey"
         />

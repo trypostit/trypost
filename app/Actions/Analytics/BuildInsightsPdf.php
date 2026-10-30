@@ -81,7 +81,7 @@ class BuildInsightsPdf
         ['bounds' => $bounds, 'range' => $range] = $this->analytics->resolveRange($workspace, $selection, $accountKeys, $clamped);
         $report = $this->analytics->forRange($workspace, $range, $bounds, $channelKeys, $user->week_starts_on);
         $single = $selected->count() === 1 ? $selected->first() : null;
-        $summaryMetrics = $single === null ? self::SUMMARY_DEFAULTS : $this->availableMetrics->handle($single, data_get($channelKeys, $single->id));
+        $summaryMetrics = blank($single) ? self::SUMMARY_DEFAULTS : $this->availableMetrics->handle($single, data_get($channelKeys, $single->id));
         $sections = data_get($options, 'sections', []);
         $performance = $this->sortPerformance((array) data_get($report, 'performance', []), (string) data_get($query, 'sort', 'posts'), (string) data_get($query, 'direction', 'desc'));
         $channelAccounts = $this->accountsInOrder($workspace, $performance);
@@ -163,7 +163,7 @@ class BuildInsightsPdf
     {
         $media = $workspace->getFirstMedia('report_logo') ?? $workspace->getFirstMedia('logo');
 
-        if ($media === null || ! Storage::exists($media->path)) {
+        if (blank($media) || ! Storage::exists($media->path)) {
             return null;
         }
 
@@ -223,9 +223,9 @@ class BuildInsightsPdf
                 $leftValue = data_get($left, "{$sort}.value");
                 $rightValue = data_get($right, "{$sort}.value");
                 $order = match (true) {
-                    $leftValue === null && $rightValue === null => 0,
-                    $leftValue === null => 1,
-                    $rightValue === null => -1,
+                    blank($leftValue) && blank($rightValue) => 0,
+                    blank($leftValue) => 1,
+                    blank($rightValue) => -1,
                     default => $direction === 'asc' ? $leftValue <=> $rightValue : $rightValue <=> $leftValue,
                 };
             }
