@@ -57,7 +57,6 @@ import {
 } from '@/lib/channelMetrics';
 import {
     channelSeriesShareOptions,
-    shareLogos,
     shareRange,
 } from '@/lib/insightsShare';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
@@ -67,7 +66,6 @@ import ChannelMetricsChart from './ChannelMetricsChart.vue';
 const props = defineProps<{
     series?: ChannelMetricSeries;
     channel: string;
-    platform: string;
 }>();
 
 const METRIC_ICONS: Record<SeriesMetric, Component> = {
@@ -221,7 +219,6 @@ const previousCaption = computed(() =>
 const shareRangeLabel = computed(() =>
     props.series ? shareRange(props.series.range) : '',
 );
-const shareLogoUrls = computed(() => shareLogos([props.platform]));
 const canShare = computed(
     () => !!props.series?.metrics.some((metric) => metric !== 'growth_rate'),
 );
@@ -295,7 +292,6 @@ const changeMode = (value: string): void => {
                 variant="chart"
                 :subject="channel"
                 :range="shareRangeLabel"
-                :logos="shareLogoUrls"
                 :build="buildShareOptions"
                 :initial-key="specs[0]?.metric"
                 test-id="share-channel-metrics"

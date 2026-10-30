@@ -9,8 +9,6 @@ const props = defineProps<{
     variant: 'chart' | 'summary';
     subject: string;
     range: string;
-    /** The networks' logo URLs, from `shareLogos()`. */
-    logos: string[];
     /** Builds what the card can show; runs on open, so its labels read the loaded locale. */
     build: () => ShareMetricOption[];
     initialKey?: string;
@@ -43,7 +41,6 @@ const openDialog = (): void => {
             :variant="variant"
             :subject="subject"
             :range="range"
-            :logos="logos"
             :options="options"
             :initial-key="initialKey"
         />

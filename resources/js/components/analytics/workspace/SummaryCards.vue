@@ -7,7 +7,6 @@ import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import {
     shareChange,
-    shareLogos,
     shareRange,
     summaryShareOption,
 } from '@/lib/insightsShare';
@@ -24,7 +23,6 @@ const props = defineProps<{
     subtitleTestid?: string;
     network?: string;
     channel?: string;
-    platform?: string;
 }>();
 
 const defaultCards = computed(() => [
@@ -108,13 +106,6 @@ const shareSubject = computed(
     () => props.channel ?? page.props.auth.currentWorkspace?.name ?? '',
 );
 const shareRangeLabel = computed(() => shareRange(props.report.range));
-const shareLogoUrls = computed(() =>
-    shareLogos(
-        props.platform
-            ? [props.platform]
-            : props.report.followers.accounts.map((account) => account.platform),
-    ),
-);
 const buildShareOptions = () => [
     summaryShareOption(
         cards.value.map((card) => ({
@@ -140,7 +131,6 @@ const buildShareOptions = () => [
                 variant="summary"
                 :subject="shareSubject"
                 :range="shareRangeLabel"
-                :logos="shareLogoUrls"
                 :build="buildShareOptions"
                 test-id="share-summary"
             />

@@ -49,8 +49,6 @@ export type ShareCardOptions = {
     points: SharePoint[];
     shape: ShareShape;
     tiles: ShareTile[];
-    /** The networks the numbers come from, as their logos, already loaded. */
-    logos: HTMLImageElement[];
     /** Formats an axis value the way the page does. */
     tick: (value: number) => string;
     /** The signature: "Made with TryPost", translated. */
@@ -124,35 +122,6 @@ export const loadShareFonts = async (): Promise<void> => {
         ),
     );
 };
-
-const loadedLogos = new Map<string, Promise<HTMLImageElement | null>>();
-
-/**
- * The networks' logos from our own `/images/accounts`, loaded once. They are
- * same-origin, so drawing them keeps the canvas exportable; a logo that fails
- * to load is left out.
- */
-export const loadShareLogos = (urls: string[]): Promise<HTMLImageElement[]> =>
-    Promise.all(
-        urls.map((url) => {
-            if (!loadedLogos.has(url)) {
-                loadedLogos.set(
-                    url,
-                    new Promise((resolve) => {
-                        const image = new Image();
-
-                        image.onload = () => resolve(image);
-                        image.onerror = () => resolve(null);
-                        image.src = url;
-                    }),
-                );
-            }
-
-            return loadedLogos.get(url)!;
-        }),
-    ).then((images) =>
-        images.filter((image): image is HTMLImageElement => image !== null),
-    );
 
 const ellipsise = (
     context: CanvasRenderingContext2D,
@@ -278,102 +247,29 @@ const paintLogo = (
     }
 
     context.restore();
-    context.beginPath();
-    context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
-    context.strokeStyle = INK;
-    context.lineWidth = 2;
-    context.stroke();
 };
 
-/** The middle of the band under the panel, where the networks and the signature sit. */
-const footerCentre = (height: number): number => height - PANEL_BOTTOM / 2;
-
-/**
- * The signature on the tint, right of the band under the panel: whoever sees
- * the post sees where it came from. Returns where it starts.
- */
+/** The signature, centered in the band under the panel: whoever sees the post sees where it came from. */
 const paintMark = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
     width: number,
     height: number,
-): number => {
+): void => {
     const logo = 32;
     const gap = 12;
-    const centre = footerCentre(height);
+    const centre = height - PANEL_BOTTOM / 2;
 
     context.font = `600 24px ${SANS}`;
     context.textAlign = 'left';
     context.textBaseline = 'middle';
 
-    const textWidth = context.measureText(options.mark).width;
-    const start = width - PANEL.x - textWidth - logo - gap;
+    const start = (width - (logo + gap + context.measureText(options.mark).width)) / 2;
 
     paintLogo(context, start, centre - logo / 2, logo);
     context.fillStyle = INK;
     context.fillText(options.mark, start + logo + gap, centre + 1);
     context.textBaseline = 'alphabetic';
-
-    return start;
-};
-
-const LOGO_SIZE = 40;
-const LOGO_GAP = 10;
-
-/**
- * The networks the numbers come from, side by side on the tint, left of the
- * signature, each round with the ink border like a cover's badge. Only when
- * they do not fit does the rest collapse into "+N".
- */
-const paintLogos = (
-    context: CanvasRenderingContext2D,
-    logos: HTMLImageElement[],
-    left: number,
-    right: number,
-    centre: number,
-): void => {
-    const step = LOGO_SIZE + LOGO_GAP;
-    const fits = Math.max(Math.floor((right - left + LOGO_GAP) / step), 0);
-    const shown = logos.length > fits ? logos.slice(0, Math.max(fits - 1, 0)) : logos;
-    const hidden = logos.length - shown.length;
-    const top = centre - LOGO_SIZE / 2;
-    let x = left;
-
-    const ring = (): void => {
-        context.strokeStyle = INK;
-        context.lineWidth = BORDER;
-        context.stroke();
-    };
-
-    shown.forEach((logo) => {
-        context.save();
-        context.beginPath();
-        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
-        context.fillStyle = '#ffffff';
-        context.fill();
-        context.clip();
-        context.drawImage(logo, x, top, LOGO_SIZE, LOGO_SIZE);
-        context.restore();
-        context.beginPath();
-        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
-        ring();
-        x += step;
-    });
-
-    if (hidden > 0) {
-        context.beginPath();
-        context.arc(x + LOGO_SIZE / 2, centre, LOGO_SIZE / 2, 0, Math.PI * 2);
-        context.fillStyle = '#ffffff';
-        context.fill();
-        ring();
-        context.fillStyle = INK;
-        context.font = `600 16px ${SANS}`;
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.fillText(`+${hidden}`, x + LOGO_SIZE / 2, centre + 1);
-        context.textBaseline = 'alphabetic';
-        context.textAlign = 'left';
-    }
 };
 
 /** The workspace or channel name, what and when under it. */
@@ -794,9 +690,7 @@ export const drawShareCard = (
         paintChart(context, options, panel);
     }
 
-    const markStart = paintMark(context, options, width, height);
-
-    paintLogos(context, options.logos, PANEL.x, markStart - 32, footerCentre(height));
+    paintMark(context, options, width, height);
 };
 
 /** The card at download resolution, off screen, as a PNG file. */

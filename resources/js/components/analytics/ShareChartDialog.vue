@@ -7,7 +7,7 @@ import {
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
-import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
 import { Button } from '@/components/ui/button';
@@ -32,7 +32,6 @@ import date from '@/date';
 import {
     drawShareCard,
     loadShareFonts,
-    loadShareLogos,
     SHARE_CARD_SIZE,
     SHARE_TINTS,
     shareCardFile,
@@ -47,7 +46,6 @@ const props = defineProps<{
     variant: 'chart' | 'summary';
     subject: string;
     range: string;
-    logos: string[];
     options: ShareMetricOption[];
     initialKey?: string;
 }>();
@@ -60,7 +58,6 @@ const selectedKey = ref<string>('');
 const copied = ref(false);
 const posting = ref(false);
 const painted = ref(false);
-const logoImages = shallowRef<HTMLImageElement[]>([]);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
 
 const selected = computed(
@@ -88,7 +85,6 @@ const cardOptions = (): ShareCardOptions | null => {
         points: option.points,
         shape: option.shape,
         tiles: option.tiles,
-        logos: logoImages.value,
         tick: option.tick,
         mark: trans('analytics.share.mark'),
     };
@@ -107,7 +103,6 @@ const previewScale = (element: HTMLCanvasElement): number =>
 const paint = async (): Promise<void> => {
     await nextTick();
     await loadShareFonts();
-    logoImages.value = await loadShareLogos(props.logos);
 
     const options = cardOptions();
 

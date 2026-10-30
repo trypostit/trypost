@@ -1,6 +1,5 @@
 import { trans } from 'laravel-vue-i18n';
 
-import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import { formatSeriesValue } from '@/lib/channelMetrics';
 import type {
@@ -25,11 +24,6 @@ export type ShareScope = { channel: string | null };
 
 export const shareRange = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
-
-/** Each network once, as its logo, in the order the channels come. */
-export const shareLogos = (platforms: string[]): string[] => [
-    ...new Set(platforms.map((platform) => getPlatformLogo(platform))),
-];
 
 /** A change the way the page labels it: a count for followers, else a percentage. */
 export const shareChange = (

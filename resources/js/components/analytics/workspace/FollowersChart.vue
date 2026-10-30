@@ -7,7 +7,7 @@ import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
 import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
-import { followersShareOption, shareLogos } from '@/lib/insightsShare';
+import { followersShareOption } from '@/lib/insightsShare';
 import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -95,9 +95,6 @@ const rangeLabel = computed(
         `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
 );
 const page = usePage();
-const shareLogoUrls = computed(() =>
-    shareLogos(props.followers.accounts.map((account) => account.platform)),
-);
 const buildShareOptions = () => [
     followersShareOption(props.followers, rangeLabel.value),
 ];
@@ -130,7 +127,6 @@ const buildShareOptions = () => [
                 variant="chart"
                 :subject="page.props.auth.currentWorkspace?.name ?? ''"
                 :range="rangeLabel"
-                :logos="shareLogoUrls"
                 :build="buildShareOptions"
                 test-id="share-followers"
             />
