@@ -1,6 +1,6 @@
 ---
 title: Drag posts on the calendar to reschedule them
-date: 2026-10-29
+date: 2026-10-30
 tags: [new]
 ---
 
