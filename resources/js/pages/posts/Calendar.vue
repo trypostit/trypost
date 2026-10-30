@@ -302,11 +302,7 @@ const toggleSlots = (value: boolean): void => {
         return;
     }
 
-    router.replace({
-        url: calendarUrl(props.view, currentDateQuery()),
-        preserveScroll: true,
-        preserveState: true,
-    });
+    reload(['displayTimezone']);
 };
 
 /**

@@ -336,7 +336,7 @@ test('show posting times renders empty slots in the week and month views', funct
     $page->assertMissing("@calendar-posting-slot-{$slotKey}")
         ->assertScript('window.localStorage.getItem("publish.showSlots")', 'false')
         ->assertScript("new URLSearchParams(location.search).has('slots')", false)
-        ->assertScript('window.__partialData.length', 0);
+        ->assertScript("window.__partialData.every((only) => !only.split(',').includes('slots'))", true);
 
     $page->refresh();
     waitFor($page, "@calendar-slot-{$day->format('Y-m-d')}-15");
@@ -809,4 +809,19 @@ test('on a phone the month chips show each post\'s status icon and fit their day
         ->assertPresent("@calendar-post-failed-{$failed->id}");
     expect($page->script("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$draft->id}\"]'); const day = document.querySelector('[data-testid=\"calendar-day-{$day->format('Y-m-d')}\"]'); return chip.getBoundingClientRect().right <= day.getBoundingClientRect().right; })()"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
+});
+
+test('hiding posting times keeps the page address in the form the server answers with', function () {
+    [$user] = calendarPageSetup();
+    $week = now('UTC')->addWeek()->startOfWeek()->format('Y-m-d');
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'week', 'week' => $week, 'undated' => 1, 'slots' => 1]));
+    $page->click('@calendar-menu');
+    waitFor($page, '@calendar-toggle-slots');
+    $page->click('@calendar-toggle-slots');
+    waitForCondition($page, "!new URLSearchParams(location.search).has('slots')");
+
+    $page->assertScript('location.search', "?undated=1&week={$week}")
+        ->assertNoJavaScriptErrors();
 });

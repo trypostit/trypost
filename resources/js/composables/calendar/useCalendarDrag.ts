@@ -124,27 +124,6 @@ const swallowClick = (event: Event): void => {
     event.stopPropagation();
 };
 
-/**
- * Two URLs of the same page, whichever order their query keys come in and
- * whether a list is written `labels[]` or `labels[0]`: the server answers with
- * its own form of the URL a client-side visit wrote.
- */
-const normalizedUrl = (url: string): string => {
-    const parsed = new URL(url, window.location.origin);
-    const params = [...parsed.searchParams]
-        .map(([key, value]) => [key.replace(/\[\d+\]$/, '[]'), value])
-        .sort(([keyA, valueA], [keyB, valueB]) =>
-            keyA === keyB
-                ? valueA.localeCompare(valueB)
-                : keyA.localeCompare(keyB),
-        );
-
-    return `${parsed.pathname}?${new URLSearchParams(params)}`;
-};
-
-const isSameUrl = (a: string, b: string): boolean =>
-    normalizedUrl(a) === normalizedUrl(b);
-
 const suppressNextClick = (): void => {
     window.addEventListener('click', swallowClick, {
         capture: true,
@@ -623,7 +602,7 @@ export const useCalendarDrag = (
                         return;
                     }
 
-                    if (!isSameUrl(response.url, page.url)) {
+                    if (response.url !== page.url) {
                         response.props = { ...page.props };
                         response.url = page.url;
 
@@ -675,7 +654,7 @@ export const useCalendarDrag = (
                     reloaded = postIn(response.props, post.id);
 
                     if (
-                        isSameUrl(response.url, page.url) ||
+                        response.url === page.url ||
                         response.component !== page.component
                     ) {
                         return;
