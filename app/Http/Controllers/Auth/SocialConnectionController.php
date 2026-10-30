@@ -44,6 +44,7 @@ class SocialConnectionController extends Controller
             Platform::Mastodon => MastodonController::class,
             Platform::Discord => DiscordController::class,
             Platform::GoogleBusiness => GoogleBusinessController::class,
+            Platform::Vk => VkController::class,
             Platform::LinkedInPage, Platform::Telegram => abort(SymfonyResponse::HTTP_NOT_FOUND),
         });
     }

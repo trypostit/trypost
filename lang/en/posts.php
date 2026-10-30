@@ -826,6 +826,10 @@ return [
             'label' => 'Post',
             'description' => 'Appears on your Business Profile in Search and Maps',
         ],
+        'vk_post' => [
+            'label' => 'Post',
+            'description' => 'Text post with optional media',
+        ],
     ],
 
     'platforms' => [

@@ -208,6 +208,11 @@ class PostFactory extends Factory
         return $this->onNetwork(Platform::Discord, ContentType::DiscordMessage, 'discord');
     }
 
+    public function vk(): static
+    {
+        return $this->onNetwork(Platform::Vk, ContentType::VkPost, 'vk');
+    }
+
     public function telegram(): static
     {
         return $this->onNetwork(Platform::Telegram, ContentType::defaultFor(Platform::Telegram), 'telegram');

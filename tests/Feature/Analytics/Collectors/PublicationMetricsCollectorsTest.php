@@ -20,6 +20,7 @@ use App\Services\Analytics\Collectors\Metrics\MastodonPublicationMetricsCollecto
 use App\Services\Analytics\Collectors\Metrics\PinterestPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\PublicationMetricsCollectorFactory;
 use App\Services\Analytics\Collectors\Metrics\ThreadsPublicationMetricsCollector;
+use App\Services\Analytics\Collectors\Metrics\VkPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\TikTokPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\XPublicationMetricsCollector;
 use App\Services\Analytics\Collectors\Metrics\YouTubePublicationMetricsCollector;
@@ -42,6 +43,7 @@ test('the metric factory includes every v1 platform and excludes v2 and messagin
     [Platform::TikTok, TikTokPublicationMetricsCollector::class],
     [Platform::Bluesky, BlueskyPublicationMetricsCollector::class],
     [Platform::Mastodon, MastodonPublicationMetricsCollector::class],
+    [Platform::Vk, VkPublicationMetricsCollector::class],
 ]);
 
 test('bluesky normalizes measured zero and does not fabricate omitted counts', function () {
@@ -128,6 +130,10 @@ test('provider metric responses normalize measured values without inventing omit
     'mastodon' => [Platform::Mastodon, [
         'favourites_count' => 0, 'replies_count' => 2, 'reblogs_count' => 1,
     ], ['reactions' => 0, 'comments' => 2, 'shares' => 1, 'engagements' => 3]],
+    'vk' => [Platform::Vk, ['response' => ['items' => [[
+        'views' => ['count' => 50], 'likes' => ['count' => 0],
+        'comments' => ['count' => 2], 'reposts' => ['count' => 1],
+    ]]]], ['views' => 50, 'reactions' => 0, 'comments' => 2, 'shares' => 1, 'engagements' => 3]],
 ]);
 
 test('pinterest preserves its rolling window basis', function () {
@@ -925,4 +931,93 @@ test('TikTok classifies an invalid access token as an authentication failure', f
 
     expect(fn () => app(TikTokPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::today('UTC')))
         ->toThrow(fn (AnalyticsCollectionException $exception): bool => $exception->category === 'authentication');
+});
+
+test('vk maps its 200-with-error body onto the analytics categories', function () {
+    Http::fake(['*' => Http::response(['error' => [
+        'error_code' => 5,
+        'error_msg' => 'User authorization failed: invalid access_token.',
+    ]])]);
+    $account = SocialAccount::factory()->vk()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Vk,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '42',
+    ]);
+
+    try {
+        app(VkPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'));
+        $this->fail('Expected AnalyticsCollectionException');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->category)->toBe('authentication');
+    }
+});
+
+test('vk reports a deleted wall post as gone instead of failing the sweep', function () {
+    Http::fake(['*' => Http::response(['response' => ['count' => 0, 'items' => []]])]);
+    $account = SocialAccount::factory()->vk()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Vk,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '404404',
+    ]);
+
+    try {
+        app(VkPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'));
+        $this->fail('Expected AnalyticsCollectionException');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->gone)->toBeTrue();
+    }
+});
+
+test('vk reads the post of the account wall by owner-qualified id', function () {
+    Http::fake(['*' => Http::response(['response' => ['items' => [[
+        'views' => ['count' => 7], 'likes' => ['count' => 1],
+        'comments' => ['count' => 0], 'reposts' => ['count' => 0],
+    ]]]])]);
+    $account = SocialAccount::factory()->vk()->create();
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Vk,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '42',
+    ]);
+
+    app(VkPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'));
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->url(), '/wall.getById')
+        && $request['posts'] === '-123456_42'
+        && $request['v'] === config('trypost.platforms.vk.api_version')
+        && ! isset($request['access_token'])
+        && $request->hasHeader('Authorization'));
+});
+
+test('vk refuses post metrics for a community token before any request', function () {
+    Http::fake();
+    $account = SocialAccount::factory()->vk()->create([
+        'meta' => ['owner_id' => -123456, 'is_group' => true, 'community_token' => true],
+    ]);
+    $publication = AnalyticsPublication::factory()->create([
+        'workspace_id' => $account->workspace_id,
+        'social_account_id' => $account->id,
+        'platform' => Platform::Vk,
+        'platform_user_id' => $account->platform_user_id,
+        'remote_id' => '42',
+    ]);
+
+    try {
+        app(VkPublicationMetricsCollector::class)->collect($publication, CarbonImmutable::parse('2026-09-23', 'UTC'));
+        $this->fail('Expected AnalyticsCollectionException');
+    } catch (AnalyticsCollectionException $exception) {
+        expect($exception->category)->toBe('permission');
+    }
+
+    // Connecting the account bootstraps analytics inline, so assert only
+    // that the refusal itself never reached the wall.
+    Http::assertNotSent(fn (Request $request): bool => str_contains($request->url(), '/wall.getById'));
 });
