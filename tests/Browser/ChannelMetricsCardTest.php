@@ -91,7 +91,7 @@ beforeEach(function () {
     ]);
     $today = CarbonImmutable::today('UTC');
 
-    foreach (range(0, 59) as $daysAgo) {
+    foreach (range(0, 94) as $daysAgo) {
         metricsCardFollowers($this->instagram, $today->subDays($daysAgo), 3000 + (60 - $daysAgo) * 5);
     }
 
