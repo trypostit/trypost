@@ -65,8 +65,7 @@ return [
                 'login' => 'سجّل الدخول إلى TryPost واختر مساحة العمل',
             ],
             'chatgpt' => [
-                'developer' => 'فعّل وضع المطوّر في إعدادات ChatGPT',
-                'create' => 'أنشئ تطبيقًا باسم TryPost والصق الرابط',
+                'open' => 'افتح TryPost في ChatGPT واضغط «اتصال»',
                 'login' => 'سجّل الدخول إلى TryPost واختر مساحة العمل',
             ],
             'other' => [

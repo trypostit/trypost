@@ -65,8 +65,7 @@ return [
                 'login' => 'Log in bij TryPost en kies de workspace',
             ],
             'chatgpt' => [
-                'developer' => 'Zet de ontwikkelaarsmodus aan in de instellingen van ChatGPT',
-                'create' => 'Maak een app met de naam TryPost en plak de URL',
+                'open' => 'Open TryPost in ChatGPT en klik op Verbinden',
                 'login' => 'Log in bij TryPost en kies de workspace',
             ],
             'other' => [

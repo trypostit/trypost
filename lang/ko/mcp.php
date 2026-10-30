@@ -65,8 +65,7 @@ return [
                 'login' => 'TryPost에 로그인하고 워크스페이스 선택',
             ],
             'chatgpt' => [
-                'developer' => 'ChatGPT 설정에서 개발자 모드 켜기',
-                'create' => 'TryPost라는 앱을 만들고 URL 붙여넣기',
+                'open' => 'ChatGPT에서 TryPost를 열고 연결 클릭',
                 'login' => 'TryPost에 로그인하고 워크스페이스 선택',
             ],
             'other' => [

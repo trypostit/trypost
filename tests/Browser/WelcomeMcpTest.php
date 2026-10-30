@@ -349,13 +349,15 @@ test('the MCP step opens a dialog with the steps and the app link, and can be sk
     waitForWelcomeMcpTestIdGone($page, 'mcp-dialog');
 
     $page->click('@welcome-mcp-connect-chatgpt');
-    waitForWelcomeMcpTestId($page, 'mcp-dialog-step-developer');
+    waitForWelcomeMcpTestId($page, 'mcp-dialog-step-open');
 
     $page->assertSeeIn('@mcp-dialog', 'Connect TryPost to ChatGPT')
-        ->assertSeeIn('@mcp-dialog-step-developer', 'Turn on Developer mode')
-        ->assertVisible('@mcp-dialog-step-create')
+        ->assertSeeIn('@mcp-dialog-step-open', 'Open TryPost in ChatGPT')
+        ->assertVisible('@mcp-dialog-step-login')
         ->assertMissing('@mcp-dialog-step-paste')
-        ->assertAttribute('@mcp-dialog-open', 'href', 'https://chatgpt.com/plugins');
+        ->assertMissing('@mcp-dialog-name')
+        ->assertMissing('@mcp-dialog-url')
+        ->assertAttribute('@mcp-dialog-open', 'href', 'https://chatgpt.com/plugins/plugin_asdk_app_6ad0fbec07f4819191139b8a00f5f129');
 
     $page->keys('@mcp-dialog', 'Escape');
     waitForWelcomeMcpTestIdGone($page, 'mcp-dialog');

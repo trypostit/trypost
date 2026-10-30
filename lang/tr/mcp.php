@@ -65,8 +65,7 @@ return [
                 'login' => 'TryPost’a giriş yap ve workspace’i seç',
             ],
             'chatgpt' => [
-                'developer' => 'ChatGPT ayarlarında Geliştirici modunu aç',
-                'create' => 'TryPost adlı bir uygulama oluştur ve URL’yi yapıştır',
+                'open' => 'ChatGPT’de TryPost’u aç ve Bağlan’a tıkla',
                 'login' => 'TryPost’a giriş yap ve workspace’i seç',
             ],
             'other' => [

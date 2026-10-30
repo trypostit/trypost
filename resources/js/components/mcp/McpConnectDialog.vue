@@ -23,12 +23,12 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { default: false });
 
 /**
- * What to do in each client once its connector page is open. ChatGPT needs
- * developer mode before it accepts a custom MCP app.
+ * What to do in each client once its connector page is open. ChatGPT lists
+ * TryPost in its app store, so there is nothing to paste there.
  */
 const STEPS: Record<McpClientId, string[]> = {
     claude: ['paste', 'add', 'login'],
-    chatgpt: ['developer', 'create', 'login'],
+    chatgpt: ['open', 'login'],
     other: ['add', 'paste', 'login'],
 };
 
@@ -99,6 +99,7 @@ const focusDialogFrame = (event: Event): void => {
             </ol>
 
             <div
+                v-if="!client.listed"
                 class="overflow-hidden rounded-xl border border-border-strong bg-card"
             >
                 <div
