@@ -82,6 +82,9 @@ const CHANGE_COLORS = {
 
 const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
+/** The app's heading face (`--font-heading`), for names and numbers. */
+const HEADING = "Outfit, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+
 /** The white surface, inset from the tint like a cover's panel. */
 const PANEL = { x: 56, y: 48, radius: 24, padding: 48 };
 const PANEL_BOTTOM = 92;
@@ -93,7 +96,7 @@ export const loadShareFonts = async (): Promise<void> => {
     }
 
     await Promise.all(
-        [`500 24px ${SANS}`, `600 24px ${SANS}`, `700 96px ${SANS}`].map(
+        [`500 24px ${SANS}`, `600 24px ${SANS}`, `700 24px ${SANS}`, `600 64px ${HEADING}`].map(
             (face) => document.fonts.load(face).catch(() => []),
         ),
     );
@@ -363,7 +366,7 @@ const paintIdentity = (
     context.textAlign = 'left';
     context.textBaseline = 'middle';
     context.fillStyle = INK;
-    context.font = `700 34px ${SANS}`;
+    context.font = `600 36px ${HEADING}`;
     context.fillText(ellipsise(context, options.subject, limit - (textLeft - left)), textLeft, centre + 1);
     context.textBaseline = 'alphabetic';
 
@@ -457,7 +460,7 @@ const paintChart = (
 
     context.textAlign = 'right';
     context.fillStyle = INK;
-    context.font = `700 64px ${SANS}`;
+    context.font = `600 68px ${HEADING}`;
     context.fillText(options.figure, right, panel.y + 100);
 
     if (options.change) {
@@ -659,7 +662,7 @@ const paintSummary = (
         context.fillText(ellipsise(context, tile.label, limit), x, y + 50);
 
         context.fillStyle = tile.figure === '—' ? MUTED : INK;
-        context.font = `700 ${figureSize}px ${SANS}`;
+        context.font = `600 ${figureSize}px ${HEADING}`;
         context.fillText(ellipsise(context, tile.figure, limit), x - 2, y + 50 + figureSize + 6);
 
         if (tile.change) {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { IconCheck, IconCopy, IconDownload } from '@tabler/icons-vue';
+import { useResizeObserver } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -48,9 +49,11 @@ const props = defineProps<{
 
 const open = defineModel<boolean>('open', { default: false });
 
-const PREVIEW_PIXELS = 2;
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
+
+/** Each swatch shows the background with the accent drawn as a tiny bar chart. */
+const SWATCH_BARS = [8, 14, 11];
 const selectedKey = ref<string>('');
 const copied = ref(false);
 const posting = ref(false);
@@ -89,6 +92,16 @@ const cardOptions = (): ShareCardOptions | null => {
     };
 };
 
+/**
+ * The preview is drawn at the size it is shown, times the screen density, so
+ * the browser never shrinks a bigger card into it and blurs the text.
+ */
+const previewScale = (element: HTMLCanvasElement): number =>
+    Math.max(
+        (element.clientWidth * window.devicePixelRatio) / SHARE_CARD_SIZE.width,
+        0.25,
+    );
+
 const paint = async (): Promise<void> => {
     await nextTick();
     await loadShareFonts();
@@ -97,7 +110,7 @@ const paint = async (): Promise<void> => {
     const options = cardOptions();
 
     if (canvas.value && options) {
-        drawShareCard(canvas.value, options, PREVIEW_PIXELS);
+        drawShareCard(canvas.value, options, previewScale(canvas.value));
         painted.value = true;
     }
 };
@@ -112,7 +125,7 @@ watch(open, (isOpen) => {
     }
 });
 
-watch(canvas, paint);
+useResizeObserver(canvas, () => paint());
 
 watch([tint, selectedKey], () => {
     copied.value = false;
@@ -278,7 +291,7 @@ const createPost = async (): Promise<void> => {
                         $t('analytics.share.color')
                     }}</span>
                     <div
-                        class="flex h-8 items-center gap-2"
+                        class="flex h-9 items-center gap-2"
                         role="radiogroup"
                         :aria-label="$t('analytics.share.color')"
                     >
@@ -289,15 +302,25 @@ const createPost = async (): Promise<void> => {
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="grid size-6 cursor-pointer place-items-center rounded-full border border-foreground/20 ring-offset-2 ring-offset-background transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            :class="tint.key === swatch.key ? 'ring-2 ring-foreground' : ''"
+                            class="flex h-9 w-12 cursor-pointer items-end justify-center gap-0.5 rounded-lg pb-2 transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            :class="
+                                tint.key === swatch.key
+                                    ? 'border-2 border-foreground'
+                                    : 'border border-foreground/15 hover:border-foreground/40'
+                            "
                             :style="{ backgroundColor: swatch.ground }"
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"
                         >
                             <span
-                                class="size-2.5 rounded-full"
-                                :style="{ backgroundColor: swatch.strong }"
+                                v-for="height in SWATCH_BARS"
+                                :key="height"
+                                class="w-1 rounded-full"
+                                :style="{
+                                    height: `${height}px`,
+                                    backgroundColor: swatch.strong,
+                                }"
+                                aria-hidden="true"
                             />
                         </button>
                     </div>
