@@ -203,7 +203,7 @@ const statusTestId = computed(() =>
                         : (STATUS_CLASSES[post.status] ?? ''),
                     '[&[data-calendar-draggable=true]]:cursor-grab',
                     compact
-                        ? 'size-7 items-center justify-center'
+                        ? 'h-7 items-center justify-center gap-0.5 px-1'
                         : 'h-7 items-center px-1',
                 ]"
                 :aria-label="`${channels} · ${time} · ${$t(`calendar.post_status.${statusKey}`)} · ${text || $t('calendar.no_content')}`"
@@ -218,6 +218,18 @@ const statusTestId = computed(() =>
                         class="size-4 shrink-0"
                         :data-testid="`calendar-post-platform-${post.id}`"
                     />
+                    <span
+                        class="flex shrink-0 items-center"
+                        :class="statusMarker.tone"
+                        :data-testid="statusTestId"
+                        :data-mode="statusKey"
+                    >
+                        <component
+                            :is="statusMarker.icon"
+                            class="size-3"
+                            aria-hidden="true"
+                        />
+                    </span>
                 </template>
                 <template v-else>
                     <span class="flex min-w-0 flex-1 items-center gap-1">

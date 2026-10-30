@@ -206,11 +206,17 @@ export const useCalendarDrag = (
         !movingPostIds.value.includes(post.id) &&
         canDragCalendarPost(post, dayjs(), options.canCreatePost.value);
 
+    /**
+     * A member who needs approval cannot put a post in the queue at a posting
+     * time, as on the queue page, so its channel's posting times refuse it.
+     */
     const instantFor = (
         post: PostCard,
         target: CalendarDropTarget,
     ): string | null | undefined =>
-        dropInstant(post, target, options.timezone.value, dayjs());
+        options.requiresApproval.value && entersQueueSlot(post, target)
+            ? undefined
+            : dropInstant(post, target, options.timezone.value, dayjs());
 
     const placePreview = (input: { clientX: number; clientY: number }): void => {
         if (preview) {
@@ -782,6 +788,10 @@ export const useCalendarDrag = (
 
             if (instantFor(post, target) !== undefined) {
                 return { target, accepts: true };
+            }
+
+            if (entersQueueSlot(post, target)) {
+                return { target, accepts: false };
             }
 
             refusing ??= target;

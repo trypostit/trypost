@@ -626,7 +626,7 @@ test('on a phone the week shows its seven days in columns with their posts', fun
 
     $page->assertPresent("@calendar-post-{$first->id}")
         ->assertPresent("@calendar-post-{$second->id}")
-        ->assertScript("(() => { const box = document.querySelector('[data-testid=\"calendar-post-{$first->id}\"]').getBoundingClientRect(); return box.width === box.height; })()", true)
+        ->assertScript("(() => { const box = document.querySelector('[data-testid=\"calendar-post-{$first->id}\"]').getBoundingClientRect(); return box.height === 28 && box.width >= box.height; })()", true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
 });
@@ -698,7 +698,7 @@ test('on a phone the month shows its weeks in columns with the posts of each day
         ->assertPresent("@calendar-post-{$posts[0]->id}")
         ->assertSeeIn("@calendar-more-{$dayKey}", '+2')
         ->assertDontSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 2]))
-        ->assertScript("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$posts[0]->id}\"]'); const box = chip.getBoundingClientRect(); return box.width === box.height && chip.innerText.trim() === '' && !chip.querySelector('img, video'); })()", true)
+        ->assertScript("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$posts[0]->id}\"]'); const box = chip.getBoundingClientRect(); return box.height === 28 && box.width >= box.height && chip.innerText.trim() === '' && !chip.querySelector('img, video'); })()", true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();
 
@@ -791,5 +791,21 @@ test('the previous period arrow starts on the same line as the calendar', functi
 
     expect($page->script("Math.round(document.querySelector('[data-testid=\"calendar-previous\"]').getBoundingClientRect().left)"))
         ->toBe($page->script("Math.round(document.querySelector('[data-testid=\"calendar-grid\"]').getBoundingClientRect().left)"));
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on a phone the month chips show each post\'s status icon and fit their day', function () {
+    [$user, $linkedin] = calendarPageSetup();
+    $day = now('UTC')->addMonthNoOverflow()->startOfMonth()->addDays(10);
+    $draft = calendarPagePost($linkedin, $day->setTime(9, 0), PostStatus::Draft);
+    $failed = calendarPagePost($linkedin, $day->setTime(11, 0), PostStatus::Failed);
+    $this->actingAs($user);
+
+    $page = visit(route('app.calendar', ['view' => 'month', 'month' => $day->format('Y-m-d')]))->resize(390, 844);
+    waitFor($page, "@calendar-post-{$draft->id}");
+
+    $page->assertPresent("@calendar-post-draft-{$draft->id}")
+        ->assertPresent("@calendar-post-failed-{$failed->id}");
+    expect($page->script("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$draft->id}\"]'); const day = document.querySelector('[data-testid=\"calendar-day-{$day->format('Y-m-d')}\"]'); return chip.getBoundingClientRect().right <= day.getBoundingClientRect().right; })()"))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });

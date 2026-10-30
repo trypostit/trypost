@@ -110,8 +110,7 @@ const hourSlots = computed(() =>
                 props.timezone,
             );
             const target: CalendarDropTarget | null =
-                wallClockIn(start, props.timezone) ===
-                `${day.format('YYYY-MM-DD')} ${hourLabel(hour)}:00:00`
+                wallClockIn(start, props.timezone).hour === hour
                     ? { kind: 'hour', at: start.utc().format() }
                     : null;
 

@@ -30,6 +30,10 @@ class PostScheduleController extends Controller
 
         $scheduleAction = $request->enum('action', ScheduleAction::class);
 
+        if ($scheduleAction === ScheduleAction::Reschedule && $request->boolean('queue_slot')) {
+            $this->authorize('publishDirectly', $workspace);
+        }
+
         if ($scheduleAction === ScheduleAction::PublishNow && ! PostStatusRules::blocksEditing($post)) {
             PostStatusRules::assertStoredPostPublishable($post);
         }

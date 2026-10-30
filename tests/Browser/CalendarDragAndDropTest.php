@@ -205,6 +205,30 @@ test('dragging onto a slot of its channel takes the slot\'s exact time in the qu
     $page->assertNoJavaScriptErrors();
 });
 
+test('a member who needs approval cannot drop a post on a posting time, as on the queue page', function () {
+    [$owner, $channel] = calendarDragSetup(slotTime: '15:25');
+    $member = User::factory()->create(['account_id' => $owner->account_id, 'timezone' => 'UTC']);
+    $channel->workspace->members()->attach($member->id, membershipPivot('approval'));
+    $member->update(['current_workspace_id' => $channel->workspace_id]);
+    $day = calendarDragDay();
+    $at = $day->setTime(13, 30);
+    $post = calendarDragPost($channel, $at, attributes: ['user_id' => $member->id]);
+    $slotKey = calendarDragSlotKey($channel, $day->setTime(15, 25));
+    $this->actingAs($member);
+
+    $page = visit(calendarDragWeekUrl($day, ['slots' => 1]));
+    waitFor($page, "@calendar-posting-slot-{$slotKey}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    calendarDragHoldRequests($page);
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-posting-slot-{$slotKey}");
+    waitForGone($page, '@calendar-drag-preview');
+
+    expect($page->script('window.__heldRequests.length'))->toBe(0)
+        ->and($post->refresh()->scheduled_at->equalTo($at))->toBeTrue()
+        ->and($post->status)->toBe(PostStatus::Scheduled);
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a custom post dropped on a free slot of its channel goes back into the queue', function () {
     [$user, $channel] = calendarDragSetup(slotTime: '15:25');
     $day = calendarDragDay();

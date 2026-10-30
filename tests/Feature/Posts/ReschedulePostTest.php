@@ -265,21 +265,23 @@ test('a draft sent to a slot stays a draft with that date', function () {
         ->and($draft->scheduled_at->toIso8601String())->toBe($slot->toIso8601String());
 });
 
-test('a post sent to a slot by a member who needs approval stores a pending request', function () {
+test('a post sent to a slot by a member who needs approval is refused, as on the queue page', function () {
     $member = User::factory()->create(['account_id' => $this->user->account_id]);
     $this->workspace->members()->attach($member->id, membershipPivot('approval'));
     $member->update(['current_workspace_id' => $this->workspace->id]);
     $post = rescheduleCustom($this->channel, $member);
+    $at = $post->scheduled_at->toIso8601String();
     $slot = CarbonImmutable::parse('2026-10-07 09:00', 'UTC');
 
     $this->actingAs($member)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
-        ->assertSessionHasNoErrors();
+        ->assertForbidden();
 
     $post->refresh();
 
-    expect($post->status)->toBe(PostStatus::PendingApproval)
-        ->and($post->approval_requested_by)->toBe($member->id);
+    expect($post->status)->toBe(PostStatus::Scheduled)
+        ->and($post->scheduled_at->toIso8601String())->toBe($at)
+        ->and($post->approval_requested_by)->toBeNull();
 });
 
 test('another action ignores queue_slot', function () {

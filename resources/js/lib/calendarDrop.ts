@@ -8,7 +8,7 @@ export type CalendarDropTarget =
     | { kind: 'slot'; at: string; channelId: string; queueable: boolean }
     | { kind: 'undated' };
 
-const DRAFT_DAY_CLOCK = '09:00';
+const DRAFT_DAY_CLOCK = '09:00:00';
 
 export const canDragCalendarPost = (
     post: PostCard,
@@ -33,12 +33,22 @@ const soon = (now: dayjs.Dayjs): dayjs.Dayjs =>
 
 const wallClockFormats = new Map<string, Intl.DateTimeFormat>();
 
+export interface WallClock {
+    date: string;
+    hour: number;
+    clock: string;
+}
+
 /**
- * The wall clock of an instant in a zone, as `YYYY-MM-DD HH:mm:ss`. Read with
- * Intl rather than dayjs' local fields, which go through the browser's zone and
- * come out an hour off around the browser's own daylight saving changes.
+ * The wall clock of an instant in a zone: its day (`YYYY-MM-DD`), hour and
+ * clock (`HH:mm:ss`). Read with Intl rather than dayjs' local fields, which go
+ * through the browser's zone and come out an hour off around the browser's own
+ * daylight saving changes.
  */
-export const wallClockIn = (instant: dayjs.Dayjs, timezone: string): string => {
+export const wallClockIn = (
+    instant: dayjs.Dayjs,
+    timezone: string,
+): WallClock => {
     let format = wallClockFormats.get(timezone);
 
     if (!format) {
@@ -61,7 +71,11 @@ export const wallClockIn = (instant: dayjs.Dayjs, timezone: string): string => {
             .map((part) => [part.type, part.value]),
     );
 
-    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+    return {
+        date: `${parts.year}-${parts.month}-${parts.day}`,
+        hour: Number(parts.hour),
+        clock: `${parts.hour}:${parts.minute}:${parts.second}`,
+    };
 };
 
 const instantOnDay = (
@@ -77,11 +91,12 @@ const instantOnDay = (
     }
 
     const clock = post.scheduled_at
-        ? wallClockIn(dayjs.utc(post.scheduled_at), timezone).slice(11)
-        : `${DRAFT_DAY_CLOCK}:00`;
+        ? wallClockIn(dayjs.utc(post.scheduled_at), timezone).clock
+        : DRAFT_DAY_CLOCK;
     const instant = dayjs.tz(`${dayKey}T${clock}`, timezone);
+    const landed = wallClockIn(instant, timezone);
 
-    if (wallClockIn(instant, timezone) !== `${dayKey} ${clock}`) {
+    if (landed.date !== dayKey || landed.clock !== clock) {
         return undefined;
     }
 
