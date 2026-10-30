@@ -65,8 +65,7 @@ return [
                 'login' => '登录 TryPost 并选择工作区',
             ],
             'chatgpt' => [
-                'developer' => '在 ChatGPT 设置中开启开发者模式',
-                'create' => '创建名为 TryPost 的应用并粘贴 URL',
+                'open' => '在 ChatGPT 中打开 TryPost 并点击“连接”',
                 'login' => '登录 TryPost 并选择工作区',
             ],
             'other' => [

@@ -103,19 +103,20 @@ const barAttributes = {
     <ChartContainer
         :config="chartConfig"
         cursor
-        class="h-72 w-full sm:h-80"
+        class="h-72 w-full sm:h-80 [--vis-stacked-bar-stroke-color:var(--card)] [--vis-stacked-bar-stroke-width:1.5px]"
         data-testid="posts-unovis-chart"
     >
         <VisXYContainer
             :data="chartData"
-            :padding="{ top: 14, right: 8, bottom: 0, left: 0 }"
+            :padding="{ top: 14, right: 8, bottom: 8, left: 0 }"
         >
             <VisStackedBar
                 :x="xAccessor"
                 :y="yAccessors"
                 :color="barColors"
-                :rounded-corners="2"
+                :rounded-corners="4"
                 :bar-padding="0.35"
+                :bar-max-width="28"
                 :attributes="barAttributes"
             />
             <VisAxis
@@ -131,7 +132,7 @@ const barAttributes = {
                 :tick-format="formatCountTick"
                 :num-ticks="5"
                 :label="valueLabel"
-                label-font-size="12px"
+                label-font-size="11px"
                 label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"

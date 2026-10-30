@@ -65,8 +65,7 @@ return [
                 'login' => 'Συνδεθείτε στο TryPost και επιλέξτε workspace',
             ],
             'chatgpt' => [
-                'developer' => 'Ενεργοποιήστε τη λειτουργία προγραμματιστή στις ρυθμίσεις του ChatGPT',
-                'create' => 'Δημιουργήστε μια εφαρμογή με όνομα TryPost και επικολλήστε το URL',
+                'open' => 'Ανοίξτε το TryPost στο ChatGPT και πατήστε «Σύνδεση»',
                 'login' => 'Συνδεθείτε στο TryPost και επιλέξτε workspace',
             ],
             'other' => [

@@ -12,7 +12,13 @@ export interface McpClient {
     monoLogo: string;
     /** Where the user adds a connector in that client; none for a generic app. */
     settingsUrl?: string;
+    /** Listed in the client's app store: the user connects from its page, nothing to paste. */
+    listed?: boolean;
 }
+
+/** TryPost's page in the ChatGPT app store. */
+const CHATGPT_APP_URL =
+    'https://chatgpt.com/plugins/plugin_asdk_app_6ad0fbec07f4819191139b8a00f5f129';
 
 /** Opens Claude straight on the "Add custom connector" dialog. */
 const CLAUDE_ADD_CONNECTOR_URL =
@@ -36,7 +42,8 @@ export const mcpClients: McpClient[] = [
         logo: '/images/ai/openai.svg',
         logoClass: 'dark:invert',
         monoLogo: '/images/ai/openai.svg',
-        settingsUrl: 'https://chatgpt.com/plugins',
+        settingsUrl: CHATGPT_APP_URL,
+        listed: true,
     },
 ];
 

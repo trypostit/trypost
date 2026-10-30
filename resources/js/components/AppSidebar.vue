@@ -134,7 +134,7 @@ const mainNavItems = computed<NavItem[]>(() => [
                 <DropdownMenu>
                     <DropdownMenuTrigger as-child>
                         <Button
-                            class="h-9 w-full justify-center gap-1.5 rounded-full bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:rounded-lg group-data-[collapsible=icon]:px-0"
+                            class="h-9 w-full justify-center gap-1.5 rounded-lg bg-primary-strong font-medium text-primary-strong-foreground hover:bg-primary-text-hover data-[state=open]:bg-primary-text-hover dark:hover:bg-primary dark:data-[state=open]:bg-primary group-data-[collapsible=icon]:size-8 group-data-[collapsible=icon]:px-0"
                             :aria-label="$t('sidebar.new')"
                             data-testid="sidebar-new"
                         >

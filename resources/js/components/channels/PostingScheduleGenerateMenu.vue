@@ -174,6 +174,7 @@ const confirmGenerate = (): void => {
                                                     other.username
                                                 "
                                                 :size="24"
+                                                shape="round"
                                                 ring="popover"
                                             />
                                             <span class="flex min-w-0 flex-col">

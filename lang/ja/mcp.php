@@ -65,8 +65,7 @@ return [
                 'login' => 'TryPostにログインしてワークスペースを選択',
             ],
             'chatgpt' => [
-                'developer' => 'ChatGPTの設定で開発者モードをオン',
-                'create' => '「TryPost」という名前でアプリを作成し、URLを貼り付け',
+                'open' => 'ChatGPTでTryPostを開き、「接続する」をクリック',
                 'login' => 'TryPostにログインしてワークスペースを選択',
             ],
             'other' => [

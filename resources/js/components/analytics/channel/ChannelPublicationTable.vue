@@ -322,6 +322,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         :info="$t('analytics.insights.about.channel_posts')"
         info-testid="insights-posts-about"
         :range="periodRange"
+        flush
     >
         <template #actions>
             <AnalyticsModeToggle
@@ -333,7 +334,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         </template>
 
         <div
-            class="min-w-0 overflow-hidden rounded-lg border border-border bg-card transition-opacity"
+            class="min-w-0 border-t border-border transition-opacity"
             :class="{ 'opacity-60': isReloading }"
             :aria-busy="isReloading"
         >
@@ -349,10 +350,10 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                     <Table class="min-w-[720px]" data-testid="insights-posts">
                         <TableHeader>
                             <TableRow
-                                class="border-border-strong hover:bg-transparent"
+                                class="border-border bg-muted/60 hover:bg-muted/60"
                             >
                                 <TableHead
-                                    class="h-12 border-r-0 px-4 py-3 leading-[17.5px]"
+                                    class="h-10 border-r-0 px-4 py-2 text-xs font-medium text-muted-foreground sm:ps-5"
                                 >
                                     {{
                                         $t('analytics.channel.posts_count', {
@@ -363,7 +364,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                 <TableHead
                                     v-for="column in columns"
                                     :key="column"
-                                    class="h-12 border-r-0 px-4 py-3 leading-[17.5px]"
+                                    class="h-10 border-r-0 px-4 py-2 text-xs font-medium text-muted-foreground"
                                     :aria-sort="
                                         filters.sort === column
                                             ? 'descending'
@@ -404,7 +405,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     </button>
                                 </TableHead>
                                 <TableHead
-                                    class="sticky right-0 h-12 w-12 border-r-0 bg-card px-2 py-3 text-right"
+                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -464,10 +465,10 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                             <TableRow
                                 v-for="row in rows"
                                 :key="row.id"
-                                class="border-border-strong last:border-b-0"
+                                class="border-border last:border-b-0"
                                 :data-testid="`insights-posts-row-${row.id}`"
                             >
-                                <TableCell class="border-r-0 px-4 py-3">
+                                <TableCell class="border-r-0 px-4 py-3 sm:ps-5">
                                     <button
                                         type="button"
                                         class="flex max-w-md min-w-0 items-center gap-3 rounded-md text-left focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -475,7 +476,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         @click="openRow(row)"
                                     >
                                         <span
-                                            class="w-7 shrink-0 text-sm text-muted-foreground tabular-nums"
+                                            class="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-medium text-foreground tabular-nums"
                                             :data-testid="`insights-posts-rank-${row.id}`"
                                             >#{{ row.rank }}</span
                                         >
@@ -546,12 +547,12 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                 <TableCell
                                     v-for="column in columns"
                                     :key="column"
-                                    class="border-r-0 px-4 py-3 tabular-nums"
+                                    class="border-r-0 px-4 py-3 text-foreground tabular-nums"
                                 >
                                     {{ display(row, column) }}
                                 </TableCell>
                                 <TableCell
-                                    class="border-r-0 px-2 py-3 text-right"
+                                    class="border-r-0 px-2 py-3 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -631,7 +632,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
         </div>
         <nav
             v-if="lastPage > 1"
-            class="flex items-center justify-center gap-1 pt-3 pb-1"
+            class="flex items-center justify-center gap-1 border-t border-border px-4 py-3"
             :aria-label="$t('analytics.channel.pagination.label')"
             data-testid="insights-posts-pagination"
         >

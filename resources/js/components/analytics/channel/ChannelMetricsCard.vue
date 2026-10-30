@@ -20,6 +20,7 @@ import {
 import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, type Component } from 'vue';
 
+import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Button } from '@/components/ui/button';
 import {
@@ -81,17 +82,19 @@ const modes = [
     {
         mode: 'current',
         label: 'analytics.channel.this_period',
+        test: 'insights-metrics-mode-current',
         icon: IconSquareFilled,
     },
     {
         mode: 'previous',
         label: 'analytics.channel.metrics_card.comparison',
+        test: 'insights-metrics-mode-previous',
         icon: IconSquareDashed,
     },
     {
         mode: 'both',
         label: 'analytics.channel.metrics_card.both',
-        icon: null,
+        test: 'insights-metrics-mode-both',
     },
 ] as const;
 const SELECTED = 'border-transparent bg-primary-selected text-primary-text hover:bg-primary-selected hover:text-primary-text';
@@ -254,8 +257,8 @@ const choosePreset = (preset: PresetKey): void => {
     selection.value = { kind: 'preset', preset };
 };
 
-const changeMode = (value: ChartMode): void => {
-    mode.value = value;
+const changeMode = (value: string): void => {
+    mode.value = value as ChartMode;
 };
 </script>
 
@@ -292,13 +295,13 @@ const changeMode = (value: ChartMode): void => {
                 data-testid="insights-metrics-skeleton"
                 aria-busy="true"
             >
-                <div class="flex flex-wrap gap-2 px-2 pb-1">
+                <div class="flex flex-wrap gap-2 pb-2">
                     <Skeleton class="h-7 w-24 rounded-md" />
                     <Skeleton class="h-7 w-32 rounded-md" />
                     <Skeleton class="h-7 w-32 rounded-md" />
                     <Skeleton class="h-7 w-24 rounded-md" />
                 </div>
-                <div class="rounded-lg border border-border bg-card p-4 sm:p-5">
+                <div>
                     <div class="mb-6 flex gap-6">
                         <Skeleton class="h-12 w-20" />
                         <Skeleton class="h-12 w-20" />
@@ -309,7 +312,7 @@ const changeMode = (value: ChartMode): void => {
 
             <template v-else>
                 <div
-                    class="flex flex-wrap items-center gap-2 px-2 pb-3"
+                    class="flex flex-wrap items-center gap-2 pb-5"
                     data-testid="insights-metrics-controls"
                 >
                     <div
@@ -433,12 +436,10 @@ const changeMode = (value: ChartMode): void => {
                     </TooltipProvider>
                 </div>
 
-                <div
-                    class="min-w-0 overflow-hidden rounded-lg border border-border bg-card"
-                >
+                <div class="min-w-0">
                     <p
                         v-if="insight && enoughHistory"
-                        class="flex items-center gap-2 bg-info-subtle px-4 py-3 text-sm text-info-text sm:px-5"
+                        class="mb-5 flex items-center gap-2 rounded-lg bg-info-subtle px-4 py-3 text-sm text-info-text"
                         data-testid="insights-metrics-insight"
                         :data-insight="`${insight.subject}.${insight.direction}`"
                     >
@@ -454,9 +455,9 @@ const changeMode = (value: ChartMode): void => {
                         }}
                     </p>
 
-                    <div class="p-4 sm:p-5">
+                    <div>
                         <div
-                            class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+                            class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
                         >
                             <div
                                 class="flex flex-wrap gap-x-8 gap-y-3"
@@ -469,7 +470,7 @@ const changeMode = (value: ChartMode): void => {
                                     :data-testid="`insights-metrics-legend-${spec.metric}`"
                                 >
                                     <span
-                                        class="text-xs whitespace-nowrap text-muted-foreground"
+                                        class="text-sm whitespace-nowrap text-muted-foreground"
                                         >{{
                                             $t(
                                                 `analytics.channel.series.${spec.metric}`,
@@ -490,7 +491,7 @@ const changeMode = (value: ChartMode): void => {
                                                 "
                                             />
                                             <span
-                                                class="font-heading text-2xl leading-tight font-medium text-foreground tabular-nums"
+                                                class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
                                                 :data-testid="`insights-metrics-legend-${spec.metric}-value`"
                                                 >{{
                                                     formatSeriesValue(
@@ -511,7 +512,7 @@ const changeMode = (value: ChartMode): void => {
                                                 :style="previousSwatch(spec)"
                                             />
                                             <span
-                                                class="font-heading text-2xl leading-tight font-medium text-muted-foreground tabular-nums"
+                                                class="font-heading text-2xl leading-8 font-medium text-muted-foreground tabular-nums"
                                                 :data-testid="`insights-metrics-legend-${spec.metric}-previous`"
                                                 >{{
                                                     formatSeriesValue(
@@ -526,40 +527,15 @@ const changeMode = (value: ChartMode): void => {
                                     </span>
                                 </div>
                             </div>
-                            <div
+                            <AnalyticsModeToggle
                                 v-if="!growthRate"
-                                class="inline-flex items-center gap-0.5 self-start rounded-lg border border-border-strong bg-card p-0.5"
-                                role="group"
-                                :aria-label="
-                                    $t(
-                                        'analytics.channel.metrics_card.chart_mode',
-                                    )
-                                "
+                                :model-value="mode"
+                                label="analytics.channel.metrics_card.chart_mode"
+                                :options="modes"
+                                class="self-start"
                                 data-testid="insights-metrics-modes"
-                            >
-                                <Button
-                                    v-for="option in modes"
-                                    :key="option.mode"
-                                    variant="ghost"
-                                    size="sm"
-                                    :class="
-                                        mode === option.mode
-                                            ? SELECTED
-                                            : 'text-muted-foreground'
-                                    "
-                                    :aria-pressed="mode === option.mode"
-                                    :data-testid="`insights-metrics-mode-${option.mode}`"
-                                    @click="changeMode(option.mode)"
-                                >
-                                    <component
-                                        :is="option.icon"
-                                        v-if="option.icon"
-                                        class="size-3"
-                                        aria-hidden="true"
-                                    />
-                                    {{ $t(option.label) }}
-                                </Button>
-                            </div>
+                                @update:model-value="changeMode"
+                            />
                         </div>
 
                         <ChannelMetricsChart

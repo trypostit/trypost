@@ -157,7 +157,7 @@ const hideMonth = (): void => {
                 >
                     <path
                         :d="toArea(accounts[0].values)"
-                        :fill="accounts[0].color"
+                        :style="{ fill: accounts[0].color }"
                         fill-opacity="0.08"
                     />
                     <line
@@ -174,7 +174,7 @@ const hideMonth = (): void => {
                         :key="account.platform"
                         :d="toCurve(account.values)"
                         fill="none"
-                        :stroke="account.color"
+                        :style="{ stroke: account.color }"
                         stroke-width="1.25"
                         stroke-linecap="round"
                         vector-effect="non-scaling-stroke"

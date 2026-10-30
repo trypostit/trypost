@@ -187,7 +187,7 @@ test('the sidebar new button and its menu use the brand colors', function () {
         })()
     JS);
 
-    expect($colors)->toBe(['rgb(109, 40, 217)', 'rgb(255, 255, 255)', '3.35544e+07px', 'none']);
+    expect($colors)->toBe(['rgb(109, 40, 217)', 'rgb(255, 255, 255)', '8px', 'none']);
 
     $page->click('@sidebar-new');
     waitForSidebarTestId($page, 'sidebar-new-idea');

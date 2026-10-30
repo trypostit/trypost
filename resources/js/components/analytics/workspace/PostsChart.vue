@@ -69,7 +69,7 @@ const rangeLabel = computed(
         <div
             v-if="posts.accounts.length === 0"
             data-testid="analytics-posts-empty"
-            class="rounded-lg border border-dashed border-border-strong bg-card px-5 py-12 text-center text-sm text-muted-foreground"
+            class="rounded-lg border border-dashed border-border-strong px-5 py-12 text-center text-sm text-muted-foreground"
         >
             {{
                 $t(
@@ -79,10 +79,7 @@ const rangeLabel = computed(
                 )
             }}
         </div>
-        <div
-            v-else
-            class="min-w-0 rounded-lg border border-border bg-card p-4 sm:p-5"
-        >
+        <div v-else class="min-w-0">
             <div class="min-w-0">
                 <SocialAccountMetricBarChart
                     v-if="mode === 'bar'"
@@ -105,12 +102,12 @@ const rangeLabel = computed(
                 />
             </div>
             <div
-                class="mt-5 grid gap-x-5 gap-y-2.5 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
+                class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
             >
                 <div
                     v-for="account in posts.accounts"
                     :key="account.social_account_key"
-                    class="flex min-w-0 items-center justify-between gap-2"
+                    class="-mx-2 flex min-h-9 min-w-0 items-center justify-between gap-2 rounded-md px-2 transition-control hover:bg-accent/60"
                 >
                     <AccountIdentity
                         :account="account"
@@ -118,7 +115,7 @@ const rangeLabel = computed(
                         with-avatar
                         :avatar-size="24"
                     />
-                    <span class="shrink-0 text-sm font-semibold tabular-nums">
+                    <span class="shrink-0 text-sm font-medium text-foreground tabular-nums">
                         {{ formatNumberCompact(account.count) }}
                     </span>
                 </div>

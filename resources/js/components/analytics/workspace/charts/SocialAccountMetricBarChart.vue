@@ -143,6 +143,7 @@ const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
         ring: 'card',
         status: account.status ?? null,
         accountId: account.social_account_key,
+        verified: account.verified_badge ?? null,
         reserveSpace: false,
     });
     avatar.appContext = appContext;
@@ -196,9 +197,9 @@ const barAttributes = {
                 :y="split ? splitAccessors : valueAccessor"
                 :color="colorAccessor"
                 orientation="horizontal"
-                :rounded-corners="2"
-                :bar-padding="0.27"
-                :bar-max-width="27"
+                :rounded-corners="4"
+                :bar-padding="0.4"
+                :bar-max-width="20"
                 :attributes="barAttributes"
             />
             <VisAxis
@@ -206,7 +207,7 @@ const barAttributes = {
                 :tick-format="formatCountTick"
                 :num-ticks="5"
                 :label="valueLabel"
-                label-font-size="12px"
+                label-font-size="11px"
                 label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"

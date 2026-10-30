@@ -3,11 +3,10 @@ import {
     IconChevronDown,
     IconChevronUp,
     IconTable,
-    IconTrendingDown,
-    IconTrendingUp,
 } from '@tabler/icons-vue';
 import { computed, ref } from 'vue';
 
+import MetricChange from '@/components/analytics/MetricChange.vue';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
     DropdownMenu,
@@ -132,6 +131,7 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
             })
         "
         subtitle-testid="analytics-performance-caption"
+        flush
     >
         <template #actions>
         <DropdownMenu>
@@ -183,29 +183,27 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
             </DropdownMenuContent>
         </DropdownMenu>
         </template>
-        <div
-            v-if="rows.length === 0"
-            data-testid="analytics-performance-empty"
-            class="rounded-lg border border-dashed border-border-strong bg-card px-5 py-10 text-center text-sm text-muted-foreground"
-        >
-            {{
-                $t(
-                    filtered
-                        ? 'analytics.dashboard.filtered_no_posts'
-                        : 'analytics.dashboard.no_performance',
-                )
-            }}
+        <div v-if="rows.length === 0" class="px-4 pb-4 sm:px-5 sm:pb-5">
+            <div
+                data-testid="analytics-performance-empty"
+                class="rounded-lg border border-dashed border-border-strong px-5 py-10 text-center text-sm text-muted-foreground"
+            >
+                {{
+                    $t(
+                        filtered
+                            ? 'analytics.dashboard.filtered_no_posts'
+                            : 'analytics.dashboard.no_performance',
+                    )
+                }}
+            </div>
         </div>
-        <div
-            v-else
-            class="min-w-0 rounded-lg border border-border bg-card"
-        >
-            <div class="min-w-0 overflow-x-auto rounded-lg">
+        <div v-else class="min-w-0 border-t border-border">
+            <div class="min-w-0 overflow-x-auto">
                 <Table class="min-w-[720px]">
                     <TableHeader>
-                        <TableRow class="border-border-strong hover:bg-transparent">
+                        <TableRow class="border-border bg-muted/60 hover:bg-muted/60">
                             <TableHead
-                                class="h-12 border-r-0 px-4 py-3 leading-[17.5px]"
+                                class="h-10 border-r-0 px-4 py-2 text-xs font-medium text-muted-foreground sm:ps-5"
                                 :aria-sort="ariaSort('channel')"
                                 data-testid="analytics-performance-channel-header"
                             >
@@ -236,7 +234,7 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
                             <TableHead
                                 v-for="column in columns"
                                 :key="column"
-                                class="h-12 border-r-0 px-4 py-3 leading-[17.5px] whitespace-nowrap"
+                                class="h-10 border-r-0 px-4 py-2 text-xs font-medium whitespace-nowrap text-muted-foreground"
                                 :aria-sort="ariaSort(column)"
                                 :data-testid="`analytics-performance-column-${column}`"
                             >
@@ -274,11 +272,11 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
                         <TableRow
                             v-for="row in sorted"
                             :key="row.social_account_key"
-                            class="border-border-strong last:border-b-0"
+                            class="border-border last:border-b-0"
                         >
                             <th
                                 scope="row"
-                                class="border-r-0 px-4 py-3 text-left font-normal"
+                                class="border-r-0 px-4 py-3 text-start font-normal sm:ps-5"
                             >
                                 <AccountIdentity :account="row" with-avatar />
                             </th>
@@ -287,26 +285,16 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
                                 :key="column"
                                 class="border-r-0 px-4 py-3 whitespace-nowrap tabular-nums"
                             >
-                                <span class="inline-flex items-center gap-2">
-                                    <span class="text-sm text-foreground">{{
+                                <span class="inline-flex items-center gap-2.5">
+                                    <span class="text-sm font-medium text-foreground">{{
                                         display(row, column)
                                     }}</span>
-                                    <span
+                                    <MetricChange
                                         v-if="row[column].change !== null"
-                                        class="inline-flex items-center gap-1 text-xs text-foreground"
-                                    >
-                                        <IconTrendingUp
-                                            v-if="row[column].change! >= 0"
-                                            class="size-4 shrink-0 text-success-text"
-                                            aria-hidden="true"
-                                        />
-                                        <IconTrendingDown
-                                            v-else
-                                            class="size-4 shrink-0 text-destructive-text"
-                                            aria-hidden="true"
-                                        />
-                                        {{ change(row, column) }}
-                                    </span>
+                                        :change="row[column].change!"
+                                        :label="change(row, column)"
+                                        compact
+                                    />
                                 </span>
                             </TableCell>
                         </TableRow>

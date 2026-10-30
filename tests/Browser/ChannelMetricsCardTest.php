@@ -137,9 +137,17 @@ test('the metrics card loads after the page and opens on content impact', functi
 
     $page->assertScript('Boolean(document.querySelector("[data-testid=insights-posts]").compareDocumentPosition(document.querySelector("[data-testid=insights-metrics]")) & Node.DOCUMENT_POSITION_FOLLOWING)', true)
         ->assertScript(<<<'JS'
-            [...document.querySelectorAll('[data-testid="insights-metrics-controls"] button, [data-testid="insights-metrics-modes"] button')]
+            [...document.querySelectorAll('[data-testid="insights-metrics-controls"] button')]
                 .map((button) => [button.classList.contains('h-7'), Math.round(button.getBoundingClientRect().height)])
                 .every(([small, height]) => small && height === 28)
+        JS, true)
+        ->assertScript(<<<'JS'
+            (() => {
+                const preset = Math.round(document.querySelector('[data-testid="insights-range-30d"]').getBoundingClientRect().height);
+
+                return [...document.querySelectorAll('[data-testid="insights-metrics-modes"] button')]
+                    .every((button) => Math.round(button.getBoundingClientRect().height) === preset);
+            })()
         JS, true)
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-controls] button, [data-testid=insights-metrics-modes] button").length', 9)
         ->assertNoJavaScriptErrors();

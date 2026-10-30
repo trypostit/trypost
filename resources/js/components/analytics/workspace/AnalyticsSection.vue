@@ -11,21 +11,22 @@ defineProps<{
     subtitle?: string;
     subtitleTestid?: string;
     range?: WorkspaceAnalyticsReport['range'];
+    flush?: boolean;
 }>();
 </script>
 
 <template>
     <section
-        class="min-w-0 rounded-xl bg-muted p-2 dark:bg-background"
+        class="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
         data-testid="analytics-section"
     >
         <div
-            class="flex flex-wrap items-center justify-between gap-x-2 gap-y-2 px-2 pt-2 pb-3"
+            class="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 px-4 pt-4 pb-4 sm:px-5"
         >
             <div class="flex min-w-0 flex-col gap-1">
                 <div class="-my-0.5 flex min-w-0 items-center gap-1">
                     <h2
-                        class="text-base leading-5 font-emphasis text-foreground"
+                        class="font-heading text-base leading-6 font-medium text-foreground"
                         data-testid="analytics-section-title"
                     >
                         {{ title }}
@@ -48,6 +49,8 @@ defineProps<{
             </div>
             <slot name="actions" />
         </div>
-        <slot />
+        <div :class="flush ? 'min-w-0' : 'min-w-0 px-4 pb-4 sm:px-5 sm:pb-5'">
+            <slot />
+        </div>
     </section>
 </template>
