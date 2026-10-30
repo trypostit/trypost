@@ -53,6 +53,7 @@ return [
         'error' => 'Couldn\'t move this post. Try again.',
         'errors' => [
             'past' => 'This time has already passed. Pick a later time.',
+            'slot_taken' => 'This time in the queue isn\'t free anymore. Pick another time.',
             'pending' => 'This post is waiting for approval. Move it once it\'s approved or rejected.',
             'publishing_soon' => 'This post is about to be published, so it can\'t be moved anymore.',
             'too_far' => 'Pick a date before January 19, 2038.',

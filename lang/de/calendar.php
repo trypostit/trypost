@@ -53,6 +53,7 @@ return [
         'error' => 'Beitrag konnte nicht verschoben werden. Versuche es erneut.',
         'errors' => [
             'past' => 'Diese Zeit ist bereits vorbei. Wähle eine spätere Zeit.',
+            'slot_taken' => 'Diese Zeit in der Warteschlange ist nicht mehr frei. Wähle eine andere Zeit.',
             'pending' => 'Dieser Beitrag wartet auf Freigabe. Verschiebe ihn, sobald er freigegeben oder abgelehnt ist.',
             'publishing_soon' => 'Dieser Beitrag wird gleich veröffentlicht und kann nicht mehr verschoben werden.',
             'too_far' => 'Wähle ein Datum vor dem 19. Januar 2038.',

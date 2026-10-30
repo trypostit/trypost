@@ -335,7 +335,7 @@ test('ticking the box and confirming stores the choice and the next drop skips t
     $page->click('@calendar-custom-time-confirm');
     waitForGone($page, '@calendar-grid[aria-busy]');
 
-    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm')"))->toBe('true');
+    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm.{$user->id}')"))->toBe('true');
     waitFor($page, '@calendar-posting-slot-'.calendarDragSlotKey($channel, $day->setTime(9, 25)));
 
     waitFor($page, "@calendar-post-{$second->id}");
@@ -348,6 +348,24 @@ test('ticking the box and confirming stores the choice and the next drop skips t
     $second->refresh();
     expect($second->scheduled_at->equalTo($day->addDay()->setTime(11, 0)))->toBeTrue()
         ->and($second->schedule_mode)->toBe(ScheduleMode::Custom);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('another user\'s choice to skip the dialog on this browser does not skip it', function () {
+    [$user, $channel] = calendarDragSetup(slotTime: '09:25');
+    $other = User::factory()->create();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(9, 25), mode: ScheduleMode::Queue);
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day));
+    waitFor($page, "@calendar-post-{$post->id}");
+    $page->script("localStorage.setItem('calendar.skipCustomTimeConfirm.{$other->id}', 'true'); localStorage.setItem('calendar.skipCustomTimeConfirm', 'true')");
+    calendarDragOnto($page, "@calendar-post-{$post->id}", "@calendar-slot-{$key}-11");
+    waitFor($page, '@calendar-custom-time-dialog');
+
+    expect($post->refresh()->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -366,7 +384,7 @@ test('ticking the box and cancelling stores nothing', function () {
     $page->click('@calendar-custom-time-cancel');
     waitForGone($page, '@calendar-custom-time-dialog');
 
-    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm')"))->toBeNull()
+    expect($page->script("localStorage.getItem('calendar.skipCustomTimeConfirm.{$user->id}')"))->toBeNull()
         ->and($post->refresh()->schedule_mode)->toBe(ScheduleMode::Queue);
     $page->assertNoJavaScriptErrors();
 });

@@ -53,6 +53,7 @@ return [
         'error' => 'Não foi possível mover este post. Tente novamente.',
         'errors' => [
             'past' => 'Esse horário já passou. Escolha um horário mais tarde.',
+            'slot_taken' => 'Esse horário da fila não está mais livre. Escolha outro horário.',
             'pending' => 'Este post está aguardando aprovação. Mova-o depois que for aprovado ou rejeitado.',
             'publishing_soon' => 'Este post está prestes a ser publicado, então não pode mais ser movido.',
             'too_far' => 'Escolha uma data antes de 19 de janeiro de 2038.',

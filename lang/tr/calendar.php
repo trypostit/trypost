@@ -53,6 +53,7 @@ return [
         'error' => 'Gönderi taşınamadı. Tekrar deneyin.',
         'errors' => [
             'past' => 'Bu saat geçti. Daha sonraki bir saat seçin.',
+            'slot_taken' => 'Kuyruktaki bu saat artık boş değil. Başka bir saat seçin.',
             'pending' => 'Bu gönderi onay bekliyor. Onaylandıktan veya reddedildikten sonra taşıyın.',
             'publishing_soon' => 'Bu gönderi birazdan yayınlanacak, bu yüzden artık taşınamaz.',
             'too_far' => '19 Ocak 2038\'den önce bir tarih seçin.',

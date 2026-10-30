@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { AlertDialogCancel } from 'reka-ui';
 import { ref } from 'vue';
 
@@ -13,7 +14,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import date from '@/date';
 
-const STORAGE_KEY = 'calendar.skipCustomTimeConfirm';
+const page = usePage();
+
+const storageKey = (): string =>
+    `calendar.skipCustomTimeConfirm.${page.props.auth.user.id}`;
 
 const isOpen = ref(false);
 const skipNextTime = ref(false);
@@ -33,7 +37,7 @@ const escapeHtml = (value: string): string =>
 
 const readSkip = (): boolean => {
     try {
-        return window.localStorage.getItem(STORAGE_KEY) === 'true';
+        return window.localStorage.getItem(storageKey()) === 'true';
     } catch {
         return false;
     }
@@ -41,7 +45,7 @@ const readSkip = (): boolean => {
 
 const storeSkip = (): void => {
     try {
-        window.localStorage.setItem(STORAGE_KEY, 'true');
+        window.localStorage.setItem(storageKey(), 'true');
     } catch {
         return;
     }

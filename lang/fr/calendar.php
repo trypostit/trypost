@@ -53,6 +53,7 @@ return [
         'error' => 'Impossible de déplacer cette publication. Réessayez.',
         'errors' => [
             'past' => 'Cette heure est déjà passée. Choisissez une heure plus tardive.',
+            'slot_taken' => 'Cet horaire dans la file d\'attente n\'est plus libre. Choisissez un autre horaire.',
             'pending' => 'Cette publication attend une approbation. Déplacez-la une fois approuvée ou refusée.',
             'publishing_soon' => 'Cette publication est sur le point d\'être publiée, elle ne peut plus être déplacée.',
             'too_far' => 'Choisissez une date avant le 19 janvier 2038.',

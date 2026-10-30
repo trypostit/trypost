@@ -19,6 +19,8 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Uri;
 use Inertia\Inertia;
 use Inertia\Response;
+use League\Uri\Contracts\UriException;
+use League\Uri\QueryString;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
@@ -50,12 +52,18 @@ trait RendersPublishPage
     /**
      * Where a post saved or deleted from a composer or post dialog returns: the
      * Publish page it came from on the tab given, or any other page of the app
-     * as it was. The Referer is matched once for both.
+     * as it was. The Referer is matched once for both. Without a Referer (a
+     * browser or extension that strips it) the page is unknown, and the session's
+     * last full page load is too old to stand for it: it returns to the home page.
      *
      * @param  array<string, string>  $publishQuery
      */
     private function originPageUrl(array $publishQuery = []): string
     {
+        if (blank(request()->header('referer'))) {
+            return route('app.home');
+        }
+
         $route = $this->previousRoute();
 
         return $this->publishPageUrl($route, $publishQuery) ?? $this->previousUrl($route);
@@ -94,7 +102,8 @@ trait RendersPublishPage
      * Referer matched, so it always points at this app, at the same route
      * parameters (a query key, named or numeric, never replaces or fills one: a key named like
      * an optional parameter the path left out stays in the query, where the page reads it). Its query is
-     * read form-encoded, as PHP reads it (`+` is a space, dots stay in keys), and kept, minus the
+     * read form-encoded, as PHP reads it (`+` is a space), with dots kept in keys, which Laravel's
+     * and Symfony's request parsers turn into underscores, and kept, minus the
      * keys in `$except`, with `$extraQuery` replacing or adding keys. A Referer
      * that matches no route of the app, or cannot be read, returns to the home page.
      *
@@ -110,12 +119,12 @@ trait RendersPublishPage
         try {
             $query = Arr::where(
                 Arr::except(
-                    Request::create(url()->previous())->query->all(),
+                    QueryString::extract(Uri::of(url()->previous())->query()->value(), encType: PHP_QUERY_RFC1738),
                     [...$except, ...array_keys($route->parameters())],
                 ),
                 fn (mixed $value, int|string $key): bool => is_string($key),
             );
-        } catch (BadRequestException) {
+        } catch (UriException) {
             return route('app.home');
         }
 

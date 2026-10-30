@@ -1054,18 +1054,19 @@ test('destroy with a referer that cannot be read deletes the post and returns ho
     expect(Post::find($post->id))->toBeNull();
 })->with([
     'no host' => 'http://:80/x',
+    'a page of the app the URI parser refuses' => 'https://user@:pass@app.trypost.test/schedule',
 ]);
 
-test('destroy with a referer carrying malformed credentials returns to its page on this app', function () {
+test('destroy without a referer returns home, not to the last page loaded in full', function () {
     $post = Post::factory()->create([
         'workspace_id' => $this->workspace->id,
         'user_id' => $this->user->id,
     ]);
 
     $this->actingAs($this->user)
-        ->from('https://user@:pass@elsewhere.test/schedule?tab=drafts')
+        ->withSession(['_previous' => ['url' => route('app.settings.preferences')]])
         ->delete(route('app.posts.destroy', $post))
-        ->assertRedirect(route('app.posts.index', ['tab' => 'drafts']));
+        ->assertRedirect(route('app.home'));
 
     expect(Post::find($post->id))->toBeNull();
 });

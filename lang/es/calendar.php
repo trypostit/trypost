@@ -53,6 +53,7 @@ return [
         'error' => 'No se pudo mover esta publicación. Inténtalo de nuevo.',
         'errors' => [
             'past' => 'Esa hora ya pasó. Elige una hora posterior.',
+            'slot_taken' => 'Esta hora en la cola ya no está libre. Elige otra hora.',
             'pending' => 'Esta publicación está esperando aprobación. Muévela cuando se apruebe o se rechace.',
             'publishing_soon' => 'Esta publicación está a punto de publicarse, así que ya no se puede mover.',
             'too_far' => 'Elige una fecha anterior al 19 de enero de 2038.',

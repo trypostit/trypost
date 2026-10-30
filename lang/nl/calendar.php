@@ -53,6 +53,7 @@ return [
         'error' => 'Kon dit bericht niet verplaatsen. Probeer het opnieuw.',
         'errors' => [
             'past' => 'Deze tijd is al voorbij. Kies een latere tijd.',
+            'slot_taken' => 'Deze tijd in de wachtrij is niet meer vrij. Kies een andere tijd.',
             'pending' => 'Dit bericht wacht op goedkeuring. Verplaats het zodra het is goedgekeurd of afgewezen.',
             'publishing_soon' => 'Dit bericht wordt zo gepubliceerd en kan niet meer worden verplaatst.',
             'too_far' => 'Kies een datum vóór 19 januari 2038.',

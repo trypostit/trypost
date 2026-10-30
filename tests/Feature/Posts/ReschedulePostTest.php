@@ -191,7 +191,7 @@ test('a post sent to a slot another post holds is refused and keeps its time', f
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => $slot->toIso8601String(), 'queue_slot' => true])
-        ->assertSessionHasErrors(['slot_at' => __('posts.errors.queue_order_stale')]);
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.slot_taken')]);
 
     $post->refresh();
 
@@ -205,7 +205,7 @@ test('a post sent to the queue at an instant that is not a slot is refused inste
 
     $this->actingAs($this->user)
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => '2026-10-06T15:30:00Z', 'queue_slot' => true])
-        ->assertSessionHasErrors('slot_at');
+        ->assertSessionHasErrors(['scheduled_at' => __('calendar.reschedule.errors.slot_taken')]);
 
     $post->refresh();
 
@@ -700,6 +700,18 @@ test('reschedule refuses a malformed time', function () {
         ->put(route('app.posts.schedule.update', $post), ['action' => 'reschedule', 'scheduled_at' => 'next tuesday-ish'])
         ->assertRedirect()
         ->assertSessionHasErrors(['scheduled_at' => __('validation.date', ['attribute' => 'scheduled at'])]);
+
+    expect($post->fresh()->scheduled_at->toIso8601String())->toBe($at);
+});
+
+test('a schedule action sent as a list is refused instead of failing', function () {
+    $post = rescheduleCustom($this->channel, $this->user);
+    $at = $post->scheduled_at->toIso8601String();
+
+    $this->actingAs($this->user)
+        ->putJson(route('app.posts.schedule.update', $post), ['action' => ['reschedule'], 'scheduled_at' => '2026-10-07 10:00'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('action');
 
     expect($post->fresh()->scheduled_at->toIso8601String())->toBe($at);
 });

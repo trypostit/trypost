@@ -53,6 +53,7 @@ return [
         'error' => 'Impossibile spostare questo post. Riprova.',
         'errors' => [
             'past' => 'Questo orario è già passato. Scegli un orario successivo.',
+            'slot_taken' => 'Questo orario in coda non è più libero. Scegli un altro orario.',
             'pending' => 'Questo post è in attesa di approvazione. Spostalo dopo che è stato approvato o rifiutato.',
             'publishing_soon' => 'Questo post sta per essere pubblicato, quindi non può più essere spostato.',
             'too_far' => 'Scegli una data precedente al 19 gennaio 2038.',

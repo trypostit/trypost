@@ -53,6 +53,7 @@ return [
         'error' => 'Nie udało się przenieść wpisu. Spróbuj ponownie.',
         'errors' => [
             'past' => 'Ta godzina już minęła. Wybierz późniejszą godzinę.',
+            'slot_taken' => 'Ta godzina w kolejce nie jest już wolna. Wybierz inną godzinę.',
             'pending' => 'Ten wpis czeka na zatwierdzenie. Przenieś go, gdy zostanie zatwierdzony lub odrzucony.',
             'publishing_soon' => 'Ten wpis zaraz zostanie opublikowany, więc nie można go już przenieść.',
             'too_far' => 'Wybierz datę przed 19 stycznia 2038.',

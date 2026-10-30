@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workspace;
 use App\Support\PostApproval;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Arr;
 use Illuminate\Validation\ValidationException;
 
 class ReschedulePost
@@ -21,7 +22,8 @@ class ReschedulePost
      * A null instant (a drop on No Date) takes the post off the schedule: it becomes a draft
      * without a date, which frees a queued post's slot and never needs approval.
      * A scheduled post sent with `$queueSlot` goes into its channel's queue at that free slot
-     * (MoveChannelPostToQueueSlot, which refuses a taken slot or an instant that is not one).
+     * (MoveChannelPostToQueueSlot, which refuses a taken slot or an instant that is not one; the
+     * calendar says so on `scheduled_at`, the field its drop sends).
      * A slot past the queue window (MoveChannelPostToQueueSlot::withinQueueWindow) counts as a
      * custom time, like any other drop: a queued post becomes custom at the instant it receives.
      * The write goes through UpdatePost with the acting user, so PostApproval still decides.
@@ -49,7 +51,13 @@ class ReschedulePost
             $slotAt = filled($scheduledAt) ? CarbonImmutable::parse($scheduledAt)->utc() : null;
 
             if ($queueSlot && filled($slotAt) && $post->status === PostStatus::Scheduled && MoveChannelPostToQueueSlot::withinQueueWindow($slotAt)) {
-                return MoveChannelPostToQueueSlot::handle($post->socialAccount, $post->id, $slotAt, $actor);
+                try {
+                    return MoveChannelPostToQueueSlot::handle($post->socialAccount, $post->id, $slotAt, $actor);
+                } catch (ValidationException $exception) {
+                    throw Arr::has($exception->errors(), 'slot_at')
+                        ? ValidationException::withMessages(['scheduled_at' => __('calendar.reschedule.errors.slot_taken')])
+                        : $exception;
+                }
             }
 
             return UpdatePost::execute($workspace, $post, [
