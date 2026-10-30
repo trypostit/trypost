@@ -457,7 +457,6 @@ return [
         'channels_shown' => ':range · 显示 :total 个频道中的 :shown 个。按频道筛选以查看其他频道。',
     ],
     'share' => [
-        'action' => '分享',
         'button' => '分享为图片',
         'title' => '分享为图片',
         'description' => '下载图片，或把它做成发到你各个频道的帖子。',

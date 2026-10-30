@@ -457,7 +457,6 @@ return [
         'channels_shown' => ':range · Showing :shown of :total channels. Filter by channel to see a different set.',
     ],
     'share' => [
-        'action' => 'Share',
         'button' => 'Share as image',
         'title' => 'Share as image',
         'description' => 'Download the image, or turn it into a post for your channels.',

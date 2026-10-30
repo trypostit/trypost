@@ -457,7 +457,6 @@ return [
         'channels_shown' => ':range · :shown van :total kanalen getoond. Filter op kanaal om andere te zien.',
     ],
     'share' => [
-        'action' => 'Delen',
         'button' => 'Delen als afbeelding',
         'title' => 'Delen als afbeelding',
         'description' => 'Download de afbeelding of maak er een post van voor je kanalen.',

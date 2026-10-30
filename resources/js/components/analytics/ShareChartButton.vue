@@ -1,9 +1,15 @@
 <script setup lang="ts">
-import { IconPhotoShare } from '@tabler/icons-vue';
+import { IconCameraSpark } from '@tabler/icons-vue';
 import { ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
 import { Button } from '@/components/ui/button';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 
 const props = defineProps<{
@@ -27,16 +33,23 @@ const openDialog = (): void => {
 
 <template>
     <div class="contents">
-        <Button
-            type="button"
-            variant="outline"
-            :title="$t('analytics.share.button')"
-            :data-testid="testId"
-            @click="openDialog"
-        >
-            <IconPhotoShare aria-hidden="true" />
-            {{ $t('analytics.share.action') }}
-        </Button>
+        <TooltipProvider :delay-duration="300">
+            <Tooltip>
+                <TooltipTrigger as-child>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        :aria-label="$t('analytics.share.button')"
+                        :data-testid="testId"
+                        @click="openDialog"
+                    >
+                        <IconCameraSpark aria-hidden="true" />
+                    </Button>
+                </TooltipTrigger>
+                <TooltipContent>{{ $t('analytics.share.button') }}</TooltipContent>
+            </Tooltip>
+        </TooltipProvider>
         <ShareChartDialog
             v-model:open="open"
             :variant="variant"

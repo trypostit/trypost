@@ -36,7 +36,6 @@ return [
     'analytics.insights.export.pdf.remove_logo' => 11,
     'analytics.insights.export.pdf.replace_logo' => 13,
     'analytics.insights.export.pdf.upload_logo' => 21,
-    'analytics.share.action' => 12,
     'analytics.share.copied' => 11,
     'analytics.share.copy' => 19,
     'analytics.share.create_post' => 17,
