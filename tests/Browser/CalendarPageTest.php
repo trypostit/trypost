@@ -48,6 +48,24 @@ function calendarPagePost(SocialAccount $account, ?CarbonInterface $at, PostStat
     ]);
 }
 
+/**
+ * How many items a month day shows before "+N more", and whether the last one
+ * stays above the "+N more" button inside the cell.
+ */
+function calendarMonthDayFits(string $dayKey): string
+{
+    return <<<JS
+        (() => {
+            const cell = document.querySelector('[data-testid="calendar-day-{$dayKey}"]').getBoundingClientRect();
+            const items = [...document.querySelector('[data-testid="calendar-items-{$dayKey}"]').children];
+            const last = items.at(-1).getBoundingClientRect();
+            const more = document.querySelector('[data-testid="calendar-more-{$dayKey}"]').getBoundingClientRect();
+
+            return { shown: items.length, fits: last.bottom <= more.top + 0.5 && more.bottom <= cell.bottom + 0.5 };
+        })()
+    JS;
+}
+
 function calendarChipSlot(mixed $page, Post $post): ?string
 {
     return $page->script("document.querySelector('[data-testid=\"calendar-post-{$post->id}\"]')?.closest('[data-testid^=\"calendar-slot-\"]')?.dataset.testid ?? null");
@@ -558,8 +576,9 @@ test('an overflowing month day expands and collapses back, scrolling inside its 
 
     $cellHeight = "document.querySelector('[data-testid=\"calendar-day-{$dayKey}\"]').getBoundingClientRect().height";
     $heightBefore = $page->script($cellHeight);
+    expect($page->script(calendarMonthDayFits($dayKey)))->toBe(['shown' => 4, 'fits' => true]);
 
-    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
+    $page->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 6]))
         ->assertMissing("@calendar-post-{$last->id}")
         ->click("@calendar-more-{$dayKey}");
     waitFor($page, "@calendar-post-{$last->id}");
@@ -585,7 +604,7 @@ test('an overflowing month day expands and collapses back, scrolling inside its 
     waitForGone($page, "@calendar-post-{$last->id}");
 
     $page->assertMissing("@calendar-post-{$last->id}")
-        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 7]))
+        ->assertSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 6]))
         ->assertNoJavaScriptErrors();
 });
 
@@ -699,6 +718,7 @@ test('on a phone the month shows its weeks in columns with the posts of each day
         ->assertPresent("@calendar-post-{$posts[0]->id}")
         ->assertSeeIn("@calendar-more-{$dayKey}", '+2')
         ->assertDontSeeIn("@calendar-more-{$dayKey}", __('calendar.more', ['count' => 2]))
+        ->assertScript(calendarMonthDayFits($dayKey), ['shown' => 3, 'fits' => true])
         ->assertScript("(() => { const chip = document.querySelector('[data-testid=\"calendar-post-{$posts[0]->id}\"]'); const box = chip.getBoundingClientRect(); return box.height === 28 && box.width >= box.height && chip.innerText.trim() === '' && !chip.querySelector('img, video'); })()", true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth', true)
         ->assertNoJavaScriptErrors();

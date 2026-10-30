@@ -39,7 +39,10 @@ const emit = defineEmits<{
 
 const expandedDays = defineModel<string[]>('expandedDays', { required: true });
 
-const MONTH_CHIPS = 3;
+/**
+ * How many items a day shows before "+N more": a phone's shorter cells fit one less.
+ */
+const monthChips = computed(() => (props.isDesktop ? 4 : 3));
 
 const { overTarget, draggingPostId, vCalendarTarget } =
     useCalendarDragContext();
@@ -111,10 +114,12 @@ const isDayExpanded = (day: dayjs.Dayjs): boolean =>
     expandedDays.value.includes(dayKey(day));
 
 const hiddenCount = (day: dayjs.Dayjs): number =>
-    itemsFor(day).length - MONTH_CHIPS;
+    itemsFor(day).length - monthChips.value;
 
 const visibleMonthItems = (day: dayjs.Dayjs): CalendarItem[] =>
-    isDayExpanded(day) ? itemsFor(day) : itemsFor(day).slice(0, MONTH_CHIPS);
+    isDayExpanded(day)
+        ? itemsFor(day)
+        : itemsFor(day).slice(0, monthChips.value);
 </script>
 
 <template>
