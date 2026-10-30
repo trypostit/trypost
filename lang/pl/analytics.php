@@ -457,6 +457,7 @@ return [
         'channels_shown' => ':range · Widoczne kanały: :shown z :total. Filtruj po kanale, aby zobaczyć inne.',
     ],
     'share' => [
+        'action' => 'Udostępnij',
         'button' => 'Udostępnij jako obraz',
         'title' => 'Udostępnij jako obraz',
         'description' => 'Pobierz obraz lub zrób z niego post na swoje kanały.',

@@ -457,6 +457,7 @@ return [
         'channels_shown' => ':range · 채널 :total개 중 :shown개 표시 중. 다른 채널을 보려면 채널로 필터링하세요.',
     ],
     'share' => [
+        'action' => '공유',
         'button' => '이미지로 공유',
         'title' => '이미지로 공유',
         'description' => '이미지를 다운로드하거나 채널용 게시물로 만드세요.',

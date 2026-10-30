@@ -47,7 +47,9 @@ defineProps<{
                     </slot>
                 </p>
             </div>
-            <slot name="actions" />
+            <div v-if="$slots.actions" class="flex items-center gap-2">
+                <slot name="actions" />
+            </div>
         </div>
         <div :class="flush ? 'min-w-0' : 'min-w-0 px-4 pb-4 sm:px-5 sm:pb-5'">
             <slot />

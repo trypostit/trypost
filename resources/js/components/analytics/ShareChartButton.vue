@@ -3,6 +3,7 @@ import { IconPhotoShare } from '@tabler/icons-vue';
 import { ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
+import { Button } from '@/components/ui/button';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 
 const props = defineProps<{
@@ -26,16 +27,16 @@ const openDialog = (): void => {
 
 <template>
     <div class="contents">
-        <button
+        <Button
             type="button"
-            class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-            :aria-label="$t('analytics.share.button')"
+            variant="outline"
             :title="$t('analytics.share.button')"
             :data-testid="testId"
             @click="openDialog"
         >
-            <IconPhotoShare class="size-4" aria-hidden="true" />
-        </button>
+            <IconPhotoShare aria-hidden="true" />
+            {{ $t('analytics.share.action') }}
+        </Button>
         <ShareChartDialog
             v-model:open="open"
             :variant="variant"
