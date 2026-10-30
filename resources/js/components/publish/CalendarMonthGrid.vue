@@ -9,7 +9,7 @@ import {
     useCalendarDragContext,
 } from '@/composables/calendar/useCalendarDrag';
 import dayjs from '@/dayjs';
-import type { CalendarDropTarget } from '@/lib/calendarDrop';
+import { DRAFT_DAY_CLOCK, type CalendarDropTarget } from '@/lib/calendarDrop';
 import {
     calendarDayKey as dayKey,
     calendarItems,
@@ -95,7 +95,10 @@ const itemsFor = (day: dayjs.Dayjs): CalendarItem[] =>
 const composeOn = (day: dayjs.Dayjs): void =>
     emit(
         'compose',
-        dayjs.tz(`${dayKey(day)}T09:00`, props.timezone).utc().format(),
+        dayjs
+            .tz(`${dayKey(day)}T${DRAFT_DAY_CLOCK}`, props.timezone)
+            .utc()
+            .format(),
     );
 
 const toggleDay = (key: string): void => {

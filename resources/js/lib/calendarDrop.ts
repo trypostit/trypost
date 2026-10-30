@@ -8,7 +8,10 @@ export type CalendarDropTarget =
     | { kind: 'slot'; at: string; channelId: string; queueable: boolean }
     | { kind: 'undated' };
 
-const DRAFT_DAY_CLOCK = '09:00:00';
+/**
+ * Where a day drop or a day's "+ New" lands when there is no clock to keep.
+ */
+export const DRAFT_DAY_CLOCK = '09:00:00';
 
 export const canDragCalendarPost = (
     post: PostCard,

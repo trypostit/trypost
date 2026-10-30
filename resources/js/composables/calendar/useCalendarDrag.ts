@@ -17,9 +17,9 @@ import {
     dropInstant,
     entersQueueSlot,
     needsCustomTimeConfirmation,
+    wallClockIn,
     type CalendarDropTarget,
 } from '@/lib/calendarDrop';
-import { calendarDayKey } from '@/lib/calendarItems';
 import { cancelDragOnEscape, edgeScrollDelta } from '@/lib/dragPlaceholder';
 import { PostStatus, ScheduleMode } from '@/types/post';
 import type {
@@ -33,7 +33,6 @@ const CALENDAR_AUTO_SCROLL_STEP = 20;
 
 export interface CalendarDrag {
     overTarget: Ref<string | null>;
-    hoveredTarget: Ref<string | null>;
     draggingPostId: Ref<string | null>;
     movingPostIds: Ref<string[]>;
     vCalendarPost: Directive<HTMLElement, PostCard>;
@@ -43,7 +42,6 @@ export interface CalendarDrag {
 type CalendarDragContext = Pick<
     CalendarDrag,
     | 'overTarget'
-    | 'hoveredTarget'
     | 'draggingPostId'
     | 'vCalendarPost'
     | 'vCalendarTarget'
@@ -101,6 +99,11 @@ const PREVIEW_CLASSES = [
     'rotate-[2.765deg]',
 ];
 export const HINT_ID_PREFIX = 'calendar-drag-hint-';
+
+/**
+ * The hint every dated card shares; a No Date draft has its own, naming its channel.
+ */
+export const DRAG_HINT_ID = 'calendar-drag-hint';
 const GRABBING_CLASS = 'cursor-grabbing';
 
 export const calendarTargetKey = (target: CalendarDropTarget): string => {
@@ -157,7 +160,6 @@ export const useCalendarDragContext = (): CalendarDragContext =>
         calendarDragKey,
         () => ({
             overTarget: ref<string | null>(null),
-            hoveredTarget: ref<string | null>(null),
             draggingPostId: ref<string | null>(null),
             vCalendarPost: {},
             vCalendarTarget: {},
@@ -182,7 +184,7 @@ export const useCalendarDrag = (
 ): CalendarDrag => {
     const page = usePage();
     const overTarget = ref<string | null>(null);
-    const hoveredTarget = ref<string | null>(null);
+    let hoveredTarget: string | null = null;
     const draggingPostId = ref<string | null>(null);
     const movingPostIds = ref<string[]>([]);
     const waitingForServer: Array<() => void> = [];
@@ -238,6 +240,10 @@ export const useCalendarDrag = (
         });
         copy.removeAttribute('id');
         copy.removeAttribute('aria-describedby');
+        copy.querySelectorAll('video').forEach((video) => {
+            video.removeAttribute('src');
+            video.preload = 'none';
+        });
         copy.removeAttribute(DRAGGABLE_ATTRIBUTE);
         copy.setAttribute('aria-hidden', 'true');
         copy.dataset.testid = 'calendar-drag-preview';
@@ -258,7 +264,7 @@ export const useCalendarDrag = (
         preview?.remove();
         preview = null;
         overTarget.value = null;
-        hoveredTarget.value = null;
+        hoveredTarget = null;
         draggingPostId.value = null;
         document.body.classList.remove(GRABBING_CLASS);
     };
@@ -313,22 +319,24 @@ export const useCalendarDrag = (
         moved: CalendarPost,
         touchesNoDate: boolean,
     ): Record<string, unknown> => {
-        const posts: Record<string, CalendarPost[]> = {};
-        const place = (post: CalendarPost): void => {
-            const key = calendarDayKey(
-                dayjs.utc(post.calendar_at).tz(options.timezone.value),
-            );
-
-            posts[key] = [...(posts[key] ?? []), post];
-        };
-
-        Object.values((props.posts ?? {}) as Record<string, CalendarPost[]>)
-            .flat()
-            .filter((post) => post.id !== moved.id)
-            .forEach(place);
+        const posts = Object.fromEntries(
+            Object.entries(
+                (props.posts ?? {}) as Record<string, CalendarPost[]>,
+            ).map(([key, list]) => [
+                key,
+                list.some((post) => post.id === moved.id)
+                    ? list.filter((post) => post.id !== moved.id)
+                    : list,
+            ]),
+        );
 
         if (moved.scheduled_at !== null) {
-            place(moved);
+            const key = wallClockIn(
+                dayjs.utc(moved.calendar_at),
+                options.timezone.value,
+            ).date;
+
+            posts[key] = [...(posts[key] ?? []), moved];
         }
 
         const undatedDrafts = props.undatedDrafts as
@@ -561,31 +569,6 @@ export const useCalendarDrag = (
         };
 
         /**
-         * Settles a move from a reload of the page now shown, when the move's
-         * own answer could not be read: the post at the asked time was moved,
-         * at another time it was not, and outside this page nothing is known.
-         */
-        const settleFromReload = (shown: CalendarPost | null): void => {
-            if (settled || shown === null) {
-                return;
-            }
-
-            if (!isSameInstant(shown.scheduled_at, scheduledAt)) {
-                reject();
-
-                return;
-            }
-
-            if (shown.status === PostStatus.PendingApproval) {
-                announceApproval();
-
-                return;
-            }
-
-            announceMoved();
-        };
-
-        /**
          * Settles a move from the post as the server shows it: gone from a list
          * it should still be on means it waits for approval (or was refused for
          * a user who publishes directly), another time means it was refused.
@@ -650,8 +633,8 @@ export const useCalendarDrag = (
                     shown = postIn(response.props, post.id);
                 },
                 onSuccess: () => {
-                    if (settleFromIt && shown !== undefined) {
-                        settleFromReload(shown);
+                    if (settleFromIt && shown) {
+                        settleFrom(shown);
                     }
                 },
                 onFinish: () => {
@@ -723,9 +706,13 @@ export const useCalendarDrag = (
                         reloadInstead(false);
 
                         if (guessed) {
-                            waitingForServer.push(() =>
-                                settleFromReload(postIn(page.props, post.id)),
-                            );
+                            waitingForServer.push(() => {
+                                const shown = postIn(page.props, post.id);
+
+                                if (shown) {
+                                    settleFrom(shown);
+                                }
+                            });
 
                             return;
                         }
@@ -811,11 +798,11 @@ export const useCalendarDrag = (
         const key = hovered ? calendarTargetKey(hovered.target) : null;
         const acceptingKey = hovered?.accepts ? key : null;
 
-        if (key === hoveredTarget.value && acceptingKey === overTarget.value) {
+        if (key === hoveredTarget && acceptingKey === overTarget.value) {
             return;
         }
 
-        hoveredTarget.value = key;
+        hoveredTarget = key;
         overTarget.value = acceptingKey;
         options.onOver?.(
             gesture.post,
@@ -1081,7 +1068,12 @@ export const useCalendarDrag = (
         const onDragStart = (event: DragEvent): void => event.preventDefault();
 
         el.setAttribute(DRAGGABLE_ATTRIBUTE, 'true');
-        el.setAttribute('aria-describedby', `${HINT_ID_PREFIX}${post.id}`);
+        el.setAttribute(
+            'aria-describedby',
+            post.scheduled_at === null
+                ? `${HINT_ID_PREFIX}${post.id}`
+                : DRAG_HINT_ID,
+        );
         el.style.setProperty('-webkit-touch-callout', 'none');
         el.style.setProperty('user-select', 'none');
         el.style.setProperty('-webkit-user-select', 'none');
@@ -1135,8 +1127,13 @@ export const useCalendarDrag = (
             return;
         }
 
+        const key = calendarTargetKey(target);
+
         targets.set(el, target);
-        el.setAttribute(DROP_ATTRIBUTE, calendarTargetKey(target));
+
+        if (el.getAttribute(DROP_ATTRIBUTE) !== key) {
+            el.setAttribute(DROP_ATTRIBUTE, key);
+        }
     };
 
     const vCalendarPost: Directive<HTMLElement, PostCard> = {
@@ -1157,7 +1154,6 @@ export const useCalendarDrag = (
 
     return {
         overTarget,
-        hoveredTarget,
         draggingPostId,
         movingPostIds,
         vCalendarPost,

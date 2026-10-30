@@ -1143,20 +1143,13 @@ test('the grid auto-scrolls near its bottom edge', function () {
     calendarDragAssertLive($page, "@calendar-post-{$post->id}");
     $page->script("document.querySelector('[data-testid=\"calendar-time-grid\"]').scrollTop = 0");
 
-    $scrolled = calendarGesture($page, <<<JS
-        const grid = query('@calendar-time-grid');
-        const box = grid.getBoundingClientRect();
+    calendarGesture($page, <<<JS
+        const box = query('@calendar-time-grid').getBoundingClientRect();
         const start = center('@calendar-post-{$post->id}');
         await down(start);
         await move({ x: start.x, y: box.bottom - 10 });
-        for (let i = 0; i < 60 && grid.scrollTop === 0; i++) {
-            await pause(50);
-        }
-
-        return grid.scrollTop;
     JS);
-
-    expect($scrolled)->toBeGreaterThan(0);
+    waitForState($page, '@calendar-time-grid', 'element.scrollTop > 0');
 
     $page->keys("@calendar-post-{$post->id}", 'Escape');
     waitForGone($page, '@calendar-drag-preview');
@@ -2408,20 +2401,17 @@ test('the grid auto-scrolls near its top edge', function () {
         const grid = query('@calendar-time-grid');
         grid.scrollTop = grid.scrollHeight;
         await frame();
-        const before = grid.scrollTop;
+        window.__scrollBefore = grid.scrollTop;
         const box = grid.getBoundingClientRect();
         const start = center('@calendar-post-{$post->id}');
         await down(start);
         await move({ x: start.x, y: box.top + 10 });
-        for (let i = 0; i < 60 && grid.scrollTop === before; i++) {
-            await pause(50);
-        }
 
-        return { before, after: grid.scrollTop };
+        return window.__scrollBefore;
     JS);
 
-    expect($scroll['before'])->toBeGreaterThan(0)
-        ->and($scroll['after'])->toBeLessThan($scroll['before']);
+    expect($scroll)->toBeGreaterThan(0);
+    waitForState($page, '@calendar-time-grid', 'element.scrollTop < window.__scrollBefore');
 
     $page->keys("@calendar-post-{$post->id}", 'Escape');
     waitForGone($page, '@calendar-drag-preview');
@@ -2447,15 +2437,12 @@ test('the month grid auto-scrolls near its bottom edge', function () {
         const start = center('@calendar-post-{$post->id}');
         await down(start);
         await move({ x: start.x, y: box.bottom - 10 });
-        for (let i = 0; i < 60 && grid.scrollTop === 0; i++) {
-            await pause(50);
-        }
 
-        return { overflows: grid.scrollHeight > grid.clientHeight, after: grid.scrollTop };
+        return grid.scrollHeight > grid.clientHeight;
     JS);
 
-    expect($scroll['overflows'])->toBeTrue()
-        ->and($scroll['after'])->toBeGreaterThan(0);
+    expect($scroll)->toBeTrue();
+    waitForState($page, '@calendar-month-grid', 'element.scrollTop > 0');
 
     $page->keys("@calendar-post-{$post->id}", 'Escape');
     waitForGone($page, '@calendar-drag-preview');
@@ -2513,6 +2500,7 @@ test('a move cancelled by going Back sends nothing more and announces the return
 
     $page->script('history.back()');
     waitForCondition($page, "window.__announcements.includes('".__('calendar.reschedule.announce.returned')."')");
+    waitForCondition($page, "new URLSearchParams(location.search).get('week') === '{$day->subWeek()->format('Y-m-d')}'");
     waitForGone($page, "@calendar-post-{$post->id}");
 
     expect(array_count_values(calendarDragAnnouncements($page))[__('calendar.reschedule.announce.returned')])->toBe(1)
@@ -2709,7 +2697,6 @@ test('an older move answered after a newer one keeps both cards where they were 
     JS);
     $page->script('window.__heldRequests[0]()');
     waitForCondition($page, 'window.__heldReloads.length === 1');
-    $page->script('new Promise((resolve) => setTimeout(resolve, 200))');
 
     expect(calendarDragCellOf($page, $first))->toBe("calendar-slot-{$key}-13");
 
@@ -2871,7 +2858,6 @@ test('a move answered after the view changed is not announced as done without kn
     $post->forceFill(['status' => PostStatus::PendingApproval])->saveQuietly();
     $page->script('window.__releaseHeldRequests()');
     waitForGone($page, '@calendar-grid[aria-busy]');
-    $page->script('new Promise((resolve) => setTimeout(resolve, 500))');
 
     expect(implode(' ', calendarDragAnnouncements($page)))->not->toContain(__('calendar.reschedule.announce.moved', ['from' => calendarDragWhen($day->setTime(10, 30)), 'to' => calendarDragWhen($day->setTime(12, 0))]))
         ->and($post->refresh()->scheduled_at->equalTo($day->setTime(10, 30)))->toBeTrue();
@@ -3171,7 +3157,7 @@ test('the reload that settles a move answered after a view change never brings b
     $page->script('window.__heldGets[0]()');
     waitForCondition($page, "new URLSearchParams(location.search).get('status') === 'drafts'");
     $page->script('window.__heldGets[1]()');
-    $page->script('new Promise((resolve) => setTimeout(resolve, 1000))');
+    waitForGone($page, '@calendar-grid[aria-busy]');
 
     $page->assertScript("new URLSearchParams(location.search).get('status')", 'drafts')
         ->assertNoJavaScriptErrors();

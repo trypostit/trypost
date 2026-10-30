@@ -38,6 +38,7 @@ import { Button } from '@/components/ui/button';
 import { useCalendarAnnouncer } from '@/composables/calendar/useCalendarAnnouncer';
 import {
     calendarDragKey,
+    DRAG_HINT_ID,
     useCalendarDrag,
 } from '@/composables/calendar/useCalendarDrag';
 import { useAtLeastBreakpoint } from '@/composables/useBreakpoint';
@@ -790,6 +791,9 @@ const goToDay = (key: string): void => {
     <CalendarCustomTimeDialog ref="customTimeDialog" />
 
     <CalendarDragAnnouncer :text="announcement" />
+    <span :id="DRAG_HINT_ID" hidden data-testid="calendar-drag-hint">{{
+        $t('calendar.reschedule.drag_hint')
+    }}</span>
 
     <ConfirmDeleteModal
         ref="deleteModal"

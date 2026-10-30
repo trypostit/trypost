@@ -23,13 +23,9 @@ import {
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import {
-    HINT_ID_PREFIX,
-    useCalendarDragContext,
-} from '@/composables/calendar/useCalendarDrag';
+import { useCalendarDragContext } from '@/composables/calendar/useCalendarDrag';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
@@ -185,12 +181,6 @@ const statusTestId = computed(() =>
                 />
             </Presence>
         </Teleport>
-        <span
-            :id="`${HINT_ID_PREFIX}${post.id}`"
-            hidden
-            :data-testid="`calendar-drag-hint-${post.id}`"
-            >{{ $t('calendar.reschedule.drag_hint') }}</span
-        >
         <PopoverTrigger as-child>
             <button
                 v-calendar-post="post"
@@ -245,8 +235,7 @@ const statusTestId = computed(() =>
                             >{{ time }}</span
                         >
                     </span>
-                    <TooltipProvider :delay-duration="200">
-                        <Tooltip>
+                    <Tooltip :delay-duration="200">
                             <TooltipTrigger as-child>
                                 <span
                                     class="flex shrink-0 items-center"
@@ -267,11 +256,11 @@ const statusTestId = computed(() =>
                             <TooltipContent>{{
                                 $t(`calendar.post_status.${statusKey}`)
                             }}</TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
+                    </Tooltip>
                     <span
                         v-if="thumbnail"
                         class="relative size-5 shrink-0 overflow-hidden rounded bg-secondary"
+                        :data-testid="`calendar-post-thumbnail-${post.id}`"
                     >
                         <img
                             v-if="isImage(thumbnail)"

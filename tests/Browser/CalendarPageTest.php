@@ -441,7 +441,8 @@ test('clicking a scheduled post chip in the month view opens its timeline card i
     waitFor($page, "@calendar-post-{$post->id}");
 
     $page->assertAttribute("@calendar-post-{$post->id}", 'type', 'button')
-        ->assertPresent("@calendar-post-platform-{$post->id}");
+        ->assertPresent("@calendar-post-platform-{$post->id}")
+        ->assertMissing("@calendar-post-thumbnail-{$post->id}");
 
     $page->click("@calendar-post-{$post->id}");
     waitFor($page, "@calendar-post-popover-{$post->id}");

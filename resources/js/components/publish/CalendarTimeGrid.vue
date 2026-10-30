@@ -98,9 +98,7 @@ const visibleItems = (
         ? items.slice(0, MAX_CHIPS - 1)
         : items;
 
-const HOUR_LABELS = HOURS.map((hour) => String(hour).padStart(2, '0'));
-
-const hourLabel = (hour: number): string => HOUR_LABELS[hour];
+const hourLabel = (hour: number): string => String(hour).padStart(2, '0');
 
 const hourSlots = computed(() =>
     props.days.map((day) =>
@@ -141,6 +139,16 @@ const isHourOver = (column: number, hour: number): boolean =>
 
 const isDimmed = (column: number, hour: number, item: CalendarItem): boolean =>
     isHourOver(column, hour) && item.post?.id !== draggingPostId.value;
+
+const itemClass = (
+    column: { byHour: Map<number, CalendarItem[]> },
+    index: number,
+    hour: number,
+    item: CalendarItem,
+): string[] => [
+    chipClass(column, hour),
+    isDimmed(index, hour, item) ? 'opacity-50' : '',
+];
 
 const compose = (column: number, hour: number): void => {
     emit('compose', hourSlots.value[column][hour].start.utc().format());
@@ -254,16 +262,7 @@ watch(
                                 :post="item.post"
                                 :timezone="timezone"
                                 :compact="iconOnly"
-                                :class="[
-                                    chipClass(column, hour),
-                                    {
-                                        'opacity-50': isDimmed(
-                                            index,
-                                            hour,
-                                            item,
-                                        ),
-                                    },
-                                ]"
+                                :class="itemClass(column, index, hour, item)"
                             />
                             <CalendarSlotChip
                                 v-else-if="item.slot"
@@ -272,16 +271,7 @@ watch(
                                 :timezone="timezone"
                                 :can-create-post="canCreatePost"
                                 :compact="iconOnly"
-                                :class="[
-                                    chipClass(column, hour),
-                                    {
-                                        'opacity-50': isDimmed(
-                                            index,
-                                            hour,
-                                            item,
-                                        ),
-                                    },
-                                ]"
+                                :class="itemClass(column, index, hour, item)"
                             />
                         </template>
                         <button

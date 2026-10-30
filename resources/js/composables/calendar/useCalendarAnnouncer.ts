@@ -20,7 +20,6 @@ export const useCalendarAnnouncer = (
     hooks: Required<CalendarDragLifecycle>;
 } => {
     const announcement = ref('');
-    let lastOverAnnouncement = '';
 
     const describeAt = (at: string, dateOnly: boolean): string => {
         const day = date.formatWeekdayMonthDay(at, timezone.value);
@@ -60,7 +59,7 @@ export const useCalendarAnnouncer = (
                 return trans('calendar.no_date');
             case 'day':
                 return describeAt(
-                    dayjs.tz(target.dayKey, timezone.value).utc().format(),
+                    date.wallClockToUtc(`${target.dayKey}T00:00`, timezone.value),
                     true,
                 );
             default:
@@ -73,7 +72,6 @@ export const useCalendarAnnouncer = (
         (post.platform ? getPlatformLabel(post.platform) : '');
 
     const announce = (message: string): void => {
-        lastOverAnnouncement = '';
         announcement.value = message;
     };
 
@@ -96,11 +94,6 @@ export const useCalendarAnnouncer = (
                   target: describeTarget(target),
               });
 
-        if (message === lastOverAnnouncement) {
-            return;
-        }
-
-        lastOverAnnouncement = message;
         announcement.value = message;
     };
 
@@ -134,10 +127,7 @@ export const useCalendarAnnouncer = (
         );
     };
 
-    const clearAnnouncement = (): void => {
-        lastOverAnnouncement = '';
-        announcement.value = '';
-    };
+    const clearAnnouncement = (): void => announce('');
 
     const announceReturn = (): void =>
         announce(trans('calendar.reschedule.announce.returned'));

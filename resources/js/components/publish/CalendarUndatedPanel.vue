@@ -20,7 +20,7 @@ import { htmlToPlainText } from '@/lib/utils';
 import { edit as editPost } from '@/routes/app/posts';
 import type { UndatedDraft } from '@/types/publish';
 
-defineProps<{
+const props = defineProps<{
     drafts: UndatedDraft[] | null;
 }>();
 
@@ -37,11 +37,30 @@ const isOver = computed(
     () => overTarget.value === calendarTargetKey(UNDATED_TARGET),
 );
 
-const thumbnail = (draft: UndatedDraft): string | null =>
-    (draft.media ?? []).find(isImage)?.url ?? null;
+interface DraftPreview {
+    text: string;
+    thumbnail: string | null;
+}
 
-const plainText = (draft: UndatedDraft): string =>
-    htmlToPlainText(draft.content ?? '').trim();
+/**
+ * Each draft's text and thumbnail, worked out when the list changes, not on
+ * every render (a drag re-renders the list).
+ */
+const previews = computed(
+    () =>
+        new Map<string, DraftPreview>(
+            (props.drafts ?? []).map((draft) => [
+                draft.id,
+                {
+                    text: htmlToPlainText(draft.content ?? '').trim(),
+                    thumbnail: (draft.media ?? []).find(isImage)?.url ?? null,
+                },
+            ]),
+        ),
+);
+
+const preview = (draft: UndatedDraft): DraftPreview =>
+    previews.value.get(draft.id) ?? { text: '', thumbnail: null };
 </script>
 
 <template>
@@ -147,17 +166,17 @@ const plainText = (draft: UndatedDraft): string =>
                                 </Badge>
                             </div>
                             <div
-                                v-if="plainText(draft) || thumbnail(draft)"
+                                v-if="preview(draft).text || preview(draft).thumbnail"
                                 class="flex min-w-0 items-end gap-2"
                             >
                                 <p
                                     class="line-clamp-2 min-w-0 flex-1 text-sm leading-[17.5px] break-words text-foreground"
                                 >
-                                    {{ plainText(draft) }}
+                                    {{ preview(draft).text }}
                                 </p>
                                 <img
-                                    v-if="thumbnail(draft)"
-                                    :src="thumbnail(draft)!"
+                                    v-if="preview(draft).thumbnail"
+                                    :src="preview(draft).thumbnail!"
                                     alt=""
                                     loading="lazy"
                                     class="size-8 shrink-0 rounded object-cover"
