@@ -47,7 +47,7 @@ beforeEach(function () {
     Http::fake(['*' => Http::response('', Response::HTTP_NOT_FOUND)]);
 });
 
-test('the followers chart opens a share card that turns into a post with the image', function () {
+test('the followers chart opens a share card in a TryPost tint that turns into a post with the image', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);
 
@@ -57,9 +57,8 @@ test('the followers chart opens a share card that turns into a post with the ima
     waitFor($page, '@share-chart-preview');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
 
-    $page->click('@share-theme-dark')
-        ->click('@share-chart-color-1baf7a')
-        ->assertAttribute('@share-chart-color-1baf7a', 'aria-checked', 'true')
+    $page->click('@share-chart-color-green')
+        ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true')
         ->click('@share-chart-post');
 
     waitFor($page, '@post-composer-dialog');

@@ -6,8 +6,6 @@
  * no CORS header and one such image would stop the canvas exporting.
  */
 
-export type ShareTheme = 'light' | 'dark';
-
 export type ShareShape = 'line' | 'bar';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
@@ -26,10 +24,12 @@ export type ShareMetricOption = {
     caption: string;
 };
 
+/** A background tint of the app with the strong color the data is drawn in. */
+export type ShareTint = { key: string; ground: string; strong: string };
+
 export type ShareCardOptions = {
     variant: 'chart' | 'summary';
-    theme: ShareTheme;
-    color: string;
+    tint: ShareTint;
     /** The workspace or channel the numbers belong to. */
     subject: string;
     /** What the number is: "Followers". */
@@ -50,50 +50,30 @@ export const SHARE_CARD_SIZE = { width: 1200, height: 675 };
 
 export const SHARE_EXPORT_SCALE = 2;
 
-export const SHARE_COLORS = [
-    '#7c3aed',
-    '#2a78d6',
-    '#1baf7a',
-    '#eb6834',
-    '#e87ba4',
-] as const;
+/** The light tints of the "What's New" covers, so a shared card reads as TryPost. */
+export const SHARE_TINTS: ShareTint[] = [
+    { key: 'violet', ground: '#d2c7fd', strong: '#6d28d9' },
+    { key: 'blue', ground: '#def0ff', strong: '#2563eb' },
+    { key: 'green', ground: '#d9f1d1', strong: '#16a34a' },
+    { key: 'peach', ground: '#ffdbd6', strong: '#ea580c' },
+    { key: 'yellow', ground: '#fdefc3', strong: '#ca8a04' },
+];
 
-type Palette = {
-    ground: string;
-    ink: string;
-    muted: string;
-    rule: string;
-    edge: string;
-    up: string;
-    down: string;
-};
-
-const PALETTES: Record<ShareTheme, Palette> = {
-    light: {
-        ground: '#ffffff',
-        ink: '#292928',
-        muted: '#6f6e6c',
-        rule: '#eae8e5',
-        edge: '#dedcd9',
-        up: '#337046',
-        down: '#9f1d0e',
-    },
-    dark: {
-        ground: '#191919',
-        ink: '#f7f6f3',
-        muted: '#bcbab6',
-        rule: '#2e2e2e',
-        edge: '#3a3a3a',
-        up: '#b0ec9c',
-        down: '#f87171',
-    },
-};
+const INK = '#292928';
+const MUTED = '#5a5a59';
+const RULE = '#e2e0dc';
+const BORDER = 2.5;
+const CHANGE_COLORS = {
+    up: { text: '#337046', fill: '#e3f5dc' },
+    down: { text: '#9f1d0e', fill: '#ffe9e5' },
+    flat: { text: MUTED, fill: '#f3f2f0' },
+} as const;
 
 const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
-const DISPLAY = "Outfit, Inter, ui-sans-serif, system-ui, sans-serif";
-
-const PAD = 64;
+/** The white surface, inset from the tint like a cover's panel. */
+const PANEL = { x: 56, y: 48, radius: 24, padding: 48 };
+const PANEL_BOTTOM = 92;
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
 export const loadShareFonts = async (): Promise<void> => {
@@ -102,7 +82,7 @@ export const loadShareFonts = async (): Promise<void> => {
     }
 
     await Promise.all(
-        [`500 24px ${SANS}`, `600 24px ${SANS}`, `500 96px ${DISPLAY}`].map(
+        [`500 24px ${SANS}`, `600 24px ${SANS}`, `700 96px ${SANS}`].map(
             (face) => document.fonts.load(face).catch(() => []),
         ),
     );
@@ -145,13 +125,71 @@ const roundedRect = (
     context.closePath();
 };
 
-const tint = (hex: string, alpha: number): string => {
+const alpha = (hex: string, opacity: number): string => {
     const value = hex.replace('#', '');
     const r = Number.parseInt(value.slice(0, 2), 16);
     const g = Number.parseInt(value.slice(2, 4), 16);
     const b = Number.parseInt(value.slice(4, 6), 16);
 
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+};
+
+/**
+ * The covers' background: the flat tint with the home hero's dot grid in the
+ * top-right and bottom-left corners only, fading toward the middle.
+ */
+const paintGround = (
+    context: CanvasRenderingContext2D,
+    tint: ShareTint,
+    width: number,
+    height: number,
+): void => {
+    context.fillStyle = tint.ground;
+    context.fillRect(0, 0, width, height);
+
+    const reach = Math.hypot(width, height) * 0.38;
+
+    for (let y = 12; y < height; y += 24) {
+        for (let x = 12; x < width; x += 24) {
+            const corner = Math.min(
+                Math.hypot(width - x, y),
+                Math.hypot(x, height - y),
+            );
+            const strength = 1 - corner / reach;
+
+            if (strength <= 0) {
+                continue;
+            }
+
+            context.fillStyle = `rgba(10, 10, 10, ${0.22 * strength})`;
+            context.beginPath();
+            context.arc(x, y, 1.4, 0, Math.PI * 2);
+            context.fill();
+        }
+    }
+};
+
+/** A white surface with the ink border and no shadow. */
+const paintPanel = (
+    context: CanvasRenderingContext2D,
+    width: number,
+    height: number,
+): { x: number; y: number; width: number; height: number } => {
+    const panel = {
+        x: PANEL.x,
+        y: PANEL.y,
+        width: width - PANEL.x * 2,
+        height: height - PANEL.y - PANEL_BOTTOM,
+    };
+
+    roundedRect(context, panel.x, panel.y, panel.width, panel.height, PANEL.radius);
+    context.fillStyle = '#ffffff';
+    context.fill();
+    context.strokeStyle = INK;
+    context.lineWidth = BORDER;
+    context.stroke();
+
+    return panel;
 };
 
 /** The TryPost mark, the four quarters of `AppLogo.vue`, on a 410 grid. */
@@ -160,7 +198,6 @@ const paintLogo = (
     x: number,
     y: number,
     size: number,
-    theme: ShareTheme,
 ): void => {
     const quarters: [string, string][] = [
         ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
@@ -173,7 +210,7 @@ const paintLogo = (
     context.beginPath();
     context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
     context.clip();
-    context.fillStyle = theme === 'dark' ? '#040000' : '#ffffff';
+    context.fillStyle = '#ffffff';
     context.fillRect(x, y, size, size);
     context.translate(x, y);
     context.scale(size / 410, size / 410);
@@ -184,87 +221,63 @@ const paintLogo = (
     }
 
     context.restore();
+    context.beginPath();
+    context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+    context.strokeStyle = INK;
+    context.lineWidth = 2;
+    context.stroke();
 };
 
-/** The signature: whoever sees the post sees where it came from. */
+/** The signature on the tint, under the panel: whoever sees the post sees where it came from. */
 const paintMark = (
     context: CanvasRenderingContext2D,
-    palette: Palette,
     options: ShareCardOptions,
-    right: number,
-    baseline: number,
+    width: number,
+    height: number,
 ): void => {
-    const logo = 26;
-    const gap = 10;
+    const logo = 32;
+    const gap = 12;
+    const baseline = height - PANEL_BOTTOM / 2 + 9;
 
-    context.font = `500 20px ${SANS}`;
+    context.font = `600 24px ${SANS}`;
     context.textAlign = 'left';
 
-    const width = context.measureText(options.mark).width;
-    const start = right - width - logo - gap;
+    const textWidth = context.measureText(options.mark).width;
+    const start = width - PANEL.x - textWidth - logo - gap;
 
-    paintLogo(context, start, baseline - logo + 6, logo, options.theme);
-    context.fillStyle = palette.muted;
+    paintLogo(context, start, baseline - logo + 8, logo);
+    context.fillStyle = INK;
     context.fillText(options.mark, start + logo + gap, baseline);
 };
 
+/** The change as the page's MetricChange: a soft pill with the arrow and the label. */
 const paintChange = (
     context: CanvasRenderingContext2D,
-    palette: Palette,
     change: ShareChange,
-    x: number,
-    baseline: number,
+    anchor: number,
+    top: number,
     size: number,
+    align: 'left' | 'right',
 ): void => {
+    const colors = CHANGE_COLORS[change.direction];
+    const arrow = change.direction === 'up' ? '↗' : change.direction === 'down' ? '↘' : '→';
+    const label = `${arrow} ${change.label}`;
+
     context.font = `600 ${size}px ${SANS}`;
+
+    const padX = size * 0.5;
+    const pillWidth = context.measureText(label).width + padX * 2;
+    const pillHeight = size * 1.6;
+    const x = align === 'right' ? anchor - pillWidth : anchor;
+
+    roundedRect(context, x, top, pillWidth, pillHeight, pillHeight / 2);
+    context.fillStyle = colors.fill;
+    context.fill();
+    context.fillStyle = colors.text;
     context.textAlign = 'left';
-    context.fillStyle =
-        change.direction === 'up'
-            ? palette.up
-            : change.direction === 'down'
-              ? palette.down
-              : palette.muted;
-
-    const arrow =
-        change.direction === 'up' ? '↗' : change.direction === 'down' ? '↘' : '→';
-
-    context.fillText(`${arrow} ${change.label}`, x, baseline);
-};
-
-/** Subject and period on the left, the headline number on the right. */
-const paintHeader = (
-    context: CanvasRenderingContext2D,
-    palette: Palette,
-    options: ShareCardOptions,
-    width: number,
-): void => {
-    context.textAlign = 'left';
-    context.fillStyle = palette.muted;
-    context.font = `500 22px ${SANS}`;
-    context.fillText(
-        ellipsise(context, `${options.metric} · ${options.range}`, width - PAD * 2 - 380),
-        PAD,
-        100,
-    );
-
-    context.fillStyle = palette.ink;
-    context.font = `600 34px ${DISPLAY}`;
-    context.fillText(ellipsise(context, options.subject, width - PAD * 2 - 380), PAD, 146);
-
-    context.textAlign = 'right';
-    context.font = `500 64px ${DISPLAY}`;
-    context.fillText(options.figure, width - PAD, 140);
-
-    if (options.change) {
-        context.font = `600 22px ${SANS}`;
-
-        const label = `${options.change.direction === 'up' ? '↗' : options.change.direction === 'down' ? '↘' : '→'} ${options.change.label}`;
-        const labelWidth = context.measureText(label).width;
-
-        paintChange(context, palette, options.change, width - PAD - labelWidth, 178, 22);
-    }
-
-    context.textAlign = 'left';
+    context.textBaseline = 'middle';
+    context.fillText(label, x + padX, top + pillHeight / 2 + 1);
+    context.textBaseline = 'alphabetic';
 };
 
 const niceStep = (span: number, count: number): number => {
@@ -308,21 +321,41 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
 
 const paintChart = (
     context: CanvasRenderingContext2D,
-    palette: Palette,
     options: ShareCardOptions,
-    width: number,
-    height: number,
+    panel: { x: number; y: number; width: number; height: number },
 ): void => {
-    paintHeader(context, palette, options, width);
+    const left = panel.x + PANEL.padding;
+    const right = panel.x + panel.width - PANEL.padding;
+    const textLimit = panel.width - PANEL.padding * 2 - 360;
 
-    const plot = { x: PAD + 92, y: 228, width: width - PAD * 2 - 92, height: height - 228 - 132 };
+    context.textAlign = 'left';
+    context.fillStyle = MUTED;
+    context.font = `500 22px ${SANS}`;
+    context.fillText(ellipsise(context, `${options.metric} · ${options.range}`, textLimit), left, panel.y + 70);
+
+    context.fillStyle = INK;
+    context.font = `700 34px ${SANS}`;
+    context.fillText(ellipsise(context, options.subject, textLimit), left, panel.y + 114);
+
+    context.textAlign = 'right';
+    context.font = `700 64px ${SANS}`;
+    context.fillText(options.figure, right, panel.y + 106);
+
+    if (options.change) {
+        paintChange(context, options.change, right, panel.y + 124, 20, 'right');
+    }
+
+    const plot = {
+        x: left + 72,
+        y: panel.y + 196,
+        width: right - left - 72,
+        height: panel.height - 196 - 76,
+    };
     const values = options.points
         .map((point) => point.value)
         .filter((value): value is number => value !== null);
 
     if (values.length === 0) {
-        paintMark(context, palette, options, width - PAD, height - 44);
-
         return;
     }
 
@@ -339,24 +372,27 @@ const paintChart = (
     context.textAlign = 'right';
     context.textBaseline = 'middle';
     context.setLineDash([4, 6]);
-    context.lineWidth = 1;
+    context.lineWidth = 1.5;
 
     for (let value = bottom; value <= top + step / 1000; value += step) {
-        context.strokeStyle = palette.rule;
+        context.strokeStyle = RULE;
         context.beginPath();
         context.moveTo(plot.x, y(value));
         context.lineTo(plot.x + plot.width, y(value));
         context.stroke();
-        context.fillStyle = palette.muted;
+        context.fillStyle = MUTED;
         context.fillText(options.tick(value), plot.x - 18, y(value));
     }
 
     context.setLineDash([]);
     context.textBaseline = 'alphabetic';
 
+    const color = options.tint.strong;
+
     if (options.shape === 'bar') {
-        const barWidth = Math.max(Math.min(slot * 0.6, 28), 3);
+        const barWidth = Math.max(Math.min(slot * 0.6, 30), 3);
         const zero = y(Math.max(0, bottom));
+        const outlined = barWidth >= 10;
 
         options.points.forEach((point, index) => {
             if (point.value === null || point.value === 0) {
@@ -365,9 +401,15 @@ const paintChart = (
 
             const end = y(point.value);
 
-            roundedRect(context, x(index) - barWidth / 2, Math.min(end, zero), barWidth, Math.abs(zero - end), 5);
-            context.fillStyle = options.color;
+            roundedRect(context, x(index) - barWidth / 2, Math.min(end, zero), barWidth, Math.abs(zero - end), 6);
+            context.fillStyle = color;
             context.fill();
+
+            if (outlined) {
+                context.strokeStyle = INK;
+                context.lineWidth = 2;
+                context.stroke();
+            }
         });
     } else {
         const known = options.points
@@ -381,8 +423,8 @@ const paintChart = (
         context.closePath();
 
         const fill = context.createLinearGradient(0, plot.y, 0, plot.y + plot.height);
-        fill.addColorStop(0, tint(options.color, 0.28));
-        fill.addColorStop(1, tint(options.color, 0));
+        fill.addColorStop(0, alpha(color, 0.24));
+        fill.addColorStop(1, alpha(color, 0));
         context.fillStyle = fill;
         context.fill();
 
@@ -392,7 +434,7 @@ const paintChart = (
                 ? context.moveTo(x(point.index), y(point.value))
                 : context.lineTo(x(point.index), y(point.value)),
         );
-        context.strokeStyle = options.color;
+        context.strokeStyle = color;
         context.lineWidth = 4;
         context.lineJoin = 'round';
         context.lineCap = 'round';
@@ -401,16 +443,16 @@ const paintChart = (
         const last = known[known.length - 1];
 
         context.beginPath();
-        context.arc(x(last.index), y(last.value), 8, 0, Math.PI * 2);
-        context.fillStyle = options.color;
+        context.arc(x(last.index), y(last.value), 9, 0, Math.PI * 2);
+        context.fillStyle = color;
         context.fill();
-        context.strokeStyle = palette.ground;
-        context.lineWidth = 4;
+        context.strokeStyle = INK;
+        context.lineWidth = BORDER;
         context.stroke();
     }
 
     context.font = `500 18px ${SANS}`;
-    context.fillStyle = palette.muted;
+    context.fillStyle = MUTED;
 
     const marks = Math.min(5, options.points.length);
 
@@ -421,46 +463,44 @@ const paintChart = (
         context.fillText(
             options.points[index].label,
             mark === 0 ? plot.x : mark === marks - 1 ? plot.x + plot.width : x(index),
-            plot.y + plot.height + 38,
+            plot.y + plot.height + 40,
         );
     }
 
     context.textAlign = 'left';
-    paintMark(context, palette, options, width - PAD, height - 44);
 };
 
 /** One headline number, large, with what it is and how it moved. */
 const paintSummary = (
     context: CanvasRenderingContext2D,
-    palette: Palette,
     options: ShareCardOptions,
-    width: number,
-    height: number,
+    panel: { x: number; y: number; width: number; height: number },
 ): void => {
+    const left = panel.x + PANEL.padding;
+    const limit = panel.width - PANEL.padding * 2;
+
     context.textAlign = 'left';
-    context.fillStyle = palette.ink;
-    context.font = `600 34px ${DISPLAY}`;
-    context.fillText(ellipsise(context, options.subject, width - PAD * 2), PAD, 116);
+    context.fillStyle = INK;
+    context.font = `700 34px ${SANS}`;
+    context.fillText(ellipsise(context, options.subject, limit), left, panel.y + 84);
 
-    context.fillStyle = palette.muted;
+    context.fillStyle = MUTED;
     context.font = `500 22px ${SANS}`;
-    context.fillText(options.range, PAD, 156);
+    context.fillText(options.range, left, panel.y + 124);
 
-    context.fillStyle = options.color;
-    context.font = `600 26px ${SANS}`;
-    context.fillText(options.metric, PAD, 300);
+    context.fillStyle = options.tint.strong;
+    context.font = `700 28px ${SANS}`;
+    context.fillText(options.metric, left, panel.y + 262);
 
-    context.fillStyle = palette.ink;
-    context.font = `500 168px ${DISPLAY}`;
-    context.fillText(options.figure, PAD - 6, 460);
+    context.fillStyle = INK;
+    context.font = `700 168px ${SANS}`;
+    context.fillText(options.figure, left - 6, panel.y + 424);
 
     if (options.change) {
         const figureWidth = context.measureText(options.figure).width;
 
-        paintChange(context, palette, options.change, PAD + figureWidth + 28, 452, 40);
+        paintChange(context, options.change, left + figureWidth + 28, panel.y + 340, 36, 'left');
     }
-
-    paintMark(context, palette, options, width - PAD, height - 44);
 };
 
 export const drawShareCard = (
@@ -469,7 +509,6 @@ export const drawShareCard = (
     scale = SHARE_EXPORT_SCALE,
 ): void => {
     const { width, height } = SHARE_CARD_SIZE;
-    const palette = PALETTES[options.theme];
 
     canvas.width = width * scale;
     canvas.height = height * scale;
@@ -481,18 +520,17 @@ export const drawShareCard = (
     }
 
     context.setTransform(scale, 0, 0, scale, 0, 0);
-    context.fillStyle = palette.ground;
-    context.fillRect(0, 0, width, height);
-    context.strokeStyle = palette.edge;
-    context.lineWidth = 2;
-    roundedRect(context, 1, 1, width - 2, height - 2, 28);
-    context.stroke();
+    paintGround(context, options.tint, width, height);
+
+    const panel = paintPanel(context, width, height);
 
     if (options.variant === 'summary') {
-        paintSummary(context, palette, options, width, height);
+        paintSummary(context, options, panel);
     } else {
-        paintChart(context, palette, options, width, height);
+        paintChart(context, options, panel);
     }
+
+    paintMark(context, options, width, height);
 };
 
 /** The card at download resolution, off screen, as a PNG file. */

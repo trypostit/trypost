@@ -4,7 +4,6 @@ import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
-import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -28,11 +27,11 @@ import {
     drawShareCard,
     loadShareFonts,
     SHARE_CARD_SIZE,
-    SHARE_COLORS,
+    SHARE_TINTS,
     shareCardFile,
     type ShareCardOptions,
     type ShareMetricOption,
-    type ShareTheme,
+    type ShareTint,
 } from '@/lib/insightsShareCard';
 import { storeChunked } from '@/routes/app/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
@@ -49,8 +48,7 @@ const open = defineModel<boolean>('open', { default: false });
 
 const PREVIEW_PIXELS = 2;
 
-const theme = ref<ShareTheme>('light');
-const color = ref<string>(SHARE_COLORS[0]);
+const tint = ref<ShareTint>(SHARE_TINTS[0]);
 const selectedKey = ref<string>('');
 const copied = ref(false);
 const posting = ref(false);
@@ -63,11 +61,6 @@ const selected = computed(
         props.options[0],
 );
 
-const themes = [
-    { mode: 'light', label: 'analytics.share.light', test: 'share-theme-light' },
-    { mode: 'dark', label: 'analytics.share.dark', test: 'share-theme-dark' },
-] as const;
-
 const cardOptions = (): ShareCardOptions | null => {
     const option = selected.value;
 
@@ -77,8 +70,7 @@ const cardOptions = (): ShareCardOptions | null => {
 
     return {
         variant: props.variant,
-        theme: theme.value,
-        color: color.value,
+        tint: tint.value,
         subject: props.subject,
         metric: option.label,
         range: props.range,
@@ -115,7 +107,7 @@ watch(open, (isOpen) => {
 
 watch(canvas, paint);
 
-watch([theme, color, selectedKey], () => {
+watch([tint, selectedKey], () => {
     copied.value = false;
     paint();
 });
@@ -160,12 +152,8 @@ const copyImage = async (): Promise<void> => {
     }
 };
 
-const chooseTheme = (value: string): void => {
-    theme.value = value as ShareTheme;
-};
-
-const chooseColor = (swatch: string): void => {
-    color.value = swatch;
+const chooseTint = (swatch: ShareTint): void => {
+    tint.value = swatch;
 };
 
 const closeDialog = (): void => {
@@ -230,7 +218,7 @@ const createPost = async (): Promise<void> => {
 
             <canvas
                 ref="canvas"
-                class="w-full rounded-xl"
+                class="w-full rounded-lg"
                 :style="{ aspectRatio: `${SHARE_CARD_SIZE.width} / ${SHARE_CARD_SIZE.height}` }"
                 role="img"
                 :aria-label="`${selected?.label ?? ''} ${selected?.figure ?? ''}`"
@@ -266,18 +254,6 @@ const createPost = async (): Promise<void> => {
 
                 <div class="grid gap-2">
                     <span class="text-sm font-medium text-foreground">{{
-                        $t('analytics.share.theme')
-                    }}</span>
-                    <AnalyticsModeToggle
-                        :model-value="theme"
-                        label="analytics.share.theme"
-                        :options="themes"
-                        @update:model-value="chooseTheme"
-                    />
-                </div>
-
-                <div class="grid gap-2">
-                    <span class="text-sm font-medium text-foreground">{{
                         $t('analytics.share.color')
                     }}</span>
                     <div
@@ -286,18 +262,23 @@ const createPost = async (): Promise<void> => {
                         :aria-label="$t('analytics.share.color')"
                     >
                         <button
-                            v-for="swatch in SHARE_COLORS"
-                            :key="swatch"
+                            v-for="swatch in SHARE_TINTS"
+                            :key="swatch.key"
                             type="button"
                             role="radio"
-                            :aria-checked="color === swatch"
-                            :aria-label="swatch"
-                            class="size-6 cursor-pointer rounded-full ring-offset-2 ring-offset-background transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                            :class="color === swatch ? 'ring-2 ring-foreground' : ''"
-                            :style="{ backgroundColor: swatch }"
-                            :data-testid="`share-chart-color-${swatch.slice(1)}`"
-                            @click="chooseColor(swatch)"
-                        />
+                            :aria-checked="tint.key === swatch.key"
+                            :aria-label="swatch.key"
+                            class="grid size-6 cursor-pointer place-items-center rounded-full border border-foreground/20 ring-offset-2 ring-offset-background transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            :class="tint.key === swatch.key ? 'ring-2 ring-foreground' : ''"
+                            :style="{ backgroundColor: swatch.ground }"
+                            :data-testid="`share-chart-color-${swatch.key}`"
+                            @click="chooseTint(swatch)"
+                        >
+                            <span
+                                class="size-2.5 rounded-full"
+                                :style="{ backgroundColor: swatch.strong }"
+                            />
+                        </button>
                     </div>
                 </div>
             </div>
