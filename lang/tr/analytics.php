@@ -481,6 +481,11 @@ return [
             'green' => 'Yeşil',
             'peach' => 'Şeftali',
             'yellow' => 'Sarı',
+            'cyan' => 'Camgöbeği',
+            'teal' => 'Deniz mavisi',
+            'red' => 'Kırmızı',
+            'pink' => 'Pembe',
+            'neutral' => 'Nötr',
         ],
     ],
 ];

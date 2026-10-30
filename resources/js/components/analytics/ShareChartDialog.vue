@@ -1,5 +1,10 @@
 <script setup lang="ts">
-import { IconCheck, IconCopy, IconDownload } from '@tabler/icons-vue';
+import {
+    IconChartBar,
+    IconCheck,
+    IconCopy,
+    IconDownload,
+} from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
 import { trans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, shallowRef, useTemplateRef, watch } from 'vue';
@@ -51,9 +56,6 @@ const open = defineModel<boolean>('open', { default: false });
 
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
-
-/** Each swatch shows the background with the accent drawn as a tiny bar chart. */
-const SWATCH_BARS = [8, 14, 11];
 const selectedKey = ref<string>('');
 const copied = ref(false);
 const posting = ref(false);
@@ -286,12 +288,12 @@ const createPost = async (): Promise<void> => {
                     </Select>
                 </div>
 
-                <div class="grid gap-2">
+                <div class="grid w-full gap-2">
                     <span class="text-sm font-medium text-foreground">{{
                         $t('analytics.share.color')
                     }}</span>
                     <div
-                        class="flex h-9 items-center gap-2"
+                        class="grid grid-cols-5 gap-2 sm:grid-cols-10"
                         role="radiogroup"
                         :aria-label="$t('analytics.share.color')"
                     >
@@ -302,24 +304,19 @@ const createPost = async (): Promise<void> => {
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="flex h-9 w-12 cursor-pointer items-end justify-center gap-0.5 rounded-lg pb-2 transition-control focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                            class="flex h-9 cursor-pointer items-center justify-center rounded-md border transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :class="
                                 tint.key === swatch.key
-                                    ? 'border-2 border-foreground'
-                                    : 'border border-foreground/15 hover:border-foreground/40'
+                                    ? 'border-primary-strong ring-1 ring-primary-strong'
+                                    : 'border-border-strong hover:ring-2 hover:ring-ring/30'
                             "
                             :style="{ backgroundColor: swatch.ground }"
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"
                         >
-                            <span
-                                v-for="height in SWATCH_BARS"
-                                :key="height"
-                                class="w-1 rounded-full"
-                                :style="{
-                                    height: `${height}px`,
-                                    backgroundColor: swatch.strong,
-                                }"
+                            <IconChartBar
+                                class="size-4"
+                                :style="{ color: swatch.strong }"
                                 aria-hidden="true"
                             />
                         </button>

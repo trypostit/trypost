@@ -481,6 +481,11 @@ return [
             'green' => 'Verde',
             'peach' => 'Pesca',
             'yellow' => 'Giallo',
+            'cyan' => 'Ciano',
+            'teal' => 'Verde acqua',
+            'red' => 'Rosso',
+            'pink' => 'Rosa',
+            'neutral' => 'Neutro',
         ],
     ],
 ];

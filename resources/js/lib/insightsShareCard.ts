@@ -65,9 +65,14 @@ export const SHARE_EXPORT_SCALE = 2;
 export const SHARE_TINTS: ShareTint[] = [
     { key: 'violet', ground: '#d2c7fd', strong: '#6d28d9' },
     { key: 'blue', ground: '#def0ff', strong: '#2563eb' },
+    { key: 'cyan', ground: '#cff4fc', strong: '#0e7490' },
+    { key: 'teal', ground: '#ccf5ea', strong: '#0f766e' },
     { key: 'green', ground: '#d9f1d1', strong: '#16a34a' },
+    { key: 'yellow', ground: '#fdefc3', strong: '#a16207' },
     { key: 'peach', ground: '#ffdbd6', strong: '#ea580c' },
-    { key: 'yellow', ground: '#fdefc3', strong: '#ca8a04' },
+    { key: 'red', ground: '#fde0e0', strong: '#dc2626' },
+    { key: 'pink', ground: '#fce1ef', strong: '#db2777' },
+    { key: 'neutral', ground: '#f4f1ec', strong: '#292928' },
 ];
 
 const INK = '#292928';

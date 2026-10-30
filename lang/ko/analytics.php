@@ -481,6 +481,11 @@ return [
             'green' => '초록',
             'peach' => '피치',
             'yellow' => '노랑',
+            'cyan' => '청록',
+            'teal' => '틸',
+            'red' => '빨강',
+            'pink' => '분홍',
+            'neutral' => '뉴트럴',
         ],
     ],
 ];
