@@ -98,12 +98,6 @@
                     </div>
                     @include('pdf.insights.summary', ['cards' => $channel['summary']])
                     @include('pdf.insights.charts', ['charts' => $channel['charts']])
-                    @if (count($channel['top_posts']))
-                        <div class="keep-together">
-                            <h3 class="subheading">{{ trans_choice('analytics.insights.export.pdf.top_posts.by_reactions', count($channel['top_posts']), ['count' => count($channel['top_posts'])]) }}</h3>
-                            @include('pdf.insights.top-posts', ['posts' => $channel['top_posts']])
-                        </div>
-                    @endif
                 </section>
             @endforeach
             @if ($channels_total > count($channels))

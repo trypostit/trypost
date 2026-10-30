@@ -567,7 +567,7 @@ test('a channel part leaves out what the report already shows', function () {
         ->and($labels)->not->toContain(__('analytics.channel.metrics.net_followers.label'))
         ->and($labels)->toContain(__('analytics.channel.metrics.followers.label'))
         ->and(array_column(data_get($part, 'charts'), 'title'))->not->toContain(__('analytics.channel.series.net_followers'))
-        ->and(array_column(data_get($part, 'top_posts'), 'excerpt'))->not->toContain('Launch day recap')
+        ->and($part)->not->toHaveKey('top_posts')
         ->and(array_column(data_get($data, 'top_reactions'), 'excerpt'))->toContain('Launch day recap');
 });
 
@@ -580,8 +580,7 @@ test('without the Performance table a channel part keeps its metrics', function 
     );
     $part = data_get($data, 'channels.0');
 
-    expect(array_column(data_get($part, 'summary'), 'label'))->toContain(__('analytics.channel.metrics.reactions.label'))
-        ->and(array_column(data_get($part, 'top_posts'), 'excerpt'))->toContain('Launch day recap');
+    expect(array_column(data_get($part, 'summary'), 'label'))->toContain(__('analytics.channel.metrics.reactions.label'));
 });
 
 test('a finished PDF is announced on its export channel, ready or failed', function () {

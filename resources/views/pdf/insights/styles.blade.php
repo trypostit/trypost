@@ -71,8 +71,6 @@
 
     .heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
     .heading h2 { font-size: 15px; }
-    .subheading { font-size: 12px; margin: 14px 0 8px; }
-    .keep-together { break-inside: avoid; }
 
     .channel-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 
