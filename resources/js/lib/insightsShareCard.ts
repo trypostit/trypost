@@ -77,12 +77,30 @@ export const SHARE_TINTS: ShareTint[] = [
 
 const INK = '#292928';
 const MUTED = '#5a5a59';
-const RULE = '#e2e0dc';
+/**
+ * The app's charts (`ChartContainer`, `ChannelMetricsChart`) at twice their
+ * size, since the card is the page at 2x: a dashed `--border` grid, muted
+ * ticks, bars without outline rounded at the data end, a 2px monotone line
+ * with a dot on each point.
+ */
+const CHART = {
+    grid: '#eae8e5',
+    gridDash: [6, 6],
+    gridWidth: 2,
+    tickSize: 22,
+    barMaxWidth: 32,
+    barPadding: 0.35,
+    barRadius: 8,
+    lineWidth: 4,
+    dotRadius: 4,
+};
 const BORDER = 2.5;
-const CHANGE_COLORS = {
-    up: { text: '#337046', fill: '#e3f5dc' },
-    down: { text: '#9f1d0e', fill: '#ffe9e5' },
-    flat: { text: MUTED, fill: '#f3f2f0' },
+/** `MetricChange`: `--success-text`, `--destructive-text` or muted, with Tabler's trending icons. */
+const CHANGE_COLORS = { up: '#337046', down: '#7f0f00', flat: MUTED } as const;
+const CHANGE_ICONS = {
+    up: ['M3 17l6 -6l4 4l8 -8', 'M14 7l7 0l0 7'],
+    down: ['M3 7l6 6l4 -4l8 8', 'M21 10l0 7l-7 0'],
+    flat: ['M5 12l14 0'],
 } as const;
 
 const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
@@ -101,7 +119,7 @@ export const loadShareFonts = async (): Promise<void> => {
     }
 
     await Promise.all(
-        [`500 24px ${SANS}`, `600 24px ${SANS}`, `700 24px ${SANS}`, `600 64px ${HEADING}`].map(
+        [`500 24px ${SANS}`, `600 24px ${SANS}`, `500 64px ${HEADING}`, `600 36px ${HEADING}`].map(
             (face) => document.fonts.load(face).catch(() => []),
         ),
     );
@@ -171,15 +189,6 @@ const roundedRect = (
     context.arcTo(x, y + height, x, y, r);
     context.arcTo(x, y, x + width, y, r);
     context.closePath();
-};
-
-const alpha = (hex: string, opacity: number): string => {
-    const value = hex.replace('#', '');
-    const r = Number.parseInt(value.slice(0, 2), 16);
-    const g = Number.parseInt(value.slice(2, 4), 16);
-    const b = Number.parseInt(value.slice(4, 6), 16);
-
-    return `rgba(${r}, ${g}, ${b}, ${opacity})`;
 };
 
 /**
@@ -380,7 +389,7 @@ const paintIdentity = (
     context.fillText(ellipsise(context, detail, limit), left, top + LOGO_SIZE + 40);
 };
 
-/** The change as the page's MetricChange: a soft pill with the arrow and the label. */
+/** The change as the page's `MetricChange`: the trending icon and the label, in the tone's color. */
 const paintChange = (
     context: CanvasRenderingContext2D,
     change: ShareChange,
@@ -389,24 +398,30 @@ const paintChange = (
     size: number,
     align: 'left' | 'right',
 ): void => {
-    const colors = CHANGE_COLORS[change.direction];
-    const arrow = change.direction === 'up' ? '↗' : change.direction === 'down' ? '↘' : '→';
-    const label = `${arrow} ${change.label}`;
+    const color = CHANGE_COLORS[change.direction];
+    const icon = size * 1.15;
+    const gap = size * 0.3;
 
     context.font = `600 ${size}px ${SANS}`;
 
-    const padX = size * 0.5;
-    const pillWidth = context.measureText(label).width + padX * 2;
-    const pillHeight = size * 1.6;
-    const x = align === 'right' ? anchor - pillWidth : anchor;
+    const width = icon + gap + context.measureText(change.label).width;
+    const x = align === 'right' ? anchor - width : anchor;
+    const middle = top + icon / 2;
 
-    roundedRect(context, x, top, pillWidth, pillHeight, pillHeight / 2);
-    context.fillStyle = colors.fill;
-    context.fill();
-    context.fillStyle = colors.text;
+    context.save();
+    context.translate(x, middle - icon / 2);
+    context.scale(icon / 24, icon / 24);
+    context.strokeStyle = color;
+    context.lineWidth = 2.5;
+    context.lineCap = 'round';
+    context.lineJoin = 'round';
+    CHANGE_ICONS[change.direction].forEach((path) => context.stroke(new Path2D(path)));
+    context.restore();
+
+    context.fillStyle = color;
     context.textAlign = 'left';
     context.textBaseline = 'middle';
-    context.fillText(label, x + padX, top + pillHeight / 2 + 1);
+    context.fillText(change.label, x + icon + gap, middle + 1);
     context.textBaseline = 'alphabetic';
 };
 
@@ -452,6 +467,105 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
     return [low - padding, high + padding];
 };
 
+/** A bar from the baseline to its value, rounded only at the data end, like unovis' `roundedCorners`. */
+const paintBar = (
+    context: CanvasRenderingContext2D,
+    x: number,
+    zero: number,
+    width: number,
+    end: number,
+): void => {
+    const height = Math.abs(zero - end);
+    const radius = Math.min(CHART.barRadius, width / 2, height);
+    const up = end < zero;
+
+    context.beginPath();
+
+    if (up) {
+        context.moveTo(x, zero);
+        context.lineTo(x, end + radius);
+        context.arcTo(x, end, x + radius, end, radius);
+        context.arcTo(x + width, end, x + width, end + radius, radius);
+        context.lineTo(x + width, zero);
+    } else {
+        context.moveTo(x, zero);
+        context.lineTo(x, end - radius);
+        context.arcTo(x, end, x + radius, end, radius);
+        context.arcTo(x + width, end, x + width, end - radius, radius);
+        context.lineTo(x + width, zero);
+    }
+
+    context.closePath();
+    context.fill();
+};
+
+/** The line through the points as a monotone cubic, d3's `curveMonotoneX` the page's charts use. */
+const traceMonotone = (
+    context: CanvasRenderingContext2D,
+    points: { x: number; y: number }[],
+): void => {
+    context.beginPath();
+
+    if (points.length === 0) {
+        return;
+    }
+
+    context.moveTo(points[0].x, points[0].y);
+
+    if (points.length < 3) {
+        points.slice(1).forEach((point) => context.lineTo(point.x, point.y));
+
+        return;
+    }
+
+    const slopes = points.slice(1).map((point, index) => (point.y - points[index].y) / (point.x - points[index].x));
+    const tangents = points.map((_, index) => {
+        if (index === 0) {
+            return slopes[0];
+        }
+
+        if (index === points.length - 1) {
+            return slopes[slopes.length - 1];
+        }
+
+        return slopes[index - 1] * slopes[index] <= 0 ? 0 : (slopes[index - 1] + slopes[index]) / 2;
+    });
+
+    slopes.forEach((slope, index) => {
+        if (slope === 0) {
+            tangents[index] = 0;
+            tangents[index + 1] = 0;
+
+            return;
+        }
+
+        const a = tangents[index] / slope;
+        const b = tangents[index + 1] / slope;
+        const size = a * a + b * b;
+
+        if (size > 9) {
+            const scale = 3 / Math.sqrt(size);
+
+            tangents[index] = scale * a * slope;
+            tangents[index + 1] = scale * b * slope;
+        }
+    });
+
+    points.slice(1).forEach((point, index) => {
+        const previous = points[index];
+        const third = (point.x - previous.x) / 3;
+
+        context.bezierCurveTo(
+            previous.x + third,
+            previous.y + third * tangents[index],
+            point.x - third,
+            point.y - third * tangents[index + 1],
+            point.x,
+            point.y,
+        );
+    });
+};
+
 const paintChart = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
@@ -465,11 +579,11 @@ const paintChart = (
 
     context.textAlign = 'right';
     context.fillStyle = INK;
-    context.font = `600 68px ${HEADING}`;
+    context.font = `500 68px ${HEADING}`;
     context.fillText(options.figure, right, panel.y + 100);
 
     if (options.change) {
-        paintChange(context, options.change, right, panel.y + 116, 20, 'right');
+        paintChange(context, options.change, right, panel.y + 116, 26, 'right');
     }
 
     if (options.comparison) {
@@ -502,14 +616,14 @@ const paintChart = (
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
 
-    context.font = `500 18px ${SANS}`;
+    context.font = `500 ${CHART.tickSize}px ${SANS}`;
     context.textAlign = 'right';
     context.textBaseline = 'middle';
-    context.setLineDash([4, 6]);
-    context.lineWidth = 1.5;
+    context.setLineDash(CHART.gridDash);
+    context.lineWidth = CHART.gridWidth;
 
     for (let value = bottom; value <= top + step / 1000; value += step) {
-        context.strokeStyle = RULE;
+        context.strokeStyle = CHART.grid;
         context.beginPath();
         context.moveTo(plot.x, y(value));
         context.lineTo(plot.x + plot.width, y(value));
@@ -524,68 +638,39 @@ const paintChart = (
     const color = options.tint.strong;
 
     if (options.shape === 'bar') {
-        const barWidth = Math.max(Math.min(slot * 0.6, 30), 3);
+        const barWidth = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
         const zero = y(Math.max(0, bottom));
-        const outlined = barWidth >= 10;
+
+        context.fillStyle = color;
 
         options.points.forEach((point, index) => {
             if (point.value === null || point.value === 0) {
                 return;
             }
 
-            const end = y(point.value);
-
-            roundedRect(context, x(index) - barWidth / 2, Math.min(end, zero), barWidth, Math.abs(zero - end), 6);
-            context.fillStyle = color;
-            context.fill();
-
-            if (outlined) {
-                context.strokeStyle = INK;
-                context.lineWidth = 2;
-                context.stroke();
-            }
+            paintBar(context, x(index) - barWidth / 2, zero, barWidth, y(point.value));
         });
     } else {
         const known = options.points
-            .map((point, index) => ({ index, value: point.value }))
-            .filter((point): point is { index: number; value: number } => point.value !== null);
+            .map((point, index) => ({ x: x(index), y: point.value === null ? null : y(point.value) }))
+            .filter((point): point is { x: number; y: number } => point.y !== null);
 
-        context.beginPath();
-        context.moveTo(x(known[0].index), plot.y + plot.height);
-        known.forEach((point) => context.lineTo(x(point.index), y(point.value)));
-        context.lineTo(x(known[known.length - 1].index), plot.y + plot.height);
-        context.closePath();
-
-        const fill = context.createLinearGradient(0, plot.y, 0, plot.y + plot.height);
-        fill.addColorStop(0, alpha(color, 0.24));
-        fill.addColorStop(1, alpha(color, 0));
-        context.fillStyle = fill;
-        context.fill();
-
-        context.beginPath();
-        known.forEach((point, index) =>
-            index === 0
-                ? context.moveTo(x(point.index), y(point.value))
-                : context.lineTo(x(point.index), y(point.value)),
-        );
         context.strokeStyle = color;
-        context.lineWidth = 4;
+        context.lineWidth = CHART.lineWidth;
         context.lineJoin = 'round';
         context.lineCap = 'round';
+        traceMonotone(context, known);
         context.stroke();
 
-        const last = known[known.length - 1];
-
-        context.beginPath();
-        context.arc(x(last.index), y(last.value), 9, 0, Math.PI * 2);
         context.fillStyle = color;
-        context.fill();
-        context.strokeStyle = INK;
-        context.lineWidth = BORDER;
-        context.stroke();
+        known.forEach((point) => {
+            context.beginPath();
+            context.arc(point.x, point.y, CHART.dotRadius, 0, Math.PI * 2);
+            context.fill();
+        });
     }
 
-    context.font = `500 18px ${SANS}`;
+    context.font = `500 ${CHART.tickSize}px ${SANS}`;
     context.fillStyle = MUTED;
 
     const marks = Math.min(5, options.points.length);
@@ -662,16 +747,16 @@ const paintSummary = (
         const limit = width - 72;
 
         context.textAlign = 'left';
-        context.fillStyle = options.tint.strong;
-        context.font = `700 22px ${SANS}`;
+        context.fillStyle = MUTED;
+        context.font = `500 24px ${SANS}`;
         context.fillText(ellipsise(context, tile.label, limit), x, y + 50);
 
         context.fillStyle = tile.figure === '—' ? MUTED : INK;
-        context.font = `600 ${figureSize}px ${HEADING}`;
+        context.font = `500 ${figureSize}px ${HEADING}`;
         context.fillText(ellipsise(context, tile.figure, limit), x - 2, y + 50 + figureSize + 6);
 
         if (tile.change) {
-            paintChange(context, tile.change, x, y + 50 + figureSize + 26, 18, 'left');
+            paintChange(context, tile.change, x, y + 50 + figureSize + 22, 24, 'left');
         }
     });
 };
