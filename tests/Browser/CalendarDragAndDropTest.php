@@ -954,6 +954,53 @@ test('a touch press held 250ms drags the card', function () {
     $page->assertNoJavaScriptErrors();
 });
 
+test('a sideways touch drag moves the post and does not swipe to another period', function () {
+    [$user, $channel] = calendarDragSetup();
+    $day = calendarDragDay();
+    $key = $day->format('Y-m-d');
+    $nextKey = $day->addDay()->format('Y-m-d');
+    $post = calendarDragPost($channel, $day->setTime(10, 30));
+    $this->actingAs($user);
+
+    $page = visit(calendarDragWeekUrl($day))->on()->iPadPro()->resize(1024, 1366);
+    waitFor($page, "@calendar-post-{$post->id}");
+    calendarDragAssertLive($page, "@calendar-post-{$post->id}");
+    $week = $page->script('location.search');
+
+    calendarGesture($page, <<<JS
+        query('@calendar-post-{$post->id}').scrollIntoView({ block: 'center' });
+        await frame();
+        const start = center('@calendar-post-{$post->id}');
+        const end = center('@calendar-slot-{$nextKey}-10');
+        const touch = (type, point) => {
+            const target = query('@calendar-post-{$post->id}');
+            const contact = new Touch({ identifier: 7, target, clientX: point.x, clientY: point.y });
+            target.dispatchEvent(new TouchEvent(type, {
+                bubbles: true,
+                cancelable: true,
+                touches: type === 'touchend' ? [] : [contact],
+                changedTouches: [contact],
+            }));
+        };
+        touch('touchstart', start);
+        await down(start);
+        await move(at(start, 2, 2));
+        await pause(350);
+        await move(end);
+        touch('touchmove', end);
+        await up(end);
+        touch('touchend', end);
+        await frame();
+    JS, 'touch');
+
+    waitFor($page, "@calendar-slot-{$nextKey}-10 @calendar-post-{$post->id}");
+    waitForGone($page, '@calendar-grid[aria-busy]');
+
+    expect($page->script('location.search'))->toBe($week)
+        ->and($post->refresh()->scheduled_at->equalTo($day->addDay()->setTime(10, 0)))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
+});
+
 test('a touch swipe before 250ms scrolls and does not drag', function () {
     [$user, $channel] = calendarDragSetup();
     $day = calendarDragDay();

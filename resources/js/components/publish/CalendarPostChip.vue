@@ -229,7 +229,7 @@ const statusTestId = computed(() =>
                             :data-testid="`calendar-post-platform-${post.id}`"
                         />
                         <span
-                            class="shrink-0 text-xs font-medium text-muted-foreground"
+                            class="min-w-0 truncate text-xs font-medium text-muted-foreground"
                             >{{ time }}</span
                         >
                     </span>

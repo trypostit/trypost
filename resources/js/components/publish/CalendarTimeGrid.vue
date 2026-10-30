@@ -11,7 +11,7 @@ import {
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import dayjs from '@/dayjs';
-import type { CalendarDropTarget } from '@/lib/calendarDrop';
+import { wallClockIn, type CalendarDropTarget } from '@/lib/calendarDrop';
 import { calendarItems, type CalendarItem } from '@/lib/calendarItems';
 import type {
     CalendarPost,
@@ -110,7 +110,8 @@ const hourSlots = computed(() =>
                 props.timezone,
             );
             const target: CalendarDropTarget | null =
-                start.hour() === hour
+                wallClockIn(start, props.timezone) ===
+                `${day.format('YYYY-MM-DD')} ${hourLabel(hour)}:00:00`
                     ? { kind: 'hour', at: start.utc().format() }
                     : null;
 

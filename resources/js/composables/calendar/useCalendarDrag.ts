@@ -121,6 +121,27 @@ const swallowClick = (event: Event): void => {
     event.stopPropagation();
 };
 
+/**
+ * Two URLs of the same page, whichever order their query keys come in and
+ * whether a list is written `labels[]` or `labels[0]`: the server answers with
+ * its own form of the URL a client-side visit wrote.
+ */
+const normalizedUrl = (url: string): string => {
+    const parsed = new URL(url, window.location.origin);
+    const params = [...parsed.searchParams]
+        .map(([key, value]) => [key.replace(/\[\d+\]$/, '[]'), value])
+        .sort(([keyA, valueA], [keyB, valueB]) =>
+            keyA === keyB
+                ? valueA.localeCompare(valueB)
+                : keyA.localeCompare(keyB),
+        );
+
+    return `${parsed.pathname}?${new URLSearchParams(params)}`;
+};
+
+const isSameUrl = (a: string, b: string): boolean =>
+    normalizedUrl(a) === normalizedUrl(b);
+
 const suppressNextClick = (): void => {
     window.addEventListener('click', swallowClick, {
         capture: true,
@@ -150,6 +171,7 @@ export const useCalendarDrag = (
         canCreatePost: Readonly<Ref<boolean>>;
         requiresApproval: Readonly<Ref<boolean>>;
         reloadProps: () => string[];
+        isCalendarPath: (pathname: string) => boolean;
         confirmCustomTime: (from: string, to: string) => Promise<boolean>;
         describeInstant: (
             at: string,
@@ -164,6 +186,9 @@ export const useCalendarDrag = (
     const draggingPostId = ref<string | null>(null);
     const movingPostIds = ref<string[]>([]);
     const waitingForServer: Array<() => void> = [];
+    let movesSent = 0;
+    let newestMoveAnswered = 0;
+    let heldVisit: { url: string; method: string } | null = null;
 
     const posts = new Map<HTMLElement, PostCard>();
     const targets = new Map<Element, CalendarDropTarget>();
@@ -382,10 +407,43 @@ export const useCalendarDrag = (
      * and a failed move's guess has been rolled back.
      */
     const settleWaitingMoves = (): void => {
-        if (movingPostIds.value.length === 0) {
-            waitingForServer.splice(0).forEach((settle) => settle());
+        if (movingPostIds.value.length > 0) {
+            return;
+        }
+
+        waitingForServer.splice(0).forEach((settle) => settle());
+
+        if (heldVisit) {
+            const { url, method } = heldVisit;
+
+            heldVisit = null;
+            router.visit(url, { method: method as 'get' });
         }
     };
+
+    /**
+     * While a move is in flight, Inertia keeps its guess in the `posts` prop of
+     * any page it renders, so a visit that leaves the calendar's path waits for
+     * the moves in flight and goes once they finish.
+     */
+    const stopHoldingVisits = router.on('before', (event) => {
+        const { visit } = event.detail;
+
+        if (
+            movingPostIds.value.length === 0 ||
+            visit.async ||
+            visit.prefetch ||
+            options.isCalendarPath(visit.url.pathname)
+        ) {
+            return;
+        }
+
+        heldVisit = { url: visit.url.href, method: visit.method };
+
+        return false;
+    });
+
+    onBeforeUnmount(stopHoldingVisits);
 
     const isSameInstant = (
         stored: string | null,
@@ -470,11 +528,17 @@ export const useCalendarDrag = (
         const props = (): string[] =>
             options
                 .reloadProps()
-                .filter((prop) => touchesNoDate || prop !== 'undatedDrafts');
+                .filter((prop) => touchesNoDate || prop !== 'undatedDrafts')
+                .filter(
+                    (prop) =>
+                        post.status !== PostStatus.Draft || prop !== 'slots',
+                );
         const reset = touchesNoDate ? ['undatedDrafts'] : [];
         let reloaded: CalendarPost | null | undefined;
         let staleResponse = false;
         let guessed = false;
+        let answered = false;
+        const moveNumber = ++movesSent;
 
         const announceApproval = (): void => {
             toast.success(trans('posts.approvals.requested'), {
@@ -566,7 +630,11 @@ export const useCalendarDrag = (
                 only: props(),
                 reset,
                 onBeforeUpdate: (response) => {
-                    if (response.url !== page.url) {
+                    if (response.component !== page.component) {
+                        return;
+                    }
+
+                    if (!isSameUrl(response.url, page.url)) {
                         response.props = { ...page.props };
                         response.url = page.url;
 
@@ -607,10 +675,20 @@ export const useCalendarDrag = (
                         touchesNoDate,
                     ),
                 onBeforeUpdate: (response) => {
-                    guessed = router.hasPendingOptimistic();
+                    answered = true;
+                    guessed =
+                        router.hasPendingOptimistic() ||
+                        newestMoveAnswered > moveNumber;
+                    newestMoveAnswered = Math.max(
+                        newestMoveAnswered,
+                        moveNumber,
+                    );
                     reloaded = postIn(response.props, post.id);
 
-                    if (response.url === page.url) {
+                    if (
+                        isSameUrl(response.url, page.url) ||
+                        response.component !== page.component
+                    ) {
                         return;
                     }
 
@@ -623,16 +701,28 @@ export const useCalendarDrag = (
                     response.url = page.url;
                 },
                 onSuccess: () => {
+                    answered = true;
+
+                    if (page.component !== component) {
+                        return;
+                    }
+
                     if (reloaded === undefined) {
-                        if (page.component === component) {
-                            reloadInstead(true);
-                        }
+                        reloadInstead(true);
 
                         return;
                     }
 
                     if (staleResponse) {
                         reloadInstead(false);
+
+                        if (guessed) {
+                            waitingForServer.push(() =>
+                                settleFromReload(postIn(page.props, post.id)),
+                            );
+
+                            return;
+                        }
                     } else if (guessed) {
                         waitingForServer.push(() =>
                             settleFrom(postIn(page.props, post.id)),
@@ -644,17 +734,33 @@ export const useCalendarDrag = (
                     settleFrom(reloaded);
                 },
                 onError: (errors) => {
+                    answered = true;
                     fail(Object.values(errors)[0]);
                 },
-                onHttpException: () => fail(),
-                onNetworkError: () => fail(),
-                onCancel: reject,
+                onHttpException: () => {
+                    answered = true;
+
+                    return fail();
+                },
+                onNetworkError: () => {
+                    answered = true;
+
+                    return fail();
+                },
+                onCancel: () => {
+                    answered = true;
+                    reject();
+                },
                 onFinish: () => {
                     if (!staleResponse) {
                         forget(post.id);
                     }
 
                     settleWaitingMoves();
+
+                    if (!answered) {
+                        router.visit(page.url, { preserveScroll: true });
+                    }
                 },
             },
         );
@@ -834,6 +940,14 @@ export const useCalendarDrag = (
             capture: true,
             once: true,
         });
+        window.addEventListener(
+            'pointerdown',
+            () =>
+                window.removeEventListener('pointerup', suppressNextClick, {
+                    capture: true,
+                }),
+            { capture: true, once: true },
+        );
     };
 
     const onPointerCancel = (event: PointerEvent): void => {

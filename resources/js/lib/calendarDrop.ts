@@ -31,6 +31,39 @@ const SOON_MINUTES = 5;
 const soon = (now: dayjs.Dayjs): dayjs.Dayjs =>
     now.add(SOON_MINUTES, 'minute').startOf('minute');
 
+const wallClockFormats = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * The wall clock of an instant in a zone, as `YYYY-MM-DD HH:mm:ss`. Read with
+ * Intl rather than dayjs' local fields, which go through the browser's zone and
+ * come out an hour off around the browser's own daylight saving changes.
+ */
+export const wallClockIn = (instant: dayjs.Dayjs, timezone: string): string => {
+    let format = wallClockFormats.get(timezone);
+
+    if (!format) {
+        format = new Intl.DateTimeFormat('en-CA', {
+            timeZone: timezone,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+            hourCycle: 'h23',
+        });
+        wallClockFormats.set(timezone, format);
+    }
+
+    const parts = Object.fromEntries(
+        format
+            .formatToParts(instant.valueOf())
+            .map((part) => [part.type, part.value]),
+    );
+
+    return `${parts.year}-${parts.month}-${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+};
+
 const instantOnDay = (
     post: PostCard,
     dayKey: string,
@@ -44,11 +77,11 @@ const instantOnDay = (
     }
 
     const clock = post.scheduled_at
-        ? dayjs.utc(post.scheduled_at).tz(timezone).format('HH:mm:ss')
+        ? wallClockIn(dayjs.utc(post.scheduled_at), timezone).slice(11)
         : `${DRAFT_DAY_CLOCK}:00`;
     const instant = dayjs.tz(`${dayKey}T${clock}`, timezone);
 
-    if (instant.format('HH:mm:ss') !== clock) {
+    if (wallClockIn(instant, timezone) !== `${dayKey} ${clock}`) {
         return undefined;
     }
 

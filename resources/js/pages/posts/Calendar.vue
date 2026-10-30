@@ -5,7 +5,11 @@ import {
     IconLayoutSidebarRightExpand,
     IconPlus,
 } from '@tabler/icons-vue';
-import { useSwipe, type UseSwipeDirection } from '@vueuse/core';
+import {
+    useEventListener,
+    useSwipe,
+    type UseSwipeDirection,
+} from '@vueuse/core';
 import {
     computed,
     onMounted,
@@ -170,11 +174,19 @@ const confirmCustomTime = (from: string, to: string): Promise<boolean> =>
 const { announcement, describeInstant, hooks } =
     useCalendarAnnouncer(timezone);
 
+const CALENDAR_VIEWS: CalendarView[] = ['days', 'week', 'month'];
+
 const calendarDrag = useCalendarDrag({
     timezone,
     canCreatePost,
     requiresApproval,
     reloadProps: () => [...reloadProps(), 'undatedDrafts'],
+    isCalendarPath: (pathname) =>
+        CALENDAR_VIEWS.some(
+            (view) =>
+                new URL(calendarUrl(view), window.location.origin).pathname ===
+                pathname,
+        ),
     confirmCustomTime,
     describeInstant,
     ...hooks,
@@ -295,6 +307,19 @@ const toggleSlots = (value: boolean): void => {
         preserveState: true,
     });
 };
+
+/**
+ * A full visit back to the calendar (after saving or deleting a post) brings no
+ * posting times unless its URL asks for them, so they are loaded again.
+ */
+watch(
+    () => props.slots,
+    (slots) => {
+        if (showSlots.value && slots === undefined) {
+            reload(['slots'], [], true);
+        }
+    },
+);
 
 onMounted(() => {
     clock = setInterval(() => {
@@ -524,9 +549,33 @@ const swipeStep = (direction: UseSwipeDirection): number => {
 
 const periodSwipeTarget = ref<HTMLElement | null>(null);
 
+/**
+ * A touch that dragged a post is not a period swipe, even when it moved sideways.
+ */
+let touchDraggedPost = false;
+
+useEventListener(
+    periodSwipeTarget,
+    'touchstart',
+    () => {
+        touchDraggedPost = false;
+    },
+    { passive: true },
+);
+
+watch(calendarDrag.draggingPostId, (postId) => {
+    if (postId !== null) {
+        touchDraggedPost = true;
+    }
+});
+
 useSwipe(periodSwipeTarget, {
     threshold: 48,
     onSwipeEnd: (_event, direction) => {
+        if (touchDraggedPost) {
+            return;
+        }
+
         const step = swipeStep(direction);
 
         if (step !== 0) {
