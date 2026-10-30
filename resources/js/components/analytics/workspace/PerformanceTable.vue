@@ -4,7 +4,7 @@ import {
     IconChevronUp,
     IconTable,
 } from '@tabler/icons-vue';
-import { computed, ref } from 'vue';
+import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -26,6 +26,7 @@ import {
 import {
     PERFORMANCE_METRICS,
     type PerformanceMetric,
+    type PerformanceSortKey,
     usePerformanceColumns,
 } from '@/composables/usePerformanceColumns';
 import date from '@/date';
@@ -50,17 +51,9 @@ const props = defineProps<{
 }>();
 const span = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
-const { columns, toggleColumn } = usePerformanceColumns();
-type SortKey = PerformanceMetric | 'channel';
-type SortDirection = 'asc' | 'desc';
-
-const sortBy = ref<SortKey>('posts');
-const sortDirection = ref<SortDirection>('desc');
-const sortKey = computed<SortKey>(() =>
-    sortBy.value === 'channel' || columns.value.includes(sortBy.value)
-        ? sortBy.value
-        : columns.value[0],
-);
+const { columns, toggleColumn, sortBy, sortDirection, sortKey } =
+    usePerformanceColumns();
+type SortKey = PerformanceSortKey;
 const channelName = (row: PerformanceRow): string =>
     row.username ?? row.name ?? row.platform;
 const compareRows = (a: PerformanceRow, b: PerformanceRow): number => {

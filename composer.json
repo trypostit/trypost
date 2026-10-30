@@ -34,6 +34,7 @@
     ],
     "require": {
         "php": "^8.2",
+        "chrome-php/chrome": "^1.16",
         "google/apiclient": "^2.19",
         "inertiajs/inertia-laravel": "^3.5.1",
         "intervention/image": "^4.0",
@@ -59,6 +60,7 @@
         "socialiteproviders/pinterest": "^4.3",
         "socialiteproviders/tiktok": "^5.2",
         "socialiteproviders/twitter": "^4.1",
+        "spatie/laravel-pdf": "^2.14",
         "symfony/css-selector": "^8.0",
         "symfony/dom-crawler": "^8.0"
     },

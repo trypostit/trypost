@@ -171,6 +171,7 @@ class ChannelController extends Controller
             ...$props,
             'sortableMetrics' => ChannelMetrics::sortable(),
             'sync' => SyncCadence::toArray(),
+            'reportLogoUrl' => fn (): ?string => $workspace->getFirstMediaUrl('report_logo'),
             'availableMetrics' => $metrics,
             'labels' => fn () => $workspace->labels()->orderBy('name')->get(['id', 'name', 'color']),
             'contentTypes' => fn (): array => array_values(array_map(fn (ContentType $type): array => [

@@ -20,6 +20,7 @@ import {
 import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, type Component } from 'vue';
 
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import { Button } from '@/components/ui/button';
@@ -54,12 +55,14 @@ import {
     type Selection,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
+import { channelSeriesShareOptions } from '@/lib/insightsShare';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
 
 import ChannelMetricsChart from './ChannelMetricsChart.vue';
 
 const props = defineProps<{
     series?: ChannelMetricSeries;
+    channel: string;
 }>();
 
 const METRIC_ICONS: Record<SeriesMetric, Component> = {
@@ -210,6 +213,20 @@ const previousCaption = computed(() =>
         ? `${date.formatDayMonthYear(props.series.previous_range.start)} – ${date.formatDayMonthYear(props.series.previous_range.end)}`
         : '',
 );
+const shareRangeLabel = computed(() =>
+    props.series
+        ? `${date.formatDayMonthYear(props.series.range.start)} – ${date.formatDayMonthYear(props.series.range.end)}`
+        : '',
+);
+const shareOptions = computed(() =>
+    props.series
+        ? channelSeriesShareOptions(
+              props.series,
+              props.channel,
+              shareRangeLabel.value,
+          )
+        : [],
+);
 const shownTotals = computed(() =>
     chartMode.value === 'previous'
         ? chartSeries.value?.totals.previous
@@ -267,6 +284,16 @@ const changeMode = (value: string): void => {
         :title="$t('analytics.channel.metrics_card.title')"
         subtitle-testid="insights-metrics-caption"
     >
+        <template v-if="shareOptions.length" #actions>
+            <ShareChartButton
+                variant="chart"
+                :subject="channel"
+                :range="shareRangeLabel"
+                :options="shareOptions"
+                :initial-key="specs[0]?.metric"
+                test-id="share-channel-metrics"
+            />
+        </template>
         <template v-if="rangeCaption" #subtitle>
             <template v-if="growthRate">
                 {{ rangeCaption }} ·

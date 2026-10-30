@@ -37,6 +37,7 @@ import {
 } from '@/components/ui/table';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
+import { storedChannelColumns } from '@/lib/channelInsights';
 import { isVideo } from '@/lib/mediaType';
 import {
     copyToClipboard,
@@ -81,17 +82,8 @@ const TABLE_METRICS: SummaryMetric[] = [
 ];
 const storageKey = computed(() => `insights.columns.${props.platform}`);
 
-const readStoredColumns = (): SummaryMetric[] | null => {
-    try {
-        const stored = JSON.parse(
-            window.localStorage.getItem(storageKey.value) ?? 'null',
-        );
-
-        return Array.isArray(stored) ? (stored as SummaryMetric[]) : null;
-    } catch {
-        return null;
-    }
-};
+const readStoredColumns = (): SummaryMetric[] | null =>
+    storedChannelColumns(props.platform) as SummaryMetric[] | null;
 
 const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
 const choosableColumns = computed<SummaryMetric[]>(() =>

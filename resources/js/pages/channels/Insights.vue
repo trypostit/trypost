@@ -18,7 +18,8 @@ import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { showsPostTypeFilter } from '@/lib/channelInsights';
+import { showsPostTypeFilter, storedChannelColumns } from '@/lib/channelInsights';
+import { CHANNEL_PDF_SECTIONS } from '@/lib/insightsPdf';
 import { insights } from '@/routes/app/channels';
 import type {
     AnalyticsReport,
@@ -44,6 +45,7 @@ const props = defineProps<{
     labels?: { id: string; name: string; color: string }[];
     contentTypes?: ContentTypeOption[];
     metricSeries?: ChannelMetricSeries;
+    reportLogoUrl?: string | null;
 }>();
 
 useAnalyticsCoveragePoll(() => props.report?.coverage, {
@@ -93,6 +95,11 @@ const exportQuery = computed((): Record<string, string | string[]> => {
         ...publicationFilters.value,
     };
 });
+
+const pdfQuery = computed((): Record<string, string | string[]> => ({
+    ...exportQuery.value,
+    ...(props.filters?.sort ? { sort: props.filters.sort } : {}),
+}));
 
 const applyFilters = (): void => {
     if (!props.filters) {
@@ -184,6 +191,10 @@ watch(selectedTypes, applyFilters, { deep: true });
                         <InsightsExportMenu
                             :query="exportQuery"
                             :channel-id="channel.id"
+                            :pdf-query="pdfQuery"
+                            :pdf-sections="CHANNEL_PDF_SECTIONS"
+                            :read-pdf-columns="() => storedChannelColumns(channel.platform) ?? []"
+                            :report-logo-url="reportLogoUrl ?? null"
                         />
                     </div>
                 </div>
@@ -253,6 +264,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                         "
                         subtitle-testid="insights-range-caption"
                         :network="getPlatformLabel(channel.platform)"
+                        :channel="channelName(channel)"
                     />
                     <ChannelPublicationTable
                         v-if="filters"
@@ -264,7 +276,10 @@ watch(selectedTypes, applyFilters, { deep: true });
                         :url="url"
                         :platform="channel.platform"
                     />
-                    <ChannelMetricsCard :series="metricSeries" />
+                    <ChannelMetricsCard
+                        :series="metricSeries"
+                        :channel="channelName(channel)"
+                    />
                 </template>
             </template>
         </div>

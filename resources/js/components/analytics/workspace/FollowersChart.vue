@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
 import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
+import { followersShareOption } from '@/lib/insightsShare';
 import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -91,6 +94,10 @@ const rangeLabel = computed(
     () =>
         `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
 );
+const page = usePage();
+const shareOptions = computed(() => [
+    followersShareOption(props.followers, rangeLabel.value),
+]);
 </script>
 
 <template>
@@ -115,6 +122,13 @@ const rangeLabel = computed(
                 v-model="mode"
                 label="analytics.dashboard.followers_chart_mode"
                 :options="buttons"
+            />
+            <ShareChartButton
+                variant="chart"
+                :subject="page.props.auth.currentWorkspace?.name ?? ''"
+                :range="rangeLabel"
+                :options="shareOptions"
+                test-id="share-followers"
             />
         </template>
 

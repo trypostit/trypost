@@ -39,6 +39,13 @@ RUN apk add --no-cache \
         oniguruma-dev \
         icu-dev \
         linux-headers \
+        chromium \
+        nss \
+        harfbuzz \
+        ttf-freefont \
+        font-noto \
+        font-noto-cjk \
+        font-noto-emoji \
         $PHPIZE_DEPS \
     && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp --with-avif \
     && docker-php-ext-install -j"$(nproc)" \
@@ -57,6 +64,11 @@ RUN apk add --no-cache \
     && docker-php-ext-enable redis imagick \
     && apk del $PHPIZE_DEPS \
     && rm -rf /tmp/* /var/cache/apk/*
+
+# Insights PDF export: spatie/laravel-pdf drives this Chromium headless. The queue
+# worker runs as www-data, which cannot use Chromium's sandbox inside a container.
+ENV LARAVEL_PDF_CHROME_BINARY=/usr/bin/chromium-browser \
+    LARAVEL_PDF_CHROME_NO_SANDBOX=true
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 

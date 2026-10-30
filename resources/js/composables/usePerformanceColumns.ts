@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import { computed, ref, type ComputedRef, type Ref } from 'vue';
 
 import type { PerformanceMetric } from '@/types/analytics';
 
@@ -53,11 +53,26 @@ const readColumns = (): PerformanceMetric[] => {
     return [...DEFAULT_PERFORMANCE_COLUMNS];
 };
 
+export type PerformanceSortKey = PerformanceMetric | 'channel';
+export type PerformanceSortDirection = 'asc' | 'desc';
+
 const columns = ref<PerformanceMetric[]>(readColumns());
+const sortBy = ref<PerformanceSortKey>('posts');
+const sortDirection = ref<PerformanceSortDirection>('desc');
+
+/** The sorted column, or the first shown one once the sorted column is hidden. */
+const sortKey = computed<PerformanceSortKey>(() =>
+    sortBy.value === 'channel' || columns.value.includes(sortBy.value)
+        ? sortBy.value
+        : columns.value[0],
+);
 
 export const usePerformanceColumns = (): {
     columns: Ref<PerformanceMetric[]>;
     toggleColumn: (metric: PerformanceMetric) => void;
+    sortBy: Ref<PerformanceSortKey>;
+    sortDirection: Ref<PerformanceSortDirection>;
+    sortKey: ComputedRef<PerformanceSortKey>;
 } => {
     const toggleColumn = (metric: PerformanceMetric): void => {
         const next = columns.value.includes(metric)
@@ -77,5 +92,5 @@ export const usePerformanceColumns = (): {
         }
     };
 
-    return { columns, toggleColumn };
+    return { columns, toggleColumn, sortBy, sortDirection, sortKey };
 };

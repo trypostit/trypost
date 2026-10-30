@@ -17,9 +17,11 @@ import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
+import { usePerformanceColumns } from '@/composables/usePerformanceColumns';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
+import { WORKSPACE_PDF_SECTIONS } from '@/lib/insightsPdf';
 import { insights as insightsRoute } from '@/routes/app';
 import type {
     AnalyticsChannelOption,
@@ -33,7 +35,14 @@ const props = defineProps<{
     channelOptions: AnalyticsChannelOption[];
     availableMetrics: SummaryMetric[] | null;
     sync: InsightsSyncCadence;
+    reportLogoUrl: string | null;
 }>();
+
+const {
+    columns: performanceColumns,
+    sortKey: performanceSort,
+    sortDirection: performanceDirection,
+} = usePerformanceColumns();
 
 const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
 
@@ -129,6 +138,15 @@ const accountColors = computed<Record<string, string>>(() => {
                         />
                         <InsightsExportMenu
                             :query="{ ...rangeQuery(), ...filterQuery }"
+                            :pdf-query="{
+                                ...rangeQuery(),
+                                ...filterQuery,
+                                sort: performanceSort,
+                                direction: performanceDirection,
+                            }"
+                            :pdf-sections="WORKSPACE_PDF_SECTIONS"
+                            :read-pdf-columns="() => performanceColumns"
+                            :report-logo-url="reportLogoUrl"
                         />
                     </div>
                 </div>

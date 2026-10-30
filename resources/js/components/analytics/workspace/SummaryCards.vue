@@ -1,12 +1,13 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
+import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
-import {
-    formatNumberCompact,
-    formatPercent,
-    formatPercentChange,
-} from '@/lib/utils';
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import date from '@/date';
+import { shareChange, summaryShareOptions } from '@/lib/insightsShare';
+import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
 
 import AnalyticsSection from './AnalyticsSection.vue';
@@ -18,6 +19,7 @@ const props = defineProps<{
     subtitle?: string;
     subtitleTestid?: string;
     network?: string;
+    channel?: string;
 }>();
 
 const defaultCards = computed(() => [
@@ -93,12 +95,29 @@ const display = (value: number | null, percent: boolean): string =>
           ? formatPercent(value)
           : formatNumberCompact(value);
 
-const changeLabel = (key: string, change: number | null): string | null => {
-    if (change === null) return null;
-    return key === 'followers'
-        ? `${change > 0 ? '+' : ''}${formatNumberCompact(change)}`
-        : formatPercentChange(change);
-};
+const changeLabel = (key: string, change: number | null): string | null =>
+    shareChange(change, key === 'followers')?.label ?? null;
+
+const page = usePage();
+const shareSubject = computed(
+    () => props.channel ?? page.props.auth.currentWorkspace?.name ?? '',
+);
+const shareRangeLabel = computed(
+    () =>
+        `${date.formatDayMonthYear(props.report.range.start)} – ${date.formatDayMonthYear(props.report.range.end)}`,
+);
+const shareOptions = computed(() =>
+    summaryShareOptions(
+        cards.value.map((card) => ({
+            key: card.key,
+            label: trans(card.label),
+            value: display(card.metric.value, card.percent),
+            change: shareChange(card.metric.change, card.key === 'followers'),
+        })),
+        { channel: props.channel ?? null },
+        shareRangeLabel.value,
+    ),
+);
 </script>
 
 <template>
@@ -108,6 +127,15 @@ const changeLabel = (key: string, change: number | null): string | null => {
         :subtitle-testid="subtitleTestid"
         flush
     >
+        <template #actions>
+            <ShareChartButton
+                variant="summary"
+                :subject="shareSubject"
+                :range="shareRangeLabel"
+                :options="shareOptions"
+                test-id="share-summary"
+            />
+        </template>
         <div
             class="grid grid-cols-2 border-t border-border md:grid-cols-3"
             :class="desktopColumns"
