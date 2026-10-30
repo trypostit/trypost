@@ -305,16 +305,18 @@ const createPost = async (): Promise<void> => {
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
                             class="flex h-9 cursor-pointer items-center justify-center rounded-md border transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                            :class="
-                                tint.key === swatch.key
-                                    ? 'border-primary-strong ring-1 ring-primary-strong'
-                                    : 'border-border-strong hover:ring-2 hover:ring-ring/30'
-                            "
-                            :style="{ backgroundColor: swatch.ground }"
+                            :style="{
+                                backgroundColor: swatch.ground,
+                                borderColor:
+                                    tint.key === swatch.key
+                                        ? swatch.strong
+                                        : swatch.ground,
+                            }"
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"
                         >
-                            <IconChartBar
+                            <component
+                                :is="tint.key === swatch.key ? IconCheck : IconChartBar"
                                 class="size-4"
                                 :style="{ color: swatch.strong }"
                                 aria-hidden="true"
