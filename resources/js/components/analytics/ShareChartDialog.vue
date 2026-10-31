@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    IconChartBar,
     IconCheck,
     IconCopy,
     IconDownload,
@@ -311,8 +310,8 @@ const createPost = async (): Promise<void> => {
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"
                         >
-                            <component
-                                :is="tint.key === swatch.key ? IconCheck : IconChartBar"
+                            <IconCheck
+                                v-if="tint.key === swatch.key"
                                 class="size-4"
                                 :style="{ color: swatch.strong }"
                                 aria-hidden="true"
