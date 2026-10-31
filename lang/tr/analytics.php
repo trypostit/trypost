@@ -424,7 +424,7 @@ return [
         'color' => 'Renk',
         'download' => 'İndir',
         'copy' => 'Görseli kopyala',
-        'copied' => 'Kopyalandı',
+        'copied' => 'Görsel kopyalandı',
         'create_post' => 'Gönderi oluştur',
         'mark' => 'TryPost ile yapıldı',
         'copy_failed' => 'Görsel kopyalanamadı. Bunun yerine indir.',

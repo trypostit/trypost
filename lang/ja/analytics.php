@@ -424,7 +424,7 @@ return [
         'color' => '色',
         'download' => 'ダウンロード',
         'copy' => '画像をコピー',
-        'copied' => 'コピーしました',
+        'copied' => '画像をコピーしました',
         'create_post' => '投稿を作成',
         'mark' => 'TryPost で作成',
         'copy_failed' => '画像をコピーできませんでした。ダウンロードしてください。',

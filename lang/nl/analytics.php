@@ -424,7 +424,7 @@ return [
         'color' => 'Kleur',
         'download' => 'Downloaden',
         'copy' => 'Afbeelding kopiëren',
-        'copied' => 'Gekopieerd',
+        'copied' => 'Afbeelding gekopieerd',
         'create_post' => 'Post maken',
         'mark' => 'Gemaakt met TryPost',
         'copy_failed' => 'Kan de afbeelding niet kopiëren. Download hem in plaats daarvan.',

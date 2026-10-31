@@ -424,7 +424,7 @@ return [
         'color' => 'Colore',
         'download' => 'Scarica',
         'copy' => 'Copia immagine',
-        'copied' => 'Copiata',
+        'copied' => 'Immagine copiata',
         'create_post' => 'Crea post',
         'mark' => 'Fatto con TryPost',
         'copy_failed' => 'Impossibile copiare l’immagine. Scaricala.',

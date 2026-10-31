@@ -424,7 +424,7 @@ return [
         'color' => '颜色',
         'download' => '下载',
         'copy' => '复制图片',
-        'copied' => '已复制',
+        'copied' => '图片已复制',
         'create_post' => '创建帖子',
         'mark' => '由 TryPost 制作',
         'copy_failed' => '无法复制图片，请改为下载。',

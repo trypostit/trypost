@@ -424,7 +424,7 @@ return [
         'color' => '색상',
         'download' => '다운로드',
         'copy' => '이미지 복사',
-        'copied' => '복사됨',
+        'copied' => '이미지를 복사했어요',
         'create_post' => '게시물 만들기',
         'mark' => 'TryPost로 제작',
         'copy_failed' => '이미지를 복사하지 못했어요. 대신 다운로드하세요.',

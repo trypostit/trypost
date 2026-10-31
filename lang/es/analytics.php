@@ -424,7 +424,7 @@ return [
         'color' => 'Color',
         'download' => 'Descargar',
         'copy' => 'Copiar imagen',
-        'copied' => 'Copiada',
+        'copied' => 'Imagen copiada',
         'create_post' => 'Crear publicación',
         'mark' => 'Hecho con TryPost',
         'copy_failed' => 'No se pudo copiar la imagen. Descárgala.',

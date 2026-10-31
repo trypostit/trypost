@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import {
-    IconCheck,
     IconCopy,
     IconDownload,
 } from '@tabler/icons-vue';
@@ -54,7 +53,6 @@ const open = defineModel<boolean>('open', { default: false });
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
 const selectedKey = ref<string>('');
-const copied = ref(false);
 const posting = ref(false);
 const painted = ref(false);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
@@ -114,7 +112,6 @@ const paint = async (): Promise<void> => {
 watch(open, (isOpen) => {
     if (isOpen) {
         selectedKey.value = props.initialKey ?? props.options[0]?.key ?? '';
-        copied.value = false;
         posting.value = false;
         painted.value = false;
         paint();
@@ -124,7 +121,6 @@ watch(open, (isOpen) => {
 useResizeObserver(canvas, () => paint());
 
 watch([tint, selectedKey], () => {
-    copied.value = false;
     paint();
 });
 
@@ -176,7 +172,7 @@ const copyImage = async (): Promise<void> => {
         await navigator.clipboard.write([
             new ClipboardItem({ 'image/png': image.then((file) => file) }),
         ]);
-        copied.value = true;
+        toast.success(trans('analytics.share.copied'));
     } catch {
         toast.error(trans('analytics.share.copy_failed'));
     }
@@ -328,15 +324,8 @@ const createPost = async (): Promise<void> => {
                     data-testid="share-chart-copy"
                     @click="copyImage"
                 >
-                    <component
-                        :is="copied ? IconCheck : IconCopy"
-                        aria-hidden="true"
-                    />
-                    {{
-                        copied
-                            ? $t('analytics.share.copied')
-                            : $t('analytics.share.copy')
-                    }}
+                    <IconCopy aria-hidden="true" />
+                    {{ $t('analytics.share.copy') }}
                 </Button>
                 <Button
                     type="button"
