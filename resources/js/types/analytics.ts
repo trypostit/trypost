@@ -58,6 +58,8 @@ export interface PostBucket extends DateRange {
 
 export interface TopPost {
     id: string;
+    /** Its place in the Top 5, from 1. */
+    rank: number;
     post_id: string | null;
     social_account_key: string;
     platform: string;

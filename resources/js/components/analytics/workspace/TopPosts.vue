@@ -105,7 +105,7 @@ const thumbnailFor = (post: TopPost): string | null => {
             class="grid border-t border-border sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
         >
             <article
-                v-for="(post, index) in posts"
+                v-for="post in posts"
                 :key="post.id"
                 class="group relative flex min-w-0 flex-col gap-3 p-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] transition-colors duration-150 has-[button:hover]:bg-muted/60 has-[button:focus-visible]:bg-muted/60 sm:px-5"
                 data-testid="analytics-top-post"
@@ -122,7 +122,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                     </div>
                     <div class="flex shrink-0 flex-col items-end justify-between gap-1">
                         <RankBadge
-                            :rank="index + 1"
+                            :rank="post.rank"
                             :data-testid="`analytics-top-post-rank-${post.id}`"
                         />
                         <span

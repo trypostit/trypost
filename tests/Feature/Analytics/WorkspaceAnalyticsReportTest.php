@@ -136,7 +136,8 @@ test('workspace report keeps accounts separate and aggregates only latest normal
         ->and($report['followers']['total'])->toBe(170)
         ->and($report['top_posts']['reactions'][0]['social_account_key'])->toBe($instagramA->id)
         ->and($report['top_posts']['reactions'][0]['post_id'])->toBeNull()
-        ->and($report['top_posts']['reactions'][0]['reactions'])->toBe(10);
+        ->and($report['top_posts']['reactions'][0]['reactions'])->toBe(10)
+        ->and(array_column($report['top_posts']['reactions'], 'rank'))->toBe(range(1, count($report['top_posts']['reactions'])));
 
     $performanceKeys = array_column($report['performance'], 'social_account_key');
     expect($performanceKeys)->toContain($instagramA->id, $instagramB->id, $x->id);

@@ -13,7 +13,11 @@ import {
 import { summaryShareOption } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
-import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
+import type {
+    AnalyticsReport,
+    Comparison,
+    SummaryMetric,
+} from '@/types/analytics';
 
 import AnalyticsSection from './AnalyticsSection.vue';
 import InfoTip from './InfoTip.vue';
@@ -30,7 +34,7 @@ const props = defineProps<{
 type SummaryCard = {
     key: SummaryMetric;
     label: string;
-    metric: AnalyticsReport['summary'][SummaryMetric];
+    metric: Comparison;
     percent: boolean;
 };
 

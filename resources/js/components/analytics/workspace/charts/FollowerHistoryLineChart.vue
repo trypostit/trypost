@@ -16,6 +16,7 @@ import {
     ChartTooltip,
     ChartTooltipContent,
     componentToString,
+    numericTick,
 } from '@/components/ui/chart';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
@@ -79,12 +80,15 @@ const valueAccessor =
 const valueAccessors = computed(() =>
     props.accounts.map((_, index) => valueAccessor(index)),
 );
-const formatDate = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const day = chartData.value[index]?.date;
+const formatDate = numericTick((tick): string => {
+    const day = chartData.value[Math.round(tick)]?.date;
 
-    return day ? date.formatMonthDay(day) : '';
-};
+    if (!day) {
+        return '';
+    }
+
+    return date.formatMonthDay(day);
+});
 const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(

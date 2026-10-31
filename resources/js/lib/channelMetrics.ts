@@ -153,17 +153,18 @@ export const countDelta = (change: number): MetricDelta => ({ value: change, lab
 export const percentDelta = (change: number): MetricDelta => ({ value: change, label: formatPercentChange(change) });
 
 /**
- * The followers gained or lost within the period, from its first reading to
- * its last, like the workspace's Followers card; null without two readings.
+ * The followers gained or lost over the period: the net new followers the
+ * report already counts (the last reading against where the period started),
+ * the same number as the Summary's; null without a reading to start from.
  */
 const followersDelta = (series: ChannelMetricSeries): MetricDelta | null => {
-    const readings = definedValues(series.current, 'followers');
+    const net = series.totals.current.net_followers;
 
-    if (readings.length < 2) {
+    if (net == null) {
         return null;
     }
 
-    return countDelta(readings[readings.length - 1] - readings[0]);
+    return countDelta(net);
 };
 
 /**

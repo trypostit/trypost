@@ -33,3 +33,14 @@ export const componentToString = (
         return content;
     };
 };
+
+/**
+ * unovis types an axis tick as `number | Date`, since the same axis also
+ * draws time. Our charts only run on numbers (a column's index or a value),
+ * so each formatter takes the number, and this is the one place that reads
+ * it out of unovis' type.
+ */
+export const numericTick =
+  <Result>(format: (tick: number, index: number, ticks: number[]) => Result) =>
+  (tick: number | Date, index = 0, ticks: number[] | Date[] = []): Result =>
+    format(Number(tick), index, ticks.map(Number))

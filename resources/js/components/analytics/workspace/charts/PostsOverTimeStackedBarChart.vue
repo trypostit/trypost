@@ -14,6 +14,7 @@ import {
     ChartTooltipContent,
     type ChartTooltipDetail,
     componentToString,
+    numericTick,
 } from '@/components/ui/chart';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { accountColor } from '@/lib/analyticsColors';
@@ -72,16 +73,11 @@ const barColors = computed(() =>
             props.colors[account.social_account_key] ?? accountColor(index),
     ),
 );
-const formatBucket = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    return chartData.value[index]?.label ?? '';
-};
+const formatBucket = numericTick(
+    (tick): string => chartData.value[Math.round(tick)]?.label ?? '',
+);
 /** The posts of a column across every channel, as the report counts them. */
-const bucketTotal = (tick: number | Date): ChartTooltipDetail | null => {
-    if (typeof tick !== 'number') {
-        return null;
-    }
-
+const bucketTotal = numericTick((tick): ChartTooltipDetail | null => {
     const bucket = props.buckets[Math.round(tick)];
 
     if (!bucket) {
@@ -92,7 +88,7 @@ const bucketTotal = (tick: number | Date): ChartTooltipDetail | null => {
         label: trans('analytics.dashboard.total_posts'),
         value: formatFullNumber(bucket.total),
     };
-};
+});
 const ticks = computed(() => props.buckets.map((_, index) => index));
 const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>

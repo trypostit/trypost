@@ -12,11 +12,12 @@ import {
 import { computed } from 'vue';
 
 import {
+    type ChartConfig,
     ChartContainer,
     ChartCrosshair,
     ChartTooltip,
     componentToString,
-    type ChartConfig,
+    numericTick,
 } from '@/components/ui/chart';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import {
@@ -194,31 +195,26 @@ const tickLabelsFor = (axis: SeriesSpec['axis']): string[] => {
     return axisTickLabels(domain, axisMetrics(axis));
 };
 
-const tickLabel =
-    (axis: SeriesSpec['axis']) =>
-    (tick: number | Date): string => {
-        if (typeof tick !== 'number') {
-            return '';
-        }
-
-        return axisLabels.value[axis][Math.round(tick * AXIS_STEPS)] ?? '';
-    };
+const tickLabel = (axis: SeriesSpec['axis']) =>
+    numericTick(
+        (tick): string =>
+            axisLabels.value[axis][Math.round(tick * AXIS_STEPS)] ?? '',
+    );
 
 /** Names each value tick by its axis, so a test reads the labels the axis prints. */
 const axisTickAttributes = (axis: SeriesSpec['axis']): Record<string, Record<string, string>> => ({
     [VisAxisSelectors.tick]: { 'data-testid': `insights-metrics-${axis}-tick` },
 });
 
-const xTick = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const point = props.series[shownPeriod(props.mode)][index];
+const xTick = numericTick((tick): string => {
+    const point = props.series[shownPeriod(props.mode)][Math.round(tick)];
 
     if (!point) {
         return '';
     }
 
     return axisBucketLabel(point, props.series.resolution);
-};
+});
 
 const dateLabel = (point: MetricSeriesPoint | undefined): string =>
     bucketLabel(point, props.series.resolution);

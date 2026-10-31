@@ -1,4 +1,4 @@
-import type { ChartConfig } from '@/components/ui/chart';
+import { type ChartConfig, numericTick } from '@/components/ui/chart';
 import { accountLabel } from '@/lib/analyticsAccounts';
 import { accountColor } from '@/lib/analyticsColors';
 import { distinctCountLabels } from '@/lib/utils';
@@ -31,12 +31,6 @@ export const socialAccountChartConfig = (
     );
 
 /** A count axis' tick, compact but never like its neighbours: close values (9,990 to 10,010) keep the decimals that tell them apart. */
-export const formatCountTick = (tick: number | Date, index: number, ticks: number[] | Date[]): string => {
-    const counts = ticks.filter((value): value is number => typeof value === 'number');
-
-    if (typeof tick !== 'number' || counts.length !== ticks.length) {
-        return '';
-    }
-
-    return distinctCountLabels(counts)[index] ?? '';
-};
+export const formatCountTick = numericTick(
+    (_tick, index, ticks): string => distinctCountLabels(ticks)[index] ?? '',
+);

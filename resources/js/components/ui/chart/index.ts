@@ -9,7 +9,7 @@ export {
 } from '@unovis/vue';
 export { default as ChartContainer } from './ChartContainer.vue';
 export { default as ChartTooltipContent } from './ChartTooltipContent.vue';
-export { componentToString } from './utils';
+export { componentToString, numericTick } from './utils';
 
 export type ChartConfig = Record<
     string,

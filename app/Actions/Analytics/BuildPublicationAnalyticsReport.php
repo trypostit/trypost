@@ -316,8 +316,9 @@ class BuildPublicationAnalyticsReport
      */
     private function top(array $rows, Collection $postMedia): array
     {
-        return collect($rows)->map(fn (object $row): array => [
+        return collect($rows)->values()->map(fn (object $row, int $index): array => [
             'id' => $row->id,
+            'rank' => $index + 1,
             'post_id' => $row->post_id,
             'social_account_key' => $row->social_account_key,
             'platform' => $row->platform,
