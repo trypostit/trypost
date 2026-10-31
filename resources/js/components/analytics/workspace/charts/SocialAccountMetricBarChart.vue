@@ -85,7 +85,9 @@ const formatAccount = (tick: number | Date): string => {
     const label = account.username
         ? `@${account.username}`
         : account.name || getPlatformLabel(account.platform);
-    return label.length > 12 ? `${label.slice(0, 11)}…` : label;
+    const short = label.length > 12 ? `${label.slice(0, 11)}…` : label;
+
+    return short.replaceAll(' ', '\u00A0');
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
 const detailFormatter = (key: string): string | null =>
