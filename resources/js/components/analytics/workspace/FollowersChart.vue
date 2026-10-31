@@ -12,7 +12,7 @@ import {
     followersShareOption,
     shareRangeLabel,
 } from '@/lib/insightsShare';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type { ShareMetricOption } from '@/lib/shareCard';
 import {
     formatCountChange,
     formatFullNumber,

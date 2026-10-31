@@ -35,20 +35,28 @@ export const formatNumber = (value: number): string => {
 /** What a number reads while it has no value. */
 export const MISSING_VALUE = '—';
 
-/** A number without a value reads as a dash; every formatter below takes one. */
+/** A number that may have no value yet; the formatters below read it as a dash. */
 type MaybeNumber = number | null | undefined;
 
-export const formatNumberCompact = (value: MaybeNumber, digits = 1): string => {
-    if (value == null) {
-        return MISSING_VALUE;
-    }
+/** A number formatter that reads a missing value as a dash, so no caller checks for one. */
+const withDash =
+    <Args extends unknown[]>(format: (value: number, ...args: Args) => string) =>
+    (value: MaybeNumber, ...args: Args): string => {
+        if (value == null) {
+            return MISSING_VALUE;
+        }
 
-    return new Intl.NumberFormat(activeLocale.value, {
-        notation: 'compact',
-        compactDisplay: 'short',
-        maximumFractionDigits: digits,
-    }).format(value);
-};
+        return format(value, ...args);
+    };
+
+export const formatNumberCompact = withDash(
+    (value: number, digits: number = 1): string =>
+        new Intl.NumberFormat(activeLocale.value, {
+            notation: 'compact',
+            compactDisplay: 'short',
+            maximumFractionDigits: digits,
+        }).format(value),
+);
 
 /** The most decimals a compact axis label takes before it falls back to whole numbers. */
 const MAX_COMPACT_DIGITS = 2;
@@ -76,49 +84,35 @@ export const distinctCountLabels = (values: number[]): string[] => {
     return precise;
 };
 
-export const formatPercent = (value: MaybeNumber): string => {
-    if (value == null) {
-        return MISSING_VALUE;
-    }
-
-    return new Intl.NumberFormat(activeLocale.value, {
-        style: 'percent',
-        maximumFractionDigits: 2,
-    }).format(value / 100);
-};
+export const formatPercent = withDash(
+    (value: number): string =>
+        new Intl.NumberFormat(activeLocale.value, {
+            style: 'percent',
+            maximumFractionDigits: 2,
+        }).format(value / 100),
+);
 
 /** A change in a count, signed and exact: "+1,234", "-3", "0". */
 export const formatSignedNumber = (value: number): string =>
     new Intl.NumberFormat(activeLocale.value, { signDisplay: 'exceptZero' }).format(value);
 
 /** A count in the reader's language, exact: "1,234". */
-export const formatFullNumber = (value: MaybeNumber): string => {
-    if (value == null) {
-        return MISSING_VALUE;
-    }
-
-    return value.toLocaleString(activeLocale.value);
-};
+export const formatFullNumber = withDash(
+    (value: number): string => value.toLocaleString(activeLocale.value),
+);
 
 /** A change in a count, signed and compact: "+1.2K", "-3", "0". */
-export const formatCountChange = (value: MaybeNumber): string => {
-    if (value == null) {
-        return MISSING_VALUE;
-    }
+export const formatCountChange = withDash(
+    (value: number): string =>
+        new Intl.NumberFormat(activeLocale.value, {
+            notation: 'compact',
+            compactDisplay: 'short',
+            maximumFractionDigits: 1,
+            signDisplay: 'exceptZero',
+        }).format(value),
+);
 
-    return new Intl.NumberFormat(activeLocale.value, {
-        notation: 'compact',
-        compactDisplay: 'short',
-        maximumFractionDigits: 1,
-        signDisplay: 'exceptZero',
-    }).format(value);
-};
-
-export const formatPercentChange = (value: MaybeNumber): string => {
-    if (value == null) {
-        return MISSING_VALUE;
-    }
-
+export const formatPercentChange = withDash((value: number): string => {
     const compact = Math.abs(value) >= 1000;
 
     return new Intl.NumberFormat(activeLocale.value, {
@@ -127,7 +121,7 @@ export const formatPercentChange = (value: MaybeNumber): string => {
         notation: compact ? 'compact' : 'standard',
         maximumFractionDigits: compact ? 1 : 2,
     }).format(value / 100);
-};
+});
 
 export const formatMoney = (cents: number): string => {
     const dollars = cents / 100;

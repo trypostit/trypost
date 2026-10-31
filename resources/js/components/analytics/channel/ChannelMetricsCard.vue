@@ -64,7 +64,7 @@ import {
 import {
     channelChartShareOption,
 } from '@/lib/insightsShare';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type { ShareMetricOption } from '@/lib/shareCard';
 import type {
     ChannelMetricSeries,
     DateRange,

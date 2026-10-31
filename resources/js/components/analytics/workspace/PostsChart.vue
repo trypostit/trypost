@@ -8,7 +8,7 @@ import {
     postsShareOption,
     shareRangeLabel,
 } from '@/lib/insightsShare';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type { ShareMetricOption } from '@/lib/shareCard';
 import { formatNumberCompact } from '@/lib/utils';
 import type {
     AccountMetricRow,

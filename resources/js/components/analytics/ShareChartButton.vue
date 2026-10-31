@@ -14,7 +14,7 @@ import {
 import {
     prepareShareCard,
     type ShareMetricOption,
-} from '@/lib/insightsShareCard';
+} from '@/lib/shareCard';
 import { whenIdle } from '@/lib/utils';
 
 const props = defineProps<{

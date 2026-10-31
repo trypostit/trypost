@@ -27,7 +27,7 @@ import {
     type ShareCardOptions,
     type ShareMetricOption,
     type ShareTint,
-} from '@/lib/insightsShareCard';
+} from '@/lib/shareCard';
 import { copyImageToClipboard, downloadFile } from '@/lib/utils';
 import { storeChunked } from '@/routes/app/media';
 import { uploadChunked } from '@/utils/chunkedUpload';

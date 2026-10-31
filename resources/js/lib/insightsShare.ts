@@ -28,7 +28,7 @@ import {
     type SharePoint,
     type ShareShape,
     type ShareTile,
-} from '@/lib/insightsShareCard';
+} from '@/lib/shareCard';
 import { formatCountChange, formatNumberCompact } from '@/lib/utils';
 import type {
     AccountIdentityData,

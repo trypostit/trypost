@@ -11,7 +11,7 @@ import {
     percentDelta,
 } from '@/lib/channelMetrics';
 import { summaryShareOption } from '@/lib/insightsShare';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type { ShareMetricOption } from '@/lib/shareCard';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type {
     AnalyticsReport,
