@@ -30,6 +30,9 @@ export const accountLabel = (
     return account.name || getPlatformLabel(account.platform);
 };
 
+/** How long one bar of a chart over time covers. */
+export type BucketResolution = 'daily' | 'weekly' | 'monthly';
+
 export interface FollowerAccount extends AccountIdentityData {
     social_account_id: string | null;
     network: string;
@@ -135,7 +138,7 @@ export interface AnalyticsReport {
         series: { date: string; accounts: Record<string, number | null> }[];
     };
     posts: {
-        resolution: string;
+        resolution: BucketResolution;
         accounts: PostAccount[];
         buckets: PostBucket[];
     };
@@ -212,7 +215,7 @@ export interface FollowerGrowthRate {
 }
 
 export interface ChannelMetricSeries {
-    resolution: 'daily' | 'weekly' | 'monthly';
+    resolution: BucketResolution;
     metrics: SeriesMetric[];
     range: { start: string; end: string };
     previous_range: { start: string; end: string };

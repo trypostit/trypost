@@ -2,6 +2,7 @@ import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type {
+    BucketResolution,
     ChannelMetricSeries,
     FollowerGrowthRate,
     MetricSeriesPoint,
@@ -315,12 +316,15 @@ export const monthLabel = (day: string): string => {
 
 /** A bucket on the chart's time axis: the month for monthly buckets, else the day it starts. */
 export const axisBucketLabel = (
-    point: MetricSeriesPoint,
-    resolution: ChannelMetricSeries['resolution'],
-): string =>
-    resolution === 'monthly'
-        ? monthLabel(point.start)
-        : date.formatMonthDay(point.start);
+    bucket: { start: string },
+    resolution: BucketResolution,
+): string => {
+    if (resolution === 'monthly') {
+        return monthLabel(bucket.start);
+    }
+
+    return date.formatMonthDay(bucket.start);
+};
 
 const direction = (
     current: number,

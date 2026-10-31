@@ -6,6 +6,8 @@ use App\Enums\SocialAccount\Platform;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
+use App\Models\AnalyticsPublication;
+use App\Models\AnalyticsPublicationDailySnapshot;
 use App\Models\Media;
 use App\Models\SocialAccount;
 use App\Models\User;
@@ -177,4 +179,35 @@ test('the followers share card follows the chart mode the user picked', function
     'bar' => ['bar', 'rows'],
     'line' => ['line', 'line'],
     'growth' => ['growth', 'rows'],
+]);
+
+test('the posts share card follows the chart mode the user picked', function (string $mode, string $shape) {
+    [$user, $account] = insightsShareBrowserUser();
+    Storage::put('social-accounts/avatar.png', file_get_contents(base_path('tests/fixtures/blue-logo.png')));
+    $account->update(['avatar_url' => 'social-accounts/avatar.png']);
+
+    foreach ([12, 9, 9, 4] as $daysAgo) {
+        $publication = AnalyticsPublication::factory()->create([
+            'workspace_id' => $account->workspace_id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'provider_published_at' => now()->subDays($daysAgo)->setTime(10, 0),
+        ]);
+        AnalyticsPublicationDailySnapshot::factory()->create(['publication_id' => $publication->id]);
+    }
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, "@posts-{$mode}");
+    $page->click("@posts-{$mode}");
+    openShareCard($page, '@share-posts');
+
+    $page->assertAttribute('@share-chart-preview', 'data-shape', $shape)
+        ->assertNoJavaScriptErrors();
+})->with([
+    'bar' => ['bar', 'rows'],
+    'stacked' => ['stacked', 'stacked'],
 ]);

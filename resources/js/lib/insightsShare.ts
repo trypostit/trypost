@@ -13,6 +13,7 @@ import type {
 import { formatCountChange, formatPercentChange } from '@/lib/utils';
 import { avatar } from '@/routes/app/channels';
 import {
+    type AccountIdentityData,
     accountLabel,
     type ChannelMetricSeries,
     type FollowerAccount,
@@ -26,6 +27,8 @@ import {
  */
 
 type Followers = WorkspaceAnalyticsReport['followers'];
+
+type Posts = WorkspaceAnalyticsReport['posts'];
 
 /** How the page's Followers card is drawn: per channel, over time, or the change per channel. */
 export type FollowersChartMode = 'bar' | 'line' | 'growth';
@@ -44,6 +47,14 @@ const FOLLOWERS_ROW_VALUES: Record<
 > = {
     bar: (account) => account.value,
     growth: (account) => account.growth,
+};
+
+/** How the page's Posts card is drawn: per channel, or over time split by channel. */
+export type PostsChartMode = 'bar' | 'stacked';
+
+const POSTS_SHAPES: Record<PostsChartMode, ShareShape> = {
+    bar: 'rows',
+    stacked: 'stacked',
 };
 
 /** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
@@ -154,24 +165,40 @@ const followersOverTime = (followers: Followers): SharePoint[] => {
     });
 };
 
-/** A channel's avatar served from the app, so the card can draw it; none for a channel no longer connected. */
-const channelAvatar = (account: FollowerAccount): string | null => {
-    if (!account.social_account_id || !account.avatar_url) {
+/**
+ * The id of the workspace channel a report row stands for, while it is still
+ * connected: the report keys a connected channel by its id and gives it a live
+ * status (`BuildWorkspaceAnalyticsReport::liveAccountsByKey`), and a channel
+ * that is gone has none.
+ */
+const liveChannelId = (account: AccountIdentityData): string | null => {
+    if (!account.status) {
         return null;
     }
 
-    return avatar.url(account.social_account_id);
+    return account.social_account_key;
 };
 
-/** One row per channel in its color, showing what `mode` shows. */
-const followersPerChannel = (
-    followers: Followers,
-    mode: Exclude<FollowersChartMode, 'line'>,
+/** A channel's avatar served from the app, so the card can draw it; none for a channel no longer connected. */
+const channelAvatar = (account: AccountIdentityData): string | null => {
+    const id = liveChannelId(account);
+
+    if (!id || !account.avatar_url) {
+        return null;
+    }
+
+    return avatar.url(id);
+};
+
+/** One row per channel in its color, the way the page's per-channel charts draw it. */
+const channelRows = <Account extends AccountIdentityData>(
+    accounts: Account[],
+    value: (account: Account) => number | null,
     colors: Record<string, string>,
 ): SharePoint[] =>
-    followers.accounts.map((account) => ({
+    accounts.map((account) => ({
         label: accountLabel(account),
-        value: FOLLOWERS_ROW_VALUES[mode](account),
+        value: value(account),
         color: colors[account.social_account_key],
         channel: {
             platform: account.platform,
@@ -189,7 +216,7 @@ const followersPoints = (
         return followersOverTime(followers);
     }
 
-    return followersPerChannel(followers, mode, colors);
+    return channelRows(followers.accounts, FOLLOWERS_ROW_VALUES[mode], colors);
 };
 
 /** The followers gained or lost over the period, across the channels that report it. */
@@ -329,3 +356,42 @@ export const summaryShareOption = (
         tiles,
         caption: summaryCaption(channel, tiles, range),
     });
+
+/** The Posts card's columns over time, each split by channel in its color. */
+const postsOverTime = (posts: Posts, colors: Record<string, string>): SharePoint[] =>
+    posts.buckets.map((bucket) => ({
+        label: axisBucketLabel(bucket, posts.resolution),
+        value: bucket.total,
+        segments: posts.accounts.map((account) => ({
+            value: bucket.accounts[account.social_account_key] ?? 0,
+            color: colors[account.social_account_key],
+        })),
+    }));
+
+const postsPoints = (posts: Posts, mode: PostsChartMode, colors: Record<string, string>): SharePoint[] => {
+    if (mode === 'stacked') {
+        return postsOverTime(posts, colors);
+    }
+
+    return channelRows(posts.accounts, (account) => account.count, colors);
+};
+
+/** The posts sent over the period the way the page's Posts card draws them in `mode`. */
+export const postsShareOption = (
+    posts: Posts,
+    range: string,
+    mode: PostsChartMode,
+    colors: Record<string, string>,
+): ShareMetricOption => {
+    const label = trans('analytics.dashboard.posts');
+    const figure = formatSeriesValue(sum(posts.accounts.map((account) => account.count)), 'posts');
+
+    return shareOption({
+        key: 'posts',
+        label,
+        figure,
+        points: postsPoints(posts, mode, colors),
+        shape: POSTS_SHAPES[mode],
+        caption: metricCaption(null, { metric: label, value: figure, range }),
+    });
+};

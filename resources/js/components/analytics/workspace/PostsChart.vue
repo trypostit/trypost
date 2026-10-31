@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
+import { type PostsChartMode, postsShareOption } from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -19,7 +22,7 @@ const props = defineProps<{
     channelFiltered?: boolean;
     totalChannels?: number;
 }>();
-const mode = ref<'bar' | 'stacked'>('bar');
+const mode = ref<PostsChartMode>('bar');
 const buttons = [
     { mode: 'bar', label: 'analytics.dashboard.chart_bar', test: 'posts-bar' },
     {
@@ -35,10 +38,10 @@ const shownChannels = computed(() =>
         ? props.posts.accounts.length
         : null,
 );
-const rangeLabel = computed(
-    () =>
-        date.formatDayMonthYearRange(props.range),
-);
+const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
+const buildShareOptions = (): ShareMetricOption[] => [
+    postsShareOption(props.posts, rangeLabel.value, mode.value, props.colors),
+];
 </script>
 
 <template>
@@ -63,6 +66,12 @@ const rangeLabel = computed(
                 v-model="mode"
                 label="analytics.dashboard.posts_chart_mode"
                 :options="buttons"
+            />
+            <ShareChartButton
+                v-if="posts.accounts.length > 0"
+                :range="rangeLabel"
+                :build="buildShareOptions"
+                test-id="share-posts"
             />
         </template>
 

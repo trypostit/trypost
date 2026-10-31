@@ -16,8 +16,8 @@ import type { VerifiedBadge } from '@/types/social-account';
  * no CORS header and one such image would stop the canvas exporting.
  */
 
-/** A line or columns over time, one horizontal bar per channel, or the Summary's numbers. */
-export type ShareShape = 'line' | 'bar' | 'rows' | 'tiles';
+/** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
+export type ShareShape = 'line' | 'bar' | 'stacked' | 'rows' | 'tiles';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
@@ -29,12 +29,17 @@ export type ShareChannel = {
     verified: VerifiedBadge | null;
 };
 
+/** One channel's part of a `stacked` column, in the channel's color. */
+export type ShareSegment = { value: number; color: string };
+
 /** A bucket over time, or a channel for `rows`, which may bring its own color. */
 export type SharePoint = {
     label: string;
     value: number | null;
     color?: string;
     channel?: ShareChannel;
+    /** The column's parts, bottom up, for `stacked`; `value` is their total. */
+    segments?: ShareSegment[];
 };
 
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
@@ -446,7 +451,7 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
     const low = Math.min(...values);
     const high = Math.max(...values);
 
-    if (shape === 'bar' || (low >= 0 && low <= high - low)) {
+    if (shape !== 'line' || (low >= 0 && low <= high - low)) {
         const bottom = Math.min(0, low);
         const top = Math.max(0, high);
 
@@ -788,7 +793,51 @@ const paintHeadline = (context: CanvasRenderingContext2D, options: ShareCardOpti
     }
 };
 
-/** One column per bucket from zero, in the tint's strong color. */
+type Column = { middle: number; width: number };
+
+/**
+ * A column split by channel, bottom up in the page's order, with only its top
+ * rounded like unovis' stacked bars. `colorOf` resolves each channel's color.
+ */
+const paintStack = (
+    context: CanvasRenderingContext2D,
+    segments: ShareSegment[],
+    column: Column,
+    y: (value: number) => number,
+    colorOf: (color: string) => string,
+): void => {
+    const parts = segments.filter((segment) => segment.value > 0);
+    let base = 0;
+
+    parts.forEach((segment, index) => {
+        const top = base + segment.value;
+
+        context.fillStyle = colorOf(segment.color);
+
+        if (index === parts.length - 1) {
+            fillBar(context, y(base), y(top), column.middle, column.width, false);
+        } else {
+            context.fillRect(column.middle - column.width / 2, y(top), column.width, y(base) - y(top));
+        }
+
+        base = top;
+    });
+};
+
+/** A CSS color resolved once per paint: a column per day times every channel is many segments. */
+const colorResolver = (): ((color: string) => string) => {
+    const resolved = new Map<string, string>();
+
+    return (color) => {
+        const known = resolved.get(color) ?? resolveCssColor(color);
+
+        resolved.set(color, known);
+
+        return known;
+    };
+};
+
+/** One column per bucket from zero: in the tint's strong color, or split by channel for `stacked`. */
 const paintBars = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
@@ -799,14 +848,20 @@ const paintBars = (
 ): void => {
     const slot = plot.width / options.points.length;
     const width = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
-
-    context.fillStyle = options.tint.strong;
+    const colorOf = colorResolver();
 
     options.points.forEach((point, index) => {
         if (point.value === null || point.value === 0) {
             return;
         }
 
+        if (point.segments) {
+            paintStack(context, point.segments, { middle: x(index), width }, y, colorOf);
+
+            return;
+        }
+
+        context.fillStyle = options.tint.strong;
         fillBar(context, zero, y(point.value), x(index), width, false);
     });
 };
@@ -920,7 +975,7 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
         { align: 'right', baseline: 'middle' },
     );
 
-    if (options.shape === 'bar') {
+    if (options.shape === 'bar' || options.shape === 'stacked') {
         paintBars(context, options, plot, x, y, plot.y + plot.height - axis.zero * plot.height);
     } else {
         paintLine(context, options, x, y);

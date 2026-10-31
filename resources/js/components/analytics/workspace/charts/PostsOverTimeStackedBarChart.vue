@@ -16,7 +16,11 @@ import {
 import date from '@/date';
 import dayjs from '@/dayjs';
 import { accountColor } from '@/lib/analyticsColors';
-import type { PostAccount, PostBucket } from '@/types/analytics';
+import type {
+    BucketResolution,
+    PostAccount,
+    PostBucket,
+} from '@/types/analytics';
 
 import {
     formatCountTick,
@@ -32,7 +36,7 @@ type ChartPoint = {
 const props = defineProps<{
     accounts: PostAccount[];
     buckets: PostBucket[];
-    resolution: string;
+    resolution: BucketResolution;
     colors: Record<string, string>;
     valueLabel?: string;
 }>();
