@@ -6,7 +6,14 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed, getCurrentInstance, h, onBeforeUnmount, render } from 'vue';
+import {
+    computed,
+    getCurrentInstance,
+    h,
+    onBeforeUnmount,
+    render,
+    useTemplateRef,
+} from 'vue';
 
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import {
@@ -103,12 +110,12 @@ const tickAttributes = {
         'data-account-tick': (tick: number): string => String(Math.round(tick)),
     },
 };
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const AVATAR_SIZE = 24;
 const AVATAR_OVERHANG = 4;
 const AVATAR_GAP = 8;
 const appContext = getCurrentInstance()?.appContext ?? null;
 const avatarHosts: HTMLElement[] = [];
+const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
 
 const accountLabel = (account: AccountIdentityData): string =>
     account.username
@@ -116,22 +123,39 @@ const accountLabel = (account: AccountIdentityData): string =>
         : account.name || getPlatformLabel(account.platform);
 
 const unmountAvatars = (): void => {
-    avatarHosts.splice(0).forEach((host) => render(null, host));
+    avatarHosts.splice(0).forEach((host) => {
+        render(null, host);
+        host.remove();
+    });
 };
 
-const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
-    const box = AVATAR_SIZE + AVATAR_OVERHANG * 2;
-    const frame = document.createElementNS(SVG_NAMESPACE, 'foreignObject');
-    frame.setAttribute('x', String(-AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG));
-    frame.setAttribute('y', String(-AVATAR_SIZE / 2 - AVATAR_OVERHANG));
-    frame.setAttribute('width', String(box));
-    frame.setAttribute('height', String(box));
-    frame.setAttribute('data-account-logo', '');
-    frame.setAttribute('data-testid', 'analytics-axis-channel');
-    frame.setAttribute('data-platform', account.platform);
-    frame.style.overflow = 'visible';
+/**
+ * The channel's avatar next to its axis label, as HTML laid over the chart at
+ * the tick's position. Not a `<foreignObject>` inside the SVG: WebKit (every
+ * browser on iOS) ignores the tick's transform there and draws every avatar at
+ * the chart's corner.
+ */
+const placeAxisChannel = (
+    layer: HTMLDivElement,
+    svg: SVGSVGElement,
+    tick: SVGGElement,
+    account: AccountIdentityData,
+): void => {
+    const origin = tick.getCTM();
 
+    if (!origin) {
+        return;
+    }
+
+    const svgBox = svg.getBoundingClientRect();
+    const layerBox = layer.getBoundingClientRect();
     const host = document.createElement('div');
+
+    host.dataset.testid = 'analytics-axis-channel';
+    host.dataset.platform = account.platform;
+    host.style.position = 'absolute';
+    host.style.left = `${svgBox.left - layerBox.left + origin.e - AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG}px`;
+    host.style.top = `${svgBox.top - layerBox.top + origin.f - AVATAR_SIZE / 2 - AVATAR_OVERHANG}px`;
     host.style.padding = `${AVATAR_OVERHANG}px`;
     host.style.lineHeight = '0';
 
@@ -149,26 +173,27 @@ const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
     avatar.appContext = appContext;
     render(avatar, host);
     avatarHosts.push(host);
-    frame.appendChild(host);
-
-    return frame;
+    layer.appendChild(host);
 };
 
 const decorateTicks = (svg: SVGSVGElement): void => {
     unmountAvatars();
-    svg.querySelectorAll('[data-account-logo]').forEach((logo) =>
-        logo.remove(),
-    );
+
+    const layer = avatarLayer.value;
+
+    if (!layer) {
+        return;
+    }
+
     svg.querySelectorAll<SVGGElement>('g[data-account-tick]').forEach(
         (tick) => {
-            const index = Number(tick.getAttribute('data-account-tick'));
-            const account = props.rows[index]?.account;
+            const account =
+                props.rows[Number(tick.getAttribute('data-account-tick'))]
+                    ?.account;
 
-            if (!account) {
-                return;
+            if (account) {
+                placeAxisChannel(layer, svg, tick, account);
             }
-
-            tick.appendChild(buildAxisChannel(account));
         },
     );
 };
@@ -182,10 +207,15 @@ const barAttributes = {
 <template>
     <ChartContainer
         :config="chartConfig"
-        class="w-full"
+        class="relative w-full"
         :style="{ height: chartHeight }"
         data-testid="accounts-unovis-bar-chart"
     >
+        <div
+            ref="avatarLayer"
+            class="pointer-events-none absolute inset-0 z-10"
+            aria-hidden="true"
+        />
         <VisXYContainer
             :data="chartData"
             y-direction="south"
