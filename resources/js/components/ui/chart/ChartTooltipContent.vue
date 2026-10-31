@@ -14,6 +14,8 @@ const props = withDefaults(
         labelFormatter?: (value: number | Date) => string;
         /** The labelled numbers listed under an entry, such as where it started and what it gained. */
         detailFormatter?: (key: string, value: number) => ChartTooltipDetail[];
+        /** A labelled total for the whole point, shown under its heading, such as a day's posts. */
+        totalFormatter?: (x: number | Date) => ChartTooltipDetail | null;
         x?: number | Date;
     }>(),
     { payload: () => ({}), config: () => ({}) },
@@ -35,6 +37,14 @@ const entries = computed(() =>
     }),
 );
 
+const total = computed((): ChartTooltipDetail | null => {
+    if (props.x === undefined || !props.totalFormatter) {
+        return null;
+    }
+
+    return props.totalFormatter(props.x);
+});
+
 const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
     up: 'text-success-text',
     down: 'text-destructive-text',
@@ -52,6 +62,14 @@ const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
         >
             {{ labelFormatter ? labelFormatter(x) : x }}
         </p>
+        <div
+            v-if="total"
+            class="flex items-center justify-between gap-6 border-b border-border px-3 py-2 font-medium text-foreground"
+            data-testid="analytics-tooltip-total"
+        >
+            <span>{{ total.label }}</span>
+            <span class="tabular-nums">{{ total.value }}</span>
+        </div>
         <div class="grid gap-2 px-3 py-2.5">
             <div v-for="entry in entries" :key="entry.key" class="grid gap-0.5">
                 <div class="flex items-center justify-between gap-6">

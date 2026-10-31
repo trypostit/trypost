@@ -123,7 +123,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
                     :buckets="posts.buckets"
                     :resolution="posts.resolution"
                     :colors="colors"
-                    :value-label="$t('analytics.dashboard.posts')"
                 />
             </div>
             <div

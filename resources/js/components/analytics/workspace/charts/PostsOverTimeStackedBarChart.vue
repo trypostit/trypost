@@ -5,16 +5,19 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
+import { trans } from 'laravel-vue-i18n';
 import { computed, getCurrentInstance } from 'vue';
 
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
 import date from '@/date';
 import dayjs from '@/dayjs';
+import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
 import type {
     BucketResolution,
@@ -38,7 +41,6 @@ const props = defineProps<{
     buckets: PostBucket[];
     resolution: BucketResolution;
     colors: Record<string, string>;
-    valueLabel?: string;
 }>();
 
 const bucketLabel = (bucket: PostBucket): string => {
@@ -84,13 +86,30 @@ const formatBucket = (tick: number | Date): string => {
     const index = typeof tick === 'number' ? Math.round(tick) : 0;
     return chartData.value[index]?.label ?? '';
 };
+/** The posts of a column across every channel, as the report counts them. */
+const bucketTotal = (tick: number | Date): ChartTooltipDetail | null => {
+    if (typeof tick !== 'number') {
+        return null;
+    }
+
+    const bucket = props.buckets[Math.round(tick)];
+
+    if (!bucket) {
+        return null;
+    }
+
+    return {
+        label: trans('analytics.dashboard.total_posts'),
+        value: bucket.total.toLocaleString(activeLocale.value),
+    };
+};
 const ticks = computed(() => props.buckets.map((_, index) => index));
 const appContext = getCurrentInstance()?.appContext ?? null;
 const tooltipTemplate = computed(() =>
     componentToString(
         chartConfig.value,
         ChartTooltipContent,
-        { labelFormatter: formatBucket },
+        { labelFormatter: formatBucket, totalFormatter: bucketTotal },
         appContext,
     ),
 );
@@ -139,9 +158,6 @@ const barAttributes = {
                 type="y"
                 :tick-format="formatCountTick"
                 :num-ticks="5"
-                :label="valueLabel"
-                label-font-size="11px"
-                label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
