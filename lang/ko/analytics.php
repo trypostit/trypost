@@ -86,8 +86,6 @@ return [
         'no_excerpt' => '텍스트 미리보기가 없습니다.',
         'published_via' => '게시 경로:',
         'top_posts_sort' => '게시물 정렬 기준',
-        'carried_forward' => '마지막으로 확인된 값',
-        'carried_forward_hint' => '서비스를 사용할 수 없어 마지막으로 확인된 팔로워 수를 표시합니다.',
         'import_in_progress' => '계정 기록을 가져오는 중입니다. 수집이 진행되면 이전 게시물이 표시됩니다.',
         'no_data_title' => '분석 기록을 준비하고 있습니다',
         'no_data_body' => '지원되는 계정을 연결하거나 첫 백그라운드 수집을 기다려 주세요. 가져오는 동안 이전 게시물이 표시됩니다.',

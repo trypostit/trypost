@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Metin önizlemesi mevcut değil.',
         'published_via' => 'Yayın kaynağı:',
         'top_posts_sort' => 'Gönderileri şuna göre sırala',
-        'carried_forward' => 'Bilinen son değer',
-        'carried_forward_hint' => 'Sağlayıcı kullanılamıyordu; bu, bilinen son takipçi sayısıdır.',
         'import_in_progress' => 'Hesap geçmişi içe aktarılıyor. Veri toplama ilerledikçe eski gönderiler görünecek.',
         'no_data_title' => 'Analiz geçmişiniz hazırlanıyor',
         'no_data_body' => 'Desteklenen bir hesap bağlayın veya arka plandaki ilk veri toplamayı bekleyin. Geçmiş gönderiler içe aktarma sırasında görünecek.',

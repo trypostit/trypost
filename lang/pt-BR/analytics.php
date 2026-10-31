@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Prévia de texto indisponível.',
         'published_via' => 'Publicado via',
         'top_posts_sort' => 'Ordenar posts por',
-        'carried_forward' => 'Último valor',
-        'carried_forward_hint' => 'A rede ficou indisponível; este é o último número conhecido de seguidores.',
         'import_in_progress' => 'Importando o histórico das contas. Posts antigos aparecerão conforme a coleta avançar.',
         'no_data_title' => 'Estamos preparando seu histórico de analytics',
         'no_data_body' => 'Conecte uma conta compatível ou aguarde a primeira coleta em segundo plano. Os posts históricos aparecerão durante a importação.',

@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Keine Textvorschau verfügbar.',
         'published_via' => 'Veröffentlicht über',
         'top_posts_sort' => 'Beiträge sortieren nach',
-        'carried_forward' => 'Letzter bekannter Wert',
-        'carried_forward_hint' => 'Der Anbieter war nicht verfügbar; dies ist die letzte bekannte Follower-Zahl.',
         'import_in_progress' => 'Der Kontoverlauf wird importiert. Ältere Beiträge erscheinen, während die Erfassung fortschreitet.',
         'no_data_title' => 'Dein Analyseverlauf wird vorbereitet',
         'no_data_body' => 'Verbinde ein unterstütztes Konto oder warte auf die erste Erfassung im Hintergrund. Frühere Beiträge erscheinen während des Imports.',

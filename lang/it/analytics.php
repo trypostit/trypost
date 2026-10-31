@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Anteprima del testo non disponibile.',
         'published_via' => 'Pubblicato tramite',
         'top_posts_sort' => 'Ordina i post per',
-        'carried_forward' => 'Ultimo valore noto',
-        'carried_forward_hint' => 'Il servizio non era disponibile; questo è l’ultimo numero noto di follower.',
         'import_in_progress' => 'Importazione della cronologia dell’account. I post meno recenti appariranno man mano che procede la raccolta.',
         'no_data_title' => 'Stiamo preparando la cronologia delle statistiche',
         'no_data_body' => 'Collega un account supportato o attendi la prima raccolta in background. I post precedenti appariranno durante l’importazione.',

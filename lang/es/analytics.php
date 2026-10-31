@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'No hay vista previa de texto disponible.',
         'published_via' => 'Publicado vía',
         'top_posts_sort' => 'Ordenar publicaciones por',
-        'carried_forward' => 'Último valor conocido',
-        'carried_forward_hint' => 'El proveedor no estaba disponible; este es el último número conocido de seguidores.',
         'import_in_progress' => 'Importando el historial de la cuenta. Las publicaciones antiguas aparecerán a medida que avance la recopilación.',
         'no_data_title' => 'Estamos preparando tu historial de estadísticas',
         'no_data_body' => 'Conecta una cuenta compatible o espera a la primera recopilación en segundo plano. Las publicaciones anteriores aparecerán durante la importación.',

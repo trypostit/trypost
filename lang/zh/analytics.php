@@ -86,8 +86,6 @@ return [
         'no_excerpt' => '没有可用的文字预览。',
         'published_via' => '发布来源:',
         'top_posts_sort' => '帖子排序依据',
-        'carried_forward' => '最近已知值',
-        'carried_forward_hint' => '服务暂时不可用；这里显示最近已知的粉丝数。',
         'import_in_progress' => '正在导入账号历史记录。采集过程中会逐步显示更早的帖子。',
         'no_data_title' => '正在准备你的分析历史数据',
         'no_data_body' => '连接受支持的账号，或等待首次后台采集。导入过程中会显示历史帖子。',

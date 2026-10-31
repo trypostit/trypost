@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'No text preview available.',
         'published_via' => 'Published via',
         'top_posts_sort' => 'Rank posts by',
-        'carried_forward' => 'Last known',
-        'carried_forward_hint' => 'The provider was unavailable; this is the last known follower count.',
         'import_in_progress' => 'Importing account history. Older posts may appear as collection continues.',
         'no_data_title' => 'Your analytics history is being prepared',
         'no_data_body' => 'Connect a supported account or wait for the first background collection. Historical posts appear as they are imported.',

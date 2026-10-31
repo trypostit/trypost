@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Geen tekstvoorbeeld beschikbaar.',
         'published_via' => 'Gepubliceerd via',
         'top_posts_sort' => 'Berichten rangschikken op',
-        'carried_forward' => 'Laatst bekende waarde',
-        'carried_forward_hint' => 'De aanbieder was niet beschikbaar; dit is het laatst bekende aantal volgers.',
         'import_in_progress' => 'Accountgeschiedenis wordt geïmporteerd. Oudere berichten verschijnen naarmate het verzamelen vordert.',
         'no_data_title' => 'Je statistiekgeschiedenis wordt voorbereid',
         'no_data_body' => 'Koppel een ondersteund account of wacht op de eerste verzameling op de achtergrond. Eerdere berichten verschijnen tijdens de import.',

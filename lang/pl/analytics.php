@@ -86,8 +86,6 @@ return [
         'no_excerpt' => 'Podgląd tekstu jest niedostępny.',
         'published_via' => 'Opublikowano przez',
         'top_posts_sort' => 'Sortuj posty według',
-        'carried_forward' => 'Ostatnia znana wartość',
-        'carried_forward_hint' => 'Dostawca był niedostępny; to ostatnia znana liczba obserwujących.',
         'import_in_progress' => 'Trwa import historii konta. Starsze posty pojawią się w miarę pobierania.',
         'no_data_title' => 'Przygotowujemy historię Twoich statystyk',
         'no_data_body' => 'Połącz obsługiwane konto lub poczekaj na pierwsze pobranie w tle. Starsze posty pojawią się podczas importu.',
