@@ -207,7 +207,10 @@ watch(
                 v-for="(column, index) in columns"
                 :key="column.key"
                 class="relative"
-                :class="{ 'border-l border-border-strong': index > 0 }"
+                :class="{
+                    'ps-px before:pointer-events-none before:absolute before:inset-y-0 before:start-0 before:z-[1] before:w-px before:bg-border-strong':
+                        index > 0,
+                }"
             >
                 <div
                     v-for="hour in HOURS"
