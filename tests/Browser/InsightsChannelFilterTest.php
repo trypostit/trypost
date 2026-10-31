@@ -292,7 +292,7 @@ test('the posts card heads with every channel’s posts and lists the channels o
     $page->assertNoJavaScriptErrors();
 });
 
-test('on a phone the channel and label filters open as sheets', function () {
+test('on a phone the channel, label and post type filters open as sheets', function () {
     [$user, $accounts] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -310,5 +310,47 @@ test('on a phone the channel and label filters open as sheets', function () {
     waitFor($channel, '@insights-label-sheet');
 
     $channel->assertVisible('@insights-label-sheet')
+        ->assertNoJavaScriptErrors();
+
+    $types = visit(route('app.channels.insights', $accounts[0]))->resize(390, 844);
+    waitFor($types, '@insights-post-type-filter');
+    $types->click('@insights-post-type-filter');
+    waitFor($types, '@insights-post-type-sheet');
+
+    $types->assertVisible('@insights-post-type-sheet')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the followers line axis never prints two ticks alike when the counts are close', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    AnalyticsAccountDailySnapshot::query()->where('social_account_id', $accounts[1]->id)->delete();
+    $accounts[1]->delete();
+    AnalyticsAccountDailySnapshot::query()->where('social_account_id', $accounts[0]->id)->orderBy('date')->get()
+        ->each(fn (AnalyticsAccountDailySnapshot $snapshot, int $index) => $snapshot->update(['followers_count' => [9990, 10010][$index]]));
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@followers-line');
+    $page->click('@followers-line');
+    waitFor($page, '@followers-unovis-chart [data-value-tick]');
+
+    $ticks = $page->script('Array.from(document.querySelectorAll(\'[data-testid="followers-unovis-chart"] [data-value-tick]\'), (tick) => tick.textContent.trim())');
+
+    expect(count($ticks))->toBeGreaterThan(2)
+        ->and(array_unique($ticks))->toHaveCount(count($ticks));
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a channel without a follower reading in the period gets no label at the end of the lines', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    AnalyticsAccountDailySnapshot::query()->where('social_account_id', $accounts[1]->id)->delete();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@followers-line');
+    $page->click('@followers-line');
+    waitFor($page, '@analytics-line-end-value');
+
+    $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).join(",")', '120')
         ->assertNoJavaScriptErrors();
 });

@@ -678,3 +678,17 @@ test('the reel and story badges on a post card show a 16px icon', function (Cont
     expect($page->script("(() => { const box = document.querySelector('[data-testid=\"post-content-type-icon-{$post->id}\"]').getBoundingClientRect(); return [Math.round(box.width), Math.round(box.height)]; })()"))->toBe([16, 16]);
     $page->assertNoJavaScriptErrors();
 })->with([ContentType::InstagramReel, ContentType::InstagramStory]);
+
+test('on a phone the channel filter opens as a sheet on the publish page and the calendar', function (string $route) {
+    [$user, $workspace] = publishPageSetup();
+    SocialAccount::factory()->linkedin()->create(['workspace_id' => $workspace->id, 'timezone' => 'UTC']);
+    $this->actingAs($user);
+
+    $page = visit(route($route))->resize(390, 844);
+    waitFor($page, '@posts-channel-filter');
+    $page->click('@posts-channel-filter');
+    waitFor($page, '@posts-channel-sheet');
+
+    $page->assertVisible('@posts-channel-sheet')
+        ->assertNoJavaScriptErrors();
+})->with(['app.posts.index', 'app.calendar']);

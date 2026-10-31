@@ -762,3 +762,17 @@ test('the gallery stage filter search ignores accents and matches each word in a
         ->assertMissing('@ideas-filter-stages-unassigned')
         ->assertNoJavaScriptErrors();
 });
+
+test('on a phone the label filter opens as a sheet', function () {
+    [$user, $workspace] = createIdeasBoardSetup();
+    WorkspaceLabel::factory()->create(['workspace_id' => $workspace->id]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.create.ideas.index'))->resize(390, 844);
+    waitFor($page, '@ideas-filter-labels-filter');
+    $page->click('@ideas-filter-labels-filter');
+    waitFor($page, '@ideas-filter-labels-sheet');
+
+    $page->assertVisible('@ideas-filter-labels-sheet')
+        ->assertNoJavaScriptErrors();
+});

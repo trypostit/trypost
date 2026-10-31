@@ -811,9 +811,9 @@ test('top posts show the post media from our bucket, a video by its cover frame'
         ->assertNoJavaScriptErrors();
 });
 
-test('the range caption names each period in full at its edges', function (string $start, string $end, string $current, string $previous) {
+test('the range caption names each period in full at its edges', function (string $start, string $end, string $current, string $previous, Locale $locale = Locale::DEFAULT) {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
-    $user = User::factory()->create();
+    $user = User::factory()->create(['locale' => $locale]);
     $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
     $workspace->members()->attach($user->id, membershipPivot('admin'));
     $user->update(['current_workspace_id' => $workspace->id]);
@@ -841,4 +841,74 @@ test('the range caption names each period in full at its edges', function (strin
 })->with([
     'one day' => ['2026-01-10', '2026-01-10', '10 Jan 2026', 'vs 9 Jan'],
     'a previous period across New Year' => ['2026-01-04', '2026-01-10', '4 – 10 Jan 2026', 'vs 28 Dec 2025 – 3 Jan 2026'],
+    'periods across a month' => ['2026-10-02', '2026-10-08', '2 – 8 Oct 2026', 'vs 25 Sep – 1 Oct'],
+    'in Portuguese' => ['2026-10-02', '2026-10-08', '2 – 8 out 2026', 'vs. 25 set – 1 out', Locale::PortugueseBrazil],
 ]);
+
+test('on a phone the custom range applies the two days picked in its sheet', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+
+    foreach (range(0, 40) as $daysAgo) {
+        AnalyticsAccountDailySnapshot::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'platform_user_id' => $account->platform_user_id,
+            'date' => now('UTC')->subDays($daysAgo)->toDateString(),
+            'followers_count' => 100,
+        ]);
+    }
+
+    $this->actingAs($user);
+    $page = visit(route('app.insights'))->resize(390, 844);
+    waitFor($page, '@insights-range-mobile-trigger');
+    $page->click('@insights-range-mobile-trigger');
+    waitFor($page, '@insights-range-mobile-custom');
+    $page->click('@insights-range-mobile-custom');
+    waitFor($page, '@date-range-picker-sheet [data-slot="range-calendar-trigger"]');
+
+    $days = $page->script(<<<'JS'
+        Array.from(document.querySelectorAll('[data-testid="date-range-picker-sheet"] [data-slot="range-calendar-trigger"]'))
+            .filter((day) => !day.hasAttribute('data-disabled') && !day.hasAttribute('data-outside-view'))
+            .slice(0, 2)
+            .map((day) => day.dataset.value)
+    JS);
+
+    foreach ($days as $day) {
+        $page->click("[data-testid=\"date-range-picker-sheet\"] [data-slot=\"range-calendar-trigger\"][data-value=\"{$day}\"]");
+    }
+
+    waitForCondition($page, "new URLSearchParams(location.search).get('end') === '{$days[1]}'");
+
+    $page->assertQueryStringHas('range', 'custom')
+        ->assertQueryStringHas('start', $days[0])
+        ->assertQueryStringHas('end', $days[1])
+        ->assertNoJavaScriptErrors();
+});
+
+test('on a phone the custom range stays off until the workspace has data', function () {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+
+    $this->actingAs($user);
+    $page = visit(route('app.insights'))->resize(390, 844);
+    waitFor($page, '@insights-range-mobile-trigger');
+    $page->click('@insights-range-mobile-trigger');
+    waitFor($page, '@insights-range-mobile-custom');
+
+    $page->assertAttribute('@insights-range-mobile-custom', 'data-disabled', '')
+        ->assertNoJavaScriptErrors();
+});

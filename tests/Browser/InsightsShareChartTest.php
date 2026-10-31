@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Theme;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
 use App\Models\AnalyticsAccountDailySnapshot;
@@ -338,4 +339,54 @@ test('closing the dialog while Create post uploads stops it, with no composer an
     expect($page->script('document.querySelectorAll("[data-sonner-toast]").length'))->toBe(0);
     $page->assertMissing('@post-composer-dialog')
         ->assertNoJavaScriptErrors();
+});
+
+test('a dark page still draws the share card in the light palette', function () {
+    [$user] = insightsShareBrowserUser();
+    $user->update(['theme' => Theme::Dark]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    openShareCard($page, '@share-followers');
+
+    $palettes = $page->script(<<<'JS'
+        (() => {
+            const read = (light) => Array.from({ length: 10 }, (_, index) => {
+                const probe = document.createElement('span');
+                if (light) probe.dataset.lightTheme = '';
+                probe.style.color = `var(--series-${index + 1})`;
+                document.body.append(probe);
+                const [r, g, b] = getComputedStyle(probe).color.match(/\d+/g).map(Number);
+                probe.remove();
+                return `${r},${g},${b}`;
+            });
+            const canvas = document.querySelector('[data-testid="share-chart-preview"]');
+            const { data } = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height);
+            const painted = new Set();
+            for (let index = 0; index < data.length; index += 4) {
+                painted.add(`${data[index]},${data[index + 1]},${data[index + 2]}`);
+            }
+            return {
+                dark: document.documentElement.classList.contains('dark'),
+                light: read(true).filter((color) => painted.has(color)).length,
+                darkOnly: read(false).filter((color, index) => color !== read(true)[index] && painted.has(color)).length,
+            };
+        })()
+    JS);
+
+    expect($palettes)->toBe(['dark' => true, 'light' => 1, 'darkOnly' => 0]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a channel with neither name nor handle is shared under its network’s name', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    $account->update(['display_name' => null, 'username' => null]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.insights', $account));
+    openShareCard($page, '@share-summary');
+    $page->click('@share-chart-post');
+
+    expect(composerText($page))->toStartWith('Our numbers on Instagram for ');
+    $page->assertNoJavaScriptErrors();
 });
