@@ -109,7 +109,8 @@ return [
         '30d' => '30 天',
         'mtd' => '本月至今',
         'custom' => '自定义',
-        'compared_to' => ':current · 对比 :previous',
+        'versus' => '对比 :range',
+        'versus_hint' => '变化是将此期间与 :range 进行比较。',
         'label' => '日期范围',
     ],
 

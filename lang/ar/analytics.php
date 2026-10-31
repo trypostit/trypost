@@ -109,7 +109,8 @@ return [
         '30d' => '30 يومًا',
         'mtd' => 'الشهر الحالي',
         'custom' => 'مخصص',
-        'compared_to' => ':current · مقارنةً بـ :previous',
+        'versus' => 'مقابل :range',
+        'versus_hint' => 'تقارن التغييرات هذه الفترة بالفترة :range.',
         'label' => 'النطاق الزمني',
     ],
 

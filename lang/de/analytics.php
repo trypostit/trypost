@@ -109,7 +109,8 @@ return [
         '30d' => '30 Tage',
         'mtd' => 'Aktueller Monat',
         'custom' => 'Benutzerdefiniert',
-        'compared_to' => ':current · verglichen mit :previous',
+        'versus' => 'vs. :range',
+        'versus_hint' => 'Die Veränderungen vergleichen diesen Zeitraum mit :range.',
         'label' => 'Zeitraum',
     ],
 

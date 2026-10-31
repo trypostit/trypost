@@ -109,7 +109,8 @@ return [
         '30d' => '30 дней',
         'mtd' => 'Текущий месяц',
         'custom' => 'Свой период',
-        'compared_to' => ':current · по сравнению с :previous',
+        'versus' => 'vs :range',
+        'versus_hint' => 'Изменения сравнивают этот период с периодом :range.',
         'label' => 'Период',
     ],
 

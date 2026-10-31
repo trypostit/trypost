@@ -20,7 +20,6 @@ import InfoTip from './InfoTip.vue';
 const props = defineProps<{
     report: AnalyticsReport;
     availableMetrics?: SummaryMetric[];
-    subtitle?: string;
     subtitleTestid?: string;
     network?: string;
     channel?: string;
@@ -152,7 +151,8 @@ const buildShareOptions = (): ShareMetricOption[] => [
 <template>
     <AnalyticsSection
         :title="$t('analytics.dashboard.summary')"
-        :subtitle="subtitle"
+        :range="report.range"
+        :previous-range="report.previous_range"
         :subtitle-testid="subtitleTestid"
         flush
     >

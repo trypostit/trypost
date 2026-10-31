@@ -31,6 +31,7 @@ return [
     'analytics.channel.series.followers' => 11,
     'analytics.channel.series.posts' => 13,
     'analytics.channel.this_period' => 15,
+    'analytics.ranges.versus' => 13,
     'analytics.share.copy' => 19,
     'analytics.share.create_post' => 17,
     'analytics.share.download' => 13,

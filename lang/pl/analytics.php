@@ -109,7 +109,8 @@ return [
         '30d' => '30 dni',
         'mtd' => 'Bieżący miesiąc',
         'custom' => 'Niestandardowy',
-        'compared_to' => ':current · w porównaniu z :previous',
+        'versus' => 'vs :range',
+        'versus_hint' => 'Zmiany porównują ten okres z okresem :range.',
         'label' => 'Zakres dat',
     ],
 

@@ -109,7 +109,8 @@ return [
         '30d' => '30 days',
         'mtd' => 'Month to date',
         'custom' => 'Custom',
-        'compared_to' => ':current · Compared to :previous',
+        'versus' => 'vs :range',
+        'versus_hint' => 'Changes compare this period with :range.',
         'label' => 'Date range',
     ],
 

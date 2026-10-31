@@ -28,7 +28,6 @@ import {
     type PerformanceMetric,
     usePerformanceColumns,
 } from '@/composables/usePerformanceColumns';
-import date from '@/date';
 import {
     formatNumberCompact,
     formatPercent,
@@ -118,12 +117,8 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string =>
         :title="$t('analytics.dashboard.performance')"
         :info="$t('analytics.insights.about.performance')"
         info-testid="analytics-performance-about"
-        :subtitle="
-            $t('analytics.ranges.compared_to', {
-                current: date.formatDayMonthYearRange(range),
-                previous: date.formatDayMonthYearRange(previousRange),
-            })
-        "
+        :range="range"
+        :previous-range="previousRange"
         subtitle-testid="analytics-performance-caption"
         flush
     >

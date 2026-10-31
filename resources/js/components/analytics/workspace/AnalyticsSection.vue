@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import ComparedRange from '@/components/analytics/ComparedRange.vue';
 import date from '@/date';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -11,6 +12,8 @@ defineProps<{
     subtitle?: string;
     subtitleTestid?: string;
     range?: WorkspaceAnalyticsReport['range'];
+    /** The period the section's changes compare against, shown next to `range`. */
+    previousRange?: WorkspaceAnalyticsReport['range'];
     flush?: boolean;
 }>();
 </script>
@@ -33,19 +36,23 @@ defineProps<{
                     </h2>
                     <InfoTip v-if="info" :text="info" :test-id="infoTestid" />
                 </div>
-                <p
+                <div
                     v-if="subtitle || range || $slots.subtitle"
                     class="text-xs text-muted-foreground"
                     :data-testid="subtitleTestid"
                 >
                     <slot name="subtitle">
-                        {{
-                            range
-                                ? date.formatDayMonthYearRange(range)
-                                : subtitle
-                        }}
+                        <ComparedRange
+                            v-if="range && previousRange"
+                            :range="range"
+                            :previous="previousRange"
+                        />
+                        <template v-else-if="range">
+                            {{ date.formatDayMonthYearRange(range) }}
+                        </template>
+                        <template v-else>{{ subtitle }}</template>
                     </slot>
-                </p>
+                </div>
             </div>
             <div
                 v-if="$slots.actions"

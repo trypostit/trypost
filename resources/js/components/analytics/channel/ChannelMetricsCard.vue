@@ -20,6 +20,7 @@ import {
 import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, type Component } from 'vue';
 
+import ComparedRange from '@/components/analytics/ComparedRange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -212,13 +213,6 @@ const rangeCaption = computed(() => {
 
     return date.formatDayMonthYearRange(props.series.range);
 });
-const previousCaption = computed((): string => {
-    if (!props.series) {
-        return '';
-    }
-
-    return date.formatDayMonthYearRange(props.series.previous_range);
-});
 /** What the Share button needs, or null while the series has nothing to share. */
 const share = computed(
     (): { range: string; build: () => ShareMetricOption[] } | null => {
@@ -313,14 +307,11 @@ const changeMode = (value: string): void => {
                     }}</span
                 >
             </template>
-            <template v-else>
-                {{
-                    $t('analytics.ranges.compared_to', {
-                        current: rangeCaption,
-                        previous: previousCaption,
-                    })
-                }}
-            </template>
+            <ComparedRange
+                v-else-if="series"
+                :range="series.range"
+                :previous="series.previous_range"
+            />
         </template>
 
         <div data-testid="insights-metrics">

@@ -109,7 +109,8 @@ return [
         '30d' => '30 giorni',
         'mtd' => 'Mese corrente',
         'custom' => 'Personalizzato',
-        'compared_to' => ':current · confrontato con :previous',
+        'versus' => 'vs :range',
+        'versus_hint' => 'Le variazioni confrontano questo periodo con :range.',
         'label' => 'Intervallo di date',
     ],
 

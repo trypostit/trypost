@@ -17,7 +17,6 @@ import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
-import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { accountColor } from '@/lib/analyticsColors';
 import { insights as insightsRoute } from '@/routes/app';
@@ -87,8 +86,6 @@ watch(
 
 useAnalyticsCoveragePoll(() => props.report.coverage);
 
-const span = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [
@@ -175,12 +172,6 @@ const accountColors = computed<Record<string, string>>(() => {
                 <SummaryCards
                     :report="report"
                     :available-metrics="availableMetrics ?? undefined"
-                    :subtitle="
-                        $t('analytics.ranges.compared_to', {
-                            current: span(report.range),
-                            previous: span(report.previous_range),
-                        })
-                    "
                     subtitle-testid="insights-range-caption"
                 />
                 <TopPosts

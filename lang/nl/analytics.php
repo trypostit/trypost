@@ -109,7 +109,8 @@ return [
         '30d' => '30 dagen',
         'mtd' => 'Huidige maand',
         'custom' => 'Aangepast',
-        'compared_to' => ':current · vergeleken met :previous',
+        'versus' => 'vs. :range',
+        'versus_hint' => 'De veranderingen vergelijken deze periode met :range.',
         'label' => 'Datumbereik',
     ],
 

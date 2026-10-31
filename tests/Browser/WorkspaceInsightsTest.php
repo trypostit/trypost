@@ -251,6 +251,8 @@ test('workspace dashboard separates accounts and switches follower and post char
         ->assertPresent('@analytics-top-post')
         ->assertPresent('@header-icon')
         ->assertPresent('@insights-range-caption')
+        ->assertSeeIn('[data-testid="insights-range-caption"] [data-testid="analytics-range-previous"]', 'vs')
+        ->assertSeeIn('[data-testid="analytics-performance-caption"] [data-testid="analytics-range-previous"]', 'vs')
         ->assertSee('Performance')
         ->assertPresent('@accounts-unovis-bar-chart')
         ->hover('[data-testid="analytics-account-bar"] >> nth=0')

@@ -109,7 +109,8 @@ return [
         '30d' => '30日間',
         'mtd' => '今月',
         'custom' => 'カスタム',
-        'compared_to' => ':current · :previous と比較',
+        'versus' => ':rangeと比較',
+        'versus_hint' => '変化はこの期間を:rangeと比較しています。',
         'label' => '期間',
     ],
 

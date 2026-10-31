@@ -109,7 +109,8 @@ return [
         '30d' => '30 gün',
         'mtd' => 'Bu ay',
         'custom' => 'Özel',
-        'compared_to' => ':current · :previous ile karşılaştırıldı',
+        'versus' => 'vs :range',
+        'versus_hint' => 'Değişimler bu dönemi :range dönemiyle karşılaştırır.',
         'label' => 'Tarih aralığı',
     ],
 

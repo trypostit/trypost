@@ -31,6 +31,25 @@ const userNow = () =>
  * `{ year: 'numeric' }` when the instant falls in another year than now, in
  * that zone, so an `Intl` date shows the year only when it is not obvious.
  */
+/** A period's first day with only what its last day does not already say. */
+const rangeStart = (range: { start: string; end: string }): string => {
+    const start = localized(range.start);
+    const end = localized(range.end);
+
+    if (start.year() !== end.year()) {
+        return start.format('D MMM YYYY');
+    }
+
+    if (start.month() !== end.month()) {
+        return start.format('D MMM');
+    }
+
+    return start.format('D');
+};
+
+const dayMonthYearRange = (range: { start: string; end: string }): string =>
+    `${rangeStart(range)} – ${localized(range.end).format('D MMM YYYY')}`;
+
 const yearUnlessCurrent = (
     instant: dayjs.Dayjs,
     timezone: string,
@@ -193,12 +212,28 @@ export default {
         return localized(date).format('D MMM YYYY');
     },
 
-    /** A period as Insights prints it: "2 Oct 2026 – 31 Oct 2026". */
+    /**
+     * A period as Insights prints it, naming its month and year once when both
+     * ends share them: "25 – 31 Oct 2026", "28 Sep – 4 Oct 2026",
+     * "28 Dec 2025 – 3 Jan 2026".
+     */
     formatDayMonthYearRange(range: { start: string; end: string }): string {
-        const day = (value: string): string =>
-            localized(value).format('D MMM YYYY');
+        return dayMonthYearRange(range);
+    },
 
-        return `${day(range.start)} – ${day(range.end)}`;
+    /**
+     * The period compared with `current`, without the year when it falls in
+     * the same one: "18 – 24 Oct" next to "25 – 31 Oct 2026".
+     */
+    formatComparedRange(
+        range: { start: string; end: string },
+        current: { start: string; end: string },
+    ): string {
+        if (localized(range.end).year() !== localized(current.end).year()) {
+            return dayMonthYearRange(range);
+        }
+
+        return `${rangeStart(range)} – ${localized(range.end).format('D MMM')}`;
     },
 
     /**

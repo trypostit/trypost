@@ -109,7 +109,8 @@ return [
         '30d' => '30일',
         'mtd' => '이번 달',
         'custom' => '사용자 지정',
-        'compared_to' => ':current · :previous 대비',
+        'versus' => ':range 대비',
+        'versus_hint' => '변화는 이 기간을 :range와 비교합니다.',
         'label' => '기간',
     ],
 
