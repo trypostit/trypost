@@ -1,3 +1,4 @@
+import { canvasToFile } from '@/lib/canvasFile';
 import {
     mediaRuleFor,
     toMediaRules,
@@ -10,7 +11,6 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
-import { canvasToFile } from '@/lib/utils';
 import type { MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =

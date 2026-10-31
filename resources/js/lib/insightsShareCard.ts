@@ -7,6 +7,7 @@
 
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import { canvasToFile } from '@/lib/canvasFile';
 import {
     AXIS_STEPS,
     axisDomain,
@@ -17,7 +18,6 @@ import {
 } from '@/lib/channelMetrics';
 import { spreadLabels } from '@/lib/labelLayout';
 import {
-    canvasToFile,
     distinctCountLabels,
     MISSING_VALUE,
     resolveLightCssColor,
