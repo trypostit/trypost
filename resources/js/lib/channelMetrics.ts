@@ -384,6 +384,18 @@ export const axisBucketLabel = (
     return date.formatMonthDay(bucket.start);
 };
 
+/** A bucket as its column's label: the month, the day, or the days a week covers. */
+export const bucketRangeLabel = (
+    bucket: { start: string; end: string },
+    resolution: BucketResolution,
+): string => {
+    if (resolution === 'monthly' || bucket.start === bucket.end) {
+        return axisBucketLabel(bucket, resolution);
+    }
+
+    return `${date.formatMonthDay(bucket.start)} – ${date.formatMonthDay(bucket.end)}`;
+};
+
 const direction = (
     current: number,
     previous: number,

@@ -21,7 +21,7 @@ import type { VerifiedBadge } from '@/types/social-account';
  */
 
 /** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
-export type ShareShape = 'line' | 'lines' | 'combo' | 'bar' | 'stacked' | 'rows' | 'tiles';
+export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
@@ -178,6 +178,9 @@ const CHART = {
     barRoundness: 4 / 20,
     lineWidth: 4,
     dotRadius: 4,
+    /** The page's value axes ask d3 for five ticks, its date axes for six. */
+    valueTicks: 5,
+    maxDates: 6,
 };
 
 /** `MetricChange`: `--success-text`, `--destructive-text` or muted, with Tabler's trending icons. */
@@ -201,7 +204,7 @@ const IDENTITY = { top: 40, name: 34, detail: 76 };
 const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, comparison: 136, comparisonUnderChange: 176 };
 
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
-const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
+const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, dateGap: 24 };
 
 /**
  * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,
@@ -216,7 +219,7 @@ const TICK_FACTORS: [number, number][] = [
     [0, 1],
 ];
 
-const LINE_ENDS = { rail: 224, leader: 64, avatar: 40, gap: 12, height: 48, fontSize: 24, headroom: 32, valueTicks: 5, maxDates: 6 };
+const LINE_ENDS = { rail: 224, leader: 64, avatar: 40, gap: 12, height: 48, fontSize: 24, headroom: 32 };
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
 const ROWS = { max: 12, nameMax: 320, figureGap: 32, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
@@ -230,7 +233,7 @@ const VERIFIED_PATH =
     'M12.01 2.011a3.2 3.2 0 0 1 2.113 .797l.154 .145l.698 .698a1.2 1.2 0 0 0 .71 .341l.135 .008h1a3.2 3.2 0 0 1 3.195 3.018l.005 .182v1c0 .27 .092 .533 .258 .743l.09 .1l.697 .698a3.2 3.2 0 0 1 .147 4.382l-.145 .154l-.698 .698a1.2 1.2 0 0 0 -.341 .71l-.008 .135v1a3.2 3.2 0 0 1 -3.018 3.195l-.182 .005h-1a1.2 1.2 0 0 0 -.743 .258l-.1 .09l-.698 .697a3.2 3.2 0 0 1 -4.382 .147l-.154 -.145l-.698 -.698a1.2 1.2 0 0 0 -.71 -.341l-.135 -.008h-1a3.2 3.2 0 0 1 -3.195 -3.018l-.005 -.182v-1a1.2 1.2 0 0 0 -.258 -.743l-.09 -.1l-.697 -.698a3.2 3.2 0 0 1 -.147 -4.382l.145 -.154l.698 -.698a1.2 1.2 0 0 0 .341 -.71l.008 -.135v-1l.005 -.182a3.2 3.2 0 0 1 3.013 -3.013l.182 -.005h1a1.2 1.2 0 0 0 .743 -.258l.1 -.09l.698 -.697a3.2 3.2 0 0 1 2.269 -.944zm3.697 7.282a1 1 0 0 0 -1.414 0l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.32 1.497l2 2l.094 .083a1 1 0 0 0 1.32 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
-const SUMMARY = { top: 168, tileHeight: 185, inset: 36, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24 };
+const SUMMARY = { top: 168, tileHeight: 185, inset: 36, crowdedInset: 24, crowdedColumns: 5, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24, changeBelow: 12, minTextShare: 0.7 };
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
 const loadFonts = async (): Promise<void> => {
@@ -337,7 +340,6 @@ const writeText = (
     context.fillText(text, at.x, at.y);
 };
 
-/** The text cut with an ellipsis to fit `limit` in `font`. */
 /** The width of the widest of `texts` in `font`. */
 const widest = (context: CanvasRenderingContext2D, texts: string[], font: string): number => {
     context.font = font;
@@ -345,6 +347,7 @@ const widest = (context: CanvasRenderingContext2D, texts: string[], font: string
     return Math.max(0, ...texts.map((text) => context.measureText(text).width));
 };
 
+/** The text cut with an ellipsis to fit `limit` in `font`. */
 const ellipsise = (
     context: CanvasRenderingContext2D,
     text: string,
@@ -510,62 +513,24 @@ const paintChange = (
     writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
 };
 
-const NICE_STEPS = [1, 2, 2.5, 5, 10];
-
-/** A round step that splits `span` into about `count` parts: 1, 2, 2.5 or 5 times a power of ten. */
-const niceStep = (span: number, count: number): number => {
-    const raw = span / count;
-    const magnitude = 10 ** Math.floor(Math.log10(raw));
-    const normalised = raw / magnitude;
-
-    return (NICE_STEPS.find((step) => normalised <= step) ?? 10) * magnitude;
-};
-
-/**
- * Bars start at zero; a line of large, steady values (followers) gets a range
- * around its own values so its movement stays visible, like the page's chart.
- */
-const domain = (values: number[], shape: ShareShape): [number, number] => {
-    if (values.length === 0) {
-        return [0, 1];
-    }
-
-    const low = Math.min(...values);
-    const high = Math.max(...values);
-
-    if (shape !== 'line' || (low >= 0 && low <= high - low)) {
-        const bottom = Math.min(0, low);
-        const top = Math.max(0, high);
-
-        return [bottom, top === bottom ? 1 : top];
-    }
-
-    const padding = Math.max((high - low) * 0.15, 1);
-
-    return [low - padding, high + padding];
-};
-
 type ValueAxis = {
     ticks: number[];
-    /** Where a value sits on the axis, from 0 at its bottom to 1 at its top. */
+    /** Where a value sits on the axis, from 0 at its start to 1 at its end. */
     at: (value: number) => number;
-    /** Where the bars start: zero, or the bottom when every value is above it. */
+    /** Where the bars start: zero. */
     zero: number;
 };
 
-/** A chart's value axis with round ticks from its bottom to its top. */
-const valueAxis = (values: number[], shape: ShareShape): ValueAxis => {
-    const [low, high] = domain(values, shape);
-    const step = Math.max(1, niceStep(high - low || 1, 4));
-    const bottom = Math.floor(low / step) * step;
-    const top = Math.ceil(high / step) * step;
-    const at = (value: number): number => (value - bottom) / (top - bottom || 1);
+/**
+ * A value axis like the page's unovis axes: the values' range with zero in
+ * it, not rounded out, and d3's round ticks inside it.
+ */
+const valueAxis = (values: number[], tickCount: number): ValueAxis => {
+    const low = Math.min(0, ...values);
+    const high = Math.max(0, ...values);
+    const at = (value: number): number => (value - low) / (high - low || 1);
 
-    return {
-        ticks: Array.from({ length: Math.round((top - bottom) / step) + 1 }, (_, index) => bottom + step * index),
-        at,
-        zero: at(Math.max(0, bottom)),
-    };
+    return { ticks: linearTicks(low, high, tickCount), at, zero: at(0) };
 };
 
 /** The dashed value grid: one line per tick, with the tick's value at `label`. */
@@ -808,7 +773,7 @@ const rankedRows = (points: SharePoint[]): RankedPoint[] =>
  */
 const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
     const rows = rankedRows(options.points);
-    const axis = valueAxis(rows.map((point) => point.value), 'bar');
+    const axis = valueAxis(rows.map((point) => point.value), CHART.valueTicks);
     const plotHeight = area.height - ROWS.axis;
     const rowHeight = plotHeight / Math.max(rows.length, 1);
     const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
@@ -923,56 +888,22 @@ const colorResolver = (): ((color: string) => string) => {
     };
 };
 
-/** One column per bucket from zero: in the tint's strong color, or split by channel for `stacked`. */
+/** One column per bucket from zero, split by channel in each channel's color. */
 const paintBars = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
     plot: Box,
     x: (index: number) => number,
     y: (value: number) => number,
-    zero: number,
 ): void => {
     const slot = plot.width / options.points.length;
     const width = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
     const colorOf = colorResolver();
 
     options.points.forEach((point, index) => {
-        if (point.value === null || point.value === 0) {
-            return;
-        }
-
-        if (point.segments) {
+        if (point.segments && point.value) {
             paintStack(context, point.segments, { middle: x(index), width }, y, colorOf);
-
-            return;
         }
-
-        context.fillStyle = options.tint.strong;
-        fillBar(context, zero, y(point.value), x(index), width, false);
-    });
-};
-
-/** The known points joined by a monotone line, with a dot on each. */
-const paintLine = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    x: (index: number) => number,
-    y: (value: number) => number,
-): void => {
-    const known = options.points.flatMap((point, index) => (point.value === null ? [] : [{ x: x(index), y: y(point.value) }]));
-
-    context.strokeStyle = options.tint.strong;
-    context.lineWidth = CHART.lineWidth;
-    context.lineJoin = 'round';
-    context.lineCap = 'round';
-    traceMonotone(context, known);
-    context.stroke();
-
-    context.fillStyle = options.tint.strong;
-    known.forEach((point) => {
-        context.beginPath();
-        context.arc(point.x, point.y, CHART.dotRadius, 0, Math.PI * 2);
-        context.fill();
     });
 };
 
@@ -1048,13 +979,13 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
     paintGrid(
         context,
-        linearTicks(low, high, LINE_ENDS.valueTicks),
+        linearTicks(low, high, CHART.valueTicks),
         (value) => [{ x: plot.x, y: y(value) }, { x: lineEnd, y: y(value) }],
         (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
         { align: 'right', baseline: 'middle' },
     );
 
-    linearTicks(0, options.points.length - 1, Math.min(options.points.length, LINE_ENDS.maxDates)).forEach((index) => {
+    linearTicks(0, options.points.length - 1, Math.min(options.points.length, CHART.maxDates)).forEach((index) => {
         writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, {
             font: CHART.tickFont,
             color: MUTED,
@@ -1098,56 +1029,40 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
     });
 };
 
-/** Which bucket the `mark`-th of `marks` date labels names, spread evenly over `count` buckets. */
-const dateIndex = (mark: number, marks: number, count: number): number => {
-    if (marks === 1) {
-        return 0;
+/**
+ * The columns that get a date: every one, like the page's Posts chart, unless
+ * the card is too narrow for them all, then as many as fit, evenly spread.
+ */
+const shownDates = (context: CanvasRenderingContext2D, options: ShareCardOptions, plot: Box): number[] => {
+    const count = options.points.length;
+    const room = widest(context, options.points.map((point) => point.label), CHART.tickFont) + PLOT.dateGap;
+    const fitting = Math.max(Math.floor(plot.width / room), 1);
+
+    if (count <= fitting) {
+        return options.points.map((_, index) => index);
     }
 
-    return Math.round(((count - 1) * mark) / (marks - 1));
+    return linearTicks(0, count - 1, fitting);
 };
 
-/** Where a date label goes: the first and last flush with the plot's edges, the others under their bucket. */
-const datePlacement = (
-    mark: number,
-    marks: number,
-    plot: Box,
-    bucketX: number,
-): { x: number; align: CanvasTextAlign } => {
-    if (mark === 0) {
-        return { x: plot.x, align: 'left' };
-    }
-
-    if (mark === marks - 1) {
-        return { x: plot.x + plot.width, align: 'right' };
-    }
-
-    return { x: bucketX, align: 'center' };
-};
-
-/** A few dates under the plot, so the period reads at a glance. */
+/** The dates under the columns. */
 const paintDates = (
     context: CanvasRenderingContext2D,
     options: ShareCardOptions,
     plot: Box,
     x: (index: number) => number,
 ): void => {
-    const marks = Math.min(PLOT.maxDates, options.points.length);
-
-    for (let mark = 0; mark < marks; mark += 1) {
-        const index = dateIndex(mark, marks, options.points.length);
-        const placement = datePlacement(mark, marks, plot, x(index));
-
-        writeText(context, options.points[index].label, { x: placement.x, y: plot.y + plot.height + PLOT.dates }, {
+    shownDates(context, options, plot).forEach((index) => {
+        writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, {
             font: CHART.tickFont,
             color: MUTED,
-            align: placement.align,
+            align: 'center',
         });
-    }
+    });
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8], maxDates: 6 };
+const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
 
 /**
  * How wide each bar is: one bar per day like the page's, or, with both
@@ -1442,7 +1357,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
         });
     });
 
-    linearTicks(0, count - 1, Math.min(count, COMBO.maxDates)).forEach((index) => {
+    linearTicks(0, count - 1, Math.min(count, CHART.maxDates)).forEach((index) => {
         writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, { font: CHART.tickFont, color: MUTED, align: 'center' });
     });
 };
@@ -1477,7 +1392,7 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
         return;
     }
 
-    const axis = valueAxis(values, options.shape);
+    const axis = valueAxis(values, CHART.valueTicks);
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
     const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
@@ -1489,13 +1404,7 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
         (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
         { align: 'right', baseline: 'middle' },
     );
-
-    if (options.shape === 'bar' || options.shape === 'stacked') {
-        paintBars(context, options, plot, x, y, plot.y + plot.height - axis.zero * plot.height);
-    } else {
-        paintLine(context, options, x, y);
-    }
-
+    paintBars(context, options, plot, x, y);
     paintDates(context, options, plot, x);
 };
 
@@ -1514,6 +1423,15 @@ const tileColumns = (count: number): number => {
     }
 
     return count <= 8 ? 4 : 5;
+};
+
+/** The space inside a tile's border: tighter in the five-column grid, whose tiles are the narrowest. */
+const tileInset = (columns: number): number => {
+    if (columns >= SUMMARY.crowdedColumns) {
+        return SUMMARY.crowdedInset;
+    }
+
+    return SUMMARY.inset;
 };
 
 /** A tile's figure size before it shrinks to fit: smaller in a crowded grid, largest in a single row. */
@@ -1545,6 +1463,16 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
     const figureSize = tileFigureSize(columns, rows) * fit;
     /** The last row stretches its tiles over the whole width, so no tile is left empty. */
     const rowSize = (row: number): number => (row < rows - 1 ? columns : tiles.length - columns * (rows - 1));
+    const inset = tileInset(columns) * fit;
+    const tileWidth = (index: number): number => grid.width / rowSize(Math.floor(index / columns));
+    const tileLimit = (index: number): number => tileWidth(index) - inset * 2;
+    /** One label size for the whole grid, the one every label fits in the narrowest tile. */
+    const labelSize = Math.min(
+        ...tiles.map((tile) => fittingSize(context, tile.label, (size) => sans(500, size), SUMMARY.labelSize * fit, grid.width / columns - inset * 2)),
+    );
+    const labelFont = sans(500, labelSize);
+    const changeSize = SUMMARY.changeSize * fit;
+    const under = changesUnderFigures(context, tiles, heading(500, figureSize), changeSize, SUMMARY.changeGap * fit, tileLimit);
 
     context.strokeStyle = INK;
     context.lineWidth = BORDER;
@@ -1562,42 +1490,83 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
 
     tiles.forEach((tile, index) => {
         const row = Math.floor(index / columns);
-        const width = grid.width / rowSize(row);
-        const inset = SUMMARY.inset * fit;
-        const left = grid.x + width * (index % columns) + inset;
-        const limit = width - inset * 2;
+        const left = grid.x + tileWidth(index) * (index % columns) + inset;
+        const limit = tileLimit(index);
         const labelLine = grid.y + tileHeight * row + SUMMARY.label * fit;
-        const labelFont = sans(500, SUMMARY.labelSize * fit);
-        const figureFont = heading(500, figureSize);
+        const figureText = tile.figure ?? MISSING_VALUE;
+        const figureFont = heading(500, fittingSize(context, figureText, (size) => heading(500, size), figureSize, limit));
+        const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
 
         writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
-        const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
-        const changeSize = SUMMARY.changeSize * fit;
-        const changeRoom = tileChangeRoom(context, tile, changeSize, SUMMARY.changeGap * fit);
-        const figure = ellipsise(context, tile.figure ?? MISSING_VALUE, figureFont, limit - changeRoom);
-
-        writeText(context, figure, { x: left - 2 * fit, y: baseline }, {
+        writeText(context, figureText, { x: left - 2 * fit, y: baseline }, {
             font: figureFont,
             color: tile.figure === null ? MUTED : INK,
         });
 
         if (tile.change) {
-            context.font = figureFont;
-            /** Beside the number like the page's cards, its icon sitting on the number's baseline. */
-            const besideFigure = left - 2 * fit + context.measureText(figure).width + SUMMARY.changeGap * fit;
-
-            paintChange(context, tile.change, { x: besideFigure, y: baseline - changeSize * 1.15 }, changeSize, 'left');
+            paintTileChange(context, tile.change, { x: left, y: baseline }, { figureFont, figure: figureText, changeSize, fit, under });
         }
     });
 };
 
-/** The width a tile keeps after its number for the change beside it; none without a change. */
-const tileChangeRoom = (context: CanvasRenderingContext2D, tile: ShareTile, size: number, gap: number): number => {
-    if (!tile.change) {
-        return 0;
+/** The size, down to `SUMMARY.minTextShare` of `size`, at which `text` fits `limit` in the font `fontAt` gives. */
+const fittingSize = (
+    context: CanvasRenderingContext2D,
+    text: string,
+    fontAt: (size: number) => string,
+    size: number,
+    limit: number,
+): number => {
+    context.font = fontAt(size);
+    const width = context.measureText(text).width;
+
+    if (width <= limit) {
+        return size;
     }
 
-    return gap + changeWidth(context, tile.change, size);
+    return Math.max(size * SUMMARY.minTextShare, (size * limit) / width);
+};
+
+/**
+ * Whether the changes go under the numbers: as soon as one tile has no room
+ * for its change beside its number, every tile stacks them, as the page's
+ * half-width cards do on a phone, so the grid reads the same throughout.
+ */
+const changesUnderFigures = (
+    context: CanvasRenderingContext2D,
+    tiles: ShareTile[],
+    figureFont: string,
+    changeSize: number,
+    gap: number,
+    limit: (index: number) => number,
+): boolean =>
+    tiles.some((tile, index) => {
+        if (!tile.change) {
+            return false;
+        }
+
+        context.font = figureFont;
+
+        return context.measureText(tile.figure ?? MISSING_VALUE).width + gap + changeWidth(context, tile.change, changeSize) > limit(index);
+    });
+
+/** A tile's change: beside its number with its icon on the number's baseline, like the page's cards, or under it. */
+const paintTileChange = (
+    context: CanvasRenderingContext2D,
+    change: ShareChange,
+    figureAt: Point,
+    tile: { figureFont: string; figure: string; changeSize: number; fit: number; under: boolean },
+): void => {
+    if (tile.under) {
+        paintChange(context, change, { x: figureAt.x, y: figureAt.y + SUMMARY.changeBelow * tile.fit }, tile.changeSize, 'left');
+
+        return;
+    }
+
+    context.font = tile.figureFont;
+    const besideFigure = figureAt.x - 2 * tile.fit + context.measureText(tile.figure).width + SUMMARY.changeGap * tile.fit;
+
+    paintChange(context, change, { x: besideFigure, y: figureAt.y - tile.changeSize * 1.15 }, tile.changeSize, 'left');
 };
 
 /** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */

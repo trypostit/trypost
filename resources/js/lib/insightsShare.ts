@@ -4,6 +4,7 @@ import date from '@/date';
 import { activeLocale } from '@/language';
 import {
     axisBucketLabel,
+    bucketRangeLabel,
     type ChartMode,
     formatSeriesValue,
     type SeriesSpec,
@@ -140,16 +141,15 @@ const summaryCaption = (
     return trans('analytics.share.caption_summary_channel', { ...replacements, channel });
 };
 
-/** An option with nothing drawn but what it is given. */
+/** An option with nothing drawn but what it is given, in the shape it names. */
 const shareOption = (
-    option: Pick<ShareMetricOption, 'key' | 'label' | 'caption'> &
+    option: Pick<ShareMetricOption, 'key' | 'label' | 'caption' | 'shape'> &
         Partial<ShareMetricOption>,
 ): ShareMetricOption => ({
     figure: '',
     change: null,
     comparison: null,
     points: [],
-    shape: 'bar',
     tiles: [],
     lines: [],
     series: [],
@@ -157,10 +157,28 @@ const shareOption = (
     ...option,
 });
 
+/**
+ * The avatar's address for the card, which loads it with CORS. A CDN in front
+ * of the storage host (Cloudflare) ignores `Vary: Origin`, so the copy the
+ * page's `<img>` cached without CORS headers would refuse the card; a query of
+ * its own gives the card a cache entry of its own, fetched with CORS.
+ */
+const corsAvatar = (url: string | null | undefined): string | null => {
+    if (!url) {
+        return null;
+    }
+
+    const address = new URL(url, window.location.origin);
+
+    address.searchParams.set('cors', '1');
+
+    return address.toString();
+};
+
 /** The channel as the card draws it: its avatar, network and verified mark. */
 const shareChannel = (account: AccountIdentityData): ShareChannel => ({
     platform: account.platform,
-    avatar: account.avatar_url ?? null,
+    avatar: corsAvatar(account.avatar_url),
     verified: account.verified_badge ?? null,
 });
 
@@ -375,7 +393,7 @@ export const summaryShareOption = (
 /** The Posts card's columns over time, each split by channel in its color. */
 const postsOverTime = (posts: Posts, colors: Record<string, string>): SharePoint[] =>
     posts.buckets.map((bucket) => ({
-        label: axisBucketLabel(bucket, posts.resolution),
+        label: bucketRangeLabel(bucket, posts.resolution),
         value: bucket.total,
         segments: posts.accounts.map((account) => ({
             value: bucket.accounts[account.social_account_key] ?? 0,

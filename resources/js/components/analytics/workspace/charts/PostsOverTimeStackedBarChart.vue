@@ -15,10 +15,9 @@ import {
     type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
-import date from '@/date';
-import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
+import { bucketRangeLabel } from '@/lib/channelMetrics';
 import type {
     BucketResolution,
     PostAccount,
@@ -43,19 +42,9 @@ const props = defineProps<{
     colors: Record<string, string>;
 }>();
 
-const bucketLabel = (bucket: PostBucket): string => {
-    const start = dayjs(bucket.start);
-
-    if (props.resolution === 'monthly')
-        return date.formatMonthYear(start.month() + 1, start.year());
-    if (bucket.start === bucket.end) return date.formatMonthDay(bucket.start);
-
-    return `${date.formatMonthDay(bucket.start)} – ${date.formatMonthDay(bucket.end)}`;
-};
-
 const chartData = computed<ChartPoint[]>(() =>
     props.buckets.map((bucket, index) => {
-        const point: ChartPoint = { index, label: bucketLabel(bucket) };
+        const point: ChartPoint = { index, label: bucketRangeLabel(bucket, props.resolution) };
 
         props.accounts.forEach((account, accountIndex) => {
             point[`account_${accountIndex}`] =
