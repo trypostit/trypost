@@ -69,6 +69,44 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     $page->assertNoJavaScriptErrors();
 });
 
+test('copying the share card writes a PNG to the clipboard', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-summary');
+    $page->script(<<<'JS'
+        window.__copied = [];
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { write: async (items) => { window.__copied.push(...items.flatMap((item) => item.types)); } },
+        });
+    JS);
+    $page->click('@share-summary');
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->click('@share-chart-copy');
+    waitForText($page, '[data-sonner-toast]', trans('analytics.share.copied'));
+
+    expect($page->script('window.__copied'))->toBe(['image/png']);
+    $page->assertSeeIn('[data-sonner-toast]', trans('analytics.share.copied'))
+        ->assertNoJavaScriptErrors();
+});
+
+test('a browser that cannot copy images is told to download the card instead', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-summary');
+    $page->script('delete window.ClipboardItem');
+    $page->click('@share-summary');
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->click('@share-chart-copy');
+    waitForText($page, '[data-sonner-toast]', trans('analytics.share.copy_failed'));
+
+    $page->assertSeeIn('[data-sonner-toast]', trans('analytics.share.copy_failed'))
+        ->assertNoJavaScriptErrors();
+});
+
 test('the summary share card holds every number of the Summary', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);

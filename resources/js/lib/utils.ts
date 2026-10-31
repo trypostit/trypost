@@ -88,7 +88,10 @@ export const copyToClipboard = async (
     return true;
 };
 
-/** Saves a file the way a download link would. */
+/**
+ * Saves a file the way a download link would. The link's URL lives a minute:
+ * revoked at once, some browsers cancel the download before it starts.
+ */
 export const downloadFile = (file: File): void => {
     const url = URL.createObjectURL(file);
     const link = document.createElement('a');
@@ -100,20 +103,13 @@ export const downloadFile = (file: File): void => {
 };
 
 /**
- * Copies an image to the clipboard, or throws when the browser cannot. Call it
- * inside the click with the image still a promise: Safari refuses a write that
- * only starts once the image is ready.
+ * Copies a PNG to the clipboard and leaves the feedback to the caller; it
+ * rejects where the browser cannot copy images. Call it inside the click with
+ * the image still a promise: Safari refuses a write that only starts once the
+ * image is ready.
  */
-export const copyImageToClipboard = async (
-    image: Promise<Blob>,
-    type = 'image/png',
-): Promise<void> => {
-    if (!('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
-        throw new Error('This browser cannot copy images.');
-    }
-
-    await navigator.clipboard.write([new ClipboardItem({ [type]: image })]);
-};
+export const copyImageToClipboard = async (image: Promise<Blob>): Promise<void> =>
+    navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
 
 /** Mirrors ContentSanitizer::stripHtml(): the text a network receives for an HTML caption. */
 export const htmlToPlainText = (html: string): string => {
