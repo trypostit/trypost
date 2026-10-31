@@ -23,15 +23,15 @@ use Throwable;
  * Renders an Insights PDF with the local Chromium and keeps it on the default disk
  * until it is downloaded or pruned. Runs in the language of the user who asked.
  *
- * Runs on its own queue, one render at a time, so Chromium never competes with
- * publishing. The timeout stays below the connection's `retry_after`, so a slow
+ * Runs on the `pdf` queue every PDF of the app shares, one render at a time,
+ * so Chromium never competes with publishing. The timeout stays below the connection's `retry_after`, so a slow
  * render is never reserved twice.
  */
 class GenerateInsightsPdf implements ShouldQueue
 {
     use Queueable;
 
-    public const string QUEUE = 'insights-pdf';
+    public const string QUEUE = 'pdf';
 
     private const int MAX_SECONDS = 240;
 

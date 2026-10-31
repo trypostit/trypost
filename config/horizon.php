@@ -316,9 +316,9 @@ return [
             'nice' => 0,
         ],
 
-        'insights-pdf' => [
+        'pdf' => [
             'connection' => 'redis',
-            'queue' => ['insights-pdf'],
+            'queue' => ['pdf'],
             'balance' => 'auto',
             'autoScalingStrategy' => 'time',
             'minProcesses' => 1,
@@ -376,7 +376,7 @@ return [
                 'balanceCooldown' => 3,
             ],
 
-            'insights-pdf' => [
+            'pdf' => [
                 'maxProcesses' => 1,
             ],
         ],
@@ -410,7 +410,7 @@ return [
                 'maxProcesses' => 1,
             ],
 
-            'insights-pdf' => [
+            'pdf' => [
                 'maxProcesses' => 1,
             ],
         ],
