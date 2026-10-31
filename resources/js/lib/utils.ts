@@ -21,7 +21,17 @@ export const formatNumber = (value: number): string => {
     return value.toLocaleString('en-US');
 };
 
-export const formatNumberCompact = (value: number, digits = 1): string => {
+/** What a number reads while it has no value. */
+export const MISSING_VALUE = '—';
+
+/** A number without a value reads as a dash; every formatter below takes one. */
+type MaybeNumber = number | null | undefined;
+
+export const formatNumberCompact = (value: MaybeNumber, digits = 1): string => {
+    if (value == null) {
+        return MISSING_VALUE;
+    }
+
     return new Intl.NumberFormat(activeLocale.value, {
         notation: 'compact',
         compactDisplay: 'short',
@@ -29,7 +39,11 @@ export const formatNumberCompact = (value: number, digits = 1): string => {
     }).format(value);
 };
 
-export const formatPercent = (value: number): string => {
+export const formatPercent = (value: MaybeNumber): string => {
+    if (value == null) {
+        return MISSING_VALUE;
+    }
+
     return new Intl.NumberFormat(activeLocale.value, {
         style: 'percent',
         maximumFractionDigits: 2,
@@ -40,16 +54,34 @@ export const formatPercent = (value: number): string => {
 export const formatSignedNumber = (value: number): string =>
     new Intl.NumberFormat(activeLocale.value, { signDisplay: 'exceptZero' }).format(value);
 
+/** A count in the reader's language, exact: "1,234". */
+export const formatFullNumber = (value: MaybeNumber): string => {
+    if (value == null) {
+        return MISSING_VALUE;
+    }
+
+    return value.toLocaleString(activeLocale.value);
+};
+
 /** A change in a count, signed and compact: "+1.2K", "-3", "0". */
-export const formatCountChange = (value: number): string =>
-    new Intl.NumberFormat(activeLocale.value, {
+export const formatCountChange = (value: MaybeNumber): string => {
+    if (value == null) {
+        return MISSING_VALUE;
+    }
+
+    return new Intl.NumberFormat(activeLocale.value, {
         notation: 'compact',
         compactDisplay: 'short',
         maximumFractionDigits: 1,
         signDisplay: 'exceptZero',
     }).format(value);
+};
 
-export const formatPercentChange = (value: number): string => {
+export const formatPercentChange = (value: MaybeNumber): string => {
+    if (value == null) {
+        return MISSING_VALUE;
+    }
+
     const compact = Math.abs(value) >= 1000;
 
     return new Intl.NumberFormat(activeLocale.value, {

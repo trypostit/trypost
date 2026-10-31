@@ -282,13 +282,11 @@ export const formatSeriesValue = (
     value: number | null | undefined,
     metric?: SeriesMetric,
 ): string => {
-    if (value === null || value === undefined) {
-        return '—';
+    if (metric && isPercentMetric(metric)) {
+        return formatPercent(value);
     }
 
-    return metric && isPercentMetric(metric)
-        ? formatPercent(value)
-        : formatNumberCompact(value);
+    return formatNumberCompact(value);
 };
 
 export const bucketLabel = (

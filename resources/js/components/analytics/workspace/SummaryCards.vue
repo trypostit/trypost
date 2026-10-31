@@ -116,12 +116,13 @@ const aboutKey = (key: string): string =>
 const testId = (key: string): string =>
     props.availableMetrics ? `insights-card-${key}` : `analytics-summary-${key}`;
 
-const display = (value: number | null, percent: boolean): string =>
-    value === null
-        ? '—'
-        : percent
-          ? formatPercent(value)
-          : formatNumberCompact(value);
+const display = (value: number | null, percent: boolean): string => {
+    if (percent) {
+        return formatPercent(value);
+    }
+
+    return formatNumberCompact(value);
+};
 
 /** A number for the share card: null while the metric has no value, so the card draws it muted. */
 const tileFigure = (value: number | null, percent: boolean): string | null => {

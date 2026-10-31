@@ -304,15 +304,11 @@ const openRow = (row: ChannelPublicationRow): void => {
 
 
 const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
-    const value = row.metrics[key];
-
-    if (value === null || value === undefined) {
-        return '—';
+    if (key === 'engagement_rate') {
+        return formatPercent(row.metrics[key]);
     }
 
-    return key === 'engagement_rate'
-        ? formatPercent(value)
-        : formatNumberCompact(value);
+    return formatNumberCompact(row.metrics[key]);
 };
 </script>
 

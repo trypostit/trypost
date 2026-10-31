@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import { activeLocale } from '@/language';
 import {
     isPercentMetric,
     type ChartMode,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
-import { formatPercent } from '@/lib/utils';
+import { formatFullNumber, formatPercent } from '@/lib/utils';
 import type { MetricSeriesPoint, SeriesMetric } from '@/types/analytics';
 
 const props = withDefaults(
@@ -43,13 +42,11 @@ const display = (
     value: number | null | undefined,
     metric: SeriesMetric,
 ): string => {
-    if (value === null || value === undefined) {
-        return '—';
+    if (isPercentMetric(metric)) {
+        return formatPercent(value);
     }
 
-    return isPercentMetric(metric)
-        ? formatPercent(value)
-        : value.toLocaleString(activeLocale.value);
+    return formatFullNumber(value);
 };
 </script>
 

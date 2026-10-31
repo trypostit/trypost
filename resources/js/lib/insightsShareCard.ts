@@ -4,6 +4,7 @@ import { spreadLabels } from '@/lib/labelLayout';
 import {
     canvasToFile,
     formatNumberCompact,
+    MISSING_VALUE,
     resolveCssColor,
 } from '@/lib/utils';
 import type { SeriesMetric } from '@/types/analytics';
@@ -1227,7 +1228,7 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
         const figureFont = heading(500, figureSize);
 
         writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
-        writeText(context, ellipsise(context, tile.figure ?? '—', figureFont, limit), { x: left - 2 * fit, y: labelLine + figureSize + SUMMARY.figureGap * fit }, {
+        writeText(context, ellipsise(context, tile.figure ?? MISSING_VALUE, figureFont, limit), { x: left - 2 * fit, y: labelLine + figureSize + SUMMARY.figureGap * fit }, {
             font: figureFont,
             color: tile.figure === null ? MUTED : INK,
         });

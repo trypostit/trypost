@@ -45,7 +45,7 @@ const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
 /** A per-channel view's rows: which number each channel shows, and how it reads. */
 type ChannelRowsSpec<Account> = {
     value: (account: Account) => number | null;
-    format: (value: number) => string;
+    format: (value: number | null) => string;
 };
 
 /** What a channel's row shows in the per-channel modes: its followers, or its signed change. */
@@ -179,15 +179,6 @@ const channelAvatar = (account: AccountIdentityData): string | null => {
     return avatar.url(id);
 };
 
-/** A row's number as the page's column prints it; a dash while the channel has none. */
-const rowFigure = (value: number | null, format: (value: number) => string): string => {
-    if (value === null) {
-        return '—';
-    }
-
-    return format(value);
-};
-
 /** The channel as the card draws it: its avatar, network and verified mark. */
 const shareChannel = (account: AccountIdentityData): ShareChannel => ({
     platform: account.platform,
@@ -204,7 +195,7 @@ const channelRows = <Account extends AccountIdentityData>(
     accounts.map((account) => ({
         label: accountLabel(account),
         value: spec.value(account),
-        figure: rowFigure(spec.value(account), spec.format),
+        figure: spec.format(spec.value(account)),
         color: colors[account.social_account_key],
         channel: shareChannel(account),
     }));
@@ -232,7 +223,7 @@ const followersLines = (followers: Followers, colors: Record<string, string>): S
         return {
             color: colors[account.social_account_key],
             channel: shareChannel(account),
-            figure: rowFigure(values[values.length - 1] ?? null, formatNumberCompact),
+            figure: formatNumberCompact(values[values.length - 1]),
             values,
         };
     });

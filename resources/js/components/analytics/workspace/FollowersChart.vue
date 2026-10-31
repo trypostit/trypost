@@ -194,11 +194,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 <div class="flex flex-wrap items-baseline gap-2">
                     <span
                         class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
-                        >{{
-                            followers.total === null
-                                ? '—'
-                                : formatNumberCompact(followers.total)
-                        }}</span
+                        >{{ formatNumberCompact(followers.total) }}</span
                     >
                     <span class="text-sm text-muted-foreground">{{
                         $t('analytics.dashboard.total_followers')

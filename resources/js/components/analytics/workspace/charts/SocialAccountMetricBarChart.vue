@@ -42,7 +42,7 @@ const props = withDefaults(
         colors: Record<string, string>;
         detail?: (index: number) => ChartTooltipDetail[];
         /** How each channel's number reads in the column before its bar. */
-        formatValue?: (value: number) => string;
+        formatValue?: (value: number | null) => string;
     }>(),
     { detail: undefined, formatValue: formatNumberCompact },
 );
@@ -69,13 +69,6 @@ const rowColor = (point: BarPoint): string => {
 const rowAt = (index: number) => props.rows[Math.round(index)];
 /** The axis draws no text: each row's channel and number are laid over it as HTML. */
 const blankTick = (): string => '';
-const rowValue = (value: number | null): string => {
-    if (value === null) {
-        return '—';
-    }
-
-    return props.formatValue(value);
-};
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
 const detailFormatter = (key: string): ChartTooltipDetail[] =>
     props.detail?.(Number(key.replace('account_', ''))) ?? [];
@@ -157,7 +150,7 @@ const placeAxisChannel = (
 
     const content = h(AxisChannelRow, {
         account: row.account,
-        value: rowValue(row.value),
+        value: props.formatValue(row.value),
     });
     content.appContext = appContext;
     render(content, host);

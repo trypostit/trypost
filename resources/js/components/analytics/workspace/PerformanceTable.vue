@@ -103,17 +103,14 @@ const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
             : 'descending'
         : 'none';
 const display = (row: PerformanceRow, key: PerformanceMetric): string => {
-    const value = row[key].value;
-    return value === null
-        ? '—'
-        : key === 'engagement_rate'
-          ? formatPercent(value)
-          : formatNumberCompact(value);
+    if (key === 'engagement_rate') {
+        return formatPercent(row[key].value);
+    }
+
+    return formatNumberCompact(row[key].value);
 };
-const change = (row: PerformanceRow, key: PerformanceMetric): string => {
-    const value = row[key].change;
-    return value === null ? '—' : formatPercentChange(value);
-};
+const change = (row: PerformanceRow, key: PerformanceMetric): string =>
+    formatPercentChange(row[key].change);
 </script>
 
 <template>
