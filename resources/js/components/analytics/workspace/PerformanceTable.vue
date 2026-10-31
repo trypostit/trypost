@@ -34,9 +34,10 @@ import {
     formatPercent,
     formatPercentChange,
 } from '@/lib/utils';
-import type {
-    PerformanceRow,
-    WorkspaceAnalyticsReport,
+import {
+    accountLabel,
+    type PerformanceRow,
+    type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
 import AccountIdentity from './AccountIdentity.vue';
@@ -59,13 +60,11 @@ const sortKey = computed<SortKey>(() =>
         ? sortBy.value
         : columns.value[0],
 );
-const channelName = (row: PerformanceRow): string =>
-    row.username ?? row.name ?? row.platform;
 const compareRows = (a: PerformanceRow, b: PerformanceRow): number => {
     const key = sortKey.value;
 
     if (key === 'channel') {
-        return channelName(a).localeCompare(channelName(b));
+        return accountLabel(a).localeCompare(accountLabel(b));
     }
 
     const left = a[key].value;

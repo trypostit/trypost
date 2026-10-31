@@ -2,7 +2,6 @@ import { trans } from 'laravel-vue-i18n';
 
 import date from '@/date';
 import { activeLocale } from '@/language';
-import { accountLabel } from '@/lib/accountLabel';
 import { axisBucketLabel, formatSeriesValue } from '@/lib/channelMetrics';
 import type {
     ShareChange,
@@ -12,11 +11,12 @@ import type {
     ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatCountChange, formatPercentChange } from '@/lib/utils';
-import type {
-    ChannelMetricSeries,
-    FollowerAccount,
-    SeriesMetric,
-    WorkspaceAnalyticsReport,
+import {
+    accountLabel,
+    type ChannelMetricSeries,
+    type FollowerAccount,
+    type SeriesMetric,
+    type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
 /**

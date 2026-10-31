@@ -22,9 +22,8 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
-import { accountLabel } from '@/lib/accountLabel';
 import { accountColor } from '@/lib/analyticsColors';
-import type { AccountIdentityData } from '@/types/analytics';
+import { type AccountIdentityData, accountLabel } from '@/types/analytics';
 
 import {
     formatCountTick,

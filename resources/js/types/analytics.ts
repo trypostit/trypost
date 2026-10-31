@@ -1,3 +1,4 @@
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import type { MediaItem } from '@/types/media';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
@@ -17,6 +18,17 @@ export interface AccountIdentityData {
     status?: SocialAccountStatusValue | null;
     verified_badge?: VerifiedBadge | null;
 }
+
+/** How Insights names a channel: its @handle, else its name, else its network. */
+export const accountLabel = (
+    account: Pick<AccountIdentityData, 'username' | 'name' | 'platform'>,
+): string => {
+    if (account.username) {
+        return `@${account.username}`;
+    }
+
+    return account.name || getPlatformLabel(account.platform);
+};
 
 export interface FollowerAccount extends AccountIdentityData {
     social_account_id: string | null;
