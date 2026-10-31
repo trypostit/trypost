@@ -64,7 +64,6 @@ return [
         'performance' => 'Prestazioni',
         'top_posts' => 'I 5 post migliori',
         'channel' => 'Canale',
-        'latest_snapshot_hint' => 'Le metriche dei post utilizzano l’ultima misurazione salvata per i post pubblicati in questo intervallo.',
         'followers_chart_mode' => 'Tipo di grafico dei follower',
         'posts_chart_mode' => 'Tipo di grafico dei post',
         'chart_line' => 'Linea',

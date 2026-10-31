@@ -213,10 +213,5 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 </div>
             </div>
         </div>
-        <p
-            class="border-t border-border px-4 py-3 text-xs text-muted-foreground sm:px-5"
-        >
-            {{ $t('analytics.dashboard.latest_snapshot_hint') }}
-        </p>
     </AnalyticsSection>
 </template>

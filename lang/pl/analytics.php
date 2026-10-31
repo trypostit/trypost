@@ -64,7 +64,6 @@ return [
         'performance' => 'Wyniki',
         'top_posts' => '5 najlepszych postów',
         'channel' => 'Kanał',
-        'latest_snapshot_hint' => 'Metryki postów korzystają z ostatniego zapisanego pomiaru dla postów opublikowanych w tym okresie.',
         'followers_chart_mode' => 'Widok wykresu obserwujących',
         'posts_chart_mode' => 'Widok wykresu postów',
         'chart_line' => 'Liniowy',

@@ -64,7 +64,6 @@ return [
         'performance' => 'Leistung',
         'top_posts' => 'Top 5 Beiträge',
         'channel' => 'Kanal',
-        'latest_snapshot_hint' => 'Für Beiträge in diesem Zeitraum wird die zuletzt gespeicherte Messung verwendet.',
         'followers_chart_mode' => 'Ansicht des Follower-Diagramms',
         'posts_chart_mode' => 'Ansicht des Beitragsdiagramms',
         'chart_line' => 'Linie',

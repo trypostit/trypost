@@ -64,7 +64,6 @@ return [
         'performance' => '성과',
         'top_posts' => '상위 게시물 5개',
         'channel' => '채널',
-        'latest_snapshot_hint' => '이 기간에 게시된 게시물의 지표는 마지막으로 저장된 측정값을 사용합니다.',
         'followers_chart_mode' => '팔로워 차트 표시 방식',
         'posts_chart_mode' => '게시물 차트 표시 방식',
         'chart_line' => '선',

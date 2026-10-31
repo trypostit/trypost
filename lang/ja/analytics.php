@@ -64,7 +64,6 @@ return [
         'performance' => 'パフォーマンス',
         'top_posts' => '上位5件の投稿',
         'channel' => 'チャンネル',
-        'latest_snapshot_hint' => 'この期間の投稿指標には、保存済みの最新の測定値を使用します。',
         'followers_chart_mode' => 'フォロワーグラフの表示方法',
         'posts_chart_mode' => '投稿グラフの表示方法',
         'chart_line' => '折れ線',

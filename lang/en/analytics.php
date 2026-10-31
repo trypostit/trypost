@@ -64,7 +64,6 @@ return [
         'performance' => 'Performance',
         'top_posts' => 'Top 5 Posts',
         'channel' => 'Channel',
-        'latest_snapshot_hint' => 'Post metrics use the latest saved observation for posts published in this range.',
         'followers_chart_mode' => 'Follower chart mode',
         'posts_chart_mode' => 'Post chart mode',
         'chart_line' => 'Line',

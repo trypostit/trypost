@@ -64,7 +64,6 @@ return [
         'performance' => 'Prestaties',
         'top_posts' => 'Top 5 berichten',
         'channel' => 'Kanaal',
-        'latest_snapshot_hint' => 'Voor berichten in deze periode wordt de laatst opgeslagen meting gebruikt.',
         'followers_chart_mode' => 'Weergave van de volgersgrafiek',
         'posts_chart_mode' => 'Weergave van de berichtengrafiek',
         'chart_line' => 'Lijn',

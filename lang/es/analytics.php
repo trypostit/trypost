@@ -64,7 +64,6 @@ return [
         'performance' => 'Rendimiento',
         'top_posts' => '5 publicaciones destacadas',
         'channel' => 'Canal',
-        'latest_snapshot_hint' => 'Las métricas de las publicaciones usan la última medición guardada para las publicaciones de este período.',
         'followers_chart_mode' => 'Tipo de gráfico de seguidores',
         'posts_chart_mode' => 'Tipo de gráfico de publicaciones',
         'chart_line' => 'Línea',

@@ -64,7 +64,6 @@ return [
         'performance' => '表现',
         'top_posts' => '前5条帖子',
         'channel' => '频道',
-        'latest_snapshot_hint' => '此时间段内的帖子指标使用最近一次保存的测量值。',
         'followers_chart_mode' => '粉丝图表模式',
         'posts_chart_mode' => '帖子图表模式',
         'chart_line' => '折线',
@@ -433,7 +432,7 @@ return [
         'caption_summary_channel' => '我们在 :channel 上 :range 的数据 📈 :metrics',
         'export_failed' => '无法生成图片，请重试。',
         'colors' => [
-            'violet' => '紫色',
+            'violet' => '紫罗兰色',
             'blue' => '蓝色',
             'green' => '绿色',
             'peach' => '桃色',

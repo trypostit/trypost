@@ -64,7 +64,6 @@ return [
         'performance' => 'الأداء',
         'top_posts' => 'أفضل 5 منشورات',
         'channel' => 'القناة',
-        'latest_snapshot_hint' => 'تستخدم مقاييس المنشورات أحدث قياس محفوظ للمنشورات المنشورة خلال هذه الفترة.',
         'followers_chart_mode' => 'وضع مخطط المتابعين',
         'posts_chart_mode' => 'وضع مخطط المنشورات',
         'chart_line' => 'خطي',

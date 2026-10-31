@@ -64,7 +64,6 @@ return [
         'performance' => 'Performans',
         'top_posts' => 'En iyi 5 gönderi',
         'channel' => 'Kanal',
-        'latest_snapshot_hint' => 'Bu dönemde yayınlanan gönderiler için son kaydedilen ölçümler kullanılır.',
         'followers_chart_mode' => 'Takipçi grafiği modu',
         'posts_chart_mode' => 'Gönderi grafiği modu',
         'chart_line' => 'Çizgi',
@@ -433,7 +432,7 @@ return [
         'caption_summary_channel' => ':channel üzerinde :range rakamlarımız 📈 :metrics',
         'export_failed' => 'Görsel oluşturulamadı. Tekrar dene.',
         'colors' => [
-            'violet' => 'Mor',
+            'violet' => 'Menekşe',
             'blue' => 'Mavi',
             'green' => 'Yeşil',
             'peach' => 'Şeftali',

@@ -64,7 +64,6 @@ return [
         'performance' => 'Performances',
         'top_posts' => 'Top 5 des publications',
         'channel' => 'Canal',
-        'latest_snapshot_hint' => 'Les métriques des publications utilisent la dernière mesure enregistrée pour les publications de cette période.',
         'followers_chart_mode' => 'Type de graphique des abonnés',
         'posts_chart_mode' => 'Type de graphique des publications',
         'chart_line' => 'Courbe',
