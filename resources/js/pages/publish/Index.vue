@@ -879,6 +879,7 @@ const submitComposition = (
                         v-if="scope === 'all' && filterAccounts.length"
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
+                        sheet-below-sm
                     />
                     <PublishFilterMenu
                         :timezone="timezone"

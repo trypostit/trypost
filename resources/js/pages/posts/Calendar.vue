@@ -665,6 +665,7 @@ const goToDay = (key: string): void => {
                         v-if="scope === 'all' && filterAccounts.length"
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
+                        sheet-below-sm
                     />
                     <div class="shrink-0 max-md:hidden">
                         <LabelFilter
