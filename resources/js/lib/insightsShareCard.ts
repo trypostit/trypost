@@ -205,7 +205,7 @@ const VERIFIED_PATH =
     'M12.01 2.011a3.2 3.2 0 0 1 2.113 .797l.154 .145l.698 .698a1.2 1.2 0 0 0 .71 .341l.135 .008h1a3.2 3.2 0 0 1 3.195 3.018l.005 .182v1c0 .27 .092 .533 .258 .743l.09 .1l.697 .698a3.2 3.2 0 0 1 .147 4.382l-.145 .154l-.698 .698a1.2 1.2 0 0 0 -.341 .71l-.008 .135v1a3.2 3.2 0 0 1 -3.018 3.195l-.182 .005h-1a1.2 1.2 0 0 0 -.743 .258l-.1 .09l-.698 .697a3.2 3.2 0 0 1 -4.382 .147l-.154 -.145l-.698 -.698a1.2 1.2 0 0 0 -.71 -.341l-.135 -.008h-1a3.2 3.2 0 0 1 -3.195 -3.018l-.005 -.182v-1a1.2 1.2 0 0 0 -.258 -.743l-.09 -.1l-.697 -.698a3.2 3.2 0 0 1 -.147 -4.382l.145 -.154l.698 -.698a1.2 1.2 0 0 0 .341 -.71l.008 -.135v-1l.005 -.182a3.2 3.2 0 0 1 3.013 -3.013l.182 -.005h1a1.2 1.2 0 0 0 .743 -.258l.1 -.09l.698 -.697a3.2 3.2 0 0 1 2.269 -.944zm3.697 7.282a1 1 0 0 0 -1.414 0l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.32 1.497l2 2l.094 .083a1 1 0 0 0 1.32 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
-const SUMMARY = { top: 168, tileHeight: 185, inset: 36, label: 50, labelSize: 24, figureGap: 6, changeGap: 22, changeSize: 24 };
+const SUMMARY = { top: 168, tileHeight: 185, inset: 36, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24 };
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
 const loadFonts = async (): Promise<void> => {
@@ -438,6 +438,13 @@ const paintIdentity = (
 };
 
 /** The change as the page's `MetricChange`: the trending icon and the label, in the tone's color. */
+/** How wide a change is drawn at `size`: its trend icon, a gap, then its label. */
+const changeWidth = (context: CanvasRenderingContext2D, change: ShareChange, size: number): number => {
+    context.font = sans(600, size);
+
+    return size * 1.15 + size * 0.3 + context.measureText(change.label).width;
+};
+
 const paintChange = (
     context: CanvasRenderingContext2D,
     change: ShareChange,
@@ -449,10 +456,7 @@ const paintChange = (
     const font = sans(600, size);
     const icon = size * 1.15;
     const gap = size * 0.3;
-
-    context.font = font;
-
-    const width = icon + gap + context.measureText(change.label).width;
+    const width = changeWidth(context, change, size);
     const left = align === 'right' ? anchor.x - width : anchor.x;
 
     context.save();
@@ -1228,15 +1232,33 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
         const figureFont = heading(500, figureSize);
 
         writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
-        writeText(context, ellipsise(context, tile.figure ?? MISSING_VALUE, figureFont, limit), { x: left - 2 * fit, y: labelLine + figureSize + SUMMARY.figureGap * fit }, {
+        const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
+        const changeSize = SUMMARY.changeSize * fit;
+        const changeRoom = tileChangeRoom(context, tile, changeSize, SUMMARY.changeGap * fit);
+        const figure = ellipsise(context, tile.figure ?? MISSING_VALUE, figureFont, limit - changeRoom);
+
+        writeText(context, figure, { x: left - 2 * fit, y: baseline }, {
             font: figureFont,
             color: tile.figure === null ? MUTED : INK,
         });
 
         if (tile.change) {
-            paintChange(context, tile.change, { x: left, y: labelLine + figureSize + SUMMARY.changeGap * fit }, SUMMARY.changeSize * fit, 'left');
+            context.font = figureFont;
+            /** Beside the number like the page's cards, its icon sitting on the number's baseline. */
+            const besideFigure = left - 2 * fit + context.measureText(figure).width + SUMMARY.changeGap * fit;
+
+            paintChange(context, tile.change, { x: besideFigure, y: baseline - changeSize * 1.15 }, changeSize, 'left');
         }
     });
+};
+
+/** The width a tile keeps after its number for the change beside it; none without a change. */
+const tileChangeRoom = (context: CanvasRenderingContext2D, tile: ShareTile, size: number, gap: number): number => {
+    if (!tile.change) {
+        return 0;
+    }
+
+    return gap + changeWidth(context, tile.change, size);
 };
 
 /** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
