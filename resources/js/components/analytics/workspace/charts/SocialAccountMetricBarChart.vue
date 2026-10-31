@@ -77,11 +77,20 @@ const colorAccessor = (point: BarPoint, stack: number): string =>
     split.value && stack === 0 && point.gained > 0
         ? `color-mix(in srgb, ${rowColor(point)} 40%, var(--card))`
         : rowColor(point);
+const accountAt = (index: number): AccountIdentityData | undefined =>
+    props.rows[Math.round(index)]?.account;
 const formatAccount = (tick: number | Date): string => {
-    const account =
-        typeof tick === 'number' ? props.rows[Math.round(tick)]?.account : null;
+    if (typeof tick !== 'number') {
+        return '';
+    }
 
-    return account ? accountLabel(account) : '';
+    const account = accountAt(tick);
+
+    if (!account) {
+        return '';
+    }
+
+    return accountLabel(account);
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
 const detailFormatter = (key: string): string | null =>
@@ -107,8 +116,12 @@ const tickAttributes = {
     },
 };
 const AVATAR_SIZE = 24;
+/** The avatar host's `p-1`, room for the status ring to overhang the avatar. */
 const AVATAR_OVERHANG = 4;
 const AVATAR_GAP = 8;
+/** Between the avatar and the channel's name. */
+const AXIS_LABEL_GAP = 6;
+const ACCOUNT_TICK_PADDING = AVATAR_SIZE + AVATAR_GAP + AXIS_LABEL_GAP;
 /** The widest a channel's name gets next to its bar before the axis trims it with an ellipsis. */
 const ACCOUNT_LABEL_WIDTH = 88;
 const appContext = getCurrentInstance()?.appContext ?? null;
@@ -130,7 +143,7 @@ const unmountAvatars = (): void => {
  */
 const placeAxisChannel = (
     layer: HTMLDivElement,
-    svg: SVGSVGElement,
+    svgOffset: { x: number; y: number },
     tick: SVGGElement,
     account: AccountIdentityData,
 ): void => {
@@ -140,17 +153,13 @@ const placeAxisChannel = (
         return;
     }
 
-    const svgBox = svg.getBoundingClientRect();
-    const layerBox = layer.getBoundingClientRect();
     const host = document.createElement('div');
 
+    host.className = 'absolute p-1 leading-none';
     host.dataset.testid = 'analytics-axis-channel';
     host.dataset.platform = account.platform;
-    host.style.position = 'absolute';
-    host.style.left = `${svgBox.left - layerBox.left + origin.e - AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG}px`;
-    host.style.top = `${svgBox.top - layerBox.top + origin.f - AVATAR_SIZE / 2 - AVATAR_OVERHANG}px`;
-    host.style.padding = `${AVATAR_OVERHANG}px`;
-    host.style.lineHeight = '0';
+    host.style.left = `${svgOffset.x + origin.e - AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG}px`;
+    host.style.top = `${svgOffset.y + origin.f - AVATAR_SIZE / 2 - AVATAR_OVERHANG}px`;
 
     const avatar = h(ChannelAvatar, {
         platform: account.platform,
@@ -178,14 +187,21 @@ const decorateTicks = (svg: SVGSVGElement): void => {
         return;
     }
 
+    const svgBox = svg.getBoundingClientRect();
+    const layerBox = layer.getBoundingClientRect();
+    const svgOffset = {
+        x: svgBox.left - layerBox.left,
+        y: svgBox.top - layerBox.top,
+    };
+
     svg.querySelectorAll<SVGGElement>('g[data-account-tick]').forEach(
         (tick) => {
-            const account =
-                props.rows[Number(tick.getAttribute('data-account-tick'))]
-                    ?.account;
+            const account = accountAt(
+                Number(tick.getAttribute('data-account-tick')),
+            );
 
             if (account) {
-                placeAxisChannel(layer, svg, tick, account);
+                placeAxisChannel(layer, svgOffset, tick, account);
             }
         },
     );
@@ -243,7 +259,7 @@ const barAttributes = {
                 tick-text-fit-mode="trim"
                 tick-text-trim-type="end"
                 :tick-values="categoryTicks"
-                :tick-padding="AVATAR_SIZE + AVATAR_GAP + 6"
+                :tick-padding="ACCOUNT_TICK_PADDING"
                 :duration="0"
                 :attributes="tickAttributes"
                 :grid-line="false"

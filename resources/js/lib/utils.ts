@@ -36,6 +36,15 @@ export const formatPercent = (value: number): string => {
     }).format(value / 100);
 };
 
+/** A change in a count, signed and compact: "+1.2K", "-3", "0". */
+export const formatCountChange = (value: number): string =>
+    new Intl.NumberFormat(activeLocale.value, {
+        notation: 'compact',
+        compactDisplay: 'short',
+        maximumFractionDigits: 1,
+        signDisplay: 'exceptZero',
+    }).format(value);
+
 export const formatPercentChange = (value: number): string => {
     const compact = Math.abs(value) >= 1000;
 
@@ -110,6 +119,29 @@ export const downloadFile = (file: File): void => {
  */
 export const copyImageToClipboard = async (image: Promise<Blob>): Promise<void> =>
     navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
+
+/** A canvas encoded as an image file; rejects when the browser cannot encode it. */
+export const canvasToFile = (
+    canvas: HTMLCanvasElement,
+    name: string,
+    type: string,
+    quality?: number,
+): Promise<File> =>
+    new Promise((resolve, reject) => {
+        canvas.toBlob(
+            (blob) => {
+                if (!blob) {
+                    reject(new Error('The image could not be encoded.'));
+
+                    return;
+                }
+
+                resolve(new File([blob], name, { type }));
+            },
+            type,
+            quality,
+        );
+    });
 
 /** Mirrors ContentSanitizer::stripHtml(): the text a network receives for an HTML caption. */
 export const htmlToPlainText = (html: string): string => {

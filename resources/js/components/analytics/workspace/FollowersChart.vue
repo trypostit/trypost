@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
@@ -94,11 +93,7 @@ const shownChannels = computed(() =>
         ? props.followers.accounts.length
         : null,
 );
-const rangeLabel = computed(
-    () =>
-        `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
-);
-const page = usePage();
+const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
 const buildShareOptions = (): ShareMetricOption[] => [
     followersShareOption(
         props.followers,
@@ -133,7 +128,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 :options="buttons"
             />
             <ShareChartButton
-                :subject="page.props.auth.currentWorkspace?.name ?? ''"
                 :range="rangeLabel"
                 :build="buildShareOptions"
                 test-id="share-followers"

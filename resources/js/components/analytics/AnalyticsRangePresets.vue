@@ -131,12 +131,9 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
                     :max-date="bounds.max ? dayjs(bounds.max).toDate() : undefined"
                     sheet-below-sm
+                    without-trigger
                     @update:model-value="changeRange"
-                >
-                    <template #trigger>
-                        <span aria-hidden="true" />
-                    </template>
-                </DateRangePicker>
+                />
             </div>
             <div
                 class="hidden max-w-full flex-wrap items-center gap-1 rounded-lg border border-border-strong p-1 sm:inline-flex sm:flex-nowrap"

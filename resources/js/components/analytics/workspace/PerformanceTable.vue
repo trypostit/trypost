@@ -48,8 +48,6 @@ const props = defineProps<{
     previousRange: WorkspaceAnalyticsReport['previous_range'];
     filtered?: boolean;
 }>();
-const span = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 const { columns, toggleColumn } = usePerformanceColumns();
 type SortKey = PerformanceMetric | 'channel';
 type SortDirection = 'asc' | 'desc';
@@ -126,8 +124,8 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
         info-testid="analytics-performance-about"
         :subtitle="
             $t('analytics.ranges.compared_to', {
-                current: span(range),
-                previous: span(previousRange),
+                current: date.formatDayMonthYearRange(range),
+                previous: date.formatDayMonthYearRange(previousRange),
             })
         "
         subtitle-testid="analytics-performance-caption"

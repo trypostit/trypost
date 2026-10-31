@@ -1,17 +1,20 @@
 import { trans } from 'laravel-vue-i18n';
 
 import date from '@/date';
+import { activeLocale } from '@/language';
 import { accountLabel } from '@/lib/accountLabel';
 import { axisBucketLabel, formatSeriesValue } from '@/lib/channelMetrics';
 import type {
     ShareChange,
     ShareMetricOption,
     SharePoint,
+    ShareShape,
     ShareTile,
 } from '@/lib/insightsShareCard';
-import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
+import { formatCountChange, formatPercentChange } from '@/lib/utils';
 import type {
     ChannelMetricSeries,
+    FollowerAccount,
     SeriesMetric,
     WorkspaceAnalyticsReport,
 } from '@/types/analytics';
@@ -26,54 +29,88 @@ type Followers = WorkspaceAnalyticsReport['followers'];
 /** How the page's Followers card is drawn: per channel, over time, or the change per channel. */
 export type FollowersChartMode = 'bar' | 'line' | 'growth';
 
+/** The share card draws each mode of the Followers card the way the page does. */
+const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
+    bar: 'rows',
+    line: 'line',
+    growth: 'rows',
+};
+
+/** What a channel's row shows in the per-channel modes: its followers, or its change. */
+const FOLLOWERS_ROW_VALUES: Record<
+    Exclude<FollowersChartMode, 'line'>,
+    (account: FollowerAccount) => number | null
+> = {
+    bar: (account) => account.value,
+    growth: (account) => account.growth,
+};
+
 /** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
 const COUNTED_METRICS: readonly SeriesMetric[] = ['followers', 'net_followers'];
+
+/** Metrics the page draws as a line; the rest are columns. */
+const LINE_METRICS: readonly SeriesMetric[] = ['followers'];
 
 const sum = (values: number[]): number =>
     values.reduce((total, value) => total + value, 0);
 
-export const shareRange = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
-
-/** A change the way the page labels it: a signed count ("+12"), or a percentage. */
-export const shareChange = (
-    change: number | null | undefined,
-    byCount = false,
-): ShareChange | null => {
-    if (change == null) {
-        return null;
+const changeDirection = (change: number): ShareChange['direction'] => {
+    if (change > 0) {
+        return 'up';
     }
 
-    return {
-        label: byCount
-            ? `${change > 0 ? '+' : ''}${formatNumberCompact(change)}`
-            : formatPercentChange(change),
-        direction: change > 0 ? 'up' : change < 0 ? 'down' : 'flat',
-    };
+    if (change < 0) {
+        return 'down';
+    }
+
+    return 'flat';
 };
+
+/** A change in a count, the way the page labels it: "+12". */
+export const countChange = (change: number): ShareChange => ({
+    label: formatCountChange(change),
+    direction: changeDirection(change),
+});
+
+/** A change as a percentage of the previous value, the way the page labels it: "+8.5%". */
+export const percentChange = (change: number): ShareChange => ({
+    label: formatPercentChange(change),
+    direction: changeDirection(change),
+});
 
 /** The post text for one metric, of the whole workspace (`channel` null) or of one channel. */
 const metricCaption = (
     channel: string | null,
-    metric: string,
-    value: string,
-    range: string,
-): string =>
-    channel === null
-        ? trans('analytics.share.caption_workspace', { metric, value, range })
-        : trans('analytics.share.caption_channel', { metric, value, range, channel });
+    replacements: { metric: string; value: string; range: string },
+): string => {
+    if (channel === null) {
+        return trans('analytics.share.caption_workspace', replacements);
+    }
 
-/** The post text for the Summary: every number in one line. */
+    return trans('analytics.share.caption_channel', { ...replacements, channel });
+};
+
+/** The Summary's numbers as one phrase in the reader's language: "Followers 1.2K, Posts 30 and Reach 5K". */
+const summaryList = (tiles: ShareTile[]): string =>
+    new Intl.ListFormat(activeLocale.value, { type: 'conjunction' }).format(
+        tiles
+            .filter((tile): tile is ShareTile & { figure: string } => tile.figure !== null)
+            .map((tile) => `${tile.label} ${tile.figure}`),
+    );
+
+/** The post text for the Summary: every number with a value, in one line. */
 const summaryCaption = (
     channel: string | null,
     tiles: ShareTile[],
     range: string,
 ): string => {
-    const metrics = tiles.map((tile) => `${tile.label} ${tile.figure}`).join(' · ');
+    const replacements = { metrics: summaryList(tiles), range };
 
-    return channel === null
-        ? trans('analytics.share.caption_summary_workspace', { metrics, range })
-        : trans('analytics.share.caption_summary_channel', { metrics, range, channel });
+    if (channel === null) {
+        return trans('analytics.share.caption_summary_workspace', replacements);
+    }
+
+    return trans('analytics.share.caption_summary_channel', { ...replacements, channel });
 };
 
 /** An option with nothing drawn but what it is given. */
@@ -90,6 +127,15 @@ const shareOption = (
     ...option,
 });
 
+/** The sum of the counts known so far, or null before any channel has one. */
+const knownTotal = (counts: Map<string, number>): number | null => {
+    if (counts.size === 0) {
+        return null;
+    }
+
+    return sum([...counts.values()]);
+};
+
 /** Every channel added up day by day, each carrying its last known count over the days it has no reading. */
 const followersOverTime = (followers: Followers): SharePoint[] => {
     const lastKnown = new Map<string, number>();
@@ -103,14 +149,11 @@ const followersOverTime = (followers: Followers): SharePoint[] => {
             }
         });
 
-        return {
-            label: date.formatMonthDay(point.date),
-            value: lastKnown.size ? sum([...lastKnown.values()]) : null,
-        };
+        return { label: date.formatMonthDay(point.date), value: knownTotal(lastKnown) };
     });
 };
 
-/** One row per channel in its color: its followers (Bar) or its change over the period (Growth). */
+/** One row per channel in its color, showing what `mode` shows. */
 const followersPerChannel = (
     followers: Followers,
     mode: Exclude<FollowersChartMode, 'line'>,
@@ -118,9 +161,21 @@ const followersPerChannel = (
 ): SharePoint[] =>
     followers.accounts.map((account) => ({
         label: accountLabel(account),
-        value: mode === 'bar' ? account.value : account.growth,
+        value: FOLLOWERS_ROW_VALUES[mode](account),
         color: colors[account.social_account_key],
     }));
+
+const followersPoints = (
+    followers: Followers,
+    mode: FollowersChartMode,
+    colors: Record<string, string>,
+): SharePoint[] => {
+    if (mode === 'line') {
+        return followersOverTime(followers);
+    }
+
+    return followersPerChannel(followers, mode, colors);
+};
 
 /** The followers gained or lost over the period, across the channels that report it. */
 const followersChange = (followers: Followers): ShareChange | null => {
@@ -128,7 +183,11 @@ const followersChange = (followers: Followers): ShareChange | null => {
         .map((account) => account.net)
         .filter((net): net is number => net != null);
 
-    return nets.length ? shareChange(sum(nets), true) : null;
+    if (nets.length === 0) {
+        return null;
+    }
+
+    return countChange(sum(nets));
 };
 
 /** The workspace's followers the way the page's Followers card draws them in `mode`. */
@@ -146,12 +205,9 @@ export const followersShareOption = (
         label,
         figure,
         change: followersChange(followers),
-        points:
-            mode === 'line'
-                ? followersOverTime(followers)
-                : followersPerChannel(followers, mode, colors),
-        shape: mode === 'line' ? 'line' : 'rows',
-        caption: metricCaption(null, label, figure, range),
+        points: followersPoints(followers, mode, colors),
+        shape: FOLLOWERS_SHAPES[mode],
+        caption: metricCaption(null, { metric: label, value: figure, range }),
     });
 };
 
@@ -175,14 +231,14 @@ const seriesChange = (
     }
 
     if (COUNTED_METRICS.includes(metric)) {
-        return shareChange(current - previous, true);
+        return countChange(current - previous);
     }
 
     if (previous === 0) {
         return null;
     }
 
-    return shareChange(((current - previous) / Math.abs(previous)) * 100);
+    return percentChange(((current - previous) / Math.abs(previous)) * 100);
 };
 
 /** What the change is measured against: "vs 120 in the previous period". */
@@ -190,14 +246,25 @@ const seriesComparison = (
     metric: SeriesMetric,
     current: number | null | undefined,
     previous: number | null | undefined,
-): string | null =>
-    current == null || previous == null
-        ? null
-        : trans('analytics.share.previous', {
-              value: formatSeriesValue(previous, metric),
-          });
+): string | null => {
+    if (current == null || previous == null) {
+        return null;
+    }
 
-/** One metric of a channel's series: followers as a line, the rest as bars. */
+    return trans('analytics.share.previous', {
+        value: formatSeriesValue(previous, metric),
+    });
+};
+
+const seriesShape = (metric: SeriesMetric): ShareShape => {
+    if (LINE_METRICS.includes(metric)) {
+        return 'line';
+    }
+
+    return 'bar';
+};
+
+/** One metric of a channel's series, drawn the way the page's chart draws it. */
 const seriesShareOption = (
     series: ChannelMetricSeries,
     metric: SeriesMetric,
@@ -219,8 +286,8 @@ const seriesShareOption = (
             label: axisBucketLabel(point, series.resolution),
             value: point.values[metric] ?? null,
         })),
-        shape: metric === 'followers' ? 'line' : 'bar',
-        caption: metricCaption(channel, label, figure, range),
+        shape: seriesShape(metric),
+        caption: metricCaption(channel, { metric: label, value: figure, range }),
     });
 };
 

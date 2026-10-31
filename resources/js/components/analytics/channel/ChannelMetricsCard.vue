@@ -58,7 +58,6 @@ import {
 import {
     channelSeriesShareOptions,
     isShareableSeriesMetric,
-    shareRange,
 } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
@@ -211,13 +210,15 @@ const rangeCaption = computed(() => {
         return `${monthLabel(start)} – ${monthLabel(end)}`;
     }
 
-    return `${date.formatDayMonthYear(props.series.range.start)} – ${date.formatDayMonthYear(props.series.range.end)}`;
+    return date.formatDayMonthYearRange(props.series.range);
 });
-const previousCaption = computed(() =>
-    props.series
-        ? `${date.formatDayMonthYear(props.series.previous_range.start)} – ${date.formatDayMonthYear(props.series.previous_range.end)}`
-        : '',
-);
+const previousCaption = computed((): string => {
+    if (!props.series) {
+        return '';
+    }
+
+    return date.formatDayMonthYearRange(props.series.previous_range);
+});
 /** What the Share button needs, or null while the series has nothing to share. */
 const share = computed(
     (): { range: string; build: () => ShareMetricOption[] } | null => {
@@ -227,7 +228,7 @@ const share = computed(
             return null;
         }
 
-        const range = shareRange(series.range);
+        const range = date.formatDayMonthYearRange(series.range);
 
         return {
             range,

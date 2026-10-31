@@ -33,6 +33,7 @@ import {
     SHARE_TINTS,
     shareCardFile,
     type ShareCardOptions,
+    type ShareMetricKey,
     type ShareMetricOption,
     type ShareTint,
 } from '@/lib/insightsShareCard';
@@ -44,14 +45,14 @@ const props = defineProps<{
     subject: string;
     range: string;
     options: ShareMetricOption[];
-    initialKey?: string;
+    initialKey?: ShareMetricKey;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
 /** The metric asked for; `selected` falls back to the first when the card cannot draw it. */
-const selectedKey = ref<string>();
+const selectedKey = ref<ShareMetricKey>();
 const posting = ref(false);
 const painted = ref(false);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
@@ -64,8 +65,8 @@ const selected = computed(
 
 /** The metric picker's value: always one of the options, even when the one asked for is not. */
 const metricKey = computed({
-    get: (): string | undefined => selected.value?.key,
-    set: (key: string | undefined): void => {
+    get: (): ShareMetricKey | undefined => selected.value?.key,
+    set: (key: ShareMetricKey | undefined): void => {
         selectedKey.value = key;
     },
 });

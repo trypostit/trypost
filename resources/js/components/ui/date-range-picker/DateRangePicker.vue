@@ -31,9 +31,12 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   align?: "start" | "center" | "end"
   sheetBelowSm?: boolean
+  /** Opened only through `v-model:open`, as from a menu item, with no button of its own. */
+  withoutTrigger?: boolean
 }>(), {
   align: "end",
   sheetBelowSm: false,
+  withoutTrigger: false,
 })
 
 const [DefinePanel, ReusePanel] = createReusableTemplate()
@@ -185,7 +188,7 @@ watch(
   </DefinePanel>
 
   <Popover v-model:open="isOpen">
-    <PopoverTrigger as-child>
+    <PopoverTrigger v-if="!withoutTrigger" as-child>
       <slot name="trigger">
         <Button
           variant="outline"

@@ -1,5 +1,6 @@
 import date from '@/date';
-import { formatNumberCompact } from '@/lib/utils';
+import { canvasToFile, formatNumberCompact } from '@/lib/utils';
+import type { SeriesMetric } from '@/types/analytics';
 
 /**
  * The Insights share card: a chart or a headline number drawn on a canvas, to
@@ -17,12 +18,15 @@ export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 /** A bucket over time, or a channel for `rows`, which may bring its own color. */
 export type SharePoint = { label: string; value: number | null; color?: string };
 
-/** One number of the Summary, as its card prints it. */
-export type ShareTile = { label: string; figure: string; change: ShareChange | null };
+/** One number of the Summary, as its card prints it; null while it has no value. */
+export type ShareTile = { label: string; figure: string | null; change: ShareChange | null };
+
+/** What a share option draws: one metric of a series, or the whole Summary. */
+export type ShareMetricKey = SeriesMetric | 'summary';
 
 /** One metric a share dialog can draw, with the post text it opens the composer with. */
 export type ShareMetricOption = {
-    key: string;
+    key: ShareMetricKey;
     label: string;
     figure: string;
     change: ShareChange | null;
@@ -35,26 +39,8 @@ export type ShareMetricOption = {
     caption: string;
 };
 
-/** A background tint of the app with the strong color the data is drawn in. */
-export type ShareTint = { key: string; ground: string; strong: string };
-
-/** The metric to draw, and how: in which tint, for whom, over which period, signed how. */
-export type ShareCardOptions = Omit<ShareMetricOption, 'caption'> & {
-    tint: ShareTint;
-    /** The workspace or channel the numbers belong to. */
-    subject: string;
-    /** The period, as the page prints it. */
-    range: string;
-    /** The signature: "Made with TryPost", translated. */
-    mark: string;
-};
-
-export const SHARE_CARD_SIZE = { width: 1200, height: 675 };
-
-export const SHARE_EXPORT_SCALE = 2;
-
-/** The light tints of the "What's New" covers, so a shared card reads as TryPost. */
-export const SHARE_TINTS: ShareTint[] = [
+/** The light tints of the "What's New" covers, with the strong color the data is drawn in. */
+export const SHARE_TINTS = [
     { key: 'violet', ground: '#d2c7fd', strong: '#6d28d9' },
     { key: 'purple', ground: '#ead9fb', strong: '#7e22ce' },
     { key: 'fuchsia', ground: '#f6dcfb', strong: '#a21caf' },
@@ -71,10 +57,42 @@ export const SHARE_TINTS: ShareTint[] = [
     { key: 'indigo', ground: '#dfe3fd', strong: '#4338ca' },
     { key: 'slate', ground: '#e3e8ef', strong: '#334155' },
     { key: 'neutral', ground: '#f4f1ec', strong: '#292928' },
-];
+] as const;
+
+export type ShareTint = (typeof SHARE_TINTS)[number];
+
+/** The metric to draw, and how: in which tint, for whom, over which period, signed how. */
+export type ShareCardOptions = Omit<ShareMetricOption, 'caption'> & {
+    tint: ShareTint;
+    /** The workspace or channel the numbers belong to. */
+    subject: string;
+    /** The period, as the page prints it. */
+    range: string;
+    /** The signature: "Made with TryPost", translated. */
+    mark: string;
+};
+
+export const SHARE_CARD_SIZE = { width: 1200, height: 675 };
+
+export const SHARE_EXPORT_SCALE = 2;
+
+type Point = { x: number; y: number };
+
+type Box = Point & { width: number; height: number };
 
 const INK = '#292928';
 const MUTED = '#5a5a59';
+const BORDER = 2.5;
+
+const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+/** The app's heading face (`--font-heading`), for names and numbers. */
+const HEADING = "Outfit, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+
+const sans = (weight: number, size: number): string => `${weight} ${size}px ${SANS}`;
+
+const heading = (weight: number, size: number): string => `${weight} ${size}px ${HEADING}`;
+
 /**
  * The app's charts (`ChartContainer`, `ChannelMetricsChart`) at twice their
  * size, since the card is the page at 2x: a dashed `--border` grid, muted
@@ -85,14 +103,14 @@ const CHART = {
     grid: '#eae8e5',
     gridDash: [6, 6],
     gridWidth: 2,
-    tickSize: 22,
+    tickFont: sans(500, 22),
     barMaxWidth: 32,
     barPadding: 0.35,
     barRadius: 8,
     lineWidth: 4,
     dotRadius: 4,
 };
-const BORDER = 2.5;
+
 /** `MetricChange`: `--success-text`, `--destructive-text` or muted, with Tabler's trending icons. */
 const CHANGE_COLORS = { up: '#337046', down: '#7f0f00', flat: MUTED } as const;
 const CHANGE_ICONS = {
@@ -101,14 +119,26 @@ const CHANGE_ICONS = {
     flat: ['M5 12l14 0'],
 } as const;
 
-const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+/** The home hero's dot grid in the ground's corners, fading toward the middle. */
+const DOTS = { gap: 24, radius: 1.4, opacity: 0.22, reach: 0.38 };
 
-/** The app's heading face (`--font-heading`), for names and numbers. */
-const HEADING = "Outfit, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+/** The white surface, inset from the tint like a cover's panel, over the signature's band. */
+const PANEL = { x: 56, y: 48, radius: 24, padding: 48, band: 92 };
 
-/** The white surface, inset from the tint like a cover's panel. */
-const PANEL = { x: 56, y: 48, radius: 24, padding: 48 };
-const PANEL_BOTTOM = 92;
+/** The name and what-and-when lines at the panel's top, as baselines from where they start. */
+const IDENTITY = { top: 40, name: 34, detail: 76 };
+
+/** The chart card's headline: the figure at the top right, its change and comparison under it. */
+const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, comparison: 136, comparisonUnderChange: 176 };
+
+/** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
+const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
+
+/** One bar per channel: the name in a column on the left, the values under the bars. */
+const ROWS = { max: 12, labelWidth: 220, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+
+/** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
+const SUMMARY = { top: 168, tileHeight: 185, inset: 36, label: 50, labelSize: 24, figureGap: 6, changeGap: 22, changeSize: 24 };
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
 export const loadShareFonts = async (): Promise<void> => {
@@ -117,17 +147,42 @@ export const loadShareFonts = async (): Promise<void> => {
     }
 
     await Promise.all(
-        [`500 24px ${SANS}`, `600 24px ${SANS}`, `500 64px ${HEADING}`, `600 36px ${HEADING}`].map(
+        [sans(500, 24), sans(600, 24), heading(500, 64), heading(600, 36)].map(
             (face) => document.fonts.load(face).catch(() => []),
         ),
     );
 };
 
+type TextStyle = {
+    font: string;
+    color: string;
+    align?: CanvasTextAlign;
+    baseline?: CanvasTextBaseline;
+};
+
+/** Writes one line of text in its own style, so no drawing step inherits another's. */
+const writeText = (
+    context: CanvasRenderingContext2D,
+    text: string,
+    at: Point,
+    { font, color, align = 'left', baseline = 'alphabetic' }: TextStyle,
+): void => {
+    context.font = font;
+    context.fillStyle = color;
+    context.textAlign = align;
+    context.textBaseline = baseline;
+    context.fillText(text, at.x, at.y);
+};
+
+/** The text cut with an ellipsis to fit `limit` in `font`. */
 const ellipsise = (
     context: CanvasRenderingContext2D,
     text: string,
+    font: string,
     limit: number,
 ): string => {
+    context.font = font;
+
     if (context.measureText(text).width <= limit) {
         return text;
     }
@@ -141,52 +196,46 @@ const ellipsise = (
     return `${kept}…`;
 };
 
-/**
- * The covers' background: the flat tint with the home hero's dot grid in the
- * top-right and bottom-left corners only, fading toward the middle.
- */
-const paintGround = (
-    context: CanvasRenderingContext2D,
-    tint: ShareTint,
-    width: number,
-    height: number,
-): void => {
+const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: Point): void => {
+    context.beginPath();
+    context.moveTo(from.x, from.y);
+    context.lineTo(to.x, to.y);
+    context.stroke();
+};
+
+/** The covers' background: the flat tint with the dot grid in the top-right and bottom-left corners. */
+const paintGround = (context: CanvasRenderingContext2D, tint: ShareTint): void => {
+    const { width, height } = SHARE_CARD_SIZE;
+    const reach = Math.hypot(width, height) * DOTS.reach;
+
     context.fillStyle = tint.ground;
     context.fillRect(0, 0, width, height);
 
-    const reach = Math.hypot(width, height) * 0.38;
-
-    for (let y = 12; y < height; y += 24) {
-        for (let x = 12; x < width; x += 24) {
-            const corner = Math.min(
-                Math.hypot(width - x, y),
-                Math.hypot(x, height - y),
-            );
+    for (let y = DOTS.gap / 2; y < height; y += DOTS.gap) {
+        for (let x = DOTS.gap / 2; x < width; x += DOTS.gap) {
+            const corner = Math.min(Math.hypot(width - x, y), Math.hypot(x, height - y));
             const strength = 1 - corner / reach;
 
             if (strength <= 0) {
                 continue;
             }
 
-            context.fillStyle = `rgba(10, 10, 10, ${0.22 * strength})`;
+            context.fillStyle = `rgba(10, 10, 10, ${DOTS.opacity * strength})`;
             context.beginPath();
-            context.arc(x, y, 1.4, 0, Math.PI * 2);
+            context.arc(x, y, DOTS.radius, 0, Math.PI * 2);
             context.fill();
         }
     }
 };
 
 /** A white surface with the ink border and no shadow. */
-const paintPanel = (
-    context: CanvasRenderingContext2D,
-    width: number,
-    height: number,
-): { x: number; y: number; width: number; height: number } => {
+const paintPanel = (context: CanvasRenderingContext2D): Box => {
+    const { width, height } = SHARE_CARD_SIZE;
     const panel = {
         x: PANEL.x,
         y: PANEL.y,
         width: width - PANEL.x * 2,
-        height: height - PANEL.y - PANEL_BOTTOM,
+        height: height - PANEL.y - PANEL.band,
     };
 
     context.beginPath();
@@ -201,12 +250,7 @@ const paintPanel = (
 };
 
 /** The TryPost mark, the four quarters of `AppLogo.vue`, on a 410 grid. */
-const paintLogo = (
-    context: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    size: number,
-): void => {
+const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
     const quarters: [string, string][] = [
         ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
         ['M410 0H281.138L205 81.3178L410 300.264V0Z', '#855ED4'],
@@ -216,11 +260,11 @@ const paintLogo = (
 
     context.save();
     context.beginPath();
-    context.arc(x + size / 2, y + size / 2, size / 2, 0, Math.PI * 2);
+    context.arc(at.x + size / 2, at.y + size / 2, size / 2, 0, Math.PI * 2);
     context.clip();
     context.fillStyle = '#ffffff';
-    context.fillRect(x, y, size, size);
-    context.translate(x, y);
+    context.fillRect(at.x, at.y, size, size);
+    context.translate(at.x, at.y);
     context.scale(size / 410, size / 410);
 
     for (const [path, color] of quarters) {
@@ -231,69 +275,56 @@ const paintLogo = (
     context.restore();
 };
 
-/** The signature, centered in the band under the panel: whoever sees the post sees where it came from. */
-const paintMark = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    width: number,
-    height: number,
-): void => {
+/** The signature, centred in the band under the panel: whoever sees the post sees where it came from. */
+const paintMark = (context: CanvasRenderingContext2D, mark: string): void => {
     const logo = 32;
     const gap = 12;
-    const centre = height - PANEL_BOTTOM / 2;
+    const font = sans(600, 24);
+    const centre = SHARE_CARD_SIZE.height - PANEL.band / 2;
 
-    context.font = `600 24px ${SANS}`;
-    context.textAlign = 'left';
-    context.textBaseline = 'middle';
+    context.font = font;
 
-    const start = (width - (logo + gap + context.measureText(options.mark).width)) / 2;
+    const start = (SHARE_CARD_SIZE.width - (logo + gap + context.measureText(mark).width)) / 2;
 
-    paintLogo(context, start, centre - logo / 2, logo);
-    context.fillStyle = INK;
-    context.fillText(options.mark, start + logo + gap, centre + 1);
-    context.textBaseline = 'alphabetic';
+    paintLogo(context, { x: start, y: centre - logo / 2 }, logo);
+    writeText(context, mark, { x: start + logo + gap, y: centre + 1 }, { font, color: INK, baseline: 'middle' });
 };
 
-/** The workspace or channel name, what and when under it. */
+/** The workspace or channel name, with what and when under it. */
 const paintIdentity = (
     context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    left: number,
-    top: number,
-    limit: number,
+    subject: string,
     detail: string,
+    at: Point,
+    limit: number,
 ): void => {
-    context.textAlign = 'left';
-    context.fillStyle = INK;
-    context.font = `600 36px ${HEADING}`;
-    context.fillText(ellipsise(context, options.subject, limit), left, top + 34);
+    const nameFont = heading(600, 36);
+    const detailFont = sans(500, 22);
 
-    context.fillStyle = MUTED;
-    context.font = `500 22px ${SANS}`;
-    context.fillText(ellipsise(context, detail, limit), left, top + 76);
+    writeText(context, ellipsise(context, subject, nameFont, limit), { x: at.x, y: at.y + IDENTITY.name }, { font: nameFont, color: INK });
+    writeText(context, ellipsise(context, detail, detailFont, limit), { x: at.x, y: at.y + IDENTITY.detail }, { font: detailFont, color: MUTED });
 };
 
 /** The change as the page's `MetricChange`: the trending icon and the label, in the tone's color. */
 const paintChange = (
     context: CanvasRenderingContext2D,
     change: ShareChange,
-    anchor: number,
-    top: number,
+    anchor: Point,
     size: number,
     align: 'left' | 'right',
 ): void => {
     const color = CHANGE_COLORS[change.direction];
+    const font = sans(600, size);
     const icon = size * 1.15;
     const gap = size * 0.3;
 
-    context.font = `600 ${size}px ${SANS}`;
+    context.font = font;
 
     const width = icon + gap + context.measureText(change.label).width;
-    const x = align === 'right' ? anchor - width : anchor;
-    const middle = top + icon / 2;
+    const left = align === 'right' ? anchor.x - width : anchor.x;
 
     context.save();
-    context.translate(x, middle - icon / 2);
+    context.translate(left, anchor.y);
     context.scale(icon / 24, icon / 24);
     context.strokeStyle = color;
     context.lineWidth = 2.5;
@@ -302,29 +333,18 @@ const paintChange = (
     CHANGE_ICONS[change.direction].forEach((path) => context.stroke(new Path2D(path)));
     context.restore();
 
-    context.fillStyle = color;
-    context.textAlign = 'left';
-    context.textBaseline = 'middle';
-    context.fillText(change.label, x + icon + gap, middle + 1);
-    context.textBaseline = 'alphabetic';
+    writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
 };
 
+const NICE_STEPS = [1, 2, 2.5, 5, 10];
+
+/** A round step that splits `span` into about `count` parts: 1, 2, 2.5 or 5 times a power of ten. */
 const niceStep = (span: number, count: number): number => {
     const raw = span / count;
     const magnitude = 10 ** Math.floor(Math.log10(raw));
     const normalised = raw / magnitude;
 
-    return (
-        (normalised <= 1
-            ? 1
-            : normalised <= 2
-              ? 2
-              : normalised <= 2.5
-                ? 2.5
-                : normalised <= 5
-                  ? 5
-                  : 10) * magnitude
-    );
+    return (NICE_STEPS.find((step) => normalised <= step) ?? 10) * magnitude;
 };
 
 /**
@@ -349,6 +369,50 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
     const padding = Math.max((high - low) * 0.15, 1);
 
     return [low - padding, high + padding];
+};
+
+type ValueAxis = {
+    ticks: number[];
+    /** Where a value sits on the axis, from 0 at its bottom to 1 at its top. */
+    at: (value: number) => number;
+    /** Where the bars start: zero, or the bottom when every value is above it. */
+    zero: number;
+};
+
+/** A chart's value axis with round ticks from its bottom to its top. */
+const valueAxis = (values: number[], shape: ShareShape): ValueAxis => {
+    const [low, high] = domain(values, shape);
+    const step = Math.max(1, niceStep(high - low || 1, 4));
+    const bottom = Math.floor(low / step) * step;
+    const top = Math.ceil(high / step) * step;
+    const at = (value: number): number => (value - bottom) / (top - bottom || 1);
+
+    return {
+        ticks: Array.from({ length: Math.round((top - bottom) / step) + 1 }, (_, index) => bottom + step * index),
+        at,
+        zero: at(Math.max(0, bottom)),
+    };
+};
+
+/** The dashed value grid: one line per tick, with the tick's value at `label`. */
+const paintGrid = (
+    context: CanvasRenderingContext2D,
+    ticks: number[],
+    line: (value: number) => [Point, Point],
+    label: (value: number) => Point,
+    style: Pick<TextStyle, 'align' | 'baseline'>,
+): void => {
+    context.save();
+    context.setLineDash(CHART.gridDash);
+    context.lineWidth = CHART.gridWidth;
+    context.strokeStyle = CHART.grid;
+
+    ticks.forEach((value) => {
+        strokeLine(context, ...line(value));
+        writeText(context, formatNumberCompact(value), label(value), { font: CHART.tickFont, color: MUTED, ...style });
+    });
+
+    context.restore();
 };
 
 /**
@@ -380,29 +444,8 @@ const fillBar = (
     context.fill();
 };
 
-/** A chart's value axis: round ticks from its bottom to its top, and where a value sits between them, 0 to 1. */
-const valueAxis = (
-    values: number[],
-    shape: ShareShape,
-): { ticks: number[]; at: (value: number) => number; zero: number } => {
-    const [low, high] = domain(values, shape);
-    const step = Math.max(1, niceStep(high - low || 1, 4));
-    const bottom = Math.floor(low / step) * step;
-    const top = Math.ceil(high / step) * step;
-    const at = (value: number): number => (value - bottom) / (top - bottom || 1);
-
-    return {
-        ticks: Array.from({ length: Math.round((top - bottom) / step) + 1 }, (_, index) => bottom + step * index),
-        at,
-        zero: at(Math.max(0, bottom)),
-    };
-};
-
 /** The line through the points as a monotone cubic, d3's `curveMonotoneX` the page's charts use. */
-const traceMonotone = (
-    context: CanvasRenderingContext2D,
-    points: { x: number; y: number }[],
-): void => {
+const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void => {
     context.beginPath();
 
     if (points.length === 0) {
@@ -465,8 +508,6 @@ const traceMonotone = (
     });
 };
 
-const MAX_ROWS = 12;
-
 /** A channel color the page gives as a CSS token (`var(--series-3)`), read as the color it stands for. */
 const resolveColor = (color: string | undefined, fallback: string): string => {
     const token = color?.match(/^var\((--[\w-]+)\)$/)?.[1];
@@ -478,191 +519,224 @@ const resolveColor = (color: string | undefined, fallback: string): string => {
     return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
 };
 
+type RankedPoint = SharePoint & { index: number; value: number };
+
+/** The channels with the largest values when they do not all fit, kept in the page's order. */
+const rankedRows = (points: SharePoint[]): RankedPoint[] =>
+    points
+        .map((point, index) => ({ ...point, index }))
+        .filter((point): point is RankedPoint => point.value !== null)
+        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
+        .slice(0, ROWS.max)
+        .sort((a, b) => a.index - b.index);
+
 /**
  * One horizontal bar per channel from zero, losses to the left, in each
- * channel's color, like the page's Bar and Growth views. The channels with
- * the largest values keep their place when they do not all fit.
+ * channel's color, like the page's Bar and Growth views.
  */
-const paintRows = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    area: { x: number; y: number; width: number; height: number },
-): void => {
-    const ranked = options.points
-        .map((point, index) => ({ ...point, index }))
-        .filter((point): point is SharePoint & { index: number; value: number } => point.value !== null)
-        .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
-        .slice(0, MAX_ROWS)
-        .sort((a, b) => a.index - b.index);
-    const axis = valueAxis(ranked.map((point) => point.value), 'bar');
-    const labelWidth = 220;
-    const plot = { x: area.x + labelWidth, width: area.width - labelWidth, y: area.y, height: area.height - 44 };
-    const x = (fraction: number): number => plot.x + fraction * plot.width;
-    const rowHeight = plot.height / Math.max(ranked.length, 1);
-    const thickness = Math.min(rowHeight * 0.55, 28);
-    const labelSize = Math.min(22, Math.max(14, rowHeight * 0.55));
+const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, area: Box): void => {
+    const rows = rankedRows(options.points);
+    const axis = valueAxis(rows.map((point) => point.value), 'bar');
+    const plot = {
+        x: area.x + ROWS.labelWidth,
+        y: area.y,
+        width: area.width - ROWS.labelWidth,
+        height: area.height - ROWS.axis,
+    };
+    const x = (value: number): number => plot.x + axis.at(value) * plot.width;
+    const rowHeight = plot.height / Math.max(rows.length, 1);
+    const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
+    const labelFont = sans(500, Math.min(22, Math.max(14, rowHeight * 0.55)));
 
-    context.setLineDash(CHART.gridDash);
-    context.lineWidth = CHART.gridWidth;
-    context.font = `500 ${CHART.tickSize}px ${SANS}`;
-    context.textAlign = 'center';
-    context.fillStyle = MUTED;
+    paintGrid(
+        context,
+        axis.ticks,
+        (value) => [{ x: x(value), y: plot.y }, { x: x(value), y: plot.y + plot.height }],
+        (value) => ({ x: x(value), y: plot.y + plot.height + ROWS.valuesGap }),
+        { align: 'center' },
+    );
 
-    context.strokeStyle = CHART.grid;
-
-    axis.ticks.forEach((value) => {
-        context.beginPath();
-        context.moveTo(x(axis.at(value)), plot.y);
-        context.lineTo(x(axis.at(value)), plot.y + plot.height);
-        context.stroke();
-        context.fillText(formatNumberCompact(value), x(axis.at(value)), plot.y + plot.height + 36);
-    });
-
-    context.setLineDash([]);
-
-    ranked.forEach((point, row) => {
+    rows.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
+        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap);
 
-        context.textAlign = 'left';
-        context.textBaseline = 'middle';
-        context.fillStyle = MUTED;
-        context.font = `500 ${labelSize}px ${SANS}`;
-        context.fillText(ellipsise(context, point.label, labelWidth - 24), area.x, centre);
-        context.textBaseline = 'alphabetic';
+        writeText(context, label, { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
 
         if (point.value === 0) {
             return;
         }
 
         context.fillStyle = resolveColor(point.color, options.tint.strong);
-        fillBar(context, x(axis.zero), x(axis.at(point.value)), centre, thickness, true);
+        fillBar(context, plot.x + axis.zero * plot.width, x(point.value), centre, thickness, true);
     });
 };
 
-const paintChart = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    panel: { x: number; y: number; width: number; height: number },
-): void => {
+/** Where the comparison line sits: under the change when there is one, else under the figure. */
+const comparisonBaseline = (options: ShareCardOptions): number => {
+    if (options.change) {
+        return HEADLINE.comparisonUnderChange;
+    }
+
+    return HEADLINE.comparison;
+};
+
+/** The subject and what and when on the left, the figure with its change and comparison on the right. */
+const paintHeadline = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
-    const textLimit = panel.width - PANEL.padding * 2 - 380;
+    const limit = panel.width - PANEL.padding * 2 - HEADLINE.reserve;
 
-    paintIdentity(context, options, left, panel.y + 40, textLimit, `${options.label} · ${options.range}`);
-
-    context.textAlign = 'right';
-    context.fillStyle = INK;
-    context.font = `500 68px ${HEADING}`;
-    context.fillText(options.figure, right, panel.y + 100);
+    paintIdentity(context, options.subject, `${options.label} · ${options.range}`, { x: left, y: panel.y + IDENTITY.top }, limit);
+    writeText(context, options.figure, { x: right, y: panel.y + HEADLINE.figure }, { font: heading(500, 68), color: INK, align: 'right' });
 
     if (options.change) {
-        paintChange(context, options.change, right, panel.y + 116, 26, 'right');
+        paintChange(context, options.change, { x: right, y: panel.y + HEADLINE.change }, HEADLINE.changeSize, 'right');
     }
 
     if (options.comparison) {
-        context.textAlign = 'right';
-        context.fillStyle = MUTED;
-        context.font = `500 18px ${SANS}`;
-        context.fillText(options.comparison, right, panel.y + (options.change ? 176 : 136));
+        writeText(context, options.comparison, { x: right, y: panel.y + comparisonBaseline(options) }, { font: sans(500, 18), color: MUTED, align: 'right' });
+    }
+};
+
+/** One column per bucket from zero, in the tint's strong color. */
+const paintBars = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    plot: Box,
+    x: (index: number) => number,
+    y: (value: number) => number,
+    zero: number,
+): void => {
+    const slot = plot.width / options.points.length;
+    const width = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
+
+    context.fillStyle = options.tint.strong;
+
+    options.points.forEach((point, index) => {
+        if (point.value === null || point.value === 0) {
+            return;
+        }
+
+        fillBar(context, zero, y(point.value), x(index), width, false);
+    });
+};
+
+/** The known points joined by a monotone line, with a dot on each. */
+const paintLine = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    x: (index: number) => number,
+    y: (value: number) => number,
+): void => {
+    const known = options.points.flatMap((point, index) => (point.value === null ? [] : [{ x: x(index), y: y(point.value) }]));
+
+    context.strokeStyle = options.tint.strong;
+    context.lineWidth = CHART.lineWidth;
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    traceMonotone(context, known);
+    context.stroke();
+
+    context.fillStyle = options.tint.strong;
+    known.forEach((point) => {
+        context.beginPath();
+        context.arc(point.x, point.y, CHART.dotRadius, 0, Math.PI * 2);
+        context.fill();
+    });
+};
+
+/** Which bucket the `mark`-th of `marks` date labels names, spread evenly over `count` buckets. */
+const dateIndex = (mark: number, marks: number, count: number): number => {
+    if (marks === 1) {
+        return 0;
     }
 
+    return Math.round(((count - 1) * mark) / (marks - 1));
+};
+
+/** Where a date label goes: the first and last flush with the plot's edges, the others under their bucket. */
+const datePlacement = (
+    mark: number,
+    marks: number,
+    plot: Box,
+    bucketX: number,
+): { x: number; align: CanvasTextAlign } => {
+    if (mark === 0) {
+        return { x: plot.x, align: 'left' };
+    }
+
+    if (mark === marks - 1) {
+        return { x: plot.x + plot.width, align: 'right' };
+    }
+
+    return { x: bucketX, align: 'center' };
+};
+
+/** A few dates under the plot, so the period reads at a glance. */
+const paintDates = (
+    context: CanvasRenderingContext2D,
+    options: ShareCardOptions,
+    plot: Box,
+    x: (index: number) => number,
+): void => {
+    const marks = Math.min(PLOT.maxDates, options.points.length);
+
+    for (let mark = 0; mark < marks; mark += 1) {
+        const index = dateIndex(mark, marks, options.points.length);
+        const placement = datePlacement(mark, marks, plot, x(index));
+
+        writeText(context, options.points[index].label, { x: placement.x, y: plot.y + plot.height + PLOT.dates }, {
+            font: CHART.tickFont,
+            color: MUTED,
+            align: placement.align,
+        });
+    }
+};
+
+/** The headline over a line, columns or one bar per channel. */
+const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
+    paintHeadline(context, options, panel);
+
+    const left = panel.x + PANEL.padding;
+    const right = panel.x + panel.width - PANEL.padding;
     const plot = {
-        x: left + 72,
-        y: panel.y + 212,
-        width: right - left - 72,
-        height: panel.height - 212 - 76,
+        x: left + PLOT.gutter,
+        y: panel.y + PLOT.top,
+        width: right - left - PLOT.gutter,
+        height: panel.height - PLOT.top - PLOT.bottom,
     };
-    const values = options.points
-        .map((point) => point.value)
-        .filter((value): value is number => value !== null);
+    const values = options.points.flatMap((point) => (point.value === null ? [] : [point.value]));
 
     if (values.length === 0) {
         return;
     }
 
     if (options.shape === 'rows') {
-        paintRows(context, options, { x: left, y: plot.y, width: right - left, height: plot.height + 40 });
+        paintRows(context, options, { x: left, y: plot.y, width: right - left, height: plot.height + PLOT.dates });
 
         return;
     }
 
     const axis = valueAxis(values, options.shape);
-    const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
+    const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
 
-    context.font = `500 ${CHART.tickSize}px ${SANS}`;
-    context.textAlign = 'right';
-    context.textBaseline = 'middle';
-    context.setLineDash(CHART.gridDash);
-    context.lineWidth = CHART.gridWidth;
-
-    context.strokeStyle = CHART.grid;
-    context.fillStyle = MUTED;
-
-    axis.ticks.forEach((value) => {
-        context.beginPath();
-        context.moveTo(plot.x, y(value));
-        context.lineTo(plot.x + plot.width, y(value));
-        context.stroke();
-        context.fillText(formatNumberCompact(value), plot.x - 18, y(value));
-    });
-
-    context.setLineDash([]);
-    context.textBaseline = 'alphabetic';
-
-    const color = options.tint.strong;
+    paintGrid(
+        context,
+        axis.ticks,
+        (value) => [{ x: plot.x, y: y(value) }, { x: plot.x + plot.width, y: y(value) }],
+        (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
+        { align: 'right', baseline: 'middle' },
+    );
 
     if (options.shape === 'bar') {
-        const barWidth = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
-        const zero = plot.y + plot.height - axis.zero * plot.height;
-
-        context.fillStyle = color;
-
-        options.points.forEach((point, index) => {
-            if (point.value === null || point.value === 0) {
-                return;
-            }
-
-            fillBar(context, zero, y(point.value), x(index), barWidth, false);
-        });
+        paintBars(context, options, plot, x, y, plot.y + plot.height - axis.zero * plot.height);
     } else {
-        const known = options.points
-            .map((point, index) => ({ x: x(index), y: point.value === null ? null : y(point.value) }))
-            .filter((point): point is { x: number; y: number } => point.y !== null);
-
-        context.strokeStyle = color;
-        context.lineWidth = CHART.lineWidth;
-        context.lineJoin = 'round';
-        context.lineCap = 'round';
-        traceMonotone(context, known);
-        context.stroke();
-
-        context.fillStyle = color;
-        known.forEach((point) => {
-            context.beginPath();
-            context.arc(point.x, point.y, CHART.dotRadius, 0, Math.PI * 2);
-            context.fill();
-        });
+        paintLine(context, options, x, y);
     }
 
-    context.font = `500 ${CHART.tickSize}px ${SANS}`;
-    context.fillStyle = MUTED;
-
-    const marks = Math.min(5, options.points.length);
-
-    for (let mark = 0; mark < marks; mark += 1) {
-        const index = marks === 1 ? 0 : Math.round(((options.points.length - 1) * mark) / (marks - 1));
-
-        context.textAlign = mark === 0 ? 'left' : mark === marks - 1 ? 'right' : 'center';
-        context.fillText(
-            options.points[index].label,
-            mark === 0 ? plot.x : mark === marks - 1 ? plot.x + plot.width : x(index),
-            plot.y + plot.height + 40,
-        );
-    }
-
-    context.textAlign = 'left';
+    paintDates(context, options, plot, x);
 };
 
 /** How many columns the Summary's numbers take, like the page's grid. */
@@ -671,70 +745,79 @@ const tileColumns = (count: number): number => {
         return Math.max(count, 1);
     }
 
-    return count === 4 ? 2 : count <= 6 ? 3 : count <= 8 ? 4 : 5;
+    if (count === 4) {
+        return 2;
+    }
+
+    if (count <= 6) {
+        return 3;
+    }
+
+    return count <= 8 ? 4 : 5;
+};
+
+/** A tile's figure size before it shrinks to fit: smaller in a crowded grid, largest in a single row. */
+const tileFigureSize = (columns: number, rows: number): number => {
+    if (columns >= 4) {
+        return 52;
+    }
+
+    return rows === 1 ? 84 : 64;
 };
 
 /** Every number of the Summary, split by ink rules like a cover's settings panel. */
-const paintSummary = (
-    context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    panel: { x: number; y: number; width: number; height: number },
-): void => {
-    const left = panel.x + PANEL.padding;
-
-    paintIdentity(context, options, left, panel.y + 40, panel.width - PANEL.padding * 2, options.range);
+const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
+    paintIdentity(
+        context,
+        options.subject,
+        options.range,
+        { x: panel.x + PANEL.padding, y: panel.y + IDENTITY.top },
+        panel.width - PANEL.padding * 2,
+    );
 
     const tiles = options.tiles;
     const columns = tileColumns(tiles.length);
     const rows = Math.ceil(tiles.length / columns);
-    const grid = { x: panel.x, y: panel.y + 168, width: panel.width, height: panel.height - 168 };
+    const grid = { x: panel.x, y: panel.y + SUMMARY.top, width: panel.width, height: panel.height - SUMMARY.top };
     const tileHeight = grid.height / Math.max(rows, 1);
-    /** A tile's content is drawn for 185px; more rows shrink it instead of dropping numbers. */
-    const fit = Math.min(1, tileHeight / 185);
-    const figureSize = (columns >= 4 ? 52 : rows === 1 ? 84 : 64) * fit;
+    /** More rows shrink every tile instead of dropping numbers. */
+    const fit = Math.min(1, tileHeight / SUMMARY.tileHeight);
+    const figureSize = tileFigureSize(columns, rows) * fit;
     /** The last row stretches its tiles over the whole width, so no tile is left empty. */
-    const rowSize = (row: number): number =>
-        row < rows - 1 ? columns : tiles.length - columns * (rows - 1);
+    const rowSize = (row: number): number => (row < rows - 1 ? columns : tiles.length - columns * (rows - 1));
 
     context.strokeStyle = INK;
     context.lineWidth = BORDER;
-    context.beginPath();
 
     for (let row = 0; row < rows; row += 1) {
         const top = grid.y + tileHeight * row;
         const width = grid.width / rowSize(row);
 
-        context.moveTo(grid.x, top);
-        context.lineTo(grid.x + grid.width, top);
+        strokeLine(context, { x: grid.x, y: top }, { x: grid.x + grid.width, y: top });
 
         for (let column = 1; column < rowSize(row); column += 1) {
-            context.moveTo(grid.x + width * column, top);
-            context.lineTo(grid.x + width * column, top + tileHeight);
+            strokeLine(context, { x: grid.x + width * column, y: top }, { x: grid.x + width * column, y: top + tileHeight });
         }
     }
-
-    context.stroke();
 
     tiles.forEach((tile, index) => {
         const row = Math.floor(index / columns);
         const width = grid.width / rowSize(row);
-        const inset = 36 * fit;
-        const x = grid.x + width * (index % columns) + inset;
-        const y = grid.y + tileHeight * row;
+        const inset = SUMMARY.inset * fit;
+        const left = grid.x + width * (index % columns) + inset;
         const limit = width - inset * 2;
-        const labelLine = y + 50 * fit;
+        const labelLine = grid.y + tileHeight * row + SUMMARY.label * fit;
+        const labelFont = sans(500, SUMMARY.labelSize * fit);
+        const figureFont = heading(500, figureSize);
 
-        context.textAlign = 'left';
-        context.fillStyle = MUTED;
-        context.font = `500 ${24 * fit}px ${SANS}`;
-        context.fillText(ellipsise(context, tile.label, limit), x, labelLine);
-
-        context.fillStyle = tile.figure === '—' ? MUTED : INK;
-        context.font = `500 ${figureSize}px ${HEADING}`;
-        context.fillText(ellipsise(context, tile.figure, limit), x - 2 * fit, labelLine + figureSize + 6 * fit);
+        writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
+        writeText(context, ellipsise(context, tile.figure ?? '—', figureFont, limit), { x: left - 2 * fit, y: labelLine + figureSize + SUMMARY.figureGap * fit }, {
+            font: figureFont,
+            color: tile.figure === null ? MUTED : INK,
+        });
 
         if (tile.change) {
-            paintChange(context, tile.change, x, labelLine + figureSize + 22 * fit, 24 * fit, 'left');
+            paintChange(context, tile.change, { x: left, y: labelLine + figureSize + SUMMARY.changeGap * fit }, SUMMARY.changeSize * fit, 'left');
         }
     });
 };
@@ -744,10 +827,8 @@ export const drawShareCard = (
     options: ShareCardOptions,
     scale = SHARE_EXPORT_SCALE,
 ): void => {
-    const { width, height } = SHARE_CARD_SIZE;
-
-    canvas.width = width * scale;
-    canvas.height = height * scale;
+    canvas.width = SHARE_CARD_SIZE.width * scale;
+    canvas.height = SHARE_CARD_SIZE.height * scale;
 
     const context = canvas.getContext('2d');
 
@@ -756,9 +837,9 @@ export const drawShareCard = (
     }
 
     context.setTransform(scale, 0, 0, scale, 0, 0);
-    paintGround(context, options.tint, width, height);
+    paintGround(context, options.tint);
 
-    const panel = paintPanel(context, width, height);
+    const panel = paintPanel(context);
 
     if (options.shape === 'tiles') {
         paintSummary(context, options, panel);
@@ -766,28 +847,15 @@ export const drawShareCard = (
         paintChart(context, options, panel);
     }
 
-    paintMark(context, options, width, height);
+    paintMark(context, options.mark);
 };
 
 /** The card at download resolution, off screen, as a PNG named after its metric and today: `trypost-followers-2026-10-31.png`. */
-export const shareCardFile = (options: ShareCardOptions): Promise<File> =>
-    new Promise((resolve, reject) => {
-        const canvas = document.createElement('canvas');
+export const shareCardFile = (options: ShareCardOptions): Promise<File> => {
+    const canvas = document.createElement('canvas');
+    const name = `trypost-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
 
-        drawShareCard(canvas, options);
-        canvas.toBlob((blob) => {
-            if (blob === null) {
-                reject(new Error('The share card could not be exported.'));
+    drawShareCard(canvas, options);
 
-                return;
-            }
-
-            resolve(
-                new File(
-                    [blob],
-                    `trypost-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`,
-                    { type: 'image/png' },
-                ),
-            );
-        }, 'image/png');
-    });
+    return canvasToFile(canvas, name, 'image/png');
+};

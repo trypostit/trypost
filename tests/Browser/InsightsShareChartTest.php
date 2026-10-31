@@ -41,6 +41,15 @@ function insightsShareBrowserUser(): array
     return [$user->fresh(), $account];
 }
 
+/** Opens the share dialog from `$button` and waits for its preview to be drawn. */
+function openShareCard(mixed $page, string $button): void
+{
+    waitFor($page, $button);
+    $page->click($button);
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
+}
+
 beforeEach(function () {
     Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
     Storage::fake();
@@ -52,11 +61,7 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitFor($page, '@share-followers');
-    $page->click('@share-followers');
-    waitFor($page, '@share-chart-preview');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
-    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
+    openShareCard($page, '@share-followers');
 
     $page->click('@share-chart-color-green')
         ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true')
@@ -81,8 +86,7 @@ test('copying the share card writes a PNG to the clipboard', function () {
             value: { write: async (items) => { window.__copied.push(...items.flatMap((item) => item.types)); } },
         });
     JS);
-    $page->click('@share-summary');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    openShareCard($page, '@share-summary');
     $page->click('@share-chart-copy');
     waitForText($page, '[data-sonner-toast]', trans('analytics.share.copied'));
 
@@ -98,8 +102,7 @@ test('a browser that cannot copy images is told to download the card instead', f
     $page = visit(route('app.insights'));
     waitFor($page, '@share-summary');
     $page->script('delete window.ClipboardItem');
-    $page->click('@share-summary');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    openShareCard($page, '@share-summary');
     $page->click('@share-chart-copy');
     waitForText($page, '[data-sonner-toast]', trans('analytics.share.copy_failed'));
 
@@ -107,17 +110,15 @@ test('a browser that cannot copy images is told to download the card instead', f
         ->assertNoJavaScriptErrors();
 });
 
-test('the summary share card holds every number of the Summary', function () {
+test('the summary shares as one card of its numbers, with no metric to pick', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitFor($page, '@share-summary');
-    $page->click('@share-summary');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
-    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
+    openShareCard($page, '@share-summary');
 
-    $page->assertMissing('@share-chart-metric')
+    $page->assertAttribute('@share-chart-preview', 'data-shape', 'tiles')
+        ->assertMissing('@share-chart-metric')
         ->assertVisible('@share-chart-download')
         ->assertVisible('@share-chart-copy')
         ->assertNoJavaScriptErrors();
@@ -128,11 +129,7 @@ test('the channel metrics card shares the channel’s series', function () {
     $this->actingAs($user);
 
     $page = visit(route('app.channels.insights', $account));
-    waitFor($page, '@share-channel-metrics');
-    $page->click('@share-channel-metrics');
-    waitFor($page, '@share-chart-dialog');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
-    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
+    openShareCard($page, '@share-channel-metrics');
 
     $page->assertVisible('@share-chart-post')->assertNoJavaScriptErrors();
 });
@@ -144,8 +141,7 @@ test('the followers share card follows the chart mode the user picked', function
     $page = visit(route('app.insights'));
     waitFor($page, "@followers-{$mode}");
     $page->click("@followers-{$mode}");
-    $page->click('@share-followers');
-    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+    openShareCard($page, '@share-followers');
 
     $page->assertAttribute('@share-chart-preview', 'data-shape', $shape)
         ->assertNoJavaScriptErrors();

@@ -193,6 +193,14 @@ export default {
         return localized(date).format('D MMM YYYY');
     },
 
+    /** A period as Insights prints it: "2 Oct 2026 – 31 Oct 2026". */
+    formatDayMonthYearRange(range: { start: string; end: string }): string {
+        const day = (value: string): string =>
+            localized(value).format('D MMM YYYY');
+
+        return `${day(range.start)} – ${day(range.end)}`;
+    },
+
     /**
      * Short month + day + year for chart tooltips (locale-aware via L).
      */

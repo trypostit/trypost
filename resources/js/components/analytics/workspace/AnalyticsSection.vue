@@ -41,7 +41,7 @@ defineProps<{
                     <slot name="subtitle">
                         {{
                             range
-                                ? `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`
+                                ? date.formatDayMonthYearRange(range)
                                 : subtitle
                         }}
                     </slot>

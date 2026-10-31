@@ -37,7 +37,7 @@ const shownChannels = computed(() =>
 );
 const rangeLabel = computed(
     () =>
-        `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
+        date.formatDayMonthYearRange(props.range),
 );
 </script>
 

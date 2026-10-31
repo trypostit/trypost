@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import { usePage } from '@inertiajs/vue3';
 import { trans } from 'laravel-vue-i18n';
 import { computed } from 'vue';
 
 import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import date from '@/date';
 import {
-    shareChange,
-    shareRange,
+    countChange,
+    percentChange,
     summaryShareOption,
 } from '@/lib/insightsShare';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type { ShareChange, ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
 
@@ -59,15 +59,39 @@ const defaultCards = computed(() => [
     },
 ]);
 
+/** A card's change, labelled like the share card, with the raw value `MetricChange` colors by. */
+type CardChange = ShareChange & { value: number };
+
+const cardChange = (key: string, change: number | null): CardChange | null => {
+    if (change === null) {
+        return null;
+    }
+
+    if (key === 'followers') {
+        return { value: change, ...countChange(change) };
+    }
+
+    return { value: change, ...percentChange(change) };
+};
+
+const listedCards = computed(() => {
+    if (!props.availableMetrics) {
+        return defaultCards.value;
+    }
+
+    return props.availableMetrics.map((key) => ({
+        key,
+        label: `analytics.channel.metrics.${key}.label`,
+        metric: props.report.summary[key],
+        percent: key === 'engagement_rate',
+    }));
+});
+
 const cards = computed(() =>
-    props.availableMetrics
-        ? props.availableMetrics.map((key) => ({
-              key,
-              label: `analytics.channel.metrics.${key}.label`,
-              metric: props.report.summary[key],
-              percent: key === 'engagement_rate',
-          }))
-        : defaultCards.value,
+    listedCards.value.map((card) => ({
+        ...card,
+        change: cardChange(card.key, card.metric.change),
+    })),
 );
 
 const desktopColumns = computed((): string => {
@@ -99,23 +123,27 @@ const display = (value: number | null, percent: boolean): string =>
           ? formatPercent(value)
           : formatNumberCompact(value);
 
-const changeLabel = (key: string, change: number | null): string | null =>
-    shareChange(change, key === 'followers')?.label ?? null;
+/** A number for the share card: null while the metric has no value, so the card draws it muted. */
+const tileFigure = (value: number | null, percent: boolean): string | null => {
+    if (value === null) {
+        return null;
+    }
 
-const page = usePage();
-const shareSubject = computed(
-    () => props.channel ?? page.props.auth.currentWorkspace?.name ?? '',
+    return display(value, percent);
+};
+
+const rangeLabel = computed(() =>
+    date.formatDayMonthYearRange(props.report.range),
 );
-const shareRangeLabel = computed(() => shareRange(props.report.range));
 const buildShareOptions = (): ShareMetricOption[] => [
     summaryShareOption(
         cards.value.map((card) => ({
             label: trans(card.label),
-            figure: display(card.metric.value, card.percent),
-            change: shareChange(card.metric.change, card.key === 'followers'),
+            figure: tileFigure(card.metric.value, card.percent),
+            change: card.change,
         })),
         props.channel ?? null,
-        shareRangeLabel.value,
+        rangeLabel.value,
     ),
 ];
 </script>
@@ -129,8 +157,8 @@ const buildShareOptions = (): ShareMetricOption[] => [
     >
         <template #actions>
             <ShareChartButton
-                :subject="shareSubject"
-                :range="shareRangeLabel"
+                :subject="channel"
+                :range="rangeLabel"
                 :build="buildShareOptions"
                 test-id="share-summary"
             />
@@ -161,10 +189,10 @@ const buildShareOptions = (): ShareMetricOption[] => [
                         >{{ display(card.metric.value, card.percent) }}</span
                     >
                     <MetricChange
-                        v-if="changeLabel(card.key, card.metric.change)"
+                        v-if="card.change"
                         :data-testid="`${testId(card.key)}-change`"
-                        :change="card.metric.change!"
-                        :label="changeLabel(card.key, card.metric.change)!"
+                        :change="card.change.value"
+                        :label="card.change.label"
                     />
                 </div>
             </div>

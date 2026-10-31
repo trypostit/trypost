@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { usePage } from '@inertiajs/vue3';
 import { IconShare2 } from '@tabler/icons-vue';
-import { ref, shallowRef } from 'vue';
+import { computed, ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
 import { Button } from '@/components/ui/button';
@@ -10,17 +11,25 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import type {
+    ShareMetricKey,
+    ShareMetricOption,
+} from '@/lib/insightsShareCard';
 
 const props = defineProps<{
-    subject: string;
+    /** The channel the numbers belong to; the current workspace when left out. */
+    subject?: string;
     range: string;
     /** Builds what the card can show; runs on open, so its labels read the loaded locale. */
     build: () => ShareMetricOption[];
-    initialKey?: string;
+    initialKey?: ShareMetricKey;
     testId: string;
 }>();
 
+const page = usePage();
+const shareSubject = computed(
+    (): string => props.subject ?? page.props.auth.currentWorkspace?.name ?? '',
+);
 const open = ref(false);
 const options = shallowRef<ShareMetricOption[]>([]);
 
@@ -52,7 +61,7 @@ const openDialog = (): void => {
         </TooltipProvider>
         <ShareChartDialog
             v-model:open="open"
-            :subject="subject"
+            :subject="shareSubject"
             :range="range"
             :options="options"
             :initial-key="initialKey"
