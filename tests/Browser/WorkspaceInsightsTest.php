@@ -660,6 +660,8 @@ test('the custom range calendar opens under Custom on desktop and as a bottom sh
     $page->assertNoJavaScriptErrors();
 
     $phone = visit(route('app.insights'))->resize(390, 844);
+    waitFor($phone, '@insights-range-mobile-trigger');
+    $phone->click('@insights-range-mobile-trigger');
     waitFor($phone, '@insights-range-mobile-custom');
     $phone->click('@insights-range-mobile-custom');
     waitForState($phone, '@date-range-picker-sheet', 'element.getBoundingClientRect().bottom >= window.innerHeight - 1');
