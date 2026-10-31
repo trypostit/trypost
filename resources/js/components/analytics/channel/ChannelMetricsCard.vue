@@ -17,8 +17,8 @@ import {
     IconUsers,
     IconWorld,
 } from '@tabler/icons-vue';
-import { trans } from 'laravel-vue-i18n';
-import { computed, ref, type Component } from 'vue';
+import { wTrans } from 'laravel-vue-i18n';
+import { computed, type Component, type ComputedRef, ref } from 'vue';
 
 import ComparedRange from '@/components/analytics/ComparedRange.vue';
 import MetricChange from '@/components/analytics/MetricChange.vue';
@@ -114,16 +114,27 @@ const modes = [
 ] as const;
 const SELECTED = 'border-transparent bg-primary-selected text-primary-text hover:bg-primary-selected hover:text-primary-text';
 
-/** Every series metric's name in the reader's language. */
+/** Every series metric's name, kept up to date as the locale loads (see `.ai/rules/js.md`). */
+const SERIES_LABELS = {
+    posts: wTrans('analytics.channel.series.posts'),
+    followers: wTrans('analytics.channel.series.followers'),
+    net_followers: wTrans('analytics.channel.series.net_followers'),
+    reach: wTrans('analytics.channel.series.reach'),
+    views: wTrans('analytics.channel.series.views'),
+    impressions: wTrans('analytics.channel.series.impressions'),
+    profile_visits: wTrans('analytics.channel.series.profile_visits'),
+    growth_rate: wTrans('analytics.channel.series.growth_rate'),
+} satisfies Record<SeriesMetric, ComputedRef<string>>;
+
 const seriesLabels = computed((): Record<SeriesMetric, string> => ({
-    posts: trans('analytics.channel.series.posts'),
-    followers: trans('analytics.channel.series.followers'),
-    net_followers: trans('analytics.channel.series.net_followers'),
-    reach: trans('analytics.channel.series.reach'),
-    views: trans('analytics.channel.series.views'),
-    impressions: trans('analytics.channel.series.impressions'),
-    profile_visits: trans('analytics.channel.series.profile_visits'),
-    growth_rate: trans('analytics.channel.series.growth_rate'),
+    posts: SERIES_LABELS.posts.value,
+    followers: SERIES_LABELS.followers.value,
+    net_followers: SERIES_LABELS.net_followers.value,
+    reach: SERIES_LABELS.reach.value,
+    views: SERIES_LABELS.views.value,
+    impressions: SERIES_LABELS.impressions.value,
+    profile_visits: SERIES_LABELS.profile_visits.value,
+    growth_rate: SERIES_LABELS.growth_rate.value,
 }));
 
 const primaryMetric = ref<SeriesMetric>('posts');

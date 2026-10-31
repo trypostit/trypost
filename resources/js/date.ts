@@ -44,8 +44,26 @@ const rangeStart = (range: DateRange): string => {
     return start.format('D');
 };
 
-const dayMonthYearRange = (range: DateRange): string =>
-    `${rangeStart(range)} – ${localized(range.end).format('D MMM YYYY')}`;
+/** A period with its last day in full: "25 – 31 Oct 2026", or the day alone when it is one day. */
+const dayMonthYearRange = (range: DateRange): string => spanOf(range, 'D MMM YYYY');
+
+/** A period ending on its last day in `endFormat`, the day alone when the period is one day. */
+const spanOf = (range: DateRange, endFormat: string): string => {
+    const end = localized(range.end).format(endFormat);
+
+    if (range.start === range.end) {
+        return end;
+    }
+
+    return `${rangeStart(range)} – ${end}`;
+};
+
+/** Whether a period starts and ends in the year `other` ends in. */
+const withinYearOf = (range: DateRange, other: DateRange): boolean => {
+    const year = localized(other.end).year();
+
+    return localized(range.start).year() === year && localized(range.end).year() === year;
+};
 
 /**
  * `{ year: 'numeric' }` when the instant falls in another year than now, in
@@ -230,11 +248,11 @@ export default {
         range: DateRange,
         current: DateRange,
     ): string {
-        if (localized(range.end).year() !== localized(current.end).year()) {
+        if (!withinYearOf(range, current)) {
             return dayMonthYearRange(range);
         }
 
-        return `${rangeStart(range)} – ${localized(range.end).format('D MMM')}`;
+        return spanOf(range, 'D MMM');
     },
 
     /**

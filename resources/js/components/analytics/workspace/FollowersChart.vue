@@ -177,6 +177,7 @@ const buildShareOption = (): ShareMetricOption =>
                 :options="buttons"
             />
             <ShareChartButton
+                v-if="followers.accounts.length > 0"
                 :range="rangeLabel"
                 :build="buildShareOption"
                 test-id="share-followers"

@@ -262,7 +262,7 @@ const loadFonts = async (): Promise<void> => {
     );
 };
 
-/** Each image once per page: the preview repaints on every tint or metric change. */
+/** Each image once per page: the preview repaints on every tint or metric change. A failed load is forgotten, so the next card tries again. */
 const loadedImages = new Map<string, Promise<HTMLImageElement | null>>();
 
 /** An image ready to draw, or null when it cannot load, so a missing avatar never stops the card. */
@@ -280,7 +280,11 @@ const loadImage = (url: string): Promise<HTMLImageElement | null> => {
 
     const loading = image.decode().then(
         () => image,
-        () => null,
+        () => {
+            loadedImages.delete(url);
+
+            return null;
+        },
     );
 
     loadedImages.set(url, loading);
@@ -709,7 +713,7 @@ const rowColor = (point: SharePoint, tint: ShareTint): string => {
         return tint.strong;
     }
 
-    return resolveCssColor(point.color);
+    return point.color;
 };
 
 const avatarImage = (channel: ShareChannel, images: ShareImages): HTMLImageElement | undefined => {
@@ -895,14 +899,13 @@ type Column = { middle: number; width: number };
 
 /**
  * A column split by channel, bottom up in the page's order, with only its top
- * rounded like unovis' stacked bars. `colorOf` resolves each channel's color.
+ * rounded like unovis' stacked bars.
  */
 const paintStack = (
     context: CanvasRenderingContext2D,
     segments: ShareSegment[],
     column: Column,
     y: (value: number) => number,
-    colorOf: (color: string) => string,
 ): void => {
     const parts = segments.filter((segment) => segment.value > 0);
     let base = 0;
@@ -910,7 +913,7 @@ const paintStack = (
     parts.forEach((segment, index) => {
         const top = base + segment.value;
 
-        context.fillStyle = colorOf(segment.color);
+        context.fillStyle = segment.color;
 
         if (index === parts.length - 1) {
             fillBar(context, y(base), y(top), column.middle, column.width, false);
@@ -922,18 +925,6 @@ const paintStack = (
     });
 };
 
-/** A CSS color resolved once per paint: a column per day times every channel is many segments. */
-const colorResolver = (): ((color: string) => string) => {
-    const resolved = new Map<string, string>();
-
-    return (color) => {
-        const known = resolved.get(color) ?? resolveCssColor(color);
-
-        resolved.set(color, known);
-
-        return known;
-    };
-};
 
 /**
  * How wide each bar of a `slot` is: one bar like the page's, or, with both
@@ -961,11 +952,10 @@ const paintBars = (
     y: (value: number) => number,
 ): void => {
     const width = barWidth(plot.width / options.points.length, 1);
-    const colorOf = colorResolver();
 
     options.points.forEach((point, index) => {
         if (point.segments && point.value) {
-            paintStack(context, point.segments, { middle: x(index), width }, y, colorOf);
+            paintStack(context, point.segments, { middle: x(index), width }, y);
         }
     });
 };
@@ -1019,7 +1009,7 @@ const knownPoints = (values: (number | null)[], x: (index: number) => number, y:
 /** One channel's line in its color, with a dot on each known point. */
 const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
     const known = knownPoints(line.values, x, y);
-    const color = resolveCssColor(line.color);
+    const color = line.color;
 
     strokeCurve(context, known, color);
 
@@ -1083,7 +1073,7 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         const labelX = lineEnd + LINE_ENDS.leader;
 
         if (Math.abs(labelY - lineY) > 1) {
-            context.strokeStyle = resolveCssColor(line.color);
+            context.strokeStyle = line.color;
             context.lineWidth = LINE_ENDS.leaderWidth;
             context.lineJoin = 'round';
             context.beginPath();
@@ -1262,7 +1252,7 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         const width = Math.max(context.measureText(series.label).width, figuresWidth, changeRoom);
         const left = edge - width;
         const baseline = top + COMBO.labelSize + COMBO.figureLine;
-        const color = resolveCssColor(series.color);
+        const color = series.color;
         let cursor = left;
 
         writeText(context, series.label, { x: left, y: top + COMBO.labelSize }, { font: labelFont, color: MUTED });
@@ -1293,6 +1283,10 @@ const comboDomain = (series: ShareSeries[], periods: PublicationPeriod[]): { min
         series.map((metric) => metric.metric),
         series.flatMap((metric) => periods.flatMap((period) => metric[period].filter((value): value is number => value !== null))),
     );
+
+/** A period's values over the chart's days only, like the page, which lays the previous period over the current one's days. */
+const shownValues = (series: ShareSeries, period: PublicationPeriod, days: number): (number | null)[] =>
+    series[period].slice(0, days);
 
 /** The room the right axis' labels take; none when no metric uses it. */
 const rightAxisRoom = (domain: { min: number; max: number } | null): number => {
@@ -1366,13 +1360,13 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     const barStep = width + COMBO.pairGap * (periods.length - 1);
 
     options.series.filter((series) => series.kind === 'bar').forEach((series) => {
-        const color = resolveCssColor(series.color);
+        const color = series.color;
         const zero = y(series.axis, Math.max(0, (domains[series.axis] ?? { min: 0 }).min));
 
         periods.forEach((period, position) => {
             context.fillStyle = periodFill(context, color, period);
 
-            series[period].forEach((value, index) => {
+            shownValues(series, period, count).forEach((value, index) => {
                 if (value === null || value === 0) {
                     return;
                 }
@@ -1386,9 +1380,9 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
     options.series.filter((series) => series.kind === 'line').forEach((series) => {
         periods.forEach((period) => {
-            const known = knownPoints(series[period], x, (value) => y(series.axis, value));
+            const known = knownPoints(shownValues(series, period, count), x, (value) => y(series.axis, value));
 
-            strokeCurve(context, known, resolveCssColor(series.color), periodDash(period));
+            strokeCurve(context, known, series.color, periodDash(period));
         });
     });
 
@@ -1649,6 +1643,38 @@ const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: 
     tiles: (context, options, _images, panel) => paintSummary(context, options, panel),
 };
 
+/** A CSS color resolved once per paint: a column per day times every channel is many segments. */
+const colorResolver = (): ((color: string) => string) => {
+    const resolved = new Map<string, string>();
+
+    return (color) => {
+        const known = resolved.get(color) ?? resolveCssColor(color);
+
+        resolved.set(color, known);
+
+        return known;
+    };
+};
+
+/**
+ * The card with every color as the browser computes it: a canvas cannot read
+ * CSS variables, so the theme's colors are resolved once before painting.
+ */
+const withResolvedColors = (options: ShareCardOptions): ShareCardOptions => {
+    const resolve = colorResolver();
+
+    return {
+        ...options,
+        points: options.points.map((point) => ({
+            ...point,
+            color: point.color && resolve(point.color),
+            segments: point.segments?.map((segment) => ({ ...segment, color: resolve(segment.color) })),
+        })),
+        lines: options.lines.map((line) => ({ ...line, color: resolve(line.color) })),
+        series: options.series.map((series) => ({ ...series, color: resolve(series.color) })),
+    };
+};
+
 /** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
 export const drawShareCard = (
     canvas: HTMLCanvasElement,
@@ -1670,7 +1696,7 @@ export const drawShareCard = (
 
     const panel = paintPanel(context);
 
-    PAINTERS[options.shape](context, options, images, panel);
+    PAINTERS[options.shape](context, withResolvedColors(options), images, panel);
     paintMark(context, options.mark);
 };
 

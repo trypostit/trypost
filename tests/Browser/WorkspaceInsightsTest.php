@@ -810,3 +810,35 @@ test('top posts show the post media from our bucket, a video by its cover frame'
         ->assertScript("Array.from(document.querySelectorAll('[data-testid=\"analytics-top-post\"] img')).map((image) => image.getAttribute('src')).includes('http://trypost.test/storage/medias/a.jpg')", true)
         ->assertNoJavaScriptErrors();
 });
+
+test('the range caption names each period in full at its edges', function (string $start, string $end, string $current, string $previous) {
+    Queue::fake([BootstrapAccountAnalytics::class, CollectAccountDailySnapshot::class]);
+    $user = User::factory()->create();
+    $workspace = Workspace::factory()->create(['user_id' => $user->id, 'account_id' => $user->account_id]);
+    $workspace->members()->attach($user->id, membershipPivot('admin'));
+    $user->update(['current_workspace_id' => $workspace->id]);
+    subscribeAccount($user->account);
+    $account = SocialAccount::factory()->create(['workspace_id' => $workspace->id, 'platform' => Platform::Instagram]);
+    foreach ([$start, $end] as $day) {
+        AnalyticsPublication::factory()->create([
+            'workspace_id' => $workspace->id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'provider_published_at' => "{$day} 10:00:00",
+        ]);
+    }
+
+    $this->actingAs($user);
+    $page = visit(route('app.insights', ['start' => $start, 'end' => $end]));
+    waitFor($page, '@insights-range-caption');
+
+    expect(workspaceInsightsInnerText($page, 'analytics-range-current'))->toBe($current)
+        ->and(trim((string) $page->script('document.querySelector(\'[data-testid="insights-range-caption"] [data-testid="analytics-range-previous"]\')?.innerText ?? ""')))->toBe($previous);
+
+    $page->assertNoJavaScriptErrors();
+})->with([
+    'one day' => ['2026-01-10', '2026-01-10', '10 Jan 2026', 'vs 9 Jan'],
+    'a previous period across New Year' => ['2026-01-04', '2026-01-10', '4 – 10 Jan 2026', 'vs 28 Dec 2025 – 3 Jan 2026'],
+]);

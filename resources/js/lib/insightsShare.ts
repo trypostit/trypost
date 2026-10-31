@@ -31,6 +31,7 @@ import {
     type FollowerAccount,
     type FollowersChartMode,
     type PostsChartMode,
+    type PublicationPeriod,
     type SeriesMetric,
     type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
@@ -289,6 +290,15 @@ const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: strin
     };
 };
 
+/** A metric's figure for the post text over one period; null when it has no value there, so the text leaves it out. */
+const captionFigure = (series: ChannelMetricSeries, metric: ShareSeries, period: PublicationPeriod): string | null => {
+    if (series.totals[period][metric.metric] == null) {
+        return null;
+    }
+
+    return periodFigure(metric, period);
+};
+
 /**
  * The channel's metrics chart exactly as the page shows it: the metrics it
  * draws, each as bars or a line on its axis, for the periods its toggle shows.
@@ -302,12 +312,13 @@ export const channelChartShareOption = (
     range: string,
 ): ShareMetricOption => {
     const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric]));
-    const numbers = drawn.map((metric) => ({ label: metric.label, figure: periodFigure(metric, shownPeriod(mode)) }));
+    const period = shownPeriod(mode);
+    const numbers = drawn.map((metric) => ({ label: metric.label, figure: captionFigure(series, metric, period) }));
 
     return shareOption({
         key: 'channel',
         label: listOf(drawn.map((metric) => metric.label)),
-        points: series[shownPeriod(mode)].map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
+        points: series[period].map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
         shape: 'combo',
         series: drawn,
         chartMode: mode,
