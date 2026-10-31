@@ -120,6 +120,24 @@ export const downloadFile = (file: File): void => {
 export const copyImageToClipboard = async (image: Promise<Blob>): Promise<void> =>
     navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
 
+/**
+ * The value any CSS color stands for in the current theme (`var(--series-3)`,
+ * `oklch(…)`, a name), as the browser computes it: a canvas cannot read CSS
+ * variables, so its colors are resolved before drawing.
+ */
+export const resolveCssColor = (color: string): string => {
+    const probe = document.createElement('span');
+
+    probe.style.color = color;
+    document.body.append(probe);
+
+    const value = getComputedStyle(probe).color;
+
+    probe.remove();
+
+    return value;
+};
+
 /** A canvas encoded as an image file; rejects when the browser cannot encode it. */
 export const canvasToFile = (
     canvas: HTMLCanvasElement,

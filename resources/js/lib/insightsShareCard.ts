@@ -1,5 +1,9 @@
 import date from '@/date';
-import { canvasToFile, formatNumberCompact } from '@/lib/utils';
+import {
+    canvasToFile,
+    formatNumberCompact,
+    resolveCssColor,
+} from '@/lib/utils';
 import type { SeriesMetric } from '@/types/analytics';
 
 /**
@@ -508,15 +512,13 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
     });
 };
 
-/** A channel color the page gives as a CSS token (`var(--series-3)`), read as the color it stands for. */
-const resolveColor = (color: string | undefined, fallback: string): string => {
-    const token = color?.match(/^var\((--[\w-]+)\)$/)?.[1];
-
-    if (!token) {
-        return color ?? fallback;
+/** A channel's own color, the one the page draws it in, else the tint's strong color. */
+const rowColor = (point: SharePoint, tint: ShareTint): string => {
+    if (!point.color) {
+        return tint.strong;
     }
 
-    return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+    return resolveCssColor(point.color);
 };
 
 type RankedPoint = SharePoint & { index: number; value: number };
@@ -566,7 +568,7 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
             return;
         }
 
-        context.fillStyle = resolveColor(point.color, options.tint.strong);
+        context.fillStyle = rowColor(point, options.tint);
         fillBar(context, plot.x + axis.zero * plot.width, x(point.value), centre, thickness, true);
     });
 };
