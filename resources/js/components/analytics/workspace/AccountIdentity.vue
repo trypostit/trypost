@@ -17,11 +17,6 @@ const props = defineProps<{
     withName?: boolean;
 }>();
 const label = computed(() => accountLabel(props.account));
-const name = computed(
-    () =>
-        props.account.name ||
-        label.value,
-);
 const handle = computed(() =>
     props.account.name && props.account.username
         ? `@${props.account.username}`
@@ -44,7 +39,7 @@ const handle = computed(() =>
             v-if="withAvatar"
             :platform="account.platform"
             :src="account.avatar_url"
-            :name="withName ? name : label"
+            :name="label"
             ring="card"
             :size="avatarSize ?? 32"
             :status="account.status"
@@ -59,7 +54,7 @@ const handle = computed(() =>
         />
         <span v-if="withName" class="flex min-w-0 flex-col">
             <span class="truncate text-xs font-emphasis text-foreground">{{
-                name
+                label
             }}</span>
             <span
                 v-if="handle"
