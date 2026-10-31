@@ -154,7 +154,6 @@ return [
             'chart_mode' => '차트 기간',
             'both' => '둘 다',
             'comparison' => '비교',
-            'comparison_axis' => ':metric (비교)',
             'not_enough_history' => '아직 기록이 충분하지 않습니다. 팔로워 수는 매일 기록되니 곧 다시 확인해 주세요.',
             'date' => '날짜',
             'previous_value' => ':metric (이전 기간)',

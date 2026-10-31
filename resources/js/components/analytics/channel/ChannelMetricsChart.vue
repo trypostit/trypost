@@ -28,7 +28,7 @@ import {
     type ChartMode,
     type SeriesSpec,
 } from '@/lib/channelMetrics';
-import { formatNumberCompact } from '@/lib/utils';
+import { distinctCountLabels } from '@/lib/utils';
 import type {
     ChannelMetricSeries,
     MetricSeriesPoint,
@@ -50,7 +50,6 @@ const props = defineProps<{
     specs: SeriesSpec[];
     mode: ChartMode;
     labels: Partial<Record<SeriesMetric, string>>;
-    axisLabels: Partial<Record<SeriesSpec['axis'], string>>;
 }>();
 
 const DASH = [5, 4];
@@ -190,6 +189,28 @@ const svgDefs = computed(() =>
         .join(''),
 );
 
+/**
+ * Each count axis's tick labels, compact but never two alike: a narrow range
+ * (9,330 to 9,355 followers) gets the decimals it needs, else whole numbers.
+ */
+const axisCountLabels = computed(
+    (): Record<SeriesSpec['axis'], string[]> => ({
+        left: distinctCountLabels(axisTickValues('left')),
+        right: distinctCountLabels(axisTickValues('right')),
+    }),
+);
+
+/** The values an axis' ticks stand for, from its domain. */
+const axisTickValues = (axis: SeriesSpec['axis']): number[] => {
+    const domain = domains.value[axis];
+
+    if (!domain) {
+        return [];
+    }
+
+    return tickValues.map((tick) => domain.min + tick * (domain.max - domain.min));
+};
+
 const tickLabel =
     (axis: SeriesSpec['axis']) =>
     (tick: number | Date): string => {
@@ -202,9 +223,11 @@ const tickLabel =
         const spec = props.specs.find((candidate) => candidate.axis === axis);
         const value = domain.min + tick * (domain.max - domain.min);
 
-        return spec && isPercentMetric(spec.metric)
-            ? formatSeriesValue(value, spec.metric)
-            : formatNumberCompact(value, 2);
+        if (spec && isPercentMetric(spec.metric)) {
+            return formatSeriesValue(value, spec.metric);
+        }
+
+        return axisCountLabels.value[axis][Math.round(tick * AXIS_STEPS)] ?? '';
     };
 
 const xTick = (tick: number | Date): string => {
@@ -256,9 +279,9 @@ const groupedBarAttributes = {
 };
 const margin = computed(() => ({
     top: 12,
-    right: domains.value.right ? 64 : 12,
+    right: domains.value.right ? 48 : 12,
     bottom: 28,
-    left: 64,
+    left: 48,
 }));
 const numTicks = computed(() =>
     Math.min(props.series.current.length, 6),
@@ -332,9 +355,6 @@ const numTicks = computed(() =>
                 type="y"
                 :tick-format="tickLabel('left')"
                 :tick-values="tickValues"
-                :label="axisLabels.left"
-                label-font-size="11px"
-                label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
@@ -365,9 +385,6 @@ const numTicks = computed(() =>
                     position="right"
                     :tick-format="tickLabel('right')"
                     :tick-values="tickValues"
-                    :label="axisLabels.right"
-                    label-font-size="11px"
-                    label-color="var(--muted-foreground)"
                     :grid-line="false"
                     :domain-line="false"
                     :tick-line="false"

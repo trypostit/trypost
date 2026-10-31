@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Periodo del grafico',
             'both' => 'Entrambi',
             'comparison' => 'Confronto',
-            'comparison_axis' => ':metric (confronto)',
             'not_enough_history' => 'Non c’è ancora abbastanza storico. I follower vengono registrati giorno per giorno: torna presto.',
             'date' => 'Data',
             'previous_value' => ':metric (periodo precedente)',

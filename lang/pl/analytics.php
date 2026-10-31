@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Okres wykresu',
             'both' => 'Oba',
             'comparison' => 'Porównanie',
-            'comparison_axis' => ':metric (porównanie)',
             'not_enough_history' => 'Za mało historii. Liczba obserwujących zapisywana jest codziennie, wróć wkrótce.',
             'date' => 'Data',
             'previous_value' => ':metric (poprzedni okres)',

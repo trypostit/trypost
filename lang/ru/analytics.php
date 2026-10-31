@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Период графика',
             'both' => 'Оба',
             'comparison' => 'Сравнение',
-            'comparison_axis' => ':metric (сравнение)',
             'not_enough_history' => 'Пока мало истории. Подписчики учитываются каждый день — загляните позже.',
             'date' => 'Дата',
             'previous_value' => ':metric (прошлый период)',

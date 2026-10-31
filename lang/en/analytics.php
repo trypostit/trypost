@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Chart period',
             'both' => 'Both',
             'comparison' => 'Comparison',
-            'comparison_axis' => ':metric (comparison)',
             'not_enough_history' => 'Not enough history yet. Follower counts build up day by day, so check back soon.',
             'date' => 'Date',
             'previous_value' => ':metric (previous period)',

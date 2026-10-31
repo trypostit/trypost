@@ -50,6 +50,26 @@ export const formatNumberCompact = (value: MaybeNumber, digits = 1): string => {
     }).format(value);
 };
 
+/** The most decimals a compact axis label takes before it falls back to whole numbers. */
+const MAX_COMPACT_DIGITS = 3;
+
+/**
+ * Compact labels for a run of axis values, with as few decimals as keep them
+ * apart ("9.33K", "9.336K", ...), else the exact counts when no compact form
+ * does.
+ */
+export const distinctCountLabels = (values: number[]): string[] => {
+    for (let digits = 0; digits <= MAX_COMPACT_DIGITS; digits += 1) {
+        const labels = values.map((value) => formatNumberCompact(value, digits));
+
+        if (new Set(labels).size === labels.length) {
+            return labels;
+        }
+    }
+
+    return values.map((value) => formatFullNumber(Math.round(value)));
+};
+
 export const formatPercent = (value: MaybeNumber): string => {
     if (value == null) {
         return MISSING_VALUE;

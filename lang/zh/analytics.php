@@ -154,7 +154,6 @@ return [
             'chart_mode' => '图表时段',
             'both' => '两者',
             'comparison' => '对比',
-            'comparison_axis' => ':metric（对比）',
             'not_enough_history' => '历史数据还不够。粉丝数每天记录一次，请稍后再来查看。',
             'date' => '日期',
             'previous_value' => ':metric（上一时段）',

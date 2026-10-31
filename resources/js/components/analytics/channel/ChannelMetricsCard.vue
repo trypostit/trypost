@@ -21,6 +21,7 @@ import { wTrans } from 'laravel-vue-i18n';
 import { computed, ref, type Component } from 'vue';
 
 import ComparedRange from '@/components/analytics/ComparedRange.vue';
+import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
@@ -50,6 +51,7 @@ import {
     metricInsight,
     monthLabel,
     POST_TOTAL_METRICS,
+    seriesDelta,
     seriesFor,
     type ChartMode,
     type PresetKey,
@@ -121,7 +123,6 @@ const translatedLabels = Object.fromEntries(
         ] as SeriesMetric[]
     ).map((metric) => [metric, wTrans(`analytics.channel.series.${metric}`)]),
 );
-const comparisonAxis = wTrans('analytics.channel.metrics_card.comparison_axis');
 const seriesLabels = computed<Partial<Record<SeriesMetric, string>>>(() =>
     Object.fromEntries(
         Object.entries(translatedLabels).map(([metric, label]) => [
@@ -235,20 +236,21 @@ const shownTotals = computed(() =>
         ? chartSeries.value?.totals.previous
         : chartSeries.value?.totals.current,
 );
-const axisLabels = computed<Partial<Record<SeriesSpec['axis'], string>>>(() =>
-    Object.fromEntries(
-        specs.value.map((spec) => {
-            const label = seriesLabels.value[spec.metric] ?? '';
+/** How each shown metric moved since the previous period; the Comparison view shows the previous period itself. */
+const deltas = computed(() => {
+    const series = props.series;
 
-            return [
-                spec.axis,
-                chartMode.value === 'previous'
-                    ? comparisonAxis.value.replace(':metric', label)
-                    : label,
-            ];
-        }),
-    ),
-);
+    if (!series || chartMode.value === 'previous') {
+        return {};
+    }
+
+    return Object.fromEntries(
+        specs.value.map((spec) => [
+            spec.metric,
+            seriesDelta(spec.metric, series.totals.current[spec.metric], series.totals.previous[spec.metric]),
+        ]),
+    );
+});
 
 const isMetricActive = computed(
     () => activeSelection.value.kind === 'metric',
@@ -550,6 +552,12 @@ const changeMode = (value: string): void => {
                                                 }}</span
                                             >
                                         </span>
+                                        <MetricChange
+                                            v-if="deltas[spec.metric]"
+                                            :data-testid="`insights-metrics-legend-${spec.metric}-change`"
+                                            :change="deltas[spec.metric]!.value"
+                                            :label="deltas[spec.metric]!.label"
+                                        />
                                     </span>
                                 </div>
                             </div>
@@ -570,7 +578,6 @@ const changeMode = (value: string): void => {
                             :specs="specs"
                             :mode="chartMode"
                             :labels="seriesLabels"
-                            :axis-labels="axisLabels"
                         />
                         <div
                             v-else

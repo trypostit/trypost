@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Grafik dönemi',
             'both' => 'İkisi',
             'comparison' => 'Karşılaştırma',
-            'comparison_axis' => ':metric (karşılaştırma)',
             'not_enough_history' => 'Henüz yeterli geçmiş yok. Takipçiler her gün kaydedilir, yakında tekrar bakın.',
             'date' => 'Tarih',
             'previous_value' => ':metric (önceki dönem)',

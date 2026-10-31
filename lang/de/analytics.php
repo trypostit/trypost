@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Diagrammzeitraum',
             'both' => 'Beide',
             'comparison' => 'Vergleich',
-            'comparison_axis' => ':metric (Vergleich)',
             'not_enough_history' => 'Noch nicht genug Verlauf. Follower werden täglich erfasst – schau bald wieder vorbei.',
             'date' => 'Datum',
             'previous_value' => ':metric (Vorzeitraum)',

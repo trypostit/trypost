@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Período do gráfico',
             'both' => 'Ambos',
             'comparison' => 'Comparação',
-            'comparison_axis' => ':metric (comparação)',
             'not_enough_history' => 'Ainda não há histórico suficiente. A contagem de seguidores é registrada dia a dia; volte em breve.',
             'date' => 'Data',
             'previous_value' => ':metric (período anterior)',

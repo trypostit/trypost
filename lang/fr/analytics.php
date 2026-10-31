@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Période du graphique',
             'both' => 'Les deux',
             'comparison' => 'Comparaison',
-            'comparison_axis' => ':metric (comparaison)',
             'not_enough_history' => 'Pas encore assez d’historique. Les abonnés sont relevés jour après jour : revenez bientôt.',
             'date' => 'Date',
             'previous_value' => ':metric (période précédente)',

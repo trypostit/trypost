@@ -2,7 +2,7 @@ import { trans } from 'laravel-vue-i18n';
 
 import date from '@/date';
 import { activeLocale } from '@/language';
-import { axisBucketLabel, formatSeriesValue } from '@/lib/channelMetrics';
+import { axisBucketLabel, formatSeriesValue, seriesDelta } from '@/lib/channelMetrics';
 import type {
     ShareChange,
     ShareChannel,
@@ -69,9 +69,6 @@ export const POSTS_ROWS: ChannelRowsSpec<Posts['accounts'][number]> = {
     value: (account) => account.count,
     format: formatNumberCompact,
 };
-
-/** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
-const COUNTED_METRICS: readonly SeriesMetric[] = ['followers', 'net_followers'];
 
 /** Metrics the page draws as a line; the rest are columns. */
 const LINE_METRICS: readonly SeriesMetric[] = ['followers'];
@@ -280,30 +277,19 @@ export const followersShareOption = (
 export const isShareableSeriesMetric = (metric: SeriesMetric): boolean =>
     metric !== 'growth_rate';
 
-/**
- * How a channel metric moved since the previous period: a difference for the
- * counted metrics, else a percentage of the previous value, kept positive so a
- * loss shrinking reads as a rise. Null when a total is unknown or there is no
- * previous value to compare with.
- */
+/** A channel metric's change since the previous period, as the card draws it. */
 const seriesChange = (
     metric: SeriesMetric,
     current: number | null | undefined,
     previous: number | null | undefined,
 ): ShareChange | null => {
-    if (current == null || previous == null) {
+    const delta = seriesDelta(metric, current, previous);
+
+    if (!delta) {
         return null;
     }
 
-    if (COUNTED_METRICS.includes(metric)) {
-        return countChange(current - previous);
-    }
-
-    if (previous === 0) {
-        return null;
-    }
-
-    return percentChange(((current - previous) / Math.abs(previous)) * 100);
+    return { label: delta.label, direction: changeDirection(delta.value) };
 };
 
 /** What the change is measured against: "vs 120 in the previous period". */

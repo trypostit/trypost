@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Grafiekperiode',
             'both' => 'Beide',
             'comparison' => 'Vergelijking',
-            'comparison_axis' => ':metric (vergelijking)',
             'not_enough_history' => 'Nog niet genoeg geschiedenis. Volgers worden dag voor dag bijgehouden, kom snel terug.',
             'date' => 'Datum',
             'previous_value' => ':metric (vorige periode)',

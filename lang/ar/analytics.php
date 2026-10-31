@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'فترة الرسم البياني',
             'both' => 'كلاهما',
             'comparison' => 'المقارنة',
-            'comparison_axis' => ':metric (مقارنة)',
             'not_enough_history' => 'لا يوجد سجل كافٍ بعد. يُسجَّل عدد المتابعين يوميًا، فعُد قريبًا.',
             'date' => 'التاريخ',
             'previous_value' => ':metric (الفترة السابقة)',

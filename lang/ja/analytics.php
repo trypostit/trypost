@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'グラフの期間',
             'both' => '両方',
             'comparison' => '比較',
-            'comparison_axis' => ':metric（比較）',
             'not_enough_history' => 'まだ十分な履歴がありません。フォロワー数は毎日記録されるので、しばらくしてから確認してください。',
             'date' => '日付',
             'previous_value' => ':metric（前期間）',

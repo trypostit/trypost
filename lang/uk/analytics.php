@@ -154,7 +154,6 @@ return [
             'chart_mode' => 'Період графіка',
             'both' => 'Обидва',
             'comparison' => 'Порівняння',
-            'comparison_axis' => ':metric (порівняння)',
             'not_enough_history' => 'Поки замало історії. Підписників враховують щодня — зазирніть пізніше.',
             'date' => 'Дата',
             'previous_value' => ':metric (попередній період)',
