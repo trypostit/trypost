@@ -35,6 +35,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
 import { storedChannelColumns } from '@/lib/channelInsights';
@@ -62,7 +63,12 @@ const props = defineProps<{
     sortableMetrics: SummaryMetric[];
     url: string;
     platform: string;
+    /** The columns to start with instead of the ones this browser remembers (the PDF). */
+    initialColumns?: SummaryMetric[];
 }>();
+
+/** On paper a video prints its network preview, never the file, and the column heads are plain labels. */
+const printing = useInsightsPrint();
 
 const TABLE_METRICS: SummaryMetric[] = [
     'reactions',
@@ -85,7 +91,9 @@ const storageKey = computed(() => `insights.columns.${props.platform}`);
 const readStoredColumns = (): SummaryMetric[] | null =>
     storedChannelColumns(props.platform) as SummaryMetric[] | null;
 
-const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
+const storedColumns = ref<SummaryMetric[] | null>(
+    props.initialColumns ?? readStoredColumns(),
+);
 const choosableColumns = computed<SummaryMetric[]>(() =>
     TABLE_METRICS.filter((metric) => props.availableMetrics.includes(metric)),
 );
@@ -364,7 +372,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     "
                                 >
                                     <span
-                                        v-if="!isSortable(column)"
+                                        v-if="printing || !isSortable(column)"
                                         class="whitespace-nowrap"
                                         :data-testid="`insights-column-head-${column}`"
                                         >{{
@@ -397,7 +405,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     </button>
                                 </TableHead>
                                 <TableHead
-                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3"
+                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3 print:hidden"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -477,6 +485,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         >
                                             <video
                                                 v-if="
+                                                    !printing &&
                                                     row.media &&
                                                     isVideo(row.media)
                                                 "
@@ -544,7 +553,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     {{ display(row, column) }}
                                 </TableCell>
                                 <TableCell
-                                    class="border-r-0 px-2 py-3 text-right sm:pe-3"
+                                    class="border-r-0 px-2 py-3 text-right sm:pe-3 print:hidden"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>

@@ -6,6 +6,9 @@ namespace App\Support\Analytics\Pdf;
 
 use App\Services\Http\SafeHttpFetcher;
 use Carbon\CarbonInterface;
+use Illuminate\Http\Client\Pool;
+use Illuminate\Http\Client\Response;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Intervention\Image\Drivers\Gd\Driver;
 use Intervention\Image\Encoders\JpegEncoder;
@@ -42,6 +45,39 @@ class PdfImages
         }
 
         return $this->remember("remote:{$size}:{$url}", fn (): ?string => $this->fetcher->tryFetch((string) $url, self::MAX_BYTES, $this->deadline ??= now()->addSeconds(self::REMOTE_SECONDS))?->body, $size);
+    }
+
+    /**
+     * Downloads our own media (URLs that come from our database, served by our
+     * CDN) all at once and shrinks them, so a report with many post images
+     * does not wait on them one by one. Later remote() calls for these URLs
+     * read the result.
+     *
+     * @param  list<string>  $urls
+     */
+    public function warm(array $urls, int $size): void
+    {
+        $pending = array_values(array_filter(
+            array_unique($urls),
+            fn (string $url): bool => ! array_key_exists("remote:{$size}:{$url}", $this->inlined),
+        ));
+
+        if ($pending === []) {
+            return;
+        }
+
+        $responses = Http::pool(fn (Pool $pool): array => array_map(
+            fn (string $url) => $pool->as($url)->timeout(self::REMOTE_SECONDS)->get($url),
+            $pending,
+        ));
+
+        foreach ($pending as $url) {
+            $response = $responses[$url] ?? null;
+
+            $this->inlined["remote:{$size}:{$url}"] = $response instanceof Response && $response->successful()
+                ? $this->shrink($response->body(), $size)
+                : null;
+        }
     }
 
     public function stored(?string $path, int $size): ?string

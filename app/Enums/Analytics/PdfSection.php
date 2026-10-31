@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Enums\Analytics;
 
 /**
- * The parts of an Insights PDF the user can leave out. The workspace report and a
- * channel's report offer different ones, like the two Insights pages.
+ * The parts of an Insights PDF the user can leave out: the sections of each
+ * Insights page, in the page's order, since the PDF prints the page itself.
  */
 enum PdfSection: string
 {
@@ -14,7 +14,8 @@ enum PdfSection: string
     case TopPostsByReactions = 'top_posts_reactions';
     case TopPostsByComments = 'top_posts_comments';
     case Performance = 'performance';
-    case Channels = 'channels';
+    case Followers = 'followers';
+    case PostsOverTime = 'posts_over_time';
     case Metrics = 'metrics';
     case Posts = 'posts';
 
@@ -23,7 +24,7 @@ enum PdfSection: string
      */
     public static function forWorkspace(): array
     {
-        return [self::Summary, self::TopPostsByReactions, self::TopPostsByComments, self::Performance, self::Channels];
+        return [self::Summary, self::TopPostsByReactions, self::TopPostsByComments, self::Performance, self::Followers, self::PostsOverTime];
     }
 
     /**
@@ -31,7 +32,7 @@ enum PdfSection: string
      */
     public static function forChannel(): array
     {
-        return [self::Summary, self::Metrics, self::Posts];
+        return [self::Summary, self::Posts, self::Metrics];
     }
 
     /**

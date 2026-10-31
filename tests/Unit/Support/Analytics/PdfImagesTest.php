@@ -63,3 +63,14 @@ test('remote images stop being fetched once the shared deadline has passed', fun
     expect($images->remote('https://cdn.example.com/second.png', 72))->toBeNull();
     Http::assertSentCount(1);
 });
+
+test('our own images are downloaded together once and later reads use them', function () {
+    Http::fake(['cdn.example.com/*' => Http::response(UploadedFile::fake()->image('photo.png', 800, 1000)->getContent(), 200, ['Content-Type' => 'image/png'])]);
+    $images = app(PdfImages::class);
+
+    $images->warm(['https://cdn.example.com/a.png', 'https://cdn.example.com/b.png', 'https://cdn.example.com/a.png'], 96);
+
+    expect($images->remote('https://cdn.example.com/a.png', 96))->toStartWith('data:image/jpeg;base64,')
+        ->and($images->remote('https://cdn.example.com/b.png', 96))->toStartWith('data:image/jpeg;base64,');
+    Http::assertSentCount(2);
+});

@@ -40,6 +40,12 @@ class ListChannelPublicationPerformance
         return $this->paginate($channel, $range, $sort, $accountKey, $filter, self::INSIGHTS_PAGE_SIZE, $page);
     }
 
+    /** The whole ranking on one page, for the PDF, which prints every post the page would list. */
+    public function printPage(SocialAccount $channel, DateRange $range, string $sort, string $accountKey, PublicationFilter $filter): LengthAwarePaginator
+    {
+        return $this->paginate($channel, $range, $sort, $accountKey, $filter, self::TOP_POSTS, 1);
+    }
+
     private function paginate(SocialAccount $channel, DateRange $range, string $sort, ?string $accountKey, ?PublicationFilter $filter, int $pageSize, ?int $page): LengthAwarePaginator
     {
         $expression = data_get(ChannelMetrics::SORTS, $sort);

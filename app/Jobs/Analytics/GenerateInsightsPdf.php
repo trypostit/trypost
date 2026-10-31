@@ -12,8 +12,10 @@ use App\Models\Workspace;
 use App\Support\Analytics\InsightsPdfExports;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Storage;
+use Inertia\Inertia;
 use Spatie\LaravelPdf\Facades\Pdf;
 use Throwable;
 
@@ -34,6 +36,15 @@ class GenerateInsightsPdf implements ShouldQueue
     private const int MAX_SECONDS = 240;
 
     private const int RETRY_AFTER_HEADROOM_SECONDS = 30;
+
+    /**
+     * The print page is laid out at the Insights desktop width (1024px, the
+     * `lg` layout) and scaled to fit the portrait A4 width.
+     */
+    private const float PRINT_SCALE = 0.7;
+
+    /** How long Chromium waits for the print page to say it is drawn. */
+    private const int READY_TIMEOUT_MS = 60000;
 
     public int $tries = 1;
 
@@ -78,15 +89,17 @@ class GenerateInsightsPdf implements ShouldQueue
         App::setLocale($user->locale->value);
 
         try {
-            $data = $account instanceof SocialAccount
+            $page = $account instanceof SocialAccount
                 ? $pdf->forChannel($account, $user, $this->query, $this->options)
                 : $pdf->forWorkspace($workspace, $user, $this->query, $this->options);
 
-            $content = Pdf::view('pdf.insights.report', $data)
+            $content = Pdf::html($this->printPage($page, $user, $workspace))
                 ->headerHtml('<span></span>')
-                ->footerView('pdf.insights.footer', ['title' => data_get($data, 'title')])
+                ->footerView('pdf.insights.footer', ['title' => data_get($page, 'props.title')])
                 ->format('a4')
-                ->margins(14, 12, 16, 12)
+                ->margins(12, 10, 14, 10)
+                ->scale(self::PRINT_SCALE)
+                ->waitUntilReady('window.pdfReady === true', self::READY_TIMEOUT_MS)
                 ->generatePdfContent();
         } finally {
             App::setLocale($previousLocale);
@@ -95,6 +108,36 @@ class GenerateInsightsPdf implements ShouldQueue
         Storage::put(InsightsPdfExports::path($this->exportId), $content);
         InsightsPdfExports::markReady($this->exportId);
         InsightsPdfExportFinished::dispatch($this->exportId, InsightsPdfExports::READY);
+    }
+
+    /**
+     * The Insights print page as the browser would receive it, rendered for
+     * the user who asked: their language, clock, zone and week, on the light
+     * theme. Chromium runs its scripts and prints it once it is drawn.
+     *
+     * @param  array{component: string, props: array<string, mixed>}  $page
+     */
+    private function printPage(array $page, User $user, Workspace $workspace): string
+    {
+        $locale = $user->locale;
+
+        return (string) Inertia::render($page['component'], [
+            ...$page['props'],
+            'locale' => $locale->value,
+            'auth' => [
+                'user' => [
+                    'timezone' => $user->timezone,
+                    'time_format' => $user->time_format->value,
+                    'week_starts_on' => $user->week_starts_on->value,
+                    'theme' => 'light',
+                ],
+                'currentWorkspace' => ['name' => $workspace->name],
+            ],
+        ])
+            ->rootView('print')
+            ->withViewData(['htmlDir' => $locale->direction()])
+            ->toResponse(Request::create(config('app.url')))
+            ->getContent();
     }
 
     public function failed(?Throwable $exception): void

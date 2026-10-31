@@ -59,16 +59,15 @@ test('the PDF export asks for the report name and sections, then downloads the f
 
     $page->assertAttribute('@insights-pdf-name', 'placeholder', 'Acme Studio')
         ->assertAttribute('@insights-pdf-section-summary', 'data-state', 'checked')
-        ->assertAttribute('@insights-pdf-section-channels', 'data-state', 'checked')
+        ->assertAttribute('@insights-pdf-section-posts_over_time', 'data-state', 'checked')
         ->assertMissing('@insights-pdf-section-metrics')
         ->type('@insights-pdf-name', 'September report')
-        ->click('@insights-pdf-section-channels')
+        ->click('@insights-pdf-section-posts_over_time')
         ->click('@insights-pdf-create');
 
     waitForGone($page, '@insights-pdf-dialog');
 
-    Pdf::assertViewHas('title', 'September report');
-    Pdf::assertViewHas('channels', null);
+    Pdf::assertSee(['"title":"September report"', '"sections":["summary","top_posts_reactions","top_posts_comments","performance","followers"]']);
     $page->assertNoJavaScriptErrors();
 });
 
@@ -82,7 +81,7 @@ test('the PDF export needs at least one section', function () {
     $page->click('@insights-export-pdf');
     waitFor($page, '@insights-pdf-dialog');
 
-    foreach (['summary', 'top_posts_reactions', 'top_posts_comments', 'performance', 'channels'] as $section) {
+    foreach (['summary', 'top_posts_reactions', 'top_posts_comments', 'performance', 'followers', 'posts_over_time'] as $section) {
         $page->click("@insights-pdf-section-{$section}");
     }
 
@@ -107,12 +106,12 @@ test('a channel PDF offers the channel page sections and starts the export', fun
 
     $page->assertAttribute('@insights-pdf-section-metrics', 'data-state', 'checked')
         ->assertAttribute('@insights-pdf-section-posts', 'data-state', 'checked')
-        ->assertMissing('@insights-pdf-section-channels')
+        ->assertMissing('@insights-pdf-section-performance')
         ->click('@insights-pdf-create');
 
     waitForGone($page, '@insights-pdf-dialog');
 
-    Pdf::assertViewHas('scope', 'channel');
+    Pdf::assertSee('"component":"channels\/insights\/Print"');
     $page->assertNoJavaScriptErrors();
 });
 

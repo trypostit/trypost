@@ -20,7 +20,7 @@ import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll
 import { usePerformanceColumns } from '@/composables/usePerformanceColumns';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { accountColor } from '@/lib/analyticsColors';
+import { accountColors } from '@/lib/analyticsColors';
 import { WORKSPACE_PDF_SECTIONS } from '@/lib/insightsPdf';
 import { insights as insightsRoute } from '@/routes/app';
 import type {
@@ -99,21 +99,14 @@ useAnalyticsCoveragePoll(() => props.report.coverage);
 const span = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 
-const accountColors = computed<Record<string, string>>(() => {
-    const keys = [
-        ...new Set([
-            ...props.channelOptions.map((channel) => channel.analytics_key),
-            ...[
-                ...props.report.followers.accounts,
-                ...props.report.posts.accounts,
-            ].map((account) => account.social_account_key),
-        ]),
-    ];
-
-    return Object.fromEntries(
-        keys.map((key, index) => [key, accountColor(index)]),
-    );
-});
+const colors = computed<Record<string, string>>(() =>
+    accountColors([
+        ...props.channelOptions.map((channel) => channel.analytics_key),
+        ...[...props.report.followers.accounts, ...props.report.posts.accounts].map(
+            (account) => account.social_account_key,
+        ),
+    ]),
+);
 </script>
 
 <template>
@@ -214,7 +207,7 @@ const accountColors = computed<Record<string, string>>(() => {
                 <FollowersChart
                     :followers="report.followers"
                     :range="report.range"
-                    :colors="accountColors"
+                    :colors="colors"
                     :filtered="report.filters.channels.length > 0"
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"
@@ -222,7 +215,7 @@ const accountColors = computed<Record<string, string>>(() => {
                 <PostsChart
                     :posts="report.posts"
                     :range="report.range"
-                    :colors="accountColors"
+                    :colors="colors"
                     :filtered="filtered"
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"

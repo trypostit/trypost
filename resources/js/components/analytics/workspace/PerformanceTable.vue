@@ -23,6 +23,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import {
     PERFORMANCE_METRICS,
     type PerformanceMetric,
@@ -54,8 +55,10 @@ const span = (range: { start: string; end: string }): string =>
 const { columns, toggleColumn, sortBy, sortDirection, sortKey } =
     usePerformanceColumns();
 
-sortBy.value = 'posts';
-sortDirection.value = 'desc';
+if (!useInsightsPrint()) {
+    sortBy.value = 'posts';
+    sortDirection.value = 'desc';
+}
 
 type SortKey = PerformanceSortKey;
 const channelName = (row: PerformanceRow): string =>

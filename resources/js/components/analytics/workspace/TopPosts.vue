@@ -5,6 +5,7 @@ import AppLogo from '@/components/AppLogo.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
 import PublicationDetailsDialog from '@/components/publish/PublicationDetailsDialog.vue';
+import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
@@ -22,8 +23,13 @@ const props = defineProps<{
     topPosts: WorkspaceAnalyticsReport['top_posts'];
     range: WorkspaceAnalyticsReport['range'];
     filtered?: boolean;
+    /** The list shown first; the PDF prints each list in its own section. */
+    initialMetric?: 'reactions' | 'comments';
 }>();
-const metric = ref<'reactions' | 'comments'>('reactions');
+
+/** On paper a video prints its network preview, or nothing; it never downloads. */
+const printing = useInsightsPrint();
+const metric = ref<'reactions' | 'comments'>(props.initialMetric ?? 'reactions');
 const buttons = [
     {
         mode: 'reactions',
@@ -145,7 +151,7 @@ const thumbnailFor = (post: TopPost): string | null => {
                         {{ post.excerpt || $t('analytics.dashboard.no_excerpt') }}
                     </p>
                     <video
-                        v-if="post.media && isVideo(post.media)"
+                        v-if="!printing && post.media && isVideo(post.media)"
                         :src="videoFrameUrl(post.media)"
                         class="size-12 shrink-0 rounded-lg object-cover"
                         muted

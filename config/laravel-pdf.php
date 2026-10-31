@@ -169,7 +169,7 @@ return [
 
         'user_data_dir' => env('LARAVEL_PDF_CHROME_USER_DATA_DIR'),
 
-        'custom_flags' => [],
+        'custom_flags' => env('LARAVEL_PDF_CHROME_IGNORE_CERTIFICATE_ERRORS', false) ? ['--ignore-certificate-errors'] : [],
 
         'env_variables' => [],
     ],

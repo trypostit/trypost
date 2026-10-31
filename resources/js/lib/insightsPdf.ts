@@ -4,7 +4,8 @@ export const WORKSPACE_PDF_SECTIONS = [
     'top_posts_reactions',
     'top_posts_comments',
     'performance',
-    'channels',
+    'followers',
+    'posts_over_time',
 ] as const;
 
-export const CHANNEL_PDF_SECTIONS = ['summary', 'metrics', 'posts'] as const;
+export const CHANNEL_PDF_SECTIONS = ['summary', 'posts', 'metrics'] as const;

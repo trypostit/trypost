@@ -17,7 +17,7 @@ defineProps<{
 
 <template>
     <section
-        class="min-w-0 overflow-hidden rounded-xl border border-border bg-card"
+        class="min-w-0 overflow-hidden rounded-xl border border-border bg-card print:break-inside-avoid"
         data-testid="analytics-section"
     >
         <div
