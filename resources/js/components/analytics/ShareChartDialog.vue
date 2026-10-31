@@ -315,12 +315,18 @@ const createPost = async (): Promise<void> => {
             </div>
 
             <DialogFooter>
-                <Button type="button" variant="ghost" @click="closeDialog">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    class="max-sm:flex-1"
+                    @click="closeDialog"
+                >
                     {{ $t('common.cancel') }}
                 </Button>
                 <Button
                     type="button"
                     variant="outline"
+                    class="max-sm:flex-1"
                     data-testid="share-chart-download"
                     @click="download"
                 >
@@ -330,6 +336,7 @@ const createPost = async (): Promise<void> => {
                 <Button
                     type="button"
                     variant="outline"
+                    class="max-sm:flex-1"
                     data-testid="share-chart-copy"
                     @click="copyImage"
                 >
