@@ -144,6 +144,7 @@ test('the followers chart prints each channel’s number next to its bar or at t
     $aligned = '(() => { const chart = document.querySelector("[data-testid=accounts-unovis-bar-chart]"); const edges = Array.from(chart.querySelectorAll("[data-testid=analytics-account-value]"), (value) => Math.round(value.getBoundingClientRect().right)); const barStart = Math.min(...Array.from(chart.querySelectorAll("[data-testid=analytics-account-bar]"), (bar) => bar.getBoundingClientRect().left)); return new Set(edges).size === 1 && edges[0] < barStart; })()';
 
     $page->assertScript($values, '120,30')
+        ->assertSeeIn('@analytics-followers-change', '+20')
         ->assertScript($aligned, true)
         ->assertMissing('@analytics-followers-legend');
 

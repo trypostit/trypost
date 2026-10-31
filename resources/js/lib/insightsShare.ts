@@ -266,8 +266,8 @@ const followersLinesFor = (
     return followersLines(followers, colors);
 };
 
-/** The followers gained or lost over the period, across the channels that report it. */
-const followersChange = (followers: Followers): ShareChange | null => {
+/** The followers gained or lost over the period, across the channels that report it; null when none does. */
+export const followersNet = (followers: Followers): number | null => {
     const nets = followers.accounts
         .map((account) => account.net)
         .filter((net): net is number => net != null);
@@ -276,7 +276,17 @@ const followersChange = (followers: Followers): ShareChange | null => {
         return null;
     }
 
-    return countChange(sum(nets));
+    return sum(nets);
+};
+
+const followersChange = (followers: Followers): ShareChange | null => {
+    const net = followersNet(followers);
+
+    if (net === null) {
+        return null;
+    }
+
+    return countChange(net);
 };
 
 /** The workspace's followers the way the page's Followers card draws them in `mode`. */

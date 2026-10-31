@@ -2,6 +2,7 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import type { ChartTooltipDetail } from '@/components/ui/chart';
 import date from '@/date';
@@ -9,10 +10,12 @@ import { activeLocale } from '@/language';
 import {
     FOLLOWERS_ROWS,
     type FollowersChartMode,
+    followersNet,
     followersShareOption,
 } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import {
+    formatCountChange,
     formatNumberCompact,
     formatPercentChange,
     formatSignedNumber,
@@ -123,6 +126,8 @@ const barChart = computed(() => {
         formatValue: rows.format,
     };
 });
+/** What the period added or took away across every channel, as the share card shows it. */
+const net = computed(() => followersNet(props.followers));
 const shownChannels = computed(() =>
     props.channelFiltered &&
     props.totalChannels &&
@@ -197,6 +202,12 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 <span class="text-sm text-muted-foreground">{{
                     $t('analytics.dashboard.total_followers')
                 }}</span>
+                <MetricChange
+                    v-if="net !== null"
+                    data-testid="analytics-followers-change"
+                    :change="net"
+                    :label="formatCountChange(net)"
+                />
             </div>
             <div class="min-w-0">
                 <FollowerHistoryLineChart
