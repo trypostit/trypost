@@ -448,6 +448,10 @@ return [
             'neutral' => 'Neutro',
             'indigo' => 'Índigo',
             'lime' => 'Lima',
+            'purple' => 'Roxo',
+            'fuchsia' => 'Fúcsia',
+            'orange' => 'Laranja',
+            'slate' => 'Ardósia',
         ],
     ],
 ];

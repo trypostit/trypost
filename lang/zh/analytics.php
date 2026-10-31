@@ -448,6 +448,10 @@ return [
             'neutral' => '中性色',
             'indigo' => '靛蓝色',
             'lime' => '青柠色',
+            'purple' => '紫色',
+            'fuchsia' => '品红色',
+            'orange' => '橙色',
+            'slate' => '石板色',
         ],
     ],
 ];

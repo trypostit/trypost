@@ -448,6 +448,10 @@ return [
             'neutral' => 'ニュートラル',
             'indigo' => 'インディゴ',
             'lime' => 'ライム',
+            'purple' => 'パープル',
+            'fuchsia' => 'フクシア',
+            'orange' => 'オレンジ',
+            'slate' => 'スレート',
         ],
     ],
 ];

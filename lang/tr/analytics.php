@@ -448,6 +448,10 @@ return [
             'neutral' => 'Nötr',
             'indigo' => 'Çivit',
             'lime' => 'Limon yeşili',
+            'purple' => 'Mor',
+            'fuchsia' => 'Fuşya',
+            'orange' => 'Turuncu',
+            'slate' => 'Arduvaz',
         ],
     ],
 ];
