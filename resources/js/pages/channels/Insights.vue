@@ -208,6 +208,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                             v-model:untagged="selectedUntagged"
                             :labels="labels ?? []"
                             test-id="insights-label"
+                            sheet-below-sm
                         />
                         <PostTypeFilter
                             v-if="showsTypeFilter"

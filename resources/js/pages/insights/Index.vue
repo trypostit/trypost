@@ -151,6 +151,7 @@ const accountColors = computed<Record<string, string>>(() => {
                             v-model="selectedChannelIds"
                             :channels="channelOptions"
                             test-id="analytics-channel"
+                            sheet-below-sm
                         />
                     </div>
                 </div>
