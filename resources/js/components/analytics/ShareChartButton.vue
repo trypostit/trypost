@@ -10,7 +10,6 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 
 const props = defineProps<{
@@ -23,7 +22,6 @@ const props = defineProps<{
     testId: string;
 }>();
 
-const printing = useInsightsPrint();
 const open = ref(false);
 const options = shallowRef<ShareMetricOption[]>([]);
 
@@ -34,7 +32,7 @@ const openDialog = (): void => {
 </script>
 
 <template>
-    <div v-if="!printing" class="contents">
+    <div class="contents print:hidden">
         <TooltipProvider :delay-duration="300">
             <Tooltip>
                 <TooltipTrigger as-child>

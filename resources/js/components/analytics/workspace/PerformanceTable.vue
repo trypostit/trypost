@@ -23,10 +23,10 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import {
     PERFORMANCE_METRICS,
     type PerformanceMetric,
+    type PerformanceSortDirection,
     type PerformanceSortKey,
     usePerformanceColumns,
 } from '@/composables/usePerformanceColumns';
@@ -49,16 +49,17 @@ const props = defineProps<{
     range: WorkspaceAnalyticsReport['range'];
     previousRange: WorkspaceAnalyticsReport['previous_range'];
     filtered?: boolean;
+    /** The sort to open with; the page always opens on posts, the PDF on the export's. */
+    initialSortBy?: PerformanceSortKey;
+    initialSortDirection?: PerformanceSortDirection;
 }>();
 const span = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 const { columns, toggleColumn, sortBy, sortDirection, sortKey } =
     usePerformanceColumns();
 
-if (!useInsightsPrint()) {
-    sortBy.value = 'posts';
-    sortDirection.value = 'desc';
-}
+sortBy.value = props.initialSortBy ?? 'posts';
+sortDirection.value = props.initialSortDirection ?? 'desc';
 
 type SortKey = PerformanceSortKey;
 const channelName = (row: PerformanceRow): string =>
@@ -138,7 +139,7 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
             <DropdownMenuTrigger as-child>
                 <button
                     type="button"
-                    class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-accent data-[state=open]:text-foreground"
+                    class="inline-flex size-8 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:bg-accent data-[state=open]:text-foreground print:hidden"
                     :aria-label="$t('analytics.insights.columns')"
                     :title="$t('analytics.insights.columns')"
                     data-testid="analytics-performance-columns"
@@ -222,7 +223,7 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
                                                 : IconChevronDown
                                         "
                                         :class="[
-                                            'size-3 transition-opacity',
+                                            'size-3 transition-opacity print:hidden',
                                             sortKey === 'channel'
                                                 ? 'opacity-100'
                                                 : 'opacity-30 group-hover:opacity-60',
@@ -257,7 +258,7 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
                                                 : IconChevronDown
                                         "
                                         :class="[
-                                            'size-3 transition-opacity',
+                                            'size-3 transition-opacity print:hidden',
                                             sortKey === column
                                                 ? 'opacity-100'
                                                 : 'opacity-30 group-hover:opacity-60',

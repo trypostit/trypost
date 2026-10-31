@@ -67,7 +67,7 @@ const props = defineProps<{
     initialColumns?: SummaryMetric[];
 }>();
 
-/** On paper a video prints its network preview, never the file, and the column heads are plain labels. */
+/** On paper a video prints its network preview and never downloads the file. */
 const printing = useInsightsPrint();
 
 const TABLE_METRICS: SummaryMetric[] = [
@@ -372,7 +372,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     "
                                 >
                                     <span
-                                        v-if="printing || !isSortable(column)"
+                                        v-if="!isSortable(column)"
                                         class="whitespace-nowrap"
                                         :data-testid="`insights-column-head-${column}`"
                                         >{{
@@ -384,7 +384,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     <button
                                         v-else
                                         type="button"
-                                        class="group inline-flex cursor-pointer items-center gap-1 rounded-sm whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                        class="group inline-flex cursor-pointer items-center gap-1 rounded-sm whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring print:contents"
                                         :data-testid="`insights-sort-${column}`"
                                         @click="changeSort(column)"
                                     >
@@ -395,7 +395,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         }}
                                         <IconChevronDown
                                             :class="[
-                                                'size-3 transition-opacity',
+                                                'size-3 transition-opacity print:hidden',
                                                 filters.sort === column
                                                     ? 'opacity-100'
                                                     : 'opacity-30 group-hover:opacity-60',

@@ -37,12 +37,9 @@ const props = defineProps<{
 
 provideInsightsPrint();
 
-const { columns: performanceColumns, sortBy, sortDirection } =
-    usePerformanceColumns();
+const { columns: performanceColumns } = usePerformanceColumns();
 
 performanceColumns.value = props.columns;
-sortBy.value = props.sort;
-sortDirection.value = props.direction;
 
 const shows = (section: string): boolean => props.sections.includes(section);
 const filtered = computed(() => props.report.filters.channels.length > 0);
@@ -97,6 +94,8 @@ const colors = computed<Record<string, string>>(() =>
             :range="report.range"
             :previous-range="report.previous_range"
             :filtered="filtered"
+            :initial-sort-by="sort"
+            :initial-sort-direction="direction"
         />
         <FollowersChart
             v-if="shows('followers')"

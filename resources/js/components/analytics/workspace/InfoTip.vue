@@ -20,7 +20,7 @@ defineProps<{
             <TooltipTrigger as-child>
                 <button
                     type="button"
-                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                    class="inline-flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-control hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring print:hidden"
                     :aria-label="text"
                     :data-testid="testId"
                 >
