@@ -1147,7 +1147,22 @@ const paintDates = (
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, dash: [10, 8], maxDates: 6 };
+const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8], maxDates: 6 };
+
+/**
+ * How wide each bar is: one bar per day like the page's, or, with both
+ * periods, two bars side by side that fill the day with a small gap between
+ * them instead of halving a single bar.
+ */
+const comboBarWidth = (slot: number, bars: number): number => {
+    if (bars === 1) {
+        return Math.max(Math.min(slot * (1 - COMBO.barPadding), COMBO.barMaxWidth), 2);
+    }
+
+    const room = slot * (1 - COMBO.groupPadding) - COMBO.pairGap * (bars - 1);
+
+    return Math.max(Math.min(room / bars, COMBO.barMaxWidth), 2);
+};
 
 /** The periods a chart mode shows, as the page's chart toggle sets them. */
 const comboPeriods = (mode: ChartMode): ('current' | 'previous')[] => {
@@ -1379,7 +1394,8 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
         });
     });
 
-    const barWidth = Math.max(Math.min((slot * (1 - COMBO.barPadding)) / periods.length, COMBO.barMaxWidth), 2);
+    const barWidth = comboBarWidth(slot, periods.length);
+    const barStep = barWidth + COMBO.pairGap * (periods.length - 1);
 
     options.series.filter((series) => series.kind === 'bar').forEach((series) => {
         const color = resolveCssColor(series.color);
@@ -1393,7 +1409,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
                     return;
                 }
 
-                const middle = x(index) + (position - (periods.length - 1) / 2) * barWidth;
+                const middle = x(index) + (position - (periods.length - 1) / 2) * barStep;
 
                 fillBar(context, zero, y(series.axis, value), middle, barWidth, false);
             });
