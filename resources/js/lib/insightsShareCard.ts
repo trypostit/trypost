@@ -133,7 +133,8 @@ const CHART = {
     tickFont: sans(500, 22),
     barMaxWidth: 32,
     barPadding: 0.35,
-    barRadius: 8,
+    /** The page's bars round their data end 4px on 20px bars: the radius keeps that share of a bar's thickness. */
+    barRoundness: 4 / 20,
     lineWidth: 4,
     dotRadius: 4,
 };
@@ -521,7 +522,7 @@ const fillBar = (
     horizontal: boolean,
 ): void => {
     const length = Math.abs(end - start);
-    const radius = Math.min(CHART.barRadius, thickness / 2, length);
+    const radius = Math.min(thickness * CHART.barRoundness, length);
     /** The radius at the bar's low-coordinate edge and at its high one: only the data end is round. */
     const [low, high] = end > start ? [0, radius] : [radius, 0];
 
