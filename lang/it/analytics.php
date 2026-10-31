@@ -56,6 +56,7 @@ return [
         'summary' => 'Riepilogo',
         'posts' => 'Post',
         'total_followers' => 'Follower totali',
+        'total_posts' => 'Post totali',
         'reactions' => 'Reazioni',
         'comments' => 'Commenti',
         'engagement_rate' => 'Tasso di coinvolgimento',

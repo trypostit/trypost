@@ -116,6 +116,7 @@ class BuildPublicationAnalyticsReport
             'previous_totals' => $this->finalizeTotals($previousTotals),
             'posts' => [
                 'resolution' => $this->buckets->resolution($current),
+                'total' => array_sum(array_column($postAccounts, 'count')),
                 'accounts' => $postAccounts,
                 'buckets' => $buckets,
             ],

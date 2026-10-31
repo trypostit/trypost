@@ -56,6 +56,7 @@ return [
         'summary' => '概要',
         'posts' => '投稿',
         'total_followers' => 'フォロワー合計',
+        'total_posts' => '投稿合計',
         'reactions' => 'リアクション',
         'comments' => 'コメント',
         'engagement_rate' => 'エンゲージメント率',

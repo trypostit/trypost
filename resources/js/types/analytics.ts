@@ -139,6 +139,8 @@ export interface AnalyticsReport {
     };
     posts: {
         resolution: BucketResolution;
+        /** Every post the channels sent over the period. */
+        total: number;
         accounts: PostAccount[];
         buckets: PostBucket[];
     };

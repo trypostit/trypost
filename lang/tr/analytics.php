@@ -56,6 +56,7 @@ return [
         'summary' => 'Özet',
         'posts' => 'Gönderiler',
         'total_followers' => 'Toplam takipçi',
+        'total_posts' => 'Toplam gönderi',
         'reactions' => 'Tepkiler',
         'comments' => 'Yorumlar',
         'engagement_rate' => 'Etkileşim oranı',

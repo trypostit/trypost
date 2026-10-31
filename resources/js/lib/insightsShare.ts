@@ -384,7 +384,7 @@ export const postsShareOption = (
     colors: Record<string, string>,
 ): ShareMetricOption => {
     const label = trans('analytics.dashboard.posts');
-    const figure = formatSeriesValue(sum(posts.accounts.map((account) => account.count)), 'posts');
+    const figure = formatSeriesValue(posts.total, 'posts');
 
     return shareOption({
         key: 'posts',

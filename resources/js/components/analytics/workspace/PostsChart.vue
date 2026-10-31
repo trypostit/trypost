@@ -89,6 +89,16 @@ const buildShareOptions = (): ShareMetricOption[] => [
             }}
         </div>
         <div v-else class="min-w-0">
+            <div class="mb-5 flex flex-wrap items-baseline gap-2">
+                <span
+                    class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
+                    data-testid="analytics-posts-total"
+                    >{{ formatNumberCompact(posts.total) }}</span
+                >
+                <span class="text-sm text-muted-foreground">{{
+                    $t('analytics.dashboard.total_posts')
+                }}</span>
+            </div>
             <div class="min-w-0">
                 <SocialAccountMetricBarChart
                     v-if="mode === 'bar'"

@@ -56,6 +56,7 @@ return [
         'summary' => '概览',
         'posts' => '帖子',
         'total_followers' => '粉丝总数',
+        'total_posts' => '帖子总数',
         'reactions' => '回应',
         'comments' => '评论',
         'engagement_rate' => '互动率',

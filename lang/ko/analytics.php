@@ -56,6 +56,7 @@ return [
         'summary' => '요약',
         'posts' => '게시물',
         'total_followers' => '총 팔로워',
+        'total_posts' => '총 게시물',
         'reactions' => '반응',
         'comments' => '댓글',
         'engagement_rate' => '참여율',

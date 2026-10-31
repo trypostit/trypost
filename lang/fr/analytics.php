@@ -56,6 +56,7 @@ return [
         'summary' => 'Résumé',
         'posts' => 'Publications',
         'total_followers' => 'Total des abonnés',
+        'total_posts' => 'Total des publications',
         'reactions' => 'Réactions',
         'comments' => 'Commentaires',
         'engagement_rate' => 'Taux d’engagement',

@@ -56,6 +56,7 @@ return [
         'summary' => 'Σύνοψη',
         'posts' => 'Δημοσιεύσεις',
         'total_followers' => 'Σύνολο ακολούθων',
+        'total_posts' => 'Σύνολο δημοσιεύσεων',
         'reactions' => 'Αντιδράσεις',
         'comments' => 'Σχόλια',
         'engagement_rate' => 'Ποσοστό αλληλεπίδρασης',

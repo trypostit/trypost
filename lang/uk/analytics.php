@@ -56,6 +56,7 @@ return [
         'summary' => 'Підсумок',
         'posts' => 'Дописи',
         'total_followers' => 'Усього підписників',
+        'total_posts' => 'Усього дописів',
         'reactions' => 'Реакції',
         'comments' => 'Коментарі',
         'engagement_rate' => 'Рівень залученості',

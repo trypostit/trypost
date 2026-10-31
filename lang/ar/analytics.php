@@ -56,6 +56,7 @@ return [
         'summary' => 'ملخص',
         'posts' => 'المنشورات',
         'total_followers' => 'إجمالي المتابعين',
+        'total_posts' => 'إجمالي المنشورات',
         'reactions' => 'التفاعلات',
         'comments' => 'التعليقات',
         'engagement_rate' => 'معدل التفاعل',

@@ -56,6 +56,7 @@ return [
         'summary' => 'Overzicht',
         'posts' => 'Berichten',
         'total_followers' => 'Totaal aantal volgers',
+        'total_posts' => 'Totaal aantal berichten',
         'reactions' => 'Reacties',
         'comments' => 'Opmerkingen',
         'engagement_rate' => 'Betrokkenheidspercentage',

@@ -56,6 +56,7 @@ return [
         'summary' => 'Podsumowanie',
         'posts' => 'Posty',
         'total_followers' => 'Łączna liczba obserwujących',
+        'total_posts' => 'Łączna liczba postów',
         'reactions' => 'Reakcje',
         'comments' => 'Komentarze',
         'engagement_rate' => 'Wskaźnik zaangażowania',

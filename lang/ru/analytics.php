@@ -56,6 +56,7 @@ return [
         'summary' => 'Сводка',
         'posts' => 'Публикации',
         'total_followers' => 'Всего подписчиков',
+        'total_posts' => 'Всего публикаций',
         'reactions' => 'Реакции',
         'comments' => 'Комментарии',
         'engagement_rate' => 'Уровень вовлечённости',

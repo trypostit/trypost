@@ -56,6 +56,7 @@ return [
         'summary' => 'Resumo',
         'posts' => 'Posts',
         'total_followers' => 'Total de seguidores',
+        'total_posts' => 'Total de posts',
         'reactions' => 'Reações',
         'comments' => 'Comentários',
         'engagement_rate' => 'Taxa de engajamento',
