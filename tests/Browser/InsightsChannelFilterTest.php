@@ -13,20 +13,6 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
-function waitForInsightsChannelTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 200; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 /** @return array{0: User, 1: list<SocialAccount>} */
 function insightsChannelFilterFixture(): array
 {
@@ -84,10 +70,10 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'analytics-channel-filter');
+    waitFor($page, '@analytics-channel-filter');
     $page->assertScript('document.querySelectorAll("[data-testid=analytics-performance-caption]").length', 1)
         ->click('@analytics-channel-filter');
-    waitForInsightsChannelTestId($page, "analytics-channel-checkbox-{$alpha->id}");
+    waitFor($page, "@analytics-channel-checkbox-{$alpha->id}");
     $page->click("@analytics-channel-checkbox-{$alpha->id}");
     $page->script(<<<'JS'
         (async () => {
@@ -97,7 +83,7 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
             }
         })();
     JS);
-    waitForInsightsChannelTestId($page, 'insights-card-followers');
+    waitFor($page, '@insights-card-followers');
 
     $page->assertScript('[...new URLSearchParams(location.search)].filter(([key]) => key.startsWith("channels")).map(([, value]) => value)', [$alpha->id])
         ->assertScript('document.querySelector("[data-testid=insights-card-followers]")?.innerText.includes("120")', true)
@@ -183,7 +169,7 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
         ->assertNoJavaScriptErrors();
 
     $page->resize(390, 844);
-    waitForInsightsChannelTestId($page, 'insights-range-custom');
+    waitFor($page, '@insights-range-custom');
 
     $page->assertScript('(() => { const group = document.querySelector("[data-testid=insights-range-presets] [role=group]"); return group.scrollWidth <= group.clientWidth + 1; })()', true)
         ->assertScript('document.querySelector("[data-testid=insights-range-custom]").getBoundingClientRect().right <= window.innerWidth', true)
@@ -207,7 +193,7 @@ test('a channel without data shows the filtered empty state and history navigati
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'insights-range-7d');
+    waitFor($page, '@insights-range-7d');
     $page->click('@insights-range-7d');
     $page->script(<<<'JS'
         (async () => {
@@ -217,11 +203,11 @@ test('a channel without data shows the filtered empty state and history navigati
             }
         })();
     JS);
-    waitForInsightsChannelTestId($page, 'analytics-channel-filter');
+    waitFor($page, '@analytics-channel-filter');
     $page->click('@analytics-channel-filter');
-    waitForInsightsChannelTestId($page, "analytics-channel-checkbox-{$silent->id}");
+    waitFor($page, "@analytics-channel-checkbox-{$silent->id}");
     $page->click("@analytics-channel-checkbox-{$silent->id}");
-    waitForInsightsChannelTestId($page, 'analytics-filtered-empty-state');
+    waitFor($page, '@analytics-filtered-empty-state');
 
     $page->assertPresent('@analytics-filtered-empty-state')
         ->assertMissing('@analytics-empty-state')
@@ -237,7 +223,7 @@ test('a channel without data shows the filtered empty state and history navigati
             }
         })();
     JS);
-    waitForInsightsChannelTestId($page, 'analytics-summary-followers');
+    waitFor($page, '@analytics-summary-followers');
 
     $page->assertScript('location.pathname.endsWith("/insights") && !location.search.includes("channels")', true)
         ->assertPresent('@analytics-summary-followers')
@@ -349,4 +335,32 @@ test('a channel without a follower reading in the period gets no label at the en
 
     $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).join(",")', '120')
         ->assertNoJavaScriptErrors();
+});
+
+test('on a touch screen a tap on a line’s label, which never leaves it, fades no other line', function () {
+    [$user] = insightsChannelFilterFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'))->on()->mobile();
+    waitFor($page, '@followers-line');
+    $page->click('@followers-line');
+    waitFor($page, '@followers-line-end');
+    $dimmed = $page->script(<<<'JS'
+        (async () => {
+            document.querySelector('[data-testid="followers-line-end"]').dispatchEvent(new MouseEvent('mouseenter'));
+            const started = performance.now();
+            let most = 0;
+
+            while (performance.now() - started < 500) {
+                await new Promise((resolve) => requestAnimationFrame(resolve));
+                most = Math.max(most, document.querySelectorAll('[data-testid="followers-unovis-chart"] [data-dimmed="true"]').length);
+            }
+
+            return most;
+        })()
+    JS);
+
+    expect($page->script('window.matchMedia("(hover: hover)").matches'))->toBeFalse()
+        ->and($dimmed)->toBe(0);
+    $page->assertNoJavaScriptErrors();
 });

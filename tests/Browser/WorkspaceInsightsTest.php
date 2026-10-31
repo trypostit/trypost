@@ -19,52 +19,9 @@ use App\Models\User;
 use App\Models\Workspace;
 use Illuminate\Support\Facades\Queue;
 
-function waitForWorkspaceInsightsTestId(mixed $page, string $testId): void
-{
-    $page->script(<<<JS
-        (async () => {
-            const selector = '[data-testid="{$testId}"]';
-            for (let attempt = 0; attempt < 600; attempt++) {
-                const element = document.querySelector(selector);
-                if (element && element.getBoundingClientRect().height > 0) return;
-                await new Promise((resolve) => setTimeout(resolve, 50));
-            }
-        })();
-    JS);
-}
-
 function workspaceInsightsTestIdSelector(string $testId): string
 {
     return json_encode("[data-testid=\"{$testId}\"]");
-}
-
-function waitForWorkspaceInsightsTestIdGone(mixed $page, string $testId): void
-{
-    $selector = workspaceInsightsTestIdSelector($testId);
-
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (!document.querySelector({$selector})) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
-}
-
-function waitForWorkspaceInsightsQueryParameter(mixed $page, string $name, string $value): void
-{
-    $name = json_encode($name);
-    $value = json_encode($value);
-
-    $page->script(<<<JS
-        (async () => {
-            for (let attempt = 0; attempt < 100; attempt++) {
-                if (new URLSearchParams(location.search).get({$name}) === {$value}) return;
-                await new Promise((resolve) => setTimeout(resolve, 100));
-            }
-        })();
-    JS);
 }
 
 function clickWorkspaceInsightsTestIdUntilDialogOpens(mixed $page, string $testId): void
@@ -239,7 +196,7 @@ test('workspace dashboard separates accounts and switches follower and post char
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-summary-followers');
+    waitFor($page, '@analytics-summary-followers');
 
     $page->assertVisible('@analytics-summary-followers');
 
@@ -297,7 +254,7 @@ test('workspace dashboard explains the empty state without inventing follower to
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-empty-state');
+    waitFor($page, '@analytics-empty-state');
 
     $page->assertVisible('@analytics-empty-state')
         ->assertPresent('@app-layout-content')
@@ -316,7 +273,7 @@ test('workspace dashboard explains the empty state without inventing follower to
 
     $page->click('@analytics-empty-connect');
 
-    waitForWorkspaceInsightsTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')
         ->resize(375, 812);
@@ -338,7 +295,7 @@ test('the empty insights hero explains pending data once a channel is connected'
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-empty-state');
+    waitFor($page, '@analytics-empty-state');
 
     $page->assertVisible('@analytics-empty-state')
         ->assertSee('Your analytics history is being prepared')
@@ -376,7 +333,7 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
 
     $this->actingAs($user);
     $page = visit(route('app.insights', ['start' => $firstDay->toDateString(), 'end' => $firstDay->addMonth()->toDateString()]));
-    waitForWorkspaceInsightsTestId($page, 'insights-range-custom');
+    waitFor($page, '@insights-range-custom');
 
     $page->assertMissing('@date-range-picker-trigger')
         ->assertAttribute('@insights-range-custom', 'aria-pressed', 'true')
@@ -387,7 +344,7 @@ test('the custom preset opens the calendar with quick ranges that apply a custom
     $page->assertPresent('[role=dialog]')
         ->assertSeeIn('@date-range-preset-last_7_days', __('common.date_range_picker.last_7_days', [], 'pt-BR'))
         ->click('@date-range-preset-last_7_days');
-    waitForWorkspaceInsightsQueryParameter($page, 'start', $latestDay->subDays(6)->toDateString());
+    waitForQueryParameter($page, 'start', $latestDay->subDays(6)->toDateString());
 
     $page->assertQueryStringHas('range', 'custom')
         ->assertQueryStringHas('start', $latestDay->subDays(6)->toDateString())
@@ -417,10 +374,10 @@ test('a range preset on the workspace dashboard reloads with that range', functi
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'insights-range-7d');
+    waitFor($page, '@insights-range-7d');
 
     $page->click('@insights-range-7d');
-    waitForWorkspaceInsightsQueryParameter($page, 'range', '7d');
+    waitForQueryParameter($page, 'range', '7d');
 
     $page->assertQueryStringHas('range', '7d')
         ->assertAttribute('@insights-range-7d', 'aria-pressed', 'true')
@@ -439,7 +396,7 @@ test('dashboard refreshes when the first analytics snapshot arrives after openin
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-empty-state');
+    waitFor($page, '@analytics-empty-state');
     $page->assertVisible('@analytics-empty-state');
 
     AnalyticsAccountDailySnapshot::factory()->create([
@@ -453,7 +410,7 @@ test('dashboard refreshes when the first analytics snapshot arrives after openin
         'followers_count' => 123,
     ]);
 
-    waitForWorkspaceInsightsTestId($page, 'analytics-summary-followers');
+    waitFor($page, '@analytics-summary-followers');
 
     $page->assertVisible('@analytics-summary-followers')
         ->assertNoJavaScriptErrors()
@@ -477,11 +434,11 @@ test('import progress disappears after the queued backfill finishes without navi
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-import-coverage');
+    waitFor($page, '@analytics-import-coverage');
     $page->assertVisible('@analytics-import-coverage');
 
     $state->update(['status' => SyncStatus::Complete]);
-    waitForWorkspaceInsightsTestIdGone($page, 'analytics-import-coverage');
+    waitForGone($page, '@analytics-import-coverage');
 
     $page->assertMissing('@analytics-import-coverage')
         ->assertNoJavaScriptErrors()
@@ -561,7 +518,7 @@ test('workspace dashboard abbreviates large percentage changes in the user local
 
     $this->actingAs($user);
     $page = visit(route('app.insights', ['start' => $rangeStart->toDateString(), 'end' => $rangeEnd->toDateString()]));
-    waitForWorkspaceInsightsTestId($page, 'analytics-summary-reactions-change');
+    waitFor($page, '@analytics-summary-reactions-change');
 
     expect(workspaceInsightsInnerText($page, 'analytics-summary-reactions-change'))->toContain($expectedChange);
 
@@ -581,14 +538,14 @@ test('the channel filter offers to connect a channel when the workspace has none
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, 'analytics-channel-filter');
+    waitFor($page, '@analytics-channel-filter');
 
     $page->click('@analytics-channel-filter');
-    waitForWorkspaceInsightsTestId($page, 'analytics-channel-connect');
+    waitFor($page, '@analytics-channel-connect');
 
     $page->assertSeeIn('@analytics-channel-connect', __('channels.connect'))
         ->click('@analytics-channel-connect');
-    waitForWorkspaceInsightsTestId($page, 'connect-channel-dialog');
+    waitFor($page, '@connect-channel-dialog');
 
     $page->assertVisible('@connect-channel-dialog')->assertNoJavaScriptErrors();
 });
@@ -614,18 +571,18 @@ test('on a phone the workspace insights range presets collapse into a dropdown',
 
     $this->actingAs($user);
     $page = visit(route('app.insights'))->resize(390, 844);
-    waitForWorkspaceInsightsTestId($page, 'insights-range-mobile-trigger');
+    waitFor($page, '@insights-range-mobile-trigger');
 
     expect(workspaceInsightsRect($page, 'insights-range-7d')['height'] ?? null)->toBe(0);
 
     $page->assertSeeIn('@insights-range-mobile-trigger', '30 Days')
         ->click('@insights-range-mobile-trigger');
-    waitForWorkspaceInsightsTestId($page, 'insights-range-mobile-30d-check');
+    waitFor($page, '@insights-range-mobile-30d-check');
 
     $page->assertPresent('@insights-range-mobile-30d-check')
         ->assertMissing('@insights-range-mobile-7d-check')
         ->click('@insights-range-mobile-7d');
-    waitForWorkspaceInsightsQueryParameter($page, 'range', '7d');
+    waitForQueryParameter($page, 'range', '7d');
 
     $page->assertQueryStringHas('range', '7d')
         ->assertSeeIn('@insights-range-mobile-trigger', '7 Days')
@@ -717,8 +674,8 @@ test('charts keep their width while the sidebar animates and resize once it sett
 
     $this->actingAs($user);
     $page = visit(route('app.insights'))->resize(1440, 900);
-    waitForWorkspaceInsightsTestId($page, 'accounts-unovis-bar-chart');
-    waitForWorkspaceInsightsTestId($page, 'sidebar-footer-toggle');
+    waitFor($page, '@accounts-unovis-bar-chart');
+    waitFor($page, '@sidebar-footer-toggle');
 
     $widths = workspaceInsightsChartWidthsAroundSidebarToggle($page);
 
@@ -804,7 +761,7 @@ test('top posts show the post media from our bucket, a video by its cover frame'
 
     $this->actingAs($user);
     $page = visit(route('app.insights'));
-    waitForWorkspaceInsightsTestId($page, "analytics-top-post-video-{$publications['video']->id}");
+    waitFor($page, "@analytics-top-post-video-{$publications['video']->id}");
 
     $page->assertAttribute("@analytics-top-post-video-{$publications['video']->id}", 'src', 'https://cdn.trypost.test/medias/reel.mp4#t=0.1')
         ->assertScript("Array.from(document.querySelectorAll('[data-testid=\"analytics-top-post\"] img')).map((image) => image.getAttribute('src')).includes('http://trypost.test/storage/medias/a.jpg')", true)

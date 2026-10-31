@@ -413,6 +413,7 @@ return [
         'channels_shown' => ':range · Mostrati :shown canali su :total. Filtra per canale per vederne altri.',
     ],
     'share' => [
+        'channels_shown' => ':shown canali su :total',
         'button' => 'Condividi come immagine',
         'title' => 'Condividi come immagine',
         'description' => 'Scarica l’immagine o trasformala in un post per i tuoi canali.',

@@ -413,6 +413,7 @@ return [
         'channels_shown' => ':range · Mostrando :shown de :total canais. Filtre por canal para ver outro conjunto.',
     ],
     'share' => [
+        'channels_shown' => ':shown de :total canais',
         'button' => 'Compartilhar como imagem',
         'title' => 'Compartilhar como imagem',
         'description' => 'Baixe a imagem ou transforme-a em um post para seus canais.',

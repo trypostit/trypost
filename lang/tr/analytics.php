@@ -413,6 +413,7 @@ return [
         'channels_shown' => ':range · :total kanaldan :shown tanesi gösteriliyor. Başka kanalları görmek için kanala göre filtreleyin.',
     ],
     'share' => [
+        'channels_shown' => ':total kanaldan :shown',
         'button' => 'Görsel olarak paylaş',
         'title' => 'Görsel olarak paylaş',
         'description' => 'Görseli indir ya da kanalların için bir gönderiye dönüştür.',

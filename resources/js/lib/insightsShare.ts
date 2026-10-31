@@ -81,6 +81,19 @@ export const POSTS_ROWS: ChannelRowsSpec<Posts['accounts'][number]> = {
 const sum = (values: number[]): number =>
     values.reduce((total, value) => total + value, 0);
 
+/**
+ * The period a share card names, with how many of the workspace's channels
+ * it counts when the page is filtered to some ("2 – 31 Oct 2026 · 2 of 5
+ * channels"), so the image and its post never pass a few channels off as all.
+ */
+export const shareRangeLabel = (range: string, shown: number | null, total: number | undefined): string => {
+    if (shown === null || !total) {
+        return range;
+    }
+
+    return `${range} · ${trans('analytics.share.channels_shown', { shown: String(shown), total: String(total) })}`;
+};
+
 /** The post text for one metric across the workspace's channels. */
 const metricCaption = (replacements: { metric: string; value: string; range: string }): string =>
     trans('analytics.share.caption_workspace', replacements);

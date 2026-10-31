@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/chart';
 import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
+import { useCanHover } from '@/composables/useCanHover';
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
 import { spreadLabels } from '@/lib/labelLayout';
@@ -74,6 +75,10 @@ const valueAccessor =
         const value = point[`account_${index}`];
         return typeof value === 'number' ? value : undefined;
     };
+/** One accessor per channel, kept while the channels stay, so unovis never sees a new line to redraw. */
+const valueAccessors = computed(() =>
+    props.accounts.map((_, index) => valueAccessor(index)),
+);
 const formatDate = (tick: number | Date): string => {
     const index = typeof tick === 'number' ? Math.round(tick) : 0;
     const day = chartData.value[index]?.date;
@@ -133,7 +138,14 @@ const lineEndX = ref(0);
 /** The line whose label the pointer is on; the others fade. */
 const focusedLine = ref<number | null>(null);
 
+const canHover = useCanHover();
+
+/** Fades the other lines while a label is pointed at; a tap on a touch screen never leaves, so it fades nothing. */
 const focusLine = (index: number): void => {
+    if (!canHover.value) {
+        return;
+    }
+
     focusedLine.value = index;
 };
 
@@ -224,8 +236,23 @@ const placeLineEnds = (svg: SVGSVGElement): void => {
         { gap: LABEL_HEIGHT, top, bottom: Math.min(toY(0), top + svgBox.height) },
     );
 
-    lineEnds.value = ends.map((end, position) => ({ ...end, labelY: labels[position] }));
+    const placed = ends.map((end, position) => ({ ...end, labelY: labels[position] }));
+
+    if (!sameLineEnds(placed, lineEnds.value)) {
+        lineEnds.value = placed;
+    }
 };
+
+/** Whether two placements put the same labels in the same places, so an unchanged render does not redraw every line. */
+const sameLineEnds = (next: LineEnd[], current: LineEnd[]): boolean =>
+    next.length === current.length &&
+    next.every(
+        (end, position) =>
+            end.index === current[position].index &&
+            end.value === current[position].value &&
+            end.lineY === current[position].lineY &&
+            end.labelY === current[position].labelY,
+    );
 
 /** A leader's three points: out from the line's end, along it, then up or down to its label. */
 const leaderPoints = (end: LineEnd): string => {
@@ -268,7 +295,7 @@ const crosshairColor = (_point: ChartPoint, index: number): string =>
                 >
                     <VisLine
                         :x="xAccessor"
-                        :y="valueAccessor(index)"
+                        :y="valueAccessors[index]"
                         :color="lineColor(index)"
                         :line-width="2"
                         curve-type="monotoneX"
@@ -276,7 +303,7 @@ const crosshairColor = (_point: ChartPoint, index: number): string =>
                     />
                     <VisScatter
                         :x="xAccessor"
-                        :y="valueAccessor(index)"
+                        :y="valueAccessors[index]"
                         :color="lineColor(index)"
                         :size="4"
                         :attributes="pointAttributes(index)"

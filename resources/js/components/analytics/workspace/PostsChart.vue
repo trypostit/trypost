@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
-import { POSTS_ROWS, postsShareOption } from '@/lib/insightsShare';
+import {
+    POSTS_ROWS,
+    postsShareOption,
+    shareRangeLabel,
+} from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact } from '@/lib/utils';
 import type {
@@ -50,8 +54,11 @@ const barRows = computed((): AccountMetricRow[] =>
     })),
 );
 const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
+/** The period the share card names, with the channels it counts when filtered. */
+const shareRange = (): string =>
+    shareRangeLabel(rangeLabel.value, shownChannels.value, props.totalChannels);
 const buildShareOption = (): ShareMetricOption =>
-    postsShareOption(props.posts, rangeLabel.value, mode.value, props.colors);
+    postsShareOption(props.posts, shareRange(), mode.value, props.colors);
 </script>
 
 <template>
@@ -79,7 +86,7 @@ const buildShareOption = (): ShareMetricOption =>
             />
             <ShareChartButton
                 v-if="posts.accounts.length > 0"
-                :range="rangeLabel"
+                :range="shareRange()"
                 :build="buildShareOption"
                 test-id="share-posts"
             />

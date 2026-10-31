@@ -79,21 +79,42 @@ const previewScale = (preview: HTMLCanvasElement): number => {
     return Math.max(shownWidth / SHARE_CARD_SIZE.width, MIN_PREVIEW_SCALE);
 };
 
-const paint = async (): Promise<void> => {
+/** Whether this opening's preview already failed to draw, so its error is told once, not on every repaint. */
+let paintFailed = false;
+
+/** Draws the preview, and says whether it could: not before the dialog has its card and canvas. */
+const drawPreview = async (): Promise<boolean> => {
     await nextTick();
 
     if (!card.value) {
-        return;
+        return false;
     }
 
     const images = await prepareShareCard(card.value);
 
     if (!canvas.value || !card.value) {
-        return;
+        return false;
     }
 
     drawShareCard(canvas.value, card.value, images, previewScale(canvas.value));
-    painted.value = true;
+
+    return true;
+};
+
+/** Draws the preview; a browser that cannot draw the card stops loading and is told so once. */
+const paint = async (): Promise<void> => {
+    try {
+        if (await drawPreview()) {
+            painted.value = true;
+        }
+    } catch {
+        if (!paintFailed) {
+            toast.error(trans('analytics.share.export_failed'));
+        }
+
+        paintFailed = true;
+        painted.value = true;
+    }
 };
 
 /** The image uploading for Create post, stopped when the dialog closes so the composer never opens later. */
@@ -108,6 +129,7 @@ watch(open, (isOpen) => {
 
     posting.value = false;
     painted.value = false;
+    paintFailed = false;
     paint();
 });
 
@@ -173,7 +195,9 @@ const createPost = async (): Promise<void> => {
             toast.error(trans('analytics.share.post_failed'));
         }
     } finally {
-        posting.value = false;
+        if (postUpload?.signal === signal) {
+            posting.value = false;
+        }
     }
 };
 </script>

@@ -734,6 +734,28 @@ function waitForCondition(mixed $page, string $condition): void
 }
 
 /**
+ * Wait until a condition the test reads on the server (a row in the database)
+ * holds, letting the page's own requests land between tries.
+ */
+function waitForDatabase(mixed $page, Closure $condition): void
+{
+    for ($attempt = 0; $attempt < 50 && ! $condition(); $attempt++) {
+        $page->script('new Promise((resolve) => setTimeout(resolve, 100))');
+    }
+}
+
+/**
+ * Wait until the page's URL carries this query parameter value.
+ */
+function waitForQueryParameter(mixed $page, string $name, string $value): void
+{
+    $name = json_encode($name);
+    $value = json_encode($value);
+
+    waitForCondition($page, "new URLSearchParams(location.search).get({$name}) === {$value}");
+}
+
+/**
  * The selector as a JavaScript string, with `@name` standing for
  * `[data-testid="name"]` as in `$page->click('@name')`, anywhere in it:
  * `@channel-settings-rows [role="combobox"]`.
@@ -808,7 +830,7 @@ function waitForPath(mixed $page, string $path): void
 
 /**
  * Records what every canvas on the page draws from now on: each text with
- * the direction it is written in (`window.__drawn`), each image's address
+ * its direction, place, width and alignment (`window.__drawn`), each image's address
  * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
  * the share card's hatch for a previous period). A canvas cannot be read back
  * as text, so a test of a painted card reads these instead.
@@ -828,7 +850,7 @@ function recordCanvasDrawing(mixed $page): void
             const fillText = CanvasRenderingContext2D.prototype.fillText;
             const drawImage = CanvasRenderingContext2D.prototype.drawImage;
             CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
-                window.__drawn.push({ text: String(text), direction: this.direction });
+                window.__drawn.push({ text: String(text), direction: this.direction, x: rest[0], y: rest[1], width: this.measureText(String(text)).width, align: this.textAlign });
 
                 return fillText.call(this, text, ...rest);
             };

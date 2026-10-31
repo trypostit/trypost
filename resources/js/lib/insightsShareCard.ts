@@ -261,8 +261,8 @@ const VERIFIED = { overhang: 0.7, rise: 0.3, backing: 0.42, grid: 24 };
 /** The previous period's hatch: a tile of the color's light wash with one stripe across it, turned 45°. */
 const HATCH = { size: 10, wash: 0.12, stripe: 0.4, angle: 45 };
 
-/** d3's monotone curve: tangents are clamped once they pass 3 (9 squared), and each segment's handles sit a third along it. */
-const MONOTONE = { limit: 3, handle: 3 };
+/** d3's `curveMonotoneX`: each segment's handles sit a third along it, and a middle tangent takes at most half the blended slope. */
+const MONOTONE = { handle: 3, blend: 0.5 };
 
 /** `VerifiedBadge`'s colors, with the filled rosette Tabler draws it with. */
 const VERIFIED_COLORS: Record<VerifiedBadge, string> = { blue: '#1d9bf0', business: '#e2b719', government: '#829aab' };
@@ -661,13 +661,35 @@ const fillBar = (
     context.fill();
 };
 
-/** A middle point's tangent: flat at a peak or a dip, so the curve never overshoots, else the mean of its two slopes. */
-const innerTangent = (before: number, after: number): number => {
-    if (before * after <= 0) {
-        return 0;
+/** The sign d3 gives a slope: zero counts as positive. */
+const slopeSign = (slope: number): number => {
+    if (slope < 0) {
+        return -1;
     }
 
-    return (before + after) / 2;
+    return 1;
+};
+
+/** d3's `slope3`: a middle point's tangent, flat at a peak or a dip, never steeper than its neighbours allow. */
+const innerTangent = (before: Point, point: Point, after: Point): number => {
+    const left = point.x - before.x;
+    const right = after.x - point.x;
+    const leftSlope = (point.y - before.y) / left;
+    const rightSlope = (after.y - point.y) / right;
+    const weighted = (leftSlope * right + rightSlope * left) / (left + right);
+
+    return (slopeSign(leftSlope) + slopeSign(rightSlope)) * Math.min(Math.abs(leftSlope), Math.abs(rightSlope), MONOTONE.blend * Math.abs(weighted)) || 0;
+};
+
+/** d3's `slope2`: an end point's tangent, from its segment's slope and the tangent at the segment's other end. */
+const endTangent = (from: Point, to: Point, neighbour: number): number => {
+    const width = to.x - from.x;
+
+    if (!width) {
+        return neighbour;
+    }
+
+    return (MONOTONE.handle * (to.y - from.y) / width - neighbour) / 2;
 };
 
 /** The line through the points as a monotone cubic, d3's `curveMonotoneX` the page's charts use. */
@@ -686,37 +708,24 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
         return;
     }
 
-    const slopes = points.slice(1).map((point, index) => (point.y - points[index].y) / (point.x - points[index].x));
-    const tangents = points.map((_, index) => {
-        if (index === 0) {
-            return slopes[0];
+    const last = points.length - 1;
+    const inner = points.map((point, index) => {
+        if (index === 0 || index === last) {
+            return 0;
         }
 
-        if (index === points.length - 1) {
-            return slopes[slopes.length - 1];
-        }
-
-        return innerTangent(slopes[index - 1], slopes[index]);
+        return innerTangent(points[index - 1], point, points[index + 1]);
     });
-
-    slopes.forEach((slope, index) => {
-        if (slope === 0) {
-            tangents[index] = 0;
-            tangents[index + 1] = 0;
-
-            return;
+    const tangents = inner.map((tangent, index) => {
+        if (index === 0) {
+            return endTangent(points[0], points[1], inner[1]);
         }
 
-        const a = tangents[index] / slope;
-        const b = tangents[index + 1] / slope;
-        const size = a * a + b * b;
-
-        if (size > MONOTONE.limit ** 2) {
-            const scale = MONOTONE.limit / Math.sqrt(size);
-
-            tangents[index] = scale * a * slope;
-            tangents[index + 1] = scale * b * slope;
+        if (index === last) {
+            return endTangent(points[last - 1], points[last], inner[last - 1]);
         }
+
+        return tangent;
     });
 
     points.slice(1).forEach((point, index) => {
@@ -733,7 +742,6 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
         );
     });
 };
-
 /** A channel's own color, the one the page draws it in, else the tint's strong color. */
 const rowColor = (point: SharePoint, tint: ShareTint): string => {
     if (!point.color) {
@@ -1028,16 +1036,33 @@ const strokeCurve = (context: CanvasRenderingContext2D, points: Point[], color: 
     context.restore();
 };
 
-/** The points of a line that have a value, where the plot draws them. */
-const knownPoints = (values: (number | null)[], x: (index: number) => number, y: (value: number) => number): Point[] =>
-    values.flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(value) }]));
+/**
+ * A line's runs of points with a value, where the plot draws them: a missing
+ * value breaks the line there, as unovis' line does on the page.
+ */
+const definedRuns = (values: (number | null)[], x: (index: number) => number, y: (value: number) => number): Point[][] =>
+    values
+        .reduce<Point[][]>(
+            (runs, value, index) => {
+                if (value === null) {
+                    return [...runs, []];
+                }
+
+                runs[runs.length - 1].push({ x: x(index), y: y(value) });
+
+                return runs;
+            },
+            [[]],
+        )
+        .filter((run) => run.length > 0);
 
 /** One channel's line in its color, with a dot on each known point. */
 const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
-    const known = knownPoints(line.values, x, y);
+    const runs = definedRuns(line.values, x, y);
+    const known = runs.flat();
     const color = line.color;
 
-    strokeCurve(context, known, color);
+    runs.forEach((run) => strokeCurve(context, run, color));
 
     context.fillStyle = color;
     known.forEach((point) => {
@@ -1116,17 +1141,16 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
 /**
  * The columns that get a date: every one, like the page's Posts chart, unless
- * the card is too narrow for them all, then as many as fit, evenly spread.
+ * the card is too narrow for them all, then every second or third, so no two
+ * dates ever overlap.
  */
 const columnDates = (context: CanvasRenderingContext2D, points: SharePoint[], width: number): number[] => {
     const room = widest(context, points.map((point) => point.label), CHART.tickFont) + PLOT.dateGap;
     const fitting = Math.max(Math.floor(width / room), 1);
 
-    if (points.length <= fitting) {
-        return points.map((_, index) => index);
-    }
+    const step = Math.ceil(points.length / fitting);
 
-    return linearTicks(0, points.length - 1, fitting);
+    return points.map((_, index) => index).filter((index) => index % step === 0);
 };
 
 /** Up to `CHART.maxDates` dates evenly spread over a line, like the page's date axes. */
@@ -1144,7 +1168,7 @@ const paintDates = (
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
+const COMBO = { legendGap: 56, identityShare: 0.5, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
 
 /** The page's hatch for a previous period's bars: stripes of the color over a light wash of it. */
 const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasPattern | string => {
@@ -1199,10 +1223,10 @@ const periodDash = (period: PublicationPeriod): number[] => {
 const SWATCH = { radius: 4, dash: [4, 3], outline: 3 };
 
 /** A legend swatch like the page's: solid for this period, hatched (bars) or a dashed outline (lines) for the previous one. */
-const paintLegendSwatch = (context: CanvasRenderingContext2D, series: ShareSeries, color: string, period: PublicationPeriod, at: Point): void => {
+const paintLegendSwatch = (context: CanvasRenderingContext2D, series: ShareSeries, color: string, period: PublicationPeriod, at: Point, size: number): void => {
     context.save();
     context.beginPath();
-    context.roundRect(at.x, at.y, COMBO.swatch, COMBO.swatch, SWATCH.radius);
+    context.roundRect(at.x, at.y, size, size, SWATCH.radius);
 
     if (period === 'previous' && series.kind === 'line') {
         context.setLineDash(SWATCH.dash);
@@ -1242,12 +1266,12 @@ const legendFigureColor = (period: PublicationPeriod, mode: ChartMode): string =
 };
 
 /** How wide a legend item's change is drawn; none without one. */
-const legendChangeWidth = (context: CanvasRenderingContext2D, change: MetricDelta | null): number => {
+const legendChangeWidth = (context: CanvasRenderingContext2D, change: MetricDelta | null, size: number): number => {
     if (!change) {
         return 0;
     }
 
-    return changeWidth(context, change, COMBO.changeSize);
+    return changeWidth(context, change, size);
 };
 
 /** The change a legend item shows: none in Comparison, which shows the previous period itself. */
@@ -1259,10 +1283,15 @@ const legendChange = (series: ShareSeries, mode: ChartMode): MetricDelta | null 
     return series.change;
 };
 
-/** The page's legend on the headline's right: each metric's name over its swatches and figures, its change under them. */
-const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number): number => {
-    const labelFont = sans(500, COMBO.labelSize);
-    const figureFont = heading(500, COMBO.figureSize);
+/**
+ * The page's legend on the headline's right: each metric's name over its
+ * swatches and figures, its change under them, at `fit` of its full size.
+ * Returns how wide it is.
+ */
+const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number, fit: number): number => {
+    const size = (value: number): number => value * fit;
+    const labelFont = sans(500, size(COMBO.labelSize));
+    const figureFont = heading(500, size(COMBO.figureSize));
     let edge = right;
 
     [...options.series].reverse().forEach((series) => {
@@ -1270,32 +1299,55 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         const change = legendChange(series, options.chartMode);
 
         context.font = figureFont;
-        const entryWidths = entries.map((entry) => COMBO.swatch + COMBO.swatchGap + context.measureText(entry.figure).width);
-        const figuresWidth = entryWidths.reduce((total, width) => total + width, 0) + COMBO.changeGap * (entries.length - 1);
-        const changeRoom = legendChangeWidth(context, change);
+        const entryWidths = entries.map((entry) => size(COMBO.swatch + COMBO.swatchGap) + context.measureText(entry.figure).width);
+        const figuresWidth = entryWidths.reduce((total, width) => total + width, 0) + size(COMBO.changeGap) * (entries.length - 1);
+        const changeRoom = legendChangeWidth(context, change, size(COMBO.changeSize));
         context.font = labelFont;
         const width = Math.max(context.measureText(series.label).width, figuresWidth, changeRoom);
         const left = edge - width;
-        const baseline = top + COMBO.labelSize + COMBO.figureLine;
+        const baseline = top + size(COMBO.labelSize + COMBO.figureLine);
         const color = series.color;
         let cursor = left;
 
-        writeText(context, series.label, { x: left, y: top + COMBO.labelSize }, { font: labelFont, color: MUTED });
+        writeText(context, series.label, { x: left, y: top + size(COMBO.labelSize) }, { font: labelFont, color: MUTED });
 
         entries.forEach((entry, position) => {
-            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - COMBO.figureSize * COMBO.swatchRise });
-            writeText(context, entry.figure, { x: cursor + COMBO.swatch + COMBO.swatchGap, y: baseline }, { font: figureFont, color: legendFigureColor(entry.period, options.chartMode) });
-            cursor += entryWidths[position] + COMBO.changeGap;
+            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - size(COMBO.figureSize * COMBO.swatchRise) }, size(COMBO.swatch));
+            writeText(context, entry.figure, { x: cursor + size(COMBO.swatch + COMBO.swatchGap), y: baseline }, { font: figureFont, color: legendFigureColor(entry.period, options.chartMode) });
+            cursor += entryWidths[position] + size(COMBO.changeGap);
         });
 
         if (change) {
-            paintChange(context, change, { x: left, y: baseline + COMBO.changeBelow }, COMBO.changeSize, 'left');
+            paintChange(context, change, { x: left, y: baseline + size(COMBO.changeBelow) }, size(COMBO.changeSize), 'left');
         }
 
-        edge = left - COMBO.legendGap;
+        edge = left - size(COMBO.legendGap);
     });
 
-    return right - edge - COMBO.legendGap;
+    return right - edge - size(COMBO.legendGap);
+};
+
+/**
+ * How much of its full size the legend keeps: all of it while it leaves room
+ * for the channel's name and period, else smaller, so a wide legend (both
+ * periods, large figures) never cuts them. The name keeps at most
+ * `COMBO.identityShare` of the headline, so the legend never vanishes.
+ */
+const legendFit = (options: ShareCardOptions, headline: number): number => {
+    const scratch = document.createElement('canvas').getContext('2d');
+
+    if (!scratch) {
+        return 1;
+    }
+
+    const identity = Math.max(
+        widest(scratch, [options.subject], heading(600, IDENTITY.nameSize)),
+        widest(scratch, [options.range], sans(500, IDENTITY.detailSize)),
+    );
+    const full = paintComboLegend(scratch, options, headline, 0, 1);
+    const room = headline - Math.min(identity, headline * COMBO.identityShare) - COMBO.legendGap;
+
+    return Math.min(1, room / full);
 };
 
 /** The metrics drawn on an axis of the channel chart. */
@@ -1346,7 +1398,7 @@ const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (p
 const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
-    const legendWidth = paintComboLegend(context, options, right, panel.y + IDENTITY.top);
+    const legendWidth = paintComboLegend(context, options, right, panel.y + IDENTITY.top, legendFit(options, right - left));
 
     paintIdentity(context, options.subject, options.range, { x: left, y: panel.y + IDENTITY.top }, right - left - legendWidth - COMBO.legendGap);
 
@@ -1414,9 +1466,9 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
     options.series.filter((series) => series.kind === 'line').forEach((series) => {
         periods.forEach((period) => {
-            const known = knownPoints(shownValues(series, period, count), x, (value) => y(series.axis, value));
-
-            strokeCurve(context, known, series.color, periodDash(period));
+            definedRuns(shownValues(series, period, count), x, (value) => y(series.axis, value)).forEach((run) => {
+                strokeCurve(context, run, series.color, periodDash(period));
+            });
         });
     });
 

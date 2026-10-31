@@ -413,6 +413,7 @@ return [
         'channels_shown' => ':range · :total チャンネル中 :shown 件を表示中。別のチャンネルを見るにはチャンネルで絞り込んでください。',
     ],
     'share' => [
+        'channels_shown' => ':total チャンネル中 :shown 件',
         'button' => '画像で共有',
         'title' => '画像で共有',
         'description' => '画像をダウンロードするか、チャンネル用の投稿にできます。',

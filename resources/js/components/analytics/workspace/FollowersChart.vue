@@ -10,6 +10,7 @@ import {
     FOLLOWERS_ROWS,
     followersNet,
     followersShareOption,
+    shareRangeLabel,
 } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import {
@@ -149,10 +150,13 @@ const shownChannels = computed(() =>
         : null,
 );
 const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
+/** The period the share card names, with the channels it counts when filtered. */
+const shareRange = (): string =>
+    shareRangeLabel(rangeLabel.value, shownChannels.value, props.totalChannels);
 const buildShareOption = (): ShareMetricOption =>
     followersShareOption(
         props.followers,
-        rangeLabel.value,
+        shareRange(),
         mode.value,
         props.colors,
     );
@@ -183,7 +187,7 @@ const buildShareOption = (): ShareMetricOption =>
             />
             <ShareChartButton
                 v-if="canShare"
-                :range="rangeLabel"
+                :range="shareRange()"
                 :build="buildShareOption"
                 test-id="share-followers"
             />

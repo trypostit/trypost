@@ -497,3 +497,94 @@ test('the per channel card draws the twelve channels with the most followers', f
         ->and($page->script('window.__drawn.some((entry) => entry.text === "123")'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
 });
+
+test('the stacked posts card keeps its week labels apart over a long range', function () {
+    [$user, $account] = insightsShareBrowserUser();
+
+    foreach ([89, 60, 30, 1] as $daysAgo) {
+        AnalyticsPublication::factory()->create([
+            'workspace_id' => $account->workspace_id,
+            'social_account_id' => $account->id,
+            'social_account_key' => $account->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'provider_published_at' => now()->subDays($daysAgo)->setTime(10, 0),
+        ]);
+    }
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights', ['start' => now()->subDays(89)->toDateString(), 'end' => now()->subDay()->toDateString()]));
+    waitFor($page, '@posts-stacked');
+    $page->click('@posts-stacked');
+    recordCanvasDrawing($page);
+    openShareCard($page, '@share-posts');
+
+    $dates = $page->script(<<<'JS'
+        (() => {
+            const centred = window.__drawn.filter((entry) => entry.align === 'center' && entry.text.includes('–'));
+            const unique = [...new Map(centred.map((entry) => [`${entry.text}|${entry.x}`, entry])).values()].sort((a, b) => a.x - b.x);
+            const overlaps = unique.slice(1).filter((entry, index) => entry.x - entry.width / 2 < unique[index].x + unique[index].width / 2).length;
+
+            return { shown: unique.length, overlaps };
+        })()
+    JS);
+
+    expect($dates['shown'])->toBeGreaterThan(1)
+        ->and($dates['overlaps'])->toBe(0);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a share of some of the channels says how many of them it counts', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    insightsShareChannels($account, 1, fn (): string => 'Other Channel');
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights', ['channels' => [$account->id]]));
+    openShareCard($page, '@share-followers');
+    $page->click('@share-chart-post');
+
+    expect(composerText($page))->toEndWith('· 1 of 2 channels) 📈');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a browser that cannot draw the card stops loading the preview and is told so', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-followers');
+    $page->script('(() => { CanvasRenderingContext2D.prototype.roundRect = undefined; })()');
+    $page->click('@share-followers');
+    waitForText($page, '[data-sonner-toast]', 'Couldn');
+
+    $page->assertAttribute('@share-chart-preview', 'data-state', 'ready');
+    expect($page->script('document.querySelectorAll("[data-sonner-toast]").length'))->toBe(1);
+});
+
+test('a Create post stopped by closing the dialog never unblocks the next one', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    openShareCard($page, '@share-followers');
+    $page->script(<<<'JS'
+        (() => {
+            window.__encoded = 0;
+            const toBlob = HTMLCanvasElement.prototype.toBlob;
+            HTMLCanvasElement.prototype.toBlob = function (callback, ...rest) {
+                toBlob.call(this, (blob) => window.setTimeout(() => { window.__encoded += 1; callback(blob); }, 800), ...rest);
+            };
+            XMLHttpRequest.prototype.send = function () {};
+        })()
+    JS);
+    $page->click('@share-chart-post');
+    $page->keys('@share-chart-dialog', 'Escape');
+    waitForGone($page, '@share-chart-dialog');
+    openShareCard($page, '@share-followers');
+    $page->click('@share-chart-post');
+    waitForCondition($page, 'window.__encoded >= 1');
+
+    $page->assertAttribute('@share-chart-post', 'disabled', '')
+        ->assertNoJavaScriptErrors();
+});
