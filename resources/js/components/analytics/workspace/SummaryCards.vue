@@ -107,6 +107,19 @@ const desktopColumns = computed((): string => {
     return 'lg:grid-cols-5';
 });
 
+/** On a phone two cards share a row; an odd count leaves the last one alone, so it takes the whole row. */
+const spansPhoneRow = (index: number): boolean =>
+    cards.value.length % 2 === 1 && index === cards.value.length - 1;
+
+/** A half-width card on a phone stacks its change under the number; a card with the whole row keeps them side by side. */
+const valueRowClass = (index: number): string => {
+    if (spansPhoneRow(index)) {
+        return 'flex flex-wrap items-center gap-x-3 gap-y-1';
+    }
+
+    return 'flex flex-col items-start gap-1 md:flex-row md:flex-wrap md:items-center md:gap-x-3';
+};
+
 const aboutKey = (key: string): string =>
     key === 'reactions' && props.network
         ? 'analytics.channel.metrics.reactions.about_network'
@@ -170,10 +183,11 @@ const buildShareOptions = (): ShareMetricOption[] => [
             data-testid="analytics-summary"
         >
             <div
-                v-for="card in cards"
+                v-for="(card, index) in cards"
                 :key="card.key"
                 :data-testid="testId(card.key)"
                 class="flex min-w-0 flex-col gap-2 px-4 py-4 shadow-[1px_0_0_var(--border),0_1px_0_var(--border)] sm:px-5"
+                :class="{ 'max-md:col-span-2': spansPhoneRow(index) }"
             >
                 <div class="flex min-h-6 items-center gap-0.5">
                     <p class="truncate text-sm text-muted-foreground">
@@ -184,9 +198,10 @@ const buildShareOptions = (): ShareMetricOption[] => [
                         :test-id="`${testId(card.key)}-about`"
                     />
                 </div>
-                <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div :class="valueRowClass(index)">
                     <span
                         class="font-heading text-2xl leading-8 font-medium text-foreground tabular-nums"
+                        :data-testid="`${testId(card.key)}-value`"
                         >{{ display(card.metric.value, card.percent) }}</span
                     >
                     <MetricChange

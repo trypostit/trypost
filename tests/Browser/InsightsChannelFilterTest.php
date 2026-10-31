@@ -193,6 +193,9 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
         ->assertScript('document.querySelector("[data-testid=analytics-channel-filter]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
         ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-account-name]")).every((name) => name.offsetParent === null)', true)
+        ->assertScript('(() => { const grid = document.querySelector("[data-testid=analytics-summary]").getBoundingClientRect(); const last = document.querySelector("[data-testid=analytics-summary] > :last-child").getBoundingClientRect(); return Math.abs(last.width - grid.width) < 2; })()', true)
+        ->assertScript('(() => { const value = document.querySelector("[data-testid=analytics-summary-engagement_rate-value]").getBoundingClientRect(); const change = document.querySelector("[data-testid=analytics-summary-engagement_rate-change]")?.getBoundingClientRect(); return !change || Math.abs((change.top + change.bottom) / 2 - (value.top + value.bottom) / 2) < 8; })()', true)
+        ->assertScript('(() => { const card = document.querySelector("[data-testid=analytics-summary-posts]"); const change = card.querySelector("[data-testid=analytics-summary-posts-change]"); const value = card.querySelector("[data-testid=analytics-summary-posts-value]"); return !change || change.getBoundingClientRect().top >= value.getBoundingClientRect().bottom - 1; })()', true)
         ->assertScript('Array.from(document.querySelectorAll("[data-testid=accounts-unovis-bar-chart] [data-testid=analytics-account-value]")).every((value) => value.offsetParent !== null)', true)
         ->assertNoJavaScriptErrors();
 });
