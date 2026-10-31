@@ -1,5 +1,6 @@
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
+import { spreadLabels } from '@/lib/labelLayout';
 import {
     canvasToFile,
     formatNumberCompact,
@@ -17,7 +18,7 @@ import type { VerifiedBadge } from '@/types/social-account';
  */
 
 /** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
-export type ShareShape = 'line' | 'bar' | 'stacked' | 'rows' | 'tiles';
+export type ShareShape = 'line' | 'lines' | 'bar' | 'stacked' | 'rows' | 'tiles';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
@@ -44,6 +45,16 @@ export type SharePoint = {
     segments?: ShareSegment[];
 };
 
+/** One channel's line over the points' dates for `lines`, ending in its avatar and latest number. */
+export type ShareLine = {
+    color: string;
+    channel: ShareChannel;
+    /** The channel's latest number as the line's label prints it. */
+    figure: string;
+    /** One value per point, null before the channel's first reading. */
+    values: (number | null)[];
+};
+
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
 export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
@@ -65,6 +76,8 @@ export type ShareMetricOption = {
     shape: ShareShape;
     /** Every number of the Summary, for the summary card. */
     tiles: ShareTile[];
+    /** One line per channel, for `lines`. */
+    lines: ShareLine[];
     caption: string;
 };
 
@@ -164,6 +177,9 @@ const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, compa
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
 
+/** The labels at the end of `lines`: a leader from the line's end, the avatar, then the number. */
+const LINE_ENDS = { leader: 48, avatar: 40, gap: 12, figure: 112, height: 48, fontSize: 24 };
+
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
 const ROWS = { max: 12, nameMax: 320, figureGap: 32, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
 
@@ -232,9 +248,10 @@ type LoadedImage = { url: string; image: HTMLImageElement };
 
 /** Waits for the fonts and loads the images a card draws, before it is painted. */
 export const prepareShareCard = async (options: ShareCardOptions): Promise<ShareImages> => {
-    const channels = options.points
-        .map((point) => point.channel)
-        .filter((channel): channel is ShareChannel => channel !== undefined);
+    const channels = [
+        ...options.points.map((point) => point.channel),
+        ...options.lines.map((line) => line.channel),
+    ].filter((channel): channel is ShareChannel => channel !== undefined);
     const urls = [...new Set(channels.flatMap(channelImageUrls))];
     const [, images] = await Promise.all([
         loadFonts(),
@@ -904,6 +921,91 @@ const paintLine = (
     });
 };
 
+/** One channel's line in its color, with a dot on each known point. */
+const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
+    const known = line.values.flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(value) }]));
+    const color = resolveCssColor(line.color);
+
+    context.strokeStyle = color;
+    context.lineWidth = CHART.lineWidth;
+    context.lineJoin = 'round';
+    context.lineCap = 'round';
+    traceMonotone(context, known);
+    context.stroke();
+
+    context.fillStyle = color;
+    known.forEach((point) => {
+        context.beginPath();
+        context.arc(point.x, point.y, CHART.dotRadius, 0, Math.PI * 2);
+        context.fill();
+    });
+
+    return known;
+};
+
+/**
+ * One line per channel, like the page's Line view: each ends in the channel's
+ * avatar and latest number on the right, spread apart with a leader in the
+ * line's color where lines end close together.
+ */
+const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
+    const values = options.lines.flatMap((line) => line.values.filter((value): value is number => value !== null));
+
+    if (values.length === 0) {
+        return;
+    }
+
+    const rail = LINE_ENDS.leader + LINE_ENDS.avatar + LINE_ENDS.gap + LINE_ENDS.figure;
+    const plot = { ...area, width: area.width - rail };
+    const axis = valueAxis(values, 'lines');
+    const slot = plot.width / Math.max(options.points.length, 1);
+    const x = (index: number): number => plot.x + slot * (index + 0.5);
+    const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
+    const lineEnd = plot.x + plot.width;
+
+    paintGrid(
+        context,
+        axis.ticks,
+        (value) => [{ x: plot.x, y: y(value) }, { x: lineEnd, y: y(value) }],
+        (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
+        { align: 'right', baseline: 'middle' },
+    );
+
+    const ends = options.lines.flatMap((line) => {
+        const known = strokeSeries(context, line, x, y);
+        const last = known[known.length - 1];
+
+        return last ? [{ line, lineY: last.y }] : [];
+    });
+    /** The labels may use the room beside the dates too; with many channels they shrink to fit it. */
+    const room = { top: plot.y, bottom: plot.y + plot.height + PLOT.dates };
+    const step = Math.min(LINE_ENDS.height, (room.bottom - room.top) / Math.max(ends.length, 1));
+    const avatarSize = Math.min(LINE_ENDS.avatar, step * 0.85);
+    const font = sans(600, Math.min(LINE_ENDS.fontSize, step * 0.6));
+    const labels = spreadLabels(
+        ends.map((end) => end.lineY),
+        { gap: step, ...room },
+    );
+
+    ends.forEach(({ line, lineY }, position) => {
+        const labelY = labels[position];
+        const labelX = lineEnd + LINE_ENDS.leader;
+
+        context.strokeStyle = resolveCssColor(line.color);
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(lineEnd + 6, lineY);
+        context.lineTo(lineEnd + LINE_ENDS.leader / 2, lineY);
+        context.lineTo(labelX - 6, labelY);
+        context.stroke();
+
+        paintChannel(context, line.channel, images, { x: labelX, y: labelY - avatarSize / 2 }, avatarSize);
+        writeText(context, line.figure, { x: labelX + avatarSize + LINE_ENDS.gap, y: labelY }, { font, color: INK, baseline: 'middle' });
+    });
+
+    paintDates(context, options, plot, x);
+};
+
 /** Which bucket the `mark`-th of `marks` date labels names, spread evenly over `count` buckets. */
 const dateIndex = (mark: number, marks: number, count: number): number => {
     if (marks === 1) {
@@ -964,6 +1066,12 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
         width: right - left - PLOT.gutter,
         height: panel.height - PLOT.top - PLOT.bottom,
     };
+    if (options.shape === 'lines') {
+        paintLines(context, options, images, plot);
+
+        return;
+    }
+
     const values = options.points.flatMap((point) => (point.value === null ? [] : [point.value]));
 
     if (values.length === 0) {

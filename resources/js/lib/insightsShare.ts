@@ -5,6 +5,8 @@ import { activeLocale } from '@/language';
 import { axisBucketLabel, formatSeriesValue } from '@/lib/channelMetrics';
 import type {
     ShareChange,
+    ShareChannel,
+    ShareLine,
     ShareMetricOption,
     SharePoint,
     ShareShape,
@@ -36,7 +38,7 @@ export type FollowersChartMode = 'bar' | 'line' | 'growth';
 /** The share card draws each mode of the Followers card the way the page does. */
 const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
     bar: 'rows',
-    line: 'line',
+    line: 'lines',
     growth: 'rows',
 };
 
@@ -148,34 +150,9 @@ const shareOption = (
     points: [],
     shape: 'bar',
     tiles: [],
+    lines: [],
     ...option,
 });
-
-/** The sum of the counts known so far, or null before any channel has one. */
-const knownTotal = (counts: Map<string, number>): number | null => {
-    if (counts.size === 0) {
-        return null;
-    }
-
-    return sum([...counts.values()]);
-};
-
-/** Every channel added up day by day, each carrying its last known count over the days it has no reading. */
-const followersOverTime = (followers: Followers): SharePoint[] => {
-    const lastKnown = new Map<string, number>();
-
-    return followers.series.map((point) => {
-        followers.accounts.forEach(({ social_account_key: key }) => {
-            const value = point.accounts[key];
-
-            if (typeof value === 'number') {
-                lastKnown.set(key, value);
-            }
-        });
-
-        return { label: date.formatMonthDay(point.date), value: knownTotal(lastKnown) };
-    });
-};
 
 /**
  * The id of the workspace channel a report row stands for, while it is still
@@ -211,6 +188,13 @@ const rowFigure = (value: number | null, format: (value: number) => string): str
     return format(value);
 };
 
+/** The channel as the card draws it: its avatar, network and verified mark. */
+const shareChannel = (account: AccountIdentityData): ShareChannel => ({
+    platform: account.platform,
+    avatar: channelAvatar(account),
+    verified: account.verified_badge ?? null,
+});
+
 /** One row per channel in its color, the way the page's per-channel charts draw it. */
 const channelRows = <Account extends AccountIdentityData>(
     accounts: Account[],
@@ -222,12 +206,40 @@ const channelRows = <Account extends AccountIdentityData>(
         value: spec.value(account),
         figure: rowFigure(spec.value(account), spec.format),
         color: colors[account.social_account_key],
-        channel: {
-            platform: account.platform,
-            avatar: channelAvatar(account),
-            verified: account.verified_badge ?? null,
-        },
+        channel: shareChannel(account),
     }));
+
+/** Each channel's count day by day, carrying its last known count over the days without a reading. */
+const carriedForward = (followers: Followers, key: string): (number | null)[] => {
+    let lastKnown: number | null = null;
+
+    return followers.series.map((point) => {
+        const value = point.accounts[key];
+
+        if (typeof value === 'number') {
+            lastKnown = value;
+        }
+
+        return lastKnown;
+    });
+};
+
+/** One line per channel in its color, ending in its avatar and latest count, like the page's Line view. */
+const followersLines = (followers: Followers, colors: Record<string, string>): ShareLine[] =>
+    followers.accounts.map((account) => {
+        const values = carriedForward(followers, account.social_account_key);
+
+        return {
+            color: colors[account.social_account_key],
+            channel: shareChannel(account),
+            figure: rowFigure(values[values.length - 1] ?? null, formatNumberCompact),
+            values,
+        };
+    });
+
+/** The Line view's dates, the points the lines run over. */
+const followersDates = (followers: Followers): SharePoint[] =>
+    followers.series.map((point) => ({ label: date.formatMonthDay(point.date), value: null }));
 
 const followersPoints = (
     followers: Followers,
@@ -235,10 +247,23 @@ const followersPoints = (
     colors: Record<string, string>,
 ): SharePoint[] => {
     if (mode === 'line') {
-        return followersOverTime(followers);
+        return followersDates(followers);
     }
 
     return channelRows(followers.accounts, FOLLOWERS_ROWS[mode], colors);
+};
+
+/** The lines of the Line view; the other views draw rows. */
+const followersLinesFor = (
+    followers: Followers,
+    mode: FollowersChartMode,
+    colors: Record<string, string>,
+): ShareLine[] => {
+    if (mode !== 'line') {
+        return [];
+    }
+
+    return followersLines(followers, colors);
 };
 
 /** The followers gained or lost over the period, across the channels that report it. */
@@ -270,6 +295,7 @@ export const followersShareOption = (
         figure,
         change: followersChange(followers),
         points: followersPoints(followers, mode, colors),
+        lines: followersLinesFor(followers, mode, colors),
         shape: FOLLOWERS_SHAPES[mode],
         caption: metricCaption(null, { metric: label, value: figure, range }),
     });

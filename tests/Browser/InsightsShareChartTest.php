@@ -177,7 +177,7 @@ test('the followers share card follows the chart mode the user picked', function
         ->assertNoJavaScriptErrors();
 })->with([
     'bar' => ['bar', 'rows'],
-    'line' => ['line', 'line'],
+    'line' => ['line', 'lines'],
     'growth' => ['growth', 'rows'],
 ]);
 

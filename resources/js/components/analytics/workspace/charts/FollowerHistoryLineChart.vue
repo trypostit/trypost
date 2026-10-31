@@ -20,6 +20,7 @@ import {
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
+import { spreadLabels } from '@/lib/labelLayout';
 import { formatNumberCompact } from '@/lib/utils';
 import type {
     FollowerAccount,
@@ -170,24 +171,6 @@ const valueToY = (
     return (value) => top + low.y + ((value - low.value) * (high.y - low.y)) / (high.value - low.value);
 };
 
-/** Spreads labels top to bottom so none overlaps the one above, then lifts them back inside `bottom`. */
-const spreadLabels = (ends: LineEnd[], top: number, bottom: number): LineEnd[] => {
-    const sorted = [...ends].sort((a, b) => a.lineY - b.lineY);
-    const gap = Math.min(LABEL_HEIGHT, (bottom - top) / Math.max(sorted.length, 1));
-
-    sorted.forEach((end, position) => {
-        const above = sorted[position - 1];
-        end.labelY = Math.max(end.lineY, top + gap / 2, above ? above.labelY + gap : -Infinity);
-    });
-
-    for (let position = sorted.length - 1; position >= 0; position -= 1) {
-        const below = sorted[position + 1];
-        sorted[position].labelY = Math.min(sorted[position].labelY, below ? below.labelY - gap : bottom - gap / 2);
-    }
-
-    return sorted;
-};
-
 const placeLineEnds = (svg: SVGSVGElement): void => {
     const box = frame.value?.getBoundingClientRect();
 
@@ -205,19 +188,21 @@ const placeLineEnds = (svg: SVGSVGElement): void => {
     }
 
     lineEndX.value = svgBox.left - box.left + svgBox.width - railWidth.value;
-    lineEnds.value = spreadLabels(
-        props.accounts.flatMap((account, index) => {
-            const value = latestValue(index);
+    const ends = props.accounts.flatMap((account, index) => {
+        const value = latestValue(index);
 
-            if (value === undefined) {
-                return [];
-            }
+        if (value === undefined) {
+            return [];
+        }
 
-            return [{ account, index, value: formatNumberCompact(value), lineY: toY(value), labelY: 0 }];
-        }),
-        top,
-        Math.min(toY(0), top + svgBox.height),
+        return [{ account, index, value: formatNumberCompact(value), lineY: toY(value), labelY: 0 }];
+    });
+    const labels = spreadLabels(
+        ends.map((end) => end.lineY),
+        { gap: LABEL_HEIGHT, top, bottom: Math.min(toY(0), top + svgBox.height) },
     );
+
+    lineEnds.value = ends.map((end, position) => ({ ...end, labelY: labels[position] }));
 };
 
 /** A leader only where a label had to move away from its line. */
