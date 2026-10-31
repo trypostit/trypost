@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import RankBadge from '@/components/analytics/RankBadge.vue';
 import AppLogo from '@/components/AppLogo.vue';
 import PlatformBrandIcon from '@/components/PlatformBrandIcon.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -13,6 +14,7 @@ import { formatNumberCompact } from '@/lib/utils';
 import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
+
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
@@ -120,11 +122,10 @@ const thumbnailFor = (post: TopPost): string | null => {
                         }}</span>
                     </div>
                     <div class="flex shrink-0 flex-col items-end justify-between gap-1">
-                        <span
-                            class="inline-flex h-6 min-w-7 items-center justify-center rounded-md bg-primary-selected px-1.5 text-xs font-semibold text-primary-text tabular-nums"
+                        <RankBadge
+                            :rank="index + 1"
                             :data-testid="`analytics-top-post-rank-${post.id}`"
-                            >#{{ index + 1 }}</span
-                        >
+                        />
                         <span
                             class="text-xs leading-4 whitespace-nowrap text-muted-foreground"
                             :data-testid="`analytics-top-post-date-${post.id}`"

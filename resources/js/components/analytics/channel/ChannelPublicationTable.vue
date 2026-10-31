@@ -14,6 +14,7 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import PublicationTypeBadge from '@/components/analytics/PublicationTypeBadge.vue';
+import RankBadge from '@/components/analytics/RankBadge.vue';
 import AnalyticsModeToggle from '@/components/analytics/workspace/AnalyticsModeToggle.vue';
 import AnalyticsSection from '@/components/analytics/workspace/AnalyticsSection.vue';
 import PostDetailsDialog from '@/components/publish/PostDetailsDialog.vue';
@@ -471,11 +472,10 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         :data-testid="`insights-posts-link-${row.id}`"
                                         @click="openRow(row)"
                                     >
-                                        <span
-                                            class="inline-flex h-6 min-w-7 shrink-0 items-center justify-center rounded-md bg-accent px-1.5 text-xs font-medium text-foreground tabular-nums"
+                                        <RankBadge
+                                            :rank="row.rank"
                                             :data-testid="`insights-posts-rank-${row.id}`"
-                                            >#{{ row.rank }}</span
-                                        >
+                                        />
                                         <span
                                             class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-muted text-muted-foreground"
                                         >
