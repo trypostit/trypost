@@ -17,11 +17,9 @@ import EmptyState from '@/components/EmptyState.vue';
 import HeaderTitle from '@/components/HeaderTitle.vue';
 import PostChannelFilter from '@/components/posts/PostChannelFilter.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
-import { usePerformanceColumns } from '@/composables/usePerformanceColumns';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { accountColors } from '@/lib/analyticsColors';
-import { WORKSPACE_PDF_SECTIONS } from '@/lib/insightsPdf';
+import { accountColor } from '@/lib/analyticsColors';
 import { insights as insightsRoute } from '@/routes/app';
 import type {
     AnalyticsChannelOption,
@@ -35,14 +33,7 @@ const props = defineProps<{
     channelOptions: AnalyticsChannelOption[];
     availableMetrics: SummaryMetric[] | null;
     sync: InsightsSyncCadence;
-    reportLogoUrl: string | null;
 }>();
-
-const {
-    columns: performanceColumns,
-    sortKey: performanceSort,
-    sortDirection: performanceDirection,
-} = usePerformanceColumns();
 
 const selectedChannelIds = ref<string[]>([...props.report.filters.channels]);
 
@@ -99,14 +90,21 @@ useAnalyticsCoveragePoll(() => props.report.coverage);
 const span = (range: { start: string; end: string }): string =>
     `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 
-const colors = computed<Record<string, string>>(() =>
-    accountColors([
-        ...props.channelOptions.map((channel) => channel.analytics_key),
-        ...[...props.report.followers.accounts, ...props.report.posts.accounts].map(
-            (account) => account.social_account_key,
-        ),
-    ]),
-);
+const accountColors = computed<Record<string, string>>(() => {
+    const keys = [
+        ...new Set([
+            ...props.channelOptions.map((channel) => channel.analytics_key),
+            ...[
+                ...props.report.followers.accounts,
+                ...props.report.posts.accounts,
+            ].map((account) => account.social_account_key),
+        ]),
+    ];
+
+    return Object.fromEntries(
+        keys.map((key, index) => [key, accountColor(index)]),
+    );
+});
 </script>
 
 <template>
@@ -131,15 +129,6 @@ const colors = computed<Record<string, string>>(() =>
                         />
                         <InsightsExportMenu
                             :query="{ ...rangeQuery(), ...filterQuery }"
-                            :pdf-query="{
-                                ...rangeQuery(),
-                                ...filterQuery,
-                                sort: performanceSort,
-                                direction: performanceDirection,
-                            }"
-                            :pdf-sections="WORKSPACE_PDF_SECTIONS"
-                            :read-pdf-columns="() => performanceColumns"
-                            :report-logo-url="reportLogoUrl"
                         />
                     </div>
                 </div>
@@ -207,7 +196,7 @@ const colors = computed<Record<string, string>>(() =>
                 <FollowersChart
                     :followers="report.followers"
                     :range="report.range"
-                    :colors="colors"
+                    :colors="accountColors"
                     :filtered="report.filters.channels.length > 0"
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"
@@ -215,7 +204,7 @@ const colors = computed<Record<string, string>>(() =>
                 <PostsChart
                     :posts="report.posts"
                     :range="report.range"
-                    :colors="colors"
+                    :colors="accountColors"
                     :filtered="filtered"
                     :channel-filtered="report.filters.channels.length > 0"
                     :total-channels="channelOptions.length"

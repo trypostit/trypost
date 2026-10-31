@@ -315,21 +315,6 @@ return [
             'tries' => 1,
             'nice' => 0,
         ],
-
-        'pdf' => [
-            'connection' => 'redis',
-            'queue' => ['pdf'],
-            'balance' => 'auto',
-            'autoScalingStrategy' => 'time',
-            'minProcesses' => 1,
-            'maxProcesses' => 1,
-            'timeout' => 300,
-            'maxTime' => 0,
-            'maxJobs' => 0,
-            'memory' => 256,
-            'tries' => 1,
-            'nice' => 0,
-        ],
     ],
 
     'environments' => [
@@ -375,10 +360,6 @@ return [
                 'balanceMaxShift' => 1,
                 'balanceCooldown' => 3,
             ],
-
-            'pdf' => [
-                'maxProcesses' => 1,
-            ],
         ],
 
         'local' => [
@@ -407,10 +388,6 @@ return [
             ],
 
             'rss-feeds' => [
-                'maxProcesses' => 1,
-            ],
-
-            'pdf' => [
                 'maxProcesses' => 1,
             ],
         ],

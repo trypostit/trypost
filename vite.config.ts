@@ -6,14 +6,9 @@ import i18n from 'laravel-vue-i18n/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-    // The Insights PDF loads the print entry from an HTML document with no
-    // origin (Chromium's setHtml), so the dev server answers any origin.
-    server: {
-        cors: true,
-    },
     plugins: [
         laravel({
-            input: ['resources/js/app.ts', 'resources/js/print.ts', 'resources/css/app.css'],
+            input: ['resources/js/app.ts', 'resources/css/app.css'],
             ssr: 'resources/js/ssr.ts',
             assets: ['resources/changelog/**/*.png'],
             refresh: true,

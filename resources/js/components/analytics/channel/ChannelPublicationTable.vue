@@ -35,10 +35,8 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import { useInsightsPrint } from '@/composables/analytics/useInsightsPrint';
 import { usePostDetails } from '@/composables/usePostDetails';
 import date from '@/date';
-import { storedChannelColumns } from '@/lib/channelInsights';
 import { isVideo } from '@/lib/mediaType';
 import {
     copyToClipboard,
@@ -63,12 +61,7 @@ const props = defineProps<{
     sortableMetrics: SummaryMetric[];
     url: string;
     platform: string;
-    /** The columns to start with instead of the ones this browser remembers (the PDF). */
-    initialColumns?: SummaryMetric[];
 }>();
-
-/** On paper a video prints its network preview and never downloads the file. */
-const printing = useInsightsPrint();
 
 const TABLE_METRICS: SummaryMetric[] = [
     'reactions',
@@ -88,12 +81,19 @@ const TABLE_METRICS: SummaryMetric[] = [
 ];
 const storageKey = computed(() => `insights.columns.${props.platform}`);
 
-const readStoredColumns = (): SummaryMetric[] | null =>
-    storedChannelColumns(props.platform) as SummaryMetric[] | null;
+const readStoredColumns = (): SummaryMetric[] | null => {
+    try {
+        const stored = JSON.parse(
+            window.localStorage.getItem(storageKey.value) ?? 'null',
+        );
 
-const storedColumns = ref<SummaryMetric[] | null>(
-    props.initialColumns ?? readStoredColumns(),
-);
+        return Array.isArray(stored) ? (stored as SummaryMetric[]) : null;
+    } catch {
+        return null;
+    }
+};
+
+const storedColumns = ref<SummaryMetric[] | null>(readStoredColumns());
 const choosableColumns = computed<SummaryMetric[]>(() =>
     TABLE_METRICS.filter((metric) => props.availableMetrics.includes(metric)),
 );
@@ -384,7 +384,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     <button
                                         v-else
                                         type="button"
-                                        class="group inline-flex cursor-pointer items-center gap-1 rounded-sm whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring print:contents"
+                                        class="group inline-flex cursor-pointer items-center gap-1 rounded-sm whitespace-nowrap focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                                         :data-testid="`insights-sort-${column}`"
                                         @click="changeSort(column)"
                                     >
@@ -395,7 +395,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         }}
                                         <IconChevronDown
                                             :class="[
-                                                'size-3 transition-opacity print:hidden',
+                                                'size-3 transition-opacity',
                                                 filters.sort === column
                                                     ? 'opacity-100'
                                                     : 'opacity-30 group-hover:opacity-60',
@@ -405,7 +405,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     </button>
                                 </TableHead>
                                 <TableHead
-                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3 print:hidden"
+                                    class="sticky right-0 h-10 w-12 border-r-0 bg-muted px-2 py-1 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>
@@ -485,7 +485,6 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                         >
                                             <video
                                                 v-if="
-                                                    !printing &&
                                                     row.media &&
                                                     isVideo(row.media)
                                                 "
@@ -553,7 +552,7 @@ const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
                                     {{ display(row, column) }}
                                 </TableCell>
                                 <TableCell
-                                    class="border-r-0 px-2 py-3 text-right sm:pe-3 print:hidden"
+                                    class="border-r-0 px-2 py-3 text-right sm:pe-3"
                                 >
                                     <DropdownMenu>
                                         <DropdownMenuTrigger as-child>

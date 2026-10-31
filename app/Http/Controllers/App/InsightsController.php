@@ -43,7 +43,6 @@ class InsightsController extends Controller
             'channelOptions' => $channels,
             'availableMetrics' => $single === null ? null : $availableMetrics->handle($single, data_get($channelKeys, $single->id)),
             'sync' => SyncCadence::toArray(),
-            'reportLogoUrl' => fn (): ?string => $workspace->getFirstMediaUrl('report_logo'),
             'report' => [
                 ...$report,
                 'filters' => [

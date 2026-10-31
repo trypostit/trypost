@@ -18,8 +18,7 @@ import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
-import { showsPostTypeFilter, storedChannelColumns } from '@/lib/channelInsights';
-import { CHANNEL_PDF_SECTIONS } from '@/lib/insightsPdf';
+import { showsPostTypeFilter } from '@/lib/channelInsights';
 import { insights } from '@/routes/app/channels';
 import type {
     AnalyticsReport,
@@ -45,7 +44,6 @@ const props = defineProps<{
     labels?: { id: string; name: string; color: string }[];
     contentTypes?: ContentTypeOption[];
     metricSeries?: ChannelMetricSeries;
-    reportLogoUrl?: string | null;
 }>();
 
 useAnalyticsCoveragePoll(() => props.report?.coverage, {
@@ -95,11 +93,6 @@ const exportQuery = computed((): Record<string, string | string[]> => {
         ...publicationFilters.value,
     };
 });
-
-const pdfQuery = computed((): Record<string, string | string[]> => ({
-    ...exportQuery.value,
-    ...(props.filters?.sort ? { sort: props.filters.sort } : {}),
-}));
 
 const applyFilters = (): void => {
     if (!props.filters) {
@@ -191,10 +184,6 @@ watch(selectedTypes, applyFilters, { deep: true });
                         <InsightsExportMenu
                             :query="exportQuery"
                             :channel-id="channel.id"
-                            :pdf-query="pdfQuery"
-                            :pdf-sections="CHANNEL_PDF_SECTIONS"
-                            :read-pdf-columns="() => storedChannelColumns(channel.platform) ?? []"
-                            :report-logo-url="reportLogoUrl ?? null"
                         />
                     </div>
                 </div>

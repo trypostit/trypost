@@ -34,7 +34,6 @@
     ],
     "require": {
         "php": "^8.2",
-        "chrome-php/chrome": "^1.16",
         "google/apiclient": "^2.19",
         "inertiajs/inertia-laravel": "^3.5.1",
         "intervention/image": "^4.0",
@@ -60,7 +59,6 @@
         "socialiteproviders/pinterest": "^4.3",
         "socialiteproviders/tiktok": "^5.2",
         "socialiteproviders/twitter": "^4.1",
-        "spatie/laravel-pdf": "^2.14",
         "symfony/css-selector": "^8.0",
         "symfony/dom-crawler": "^8.0"
     },
@@ -102,7 +100,7 @@
         ],
         "dev": [
             "Composer\\Config::disableProcessTimeout",
-            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=default,analytics,rss-feeds,media-imports,pdf --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
+            "npx concurrently -c \"#93c5fd,#c4b5fd,#fb7185,#fdba74\" \"php artisan serve\" \"php artisan queue:listen --queue=default,analytics,rss-feeds,media-imports --tries=1\" \"php artisan pail --timeout=0\" \"npm run dev\" --names=server,queue,logs,vite --kill-others"
         ],
         "lint": [
             "pint --parallel"

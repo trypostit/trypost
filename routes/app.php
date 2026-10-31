@@ -9,7 +9,6 @@ use App\Http\Controllers\App\CanvaController;
 use App\Http\Controllers\App\ChangelogEntryReactionController;
 use App\Http\Controllers\App\ChangelogEntryViewController;
 use App\Http\Controllers\App\ChannelController;
-use App\Http\Controllers\App\ChannelInsightsPdfController;
 use App\Http\Controllers\App\ChannelPostingScheduleController;
 use App\Http\Controllers\App\ChannelQueueController;
 use App\Http\Controllers\App\ComposerAccountDataController;
@@ -21,7 +20,6 @@ use App\Http\Controllers\App\IdeaController;
 use App\Http\Controllers\App\IdeaGenerateController;
 use App\Http\Controllers\App\IdeaStageController;
 use App\Http\Controllers\App\InsightsController;
-use App\Http\Controllers\App\InsightsPdfController;
 use App\Http\Controllers\App\InstagramAudioController;
 use App\Http\Controllers\App\LibraryTemplateController;
 use App\Http\Controllers\App\LinkPreviewController;
@@ -231,7 +229,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::get('channels/{account}/insights/download/{format}', [ChannelController::class, 'downloadInsights'])
         ->whereIn('format', ExportFormat::values())
         ->name('app.channels.insights.download');
-    Route::post('channels/{account}/insights/pdf', [ChannelInsightsPdfController::class, 'store'])->middleware('throttle:6,1')->name('app.channels.insights.pdf.store');
     Route::get('channels/{account}/settings', [ChannelController::class, 'settings'])->name('app.channels.settings');
     Route::put('channels/{account}/posting-schedule', [ChannelPostingScheduleController::class, 'update'])->name('app.channels.posting-schedule.update');
     Route::post('channels/{account}/posting-schedule/copy', [ChannelPostingScheduleController::class, 'copy'])->name('app.channels.posting-schedule.copy');
@@ -239,9 +236,6 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
     Route::put('channels/{account}/queue/slot', [ChannelQueueController::class, 'moveToSlot'])->name('app.channels.queue.slot');
 
     Route::get('insights', [InsightsController::class, 'index'])->name('app.insights');
-    Route::post('insights/pdf', [InsightsPdfController::class, 'store'])->middleware('throttle:6,1')->name('app.insights.pdf.store');
-    Route::get('insights/pdf/{export}', [InsightsPdfController::class, 'show'])->whereUuid('export')->name('app.insights.pdf.show');
-    Route::get('insights/pdf/{export}/download', [InsightsPdfController::class, 'download'])->whereUuid('export')->name('app.insights.pdf.download');
     Route::get('insights/download/{format}', [InsightsController::class, 'download'])
         ->whereIn('format', ExportFormat::values())
         ->name('app.insights.download');

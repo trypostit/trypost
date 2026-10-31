@@ -32,7 +32,7 @@ const openDialog = (): void => {
 </script>
 
 <template>
-    <div class="contents print:hidden">
+    <div class="contents">
         <TooltipProvider :delay-duration="300">
             <Tooltip>
                 <TooltipTrigger as-child>
