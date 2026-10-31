@@ -118,7 +118,22 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
         ->assertNoJavaScriptErrors();
 });
 
-test('the follower bar tooltip shows a series swatch and the toolbar fits a 390px viewport', function () {
+test('the follower bar tooltip shows the verified mark of an X channel', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    $accounts[0]->update(['platform' => Platform::X, 'meta' => ['x_verified_type' => 'blue']]);
+    AnalyticsAccountDailySnapshot::query()->where('social_account_id', $accounts[0]->id)->update(['platform' => Platform::X, 'network' => Platform::X->network()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsChannelTestId($page, 'analytics-account-bar');
+    $page->hover('[data-testid="analytics-account-bar"] >> nth=1');
+    waitFor($page, '@analytics-chart-tooltip [data-verified="blue"]');
+
+    $page->assertPresent('[data-testid="analytics-chart-tooltip"] [data-verified="blue"]')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the follower bar tooltip lists where the channel started and the toolbar fits a 390px viewport', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -128,11 +143,12 @@ test('the follower bar tooltip shows a series swatch and the toolbar fits a 390p
     $page->assertScript('document.querySelector("[data-testid=followers-bar]")?.getAttribute("aria-pressed")', 'true')
         ->assertScript('document.querySelectorAll("[data-testid=analytics-legend-swatch]").length >= 2', true)
         ->hover('[data-testid="analytics-account-bar"] >> nth=0');
-    waitForInsightsChannelTestId($page, 'analytics-tooltip-swatch');
+    waitForInsightsChannelTestId($page, 'analytics-tooltip-detail');
 
-    $page->assertPresent('@analytics-tooltip-swatch')
+    $page->assertMissing('@analytics-tooltip-swatch')
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
-        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail]")?.innerText.includes("110")', true)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-tooltip-detail] dt").length', 2)
+        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail] dd")?.innerText', '110')
         ->assertNoJavaScriptErrors();
 
     $page->resize(390, 844);

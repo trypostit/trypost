@@ -41,7 +41,7 @@ const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
 };
 
 /** What a channel's row shows in the per-channel modes: its followers, or its change. */
-const FOLLOWERS_ROW_VALUES: Record<
+export const FOLLOWERS_ROW_VALUES: Record<
     Exclude<FollowersChartMode, 'line'>,
     (account: FollowerAccount) => number | null
 > = {

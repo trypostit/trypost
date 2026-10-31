@@ -5,7 +5,7 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 
 import {
     ChartContainer,
@@ -85,10 +85,14 @@ const formatBucket = (tick: number | Date): string => {
     return chartData.value[index]?.label ?? '';
 };
 const ticks = computed(() => props.buckets.map((_, index) => index));
+const appContext = getCurrentInstance()?.appContext ?? null;
 const tooltipTemplate = computed(() =>
-    componentToString(chartConfig.value, ChartTooltipContent, {
-        labelFormatter: formatBucket,
-    }),
+    componentToString(
+        chartConfig.value,
+        ChartTooltipContent,
+        { labelFormatter: formatBucket },
+        appContext,
+    ),
 );
 const tooltipTriggers = computed(() => ({
     [VisStackedBarSelectors.bar]: (bar: {

@@ -8,7 +8,7 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 
 import {
     ChartContainer,
@@ -233,13 +233,14 @@ const config = computed<ChartConfig>(() =>
     ),
 );
 
+const appContext = getCurrentInstance()?.appContext ?? null;
 const tooltipTemplate = computed(() =>
     componentToString(config.value, ChannelMetricsTooltip, {
         specs: props.specs,
         labels: props.labels,
         mode: props.mode,
         dateLabel,
-    }),
+    }, appContext),
 );
 
 const xDomain = computed<[number, number]>(() => [

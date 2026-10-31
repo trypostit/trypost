@@ -20,6 +20,7 @@ import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
 import { accountColor } from '@/lib/analyticsColors';
@@ -34,23 +35,14 @@ const props = defineProps<{
     rows: {
         account: AccountIdentityData;
         value: number | null;
-        gained?: number | null;
     }[];
     colors: Record<string, string>;
-    detail?: (index: number) => string | null;
+    detail?: (index: number) => ChartTooltipDetail[];
 }>();
 
-type BarPoint = { index: number; value: number; base: number; gained: number };
-const split = computed(() =>
-    props.rows.some((row) => row.gained !== undefined),
-);
+type BarPoint = { index: number; value: number };
 const chartData = computed<BarPoint[]>(() =>
-    props.rows.map((row, index) => {
-        const value = row.value ?? 0;
-        const gained = Math.min(Math.max(row.gained ?? 0, 0), value);
-
-        return { index, value, base: value - gained, gained };
-    }),
+    props.rows.map((row, index) => ({ index, value: row.value ?? 0 })),
 );
 const chartConfig = computed(() =>
     socialAccountChartConfig(
@@ -63,18 +55,10 @@ const chartHeight = computed(
 );
 const indexAccessor = (point: BarPoint): number => point.index;
 const valueAccessor = (point: BarPoint): number => point.value;
-const splitAccessors = [
-    (point: BarPoint): number => point.base,
-    (point: BarPoint): number => point.gained,
-];
 const rowColor = (point: BarPoint): string => {
     const key = props.rows[point.index]?.account.social_account_key;
     return (key && props.colors[key]) || accountColor(point.index);
 };
-const colorAccessor = (point: BarPoint, stack: number): string =>
-    split.value && stack === 0 && point.gained > 0
-        ? `color-mix(in srgb, ${rowColor(point)} 40%, var(--card))`
-        : rowColor(point);
 const accountAt = (index: number): AccountIdentityData | undefined =>
     props.rows[Math.round(index)]?.account;
 const formatAccount = (tick: number | Date): string => {
@@ -91,12 +75,15 @@ const formatAccount = (tick: number | Date): string => {
     return accountLabel(account);
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
-const detailFormatter = (key: string): string | null =>
-    props.detail?.(Number(key.replace('account_', ''))) ?? null;
+const detailFormatter = (key: string): ChartTooltipDetail[] =>
+    props.detail?.(Number(key.replace('account_', ''))) ?? [];
 const tooltipTemplate = computed(() =>
-    componentToString(chartConfig.value, ChartTooltipContent, {
-        detailFormatter,
-    }),
+    componentToString(
+        chartConfig.value,
+        ChartTooltipContent,
+        { detailFormatter },
+        appContext,
+    ),
 );
 const tooltipTriggers = computed(() => ({
     [VisStackedBarSelectors.bar]: (bar: {
@@ -231,8 +218,8 @@ const barAttributes = {
         >
             <VisStackedBar
                 :x="indexAccessor"
-                :y="split ? splitAccessors : valueAccessor"
-                :color="colorAccessor"
+                :y="valueAccessor"
+                :color="rowColor"
                 orientation="horizontal"
                 :rounded-corners="4"
                 :bar-padding="0.4"

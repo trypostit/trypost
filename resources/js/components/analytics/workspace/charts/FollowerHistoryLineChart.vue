@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { VisAxis, VisLine, VisScatter, VisXYContainer } from '@unovis/vue';
-import { computed } from 'vue';
+import { computed, getCurrentInstance } from 'vue';
 
 import {
     ChartContainer,
@@ -67,10 +67,14 @@ const formatDate = (tick: number | Date): string => {
 
     return day ? date.formatMonthDay(day) : '';
 };
+const appContext = getCurrentInstance()?.appContext ?? null;
 const tooltipTemplate = computed(() =>
-    componentToString(chartConfig.value, ChartTooltipContent, {
-        labelFormatter: formatDate,
-    }),
+    componentToString(
+        chartConfig.value,
+        ChartTooltipContent,
+        { labelFormatter: formatDate },
+        appContext,
+    ),
 );
 const lineColor = (index: number): string =>
     props.colors[props.accounts[index]?.social_account_key ?? ''] ??

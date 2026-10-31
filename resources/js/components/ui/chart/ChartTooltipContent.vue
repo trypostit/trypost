@@ -5,14 +5,15 @@ import ChannelAvatar from '@/components/ChannelAvatar.vue';
 
 import { activeLocale } from '@/language';
 
-import type { ChartConfig } from '.';
+import type { ChartConfig, ChartTooltipDetail } from '.';
 
 const props = withDefaults(
     defineProps<{
         payload?: Record<string, unknown>;
         config?: ChartConfig;
         labelFormatter?: (value: number | Date) => string;
-        detailFormatter?: (key: string, value: number) => string | null;
+        /** The labelled numbers listed under an entry, such as where it started and what it gained. */
+        detailFormatter?: (key: string, value: number) => ChartTooltipDetail[];
         x?: number | Date;
     }>(),
     { payload: () => ({}), config: () => ({}) },
@@ -27,12 +28,17 @@ const entries = computed(() =>
                       key,
                       item,
                       value,
-                      detail: props.detailFormatter?.(key, value) ?? null,
+                      details: props.detailFormatter?.(key, value) ?? [],
                   },
               ]
             : [];
     }),
 );
+
+const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
+    up: 'text-success-text',
+    down: 'text-destructive-text',
+};
 </script>
 
 <template>
@@ -52,16 +58,12 @@ const entries = computed(() =>
                     <span
                         class="inline-flex min-w-0 items-center gap-2 text-muted-foreground"
                     >
-                        <span
-                            data-testid="analytics-tooltip-swatch"
-                            class="size-2.5 shrink-0 rounded-[3px]"
-                            :style="{ backgroundColor: entry.item.color }"
-                        />
                         <ChannelAvatar
                             v-if="entry.item.avatar"
                             :platform="entry.item.avatar.platform"
                             :name="entry.item.avatar.name"
                             :src="entry.item.avatar.src"
+                            :verified="entry.item.avatar.verified ?? null"
                             :size="20"
                             ring="popover"
                             data-testid="analytics-tooltip-avatar"
@@ -74,13 +76,25 @@ const entries = computed(() =>
                         >{{ entry.value.toLocaleString(activeLocale) }}</span
                     >
                 </div>
-                <p
-                    v-if="entry.detail"
-                    class="ps-[18px] text-muted-foreground"
+                <dl
+                    v-if="entry.details.length > 0"
+                    class="mt-1 grid gap-1 border-t border-border pt-2"
                     data-testid="analytics-tooltip-detail"
                 >
-                    {{ entry.detail }}
-                </p>
+                    <div
+                        v-for="detail in entry.details"
+                        :key="detail.label"
+                        class="flex items-center justify-between gap-6"
+                    >
+                        <dt class="text-muted-foreground">{{ detail.label }}</dt>
+                        <dd
+                            class="font-medium text-foreground tabular-nums"
+                            :class="detail.tone && DETAIL_TONES[detail.tone]"
+                        >
+                            {{ detail.value }}
+                        </dd>
+                    </div>
+                </dl>
             </div>
         </div>
     </div>

@@ -1,4 +1,4 @@
-import { h, render, type Component } from 'vue';
+import { type AppContext, type Component, h, render } from 'vue';
 
 import { activeLocale } from '@/language';
 
@@ -8,6 +8,7 @@ export const componentToString = (
     config: ChartConfig,
     component: Component,
     props: Record<string, unknown> = {},
+    appContext: AppContext | null = null,
 ): ((data: Record<string, unknown>, x?: number | Date) => string) | undefined => {
     if (typeof document === 'undefined') return undefined;
 
@@ -23,7 +24,9 @@ export const componentToString = (
         if (cached) return cached;
 
         const element = document.createElement('div');
-        render(h(component, { ...props, payload: data, config, x }), element);
+        const tooltip = h(component, { ...props, payload: data, config, x });
+        tooltip.appContext = appContext;
+        render(tooltip, element);
         const content = element.innerHTML;
         render(null, element);
         cache.set(key, content);

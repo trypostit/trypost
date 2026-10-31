@@ -36,6 +36,10 @@ export const formatPercent = (value: number): string => {
     }).format(value / 100);
 };
 
+/** A change in a count, signed and exact: "+1,234", "-3", "0". */
+export const formatSignedNumber = (value: number): string =>
+    new Intl.NumberFormat(activeLocale.value, { signDisplay: 'exceptZero' }).format(value);
+
 /** A change in a count, signed and compact: "+1.2K", "-3", "0". */
 export const formatCountChange = (value: number): string =>
     new Intl.NumberFormat(activeLocale.value, {

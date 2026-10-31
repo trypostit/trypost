@@ -1,8 +1,7 @@
 import type { ChartConfig } from '@/components/ui/chart';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import { accountColor } from '@/lib/analyticsColors';
 import { formatNumberCompact } from '@/lib/utils';
-import type { AccountIdentityData } from '@/types/analytics';
+import { type AccountIdentityData, accountLabel } from '@/types/analytics';
 
 export const socialAccountChartConfig = (
     accounts: AccountIdentityData[],
@@ -10,9 +9,7 @@ export const socialAccountChartConfig = (
 ): ChartConfig =>
     Object.fromEntries(
         accounts.map((account, index) => {
-            const label = account.username
-                ? `@${account.username}`
-                : account.name || getPlatformLabel(account.platform);
+            const label = accountLabel(account);
 
             return [
                 `account_${index}`,
@@ -25,6 +22,7 @@ export const socialAccountChartConfig = (
                         platform: account.platform,
                         name: label,
                         src: account.avatar_url,
+                        verified: account.verified_badge ?? null,
                     },
                 },
             ];
