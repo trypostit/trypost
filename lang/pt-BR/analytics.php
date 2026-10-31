@@ -446,6 +446,8 @@ return [
             'red' => 'Vermelho',
             'pink' => 'Rosa',
             'neutral' => 'Neutro',
+            'indigo' => 'Índigo',
+            'lime' => 'Lima',
         ],
     ],
 ];

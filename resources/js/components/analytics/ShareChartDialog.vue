@@ -288,7 +288,7 @@ const createPost = async (): Promise<void> => {
                         $t('analytics.share.color')
                     }}</span>
                     <div
-                        class="grid grid-cols-5 gap-2 sm:grid-cols-10"
+                        class="grid grid-cols-6 gap-2 sm:grid-cols-12"
                         role="radiogroup"
                         :aria-label="$t('analytics.share.color')"
                     >
@@ -299,7 +299,7 @@ const createPost = async (): Promise<void> => {
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="flex h-9 cursor-pointer items-center justify-center rounded-md border transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                            class="flex aspect-square cursor-pointer items-center justify-center rounded-md border transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                             :style="{
                                 backgroundColor: swatch.ground,
                                 borderColor:
