@@ -230,7 +230,7 @@ watch(
                         aria-hidden="true"
                     >
                         <span
-                            class="px-2 text-xs leading-[15px] font-medium text-muted-foreground"
+                            class="px-2 text-xs leading-[15px] font-medium whitespace-nowrap text-muted-foreground max-sm:px-1"
                             >{{ date.formatHourOption(hourLabel(hour)) }}</span
                         >
                         <span class="h-px flex-1 bg-border-strong" />
