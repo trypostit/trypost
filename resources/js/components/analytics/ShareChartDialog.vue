@@ -50,7 +50,8 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { default: false });
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
-const selectedKey = ref<string>('');
+/** The metric asked for; `selected` falls back to the first when the card cannot draw it. */
+const selectedKey = ref<string>();
 const posting = ref(false);
 const painted = ref(false);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
@@ -61,37 +62,55 @@ const selected = computed(
         props.options[0],
 );
 
-const cardOptions = (): ShareCardOptions | null =>
-    selected.value
-        ? {
-              ...selected.value,
-              tint: tint.value,
-              subject: props.subject,
-              range: props.range,
-              mark: trans('analytics.share.mark'),
-          }
-        : null;
+/** The metric picker's value: always one of the options, even when the one asked for is not. */
+const metricKey = computed({
+    get: (): string | undefined => selected.value?.key,
+    set: (key: string | undefined): void => {
+        selectedKey.value = key;
+    },
+});
+
+const previewDescription = computed((): string =>
+    [selected.value?.label, selected.value?.figure].filter(Boolean).join(' '),
+);
+
+const card = computed((): ShareCardOptions | null => {
+    if (!selected.value) {
+        return null;
+    }
+
+    return {
+        ...selected.value,
+        tint: tint.value,
+        subject: props.subject,
+        range: props.range,
+        mark: trans('analytics.share.mark'),
+    };
+});
+
+/** Below this the preview would get no pixels while its canvas is not laid out yet. */
+const MIN_PREVIEW_SCALE = 0.25;
 
 /**
  * The preview is drawn at the size it is shown, times the screen density, so
  * the browser never shrinks a bigger card into it and blurs the text.
  */
-const previewScale = (element: HTMLCanvasElement): number =>
-    Math.max(
-        (element.clientWidth * window.devicePixelRatio) / SHARE_CARD_SIZE.width,
-        0.25,
-    );
+const previewScale = (preview: HTMLCanvasElement): number => {
+    const shownWidth = preview.clientWidth * window.devicePixelRatio;
+
+    return Math.max(shownWidth / SHARE_CARD_SIZE.width, MIN_PREVIEW_SCALE);
+};
 
 const paint = async (): Promise<void> => {
     await nextTick();
     await loadShareFonts();
 
-    const options = cardOptions();
-
-    if (canvas.value && options) {
-        drawShareCard(canvas.value, options, previewScale(canvas.value));
-        painted.value = true;
+    if (!canvas.value || !card.value) {
+        return;
     }
+
+    drawShareCard(canvas.value, card.value, previewScale(canvas.value));
+    painted.value = true;
 };
 
 /** The image uploading for Create post, stopped when the dialog closes so the composer never opens later. */
@@ -104,10 +123,7 @@ watch(open, (isOpen) => {
         return;
     }
 
-    selectedKey.value =
-        props.options.find((option) => option.key === props.initialKey)?.key ??
-        props.options[0]?.key ??
-        '';
+    selectedKey.value = props.initialKey;
     posting.value = false;
     painted.value = false;
     paint();
@@ -115,17 +131,17 @@ watch(open, (isOpen) => {
 
 useResizeObserver(canvas, () => paint());
 
-watch([tint, selectedKey], () => {
+watch(card, () => {
     paint();
 });
 
 /** The card as a PNG file, at download resolution. */
-const exportFile = (): Promise<File> => {
-    const options = cardOptions();
+const exportFile = async (): Promise<File> => {
+    if (!card.value) {
+        throw new Error('Nothing to share');
+    }
 
-    return options
-        ? shareCardFile(options)
-        : Promise.reject(new Error('Nothing to share'));
+    return shareCardFile(card.value);
 };
 
 const download = async (): Promise<void> => {
@@ -192,10 +208,9 @@ const createPost = async (): Promise<void> => {
 
             <canvas
                 ref="canvas"
-                class="w-full rounded-lg"
-                :style="{ aspectRatio: `${SHARE_CARD_SIZE.width} / ${SHARE_CARD_SIZE.height}` }"
+                class="aspect-video w-full rounded-lg"
                 role="img"
-                :aria-label="`${selected?.label ?? ''} ${selected?.figure ?? ''}`"
+                :aria-label="previewDescription"
                 :data-state="painted ? 'ready' : 'loading'"
                 :data-shape="selected?.shape"
                 data-testid="share-chart-preview"
@@ -206,7 +221,7 @@ const createPost = async (): Promise<void> => {
                     <Label for="share-chart-metric">{{
                         $t('analytics.share.metric')
                     }}</Label>
-                    <Select v-model="selectedKey">
+                    <Select v-model="metricKey">
                         <SelectTrigger
                             id="share-chart-metric"
                             class="h-8"
@@ -243,13 +258,10 @@ const createPost = async (): Promise<void> => {
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="aspect-square w-full cursor-pointer rounded-md transition-[box-shadow] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+                            class="aspect-square w-full cursor-pointer rounded-md bg-(--swatch) inset-ring inset-ring-black/6 ring-offset-background transition-[box-shadow] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring aria-checked:inset-ring-0 aria-checked:ring-[1.5px] aria-checked:ring-offset-2 aria-checked:ring-(--swatch-ring)"
                             :style="{
-                                backgroundColor: swatch.ground,
-                                boxShadow:
-                                    tint.key === swatch.key
-                                        ? `0 0 0 2px var(--background), 0 0 0 3.5px ${swatch.strong}`
-                                        : 'inset 0 0 0 1px rgb(0 0 0 / 0.06)',
+                                '--swatch': swatch.ground,
+                                '--swatch-ring': swatch.strong,
                             }"
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"

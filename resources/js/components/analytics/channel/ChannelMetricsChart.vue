@@ -214,7 +214,11 @@ const xTick = (tick: number | Date): string => {
             ? props.series.previous[index]
             : props.series.current[index];
 
-    return point ? axisBucketLabel(point, props.series.resolution) : '';
+    if (!point) {
+        return '';
+    }
+
+    return axisBucketLabel(point, props.series.resolution);
 };
 
 const dateLabel = (point: MetricSeriesPoint | undefined): string =>
