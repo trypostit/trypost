@@ -15,7 +15,6 @@ import { videoFrameUrl } from '@/lib/videoFrame';
 import type { TopPost, WorkspaceAnalyticsReport } from '@/types/analytics';
 import { Platform } from '@/types/platform';
 
-
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';

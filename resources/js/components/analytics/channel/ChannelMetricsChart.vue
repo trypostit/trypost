@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {
     VisAxis,
+    VisAxisSelectors,
     VisGroupedBar,
     VisGroupedBarSelectors,
     VisLine,
@@ -202,6 +203,11 @@ const tickLabel =
         return axisLabels.value[axis][Math.round(tick * AXIS_STEPS)] ?? '';
     };
 
+/** Names each value tick by its axis, so a test reads the labels the axis prints. */
+const axisTickAttributes = (axis: SeriesSpec['axis']): Record<string, Record<string, string>> => ({
+    [VisAxisSelectors.tick]: { 'data-testid': `insights-metrics-${axis}-tick` },
+});
+
 const xTick = (tick: number | Date): string => {
     const index = typeof tick === 'number' ? Math.round(tick) : 0;
     const point = props.series[shownPeriod(props.mode)][index];
@@ -335,6 +341,7 @@ const numTicks = computed(() =>
                 type="y"
                 :tick-format="tickLabel('left')"
                 :tick-values="tickValues"
+                :attributes="axisTickAttributes('left')"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
@@ -365,6 +372,7 @@ const numTicks = computed(() =>
                     position="right"
                     :tick-format="tickLabel('right')"
                     :tick-values="tickValues"
+                    :attributes="axisTickAttributes('right')"
                     :grid-line="false"
                     :domain-line="false"
                     :tick-line="false"

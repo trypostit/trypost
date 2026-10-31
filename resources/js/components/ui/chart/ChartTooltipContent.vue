@@ -104,7 +104,12 @@ const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
                         :key="detail.label"
                         class="flex items-center justify-between gap-6"
                     >
-                        <dt class="text-muted-foreground">{{ detail.label }}</dt>
+                        <dt
+                            class="text-muted-foreground"
+                            data-testid="analytics-tooltip-detail-label"
+                        >
+                            {{ detail.label }}
+                        </dt>
                         <dd
                             class="font-medium text-foreground tabular-nums"
                             :class="detail.tone && DETAIL_TONES[detail.tone]"

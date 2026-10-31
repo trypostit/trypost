@@ -6,7 +6,6 @@ import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import type { ChartTooltipDetail } from '@/components/ui/chart';
 import date from '@/date';
-import { activeLocale } from '@/language';
 import {
     FOLLOWERS_ROWS,
     followersNet,
@@ -15,6 +14,7 @@ import {
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import {
     formatCountChange,
+    formatFullNumber,
     formatNumberCompact,
     formatPercentChange,
     formatSignedNumber,
@@ -108,7 +108,7 @@ const barDetail = (index: number): ChartTooltipDetail[] => {
     return [
         {
             label: trans('analytics.dashboard.followers_at_start'),
-            value: start.toLocaleString(activeLocale.value),
+            value: formatFullNumber(start),
         },
         changeDetail(change, start),
     ];

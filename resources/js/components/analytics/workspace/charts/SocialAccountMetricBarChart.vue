@@ -106,10 +106,12 @@ const columnWidth = computed((): number => {
 
     return COLUMN_WIDTH.wide;
 });
+/** Room over the first bar and after the longest one. */
+const PLOT_PADDING = { top: 12, right: 16 };
 /** The bars start after the rows' column; the axis itself draws no text to make room for. */
 const chartPadding = computed(() => ({
-    top: 12,
-    right: 16,
+    top: PLOT_PADDING.top,
+    right: PLOT_PADDING.right,
     bottom: 0,
     left: columnWidth.value + COLUMN_GAP,
 }));
@@ -134,7 +136,7 @@ const placeAxisChannel = (
     layer: HTMLDivElement,
     svgOffset: { x: number; y: number },
     tick: SVGGElement,
-    row: (typeof props.rows)[number],
+    row: AccountMetricRow,
 ): void => {
     const origin = tick.getCTM();
 
@@ -206,7 +208,6 @@ const barAttributes = {
         <div
             ref="avatarLayer"
             class="pointer-events-none absolute inset-0 z-10"
-            aria-hidden="true"
         />
         <VisXYContainer
             :data="chartData"

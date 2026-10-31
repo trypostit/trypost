@@ -26,7 +26,15 @@ const props = defineProps<{
     channel?: string;
 }>();
 
-const defaultCards = computed(() => [
+/** A Summary card: which metric, its label key, its numbers and whether it reads as a percentage. */
+type SummaryCard = {
+    key: SummaryMetric;
+    label: string;
+    metric: AnalyticsReport['summary'][SummaryMetric];
+    percent: boolean;
+};
+
+const defaultCards = computed((): SummaryCard[] => [
     {
         key: 'posts',
         label: 'analytics.dashboard.posts',
@@ -60,7 +68,7 @@ const defaultCards = computed(() => [
 ]);
 
 /** A card's change as the page and the share card label it: followers as a count, the rest as a percentage. */
-const cardChange = (key: string, change: number | null): MetricDelta | null => {
+const cardChange = (key: SummaryMetric, change: number | null): MetricDelta | null => {
     if (change === null) {
         return null;
     }
@@ -72,7 +80,7 @@ const cardChange = (key: string, change: number | null): MetricDelta | null => {
     return percentDelta(change);
 };
 
-const listedCards = computed(() => {
+const listedCards = computed((): SummaryCard[] => {
     if (!props.availableMetrics) {
         return defaultCards.value;
     }

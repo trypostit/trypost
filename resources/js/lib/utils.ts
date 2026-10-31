@@ -54,20 +54,26 @@ export const formatNumberCompact = (value: MaybeNumber, digits = 1): string => {
 const MAX_COMPACT_DIGITS = 2;
 
 /**
- * Compact labels for a run of axis values, with as few decimals as keep them
- * apart ("9.33K", "9.336K", ...), else the exact counts when no compact form
- * does.
+ * Compact labels for a run of axis values, with the fewest decimals that
+ * round none of them ("2.5", "9.33K"), else the exact counts when two would
+ * still read the same.
  */
 export const distinctCountLabels = (values: number[]): string[] => {
-    for (let digits = 0; digits <= MAX_COMPACT_DIGITS; digits += 1) {
+    const precise = values.map((value) => formatNumberCompact(value, MAX_COMPACT_DIGITS));
+
+    if (new Set(precise).size !== precise.length) {
+        return values.map((value) => formatFullNumber(Math.round(value)));
+    }
+
+    for (let digits = 0; digits < MAX_COMPACT_DIGITS; digits += 1) {
         const labels = values.map((value) => formatNumberCompact(value, digits));
 
-        if (new Set(labels).size === labels.length) {
+        if (labels.every((label, index) => label === precise[index])) {
             return labels;
         }
     }
 
-    return values.map((value) => formatFullNumber(Math.round(value)));
+    return precise;
 };
 
 export const formatPercent = (value: MaybeNumber): string => {
@@ -164,6 +170,9 @@ export const copyToClipboard = async (
     return true;
 };
 
+/** How long a download's object URL lives: long enough for the browser to start saving the file. */
+const DOWNLOAD_URL_LIFETIME_MS = 60_000;
+
 /**
  * Saves a file the way a download link would. The link's URL lives a minute:
  * revoked at once, some browsers cancel the download before it starts.
@@ -175,7 +184,7 @@ export const downloadFile = (file: File): void => {
     link.href = url;
     link.download = file.name;
     link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    window.setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME_MS);
 };
 
 /**
@@ -188,13 +197,14 @@ export const copyImageToClipboard = async (image: Promise<Blob>): Promise<void> 
     navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
 
 /**
- * The value any CSS color stands for in the current theme (`var(--series-3)`,
- * `oklch(…)`, a name), as the browser computes it: a canvas cannot read CSS
- * variables, so its colors are resolved before drawing.
+ * The value any CSS color stands for in the light theme (`var(--series-3)`,
+ * `oklch(…)`, a name), as the browser computes it, even on a dark page: a
+ * canvas cannot read CSS variables, and what it draws is always light.
  */
-export const resolveCssColor = (color: string): string => {
+export const resolveLightCssColor = (color: string): string => {
     const probe = document.createElement('span');
 
+    probe.dataset.lightTheme = '';
     probe.style.color = color;
     document.body.append(probe);
 

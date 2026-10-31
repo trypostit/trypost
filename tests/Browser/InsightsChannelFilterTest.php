@@ -125,7 +125,7 @@ test('the follower bar tooltip shows the verified mark of an X channel', functio
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'analytics-account-bar');
+    waitFor($page, '@analytics-account-bar');
     $page->hover('[data-testid="analytics-account-bar"] >> nth=1');
     waitFor($page, '@analytics-chart-tooltip [data-verified="blue"]');
 
@@ -138,28 +138,29 @@ test('the followers chart prints each channel’s number next to its bar or at t
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'analytics-account-value');
+    waitFor($page, '@analytics-account-value');
 
     $values = 'Array.from(document.querySelector("[data-testid=accounts-unovis-bar-chart]").querySelectorAll("[data-testid=analytics-account-value]"), (value) => value.innerText).sort().join(",")';
     $aligned = '(() => { const chart = document.querySelector("[data-testid=accounts-unovis-bar-chart]"); const edges = Array.from(chart.querySelectorAll("[data-testid=analytics-account-value]"), (value) => Math.round(value.getBoundingClientRect().right)); const barStart = Math.min(...Array.from(chart.querySelectorAll("[data-testid=analytics-account-bar]"), (bar) => bar.getBoundingClientRect().left)); return new Set(edges).size === 1 && edges[0] < barStart; })()';
 
     $page->assertScript($values, '120,30')
+        ->assertScript('document.querySelector("[data-testid=analytics-axis-channel]").closest("[aria-hidden=true]") === null', true)
         ->assertSeeIn('@analytics-followers-change', '+20')
         ->assertScript($aligned, true)
-        ->assertMissing('@analytics-followers-legend');
+        ->assertMissing('@analytics-followers-split-legend');
 
     $page->click('@followers-growth');
     waitForText($page, '@analytics-account-value', '+10');
 
     $page->assertScript($values, '+10,+10')
-        ->assertMissing('@analytics-followers-legend');
+        ->assertMissing('@analytics-followers-split-legend');
 
     $page->click('@followers-line');
     waitForText($page, '@analytics-line-end-value', '120');
 
     $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).sort().join(",")', '120,30')
         ->assertScript('(() => { const chart = document.querySelector("[data-testid=followers-unovis-chart]").getBoundingClientRect(); return Array.from(document.querySelectorAll("[data-testid=followers-line-end]")).every((label) => label.getBoundingClientRect().left >= chart.left + chart.width / 2); })()', true)
-        ->assertMissing('@analytics-followers-legend');
+        ->assertMissing('@analytics-followers-split-legend');
 
     $page->hover('[data-testid="followers-line-end"] >> nth=0');
     waitForState($page, '@followers-unovis-chart', "element.querySelectorAll('[data-dimmed=true]').length > 0");
@@ -173,15 +174,15 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
-    waitForInsightsChannelTestId($page, 'analytics-account-bar');
+    waitFor($page, '@analytics-account-bar');
 
     $page->assertScript('document.querySelector("[data-testid=followers-bar]")?.getAttribute("aria-pressed")', 'true')
         ->hover('[data-testid="analytics-account-bar"] >> nth=0');
-    waitForInsightsChannelTestId($page, 'analytics-tooltip-detail');
+    waitFor($page, '@analytics-tooltip-detail');
 
     $page->assertMissing('@analytics-tooltip-swatch')
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-tooltip-detail] dt").length', 2)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-tooltip-detail-label]").length', 2)
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail] dd")?.innerText', '110')
         ->assertNoJavaScriptErrors();
 
@@ -246,5 +247,68 @@ test('a channel without data shows the filtered empty state and history navigati
         ->assertPresent('@analytics-summary-followers')
         ->assertMissing('@analytics-channel-count')
         ->assertMissing('@analytics-filtered-empty-state')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a channel that lost followers reads as a loss in the tooltip, the Growth view and the headline', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    AnalyticsAccountDailySnapshot::query()
+        ->where('social_account_id', $accounts[1]->id)
+        ->where('date', now('UTC')->subDays(2)->toDateString())
+        ->update(['followers_count' => 5]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@analytics-account-bar');
+
+    $page->assertSeeIn('@analytics-followers-change', '-5')
+        ->hover('[data-testid="analytics-account-bar"] >> nth=1');
+    waitForText($page, '@analytics-tooltip-detail', 'Lost in range');
+
+    $page->assertSeeIn('@analytics-tooltip-detail', '-15 (-75%)')
+        ->click('@followers-growth');
+    waitForText($page, '@analytics-account-value', '-15');
+
+    $page->assertScript('Array.from(document.querySelector("[data-testid=accounts-unovis-bar-chart]").querySelectorAll("[data-testid=analytics-account-value]"), (value) => value.innerText).sort().join(",")', '+10,-15')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the posts card heads with every channel’s posts and lists the channels only when stacked', function () {
+    [$user] = insightsChannelFilterFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@analytics-posts-total');
+
+    $page->assertSeeIn('@analytics-posts-total', '2')
+        ->assertMissing('@analytics-posts-legend')
+        ->click('@posts-stacked');
+    waitFor($page, '@analytics-posts-legend');
+
+    $page->assertSeeIn('@analytics-posts-total', '2')
+        ->click('@posts-bar');
+    waitForGone($page, '@analytics-posts-legend');
+
+    $page->assertNoJavaScriptErrors();
+});
+
+test('on a phone the channel and label filters open as sheets', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'))->resize(390, 844);
+    waitFor($page, '@analytics-channel-filter');
+    $page->click('@analytics-channel-filter');
+    waitFor($page, '@analytics-channel-sheet');
+
+    $page->assertVisible('@analytics-channel-sheet')
+        ->assertNoJavaScriptErrors();
+
+    $channel = visit(route('app.channels.insights', $accounts[0]))->resize(390, 844);
+    waitFor($channel, '@insights-label-filter');
+    $channel->click('@insights-label-filter');
+    waitFor($channel, '@insights-label-sheet');
+
+    $channel->assertVisible('@insights-label-sheet')
         ->assertNoJavaScriptErrors();
 });

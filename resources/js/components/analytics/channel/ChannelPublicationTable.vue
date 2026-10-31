@@ -210,7 +210,6 @@ const pages = computed<PageItem[]>(() => {
     return items;
 });
 
-
 const isReloading = ref(false);
 
 const reload = (
@@ -302,7 +301,6 @@ const openRow = (row: ChannelPublicationRow): void => {
 
     openPublication(row.id);
 };
-
 
 const display = (row: ChannelPublicationRow, key: SummaryMetric): string => {
     if (key === 'engagement_rate') {

@@ -15,9 +15,9 @@ import {
     type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
-import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
 import { bucketRangeLabel } from '@/lib/channelMetrics';
+import { formatFullNumber } from '@/lib/utils';
 import type {
     BucketResolution,
     PostAccount,
@@ -89,7 +89,7 @@ const bucketTotal = (tick: number | Date): ChartTooltipDetail | null => {
 
     return {
         label: trans('analytics.dashboard.total_posts'),
-        value: bucket.total.toLocaleString(activeLocale.value),
+        value: formatFullNumber(bucket.total),
     };
 };
 const ticks = computed(() => props.buckets.map((_, index) => index));

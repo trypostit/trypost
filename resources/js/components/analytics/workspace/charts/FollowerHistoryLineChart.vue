@@ -102,14 +102,18 @@ const railWidth = computed((): number => {
 
     return RAIL_WIDTH.wide;
 });
+/** Room over the plot for the top line-end label, and under it for the dates. */
+const PLOT_PADDING = { top: 16, bottom: 8 };
 const chartPadding = computed(() => ({
-    top: 16,
+    top: PLOT_PADDING.top,
     right: railWidth.value,
-    bottom: 8,
+    bottom: PLOT_PADDING.bottom,
     left: 0,
 }));
 /** From the end of a line to its label, where a leader runs when the label had to move. */
 const LEADER_LENGTH = 32;
+/** Where a leader starts after the line's end, how far it stops short of the avatar, and the offset from which a label gets one. */
+const LEADER = { inset: 4, tip: 2, from: 1 };
 /** The tallest a label is; labels closer than this are spread apart. */
 const LABEL_HEIGHT = 24;
 
@@ -158,8 +162,15 @@ const valueTickAttributes = {
 };
 
 /** Each channel's latest known count, the value its line ends on. */
-const latestValue = (index: number): number | undefined =>
-    valueAccessor(index)(chartData.value[chartData.value.length - 1] ?? { date: '', index: 0 });
+const latestValue = (index: number): number | undefined => {
+    const latest = chartData.value[chartData.value.length - 1];
+
+    if (!latest) {
+        return undefined;
+    }
+
+    return valueAccessor(index)(latest);
+};
 
 /** Maps a count to its height in the frame, read off two of the value axis' ticks. */
 const valueToY = (
@@ -216,8 +227,17 @@ const placeLineEnds = (svg: SVGSVGElement): void => {
 };
 
 /** A leader only where a label had to move away from its line. */
+/** A leader's three points: out from the line's end, along it, then up or down to its label. */
+const leaderPoints = (end: LineEnd): string => {
+    const start = lineEndX.value + LEADER.inset;
+    const bend = lineEndX.value + LEADER_LENGTH / 2;
+    const tip = lineEndX.value + LEADER_LENGTH - LEADER.tip;
+
+    return `${start},${end.lineY} ${bend},${end.lineY} ${tip},${end.labelY}`;
+};
+
 const movedEnds = computed(() =>
-    lineEnds.value.filter((end) => Math.abs(end.labelY - end.lineY) > 1),
+    lineEnds.value.filter((end) => Math.abs(end.labelY - end.lineY) > LEADER.from),
 );
 const crosshairColor = (_point: ChartPoint, index: number): string =>
     lineColor(Math.floor(index / 2));
@@ -276,6 +296,7 @@ const crosshairColor = (_point: ChartPoint, index: number): string =>
                     :grid-line="true"
                     :domain-line="false"
                     :tick-line="false"
+                    :duration="0"
                     :attributes="valueTickAttributes"
                 />
                 <ChartCrosshair
@@ -295,7 +316,7 @@ const crosshairColor = (_point: ChartPoint, index: number): string =>
             <polyline
                 v-for="end in movedEnds"
                 :key="end.account.social_account_key"
-                :points="`${lineEndX + 4},${end.lineY} ${lineEndX + LEADER_LENGTH / 2},${end.lineY} ${lineEndX + LEADER_LENGTH - 2},${end.labelY}`"
+                :points="leaderPoints(end)"
                 fill="none"
                 :stroke="lineColor(end.index)"
                 stroke-width="1.5"

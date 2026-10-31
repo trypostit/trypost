@@ -11,9 +11,9 @@ import {
 import { spreadLabels } from '@/lib/labelLayout';
 import {
     canvasToFile,
-    formatNumberCompact,
+    distinctCountLabels,
     MISSING_VALUE,
-    resolveCssColor,
+    resolveLightCssColor,
 } from '@/lib/utils';
 import type { PublicationPeriod, SeriesMetric } from '@/types/analytics';
 import type { VerifiedBadge } from '@/types/social-account';
@@ -27,7 +27,6 @@ import type { VerifiedBadge } from '@/types/social-account';
 
 /** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
 export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';
-
 
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
 export type ShareChannel = {
@@ -214,15 +213,25 @@ const TICK_FACTORS: [number, number][] = [
     [Math.sqrt(50), 10],
     [Math.sqrt(10), 5],
     [Math.sqrt(2), 2],
-    [0, 1],
 ];
+
+/** The tick step's factor for how far the raw step is past its power of ten: 1 below every threshold. */
+const tickFactor = (error: number): number => {
+    const match = TICK_FACTORS.find(([threshold]) => error >= threshold);
+
+    if (!match) {
+        return 1;
+    }
+
+    return match[1];
+};
 
 /**
  * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,
  * a 6px gap and the number in 12px medium), 24px between labels, 16px above
  * the plot the labels may use, 5 value ticks and up to 6 dates.
  */
-const LINE_ENDS = { rail: 224, leader: 64, leaderWidth: 3, leaderInset: 8, leaderTip: 4, avatar: 40, avatarShare: 0.85, gap: 12, height: 48, fontSize: 24, fontShare: 0.6, headroom: 32 };
+const LINE_ENDS = { rail: 224, leader: 64, leaderFrom: 1, leaderWidth: 3, leaderInset: 8, leaderTip: 4, avatar: 40, avatarShare: 0.85, gap: 12, height: 48, fontSize: 24, fontShare: 0.6, headroom: 32 };
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
 const ROWS = {
@@ -240,6 +249,18 @@ const ROWS = {
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
 const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };
+
+/** The network badge's white ring (a share of the badge, never thinner than `ringMin`) and how far it sits in from the avatar's corner. */
+const BADGE = { ring: 0.12, ringMin: 1.5, insetX: 0.66, insetY: 0.8 };
+
+/** The verified rosette: how far it overhangs the avatar's top right, its white backing, and the 24px grid its path is drawn on. */
+const VERIFIED = { overhang: 0.7, rise: 0.3, backing: 0.42, grid: 24 };
+
+/** The previous period's hatch: a tile of the color's light wash with one stripe across it, turned 45°. */
+const HATCH = { size: 10, wash: 0.12, stripe: 0.4, angle: 45 };
+
+/** d3's monotone curve: tangents are clamped once they pass 3 (9 squared), and each segment's handles sit a third along it. */
+const MONOTONE = { limit: 3, handle: 3 };
 
 /** `VerifiedBadge`'s colors, with the filled rosette Tabler draws it with. */
 const VERIFIED_COLORS: Record<VerifiedBadge, string> = { blue: '#1d9bf0', business: '#e2b719', government: '#829aab' };
@@ -326,15 +347,11 @@ const loadShareImages = async (options: Pick<ShareMetricOption, 'points' | 'line
     );
 };
 
-export const prepareShareCard = (options: ShareCardOptions): Promise<ShareImages> => loadShareImages([options]);
-
 /**
- * Warms the fonts and images a share card will draw before it is opened, so
- * the first preview paints at once; a later `prepareShareCard` finds them loaded.
+ * The fonts and images a card draws, loaded once per page: called while the
+ * page is idle, it warms them so the first preview paints at once.
  */
-export const preloadShareCard = async (option: ShareMetricOption): Promise<void> => {
-    await loadShareImages([option]);
-};
+export const prepareShareCard = (option: Pick<ShareMetricOption, 'points' | 'lines'>): Promise<ShareImages> => loadShareImages([option]);
 
 type TextStyle = {
     font: string;
@@ -364,7 +381,7 @@ const widest = (context: CanvasRenderingContext2D, texts: string[], font: string
     return Math.max(0, ...texts.map((text) => context.measureText(text).width));
 };
 
-/** The text cut with an ellipsis to fit `limit` in `font`. */
+/** The text cut with an ellipsis to fit `limit` in `font`, one whole character (an emoji with its joiners included) at a time. */
 const ellipsise = (
     context: CanvasRenderingContext2D,
     text: string,
@@ -377,13 +394,13 @@ const ellipsise = (
         return text;
     }
 
-    let kept = text;
+    const characters = Array.from(new Intl.Segmenter().segment(text), (piece) => piece.segment);
 
-    while (kept.length > 1 && context.measureText(`${kept}…`).width > limit) {
-        kept = kept.slice(0, -1);
+    while (characters.length > 1 && context.measureText(`${characters.join('')}…`).width > limit) {
+        characters.pop();
     }
 
-    return `${kept}…`;
+    return `${characters.join('')}…`;
 };
 
 const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: Point): void => {
@@ -440,6 +457,9 @@ const paintPanel = (context: CanvasRenderingContext2D): Box => {
 };
 
 /** The TryPost mark, the four quarters of `AppLogo.vue`, on a 410 grid. */
+/** The grid the logo's paths are drawn on. */
+const LOGO_GRID = 410;
+
 const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
     const quarters: [string, string][] = [
         ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
@@ -455,7 +475,7 @@ const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): 
     context.fillStyle = '#ffffff';
     context.fillRect(at.x, at.y, size, size);
     context.translate(at.x, at.y);
-    context.scale(size / 410, size / 410);
+    context.scale(size / LOGO_GRID, size / LOGO_GRID);
 
     for (const [path, color] of quarters) {
         context.fillStyle = color;
@@ -593,8 +613,10 @@ const paintGrid = (
     label: (value: number) => Point,
     style: Pick<TextStyle, 'align' | 'baseline'>,
 ): void => {
+    const labels = distinctCountLabels(ticks);
+
     strokeGrid(context, ticks.map(line));
-    ticks.forEach((value) => writeTick(context, formatNumberCompact(value), label(value), style));
+    ticks.forEach((value, index) => writeTick(context, labels[index], label(value), style));
 };
 
 /** The radius at a bar's low-coordinate edge and at its high one: only the data end is round. */
@@ -684,8 +706,8 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
         const b = tangents[index + 1] / slope;
         const size = a * a + b * b;
 
-        if (size > 9) {
-            const scale = 3 / Math.sqrt(size);
+        if (size > MONOTONE.limit ** 2) {
+            const scale = MONOTONE.limit / Math.sqrt(size);
 
             tangents[index] = scale * a * slope;
             tangents[index + 1] = scale * b * slope;
@@ -694,7 +716,7 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
 
     points.slice(1).forEach((point, index) => {
         const previous = points[index];
-        const third = (point.x - previous.x) / 3;
+        const third = (point.x - previous.x) / MONOTONE.handle;
 
         context.bezierCurveTo(
             previous.x + third,
@@ -748,8 +770,8 @@ const paintTile = (context: CanvasRenderingContext2D, image: HTMLImageElement, a
 /** The network's logo on the avatar's bottom-end corner, ringed in white like `ChannelAvatar`'s badge. */
 const paintNetworkBadge = (context: CanvasRenderingContext2D, logo: HTMLImageElement, avatar: Point, size: number): void => {
     const badge = size * AVATAR.badge;
-    const ring = Math.max(1.5, badge * 0.12);
-    const at = { x: avatar.x + size - badge * 0.66, y: avatar.y + size - badge * 0.8 };
+    const ring = Math.max(BADGE.ringMin, badge * BADGE.ring);
+    const at = { x: avatar.x + size - badge * BADGE.insetX, y: avatar.y + size - badge * BADGE.insetY };
 
     context.beginPath();
     context.roundRect(at.x - ring, at.y - ring, badge + ring * 2, badge + ring * 2, (badge + ring * 2) * AVATAR.radius);
@@ -761,16 +783,16 @@ const paintNetworkBadge = (context: CanvasRenderingContext2D, logo: HTMLImageEle
 /** The verified rosette on the avatar's top-end corner, on a white disc like `VerifiedBadge`. */
 const paintVerified = (context: CanvasRenderingContext2D, badge: VerifiedBadge, avatar: Point, size: number): void => {
     const mark = size * AVATAR.verified;
-    const at = { x: avatar.x + size - mark * 0.7, y: avatar.y - mark * 0.3 };
+    const at = { x: avatar.x + size - mark * VERIFIED.overhang, y: avatar.y - mark * VERIFIED.rise };
 
     context.beginPath();
-    context.arc(at.x + mark / 2, at.y + mark / 2, mark * 0.42, 0, Math.PI * 2);
+    context.arc(at.x + mark / 2, at.y + mark / 2, mark * VERIFIED.backing, 0, Math.PI * 2);
     context.fillStyle = '#ffffff';
     context.fill();
 
     context.save();
     context.translate(at.x, at.y);
-    context.scale(mark / 24, mark / 24);
+    context.scale(mark / VERIFIED.grid, mark / VERIFIED.grid);
     context.fillStyle = VERIFIED_COLORS[badge];
     context.fill(new Path2D(VERIFIED_PATH));
     context.restore();
@@ -925,7 +947,6 @@ const paintStack = (
     });
 };
 
-
 /**
  * How wide each bar of a `slot` is: one bar like the page's, or, with both
  * periods, two bars side by side that fill the day with a small gap between
@@ -982,7 +1003,7 @@ const linearTicks = (start: number, stop: number, count: number): number[] => {
     const raw = (stop - start) / count;
     const power = 10 ** Math.floor(Math.log10(raw));
     const error = raw / power;
-    const step = power * TICK_FACTORS.find(([threshold]) => error >= threshold)![1];
+    const step = power * tickFactor(error);
     const first = Math.ceil(start / step);
     const last = Math.floor(stop / step);
 
@@ -1072,7 +1093,7 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         const labelY = labels[position];
         const labelX = lineEnd + LINE_ENDS.leader;
 
-        if (Math.abs(labelY - lineY) > 1) {
+        if (Math.abs(labelY - lineY) > LINE_ENDS.leaderFrom) {
             context.strokeStyle = line.color;
             context.lineWidth = LINE_ENDS.leaderWidth;
             context.lineJoin = 'round';
@@ -1120,11 +1141,10 @@ const paintDates = (
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
 const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
 
-
 /** The page's hatch for a previous period's bars: stripes of the color over a light wash of it. */
 const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasPattern | string => {
     const tile = document.createElement('canvas');
-    const size = 10;
+    const size = HATCH.size;
 
     tile.width = size;
     tile.height = size;
@@ -1136,10 +1156,10 @@ const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasP
     }
 
     stripes.fillStyle = color;
-    stripes.globalAlpha = 0.12;
+    stripes.globalAlpha = HATCH.wash;
     stripes.fillRect(0, 0, size, size);
     stripes.globalAlpha = 1;
-    stripes.fillRect(0, 0, size * 0.4, size);
+    stripes.fillRect(0, 0, size * HATCH.stripe, size);
 
     const pattern = context.createPattern(tile, 'repeat');
 
@@ -1147,7 +1167,7 @@ const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasP
         return color;
     }
 
-    pattern.setTransform(new DOMMatrix().rotate(45));
+    pattern.setTransform(new DOMMatrix().rotate(HATCH.angle));
 
     return pattern;
 };
@@ -1170,10 +1190,10 @@ const periodDash = (period: PublicationPeriod): number[] => {
     return [];
 };
 
-/** A legend swatch like the page's: solid for this period, hatched (bars) or a dashed outline (lines) for the previous one. */
 /** The legend swatch's corner, and the dashed outline that stands for a previous period's line. */
 const SWATCH = { radius: 4, dash: [4, 3], outline: 3 };
 
+/** A legend swatch like the page's: solid for this period, hatched (bars) or a dashed outline (lines) for the previous one. */
 const paintLegendSwatch = (context: CanvasRenderingContext2D, series: ShareSeries, color: string, period: PublicationPeriod, at: Point): void => {
     context.save();
     context.beginPath();
@@ -1288,6 +1308,15 @@ const comboDomain = (series: ShareSeries[], periods: PublicationPeriod[]): { min
 const shownValues = (series: ShareSeries, period: PublicationPeriod, days: number): (number | null)[] =>
     series[period].slice(0, days);
 
+/** An axis' domain, or 0 to 1 for an axis no metric uses, so a value there still has a place. */
+const domainOrUnit = (domain: { min: number; max: number } | null): { min: number; max: number } => {
+    if (!domain) {
+        return { min: 0, max: 1 };
+    }
+
+    return domain;
+};
+
 /** The room the right axis' labels take; none when no metric uses it. */
 const rightAxisRoom = (domain: { min: number; max: number } | null): number => {
     if (domain) {
@@ -1331,7 +1360,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     const slot = plot.width / count;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
     const y = (axis: 'left' | 'right', value: number): number => {
-        const domain = domains[axis] ?? { min: 0, max: 1 };
+        const domain = domainOrUnit(domains[axis]);
 
         return plot.y + plot.height - ((value - domain.min) / (domain.max - domain.min || 1)) * plot.height;
     };
@@ -1361,7 +1390,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
     options.series.filter((series) => series.kind === 'bar').forEach((series) => {
         const color = series.color;
-        const zero = y(series.axis, Math.max(0, (domains[series.axis] ?? { min: 0 }).min));
+        const zero = y(series.axis, Math.max(0, domainOrUnit(domains[series.axis]).min));
 
         periods.forEach((period, position) => {
             context.fillStyle = periodFill(context, color, period);
@@ -1444,6 +1473,15 @@ const paintStackedCard = (context: CanvasRenderingContext2D, options: ShareCardO
     );
     paintBars(context, options, plot, x, y);
     paintDates(context, options.points, columnDates(context, options.points, plot.width), x, plot);
+};
+
+/** A tile's number, or the dash the page prints when the metric has no value yet. */
+const tileFigureText = (tile: ShareTile): string => {
+    if (tile.figure === null) {
+        return MISSING_VALUE;
+    }
+
+    return tile.figure;
 };
 
 /** A tile's number in ink, or muted when the metric has no value yet. */
@@ -1558,7 +1596,7 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
         const left = grid.x + tileWidth(index) * (index % columns) + inset;
         const limit = tileLimit(index);
         const labelLine = grid.y + tileHeight * row + SUMMARY.label * fit;
-        const figureText = tile.figure ?? MISSING_VALUE;
+        const figureText = tileFigureText(tile);
         const figureFont = heading(500, fittingSize(context, figureText, (size) => heading(500, size), figureSize, limit));
         const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
 
@@ -1612,7 +1650,7 @@ const changesUnderFigures = (
 
         context.font = figureFont;
 
-        return context.measureText(tile.figure ?? MISSING_VALUE).width + gap + changeWidth(context, tile.change, changeSize) > limit(index);
+        return context.measureText(tileFigureText(tile)).width + gap + changeWidth(context, tile.change, changeSize) > limit(index);
     });
 
 /** A tile's change: beside its number with its icon on the number's baseline, like the page's cards, or under it. */
@@ -1648,7 +1686,7 @@ const colorResolver = (): ((color: string) => string) => {
     const resolved = new Map<string, string>();
 
     return (color) => {
-        const known = resolved.get(color) ?? resolveCssColor(color);
+        const known = resolved.get(color) ?? resolveLightCssColor(color);
 
         resolved.set(color, known);
 
@@ -1675,7 +1713,12 @@ const withResolvedColors = (options: ShareCardOptions): ShareCardOptions => {
     };
 };
 
-/** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
+/**
+ * Paints the card; `images` comes from `prepareShareCard`, since a canvas only
+ * draws images already loaded. The card is laid out left to right in every
+ * language, so the preview inside a right-to-left page and the exported file
+ * read the same.
+ */
 export const drawShareCard = (
     canvas: HTMLCanvasElement,
     options: ShareCardOptions,
@@ -1692,6 +1735,7 @@ export const drawShareCard = (
     }
 
     context.setTransform(scale, 0, 0, scale, 0, 0);
+    context.direction = 'ltr';
     paintGround(context, options.tint);
 
     const panel = paintPanel(context);

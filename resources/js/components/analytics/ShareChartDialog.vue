@@ -4,7 +4,7 @@ import {
     IconDownload,
 } from '@tabler/icons-vue';
 import { useResizeObserver } from '@vueuse/core';
-import { trans } from 'laravel-vue-i18n';
+import { trans, wTrans } from 'laravel-vue-i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { toast } from 'vue-sonner';
 
@@ -49,6 +49,9 @@ const previewDescription = computed((): string =>
     [props.option?.label, props.option?.figure].filter(Boolean).join(' '),
 );
 
+/** The signature, kept up to date as the locale loads (see `.ai/rules/js.md`). */
+const mark = wTrans('analytics.share.mark');
+
 const card = computed((): ShareCardOptions | null => {
     if (!props.option) {
         return null;
@@ -59,7 +62,7 @@ const card = computed((): ShareCardOptions | null => {
         tint: tint.value,
         subject: props.subject,
         range: props.range,
-        mark: trans('analytics.share.mark'),
+        mark: mark.value,
     };
 });
 

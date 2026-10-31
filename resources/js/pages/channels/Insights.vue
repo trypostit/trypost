@@ -19,14 +19,15 @@ import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { showsPostTypeFilter } from '@/lib/channelInsights';
 import { insights } from '@/routes/app/channels';
-import type {
-    AnalyticsReport,
-    ChannelInsightsFilters,
-    ChannelMetricSeries,
-    ChannelPublicationPage,
-    ContentTypeOption,
-    InsightsSyncCadence,
-    SummaryMetric,
+import {
+    accountLabel,
+    type AnalyticsReport,
+    type ChannelInsightsFilters,
+    type ChannelMetricSeries,
+    type ChannelPublicationPage,
+    type ContentTypeOption,
+    type InsightsSyncCadence,
+    type SummaryMetric,
 } from '@/types/analytics';
 import { channelName } from '@/types/channel';
 import type { PublishChannel } from '@/types/publish';
@@ -51,6 +52,14 @@ useAnalyticsCoveragePoll(() => props.report?.coverage, {
 });
 
 const url = computed(() => insights.url(props.channel.id));
+/** The channel as the share cards name it: its name or handle, else its network. */
+const shareChannel = computed((): string =>
+    accountLabel({
+        name: props.channel.display_name,
+        username: props.channel.username,
+        platform: props.channel.platform,
+    }),
+);
 const selectedLabelIds = ref<string[]>(props.filters?.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters?.untagged ?? false);
 const selectedTypes = ref<string[]>(props.filters?.types ?? []);
@@ -245,7 +254,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                         :available-metrics="availableMetrics ?? []"
                         subtitle-testid="insights-range-caption"
                         :network="getPlatformLabel(channel.platform)"
-                        :channel="channelName(channel)"
+                        :channel="shareChannel"
                     />
                     <ChannelPublicationTable
                         v-if="filters"
@@ -259,7 +268,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                     />
                     <ChannelMetricsCard
                         :series="metricSeries"
-                        :channel="channelName(channel)"
+                        :channel="shareChannel"
                     />
                 </template>
             </template>

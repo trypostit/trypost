@@ -134,7 +134,7 @@ export const PRESETS: Preset[] = [
     },
 ];
 
-export const isLevelMetric = (metric: SeriesMetric): boolean =>
+const isLevelMetric = (metric: SeriesMetric): boolean =>
     LEVEL_METRICS.includes(metric);
 
 export const isPercentMetric = (metric: SeriesMetric): boolean =>
@@ -289,7 +289,7 @@ export const AXIS_STEPS = 4;
 /**
  * A domain split into four round steps, so every axis shares the same gridlines.
  */
-export const niceDomain = (
+const niceDomain = (
     values: number[],
     fromZero: boolean,
     fractional = false,

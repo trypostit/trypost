@@ -12,7 +12,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-    preloadShareCard,
+    prepareShareCard,
     type ShareMetricOption,
 } from '@/lib/insightsShareCard';
 import { whenIdle } from '@/lib/utils';
@@ -43,7 +43,7 @@ const preloaded = ref(false);
 
 onMounted(() => {
     whenIdle(async () => {
-        await preloadShareCard(props.build());
+        await prepareShareCard(props.build());
         preloaded.value = true;
     });
 });

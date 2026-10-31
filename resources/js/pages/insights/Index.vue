@@ -86,7 +86,6 @@ watch(
 
 useAnalyticsCoveragePoll(() => props.report.coverage);
 
-
 const accountColors = computed<Record<string, string>>(() => {
     const keys = [
         ...new Set([

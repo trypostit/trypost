@@ -128,7 +128,7 @@ test('the metrics card loads after the page and opens on content impact', functi
         ->assertSeeIn('@insights-metrics-legend-posts-value', '6')
         ->assertSeeIn('@insights-metrics-legend-posts-change', '+500%')
         ->assertSeeIn('@insights-metrics-legend-followers-change', '+145')
-        ->assertScript('Array.from(document.querySelectorAll("[data-testid=insights-metrics-chart] svg text"), (text) => text.textContent).some((text) => text === "Posts" || text === "Followers")', false)
+        ->assertScript('/Posts|Followers/.test(document.querySelector("[data-testid=insights-metrics-chart]").textContent)', false)
         ->assertVisible('@insights-metrics-legend-followers')
         ->assertPresent('@insights-metrics-table')
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-bar]").length > 0', true)
@@ -178,7 +178,7 @@ test('the card shows a skeleton while the series reloads for a new range', funct
 
 test('the metric menu lists the channel metrics and switches the chart to one metric', function () {
     $page = visit(route('app.channels.insights', $this->instagram));
-    waitForMetricsCardTestId($page, 'insights-metric-menu');
+    waitFor($page, '@insights-metric-menu');
 
     $page->click('@insights-metric-menu');
     waitForMetricsCardTestId($page, 'insights-metric-option-reach');
@@ -377,14 +377,77 @@ test('a chart whose metrics have nothing in the previous period offers no compar
     }
 
     $page = visit(route('app.channels.insights', $fresh));
-    waitForMetricsCardTestId($page, 'insights-metric-menu');
+    waitFor($page, '@insights-metric-menu');
     $page->click('@insights-metric-menu');
-    waitForMetricsCardTestId($page, 'insights-metric-option-followers');
+    waitFor($page, '@insights-metric-option-followers');
     $page->click('@insights-metric-option-followers');
-    waitForMetricsCardTestId($page, 'insights-metrics-legend-followers');
+    waitFor($page, '@insights-metrics-legend-followers');
 
     $page->assertMissing('@insights-metrics-mode-current')
         ->assertMissing('@insights-metrics-mode-both')
         ->assertSeeIn('@insights-metrics-legend-followers-change', '+9')
         ->assertNoJavaScriptErrors();
 });
+
+test('the axis prints each tick exactly, with the decimals a half step needs', function () {
+    $busy = SocialAccount::factory()->create([
+        'workspace_id' => $this->instagram->workspace_id,
+        'platform' => Platform::Instagram,
+    ]);
+    $day = CarbonImmutable::today('UTC')->subDays(3)->setTime(10, 0);
+
+    foreach (range(1, 9) as $minutes) {
+        metricsCardPublication($busy, $day->addMinutes($minutes), ['reactions_count' => 1]);
+    }
+
+    $page = visit(route('app.channels.insights', $busy));
+    waitFor($page, '@insights-metrics-left-tick');
+
+    $page->assertScript('Array.from(document.querySelectorAll("[data-testid=insights-metrics-left-tick]"), (tick) => tick.textContent.trim()).join(",")', '0,2.5,5,7.5,10')
+        ->assertNoJavaScriptErrors();
+});
+
+test('net new followers change by a count, never a percentage', function () {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitFor($page, '@insights-metric-menu');
+    $page->click('@insights-metric-menu');
+    waitFor($page, '@insights-metric-option-net_followers');
+    $page->click('@insights-metric-option-net_followers');
+    waitFor($page, '@insights-metrics-legend-net_followers-change');
+
+    expect($page->script('document.querySelector(\'[data-testid="insights-metrics-legend-net_followers-change"]\').innerText.trim()'))->toMatch('/^[+-]?\d+$/');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('a metric shows no change when the previous period had none of it', function () {
+    $fresh = SocialAccount::factory()->create([
+        'workspace_id' => $this->instagram->workspace_id,
+        'platform' => Platform::Instagram,
+    ]);
+    $today = CarbonImmutable::today('UTC');
+    metricsCardFollowers($fresh, $today->subDays(1), 400);
+
+    foreach ([3, 1] as $daysAgo) {
+        metricsCardPublication($fresh, $today->subDays($daysAgo)->setTime(10, 0), ['reactions_count' => 1]);
+    }
+
+    $page = visit(route('app.channels.insights', $fresh));
+    waitFor($page, '@insights-metrics-legend-posts-value');
+
+    $page->assertSeeIn('@insights-metrics-legend-posts-value', '2')
+        ->assertMissing('@insights-metrics-legend-posts-change')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the channel chart shares as drawn in the Comparison and Both views', function (string $mode) {
+    $page = visit(route('app.channels.insights', $this->instagram));
+    waitFor($page, "@insights-metrics-mode-{$mode}");
+    $page->click("@insights-metrics-mode-{$mode}");
+    waitForState($page, "@insights-metrics-mode-{$mode}", "element.getAttribute('aria-pressed') === 'true'");
+    waitForState($page, '@share-channel-metrics', "element.dataset.state === 'ready'");
+    $page->click('@share-channel-metrics');
+    waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
+
+    $page->assertAttribute('@share-chart-preview', 'data-shape', 'combo')
+        ->assertNoJavaScriptErrors();
+})->with(['previous', 'both']);

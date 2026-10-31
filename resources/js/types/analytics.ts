@@ -63,7 +63,6 @@ export interface FollowerAccount extends AccountIdentityData {
     value: number | null;
     growth: number | null;
     net?: number | null;
-    provenance: string | null;
 }
 
 export interface PostAccount extends AccountIdentityData {

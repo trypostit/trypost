@@ -245,3 +245,97 @@ test('the followers chart offers no share card while it has no follower data', f
     $page->assertMissing('@share-followers')
         ->assertNoJavaScriptErrors();
 });
+
+/** The text the composer opened with. */
+function composerText(mixed $page): string
+{
+    waitFor($page, '@composer-base-content');
+
+    return (string) $page->script('document.querySelector(\'[data-testid="composer-base-content"]\').value');
+}
+
+test('Create post opens the composer with the card’s number as the post text', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    openShareCard($page, '@share-followers');
+    $page->click('@share-chart-post');
+
+    expect(composerText($page))->toStartWith('Followers across our channels: 123 (');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the channel chart’s post text leaves out a metric that has no value', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    $quiet = SocialAccount::factory()->instagram()->create(['workspace_id' => $account->workspace_id, 'display_name' => 'Quiet Channel']);
+
+    foreach ([4, 2] as $daysAgo) {
+        AnalyticsPublication::factory()->create([
+            'workspace_id' => $quiet->workspace_id,
+            'social_account_id' => $quiet->id,
+            'social_account_key' => $quiet->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'provider_published_at' => now()->subDays($daysAgo)->setTime(10, 0),
+        ]);
+    }
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.channels.insights', $quiet));
+    openShareCard($page, '@share-channel-metrics');
+    $page->click('@share-chart-post');
+    $text = composerText($page);
+
+    expect($text)->toContain('📈 Posts 2')
+        ->not->toContain('Followers')
+        ->not->toContain('—');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('downloading the share card saves a PNG named after the metric and today', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    openShareCard($page, '@share-followers');
+    $page->script(<<<'JS'
+        if (!window.__downloads) {
+            window.__downloads = [];
+            const createObjectURL = URL.createObjectURL.bind(URL);
+            URL.createObjectURL = (file) => {
+                window.__downloads.push(file.name);
+
+                return createObjectURL(file);
+            };
+        }
+    JS);
+    $page->click('@share-chart-download');
+    waitForCondition($page, 'window.__downloads.length > 0');
+
+    expect($page->script('window.__downloads[0]'))->toMatch('/^trypost-followers-\d{4}-\d{2}-\d{2}\.png$/');
+    $page->assertNoJavaScriptErrors();
+});
+
+test('closing the dialog while Create post uploads stops it, with no composer and no error', function () {
+    [$user] = insightsShareBrowserUser();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    openShareCard($page, '@share-followers');
+    $page->script(<<<'JS'
+        window.__sent = 0;
+        XMLHttpRequest.prototype.send = function () { window.__sent += 1; };
+        XMLHttpRequest.prototype.abort = function () { window.__abortedAt = performance.now(); };
+    JS);
+    $page->click('@share-chart-post');
+    waitForCondition($page, 'window.__sent > 0');
+    $page->keys('@share-chart-dialog', 'Escape');
+    waitForGone($page, '@share-chart-dialog');
+    waitForCondition($page, 'window.__abortedAt !== undefined && performance.now() - window.__abortedAt > 500');
+
+    expect($page->script('document.querySelectorAll("[data-sonner-toast]").length'))->toBe(0);
+    $page->assertMissing('@post-composer-dialog')
+        ->assertNoJavaScriptErrors();
+});

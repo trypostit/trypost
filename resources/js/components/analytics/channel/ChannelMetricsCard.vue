@@ -18,7 +18,7 @@ import {
     IconWorld,
 } from '@tabler/icons-vue';
 import { wTrans } from 'laravel-vue-i18n';
-import { computed, type Component, type ComputedRef, ref } from 'vue';
+import { computed, type Component, reactive, ref } from 'vue';
 
 import ComparedRange from '@/components/analytics/ComparedRange.vue';
 import MetricChange from '@/components/analytics/MetricChange.vue';
@@ -52,6 +52,7 @@ import {
     metricInsight,
     monthLabel,
     POST_TOTAL_METRICS,
+    type MetricDelta,
     seriesDelta,
     shownPeriod,
     seriesFor,
@@ -114,8 +115,8 @@ const modes = [
 ] as const;
 const SELECTED = 'border-transparent bg-primary-selected text-primary-text hover:bg-primary-selected hover:text-primary-text';
 
-/** Every series metric's name, kept up to date as the locale loads (see `.ai/rules/js.md`). */
-const SERIES_LABELS = {
+/** Every series metric's name, kept up to date as the locale loads (see `.ai/rules/js.md`); `reactive` reads each through. */
+const seriesLabels: Record<SeriesMetric, string> = reactive({
     posts: wTrans('analytics.channel.series.posts'),
     followers: wTrans('analytics.channel.series.followers'),
     net_followers: wTrans('analytics.channel.series.net_followers'),
@@ -124,18 +125,7 @@ const SERIES_LABELS = {
     impressions: wTrans('analytics.channel.series.impressions'),
     profile_visits: wTrans('analytics.channel.series.profile_visits'),
     growth_rate: wTrans('analytics.channel.series.growth_rate'),
-} satisfies Record<SeriesMetric, ComputedRef<string>>;
-
-const seriesLabels = computed((): Record<SeriesMetric, string> => ({
-    posts: SERIES_LABELS.posts.value,
-    followers: SERIES_LABELS.followers.value,
-    net_followers: SERIES_LABELS.net_followers.value,
-    reach: SERIES_LABELS.reach.value,
-    views: SERIES_LABELS.views.value,
-    impressions: SERIES_LABELS.impressions.value,
-    profile_visits: SERIES_LABELS.profile_visits.value,
-    growth_rate: SERIES_LABELS.growth_rate.value,
-}));
+});
 
 const primaryMetric = ref<SeriesMetric>('posts');
 const selection = ref<Selection>({ kind: 'preset', preset: 'content_impact' });
@@ -261,7 +251,7 @@ const share = computed(
                     series,
                     specs.value,
                     chartMode.value,
-                    seriesLabels.value,
+                    seriesLabels,
                     props.channel,
                     range,
                 ),
@@ -272,20 +262,20 @@ const shownTotals = computed(
     () => chartSeries.value?.totals[shownPeriod(chartMode.value)],
 );
 /** How each shown metric moved since the previous period; the Comparison view shows the previous period itself. */
-const deltas = computed(() => {
+const deltaOf = (metric: SeriesMetric): MetricDelta | null => {
     const series = props.series;
 
     if (!series || chartMode.value === 'previous') {
-        return {};
+        return null;
     }
 
-    return Object.fromEntries(
-        specs.value.map((spec) => [
-            spec.metric,
-            seriesDelta(series, spec.metric),
-        ]),
-    );
-});
+    return seriesDelta(series, metric);
+};
+
+/** Each metric of the legend with its change, so the template reads a change it has already checked. */
+const legend = computed((): { spec: SeriesSpec; delta: MetricDelta | null }[] =>
+    specs.value.map((spec) => ({ spec, delta: deltaOf(spec.metric) })),
+);
 
 const isMetricActive = computed(
     () => activeSelection.value.kind === 'metric',
@@ -526,7 +516,7 @@ const changeMode = (value: string): void => {
                                 data-testid="insights-metrics-legend"
                             >
                                 <div
-                                    v-for="spec in specs"
+                                    v-for="{ spec, delta } in legend"
                                     :key="spec.metric"
                                     class="flex min-w-0 flex-col gap-1"
                                     :data-testid="`insights-metrics-legend-${spec.metric}`"
@@ -588,11 +578,11 @@ const changeMode = (value: string): void => {
                                         </span>
                                     </span>
                                     <MetricChange
-                                        v-if="deltas[spec.metric]"
+                                        v-if="delta"
                                         class="self-start"
                                         :data-testid="`insights-metrics-legend-${spec.metric}-change`"
-                                        :change="deltas[spec.metric]!.value"
-                                        :label="deltas[spec.metric]!.label"
+                                        :change="delta.value"
+                                        :label="delta.label"
                                     />
                                 </div>
                             </div>

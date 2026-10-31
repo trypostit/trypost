@@ -266,7 +266,7 @@ test('workspace dashboard separates accounts and switches follower and post char
         ->assertPresent('@accounts-unovis-bar-chart')
         ->click('@posts-stacked')
         ->assertVisible('@posts-unovis-chart')
-        ->assertScript('Array.from(document.querySelectorAll("[data-testid=posts-unovis-chart] svg text"), (text) => text.textContent).includes("Posts")', false)
+        ->assertScript('document.querySelector("[data-testid=posts-unovis-chart]").textContent.includes("Posts")', false)
         ->hover('[data-testid="analytics-post-bar"] >> nth=0');
     waitFor($page, '@analytics-tooltip-total');
 
