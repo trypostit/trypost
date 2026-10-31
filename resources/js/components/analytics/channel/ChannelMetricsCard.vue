@@ -43,6 +43,7 @@ import date from '@/date';
 import {
     availablePresets,
     bucketLabel,
+    definedValues,
     formatSeriesValue,
     growthRateSeries,
     hasEnoughHistory,
@@ -171,10 +172,25 @@ const chartSeries = computed<ChannelMetricSeries | undefined>(() =>
         ? growthRateSeries(props.series.growth)
         : props.series,
 );
-const chartMode = computed<ChartMode>(() =>
-    growthRate.value ? 'current' : mode.value,
-);
 const specs = computed<SeriesSpec[]>(() => seriesFor(activeSelection.value));
+/** Whether any metric the chart shows has data in the previous period; without it there is nothing to compare. */
+const hasComparison = computed(() => {
+    const series = chartSeries.value;
+
+    if (!series) {
+        return false;
+    }
+
+    return specs.value.some((spec) => definedValues(series.previous, spec.metric).length > 0);
+});
+/** The periods the chart shows: only this period for the growth rate or when nothing can be compared. */
+const chartMode = computed<ChartMode>(() => {
+    if (growthRate.value || !hasComparison.value) {
+        return 'current';
+    }
+
+    return mode.value;
+});
 const enoughHistory = computed(() =>
     chartSeries.value
         ? hasEnoughHistory(chartSeries.value, specs.value, chartMode.value)
@@ -580,7 +596,7 @@ const changeMode = (value: string): void => {
                                 </div>
                             </div>
                             <AnalyticsModeToggle
-                                v-if="!growthRate"
+                                v-if="!growthRate && hasComparison"
                                 :model-value="mode"
                                 label="analytics.channel.metrics_card.chart_mode"
                                 :options="modes"

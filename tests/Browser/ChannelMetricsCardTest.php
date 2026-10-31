@@ -364,3 +364,27 @@ test('the column chooser hides and adds columns and remembers the choice', funct
         ->assertVisible('@insights-sort-reactions')
         ->assertNoJavaScriptErrors();
 });
+
+test('a chart whose metrics have nothing in the previous period offers no comparison', function () {
+    $fresh = SocialAccount::factory()->create([
+        'workspace_id' => $this->instagram->workspace_id,
+        'platform' => Platform::Instagram,
+    ]);
+    $today = CarbonImmutable::today('UTC');
+
+    foreach (range(0, 9) as $daysAgo) {
+        metricsCardFollowers($fresh, $today->subDays($daysAgo), 500 - $daysAgo);
+    }
+
+    $page = visit(route('app.channels.insights', $fresh));
+    waitForMetricsCardTestId($page, 'insights-metric-menu');
+    $page->click('@insights-metric-menu');
+    waitForMetricsCardTestId($page, 'insights-metric-option-followers');
+    $page->click('@insights-metric-option-followers');
+    waitForMetricsCardTestId($page, 'insights-metrics-legend-followers');
+
+    $page->assertMissing('@insights-metrics-mode-current')
+        ->assertMissing('@insights-metrics-mode-both')
+        ->assertSeeIn('@insights-metrics-legend-followers-change', '+9')
+        ->assertNoJavaScriptErrors();
+});
