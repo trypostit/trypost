@@ -127,7 +127,7 @@ test('the metrics card loads after the page and opens on content impact', functi
         ->assertVisible('@insights-preset-follower_growth_rate')
         ->assertSeeIn('@insights-metrics-legend-posts-value', '6')
         ->assertSeeIn('@insights-metrics-legend-posts-change', '+500%')
-        ->assertSeeIn('@insights-metrics-legend-followers-change', '+150')
+        ->assertSeeIn('@insights-metrics-legend-followers-change', '+145')
         ->assertScript('Array.from(document.querySelectorAll("[data-testid=insights-metrics-chart] svg text"), (text) => text.textContent).some((text) => text === "Posts" || text === "Followers")', false)
         ->assertVisible('@insights-metrics-legend-followers')
         ->assertPresent('@insights-metrics-table')

@@ -138,29 +138,49 @@ export const isPercentMetric = (metric: SeriesMetric): boolean =>
     PERCENT_METRICS.includes(metric);
 
 /** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
-const COUNTED_METRICS: readonly SeriesMetric[] = ['followers', 'net_followers'];
+const COUNTED_METRICS: readonly SeriesMetric[] = ['net_followers'];
 
 /** How a metric moved since the previous period: the signed value and how the page labels it. */
 export type SeriesDelta = { value: number; label: string };
 
+/** A count's change as the page labels it: "+7", "-3". */
+const countDelta = (change: number): SeriesDelta => ({ value: change, label: formatCountChange(change) });
+
 /**
- * How a channel metric moved since the previous period: a difference for the
- * counted metrics ("+7"), else a percentage of the previous value ("+8.5%"),
- * kept positive so a loss shrinking reads as a rise. Null for a rate, which
- * has no previous period, when a total is unknown, or when there is no
- * previous value to compare with.
+ * The followers gained or lost within the period, from its first reading to
+ * its last, like the workspace's Followers card; null without two readings.
  */
-export const seriesDelta = (
-    metric: SeriesMetric,
-    current: number | null | undefined,
-    previous: number | null | undefined,
-): SeriesDelta | null => {
+const followersDelta = (series: ChannelMetricSeries): SeriesDelta | null => {
+    const readings = definedValues(series.current, 'followers');
+
+    if (readings.length < 2) {
+        return null;
+    }
+
+    return countDelta(readings[readings.length - 1] - readings[0]);
+};
+
+/**
+ * How a channel metric moved: followers by what the period gained or lost,
+ * net new followers by the difference with the previous period ("+7"), the
+ * rest by a percentage of the previous period ("+8.5%"), kept positive so a
+ * loss shrinking reads as a rise. Null for a rate, which has no previous
+ * period, or when there is nothing to compare.
+ */
+export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): SeriesDelta | null => {
+    if (metric === 'followers') {
+        return followersDelta(series);
+    }
+
+    const current = series.totals.current[metric];
+    const previous = series.totals.previous[metric];
+
     if (isPercentMetric(metric) || current == null || previous == null) {
         return null;
     }
 
     if (COUNTED_METRICS.includes(metric)) {
-        return { value: current - previous, label: formatCountChange(current - previous) };
+        return countDelta(current - previous);
     }
 
     if (previous === 0) {

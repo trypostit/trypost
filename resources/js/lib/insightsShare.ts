@@ -280,13 +280,9 @@ export const followersShareOption = (
     });
 };
 
-/** A channel metric's change since the previous period, as the card draws it. */
-const seriesChange = (
-    metric: SeriesMetric,
-    current: number | null | undefined,
-    previous: number | null | undefined,
-): ShareChange | null => {
-    const delta = seriesDelta(metric, current, previous);
+/** A channel metric's change, as the card draws it. */
+const seriesChange = (series: ChannelMetricSeries, metric: SeriesMetric): ShareChange | null => {
+    const delta = seriesDelta(series, metric);
 
     if (!delta) {
         return null;
@@ -319,7 +315,7 @@ const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: strin
         previous: series.previous.map((point) => point.values[spec.metric] ?? null),
         figure: formatSeriesValue(current, spec.metric),
         previousFigure: formatSeriesValue(previous, spec.metric),
-        change: seriesChange(spec.metric, current, previous),
+        change: seriesChange(series, spec.metric),
     };
 };
 

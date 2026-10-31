@@ -264,7 +264,7 @@ const deltas = computed(() => {
     return Object.fromEntries(
         specs.value.map((spec) => [
             spec.metric,
-            seriesDelta(spec.metric, series.totals.current[spec.metric], series.totals.previous[spec.metric]),
+            seriesDelta(series, spec.metric),
         ]),
     );
 });
@@ -569,13 +569,14 @@ const changeMode = (value: string): void => {
                                                 }}</span
                                             >
                                         </span>
-                                        <MetricChange
-                                            v-if="deltas[spec.metric]"
-                                            :data-testid="`insights-metrics-legend-${spec.metric}-change`"
-                                            :change="deltas[spec.metric]!.value"
-                                            :label="deltas[spec.metric]!.label"
-                                        />
                                     </span>
+                                    <MetricChange
+                                        v-if="deltas[spec.metric]"
+                                        class="self-start"
+                                        :data-testid="`insights-metrics-legend-${spec.metric}-change`"
+                                        :change="deltas[spec.metric]!.value"
+                                        :label="deltas[spec.metric]!.label"
+                                    />
                                 </div>
                             </div>
                             <AnalyticsModeToggle

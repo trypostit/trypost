@@ -1147,7 +1147,7 @@ const paintDates = (
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8], maxDates: 6 };
+const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8], maxDates: 6 };
 
 /**
  * How wide each bar is: one bar per day like the page's, or, with both
@@ -1261,6 +1261,15 @@ const legendEntries = (series: ShareSeries, mode: ChartMode): { figure: string; 
     return [{ figure: series.figure, previous: false }];
 };
 
+/** How wide a legend item's change is drawn; none without one. */
+const legendChangeWidth = (context: CanvasRenderingContext2D, change: ShareChange | null): number => {
+    if (!change) {
+        return 0;
+    }
+
+    return changeWidth(context, change, COMBO.changeSize);
+};
+
 /** The change a legend item shows: none in Comparison, which shows the previous period itself. */
 const legendChange = (series: ShareSeries, mode: ChartMode): ShareChange | null => {
     if (mode === 'previous') {
@@ -1284,9 +1293,9 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         context.font = figureFont;
         const entryWidths = entries.map((entry) => COMBO.swatch + COMBO.swatchGap + context.measureText(entry.figure).width);
         const figuresWidth = entryWidths.reduce((total, width) => total + width, 0) + COMBO.changeGap * (entries.length - 1);
-        const changeRoom = change ? COMBO.changeGap + changeWidth(context, change, COMBO.changeSize) : 0;
+        const changeRoom = legendChangeWidth(context, change);
         context.font = labelFont;
-        const width = Math.max(context.measureText(series.label).width, figuresWidth + changeRoom);
+        const width = Math.max(context.measureText(series.label).width, figuresWidth, changeRoom);
         const left = edge - width;
         const baseline = top + COMBO.labelSize + COMBO.figureLine;
         const color = resolveCssColor(series.color);
@@ -1301,7 +1310,8 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         });
 
         if (change) {
-            paintChange(context, change, { x: cursor, y: baseline - COMBO.changeSize * 1.15 }, COMBO.changeSize, 'left');
+            /** Under the figures, like the page's legend and the workspace's Followers card. */
+            paintChange(context, change, { x: left, y: baseline + COMBO.changeBelow }, COMBO.changeSize, 'left');
         }
 
         edge = left - COMBO.legendGap;
