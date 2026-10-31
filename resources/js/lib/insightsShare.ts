@@ -2,12 +2,19 @@ import { trans } from 'laravel-vue-i18n';
 
 import date from '@/date';
 import { activeLocale } from '@/language';
-import { axisBucketLabel, formatSeriesValue, seriesDelta } from '@/lib/channelMetrics';
+import {
+    axisBucketLabel,
+    type ChartMode,
+    formatSeriesValue,
+    type SeriesSpec,
+    seriesDelta,
+} from '@/lib/channelMetrics';
 import type {
     ShareChange,
     ShareChannel,
     ShareLine,
     ShareMetricOption,
+    ShareSeries,
     SharePoint,
     ShareShape,
     ShareTile,
@@ -18,6 +25,7 @@ import {
     accountLabel,
     type ChannelMetricSeries,
     type FollowerAccount,
+    type MetricSeriesPoint,
     type SeriesMetric,
     type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
@@ -69,9 +77,6 @@ export const POSTS_ROWS: ChannelRowsSpec<Posts['accounts'][number]> = {
     value: (account) => account.count,
     format: formatNumberCompact,
 };
-
-/** Metrics the page draws as a line; the rest are columns. */
-const LINE_METRICS: readonly SeriesMetric[] = ['followers'];
 
 const sum = (values: number[]): number =>
     values.reduce((total, value) => total + value, 0);
@@ -147,6 +152,8 @@ const shareOption = (
     shape: 'bar',
     tiles: [],
     lines: [],
+    series: [],
+    chartMode: 'current',
     ...option,
 });
 
@@ -273,10 +280,6 @@ export const followersShareOption = (
     });
 };
 
-/** A series metric the card can draw: growth rate has no figure of its own to show. */
-export const isShareableSeriesMetric = (metric: SeriesMetric): boolean =>
-    metric !== 'growth_rate';
-
 /** A channel metric's change since the previous period, as the card draws it. */
 const seriesChange = (
     metric: SeriesMetric,
@@ -292,65 +295,72 @@ const seriesChange = (
     return { label: delta.label, direction: changeDirection(delta.value) };
 };
 
-/** What the change is measured against: "vs 120 in the previous period". */
-const seriesComparison = (
-    metric: SeriesMetric,
-    current: number | null | undefined,
-    previous: number | null | undefined,
-): string | null => {
-    if (current == null || previous == null) {
-        return null;
+/** The points the chart runs over in a chart mode: the previous period's in Comparison. */
+const chartPoints = (series: ChannelMetricSeries, mode: ChartMode): MetricSeriesPoint[] => {
+    if (mode === 'previous') {
+        return series.previous;
     }
 
-    return trans('analytics.share.previous', {
-        value: formatSeriesValue(previous, metric),
-    });
+    return series.current;
 };
 
-const seriesShape = (metric: SeriesMetric): ShareShape => {
-    if (LINE_METRICS.includes(metric)) {
-        return 'line';
-    }
+/** One metric of the channel chart as the card draws it. */
+const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: string): ShareSeries => {
+    const current = series.totals.current[spec.metric];
+    const previous = series.totals.previous[spec.metric];
 
-    return 'bar';
+    return {
+        metric: spec.metric,
+        label,
+        color: spec.color,
+        kind: spec.type,
+        axis: spec.axis,
+        current: series.current.map((point) => point.values[spec.metric] ?? null),
+        previous: series.previous.map((point) => point.values[spec.metric] ?? null),
+        figure: formatSeriesValue(current, spec.metric),
+        previousFigure: formatSeriesValue(previous, spec.metric),
+        change: seriesChange(spec.metric, current, previous),
+    };
 };
 
-/** One metric of a channel's series, drawn the way the page's chart draws it. */
-const seriesShareOption = (
+/**
+ * The channel's metrics chart exactly as the page shows it: the metrics it
+ * draws, each as bars or a line on its axis, for the periods its toggle shows.
+ */
+export const channelChartShareOption = (
     series: ChannelMetricSeries,
-    metric: SeriesMetric,
+    specs: SeriesSpec[],
+    mode: ChartMode,
+    labels: Partial<Record<SeriesMetric, string>>,
     channel: string,
     range: string,
 ): ShareMetricOption => {
-    const label = trans(`analytics.channel.series.${metric}`);
-    const current = series.totals.current[metric];
-    const previous = series.totals.previous[metric];
-    const figure = formatSeriesValue(current, metric);
+    const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric] ?? ''));
+    const tiles = drawn.map((metric) => ({ label: metric.label, figure: legendFigureOf(metric, mode), change: null }));
 
     return shareOption({
-        key: metric,
-        label,
-        figure,
-        change: seriesChange(metric, current, previous),
-        comparison: seriesComparison(metric, current, previous),
-        points: series.current.map((point) => ({
-            label: axisBucketLabel(point, series.resolution),
-            value: point.values[metric] ?? null,
-        })),
-        shape: seriesShape(metric),
-        caption: metricCaption(channel, { metric: label, value: figure, range }),
+        key: specs[0]?.metric ?? 'posts',
+        label: listOf(drawn.map((metric) => metric.label)),
+        points: chartPoints(series, mode).map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
+        shape: 'combo',
+        series: drawn,
+        chartMode: mode,
+        caption: summaryCaption(channel, tiles, range),
     });
 };
 
-/** One option per metric of a channel's series the card can draw. */
-export const channelSeriesShareOptions = (
-    series: ChannelMetricSeries,
-    channel: string,
-    range: string,
-): ShareMetricOption[] =>
-    series.metrics
-        .filter(isShareableSeriesMetric)
-        .map((metric) => seriesShareOption(series, metric, channel, range));
+/** The figure a metric's legend shows in a chart mode: the previous period's in Comparison. */
+const legendFigureOf = (metric: ShareSeries, mode: ChartMode): string => {
+    if (mode === 'previous') {
+        return metric.previousFigure;
+    }
+
+    return metric.figure;
+};
+
+/** Labels joined the way the reader's language lists them: "Posts and Followers". */
+const listOf = (labels: string[]): string =>
+    new Intl.ListFormat(activeLocale.value, { type: 'conjunction' }).format(labels);
 
 /** Every number of the Summary in one card, as the cards print them. */
 export const summaryShareOption = (

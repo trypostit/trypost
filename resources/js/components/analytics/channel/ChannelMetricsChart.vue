@@ -279,9 +279,9 @@ const groupedBarAttributes = {
 };
 const margin = computed(() => ({
     top: 12,
-    right: domains.value.right ? 48 : 12,
+    right: domains.value.right ? 56 : 12,
     bottom: 28,
-    left: 48,
+    left: 56,
 }));
 const numTicks = computed(() =>
     Math.min(props.series.current.length, 6),

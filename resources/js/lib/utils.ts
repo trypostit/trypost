@@ -51,7 +51,7 @@ export const formatNumberCompact = (value: MaybeNumber, digits = 1): string => {
 };
 
 /** The most decimals a compact axis label takes before it falls back to whole numbers. */
-const MAX_COMPACT_DIGITS = 3;
+const MAX_COMPACT_DIGITS = 2;
 
 /**
  * Compact labels for a run of axis values, with as few decimals as keep them

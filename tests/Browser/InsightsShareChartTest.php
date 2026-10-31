@@ -163,14 +163,17 @@ test('the summary shares as one card of its numbers, with no metric to pick', fu
         ->assertNoJavaScriptErrors();
 });
 
-test('the channel metrics card shares the channel’s series', function () {
+test('the channel metrics card shares the chart as it is drawn, with no metric to pick', function () {
     [$user, $account] = insightsShareBrowserUser();
     $this->actingAs($user);
 
     $page = visit(route('app.channels.insights', $account));
     openShareCard($page, '@share-channel-metrics');
 
-    $page->assertVisible('@share-chart-post')->assertNoJavaScriptErrors();
+    $page->assertAttribute('@share-chart-preview', 'data-shape', 'combo')
+        ->assertMissing('@share-chart-metric')
+        ->assertVisible('@share-chart-post')
+        ->assertNoJavaScriptErrors();
 });
 
 test('the followers share card follows the chart mode the user picked', function (string $mode, string $shape) {

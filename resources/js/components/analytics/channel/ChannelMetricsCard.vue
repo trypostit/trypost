@@ -59,8 +59,7 @@ import {
     type SeriesSpec,
 } from '@/lib/channelMetrics';
 import {
-    channelSeriesShareOptions,
-    isShareableSeriesMetric,
+    channelChartShareOption,
 } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
@@ -214,20 +213,38 @@ const rangeCaption = computed(() => {
 
     return date.formatDayMonthYearRange(props.series.range);
 });
-/** What the Share button needs, or null while the series has nothing to share. */
+/** The period the chart shows: the previous one in the Comparison view. */
+const shownRange = (series: ChannelMetricSeries): { start: string; end: string } => {
+    if (chartMode.value === 'previous') {
+        return series.previous_range;
+    }
+
+    return series.range;
+};
+
+/** What the Share button needs: the chart as it is drawn now, or null while there is nothing to share. */
 const share = computed(
     (): { range: string; build: () => ShareMetricOption[] } | null => {
-        const series = props.series;
+        const series = chartSeries.value;
 
-        if (!series?.metrics.some(isShareableSeriesMetric)) {
+        if (!series || specs.value.length === 0 || !enoughHistory.value) {
             return null;
         }
 
-        const range = date.formatDayMonthYearRange(series.range);
+        const range = date.formatDayMonthYearRange(shownRange(series));
 
         return {
             range,
-            build: () => channelSeriesShareOptions(series, props.channel, range),
+            build: () => [
+                channelChartShareOption(
+                    series,
+                    specs.value,
+                    chartMode.value,
+                    seriesLabels.value,
+                    props.channel,
+                    range,
+                ),
+            ],
         };
     },
 );
