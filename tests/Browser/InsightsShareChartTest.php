@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Enums\SocialAccount\Platform;
+use App\Enums\User\Locale;
 use App\Enums\User\Theme;
 use App\Jobs\Analytics\BootstrapAccountAnalytics;
 use App\Jobs\Analytics\CollectAccountDailySnapshot;
@@ -388,5 +389,109 @@ test('a channel with neither name nor handle is shared under its network’s nam
     $page->click('@share-chart-post');
 
     expect(composerText($page))->toStartWith('Our numbers on Instagram for ');
+    $page->assertNoJavaScriptErrors();
+});
+
+/** Adds channels with one follower reading each, named by `$name`, so the per channel card fills up. */
+function insightsShareChannels(SocialAccount $account, int $count, Closure $name): void
+{
+    foreach (range(1, $count) as $index) {
+        $channel = SocialAccount::factory()->instagram()->create([
+            'workspace_id' => $account->workspace_id,
+            'display_name' => $name($index),
+        ]);
+        AnalyticsAccountDailySnapshot::factory()->create([
+            'workspace_id' => $account->workspace_id,
+            'social_account_id' => $channel->id,
+            'social_account_key' => $channel->id,
+            'platform' => Platform::Instagram,
+            'network' => Platform::Instagram->network(),
+            'platform_user_id' => $channel->platform_user_id,
+            'date' => now('UTC')->subDays(3)->toDateString(),
+            'followers_count' => 1000 + $index,
+            'account_display_name' => $name($index),
+        ]);
+    }
+}
+
+/** Records every text the card writes and the direction it writes it in, before the share dialog paints. */
+function recordCardText(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            if (window.__drawn) {
+                return;
+            }
+
+            window.__drawn = [];
+            const fillText = CanvasRenderingContext2D.prototype.fillText;
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
+                window.__drawn.push({ text: String(text), direction: this.direction });
+
+                return fillText.call(this, text, ...rest);
+            };
+        })();
+    JS);
+}
+
+test('a long channel name is cut between whole characters, never inside an emoji', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    $name = str_repeat('Team 🚀 ', 20);
+    insightsShareChannels($account, 11, fn (int $index): string => $index === 1 ? $name : sprintf('Channel %02d', $index));
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-followers');
+    recordCardText($page);
+    openShareCard($page, '@share-followers');
+
+    $cut = $page->script(<<<JS
+        (() => {
+            const full = '{$name}';
+            const label = window.__drawn.map((entry) => entry.text).find((text) => text.endsWith('…') && full.startsWith(text.slice(0, -1)));
+            const kept = label.slice(0, -1);
+            const boundaries = new Set(Array.from(new Intl.Segmenter().segment(full), (piece) => piece.index));
+
+            return { cut: kept.length < full.length, wholeCharacters: boundaries.has(kept.length), wellFormed: label.isWellFormed() };
+        })()
+    JS);
+
+    expect($cut)->toBe(['cut' => true, 'wholeCharacters' => true, 'wellFormed' => true]);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('in a right-to-left language the card is still written left to right, preview and file alike', function () {
+    [$user] = insightsShareBrowserUser();
+    $user->update(['locale' => Locale::Arabic]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-followers');
+    recordCardText($page);
+    openShareCard($page, '@share-followers');
+    $page->click('@share-chart-download');
+    waitForCondition($page, 'window.__drawn.length > 0');
+
+    expect($page->script('document.documentElement.dir'))->toBe('rtl')
+        ->and($page->script('[...new Set(window.__drawn.map((entry) => entry.direction))]'))->toBe(['ltr']);
+    $page->assertNoJavaScriptErrors();
+});
+
+test('the per channel card draws the twelve channels with the most followers', function () {
+    [$user, $account] = insightsShareBrowserUser();
+
+    insightsShareChannels($account, 12, fn (int $index): string => sprintf('Channel %02d', $index));
+
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitFor($page, '@share-followers');
+    recordCardText($page);
+    openShareCard($page, '@share-followers');
+
+    $names = $page->script('[...new Set(window.__drawn.map((entry) => entry.text).filter((text) => /^Channel \\d{2}$/.test(text)))].sort()');
+
+    expect($names)->toHaveCount(12)
+        ->and($page->script('window.__drawn.some((entry) => entry.text === "123")'))->toBeFalse();
     $page->assertNoJavaScriptErrors();
 });
