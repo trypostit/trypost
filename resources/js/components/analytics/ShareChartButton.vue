@@ -40,6 +40,7 @@ const openDialog = (): void => {
                         type="button"
                         variant="outline"
                         size="icon"
+                        class="shrink-0"
                         :aria-label="$t('analytics.share.button')"
                         :data-testid="testId"
                         @click="openDialog"
