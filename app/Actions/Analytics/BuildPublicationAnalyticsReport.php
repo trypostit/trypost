@@ -105,7 +105,7 @@ class BuildPublicationAnalyticsReport
                 $bucket['accounts'][$key] = $count;
             }
 
-            $bucket['total'] = array_sum(data_get($bucket, 'accounts'));
+            $bucket['total'] = collect(data_get($bucket, 'accounts'))->sum();
         }
         unset($bucket);
 
@@ -116,7 +116,7 @@ class BuildPublicationAnalyticsReport
             'previous_totals' => $this->finalizeTotals($previousTotals),
             'posts' => [
                 'resolution' => $this->buckets->resolution($current),
-                'total' => array_sum(array_column($postAccounts, 'count')),
+                'total' => collect($postAccounts)->sum('count'),
                 'accounts' => $postAccounts,
                 'buckets' => $buckets,
             ],
