@@ -98,9 +98,9 @@ const tickAttributes = {
 const AVATAR_SIZE = 24;
 /** Between a row's number and the start of its bar. */
 const COLUMN_GAP = 12;
-/** Avatar, name and number before the bars; narrower on a phone so the bars keep room. */
+/** Name, number and avatar before the bars; a phone drops the name so the bars keep the room. */
 const belowSm = useBelowBreakpoint('sm');
-const columnWidth = computed(() => (belowSm.value ? 176 : 240));
+const columnWidth = computed(() => (belowSm.value ? 80 : 240));
 /** The bars start after the rows' column; the axis itself draws no text to make room for. */
 const chartPadding = computed(() => ({
     top: 12,

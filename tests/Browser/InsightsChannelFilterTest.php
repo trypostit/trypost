@@ -192,6 +192,8 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
         ->assertScript('document.querySelector("[data-testid=insights-range-custom]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.querySelector("[data-testid=analytics-channel-filter]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-account-name]")).every((name) => name.offsetParent === null)', true)
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=accounts-unovis-bar-chart] [data-testid=analytics-account-value]")).every((value) => value.offsetParent !== null)', true)
         ->assertNoJavaScriptErrors();
 });
 

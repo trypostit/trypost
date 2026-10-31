@@ -11,11 +11,14 @@ defineProps<{
 
 <template>
     <div class="flex h-full items-center gap-2">
-        <span class="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+        <span
+            class="min-w-0 flex-1 truncate text-xs text-muted-foreground max-sm:hidden"
+            data-testid="analytics-account-name"
+        >
             {{ accountLabel(account) }}
         </span>
         <span
-            class="shrink-0 text-sm font-medium text-foreground tabular-nums"
+            class="ms-auto shrink-0 text-sm font-medium text-foreground tabular-nums"
             data-testid="analytics-account-value"
         >
             {{ value }}
