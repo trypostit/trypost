@@ -16,15 +16,6 @@ interface ChunkedUploadOptions {
     onError?: (error: any) => void;
 }
 
-interface ChunkedUploadResult {
-    id: string;
-    path?: string;
-    url: string;
-    type: MediaType;
-    mime_type?: string;
-    original_filename: string;
-    [key: string]: any;
-}
 
 /** The server answered a chunk with an error status; `message` is its first validation message, when it sent one. */
 export class ChunkedUploadError extends Error {
@@ -107,27 +98,8 @@ const sendChunk = (
         xhr.send(chunk);
     });
 
-/** The media item an upload stands for, taking from the file what the server left out. */
-export const uploadedMediaItem = (uploaded: ChunkedUploadResult, file: File): MediaItem => {
-    if (!uploaded.id || !uploaded.url) {
-        throw new Error('Incomplete upload');
-    }
-
-    return {
-        id: uploaded.id,
-        path: uploaded.path,
-        url: uploaded.url,
-        type: uploaded.type,
-        mime_type: uploaded.mime_type ?? file.type,
-        original_filename: uploaded.original_filename ?? file.name,
-        size: uploaded.size ?? file.size,
-        meta: uploaded.meta,
-        upload_token: uploaded.upload_token ?? null,
-        created_at: uploaded.created_at,
-    };
-};
-
-export const uploadChunked = async (options: ChunkedUploadOptions): Promise<ChunkedUploadResult> => {
+/** Uploads the file in chunks; the last answer is the server's MediaResource, returned as the media item. */
+export const uploadChunked = async (options: ChunkedUploadOptions): Promise<MediaItem> => {
     const {
         file,
         url,
@@ -179,7 +151,11 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
 
             if (data.done) {
                 onComplete?.(data);
-                return data;
+
+                const media: MediaItem & { done?: boolean } = { ...data };
+                delete media.done;
+
+                return media;
             }
         }
 

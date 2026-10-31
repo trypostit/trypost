@@ -38,7 +38,7 @@ import {
     type ShareTint,
 } from '@/lib/insightsShareCard';
 import { storeChunked } from '@/routes/app/media';
-import { uploadChunked, uploadedMediaItem } from '@/utils/chunkedUpload';
+import { uploadChunked } from '@/utils/chunkedUpload';
 
 const props = defineProps<{
     variant: 'chart' | 'summary';
@@ -203,10 +203,11 @@ const createPost = async (): Promise<void> => {
             throw new Error('Nothing to share');
         }
 
-        const media = uploadedMediaItem(
-            await uploadChunked({ file, url: storeChunked.url(), signal }),
+        const media = await uploadChunked({
             file,
-        );
+            url: storeChunked.url(),
+            signal,
+        });
 
         open.value = false;
         openPostComposer({

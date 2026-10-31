@@ -78,14 +78,10 @@ const colorAccessor = (point: BarPoint, stack: number): string =>
         ? `color-mix(in srgb, ${rowColor(point)} 40%, var(--card))`
         : rowColor(point);
 const formatAccount = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const account = props.rows[index]?.account;
-    if (!account) return '';
+    const account =
+        typeof tick === 'number' ? props.rows[Math.round(tick)]?.account : null;
 
-    const label = accountLabel(account);
-    const short = label.length > 12 ? `${label.slice(0, 11)}…` : label;
-
-    return short.replaceAll(' ', '\u00A0');
+    return account ? accountLabel(account) : '';
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
 const detailFormatter = (key: string): string | null =>
@@ -113,10 +109,11 @@ const tickAttributes = {
 const AVATAR_SIZE = 24;
 const AVATAR_OVERHANG = 4;
 const AVATAR_GAP = 8;
+/** The widest a channel's name gets next to its bar before the axis trims it with an ellipsis. */
+const ACCOUNT_LABEL_WIDTH = 88;
 const appContext = getCurrentInstance()?.appContext ?? null;
 const avatarHosts: HTMLElement[] = [];
 const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
-
 
 const unmountAvatars = (): void => {
     avatarHosts.splice(0).forEach((host) => {
@@ -242,6 +239,9 @@ const barAttributes = {
             <VisAxis
                 type="y"
                 :tick-format="formatAccount"
+                :tick-text-width="ACCOUNT_LABEL_WIDTH"
+                tick-text-fit-mode="trim"
+                tick-text-trim-type="end"
                 :tick-values="categoryTicks"
                 :tick-padding="AVATAR_SIZE + AVATAR_GAP + 6"
                 :duration="0"
