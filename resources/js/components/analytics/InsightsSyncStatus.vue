@@ -39,7 +39,7 @@ const lastSyncedAt = computed<string | null>(() =>
         <PopoverTrigger as-child>
             <button
                 type="button"
-                class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-primary-subtle text-primary-strong transition-control hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:brightness-95"
+                class="inline-flex size-8 cursor-pointer items-center justify-center rounded-full bg-primary-subtle max-sm:hidden text-primary-strong transition-control hover:brightness-95 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-[state=open]:brightness-95"
                 :aria-label="$t('analytics.insights.sync.button')"
                 :title="$t('analytics.insights.sync.button')"
                 data-testid="insights-sync-status"
