@@ -100,6 +100,11 @@ const cards = computed(() =>
     })),
 );
 
+/** Whether any card has a number; with none there is nothing to share. */
+const hasAnyValue = computed((): boolean =>
+    cards.value.some((card) => card.metric.value !== null),
+);
+
 const desktopColumns = computed((): string => {
     const count = cards.value.length;
 
@@ -177,6 +182,7 @@ const buildShareOption = (): ShareMetricOption =>
     >
         <template #actions>
             <ShareChartButton
+                v-if="hasAnyValue"
                 :subject="channel"
                 :range="rangeLabel"
                 :build="buildShareOption"

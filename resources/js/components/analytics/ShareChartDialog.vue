@@ -199,32 +199,30 @@ const createPost = async (): Promise<void> => {
                 data-testid="share-chart-preview"
             />
 
-            <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
-                <div class="grid w-full gap-2">
-                    <span class="text-sm font-medium text-foreground">{{
-                        $t('analytics.share.color')
-                    }}</span>
-                    <div
-                        class="grid grid-cols-8 gap-2.5 sm:grid-cols-16"
-                        role="radiogroup"
-                        :aria-label="$t('analytics.share.color')"
-                    >
-                        <button
-                            v-for="swatch in SHARE_TINTS"
-                            :key="swatch.key"
-                            type="button"
-                            role="radio"
-                            :aria-checked="tint.key === swatch.key"
-                            :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="aspect-square w-full cursor-pointer rounded-md bg-(--swatch) inset-ring inset-ring-black/6 ring-offset-background transition-[box-shadow] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring aria-checked:inset-ring-0 aria-checked:ring-[1.5px] aria-checked:ring-offset-2 aria-checked:ring-(--swatch-ring)"
-                            :style="{
-                                '--swatch': swatch.ground,
-                                '--swatch-ring': swatch.strong,
-                            }"
-                            :data-testid="`share-chart-color-${swatch.key}`"
-                            @click="chooseTint(swatch)"
-                        />
-                    </div>
+            <div class="grid w-full gap-2">
+                <span class="text-sm font-medium text-foreground">{{
+                    $t('analytics.share.color')
+                }}</span>
+                <div
+                    class="grid grid-cols-8 gap-2.5 sm:grid-cols-16"
+                    role="radiogroup"
+                    :aria-label="$t('analytics.share.color')"
+                >
+                    <button
+                        v-for="swatch in SHARE_TINTS"
+                        :key="swatch.key"
+                        type="button"
+                        role="radio"
+                        :aria-checked="tint.key === swatch.key"
+                        :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
+                        class="aspect-square w-full cursor-pointer rounded-md bg-(--swatch) inset-ring inset-ring-black/6 ring-offset-background transition-[box-shadow] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring aria-checked:inset-ring-0 aria-checked:ring-[1.5px] aria-checked:ring-offset-2 aria-checked:ring-(--swatch-ring)"
+                        :style="{
+                            '--swatch': swatch.ground,
+                            '--swatch-ring': swatch.strong,
+                        }"
+                        :data-testid="`share-chart-color-${swatch.key}`"
+                        @click="chooseTint(swatch)"
+                    />
                 </div>
             </div>
 

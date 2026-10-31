@@ -6,7 +6,8 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import { type AccountIdentityData, accountLabel } from '@/types/analytics';
+import { accountLabel } from '@/lib/analyticsAccounts';
+import type { AccountIdentityData } from '@/types/analytics';
 
 const props = defineProps<{
     account: AccountIdentityData;

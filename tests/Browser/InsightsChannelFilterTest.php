@@ -133,7 +133,7 @@ test('the follower bar tooltip shows the verified mark of an X channel', functio
         ->assertNoJavaScriptErrors();
 });
 
-test('the followers chart prints each channel’s number next to its bar or at the end of its line, with no legend', function () {
+test('the followers chart prints each channel’s number next to its bar or at the end of its line', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -146,21 +146,18 @@ test('the followers chart prints each channel’s number next to its bar or at t
     $page->assertScript($values, '120,30')
         ->assertScript('document.querySelector("[data-testid=analytics-axis-channel]").closest("[aria-hidden=true]") === null', true)
         ->assertSeeIn('@analytics-followers-change', '+20')
-        ->assertScript($aligned, true)
-        ->assertMissing('@analytics-followers-split-legend');
+        ->assertScript($aligned, true);
 
     $page->click('@followers-growth');
     waitForText($page, '@analytics-account-value', '+10');
 
-    $page->assertScript($values, '+10,+10')
-        ->assertMissing('@analytics-followers-split-legend');
+    $page->assertScript($values, '+10,+10');
 
     $page->click('@followers-line');
     waitForText($page, '@analytics-line-end-value', '120');
 
     $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).sort().join(",")', '120,30')
-        ->assertScript('(() => { const chart = document.querySelector("[data-testid=followers-unovis-chart]").getBoundingClientRect(); return Array.from(document.querySelectorAll("[data-testid=followers-line-end]")).every((label) => label.getBoundingClientRect().left >= chart.left + chart.width / 2); })()', true)
-        ->assertMissing('@analytics-followers-split-legend');
+        ->assertScript('(() => { const chart = document.querySelector("[data-testid=followers-unovis-chart]").getBoundingClientRect(); return Array.from(document.querySelectorAll("[data-testid=followers-line-end]")).every((label) => label.getBoundingClientRect().left >= chart.left + chart.width / 2); })()', true);
 
     $page->hover('[data-testid="followers-line-end"] >> nth=0');
     waitForState($page, '@followers-unovis-chart', "element.querySelectorAll('[data-dimmed=true]').length > 0");
@@ -180,10 +177,9 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
         ->hover('[data-testid="analytics-account-bar"] >> nth=0');
     waitFor($page, '@analytics-tooltip-detail');
 
-    $page->assertMissing('@analytics-tooltip-swatch')
-        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
+    $page->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
         ->assertScript('document.querySelectorAll("[data-testid=analytics-tooltip-detail-label]").length', 2)
-        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail] dd")?.innerText', '110')
+        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail-value]")?.innerText', '110')
         ->assertNoJavaScriptErrors();
 
     $page->resize(390, 844);

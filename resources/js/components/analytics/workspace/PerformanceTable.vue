@@ -28,16 +28,13 @@ import {
     type PerformanceMetric,
     usePerformanceColumns,
 } from '@/composables/usePerformanceColumns';
+import { accountLabel } from '@/lib/analyticsAccounts';
 import {
     formatNumberCompact,
     formatPercent,
     formatPercentChange,
 } from '@/lib/utils';
-import {
-    accountLabel,
-    type PerformanceRow,
-    type WorkspaceAnalyticsReport,
-} from '@/types/analytics';
+import type { PerformanceRow, WorkspaceAnalyticsReport } from '@/types/analytics';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsSection from './AnalyticsSection.vue';

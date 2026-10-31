@@ -45,6 +45,17 @@ function insightsShareBrowserUser(): array
     return [$user->fresh(), $account];
 }
 
+/** The photo the test channels get: a picture the test server serves, unlike the faked storage disk. */
+const INSIGHTS_SHARE_AVATAR = '/images/accounts/linkedin.png';
+
+/** Gives the channel a photo the page can load, on the follower readings Insights reads it from. */
+function insightsShareAvatar(SocialAccount $account): void
+{
+    AnalyticsAccountDailySnapshot::query()
+        ->where('social_account_id', $account->id)
+        ->update(['account_avatar_url' => INSIGHTS_SHARE_AVATAR]);
+}
+
 /** Opens the share dialog from `$button` and waits for its preview to be drawn. */
 function openShareCard(mixed $page, string $button): void
 {
@@ -68,8 +79,16 @@ test('the followers chart opens a share card in a TryPost tint that turns into a
     openShareCard($page, '@share-followers');
 
     $page->click('@share-chart-color-green')
-        ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true')
-        ->click('@share-chart-post');
+        ->assertAttribute('@share-chart-color-green', 'aria-checked', 'true');
+    waitForCondition($page, <<<'JS'
+        (() => {
+            const canvas = document.querySelector('[data-testid="share-chart-preview"]');
+            const [r, g, b] = canvas.getContext('2d').getImageData(2, Math.round(canvas.height / 2), 1, 1).data;
+
+            return `${r},${g},${b}` === '217,241,209';
+        })()
+    JS);
+    $page->click('@share-chart-post');
 
     waitFor($page, '@post-composer-dialog');
     waitForGone($page, '@share-chart-dialog');
@@ -99,10 +118,9 @@ test('copying the share card writes a PNG to the clipboard', function () {
         ->assertNoJavaScriptErrors();
 });
 
-test('the followers card still exports when a channel photo cannot load with CORS', function () {
+test('the followers card copies with a channel photo drawn on it', function () {
     [$user, $account] = insightsShareBrowserUser();
-    Storage::put('social-accounts/avatar.png', file_get_contents(base_path('tests/fixtures/blue-logo.png')));
-    $account->update(['avatar_url' => 'social-accounts/avatar.png']);
+    insightsShareAvatar($account);
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
@@ -122,18 +140,22 @@ test('the followers card still exports when a channel photo cannot load with COR
         ->assertNoJavaScriptErrors();
 });
 
-test('the share card loads each channel photo before the dialog opens', function () {
+test('the share card loads each channel photo before the dialog opens and draws it fetched with CORS', function () {
     [$user, $account] = insightsShareBrowserUser();
-    Storage::put('social-accounts/avatar.png', file_get_contents(base_path('tests/fixtures/blue-logo.png')));
-    $account->update(['avatar_url' => 'social-accounts/avatar.png']);
+    insightsShareAvatar($account);
     $this->actingAs($user);
 
     $page = visit(route('app.insights'));
     waitForState($page, '@share-followers', "element.dataset.state === 'ready'");
 
     $page->assertAttribute('@share-followers', 'data-state', 'ready')
-        ->assertMissing('@share-chart-dialog')
-        ->assertNoJavaScriptErrors();
+        ->assertMissing('@share-chart-dialog');
+
+    recordCanvasDrawing($page);
+    openShareCard($page, '@share-followers');
+
+    expect($page->script('window.__images.some((source) => source.includes("/images/accounts/linkedin.png") && source.includes("cors=1"))'))->toBeTrue();
+    $page->assertNoJavaScriptErrors();
 });
 
 test('a browser that cannot copy images is told to download the card instead', function () {
@@ -195,8 +217,7 @@ test('the followers share card follows the chart mode the user picked', function
 
 test('the posts share card follows the chart mode the user picked', function (string $mode, string $shape) {
     [$user, $account] = insightsShareBrowserUser();
-    Storage::put('social-accounts/avatar.png', file_get_contents(base_path('tests/fixtures/blue-logo.png')));
-    $account->update(['avatar_url' => 'social-accounts/avatar.png']);
+    insightsShareAvatar($account);
 
     foreach ([12, 9, 9, 4] as $daysAgo) {
         $publication = AnalyticsPublication::factory()->create([
@@ -414,26 +435,6 @@ function insightsShareChannels(SocialAccount $account, int $count, Closure $name
     }
 }
 
-/** Records every text the card writes and the direction it writes it in, before the share dialog paints. */
-function recordCardText(mixed $page): void
-{
-    $page->script(<<<'JS'
-        (() => {
-            if (window.__drawn) {
-                return;
-            }
-
-            window.__drawn = [];
-            const fillText = CanvasRenderingContext2D.prototype.fillText;
-            CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
-                window.__drawn.push({ text: String(text), direction: this.direction });
-
-                return fillText.call(this, text, ...rest);
-            };
-        })();
-    JS);
-}
-
 test('a long channel name is cut between whole characters, never inside an emoji', function () {
     [$user, $account] = insightsShareBrowserUser();
     $name = str_repeat('Team 🚀 ', 20);
@@ -442,7 +443,7 @@ test('a long channel name is cut between whole characters, never inside an emoji
 
     $page = visit(route('app.insights'));
     waitFor($page, '@share-followers');
-    recordCardText($page);
+    recordCanvasDrawing($page);
     openShareCard($page, '@share-followers');
 
     $cut = $page->script(<<<JS
@@ -467,10 +468,11 @@ test('in a right-to-left language the card is still written left to right, previ
 
     $page = visit(route('app.insights'));
     waitFor($page, '@share-followers');
-    recordCardText($page);
+    recordCanvasDrawing($page);
     openShareCard($page, '@share-followers');
+    $preview = $page->script('window.__drawn.length');
     $page->click('@share-chart-download');
-    waitForCondition($page, 'window.__drawn.length > 0');
+    waitForCondition($page, "window.__drawn.length > {$preview}");
 
     expect($page->script('document.documentElement.dir'))->toBe('rtl')
         ->and($page->script('[...new Set(window.__drawn.map((entry) => entry.direction))]'))->toBe(['ltr']);
@@ -486,7 +488,7 @@ test('the per channel card draws the twelve channels with the most followers', f
 
     $page = visit(route('app.insights'));
     waitFor($page, '@share-followers');
-    recordCardText($page);
+    recordCanvasDrawing($page);
     openShareCard($page, '@share-followers');
 
     $names = $page->script('[...new Set(window.__drawn.map((entry) => entry.text).filter((text) => /^Channel \\d{2}$/.test(text)))].sort()');

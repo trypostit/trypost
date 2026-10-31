@@ -8,7 +8,7 @@ import {
     VisScatterSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed, getCurrentInstance, ref, useTemplateRef } from 'vue';
+import { computed, ref, useTemplateRef } from 'vue';
 
 import {
     ChartContainer,
@@ -17,6 +17,7 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
@@ -79,7 +80,7 @@ const formatDate = (tick: number | Date): string => {
 
     return day ? date.formatMonthDay(day) : '';
 };
-const appContext = getCurrentInstance()?.appContext ?? null;
+const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(
         chartConfig.value,
@@ -226,7 +227,6 @@ const placeLineEnds = (svg: SVGSVGElement): void => {
     lineEnds.value = ends.map((end, position) => ({ ...end, labelY: labels[position] }));
 };
 
-/** A leader only where a label had to move away from its line. */
 /** A leader's three points: out from the line's end, along it, then up or down to its label. */
 const leaderPoints = (end: LineEnd): string => {
     const start = lineEndX.value + LEADER.inset;
@@ -236,6 +236,7 @@ const leaderPoints = (end: LineEnd): string => {
     return `${start},${end.lineY} ${bend},${end.lineY} ${tip},${end.labelY}`;
 };
 
+/** A leader only where a label had to move away from its line. */
 const movedEnds = computed(() =>
     lineEnds.value.filter((end) => Math.abs(end.labelY - end.lineY) > LEADER.from),
 );

@@ -439,15 +439,21 @@ test('a metric shows no change when the previous period had none of it', functio
         ->assertNoJavaScriptErrors();
 });
 
-test('the channel chart shares as drawn in the Comparison and Both views', function (string $mode) {
+test('the channel chart shares the period the view shows: the previous one in Comparison, both in Both', function (string $mode) {
     $page = visit(route('app.channels.insights', $this->instagram));
-    waitFor($page, "@insights-metrics-mode-{$mode}");
+    waitFor($page, '@insights-metrics-legend-followers-value');
+    $current = trim((string) $page->script('document.querySelector(\'[data-testid="insights-metrics-legend-followers-value"]\').innerText'));
     $page->click("@insights-metrics-mode-{$mode}");
     waitForState($page, "@insights-metrics-mode-{$mode}", "element.getAttribute('aria-pressed') === 'true'");
-    waitForState($page, '@share-channel-metrics', "element.dataset.state === 'ready'");
+    recordCanvasDrawing($page);
     $page->click('@share-channel-metrics');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
 
+    $drawn = $page->script('window.__drawn.map((entry) => entry.text)');
+
+    expect($page->script('window.__patterns > 0'))->toBeTrue()
+        ->and(in_array($current, $drawn, true))->toBe($mode === 'both')
+        ->and(in_array('+500%', $drawn, true))->toBe($mode === 'both');
     $page->assertAttribute('@share-chart-preview', 'data-shape', 'combo')
         ->assertNoJavaScriptErrors();
 })->with(['previous', 'both']);

@@ -112,6 +112,7 @@ const DETAIL_TONES: Record<NonNullable<ChartTooltipDetail['tone']>, string> = {
                         </dt>
                         <dd
                             class="font-medium text-foreground tabular-nums"
+                            data-testid="analytics-tooltip-detail-value"
                             :class="detail.tone && DETAIL_TONES[detail.tone]"
                         >
                             {{ detail.value }}

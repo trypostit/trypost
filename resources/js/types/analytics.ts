@@ -1,5 +1,3 @@
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import { channelName } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
@@ -25,22 +23,6 @@ export interface AccountIdentityData {
     status?: SocialAccountStatusValue | null;
     verified_badge?: VerifiedBadge | null;
 }
-
-/**
- * A channel's name in Insights by the app's one rule, `channelName`, as the
- * sidebar shows it; its network for a row that kept neither name nor handle.
- */
-export const accountLabel = (
-    account: Pick<AccountIdentityData, 'username' | 'name' | 'platform'>,
-): string => {
-    const name = channelName({ display_name: account.name, username: account.username });
-
-    if (name) {
-        return name;
-    }
-
-    return getPlatformLabel(account.platform);
-};
 
 /** A channel with one number of its own, as a bar chart's row. */
 export interface AccountMetricRow {

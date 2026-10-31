@@ -9,7 +9,7 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed, getCurrentInstance } from 'vue';
+import { computed } from 'vue';
 
 import {
     ChartContainer,
@@ -18,6 +18,7 @@ import {
     componentToString,
     type ChartConfig,
 } from '@/components/ui/chart';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import {
     AXIS_STEPS,
     axisBucketLabel,
@@ -231,7 +232,7 @@ const config = computed<ChartConfig>(() =>
     ),
 );
 
-const appContext = getCurrentInstance()?.appContext ?? null;
+const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(config.value, ChannelMetricsTooltip, {
         specs: props.specs,

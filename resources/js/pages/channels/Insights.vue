@@ -17,17 +17,17 @@ import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
 import AppLayout from '@/layouts/AppLayout.vue';
+import { accountLabel } from '@/lib/analyticsAccounts';
 import { showsPostTypeFilter } from '@/lib/channelInsights';
 import { insights } from '@/routes/app/channels';
-import {
-    accountLabel,
-    type AnalyticsReport,
-    type ChannelInsightsFilters,
-    type ChannelMetricSeries,
-    type ChannelPublicationPage,
-    type ContentTypeOption,
-    type InsightsSyncCadence,
-    type SummaryMetric,
+import type {
+    AnalyticsReport,
+    ChannelInsightsFilters,
+    ChannelMetricSeries,
+    ChannelPublicationPage,
+    ContentTypeOption,
+    InsightsSyncCadence,
+    SummaryMetric,
 } from '@/types/analytics';
 import { channelName } from '@/types/channel';
 import type { PublishChannel } from '@/types/publish';

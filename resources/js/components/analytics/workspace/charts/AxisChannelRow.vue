@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import ChannelAvatar from '@/components/ChannelAvatar.vue';
-import { type AccountIdentityData, accountLabel } from '@/types/analytics';
+import { accountLabel } from '@/lib/analyticsAccounts';
+import type { AccountIdentityData } from '@/types/analytics';
 
 defineProps<{
     account: AccountIdentityData;

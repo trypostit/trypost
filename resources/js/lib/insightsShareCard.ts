@@ -1,3 +1,10 @@
+/**
+ * The Insights share card: a chart or a headline number drawn on a canvas, to
+ * download or post. Drawn rather than captured from the DOM, so it looks the
+ * same in every browser and needs no dependency. Every image it draws loads
+ * with CORS: one that does not would stop the canvas exporting.
+ */
+
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import {
@@ -18,14 +25,7 @@ import {
 import type { PublicationPeriod, SeriesMetric } from '@/types/analytics';
 import type { VerifiedBadge } from '@/types/social-account';
 
-/**
- * The Insights share card: a chart or a headline number drawn on a canvas, to
- * download or post. Drawn rather than captured from the DOM, so it looks the
- * same in every browser and needs no dependency. Every image it draws loads
- * with CORS: one that does not would stop the canvas exporting.
- */
-
-/** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
+/** One line per channel, the channel chart, columns split by channel over time, one bar per channel, or the Summary's numbers. */
 export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';
 
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
@@ -149,6 +149,8 @@ type Point = { x: number; y: number };
 
 type Box = Point & { width: number; height: number };
 
+/** The white the panel, the logo's disc and the avatars' rings are drawn on. */
+const SURFACE = '#ffffff';
 const INK = '#292928';
 const MUTED = '#5a5a59';
 const BORDER = 2.5;
@@ -200,7 +202,7 @@ const DOTS = { gap: 24, radius: 1.4, opacity: 0.22, reach: 0.38 };
 const PANEL = { x: 56, y: 48, radius: 24, padding: 48, band: 92 };
 
 /** The name and what-and-when lines at the panel's top, as baselines from where they start. */
-const IDENTITY = { top: 40, name: 34, detail: 76 };
+const IDENTITY = { top: 40, name: 34, nameSize: 36, detail: 76, detailSize: 22 };
 
 /** The chart card's headline: the figure at the top right and its change under it. */
 const HEADLINE = { reserve: 380, figure: 100, figureSize: 68, change: 116, changeSize: 26 };
@@ -447,7 +449,7 @@ const paintPanel = (context: CanvasRenderingContext2D): Box => {
 
     context.beginPath();
     context.roundRect(panel.x, panel.y, panel.width, panel.height, PANEL.radius);
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SURFACE;
     context.fill();
     context.strokeStyle = INK;
     context.lineWidth = BORDER;
@@ -456,10 +458,10 @@ const paintPanel = (context: CanvasRenderingContext2D): Box => {
     return panel;
 };
 
-/** The TryPost mark, the four quarters of `AppLogo.vue`, on a 410 grid. */
 /** The grid the logo's paths are drawn on. */
 const LOGO_GRID = 410;
 
+/** The TryPost mark, the four quarters of `AppLogo.vue`. */
 const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): void => {
     const quarters: [string, string][] = [
         ['M410 109.736V410H128.863L410 109.736Z', '#3660E0'],
@@ -472,7 +474,7 @@ const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): 
     context.beginPath();
     context.arc(at.x + size / 2, at.y + size / 2, size / 2, 0, Math.PI * 2);
     context.clip();
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SURFACE;
     context.fillRect(at.x, at.y, size, size);
     context.translate(at.x, at.y);
     context.scale(size / LOGO_GRID, size / LOGO_GRID);
@@ -509,8 +511,8 @@ const paintIdentity = (
     at: Point,
     limit: number,
 ): void => {
-    const nameFont = heading(600, 36);
-    const detailFont = sans(500, 22);
+    const nameFont = heading(600, IDENTITY.nameSize);
+    const detailFont = sans(500, IDENTITY.detailSize);
 
     writeText(context, ellipsise(context, subject, nameFont, limit), { x: at.x, y: at.y + IDENTITY.name }, { font: nameFont, color: INK });
     writeText(context, ellipsise(context, detail, detailFont, limit), { x: at.x, y: at.y + IDENTITY.detail }, { font: detailFont, color: MUTED });
@@ -570,6 +572,9 @@ const paintChange = (
     writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
 };
 
+/** How far `value` sits from `low` to `high`, 0 to 1; a flat range puts everything at its low end's height. */
+const shareOf = (value: number, low: number, high: number): number => (value - low) / (high - low || 1);
+
 type ValueAxis = {
     ticks: number[];
     /** Where a value sits on the axis, from 0 at its start to 1 at its end. */
@@ -585,7 +590,7 @@ type ValueAxis = {
 const valueAxis = (values: number[], tickCount: number): ValueAxis => {
     const low = Math.min(0, ...values);
     const high = Math.max(0, ...values);
-    const at = (value: number): number => (value - low) / (high - low || 1);
+    const at = (value: number): number => shareOf(value, low, high);
 
     return { ticks: linearTicks(low, high, tickCount), at, zero: at(0) };
 };
@@ -760,7 +765,7 @@ const paintTile = (context: CanvasRenderingContext2D, image: HTMLImageElement, a
     context.save();
     context.beginPath();
     context.roundRect(at.x, at.y, size, size, size * AVATAR.radius);
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SURFACE;
     context.fill();
     context.clip();
     drawCover(context, image, at, size);
@@ -775,7 +780,7 @@ const paintNetworkBadge = (context: CanvasRenderingContext2D, logo: HTMLImageEle
 
     context.beginPath();
     context.roundRect(at.x - ring, at.y - ring, badge + ring * 2, badge + ring * 2, (badge + ring * 2) * AVATAR.radius);
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SURFACE;
     context.fill();
     paintTile(context, logo, at, badge);
 };
@@ -787,7 +792,7 @@ const paintVerified = (context: CanvasRenderingContext2D, badge: VerifiedBadge, 
 
     context.beginPath();
     context.arc(at.x + mark / 2, at.y + mark / 2, mark * VERIFIED.backing, 0, Math.PI * 2);
-    context.fillStyle = '#ffffff';
+    context.fillStyle = SURFACE;
     context.fill();
 
     context.save();
@@ -1061,7 +1066,7 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
     const low = Math.min(...values);
     const high = Math.max(...values);
     const x = (index: number): number => plot.x + spread(index, options.points.length) * plot.width;
-    const y = (value: number): number => plot.y + plot.height - ((value - low) / (high - low || 1)) * plot.height;
+    const y = (value: number): number => plot.y + plot.height - shareOf(value, low, high) * plot.height;
     const lineEnd = plot.x + plot.width;
 
     paintGrid(
@@ -1362,7 +1367,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     const y = (axis: 'left' | 'right', value: number): number => {
         const domain = domainOrUnit(domains[axis]);
 
-        return plot.y + plot.height - ((value - domain.min) / (domain.max - domain.min || 1)) * plot.height;
+        return plot.y + plot.height - shareOf(value, domain.min, domain.max) * plot.height;
     };
     const gridY = (step: number): number => plot.y + plot.height - (step / AXIS_STEPS) * plot.height;
 
@@ -1449,7 +1454,7 @@ const paintRowsCard = (context: CanvasRenderingContext2D, options: ShareCardOpti
 };
 
 /** The headline over one column per bucket, split by channel. */
-const paintStackedCard = (context: CanvasRenderingContext2D, options: ShareCardOptions, _images: ShareImages, panel: Box): void => {
+const paintStackedCard = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     paintHeadline(context, options, panel);
 
     const values = pointValues(options.points);
@@ -1676,7 +1681,7 @@ const paintTileChange = (
 const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box) => void> = {
     lines: paintLinesCard,
     rows: paintRowsCard,
-    stacked: paintStackedCard,
+    stacked: (context, options, _images, panel) => paintStackedCard(context, options, panel),
     combo: (context, options, _images, panel) => paintCombo(context, options, panel),
     tiles: (context, options, _images, panel) => paintSummary(context, options, panel),
 };

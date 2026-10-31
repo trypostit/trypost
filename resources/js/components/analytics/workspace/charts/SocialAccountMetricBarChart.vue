@@ -6,14 +6,7 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import {
-    computed,
-    getCurrentInstance,
-    h,
-    onBeforeUnmount,
-    render,
-    useTemplateRef,
-} from 'vue';
+import { computed, h, onBeforeUnmount, render, useTemplateRef } from 'vue';
 
 import {
     ChartContainer,
@@ -22,6 +15,7 @@ import {
     type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { accountColor } from '@/lib/analyticsColors';
 import { formatNumberCompact } from '@/lib/utils';
@@ -115,7 +109,7 @@ const chartPadding = computed(() => ({
     bottom: 0,
     left: columnWidth.value + COLUMN_GAP,
 }));
-const appContext = getCurrentInstance()?.appContext ?? null;
+const appContext = useChartAppContext();
 const avatarHosts: HTMLElement[] = [];
 const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
 

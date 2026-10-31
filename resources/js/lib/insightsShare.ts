@@ -1,7 +1,13 @@
+/**
+ * Builders for the share dialog. They run when the dialog opens, never in a
+ * script-level computed, so every `trans()` here reads the loaded locale.
+ */
+
 import { trans } from 'laravel-vue-i18n';
 
 import date from '@/date';
 import { activeLocale } from '@/language';
+import { accountLabel } from '@/lib/analyticsAccounts';
 import {
     axisBucketLabel,
     bucketRangeLabel,
@@ -24,22 +30,16 @@ import {
     type ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatCountChange, formatNumberCompact } from '@/lib/utils';
-import {
-    type AccountIdentityData,
-    accountLabel,
-    type ChannelMetricSeries,
-    type FollowerAccount,
-    type FollowersChartMode,
-    type PostsChartMode,
-    type PublicationPeriod,
-    type SeriesMetric,
-    type WorkspaceAnalyticsReport,
+import type {
+    AccountIdentityData,
+    ChannelMetricSeries,
+    FollowerAccount,
+    FollowersChartMode,
+    PostsChartMode,
+    PublicationPeriod,
+    SeriesMetric,
+    WorkspaceAnalyticsReport,
 } from '@/types/analytics';
-
-/**
- * Builders for the share dialog. They run when the dialog opens, never in a
- * script-level computed, so every `trans()` here reads the loaded locale.
- */
 
 type Followers = WorkspaceAnalyticsReport['followers'];
 

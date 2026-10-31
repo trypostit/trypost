@@ -440,7 +440,7 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
             return {
                 oneRow: row.every((box) => Math.abs(middle(box) - middle(row[0])) <= 2),
-                viewSwitchInHeader: Boolean(document.querySelector('header [data-testid="schedule-view-list"]')?.getClientRects().length),
+                viewSwitchInHeader: Boolean(document.querySelector('[data-testid="app-header"] [data-testid="schedule-view-list"]')?.getClientRects().length),
                 noDateButton: visible(document.querySelector('[data-testid="calendar-no-date"]')),
                 channelText: [...channelFilter.querySelectorAll('span')].filter((span) => visible(span) && span.textContent.trim() !== '').length,
                 tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')?.getClientRects().length),

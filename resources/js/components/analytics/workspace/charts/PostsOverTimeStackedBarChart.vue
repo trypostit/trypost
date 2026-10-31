@@ -6,7 +6,7 @@ import {
     VisXYContainer,
 } from '@unovis/vue';
 import { trans } from 'laravel-vue-i18n';
-import { computed, getCurrentInstance } from 'vue';
+import { computed } from 'vue';
 
 import {
     ChartContainer,
@@ -15,6 +15,7 @@ import {
     type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
+import { useChartAppContext } from '@/composables/analytics/useChartAppContext';
 import { accountColor } from '@/lib/analyticsColors';
 import { bucketRangeLabel } from '@/lib/channelMetrics';
 import { formatFullNumber } from '@/lib/utils';
@@ -93,7 +94,7 @@ const bucketTotal = (tick: number | Date): ChartTooltipDetail | null => {
     };
 };
 const ticks = computed(() => props.buckets.map((_, index) => index));
-const appContext = getCurrentInstance()?.appContext ?? null;
+const appContext = useChartAppContext();
 const tooltipTemplate = computed(() =>
     componentToString(
         chartConfig.value,

@@ -68,6 +68,7 @@ import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import type {
     ChannelMetricSeries,
     DateRange,
+    FollowerGrowthRate,
     SeriesMetric,
 } from '@/types/analytics';
 
@@ -211,15 +212,17 @@ const insightIcon = computed(() => {
 const showsPostTotals = computed(() =>
     specs.value.some((spec) => POST_TOTAL_METRICS.includes(spec.metric)),
 );
+/** The growth rate's twelve months, as the card names them: "Nov 2025 – Oct 2026". */
+const growthMonths = (growth: FollowerGrowthRate): string =>
+    `${monthLabel(growth.range.start)} – ${monthLabel(growth.range.end)}`;
+
 const rangeCaption = computed(() => {
     if (!props.series) {
         return null;
     }
 
     if (growthRate.value && props.series.growth) {
-        const { start, end } = props.series.growth.range;
-
-        return `${monthLabel(start)} – ${monthLabel(end)}`;
+        return growthMonths(props.series.growth);
     }
 
     return date.formatDayMonthYearRange(props.series.range);
@@ -233,6 +236,15 @@ const shownRange = (series: ChannelMetricSeries): DateRange => {
     return series.range;
 };
 
+/** The period the share card names, as the page's subtitle does: the growth rate's months, else the days shown. */
+const shareRange = (series: ChannelMetricSeries): string => {
+    if (growthRate.value && props.series?.growth) {
+        return growthMonths(props.series.growth);
+    }
+
+    return date.formatDayMonthYearRange(shownRange(series));
+};
+
 /** What the Share button needs: the chart as it is drawn now, or null while there is nothing to share. */
 const share = computed(
     (): { range: string; build: () => ShareMetricOption } | null => {
@@ -242,7 +254,7 @@ const share = computed(
             return null;
         }
 
-        const range = date.formatDayMonthYearRange(shownRange(series));
+        const range = shareRange(series);
 
         return {
             range,

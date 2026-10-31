@@ -1,7 +1,8 @@
 import type { ChartConfig } from '@/components/ui/chart';
+import { accountLabel } from '@/lib/analyticsAccounts';
 import { accountColor } from '@/lib/analyticsColors';
 import { distinctCountLabels } from '@/lib/utils';
-import { type AccountIdentityData, accountLabel } from '@/types/analytics';
+import type { AccountIdentityData } from '@/types/analytics';
 
 export const socialAccountChartConfig = (
     accounts: AccountIdentityData[],

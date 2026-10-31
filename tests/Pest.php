@@ -805,3 +805,43 @@ function waitForPath(mixed $page, string $path): void
 
     waitForCondition($page, "location.pathname === {$path}");
 }
+
+/**
+ * Records what every canvas on the page draws from now on: each text with
+ * the direction it is written in (`window.__drawn`), each image's address
+ * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
+ * the share card's hatch for a previous period). A canvas cannot be read back
+ * as text, so a test of a painted card reads these instead.
+ */
+function recordCanvasDrawing(mixed $page): void
+{
+    $page->script(<<<'JS'
+        (() => {
+            if (window.__drawn) {
+                return;
+            }
+
+            window.__drawn = [];
+            window.__images = [];
+            window.__patterns = 0;
+            const createPattern = CanvasRenderingContext2D.prototype.createPattern;
+            const fillText = CanvasRenderingContext2D.prototype.fillText;
+            const drawImage = CanvasRenderingContext2D.prototype.drawImage;
+            CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
+                window.__drawn.push({ text: String(text), direction: this.direction });
+
+                return fillText.call(this, text, ...rest);
+            };
+            CanvasRenderingContext2D.prototype.createPattern = function (...args) {
+                window.__patterns += 1;
+
+                return createPattern.apply(this, args);
+            };
+            CanvasRenderingContext2D.prototype.drawImage = function (image, ...rest) {
+                window.__images.push(image.src ?? '');
+
+                return drawImage.call(this, image, ...rest);
+            };
+        })();
+    JS);
+}

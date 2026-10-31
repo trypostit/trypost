@@ -134,6 +134,11 @@ const barChart = computed((): BarChart | null => {
         formatValue: rows.format,
     };
 });
+/** Whether the card has followers to share: channels with a reading, and their total. */
+const canShare = computed(
+    (): boolean =>
+        props.followers.accounts.length > 0 && props.followers.total !== null,
+);
 /** What the period added or took away across every channel, as the share card shows it. */
 const net = computed(() => followersNet(props.followers));
 const shownChannels = computed(() =>
@@ -177,7 +182,7 @@ const buildShareOption = (): ShareMetricOption =>
                 :options="buttons"
             />
             <ShareChartButton
-                v-if="followers.accounts.length > 0"
+                v-if="canShare"
                 :range="rangeLabel"
                 :build="buildShareOption"
                 test-id="share-followers"
