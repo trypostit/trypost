@@ -10,6 +10,7 @@ import {
     shareRange,
     summaryShareOption,
 } from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
 
@@ -106,14 +107,14 @@ const shareSubject = computed(
     () => props.channel ?? page.props.auth.currentWorkspace?.name ?? '',
 );
 const shareRangeLabel = computed(() => shareRange(props.report.range));
-const buildShareOptions = () => [
+const buildShareOptions = (): ShareMetricOption[] => [
     summaryShareOption(
         cards.value.map((card) => ({
             label: trans(card.label),
             figure: display(card.metric.value, card.percent),
             change: shareChange(card.metric.change, card.key === 'followers'),
         })),
-        { channel: props.channel ?? null },
+        props.channel ?? null,
         shareRangeLabel.value,
     ),
 ];

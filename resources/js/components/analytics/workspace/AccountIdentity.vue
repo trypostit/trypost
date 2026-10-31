@@ -6,6 +6,7 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
+import { accountLabel } from '@/lib/accountLabel';
 import type { AccountIdentityData } from '@/types/analytics';
 
 const props = defineProps<{
@@ -16,11 +17,7 @@ const props = defineProps<{
     /** The name on top and the @handle below it. */
     withName?: boolean;
 }>();
-const label = computed(() =>
-    props.account.username
-        ? `@${props.account.username}`
-        : props.account.name || getPlatformLabel(props.account.platform),
-);
+const label = computed(() => accountLabel(props.account));
 const name = computed(
     () =>
         props.account.name ||

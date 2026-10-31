@@ -59,6 +59,7 @@ import {
     channelSeriesShareOptions,
     shareRange,
 } from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
 
 import ChannelMetricsChart from './ChannelMetricsChart.vue';
@@ -222,7 +223,7 @@ const shareRangeLabel = computed(() =>
 const canShare = computed(
     () => !!props.series?.metrics.some((metric) => metric !== 'growth_rate'),
 );
-const buildShareOptions = () =>
+const buildShareOptions = (): ShareMetricOption[] =>
     props.series
         ? channelSeriesShareOptions(
               props.series,

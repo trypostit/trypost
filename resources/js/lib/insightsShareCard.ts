@@ -1,3 +1,5 @@
+import { formatNumberCompact } from '@/lib/utils';
+
 /**
  * The Insights share card: a chart or a headline number drawn on a canvas, to
  * download or post. Drawn rather than captured from the DOM, so it looks the
@@ -27,7 +29,6 @@ export type ShareMetricOption = {
     comparison: string | null;
     points: SharePoint[];
     shape: ShareShape;
-    tick: (value: number) => string;
     /** Every number of the Summary, for the summary card. */
     tiles: ShareTile[];
     caption: string;
@@ -51,8 +52,6 @@ export type ShareCardOptions = {
     points: SharePoint[];
     shape: ShareShape;
     tiles: ShareTile[];
-    /** Formats an axis value the way the page does. */
-    tick: (value: number) => string;
     /** The signature: "Made with TryPost", translated. */
     mark: string;
 };
@@ -530,7 +529,7 @@ const paintRows = (
         context.moveTo(x(value), plot.y);
         context.lineTo(x(value), plot.y + plot.height);
         context.stroke();
-        context.fillText(options.tick(value), x(value), plot.y + plot.height + 36);
+        context.fillText(formatNumberCompact(value), x(value), plot.y + plot.height + 36);
     }
 
     context.setLineDash([]);
@@ -648,7 +647,7 @@ const paintChart = (
         context.lineTo(plot.x + plot.width, y(value));
         context.stroke();
         context.fillStyle = MUTED;
-        context.fillText(options.tick(value), plot.x - 18, y(value));
+        context.fillText(formatNumberCompact(value), plot.x - 18, y(value));
     }
 
     context.setLineDash([]);
@@ -708,15 +707,13 @@ const paintChart = (
     context.textAlign = 'left';
 };
 
-const MAX_TILES = 8;
-
 /** How many columns the Summary's numbers take, like the page's grid. */
 const tileColumns = (count: number): number => {
     if (count <= 3) {
         return Math.max(count, 1);
     }
 
-    return count === 4 ? 2 : count <= 6 ? 3 : 4;
+    return count === 4 ? 2 : count <= 6 ? 3 : count <= 8 ? 4 : 5;
 };
 
 /** Every number of the Summary, split by ink rules like a cover's settings panel. */
@@ -729,12 +726,14 @@ const paintSummary = (
 
     paintIdentity(context, options, left, panel.y + 40, panel.width - PANEL.padding * 2, options.range);
 
-    const tiles = options.tiles.slice(0, MAX_TILES);
+    const tiles = options.tiles;
     const columns = tileColumns(tiles.length);
     const rows = Math.ceil(tiles.length / columns);
     const grid = { x: panel.x, y: panel.y + 168, width: panel.width, height: panel.height - 168 };
     const tileHeight = grid.height / Math.max(rows, 1);
-    const figureSize = columns >= 4 ? 52 : rows === 1 ? 84 : 64;
+    /** A tile's content is drawn for 185px; more rows shrink it instead of dropping numbers. */
+    const fit = Math.min(1, tileHeight / 185);
+    const figureSize = (columns >= 4 ? 52 : rows === 1 ? 84 : 64) * fit;
     /** The last row stretches its tiles over the whole width, so no tile is left empty. */
     const rowSize = (row: number): number =>
         row < rows - 1 ? columns : tiles.length - columns * (rows - 1);
@@ -761,21 +760,23 @@ const paintSummary = (
     tiles.forEach((tile, index) => {
         const row = Math.floor(index / columns);
         const width = grid.width / rowSize(row);
-        const x = grid.x + width * (index % columns) + 36;
+        const inset = 36 * fit;
+        const x = grid.x + width * (index % columns) + inset;
         const y = grid.y + tileHeight * row;
-        const limit = width - 72;
+        const limit = width - inset * 2;
+        const labelLine = y + 50 * fit;
 
         context.textAlign = 'left';
         context.fillStyle = MUTED;
-        context.font = `500 24px ${SANS}`;
-        context.fillText(ellipsise(context, tile.label, limit), x, y + 50);
+        context.font = `500 ${24 * fit}px ${SANS}`;
+        context.fillText(ellipsise(context, tile.label, limit), x, labelLine);
 
         context.fillStyle = tile.figure === '—' ? MUTED : INK;
         context.font = `500 ${figureSize}px ${HEADING}`;
-        context.fillText(ellipsise(context, tile.figure, limit), x - 2, y + 50 + figureSize + 6);
+        context.fillText(ellipsise(context, tile.figure, limit), x - 2 * fit, labelLine + figureSize + 6 * fit);
 
         if (tile.change) {
-            paintChange(context, tile.change, x, y + 50 + figureSize + 22, 24, 'left');
+            paintChange(context, tile.change, x, labelLine + figureSize + 22 * fit, 24 * fit, 'left');
         }
     });
 };

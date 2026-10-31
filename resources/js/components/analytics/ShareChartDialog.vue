@@ -38,7 +38,7 @@ import {
     type ShareTint,
 } from '@/lib/insightsShareCard';
 import { storeChunked } from '@/routes/app/media';
-import { uploadChunked } from '@/utils/chunkedUpload';
+import { uploadChunked, uploadedMediaItem } from '@/utils/chunkedUpload';
 
 const props = defineProps<{
     variant: 'chart' | 'summary';
@@ -82,7 +82,6 @@ const cardOptions = (): ShareCardOptions | null => {
         points: option.points,
         shape: option.shape,
         tiles: option.tiles,
-        tick: option.tick,
         mark: trans('analytics.share.mark'),
     };
 };
@@ -109,13 +108,23 @@ const paint = async (): Promise<void> => {
     }
 };
 
+/** The image uploading for Create post, stopped when the dialog closes so the composer never opens later. */
+let postUpload: AbortController | null = null;
+
 watch(open, (isOpen) => {
-    if (isOpen) {
-        selectedKey.value = props.initialKey ?? props.options[0]?.key ?? '';
-        posting.value = false;
-        painted.value = false;
-        paint();
+    if (!isOpen) {
+        postUpload?.abort();
+
+        return;
     }
+
+    selectedKey.value =
+        props.options.find((option) => option.key === props.initialKey)?.key ??
+        props.options[0]?.key ??
+        '';
+    posting.value = false;
+    painted.value = false;
+    paint();
 });
 
 useResizeObserver(canvas, () => paint());
@@ -170,7 +179,7 @@ const copyImage = async (): Promise<void> => {
         }
 
         await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': image.then((file) => file) }),
+            new ClipboardItem({ 'image/png': image }),
         ]);
         toast.success(trans('analytics.share.copied'));
     } catch {
@@ -183,6 +192,8 @@ const chooseTint = (swatch: ShareTint): void => {
 };
 
 const createPost = async (): Promise<void> => {
+    postUpload = new AbortController();
+    const { signal } = postUpload;
     posting.value = true;
 
     try {
@@ -192,36 +203,24 @@ const createPost = async (): Promise<void> => {
             throw new Error('Nothing to share');
         }
 
-        const uploaded = await uploadChunked({ file, url: storeChunked.url() });
-
-        if (!uploaded.id || !uploaded.url) {
-            throw new Error('Incomplete upload');
-        }
+        const media = uploadedMediaItem(
+            await uploadChunked({ file, url: storeChunked.url(), signal }),
+            file,
+        );
 
         open.value = false;
         openPostComposer({
             draft: {
                 content: selected.value?.caption ?? '',
-                media: [
-                    {
-                        id: uploaded.id,
-                        path: uploaded.path,
-                        url: uploaded.url,
-                        type: uploaded.type,
-                        mime_type: uploaded.mime_type ?? file.type,
-                        original_filename: uploaded.original_filename ?? file.name,
-                        size: uploaded.size ?? file.size,
-                        meta: uploaded.meta,
-                        upload_token: uploaded.upload_token ?? null,
-                        created_at: uploaded.created_at,
-                    },
-                ],
+                media: [media],
                 scheduled_at: null,
                 label_ids: [],
             },
         });
     } catch {
-        toast.error(trans('analytics.share.post_failed'));
+        if (!signal.aborted) {
+            toast.error(trans('analytics.share.post_failed'));
+        }
     } finally {
         posting.value = false;
     }

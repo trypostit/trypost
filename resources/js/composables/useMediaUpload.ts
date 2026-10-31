@@ -12,7 +12,11 @@ import { isHeic, uploadTypeOf } from '@/lib/mediaType';
 import { storeChunked } from '@/routes/app/media';
 import type { MediaUploadLimits, SharedData } from '@/types';
 import type { MediaItem } from '@/types/media';
-import { ChunkedUploadError, uploadChunked } from '@/utils/chunkedUpload';
+import {
+    ChunkedUploadError,
+    uploadChunked,
+    uploadedMediaItem,
+} from '@/utils/chunkedUpload';
 
 export type UploadErrorReason =
     | 'too_large'
@@ -237,23 +241,8 @@ export const useMediaUpload = (options: {
                 signal: entry.controller.signal,
                 onProgress: (progress) => setProgress(entry.key, progress),
             });
-            if (!uploaded.id || !uploaded.url) {
-                throw new Error('Incomplete upload');
-            }
 
-            finished.set(entry.key, {
-                id: uploaded.id,
-                path: uploaded.path,
-                url: uploaded.url,
-                type: uploaded.type,
-                mime_type: uploaded.mime_type ?? entry.file.type,
-                original_filename:
-                    uploaded.original_filename ?? entry.file.name,
-                size: uploaded.size ?? entry.file.size,
-                meta: uploaded.meta,
-                upload_token: uploaded.upload_token ?? null,
-                created_at: uploaded.created_at,
-            });
+            finished.set(entry.key, uploadedMediaItem(uploaded, entry.file));
         } catch (error) {
             if (!entry.controller.signal.aborted && find(entry.key)) {
                 replace(entry.key, failure(entry, error));

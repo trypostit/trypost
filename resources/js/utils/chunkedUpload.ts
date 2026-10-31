@@ -1,6 +1,7 @@
 import { classifyBy, MediaType } from '@/lib/mediaType';
 import { uuid } from '@/lib/uuid';
 import { probeVideoDuration } from '@/lib/videoDuration';
+import type { MediaItem } from '@/types/media';
 
 interface ChunkedUploadOptions {
     file: File;
@@ -105,6 +106,26 @@ const sendChunk = (
         signal?.addEventListener('abort', onAbort, { once: true });
         xhr.send(chunk);
     });
+
+/** The media item an upload stands for, taking from the file what the server left out. */
+export const uploadedMediaItem = (uploaded: ChunkedUploadResult, file: File): MediaItem => {
+    if (!uploaded.id || !uploaded.url) {
+        throw new Error('Incomplete upload');
+    }
+
+    return {
+        id: uploaded.id,
+        path: uploaded.path,
+        url: uploaded.url,
+        type: uploaded.type,
+        mime_type: uploaded.mime_type ?? file.type,
+        original_filename: uploaded.original_filename ?? file.name,
+        size: uploaded.size ?? file.size,
+        meta: uploaded.meta,
+        upload_token: uploaded.upload_token ?? null,
+        created_at: uploaded.created_at,
+    };
+};
 
 export const uploadChunked = async (options: ChunkedUploadOptions): Promise<ChunkedUploadResult> => {
     const {

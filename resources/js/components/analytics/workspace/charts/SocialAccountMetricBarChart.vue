@@ -22,7 +22,7 @@ import {
     ChartTooltipContent,
     componentToString,
 } from '@/components/ui/chart';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { accountLabel } from '@/lib/accountLabel';
 import { accountColor } from '@/lib/analyticsColors';
 import type { AccountIdentityData } from '@/types/analytics';
 
@@ -82,9 +82,7 @@ const formatAccount = (tick: number | Date): string => {
     const account = props.rows[index]?.account;
     if (!account) return '';
 
-    const label = account.username
-        ? `@${account.username}`
-        : account.name || getPlatformLabel(account.platform);
+    const label = accountLabel(account);
     const short = label.length > 12 ? `${label.slice(0, 11)}…` : label;
 
     return short.replaceAll(' ', '\u00A0');
@@ -119,10 +117,6 @@ const appContext = getCurrentInstance()?.appContext ?? null;
 const avatarHosts: HTMLElement[] = [];
 const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
 
-const accountLabel = (account: AccountIdentityData): string =>
-    account.username
-        ? `@${account.username}`
-        : account.name || getPlatformLabel(account.platform);
 
 const unmountAvatars = (): void => {
     avatarHosts.splice(0).forEach((host) => {
@@ -250,6 +244,7 @@ const barAttributes = {
                 :tick-format="formatAccount"
                 :tick-values="categoryTicks"
                 :tick-padding="AVATAR_SIZE + AVATAR_GAP + 6"
+                :duration="0"
                 :attributes="tickAttributes"
                 :grid-line="false"
                 :domain-line="false"

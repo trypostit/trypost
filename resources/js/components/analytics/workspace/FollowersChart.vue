@@ -7,7 +7,11 @@ import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
 import { activeLocale } from '@/language';
 import { accountColor } from '@/lib/analyticsColors';
-import { followersShareOption } from '@/lib/insightsShare';
+import {
+    type FollowersChartMode,
+    followersShareOption,
+} from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -25,7 +29,7 @@ const props = defineProps<{
     channelFiltered?: boolean;
     totalChannels?: number;
 }>();
-const mode = ref<'bar' | 'line' | 'growth'>('bar');
+const mode = ref<FollowersChartMode>('bar');
 const buttons = [
     {
         mode: 'bar',
@@ -95,7 +99,7 @@ const rangeLabel = computed(
         `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
 );
 const page = usePage();
-const buildShareOptions = () => [
+const buildShareOptions = (): ShareMetricOption[] => [
     followersShareOption(
         props.followers,
         rangeLabel.value,
