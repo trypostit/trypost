@@ -28,10 +28,6 @@ const getUserTimezone = (): string => userTimezone.value;
 const userNow = () =>
     localized(dayjs().tz(getUserTimezone()).format('YYYY-MM-DDTHH:mm:ss'));
 
-/**
- * `{ year: 'numeric' }` when the instant falls in another year than now, in
- * that zone, so an `Intl` date shows the year only when it is not obvious.
- */
 /** A period's first day with only what its last day does not already say. */
 const rangeStart = (range: DateRange): string => {
     const start = localized(range.start);
@@ -51,6 +47,10 @@ const rangeStart = (range: DateRange): string => {
 const dayMonthYearRange = (range: DateRange): string =>
     `${rangeStart(range)} – ${localized(range.end).format('D MMM YYYY')}`;
 
+/**
+ * `{ year: 'numeric' }` when the instant falls in another year than now, in
+ * that zone, so an `Intl` date shows the year only when it is not obvious.
+ */
 const yearUnlessCurrent = (
     instant: dayjs.Dayjs,
     timezone: string,

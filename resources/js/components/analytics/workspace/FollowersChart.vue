@@ -144,14 +144,13 @@ const shownChannels = computed(() =>
         : null,
 );
 const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
-const buildShareOptions = (): ShareMetricOption[] => [
+const buildShareOption = (): ShareMetricOption =>
     followersShareOption(
         props.followers,
         rangeLabel.value,
         mode.value,
         props.colors,
-    ),
-];
+    );
 </script>
 
 <template>
@@ -179,7 +178,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
             />
             <ShareChartButton
                 :range="rangeLabel"
-                :build="buildShareOptions"
+                :build="buildShareOption"
                 test-id="share-followers"
             />
         </template>

@@ -34,7 +34,7 @@ export type ShareChannel = {
 };
 
 /** One channel's part of a `stacked` column, in the channel's color. */
-export type ShareSegment = { value: number; color: string };
+type ShareSegment = { value: number; color: string };
 
 /** A bucket over time, or a channel for `rows`, which may bring its own color. */
 export type SharePoint = {
@@ -78,13 +78,13 @@ export type ShareSeries = {
 };
 
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
-export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
+type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
 /** One number of the Summary, as its card prints it; null while it has no value. */
 export type ShareTile = { label: string; figure: string | null; change: ShareChange | null };
 
-/** What a share option draws: one metric of a series, or the whole Summary. */
-export type ShareMetricKey = SeriesMetric | 'summary';
+/** What a share option draws, which names its file: one metric of a series, the channel's chart, or the whole Summary. */
+type ShareMetricKey = SeriesMetric | 'channel' | 'summary';
 
 /** One metric a share dialog can draw, with the post text it opens the composer with. */
 export type ShareMetricOption = {
@@ -92,8 +92,6 @@ export type ShareMetricOption = {
     label: string;
     figure: string;
     change: ShareChange | null;
-    /** What the change is measured against: "vs 120 in the previous period". */
-    comparison: string | null;
     points: SharePoint[];
     shape: ShareShape;
     /** Every number of the Summary, for the summary card. */
@@ -142,7 +140,7 @@ export type ShareCardOptions = Omit<ShareMetricOption, 'caption'> & {
 
 export const SHARE_CARD_SIZE = { width: 1200, height: 675 };
 
-export const SHARE_EXPORT_SCALE = 2;
+const SHARE_EXPORT_SCALE = 2;
 
 type Point = { x: number; y: number };
 
@@ -200,17 +198,12 @@ const PANEL = { x: 56, y: 48, radius: 24, padding: 48, band: 92 };
 /** The name and what-and-when lines at the panel's top, as baselines from where they start. */
 const IDENTITY = { top: 40, name: 34, detail: 76 };
 
-/** The chart card's headline: the figure at the top right, its change and comparison under it. */
-const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, comparison: 136, comparisonUnderChange: 176 };
+/** The chart card's headline: the figure at the top right and its change under it. */
+const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26 };
 
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, dateGap: 24 };
 
-/**
- * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,
- * a 6px gap and the number in 12px medium), 24px between labels, 16px above
- * the plot the labels may use, 5 value ticks and up to 6 dates.
- */
 /** d3's tick rule: the step is 10, 5, 2 or 1 times a power of ten, whichever lands closest to the asked count. */
 const TICK_FACTORS: [number, number][] = [
     [Math.sqrt(50), 10],
@@ -219,6 +212,11 @@ const TICK_FACTORS: [number, number][] = [
     [0, 1],
 ];
 
+/**
+ * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,
+ * a 6px gap and the number in 12px medium), 24px between labels, 16px above
+ * the plot the labels may use, 5 value ticks and up to 6 dates.
+ */
 const LINE_ENDS = { rail: 224, leader: 64, avatar: 40, gap: 12, height: 48, fontSize: 24, headroom: 32 };
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
@@ -287,7 +285,6 @@ const channelImageUrls = (channel: ShareChannel): string[] => {
 
 type LoadedImage = { url: string; image: HTMLImageElement };
 
-/** Waits for the fonts and loads the images a card draws, before it is painted. */
 /** The channels an option draws, as rows or as lines. */
 const optionChannels = (option: Pick<ShareMetricOption, 'points' | 'lines'>): ShareChannel[] =>
     [...option.points.map((point) => point.channel), ...option.lines.map((line) => line.channel)].filter(
@@ -315,8 +312,8 @@ export const prepareShareCard = (options: ShareCardOptions): Promise<ShareImages
  * Warms the fonts and images a share card will draw before it is opened, so
  * the first preview paints at once; a later `prepareShareCard` finds them loaded.
  */
-export const preloadShareCards = async (options: ShareMetricOption[]): Promise<void> => {
-    await loadShareImages(options);
+export const preloadShareCard = async (option: ShareMetricOption): Promise<void> => {
+    await loadShareImages([option]);
 };
 
 type TextStyle = {
@@ -817,16 +814,7 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
     });
 };
 
-/** Where the comparison line sits: under the change when there is one, else under the figure. */
-const comparisonBaseline = (options: ShareCardOptions): number => {
-    if (options.change) {
-        return HEADLINE.comparisonUnderChange;
-    }
-
-    return HEADLINE.comparison;
-};
-
-/** The subject and what and when on the left, the figure with its change and comparison on the right. */
+/** The subject and what and when on the left, the figure with its change on the right. */
 const paintHeadline = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
@@ -837,10 +825,6 @@ const paintHeadline = (context: CanvasRenderingContext2D, options: ShareCardOpti
 
     if (options.change) {
         paintChange(context, options.change, { x: right, y: panel.y + HEADLINE.change }, HEADLINE.changeSize, 'right');
-    }
-
-    if (options.comparison) {
-        writeText(context, options.comparison, { x: right, y: panel.y + comparisonBaseline(options) }, { font: sans(500, 18), color: MUTED, align: 'right' });
     }
 };
 

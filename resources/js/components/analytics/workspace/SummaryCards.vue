@@ -148,7 +148,7 @@ const tileFigure = (value: number | null, percent: boolean): string | null => {
 const rangeLabel = computed(() =>
     date.formatDayMonthYearRange(props.report.range),
 );
-const buildShareOptions = (): ShareMetricOption[] => [
+const buildShareOption = (): ShareMetricOption =>
     summaryShareOption(
         cards.value.map((card) => ({
             label: trans(card.label),
@@ -157,8 +157,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
         })),
         props.channel ?? null,
         rangeLabel.value,
-    ),
-];
+    );
 </script>
 
 <template>
@@ -173,7 +172,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
             <ShareChartButton
                 :subject="channel"
                 :range="rangeLabel"
-                :build="buildShareOptions"
+                :build="buildShareOption"
                 test-id="share-summary"
             />
         </template>

@@ -12,8 +12,7 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-    preloadShareCards,
-    type ShareMetricKey,
+    preloadShareCard,
     type ShareMetricOption,
 } from '@/lib/insightsShareCard';
 import { whenIdle } from '@/lib/utils';
@@ -22,31 +21,35 @@ const props = defineProps<{
     /** The channel the numbers belong to; the current workspace when left out. */
     subject?: string;
     range: string;
-    /** Builds what the card can show; runs on open, so its labels read the loaded locale. */
-    build: () => ShareMetricOption[];
-    initialKey?: ShareMetricKey;
+    /** Builds what the card shows; runs on open, so its labels read the loaded locale. */
+    build: () => ShareMetricOption;
     testId: string;
 }>();
 
 const page = usePage();
-const shareSubject = computed(
-    (): string => props.subject ?? page.props.auth.currentWorkspace?.name ?? '',
-);
+/** Whose numbers the card shows: the channel, else the current workspace. */
+const shareSubject = computed((): string => {
+    if (props.subject) {
+        return props.subject;
+    }
+
+    return page.props.auth.currentWorkspace?.name ?? '';
+});
 const open = ref(false);
-const options = shallowRef<ShareMetricOption[]>([]);
+const option = shallowRef<ShareMetricOption | null>(null);
 
 /** The card's fonts and channel photos load while the page is idle, so the first preview paints at once. */
 const preloaded = ref(false);
 
 onMounted(() => {
     whenIdle(async () => {
-        await preloadShareCards(props.build());
+        await preloadShareCard(props.build());
         preloaded.value = true;
     });
 });
 
 const openDialog = (): void => {
-    options.value = props.build();
+    option.value = props.build();
     open.value = true;
 };
 </script>
@@ -76,8 +79,7 @@ const openDialog = (): void => {
             v-model:open="open"
             :subject="shareSubject"
             :range="range"
-            :options="options"
-            :initial-key="initialKey"
+            :option="option"
         />
     </div>
 </template>

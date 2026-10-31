@@ -102,30 +102,29 @@ export const percentChange = (change: number): ShareChange => ({
     direction: changeDirection(change),
 });
 
-/** The post text for one metric, of the whole workspace (`channel` null) or of one channel. */
-const metricCaption = (
-    channel: string | null,
-    replacements: { metric: string; value: string; range: string },
-): string => {
-    if (channel === null) {
-        return trans('analytics.share.caption_workspace', replacements);
-    }
+/** The post text for one metric across the workspace's channels. */
+const metricCaption = (replacements: { metric: string; value: string; range: string }): string =>
+    trans('analytics.share.caption_workspace', replacements);
 
-    return trans('analytics.share.caption_channel', { ...replacements, channel });
-};
+/** Labels joined the way the reader's language lists them: "Posts and Followers". */
+const listOf = (labels: string[]): string =>
+    new Intl.ListFormat(activeLocale.value, { type: 'conjunction' }).format(labels);
 
 /** The Summary's numbers as one phrase in the reader's language: "Followers 1.2K, Posts 30 and Reach 5K". */
-const summaryList = (tiles: ShareTile[]): string =>
-    new Intl.ListFormat(activeLocale.value, { type: 'conjunction' }).format(
+const summaryList = (tiles: CaptionNumber[]): string =>
+    listOf(
         tiles
-            .filter((tile): tile is ShareTile & { figure: string } => tile.figure !== null)
+            .filter((tile): tile is CaptionNumber & { figure: string } => tile.figure !== null)
             .map((tile) => `${tile.label} ${tile.figure}`),
     );
+
+/** A number the post text lists, by its label; one without a value is left out. */
+type CaptionNumber = Pick<ShareTile, 'label' | 'figure'>;
 
 /** The post text for the Summary: every number with a value, in one line. */
 const summaryCaption = (
     channel: string | null,
-    tiles: ShareTile[],
+    tiles: CaptionNumber[],
     range: string,
 ): string => {
     const replacements = { metrics: summaryList(tiles), range };
@@ -144,7 +143,6 @@ const shareOption = (
 ): ShareMetricOption => ({
     figure: '',
     change: null,
-    comparison: null,
     points: [],
     tiles: [],
     lines: [],
@@ -290,7 +288,7 @@ export const followersShareOption = (
         points: followersPoints(followers, mode, colors),
         lines: followersLinesFor(followers, mode, colors),
         shape: FOLLOWERS_SHAPES[mode],
-        caption: metricCaption(null, { metric: label, value: figure, range }),
+        caption: metricCaption({ metric: label, value: figure, range }),
     });
 };
 
@@ -346,16 +344,16 @@ export const channelChartShareOption = (
     range: string,
 ): ShareMetricOption => {
     const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric] ?? ''));
-    const tiles = drawn.map((metric) => ({ label: metric.label, figure: legendFigureOf(metric, mode), change: null }));
+    const numbers = drawn.map((metric) => ({ label: metric.label, figure: legendFigureOf(metric, mode) }));
 
     return shareOption({
-        key: specs[0]?.metric ?? 'posts',
+        key: 'channel',
         label: listOf(drawn.map((metric) => metric.label)),
         points: chartPoints(series, mode).map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
         shape: 'combo',
         series: drawn,
         chartMode: mode,
-        caption: summaryCaption(channel, tiles, range),
+        caption: summaryCaption(channel, numbers, range),
     });
 };
 
@@ -367,10 +365,6 @@ const legendFigureOf = (metric: ShareSeries, mode: ChartMode): string => {
 
     return metric.figure;
 };
-
-/** Labels joined the way the reader's language lists them: "Posts and Followers". */
-const listOf = (labels: string[]): string =>
-    new Intl.ListFormat(activeLocale.value, { type: 'conjunction' }).format(labels);
 
 /** Every number of the Summary in one card, as the cards print them. */
 export const summaryShareOption = (
@@ -421,6 +415,6 @@ export const postsShareOption = (
         figure,
         points: postsPoints(posts, mode, colors),
         shape: POSTS_SHAPES[mode],
-        caption: metricCaption(null, { metric: label, value: figure, range }),
+        caption: metricCaption({ metric: label, value: figure, range }),
     });
 };

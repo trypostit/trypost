@@ -244,7 +244,7 @@ const shownRange = (series: ChannelMetricSeries): DateRange => {
 
 /** What the Share button needs: the chart as it is drawn now, or null while there is nothing to share. */
 const share = computed(
-    (): { range: string; build: () => ShareMetricOption[] } | null => {
+    (): { range: string; build: () => ShareMetricOption } | null => {
         const series = chartSeries.value;
 
         if (!series || specs.value.length === 0 || !enoughHistory.value) {
@@ -255,7 +255,7 @@ const share = computed(
 
         return {
             range,
-            build: () => [
+            build: () =>
                 channelChartShareOption(
                     series,
                     specs.value,
@@ -264,7 +264,6 @@ const share = computed(
                     props.channel,
                     range,
                 ),
-            ],
         };
     },
 );
@@ -331,7 +330,6 @@ const changeMode = (value: string): void => {
                 :subject="channel"
                 :range="share.range"
                 :build="share.build"
-                :initial-key="specs[0]?.metric"
                 test-id="share-channel-metrics"
             />
         </template>

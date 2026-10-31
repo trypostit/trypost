@@ -17,14 +17,6 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     drawShareCard,
@@ -33,7 +25,6 @@ import {
     SHARE_TINTS,
     shareCardFile,
     type ShareCardOptions,
-    type ShareMetricKey,
     type ShareMetricOption,
     type ShareTint,
 } from '@/lib/insightsShareCard';
@@ -44,44 +35,27 @@ import { uploadChunked } from '@/utils/chunkedUpload';
 const props = defineProps<{
     subject: string;
     range: string;
-    options: ShareMetricOption[];
-    initialKey?: ShareMetricKey;
+    option: ShareMetricOption | null;
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
-/** The metric asked for; `selected` falls back to the first when the card cannot draw it. */
-const selectedKey = ref<ShareMetricKey>();
 const posting = ref(false);
 const painted = ref(false);
 const canvas = useTemplateRef<HTMLCanvasElement>('canvas');
 
-const selected = computed(
-    (): ShareMetricOption | undefined =>
-        props.options.find((option) => option.key === selectedKey.value) ??
-        props.options[0],
-);
-
-/** The metric picker's value: always one of the options, even when the one asked for is not. */
-const metricKey = computed({
-    get: (): ShareMetricKey | undefined => selected.value?.key,
-    set: (key: ShareMetricKey | undefined): void => {
-        selectedKey.value = key;
-    },
-});
-
 const previewDescription = computed((): string =>
-    [selected.value?.label, selected.value?.figure].filter(Boolean).join(' '),
+    [props.option?.label, props.option?.figure].filter(Boolean).join(' '),
 );
 
 const card = computed((): ShareCardOptions | null => {
-    if (!selected.value) {
+    if (!props.option) {
         return null;
     }
 
     return {
-        ...selected.value,
+        ...props.option,
         tint: tint.value,
         subject: props.subject,
         range: props.range,
@@ -129,7 +103,6 @@ watch(open, (isOpen) => {
         return;
     }
 
-    selectedKey.value = props.initialKey;
     posting.value = false;
     painted.value = false;
     paint();
@@ -186,7 +159,7 @@ const createPost = async (): Promise<void> => {
         open.value = false;
         openPostComposer({
             draft: {
-                content: selected.value?.caption ?? '',
+                content: props.option?.caption ?? '',
                 media: [media],
                 scheduled_at: null,
                 label_ids: [],
@@ -219,36 +192,11 @@ const createPost = async (): Promise<void> => {
                 role="img"
                 :aria-label="previewDescription"
                 :data-state="painted ? 'ready' : 'loading'"
-                :data-shape="selected?.shape"
+                :data-shape="option?.shape"
                 data-testid="share-chart-preview"
             />
 
             <div class="flex flex-wrap items-end gap-x-6 gap-y-3">
-                <div v-if="options.length > 1" class="grid min-w-44 gap-2">
-                    <Label for="share-chart-metric">{{
-                        $t('analytics.share.metric')
-                    }}</Label>
-                    <Select v-model="metricKey">
-                        <SelectTrigger
-                            id="share-chart-metric"
-                            class="h-8"
-                            data-testid="share-chart-metric"
-                        >
-                            <SelectValue>{{ selected?.label }}</SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem
-                                v-for="option in options"
-                                :key="option.key"
-                                :value="option.key"
-                                :data-testid="`share-chart-metric-${option.key}`"
-                            >
-                                {{ option.label }}
-                            </SelectItem>
-                        </SelectContent>
-                    </Select>
-                </div>
-
                 <div class="grid w-full gap-2">
                     <span class="text-sm font-medium text-foreground">{{
                         $t('analytics.share.color')

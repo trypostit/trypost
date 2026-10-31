@@ -50,9 +50,8 @@ const barRows = computed((): AccountMetricRow[] =>
     })),
 );
 const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
-const buildShareOptions = (): ShareMetricOption[] => [
-    postsShareOption(props.posts, rangeLabel.value, mode.value, props.colors),
-];
+const buildShareOption = (): ShareMetricOption =>
+    postsShareOption(props.posts, rangeLabel.value, mode.value, props.colors);
 </script>
 
 <template>
@@ -81,7 +80,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
             <ShareChartButton
                 v-if="posts.accounts.length > 0"
                 :range="rangeLabel"
-                :build="buildShareOptions"
+                :build="buildShareOption"
                 test-id="share-posts"
             />
         </template>

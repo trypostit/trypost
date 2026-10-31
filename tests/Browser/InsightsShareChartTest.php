@@ -149,7 +149,7 @@ test('a browser that cannot copy images is told to download the card instead', f
         ->assertNoJavaScriptErrors();
 });
 
-test('the summary shares as one card of its numbers, with no metric to pick', function () {
+test('the summary shares as one card of its numbers', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);
 
@@ -157,13 +157,12 @@ test('the summary shares as one card of its numbers, with no metric to pick', fu
     openShareCard($page, '@share-summary');
 
     $page->assertAttribute('@share-chart-preview', 'data-shape', 'tiles')
-        ->assertMissing('@share-chart-metric')
         ->assertVisible('@share-chart-download')
         ->assertVisible('@share-chart-copy')
         ->assertNoJavaScriptErrors();
 });
 
-test('the channel metrics card shares the chart as it is drawn, with no metric to pick', function () {
+test('the channel metrics card shares the chart as it is drawn', function () {
     [$user, $account] = insightsShareBrowserUser();
     $this->actingAs($user);
 
@@ -171,7 +170,6 @@ test('the channel metrics card shares the chart as it is drawn, with no metric t
     openShareCard($page, '@share-channel-metrics');
 
     $page->assertAttribute('@share-chart-preview', 'data-shape', 'combo')
-        ->assertMissing('@share-chart-metric')
         ->assertVisible('@share-chart-post')
         ->assertNoJavaScriptErrors();
 });
