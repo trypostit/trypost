@@ -13,7 +13,6 @@ import type {
     ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatCountChange, formatNumberCompact, formatPercentChange } from '@/lib/utils';
-import { avatar } from '@/routes/app/channels';
 import {
     type AccountIdentityData,
     accountLabel,
@@ -154,36 +153,10 @@ const shareOption = (
     ...option,
 });
 
-/**
- * The id of the workspace channel a report row stands for, while it is still
- * connected: the report keys a connected channel by its id and gives it a live
- * status (`BuildWorkspaceAnalyticsReport::liveAccountsByKey`), and a channel
- * that is gone has none.
- */
-const liveChannelId = (account: AccountIdentityData): string | null => {
-    if (!account.status) {
-        return null;
-    }
-
-    return account.social_account_key;
-};
-
-/** The app's copy of a channel's avatar, for a storage host without CORS; none once the channel is gone. */
-const avatarFallback = (account: AccountIdentityData): string | null => {
-    const id = liveChannelId(account);
-
-    if (!id || !account.avatar_url) {
-        return null;
-    }
-
-    return avatar.url(id);
-};
-
 /** The channel as the card draws it: its avatar, network and verified mark. */
 const shareChannel = (account: AccountIdentityData): ShareChannel => ({
     platform: account.platform,
     avatar: account.avatar_url ?? null,
-    avatarFallback: avatarFallback(account),
     verified: account.verified_badge ?? null,
 });
 

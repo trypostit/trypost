@@ -25,10 +25,8 @@ export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
 export type ShareChannel = {
     platform: string;
-    /** The stored avatar, from the storage host, which answers CORS requests. */
+    /** The stored avatar the report sends; the card draws the network's logo when it cannot load it with CORS. */
     avatar: string | null;
-    /** The same avatar from the app's own origin, for a storage host that sends no CORS header. */
-    avatarFallback: string | null;
     verified: VerifiedBadge | null;
 };
 
@@ -247,34 +245,15 @@ const loadImage = (url: string): Promise<HTMLImageElement | null> => {
     return loading;
 };
 
-/** An image the card draws, kept under `key`, from the first of `sources` that loads. */
-type ImageSource = { key: string; sources: string[] };
-
-/** A channel's network logo and, when it has one, its avatar with the app's copy behind it. */
-const channelImageSources = (channel: ShareChannel): ImageSource[] => {
+/** A channel's network logo and, when it has one, its avatar. */
+const channelImageUrls = (channel: ShareChannel): string[] => {
     const logo = getPlatformLogo(channel.platform);
-    const images = [{ key: logo, sources: [logo] }];
 
     if (!channel.avatar) {
-        return images;
+        return [logo];
     }
 
-    const sources = [channel.avatar, channel.avatarFallback].filter((source): source is string => source !== null);
-
-    return [...images, { key: channel.avatar, sources }];
-};
-
-/** The first of `sources` that loads, or null when none does. */
-const firstLoaded = async (sources: string[]): Promise<HTMLImageElement | null> => {
-    for (const source of sources) {
-        const image = await loadImage(source);
-
-        if (image) {
-            return image;
-        }
-    }
-
-    return null;
+    return [channel.avatar, logo];
 };
 
 type LoadedImage = { url: string; image: HTMLImageElement };
@@ -288,10 +267,10 @@ const optionChannels = (option: Pick<ShareMetricOption, 'points' | 'lines'>): Sh
 
 /** Loads the fonts and every image the options draw, each once per page. */
 const loadShareImages = async (options: Pick<ShareMetricOption, 'points' | 'lines'>[]): Promise<ShareImages> => {
-    const sources = [...new Map(options.flatMap(optionChannels).flatMap(channelImageSources).map((source) => [source.key, source])).values()];
+    const urls = [...new Set(options.flatMap(optionChannels).flatMap(channelImageUrls))];
     const [, images] = await Promise.all([
         loadFonts(),
-        Promise.all(sources.map(async ({ key, sources: urls }) => ({ url: key, image: await firstLoaded(urls) }))),
+        Promise.all(urls.map(async (url) => ({ url, image: await loadImage(url) }))),
     ]);
 
     return new Map(
