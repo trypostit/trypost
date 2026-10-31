@@ -133,6 +133,33 @@ test('the follower bar tooltip shows the verified mark of an X channel', functio
         ->assertNoJavaScriptErrors();
 });
 
+test('the follower bars print each channel’s number in one column before the bars, and only Line keeps the legend', function () {
+    [$user] = insightsChannelFilterFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsChannelTestId($page, 'analytics-account-value');
+
+    $values = 'Array.from(document.querySelector("[data-testid=accounts-unovis-bar-chart]").querySelectorAll("[data-testid=analytics-account-value]"), (value) => value.innerText).sort().join(",")';
+    $aligned = '(() => { const chart = document.querySelector("[data-testid=accounts-unovis-bar-chart]"); const edges = Array.from(chart.querySelectorAll("[data-testid=analytics-account-value]"), (value) => Math.round(value.getBoundingClientRect().right)); const barStart = Math.min(...Array.from(chart.querySelectorAll("[data-testid=analytics-account-bar]"), (bar) => bar.getBoundingClientRect().left)); return new Set(edges).size === 1 && edges[0] < barStart; })()';
+
+    $page->assertScript($values, '120,30')
+        ->assertScript($aligned, true)
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->click('@followers-growth');
+    waitForText($page, '@analytics-account-value', '+10');
+
+    $page->assertScript($values, '+10,+10')
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->click('@followers-line');
+    waitFor($page, '@analytics-followers-legend');
+
+    $page->assertVisible('@analytics-followers-legend')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the follower bar tooltip lists where the channel started and the toolbar fits a 390px viewport', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
@@ -141,7 +168,6 @@ test('the follower bar tooltip lists where the channel started and the toolbar f
     waitForInsightsChannelTestId($page, 'analytics-account-bar');
 
     $page->assertScript('document.querySelector("[data-testid=followers-bar]")?.getAttribute("aria-pressed")', 'true')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-legend-swatch]").length >= 2', true)
         ->hover('[data-testid="analytics-account-bar"] >> nth=0');
     waitForInsightsChannelTestId($page, 'analytics-tooltip-detail');
 

@@ -10,7 +10,7 @@ import type {
     ShareShape,
     ShareTile,
 } from '@/lib/insightsShareCard';
-import { formatCountChange, formatPercentChange } from '@/lib/utils';
+import { formatCountChange, formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import { avatar } from '@/routes/app/channels';
 import {
     type AccountIdentityData,
@@ -40,13 +40,19 @@ const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
     growth: 'rows',
 };
 
-/** What a channel's row shows in the per-channel modes: its followers, or its change. */
-export const FOLLOWERS_ROW_VALUES: Record<
+/** A per-channel view's rows: which number each channel shows, and how it reads. */
+type ChannelRowsSpec<Account> = {
+    value: (account: Account) => number | null;
+    format: (value: number) => string;
+};
+
+/** What a channel's row shows in the per-channel modes: its followers, or its signed change. */
+export const FOLLOWERS_ROWS: Record<
     Exclude<FollowersChartMode, 'line'>,
-    (account: FollowerAccount) => number | null
+    ChannelRowsSpec<FollowerAccount>
 > = {
-    bar: (account) => account.value,
-    growth: (account) => account.growth,
+    bar: { value: (account) => account.value, format: formatNumberCompact },
+    growth: { value: (account) => account.growth, format: formatCountChange },
 };
 
 /** How the page's Posts card is drawn: per channel, or over time split by channel. */
@@ -55,6 +61,12 @@ export type PostsChartMode = 'bar' | 'stacked';
 const POSTS_SHAPES: Record<PostsChartMode, ShareShape> = {
     bar: 'rows',
     stacked: 'stacked',
+};
+
+/** The Posts card's Bar view: each channel's posts sent. */
+export const POSTS_ROWS: ChannelRowsSpec<Posts['accounts'][number]> = {
+    value: (account) => account.count,
+    format: formatNumberCompact,
 };
 
 /** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
@@ -190,15 +202,25 @@ const channelAvatar = (account: AccountIdentityData): string | null => {
     return avatar.url(id);
 };
 
+/** A row's number as the page's column prints it; a dash while the channel has none. */
+const rowFigure = (value: number | null, format: (value: number) => string): string => {
+    if (value === null) {
+        return '—';
+    }
+
+    return format(value);
+};
+
 /** One row per channel in its color, the way the page's per-channel charts draw it. */
 const channelRows = <Account extends AccountIdentityData>(
     accounts: Account[],
-    value: (account: Account) => number | null,
+    spec: ChannelRowsSpec<Account>,
     colors: Record<string, string>,
 ): SharePoint[] =>
     accounts.map((account) => ({
         label: accountLabel(account),
-        value: value(account),
+        value: spec.value(account),
+        figure: rowFigure(spec.value(account), spec.format),
         color: colors[account.social_account_key],
         channel: {
             platform: account.platform,
@@ -216,7 +238,7 @@ const followersPoints = (
         return followersOverTime(followers);
     }
 
-    return channelRows(followers.accounts, FOLLOWERS_ROW_VALUES[mode], colors);
+    return channelRows(followers.accounts, FOLLOWERS_ROWS[mode], colors);
 };
 
 /** The followers gained or lost over the period, across the channels that report it. */
@@ -373,7 +395,7 @@ const postsPoints = (posts: Posts, mode: PostsChartMode, colors: Record<string, 
         return postsOverTime(posts, colors);
     }
 
-    return channelRows(posts.accounts, (account) => account.count, colors);
+    return channelRows(posts.accounts, POSTS_ROWS, colors);
 };
 
 /** The posts sent over the period the way the page's Posts card draws them in `mode`. */

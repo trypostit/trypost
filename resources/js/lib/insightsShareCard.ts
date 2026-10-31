@@ -38,6 +38,8 @@ export type SharePoint = {
     value: number | null;
     color?: string;
     channel?: ShareChannel;
+    /** A channel's number as its `rows` line prints it, before its bar. */
+    figure?: string;
     /** The column's parts, bottom up, for `stacked`; `value` is their total. */
     segments?: ShareSegment[];
 };
@@ -163,7 +165,7 @@ const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, compa
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
 
 /** One bar per channel: the avatar and name in a column on the left, the values under the bars. */
-const ROWS = { max: 12, labelWidth: 280, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+const ROWS = { max: 12, labelWidth: 420, figureWidth: 120, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
 const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };
@@ -700,7 +702,7 @@ const paintChannel = (
     }
 };
 
-/** The room a row's avatar takes before its name: none when the row has no channel. */
+/** The room a row's avatar takes before its bar: none when the row has no channel. */
 const avatarSpace = (point: SharePoint, avatarSize: number): number => {
     if (!point.channel) {
         return 0;
@@ -722,7 +724,8 @@ const rankedRows = (points: SharePoint[]): RankedPoint[] =>
 
 /**
  * One horizontal bar per channel from zero, losses to the left, in each
- * channel's color, like the page's Bar and Growth views.
+ * channel's color, after its name, its number and its avatar in a fixed
+ * column, like the page's Bar and Growth views.
  */
 const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
     const rows = rankedRows(options.points);
@@ -737,6 +740,7 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
     const rowHeight = plot.height / Math.max(rows.length, 1);
     const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
     const labelFont = sans(500, Math.min(22, Math.max(14, rowHeight * 0.55)));
+    const figureFont = sans(600, Math.min(26, Math.max(16, rowHeight * 0.6)));
     const avatarSize = Math.min(AVATAR.size, rowHeight * AVATAR.fill);
 
     paintGrid(
@@ -749,14 +753,19 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
 
     rows.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
-        const labelX = area.x + avatarSpace(point, avatarSize);
-        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap - (labelX - area.x));
+        const channelSpace = avatarSpace(point, avatarSize);
+        const figureRight = plot.x - ROWS.labelGap - channelSpace;
+        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap - channelSpace - ROWS.figureWidth);
 
-        if (point.channel) {
-            paintChannel(context, point.channel, images, { x: area.x, y: centre - avatarSize / 2 }, avatarSize);
+        writeText(context, label, { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
+
+        if (point.figure) {
+            writeText(context, point.figure, { x: figureRight, y: centre }, { font: figureFont, color: INK, align: 'right', baseline: 'middle' });
         }
 
-        writeText(context, label, { x: labelX, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
+        if (point.channel) {
+            paintChannel(context, point.channel, images, { x: plot.x - ROWS.labelGap - avatarSize, y: centre - avatarSize / 2 }, avatarSize);
+        }
 
         if (point.value === 0) {
             return;

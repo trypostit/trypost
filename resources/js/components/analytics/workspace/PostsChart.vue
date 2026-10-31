@@ -3,7 +3,11 @@ import { computed, ref } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
-import { type PostsChartMode, postsShareOption } from '@/lib/insightsShare';
+import {
+    POSTS_ROWS,
+    type PostsChartMode,
+    postsShareOption,
+} from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
@@ -37,6 +41,13 @@ const shownChannels = computed(() =>
     props.posts.accounts.length < props.totalChannels
         ? props.posts.accounts.length
         : null,
+);
+/** One bar per channel with the posts it sent. */
+const barRows = computed(() =>
+    props.posts.accounts.map((account) => ({
+        account,
+        value: POSTS_ROWS.value(account),
+    })),
 );
 const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
 const buildShareOptions = (): ShareMetricOption[] => [
@@ -102,12 +113,8 @@ const buildShareOptions = (): ShareMetricOption[] => [
             <div class="min-w-0">
                 <SocialAccountMetricBarChart
                     v-if="mode === 'bar'"
-                    :rows="
-                        posts.accounts.map((account) => ({
-                            account,
-                            value: account.count,
-                        }))
-                    "
+                    :rows="barRows"
+                    :format-value="POSTS_ROWS.format"
                     :colors="colors"
                 />
                 <PostsOverTimeStackedBarChart
@@ -120,6 +127,8 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 />
             </div>
             <div
+                v-if="mode === 'stacked'"
+                data-testid="analytics-posts-legend"
                 class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
             >
                 <div

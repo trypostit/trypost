@@ -15,7 +15,6 @@ import {
     useTemplateRef,
 } from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import {
     ChartContainer,
     ChartTooltip,
@@ -23,22 +22,30 @@ import {
     type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
+import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { accountColor } from '@/lib/analyticsColors';
-import { type AccountIdentityData, accountLabel } from '@/types/analytics';
+import { formatNumberCompact } from '@/lib/utils';
+import type { AccountIdentityData } from '@/types/analytics';
 
+import AxisChannelRow from './AxisChannelRow.vue';
 import {
     formatCountTick,
     socialAccountChartConfig,
 } from './socialAccountChart';
 
-const props = defineProps<{
-    rows: {
-        account: AccountIdentityData;
-        value: number | null;
-    }[];
-    colors: Record<string, string>;
-    detail?: (index: number) => ChartTooltipDetail[];
-}>();
+const props = withDefaults(
+    defineProps<{
+        rows: {
+            account: AccountIdentityData;
+            value: number | null;
+        }[];
+        colors: Record<string, string>;
+        detail?: (index: number) => ChartTooltipDetail[];
+        /** How each channel's number reads in the column before its bar. */
+        formatValue?: (value: number) => string;
+    }>(),
+    { detail: undefined, formatValue: formatNumberCompact },
+);
 
 type BarPoint = { index: number; value: number };
 const chartData = computed<BarPoint[]>(() =>
@@ -59,20 +66,15 @@ const rowColor = (point: BarPoint): string => {
     const key = props.rows[point.index]?.account.social_account_key;
     return (key && props.colors[key]) || accountColor(point.index);
 };
-const accountAt = (index: number): AccountIdentityData | undefined =>
-    props.rows[Math.round(index)]?.account;
-const formatAccount = (tick: number | Date): string => {
-    if (typeof tick !== 'number') {
-        return '';
+const rowAt = (index: number) => props.rows[Math.round(index)];
+/** The axis draws no text: each row's channel and number are laid over it as HTML. */
+const blankTick = (): string => '';
+const rowValue = (value: number | null): string => {
+    if (value === null) {
+        return '—';
     }
 
-    const account = accountAt(tick);
-
-    if (!account) {
-        return '';
-    }
-
-    return accountLabel(account);
+    return props.formatValue(value);
 };
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
 const detailFormatter = (key: string): ChartTooltipDetail[] =>
@@ -101,14 +103,18 @@ const tickAttributes = {
     },
 };
 const AVATAR_SIZE = 24;
-/** The avatar host's `p-1`, room for the status ring to overhang the avatar. */
-const AVATAR_OVERHANG = 4;
-const AVATAR_GAP = 8;
-/** Between the avatar and the channel's name. */
-const AXIS_LABEL_GAP = 6;
-const ACCOUNT_TICK_PADDING = AVATAR_SIZE + AVATAR_GAP + AXIS_LABEL_GAP;
-/** The widest a channel's name gets next to its bar before the axis trims it with an ellipsis. */
-const ACCOUNT_LABEL_WIDTH = 88;
+/** Between a row's number and the start of its bar. */
+const COLUMN_GAP = 12;
+/** Avatar, name and number before the bars; narrower on a phone so the bars keep room. */
+const belowSm = useBelowBreakpoint('sm');
+const columnWidth = computed(() => (belowSm.value ? 176 : 240));
+/** The bars start after the rows' column; the axis itself draws no text to make room for. */
+const chartPadding = computed(() => ({
+    top: 12,
+    right: 16,
+    bottom: 0,
+    left: columnWidth.value + COLUMN_GAP,
+}));
 const appContext = getCurrentInstance()?.appContext ?? null;
 const avatarHosts: HTMLElement[] = [];
 const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
@@ -121,16 +127,16 @@ const unmountAvatars = (): void => {
 };
 
 /**
- * The channel's avatar next to its axis label, as HTML laid over the chart at
- * the tick's position. Not a `<foreignObject>` inside the SVG: WebKit (every
- * browser on iOS) ignores the tick's transform there and draws every avatar at
- * the chart's corner.
+ * The row's channel and number, as HTML laid over the chart at the tick's
+ * position. Not a `<foreignObject>` inside the SVG: WebKit (every browser on
+ * iOS) ignores the tick's transform there and draws every row at the chart's
+ * corner.
  */
 const placeAxisChannel = (
     layer: HTMLDivElement,
     svgOffset: { x: number; y: number },
     tick: SVGGElement,
-    account: AccountIdentityData,
+    row: (typeof props.rows)[number],
 ): void => {
     const origin = tick.getCTM();
 
@@ -139,26 +145,22 @@ const placeAxisChannel = (
     }
 
     const host = document.createElement('div');
+    const width = columnWidth.value;
 
-    host.className = 'absolute p-1 leading-none';
+    host.className = 'absolute';
     host.dataset.testid = 'analytics-axis-channel';
-    host.dataset.platform = account.platform;
-    host.style.left = `${svgOffset.x + origin.e - AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG}px`;
-    host.style.top = `${svgOffset.y + origin.f - AVATAR_SIZE / 2 - AVATAR_OVERHANG}px`;
+    host.dataset.platform = row.account.platform;
+    host.style.left = `${svgOffset.x}px`;
+    host.style.top = `${svgOffset.y + origin.f - AVATAR_SIZE / 2}px`;
+    host.style.width = `${width}px`;
+    host.style.height = `${AVATAR_SIZE}px`;
 
-    const avatar = h(ChannelAvatar, {
-        platform: account.platform,
-        src: account.avatar_url,
-        name: accountLabel(account),
-        size: AVATAR_SIZE,
-        ring: 'card',
-        status: account.status ?? null,
-        accountId: account.social_account_key,
-        verified: account.verified_badge ?? null,
-        reserveSpace: false,
+    const content = h(AxisChannelRow, {
+        account: row.account,
+        value: rowValue(row.value),
     });
-    avatar.appContext = appContext;
-    render(avatar, host);
+    content.appContext = appContext;
+    render(content, host);
     avatarHosts.push(host);
     layer.appendChild(host);
 };
@@ -181,12 +183,10 @@ const decorateTicks = (svg: SVGSVGElement): void => {
 
     svg.querySelectorAll<SVGGElement>('g[data-account-tick]').forEach(
         (tick) => {
-            const account = accountAt(
-                Number(tick.getAttribute('data-account-tick')),
-            );
+            const row = rowAt(Number(tick.getAttribute('data-account-tick')));
 
-            if (account) {
-                placeAxisChannel(layer, svgOffset, tick, account);
+            if (row) {
+                placeAxisChannel(layer, svgOffset, tick, row);
             }
         },
     );
@@ -213,7 +213,7 @@ const barAttributes = {
         <VisXYContainer
             :data="chartData"
             y-direction="south"
-            :padding="{ top: 12, right: 16, bottom: 0, left: 0 }"
+            :padding="chartPadding"
             :on-render-complete="decorateTicks"
         >
             <VisStackedBar
@@ -236,12 +236,8 @@ const barAttributes = {
             />
             <VisAxis
                 type="y"
-                :tick-format="formatAccount"
-                :tick-text-width="ACCOUNT_LABEL_WIDTH"
-                tick-text-fit-mode="trim"
-                tick-text-trim-type="end"
+                :tick-format="blankTick"
                 :tick-values="categoryTicks"
-                :tick-padding="ACCOUNT_TICK_PADDING"
                 :duration="0"
                 :attributes="tickAttributes"
                 :grid-line="false"

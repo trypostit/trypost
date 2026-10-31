@@ -764,7 +764,7 @@ test('top posts name the network each post went out on and leave the post type o
         ->assertSeeIn("@analytics-top-post-published-via-{$publications['tiktok']->id}", 'TikTok')
         ->assertPresent("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]")
         ->assertMissing("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$publications['tiktok']->social_account_id}\"]")
-        ->assertScript("document.querySelectorAll('[data-testid=\"analytics-section\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]').length >= 4", true)
+        ->assertScript("document.querySelectorAll('[data-testid=\"analytics-section\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]').length >= 3", true)
         ->assertMissing("@analytics-top-post-type-{$publications['reel']->id}")
         ->assertDontSee('Published on the social network')
         ->assertNoJavaScriptErrors();

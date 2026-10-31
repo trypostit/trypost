@@ -7,7 +7,7 @@ import type { ChartTooltipDetail } from '@/components/ui/chart';
 import date from '@/date';
 import { activeLocale } from '@/language';
 import {
-    FOLLOWERS_ROW_VALUES,
+    FOLLOWERS_ROWS,
     type FollowersChartMode,
     followersShareOption,
 } from '@/lib/insightsShare';
@@ -108,19 +108,30 @@ const barDetail = (index: number): ChartTooltipDetail[] => {
         changeDetail(change, start),
     ];
 };
-/** One bar per channel: its followers (Bar) or its change over the period (Growth). */
-const barRows = computed(() => {
+/** One bar per channel with its number: its followers (Bar) or its change over the period (Growth); none in Line. */
+const barChart = computed(() => {
     if (mode.value === 'line') {
-        return [];
+        return null;
     }
 
-    const valueOf = FOLLOWERS_ROW_VALUES[mode.value];
+    const rows = FOLLOWERS_ROWS[mode.value];
 
-    return props.followers.accounts.map((account) => ({
-        account,
-        value: valueOf(account),
-    }));
+    return {
+        rows: props.followers.accounts.map((account) => ({
+            account,
+            value: rows.value(account),
+        })),
+        formatValue: rows.format,
+    };
 });
+/** A channel's followers in the Line view's legend. */
+const legendValue = (value: number | null): string => {
+    if (value === null) {
+        return '—';
+    }
+
+    return formatNumberCompact(value);
+};
 const shownChannels = computed(() =>
     props.channelFiltered &&
     props.totalChannels &&
@@ -204,13 +215,16 @@ const buildShareOptions = (): ShareMetricOption[] => [
                     :colors="colors"
                 />
                 <SocialAccountMetricBarChart
-                    v-else
-                    :rows="barRows"
+                    v-else-if="barChart"
+                    :rows="barChart.rows"
                     :colors="colors"
                     :detail="barDetail"
+                    :format-value="barChart.formatValue"
                 />
             </div>
             <div
+                v-if="mode === 'line'"
+                data-testid="analytics-followers-legend"
                 class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
             >
                 <div
@@ -226,15 +240,7 @@ const buildShareOptions = (): ShareMetricOption[] => [
                     />
                     <span class="flex shrink-0 items-center gap-2">
                         <span class="text-sm font-medium text-foreground tabular-nums">
-                            {{
-                                mode === 'growth'
-                                    ? account.growth === null
-                                        ? '—'
-                                        : `${account.growth > 0 ? '+' : ''}${formatNumberCompact(account.growth)}`
-                                    : account.value === null
-                                      ? '—'
-                                      : formatNumberCompact(account.value)
-                            }}
+                            {{ legendValue(account.value) }}
                         </span>
                         <span
                             v-if="account.provenance === 'carried_forward'"
