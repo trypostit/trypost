@@ -830,7 +830,7 @@ function waitForPath(mixed $page, string $path): void
 
 /**
  * Records what every canvas on the page draws from now on: each text with
- * its direction, place, width and alignment (`window.__drawn`), each image's address
+ * its direction, place, width, alignment and font (`window.__drawn`), each image's address
  * (`window.__images`) and how many patterns it fills with (`window.__patterns`,
  * the share card's hatch for a previous period). A canvas cannot be read back
  * as text, so a test of a painted card reads these instead.
@@ -850,7 +850,7 @@ function recordCanvasDrawing(mixed $page): void
             const fillText = CanvasRenderingContext2D.prototype.fillText;
             const drawImage = CanvasRenderingContext2D.prototype.drawImage;
             CanvasRenderingContext2D.prototype.fillText = function (text, ...rest) {
-                window.__drawn.push({ text: String(text), direction: this.direction, x: rest[0], y: rest[1], width: this.measureText(String(text)).width, align: this.textAlign });
+                window.__drawn.push({ text: String(text), direction: this.direction, x: rest[0], y: rest[1], width: this.measureText(String(text)).width, align: this.textAlign, font: this.font });
 
                 return fillText.call(this, text, ...rest);
             };

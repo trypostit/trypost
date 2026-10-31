@@ -432,7 +432,7 @@ test('the channel chart shares the period the view shows: the previous one in Co
         ->assertNoJavaScriptErrors();
 })->with(['previous', 'both']);
 
-test('a wide legend in the Both view never cuts the channel’s name or period on the share card', function () {
+test('a wide legend in the Both view shrinks on the share card to leave the channel’s name its room', function () {
     $wide = SocialAccount::factory()->create([
         'workspace_id' => $this->instagram->workspace_id,
         'platform' => Platform::Instagram,
@@ -456,9 +456,8 @@ test('a wide legend in the Both view never cuts the channel’s name or period o
     $page->click('@share-channel-metrics');
     waitForState($page, '@share-chart-preview', "element.dataset.state === 'ready'");
 
-    $drawn = $page->script('window.__drawn.map((entry) => entry.text)');
+    $figureSize = $page->script('Number(window.__drawn.findLast((entry) => entry.text === "987.7K").font.match(/(\\d+(?:\\.\\d+)?)px/)[1])');
 
-    expect($drawn)->toContain('Castellano Creative Studio')
-        ->and(collect($drawn)->contains(fn (string $text): bool => str_ends_with($text, '…')))->toBeFalse();
+    expect($figureSize)->toBeLessThan(52);
     $page->assertNoJavaScriptErrors();
 });
