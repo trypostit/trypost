@@ -14,6 +14,17 @@ export const toUrl = (href: NonNullable<InertiaLinkProps['href']>) => {
     return typeof href === 'string' ? href : href?.url;
 };
 
+/** Runs `task` once the browser is idle; Safari, without `requestIdleCallback`, runs it on the next tick. */
+export const whenIdle = (task: () => void): void => {
+    if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(task);
+
+        return;
+    }
+
+    setTimeout(task, 0);
+};
+
 export const toNullableText = (value: unknown): string | null =>
     typeof value === 'string' && value.trim() ? value : null;
 

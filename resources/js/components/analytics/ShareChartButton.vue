@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { usePage } from '@inertiajs/vue3';
 import { IconShare2 } from '@tabler/icons-vue';
-import { computed, ref, shallowRef } from 'vue';
+import { computed, onMounted, ref, shallowRef } from 'vue';
 
 import ShareChartDialog from '@/components/analytics/ShareChartDialog.vue';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,12 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
-import type {
-    ShareMetricKey,
-    ShareMetricOption,
+import {
+    preloadShareCards,
+    type ShareMetricKey,
+    type ShareMetricOption,
 } from '@/lib/insightsShareCard';
+import { whenIdle } from '@/lib/utils';
 
 const props = defineProps<{
     /** The channel the numbers belong to; the current workspace when left out. */
@@ -32,6 +34,16 @@ const shareSubject = computed(
 );
 const open = ref(false);
 const options = shallowRef<ShareMetricOption[]>([]);
+
+/** The card's fonts and channel photos load while the page is idle, so the first preview paints at once. */
+const preloaded = ref(false);
+
+onMounted(() => {
+    whenIdle(async () => {
+        await preloadShareCards(props.build());
+        preloaded.value = true;
+    });
+});
 
 const openDialog = (): void => {
     options.value = props.build();
@@ -51,6 +63,7 @@ const openDialog = (): void => {
                         class="shrink-0"
                         :aria-label="$t('analytics.share.button')"
                         :data-testid="testId"
+                        :data-state="preloaded ? 'ready' : 'loading'"
                         @click="openDialog"
                     >
                         <IconShare2 aria-hidden="true" />

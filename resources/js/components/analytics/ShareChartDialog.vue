@@ -215,6 +215,7 @@ const createPost = async (): Promise<void> => {
             <canvas
                 ref="canvas"
                 class="aspect-video w-full rounded-lg"
+                :class="{ 'animate-pulse bg-muted': !painted }"
                 role="img"
                 :aria-label="previewDescription"
                 :data-state="painted ? 'ready' : 'loading'"

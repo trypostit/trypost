@@ -125,6 +125,20 @@ test('the followers card draws each channel with its avatar and still exports', 
         ->assertNoJavaScriptErrors();
 });
 
+test('the share card loads each channel photo before the dialog opens', function () {
+    [$user, $account] = insightsShareBrowserUser();
+    Storage::put('social-accounts/avatar.png', file_get_contents(base_path('tests/fixtures/blue-logo.png')));
+    $account->update(['avatar_url' => 'social-accounts/avatar.png']);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForState($page, '@share-followers', "element.dataset.state === 'ready'");
+
+    $page->assertAttribute('@share-followers', 'data-state', 'ready')
+        ->assertMissing('@share-chart-dialog')
+        ->assertNoJavaScriptErrors();
+});
+
 test('a browser that cannot copy images is told to download the card instead', function () {
     [$user] = insightsShareBrowserUser();
     $this->actingAs($user);

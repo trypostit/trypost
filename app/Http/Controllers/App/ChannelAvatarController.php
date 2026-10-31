@@ -11,10 +11,10 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Serves a channel's stored avatar from the app's own origin, so the Insights
- * share card can draw it on a canvas and still export: the storage host sends
- * no CORS headers, and one such image would taint the canvas. Only an image is
- * ever served, like MediaFileController.
+ * Serves a channel's stored avatar from the app's own origin, the fallback the
+ * Insights share card draws when the storage host sends no CORS header (a
+ * self-hosted bucket without CORS): one such image would taint the canvas and
+ * stop it exporting. Only an image is ever served, like MediaFileController.
  */
 class ChannelAvatarController extends Controller
 {

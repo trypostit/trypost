@@ -13,9 +13,8 @@ import type { VerifiedBadge } from '@/types/social-account';
 /**
  * The Insights share card: a chart or a headline number drawn on a canvas, to
  * download or post. Drawn rather than captured from the DOM, so it looks the
- * same in every browser and needs no dependency. It holds only vectors and
- * text: remote avatars are left out on purpose, because a network's CDN sends
- * no CORS header and one such image would stop the canvas exporting.
+ * same in every browser and needs no dependency. Every image it draws loads
+ * with CORS: one that does not would stop the canvas exporting.
  */
 
 /** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
@@ -26,8 +25,10 @@ export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
 export type ShareChannel = {
     platform: string;
-    /** Served from the app's own origin, so drawing it keeps the canvas exportable. */
+    /** The stored avatar, from the storage host, which answers CORS requests. */
     avatar: string | null;
+    /** The same avatar from the app's own origin, for a storage host that sends no CORS header. */
+    avatarFallback: string | null;
     verified: VerifiedBadge | null;
 };
 
@@ -246,29 +247,51 @@ const loadImage = (url: string): Promise<HTMLImageElement | null> => {
     return loading;
 };
 
-/** A channel's avatar, when it has one, and its network's logo. */
-const channelImageUrls = (channel: ShareChannel): string[] => {
+/** An image the card draws, kept under `key`, from the first of `sources` that loads. */
+type ImageSource = { key: string; sources: string[] };
+
+/** A channel's network logo and, when it has one, its avatar with the app's copy behind it. */
+const channelImageSources = (channel: ShareChannel): ImageSource[] => {
     const logo = getPlatformLogo(channel.platform);
+    const images = [{ key: logo, sources: [logo] }];
 
     if (!channel.avatar) {
-        return [logo];
+        return images;
     }
 
-    return [channel.avatar, logo];
+    const sources = [channel.avatar, channel.avatarFallback].filter((source): source is string => source !== null);
+
+    return [...images, { key: channel.avatar, sources }];
+};
+
+/** The first of `sources` that loads, or null when none does. */
+const firstLoaded = async (sources: string[]): Promise<HTMLImageElement | null> => {
+    for (const source of sources) {
+        const image = await loadImage(source);
+
+        if (image) {
+            return image;
+        }
+    }
+
+    return null;
 };
 
 type LoadedImage = { url: string; image: HTMLImageElement };
 
 /** Waits for the fonts and loads the images a card draws, before it is painted. */
-export const prepareShareCard = async (options: ShareCardOptions): Promise<ShareImages> => {
-    const channels = [
-        ...options.points.map((point) => point.channel),
-        ...options.lines.map((line) => line.channel),
-    ].filter((channel): channel is ShareChannel => channel !== undefined);
-    const urls = [...new Set(channels.flatMap(channelImageUrls))];
+/** The channels an option draws, as rows or as lines. */
+const optionChannels = (option: Pick<ShareMetricOption, 'points' | 'lines'>): ShareChannel[] =>
+    [...option.points.map((point) => point.channel), ...option.lines.map((line) => line.channel)].filter(
+        (channel): channel is ShareChannel => channel !== undefined,
+    );
+
+/** Loads the fonts and every image the options draw, each once per page. */
+const loadShareImages = async (options: Pick<ShareMetricOption, 'points' | 'lines'>[]): Promise<ShareImages> => {
+    const sources = [...new Map(options.flatMap(optionChannels).flatMap(channelImageSources).map((source) => [source.key, source])).values()];
     const [, images] = await Promise.all([
         loadFonts(),
-        Promise.all(urls.map(async (url) => ({ url, image: await loadImage(url) }))),
+        Promise.all(sources.map(async ({ key, sources: urls }) => ({ url: key, image: await firstLoaded(urls) }))),
     ]);
 
     return new Map(
@@ -276,6 +299,16 @@ export const prepareShareCard = async (options: ShareCardOptions): Promise<Share
             .filter((loaded): loaded is LoadedImage => loaded.image !== null)
             .map(({ url, image }) => [url, image]),
     );
+};
+
+export const prepareShareCard = (options: ShareCardOptions): Promise<ShareImages> => loadShareImages([options]);
+
+/**
+ * Warms the fonts and images a share card will draw before it is opened, so
+ * the first preview paints at once; a later `prepareShareCard` finds them loaded.
+ */
+export const preloadShareCards = async (options: ShareMetricOption[]): Promise<void> => {
+    await loadShareImages(options);
 };
 
 type TextStyle = {

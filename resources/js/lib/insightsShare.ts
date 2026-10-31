@@ -168,8 +168,8 @@ const liveChannelId = (account: AccountIdentityData): string | null => {
     return account.social_account_key;
 };
 
-/** A channel's avatar served from the app, so the card can draw it; none for a channel no longer connected. */
-const channelAvatar = (account: AccountIdentityData): string | null => {
+/** The app's copy of a channel's avatar, for a storage host without CORS; none once the channel is gone. */
+const avatarFallback = (account: AccountIdentityData): string | null => {
     const id = liveChannelId(account);
 
     if (!id || !account.avatar_url) {
@@ -182,7 +182,8 @@ const channelAvatar = (account: AccountIdentityData): string | null => {
 /** The channel as the card draws it: its avatar, network and verified mark. */
 const shareChannel = (account: AccountIdentityData): ShareChannel => ({
     platform: account.platform,
-    avatar: channelAvatar(account),
+    avatar: account.avatar_url ?? null,
+    avatarFallback: avatarFallback(account),
     verified: account.verified_badge ?? null,
 });
 
