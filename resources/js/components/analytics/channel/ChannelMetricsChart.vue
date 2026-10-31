@@ -17,14 +17,13 @@ import {
     componentToString,
     type ChartConfig,
 } from '@/components/ui/chart';
-import date from '@/date';
 import {
     AXIS_STEPS,
+    axisBucketLabel,
     bucketLabel,
     definedValues,
     formatSeriesValue,
     isPercentMetric,
-    monthLabel,
     niceDomain,
     type ChartMode,
     type SeriesSpec,
@@ -215,13 +214,7 @@ const xTick = (tick: number | Date): string => {
             ? props.series.previous[index]
             : props.series.current[index];
 
-    if (!point) {
-        return '';
-    }
-
-    return props.series.resolution === 'monthly'
-        ? monthLabel(point.start)
-        : date.formatMonthDay(point.start);
+    return point ? axisBucketLabel(point, props.series.resolution) : '';
 };
 
 const dateLabel = (point: MetricSeriesPoint | undefined): string =>

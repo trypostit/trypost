@@ -313,6 +313,15 @@ export const monthLabel = (day: string): string => {
     return date.formatMonthYear(month, year);
 };
 
+/** A bucket on the chart's time axis: the month for monthly buckets, else the day it starts. */
+export const axisBucketLabel = (
+    point: MetricSeriesPoint,
+    resolution: ChannelMetricSeries['resolution'],
+): string =>
+    resolution === 'monthly'
+        ? monthLabel(point.start)
+        : date.formatMonthDay(point.start);
+
 const direction = (
     current: number,
     previous: number,
