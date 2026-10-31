@@ -297,11 +297,11 @@ export const channelChartShareOption = (
     series: ChannelMetricSeries,
     specs: SeriesSpec[],
     mode: ChartMode,
-    labels: Partial<Record<SeriesMetric, string>>,
+    labels: Record<SeriesMetric, string>,
     channel: string,
     range: string,
 ): ShareMetricOption => {
-    const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric] ?? ''));
+    const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric]));
     const numbers = drawn.map((metric) => ({ label: metric.label, figure: periodFigure(metric, shownPeriod(mode)) }));
 
     return shareOption({

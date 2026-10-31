@@ -15,7 +15,7 @@ const props = withDefaults(
         config?: Record<string, unknown>;
         x?: number | Date;
         specs: SeriesSpec[];
-        labels: Partial<Record<SeriesMetric, string>>;
+        labels: Record<SeriesMetric, string>;
         mode: ChartMode;
         dateLabel: (point: MetricSeriesPoint | undefined) => string;
     }>(),

@@ -49,7 +49,7 @@ const props = defineProps<{
     series: ChannelMetricSeries;
     specs: SeriesSpec[];
     mode: ChartMode;
-    labels: Partial<Record<SeriesMetric, string>>;
+    labels: Record<SeriesMetric, string>;
 }>();
 
 const DASH = [5, 4];
@@ -220,7 +220,7 @@ const config = computed<ChartConfig>(() =>
     Object.fromEntries(
         props.specs.map((spec) => [
             spec.metric,
-            { label: props.labels[spec.metric] ?? '', color: spec.color },
+            { label: props.labels[spec.metric], color: spec.color },
         ]),
     ),
 );
@@ -246,11 +246,22 @@ const barAttributes = {
 const groupedBarAttributes = {
     [VisGroupedBarSelectors.bar]: { 'data-testid': 'insights-metrics-bar' },
 };
+/** Room for an axis' tick labels, and the plain edge on the right when no metric uses that axis. */
+const MARGIN = { top: 12, bottom: 28, axis: 56, edge: 12 };
+
+const rightMargin = (): number => {
+    if (domains.value.right) {
+        return MARGIN.axis;
+    }
+
+    return MARGIN.edge;
+};
+
 const margin = computed(() => ({
-    top: 12,
-    right: domains.value.right ? 56 : 12,
-    bottom: 28,
-    left: 56,
+    top: MARGIN.top,
+    right: rightMargin(),
+    bottom: MARGIN.bottom,
+    left: MARGIN.axis,
 }));
 const numTicks = computed(() =>
     Math.min(props.series.current.length, 6),

@@ -94,7 +94,14 @@ const lineColor = (index: number): string =>
 
 /** Room on the right for each line's avatar and latest number; narrower on a phone. */
 const belowSm = useBelowBreakpoint('sm');
-const railWidth = computed(() => (belowSm.value ? 92 : 112));
+const RAIL_WIDTH = { phone: 92, wide: 112 };
+const railWidth = computed((): number => {
+    if (belowSm.value) {
+        return RAIL_WIDTH.phone;
+    }
+
+    return RAIL_WIDTH.wide;
+});
 const chartPadding = computed(() => ({
     top: 16,
     right: railWidth.value,

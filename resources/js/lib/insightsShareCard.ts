@@ -593,11 +593,19 @@ const paintGrid = (
     ticks.forEach((value) => writeTick(context, formatNumberCompact(value), label(value), style));
 };
 
+/** The radius at a bar's low-coordinate edge and at its high one: only the data end is round. */
+const dataEndRadii = (start: number, end: number, radius: number): [number, number] => {
+    if (end > start) {
+        return [0, radius];
+    }
+
+    return [radius, 0];
+};
+
 /**
  * A bar from the baseline (`start`) to its value (`end`) along its axis,
  * centred on `middle` across it and rounded only at the data end, like
- * unovis' `roundedCorners`: the radius goes on the bar's low-coordinate edge
- * or its high one, whichever is the data end.
+ * unovis' `roundedCorners`.
  */
 const fillBar = (
     context: CanvasRenderingContext2D,
@@ -609,7 +617,7 @@ const fillBar = (
 ): void => {
     const length = Math.abs(end - start);
     const radius = Math.min(thickness * CHART.barRoundness, length);
-    const [low, high] = end > start ? [0, radius] : [radius, 0];
+    const [low, high] = dataEndRadii(start, end, radius);
 
     context.beginPath();
 
@@ -620,6 +628,15 @@ const fillBar = (
     }
 
     context.fill();
+};
+
+/** A middle point's tangent: flat at a peak or a dip, so the curve never overshoots, else the mean of its two slopes. */
+const innerTangent = (before: number, after: number): number => {
+    if (before * after <= 0) {
+        return 0;
+    }
+
+    return (before + after) / 2;
 };
 
 /** The line through the points as a monotone cubic, d3's `curveMonotoneX` the page's charts use. */
@@ -648,7 +665,7 @@ const traceMonotone = (context: CanvasRenderingContext2D, points: Point[]): void
             return slopes[slopes.length - 1];
         }
 
-        return slopes[index - 1] * slopes[index] <= 0 ? 0 : (slopes[index - 1] + slopes[index]) / 2;
+        return innerTangent(slopes[index - 1], slopes[index]);
     });
 
     slopes.forEach((slope, index) => {
@@ -1277,6 +1294,15 @@ const comboDomain = (series: ShareSeries[], periods: PublicationPeriod[]): { min
         series.flatMap((metric) => periods.flatMap((period) => metric[period].filter((value): value is number => value !== null))),
     );
 
+/** The room the right axis' labels take; none when no metric uses it. */
+const rightAxisRoom = (domain: { min: number; max: number } | null): number => {
+    if (domain) {
+        return COMBO.rightGutter;
+    }
+
+    return 0;
+};
+
 /** Where an axis' tick labels sit: right-aligned before the plot on the left, left-aligned after it on the right. */
 const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (plot: Box) => number; direction: number }> = {
     left: { align: 'right', edge: (plot) => plot.x, direction: -1 },
@@ -1304,7 +1330,7 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     const plot = {
         x: left + PLOT.gutter,
         y: panel.y + PLOT.top,
-        width: right - left - PLOT.gutter - (domains.right ? COMBO.rightGutter : 0),
+        width: right - left - PLOT.gutter - rightAxisRoom(domains.right),
         height: panel.height - PLOT.top - PLOT.bottom,
     };
     const count = Math.max(options.points.length, 1);
@@ -1426,6 +1452,15 @@ const paintStackedCard = (context: CanvasRenderingContext2D, options: ShareCardO
     paintDates(context, options.points, columnDates(context, options.points, plot.width), x, plot);
 };
 
+/** A tile's number in ink, or muted when the metric has no value yet. */
+const tileFigureColor = (tile: ShareTile): string => {
+    if (tile.figure === null) {
+        return MUTED;
+    }
+
+    return INK;
+};
+
 /** How many columns the Summary's numbers take, like the page's grid. */
 const tileColumns = (count: number): number => {
     if (count <= 3) {
@@ -1536,7 +1571,7 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
         writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
         writeText(context, figureText, { x: left - SUMMARY.figureOverhang * fit, y: baseline }, {
             font: figureFont,
-            color: tile.figure === null ? MUTED : INK,
+            color: tileFigureColor(tile),
         });
 
         if (tile.change) {

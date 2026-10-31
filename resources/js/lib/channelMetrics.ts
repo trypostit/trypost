@@ -378,6 +378,16 @@ export const axisTickLabels = (
     return distinctCountLabels(values);
 };
 
+/** How many readings a metric needs to draw anything: two for a level, which only shows as a line between them, one otherwise. */
+const readingsToDraw = (metric: SeriesMetric): number => {
+    if (isLevelMetric(metric)) {
+        return 2;
+    }
+
+    return 1;
+};
+
+/** Whether the chart has something to draw for the metrics shown, over the periods the mode shows. */
 export const hasEnoughHistory = (
     series: ChannelMetricSeries,
     specs: SeriesSpec[],
@@ -387,7 +397,7 @@ export const hasEnoughHistory = (
         chartPeriods(mode).some(
             (period) =>
                 definedValues(series[period], spec.metric).length >=
-                (isLevelMetric(spec.metric) ? 2 : 1),
+                readingsToDraw(spec.metric),
         ),
     );
 

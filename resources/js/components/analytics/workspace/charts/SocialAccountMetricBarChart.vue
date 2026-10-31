@@ -98,7 +98,14 @@ const AVATAR_SIZE = 24;
 const COLUMN_GAP = 12;
 /** Name, number and avatar before the bars; a phone drops the name so the bars keep the room. */
 const belowSm = useBelowBreakpoint('sm');
-const columnWidth = computed(() => (belowSm.value ? 80 : 240));
+const COLUMN_WIDTH = { phone: 80, wide: 240 };
+const columnWidth = computed((): number => {
+    if (belowSm.value) {
+        return COLUMN_WIDTH.phone;
+    }
+
+    return COLUMN_WIDTH.wide;
+});
 /** The bars start after the rows' column; the axis itself draws no text to make room for. */
 const chartPadding = computed(() => ({
     top: 12,

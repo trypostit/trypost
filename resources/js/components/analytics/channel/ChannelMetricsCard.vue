@@ -17,7 +17,7 @@ import {
     IconUsers,
     IconWorld,
 } from '@tabler/icons-vue';
-import { wTrans } from 'laravel-vue-i18n';
+import { trans } from 'laravel-vue-i18n';
 import { computed, ref, type Component } from 'vue';
 
 import ComparedRange from '@/components/analytics/ComparedRange.vue';
@@ -114,28 +114,17 @@ const modes = [
 ] as const;
 const SELECTED = 'border-transparent bg-primary-selected text-primary-text hover:bg-primary-selected hover:text-primary-text';
 
-const translatedLabels = Object.fromEntries(
-    (
-        [
-            'posts',
-            'followers',
-            'net_followers',
-            'reach',
-            'views',
-            'impressions',
-            'profile_visits',
-            'growth_rate',
-        ] as SeriesMetric[]
-    ).map((metric) => [metric, wTrans(`analytics.channel.series.${metric}`)]),
-);
-const seriesLabels = computed<Partial<Record<SeriesMetric, string>>>(() =>
-    Object.fromEntries(
-        Object.entries(translatedLabels).map(([metric, label]) => [
-            metric,
-            label.value,
-        ]),
-    ),
-);
+/** Every series metric's name in the reader's language. */
+const seriesLabels = computed((): Record<SeriesMetric, string> => ({
+    posts: trans('analytics.channel.series.posts'),
+    followers: trans('analytics.channel.series.followers'),
+    net_followers: trans('analytics.channel.series.net_followers'),
+    reach: trans('analytics.channel.series.reach'),
+    views: trans('analytics.channel.series.views'),
+    impressions: trans('analytics.channel.series.impressions'),
+    profile_visits: trans('analytics.channel.series.profile_visits'),
+    growth_rate: trans('analytics.channel.series.growth_rate'),
+}));
 
 const primaryMetric = ref<SeriesMetric>('posts');
 const selection = ref<Selection>({ kind: 'preset', preset: 'content_impact' });

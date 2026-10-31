@@ -1,3 +1,12 @@
+/** How close a label may sit to its placed neighbour, `step` away from it; `edge` when it has none. */
+const fromNeighbour = (placed: number[], neighbour: number | undefined, step: number, edge: number): number => {
+    if (neighbour === undefined) {
+        return edge;
+    }
+
+    return placed[neighbour] + step;
+};
+
 /**
  * Where a column of labels goes when each wants to sit at its own height
  * (`targets`, top to bottom in any order) but none may come closer than `gap`
@@ -15,14 +24,14 @@ export const spreadLabels = (
 
     order.forEach((index, position) => {
         const above = order[position - 1];
-        const lowest = above === undefined ? top + step / 2 : placed[above] + step;
+        const lowest = fromNeighbour(placed, above, step, top + step / 2);
 
         placed[index] = Math.max(targets[index], lowest);
     });
 
     for (let position = order.length - 1; position >= 0; position -= 1) {
         const below = order[position + 1];
-        const highest = below === undefined ? bottom - step / 2 : placed[below] - step;
+        const highest = fromNeighbour(placed, below, -step, bottom - step / 2);
 
         placed[order[position]] = Math.min(placed[order[position]], highest);
     }
