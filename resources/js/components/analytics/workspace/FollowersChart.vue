@@ -190,20 +190,23 @@ const buildShareOptions = (): ShareMetricOption[] => [
             }}
         </div>
         <div v-else class="min-w-0">
-            <div class="mb-5 flex flex-wrap items-baseline gap-2">
-                <span
-                    class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
-                    >{{
-                        followers.total === null
-                            ? '—'
-                            : formatNumberCompact(followers.total)
-                    }}</span
-                >
-                <span class="text-sm text-muted-foreground">{{
-                    $t('analytics.dashboard.total_followers')
-                }}</span>
+            <div class="mb-5 grid gap-1">
+                <div class="flex flex-wrap items-baseline gap-2">
+                    <span
+                        class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
+                        >{{
+                            followers.total === null
+                                ? '—'
+                                : formatNumberCompact(followers.total)
+                        }}</span
+                    >
+                    <span class="text-sm text-muted-foreground">{{
+                        $t('analytics.dashboard.total_followers')
+                    }}</span>
+                </div>
                 <MetricChange
                     v-if="net !== null"
+                    class="justify-self-start"
                     data-testid="analytics-followers-change"
                     :change="net"
                     :label="formatCountChange(net)"
