@@ -120,6 +120,10 @@ export const followersShareOption = (
     });
 };
 
+/** A series metric the card can draw: growth rate has no figure of its own to show. */
+export const isShareableSeriesMetric = (metric: SeriesMetric): boolean =>
+    metric !== 'growth_rate';
+
 /** One option per metric of a channel's series: followers as a line, the rest as bars. */
 export const channelSeriesShareOptions = (
     series: ChannelMetricSeries,
@@ -127,8 +131,8 @@ export const channelSeriesShareOptions = (
     range: string,
 ): ShareMetricOption[] =>
     series.metrics
-        .filter((metric) => metric !== 'growth_rate')
-        .map((metric: SeriesMetric) => {
+        .filter(isShareableSeriesMetric)
+        .map((metric) => {
             const label = trans(`analytics.channel.series.${metric}`);
             const current = series.totals.current[metric];
             const previous = series.totals.previous[metric];
