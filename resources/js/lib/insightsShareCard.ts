@@ -177,8 +177,20 @@ const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, compa
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
 
-/** The labels at the end of `lines`: a leader from the line's end, the avatar, then the number. */
-const LINE_ENDS = { leader: 48, avatar: 40, gap: 12, figure: 112, height: 48, fontSize: 24 };
+/**
+ * The page's Line view at 2x: its 112px rail (a 32px leader, the 20px avatar,
+ * a 6px gap and the number in 12px medium), 24px between labels, 16px above
+ * the plot the labels may use, 5 value ticks and up to 6 dates.
+ */
+/** d3's tick rule: the step is 10, 5, 2 or 1 times a power of ten, whichever lands closest to the asked count. */
+const TICK_FACTORS: [number, number][] = [
+    [Math.sqrt(50), 10],
+    [Math.sqrt(10), 5],
+    [Math.sqrt(2), 2],
+    [0, 1],
+];
+
+const LINE_ENDS = { rail: 224, leader: 64, avatar: 40, gap: 12, height: 48, fontSize: 24, headroom: 32, valueTicks: 5, maxDates: 6 };
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
 const ROWS = { max: 12, nameMax: 320, figureGap: 32, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
@@ -921,6 +933,35 @@ const paintLine = (
     });
 };
 
+/** Where the `index`-th of `count` points sits across a plot, the first at its start and the last at its end, like unovis' line. */
+const spread = (index: number, count: number): number => {
+    if (count <= 1) {
+        return 0.5;
+    }
+
+    return index / (count - 1);
+};
+
+/** Round ticks inside [start, stop], about `count` of them, the way d3 (and so the page's axes) picks them. */
+const linearTicks = (start: number, stop: number, count: number): number[] => {
+    if (count <= 0 || stop < start) {
+        return [];
+    }
+
+    if (stop === start) {
+        return [start];
+    }
+
+    const raw = (stop - start) / count;
+    const power = 10 ** Math.floor(Math.log10(raw));
+    const error = raw / power;
+    const step = power * TICK_FACTORS.find(([threshold]) => error >= threshold)![1];
+    const first = Math.ceil(start / step);
+    const last = Math.floor(stop / step);
+
+    return Array.from({ length: last - first + 1 }, (_, index) => (first + index) * step);
+};
+
 /** One channel's line in its color, with a dot on each known point. */
 const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
     const known = line.values.flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(value) }]));
@@ -955,21 +996,28 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         return;
     }
 
-    const rail = LINE_ENDS.leader + LINE_ENDS.avatar + LINE_ENDS.gap + LINE_ENDS.figure;
-    const plot = { ...area, width: area.width - rail };
-    const axis = valueAxis(values, 'lines');
-    const slot = plot.width / Math.max(options.points.length, 1);
-    const x = (index: number): number => plot.x + slot * (index + 0.5);
-    const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
+    const plot = { ...area, width: area.width - LINE_ENDS.rail };
+    const low = Math.min(...values);
+    const high = Math.max(...values);
+    const x = (index: number): number => plot.x + spread(index, options.points.length) * plot.width;
+    const y = (value: number): number => plot.y + plot.height - ((value - low) / (high - low || 1)) * plot.height;
     const lineEnd = plot.x + plot.width;
 
     paintGrid(
         context,
-        axis.ticks,
+        linearTicks(low, high, LINE_ENDS.valueTicks),
         (value) => [{ x: plot.x, y: y(value) }, { x: lineEnd, y: y(value) }],
         (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
         { align: 'right', baseline: 'middle' },
     );
+
+    linearTicks(0, options.points.length - 1, Math.min(options.points.length, LINE_ENDS.maxDates)).forEach((index) => {
+        writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, {
+            font: CHART.tickFont,
+            color: MUTED,
+            align: 'center',
+        });
+    });
 
     const ends = options.lines.flatMap((line) => {
         const known = strokeSeries(context, line, x, y);
@@ -977,11 +1025,11 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
         return last ? [{ line, lineY: last.y }] : [];
     });
-    /** The labels may use the room beside the dates too; with many channels they shrink to fit it. */
-    const room = { top: plot.y, bottom: plot.y + plot.height + PLOT.dates };
+    /** Like the page: from just above the plot down to the zero line; with many channels they shrink to fit. */
+    const room = { top: plot.y - LINE_ENDS.headroom, bottom: Math.min(y(0), plot.y + plot.height) };
     const step = Math.min(LINE_ENDS.height, (room.bottom - room.top) / Math.max(ends.length, 1));
     const avatarSize = Math.min(LINE_ENDS.avatar, step * 0.85);
-    const font = sans(600, Math.min(LINE_ENDS.fontSize, step * 0.6));
+    const font = sans(500, Math.min(LINE_ENDS.fontSize, step * 0.6));
     const labels = spreadLabels(
         ends.map((end) => end.lineY),
         { gap: step, ...room },
@@ -991,19 +1039,20 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         const labelY = labels[position];
         const labelX = lineEnd + LINE_ENDS.leader;
 
-        context.strokeStyle = resolveCssColor(line.color);
-        context.lineWidth = 2;
-        context.beginPath();
-        context.moveTo(lineEnd + 6, lineY);
-        context.lineTo(lineEnd + LINE_ENDS.leader / 2, lineY);
-        context.lineTo(labelX - 6, labelY);
-        context.stroke();
+        if (Math.abs(labelY - lineY) > 1) {
+            context.strokeStyle = resolveCssColor(line.color);
+            context.lineWidth = 3;
+            context.lineJoin = 'round';
+            context.beginPath();
+            context.moveTo(lineEnd + 8, lineY);
+            context.lineTo(lineEnd + LINE_ENDS.leader / 2, lineY);
+            context.lineTo(labelX - 4, labelY);
+            context.stroke();
+        }
 
         paintChannel(context, line.channel, images, { x: labelX, y: labelY - avatarSize / 2 }, avatarSize);
         writeText(context, line.figure, { x: labelX + avatarSize + LINE_ENDS.gap, y: labelY }, { font, color: INK, baseline: 'middle' });
     });
-
-    paintDates(context, options, plot, x);
 };
 
 /** Which bucket the `mark`-th of `marks` date labels names, spread evenly over `count` buckets. */
