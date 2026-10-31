@@ -924,6 +924,7 @@ return [
         'title' => '发布',
         'all_channels' => '所有频道',
         'tabs' => [
+            'label' => '状态',
             'queue' => '队列',
             'approvals' => '审批',
             'drafts' => '草稿',

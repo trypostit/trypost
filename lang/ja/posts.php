@@ -922,8 +922,9 @@ return [
     ],
     'publish' => [
         'title' => '公開',
-        'all_channels' => 'すべてのチャンネル',
+        'all_channels' => '全チャンネル',
         'tabs' => [
+            'label' => 'ステータス',
             'queue' => 'キュー',
             'approvals' => '承認',
             'drafts' => '下書き',

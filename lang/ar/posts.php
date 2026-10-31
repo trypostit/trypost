@@ -924,6 +924,7 @@ return [
         'title' => 'نشر',
         'all_channels' => 'جميع القنوات',
         'tabs' => [
+            'label' => 'الحالة',
             'queue' => 'قائمة الانتظار',
             'approvals' => 'الموافقات',
             'drafts' => 'المسودات',

@@ -924,6 +924,7 @@ return [
         'title' => 'Публикация',
         'all_channels' => 'Все каналы',
         'tabs' => [
+            'label' => 'Статус',
             'queue' => 'Очередь',
             'approvals' => 'Одобрение',
             'drafts' => 'Черновики',

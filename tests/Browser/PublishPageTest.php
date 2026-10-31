@@ -434,16 +434,14 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
         (() => {
             const rect = (id) => document.querySelector(`[data-testid="${id}"]`).getBoundingClientRect();
             const middle = (box) => Math.round(box.top + box.height / 2);
-            const row = ['posts-channel-filter', 'calendar-menu', 'schedule-view-list', 'calendar-no-date'].map(rect);
-            const noDate = rect('calendar-no-date');
+            const row = ['posts-channel-filter', 'calendar-menu'].map(rect);
             const channelFilter = document.querySelector('[data-testid="posts-channel-filter"]');
             const visible = (node) => node.getClientRects().length > 0 && getComputedStyle(node).display !== 'none';
 
             return {
                 oneRow: row.every((box) => Math.abs(middle(box) - middle(row[0])) <= 2),
-                noDateLast: row.every((box) => box.right <= noDate.right),
-                noDateSquare: Math.round(noDate.width) === Math.round(noDate.height),
-                noDateLabelHidden: document.querySelector('[data-testid="calendar-no-date"] span').getBoundingClientRect().width <= 1,
+                viewSwitchInHeader: Boolean(document.querySelector('header [data-testid="schedule-view-list"]')?.getClientRects().length),
+                noDateButton: visible(document.querySelector('[data-testid="calendar-no-date"]')),
                 channelText: [...channelFilter.querySelectorAll('span')].filter((span) => visible(span) && span.textContent.trim() !== '').length,
                 tags: Boolean(document.querySelector('[data-testid="posts-label-filter"]')?.getClientRects().length),
                 overflow: document.documentElement.scrollWidth > window.innerWidth,
@@ -453,9 +451,8 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
     expect($page->script($measure))->toBe([
         'oneRow' => true,
-        'noDateLast' => true,
-        'noDateSquare' => true,
-        'noDateLabelHidden' => true,
+        'viewSwitchInHeader' => true,
+        'noDateButton' => false,
         'channelText' => 0,
         'tags' => false,
         'overflow' => false,
@@ -467,9 +464,21 @@ test('the calendar keeps its filters in one menu until the screen is wide enough
 
     $page->assertVisible('@calendar-status-drafts')
         ->assertVisible('@publish-timezone-trigger')
-        ->assertVisible('@calendar-toggle-slots');
+        ->assertVisible('@calendar-toggle-slots')
+        ->assertAttribute('@calendar-no-date-menu', 'aria-pressed', 'false')
+        ->click('@calendar-no-date-menu');
 
-    $page->keys('@calendar-menu-content', 'Escape');
+    waitFor($page, '@calendar-undated-panel');
+    waitForGone($page, '@calendar-menu-content');
+    $page->assertVisible('@calendar-undated-panel')
+        ->assertMissing('@calendar-menu-content')
+        ->click('@calendar-menu');
+    waitFor($page, '@calendar-no-date-menu');
+    $page->assertAttribute('@calendar-no-date-menu', 'aria-pressed', 'true')
+        ->click('@calendar-no-date-menu');
+    waitForGone($page, '@calendar-undated-panel');
+    $page->assertMissing('@calendar-undated-panel');
+
     $page->resize(900, 900);
     waitForPublishPageScript($page, 'Boolean(document.querySelector(\'[data-testid="posts-label-filter"]\')?.getClientRects().length)');
     waitForPublishPageScript($page, '!document.querySelector(\'[data-testid="calendar-status-filter"]\')');

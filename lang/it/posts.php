@@ -924,6 +924,7 @@ return [
         'title' => 'Pubblica',
         'all_channels' => 'Tutti i canali',
         'tabs' => [
+            'label' => 'Stato',
             'queue' => 'Coda',
             'approvals' => 'Approvazioni',
             'drafts' => 'Bozze',
