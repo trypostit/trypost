@@ -133,7 +133,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
                 :options="buttons"
             />
             <ShareChartButton
-                variant="chart"
                 :subject="page.props.auth.currentWorkspace?.name ?? ''"
                 :range="rangeLabel"
                 :build="buildShareOptions"

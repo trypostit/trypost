@@ -26,7 +26,6 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
-import date from '@/date';
 import {
     drawShareCard,
     loadShareFonts,
@@ -37,11 +36,11 @@ import {
     type ShareMetricOption,
     type ShareTint,
 } from '@/lib/insightsShareCard';
+import { copyImageToClipboard, downloadFile } from '@/lib/utils';
 import { storeChunked } from '@/routes/app/media';
 import { uploadChunked } from '@/utils/chunkedUpload';
 
 const props = defineProps<{
-    variant: 'chart' | 'summary';
     subject: string;
     range: string;
     options: ShareMetricOption[];
@@ -49,7 +48,6 @@ const props = defineProps<{
 }>();
 
 const open = defineModel<boolean>('open', { default: false });
-
 
 const tint = ref<ShareTint>(SHARE_TINTS[0]);
 const selectedKey = ref<string>('');
@@ -63,28 +61,16 @@ const selected = computed(
         props.options[0],
 );
 
-const cardOptions = (): ShareCardOptions | null => {
-    const option = selected.value;
-
-    if (!option) {
-        return null;
-    }
-
-    return {
-        variant: props.variant,
-        tint: tint.value,
-        subject: props.subject,
-        metric: option.label,
-        range: props.range,
-        figure: option.figure,
-        change: option.change,
-        comparison: option.comparison,
-        points: option.points,
-        shape: option.shape,
-        tiles: option.tiles,
-        mark: trans('analytics.share.mark'),
-    };
-};
+const cardOptions = (): ShareCardOptions | null =>
+    selected.value
+        ? {
+              ...selected.value,
+              tint: tint.value,
+              subject: props.subject,
+              range: props.range,
+              mark: trans('analytics.share.mark'),
+          }
+        : null;
 
 /**
  * The preview is drawn at the size it is shown, times the screen density, so
@@ -133,54 +119,26 @@ watch([tint, selectedKey], () => {
     paint();
 });
 
-const filename = (): string =>
-    `trypost-${(selected.value?.key ?? 'insights').replace(/_/g, '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
-
-const exportFile = (): Promise<File> | null => {
+/** The card as a PNG file, at download resolution. */
+const exportFile = (): Promise<File> => {
     const options = cardOptions();
 
-    return options ? shareCardFile(options, filename()) : null;
+    return options
+        ? shareCardFile(options)
+        : Promise.reject(new Error('Nothing to share'));
 };
 
 const download = async (): Promise<void> => {
     try {
-        const file = await exportFile();
-
-        if (!file) {
-            return;
-        }
-
-        const url = URL.createObjectURL(file);
-        const link = document.createElement('a');
-
-        link.href = url;
-        link.download = file.name;
-        link.click();
-        window.setTimeout(() => URL.revokeObjectURL(url), 60_000);
+        downloadFile(await exportFile());
     } catch {
         toast.error(trans('analytics.share.export_failed'));
     }
 };
 
-/**
- * The clipboard write starts right away, inside the click, with the image as a
- * promise: Safari refuses a write that only starts after the PNG is encoded.
- */
 const copyImage = async (): Promise<void> => {
     try {
-        if (!('clipboard' in navigator) || typeof ClipboardItem === 'undefined') {
-            throw new Error('Clipboard unavailable');
-        }
-
-        const image = exportFile();
-
-        if (!image) {
-            throw new Error('Nothing to copy');
-        }
-
-        await navigator.clipboard.write([
-            new ClipboardItem({ 'image/png': image }),
-        ]);
+        await copyImageToClipboard(exportFile());
         toast.success(trans('analytics.share.copied'));
     } catch {
         toast.error(trans('analytics.share.copy_failed'));
@@ -197,14 +155,8 @@ const createPost = async (): Promise<void> => {
     posting.value = true;
 
     try {
-        const file = await exportFile();
-
-        if (!file) {
-            throw new Error('Nothing to share');
-        }
-
         const media = await uploadChunked({
-            file,
+            file: await exportFile(),
             url: storeChunked.url(),
             signal,
         });

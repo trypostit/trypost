@@ -13,7 +13,6 @@ import {
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 
 const props = defineProps<{
-    variant: 'chart' | 'summary';
     subject: string;
     range: string;
     /** Builds what the card can show; runs on open, so its labels read the loaded locale. */
@@ -53,7 +52,6 @@ const openDialog = (): void => {
         </TooltipProvider>
         <ShareChartDialog
             v-model:open="open"
-            :variant="variant"
             :subject="subject"
             :range="range"
             :options="options"

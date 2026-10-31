@@ -1,3 +1,4 @@
+import date from '@/date';
 import { formatNumberCompact } from '@/lib/utils';
 
 /**
@@ -8,8 +9,8 @@ import { formatNumberCompact } from '@/lib/utils';
  * no CORS header and one such image would stop the canvas exporting.
  */
 
-/** A line or columns over time, or one horizontal bar per channel. */
-export type ShareShape = 'line' | 'bar' | 'rows';
+/** A line or columns over time, one horizontal bar per channel, or the Summary's numbers. */
+export type ShareShape = 'line' | 'bar' | 'rows' | 'tiles';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
@@ -37,21 +38,13 @@ export type ShareMetricOption = {
 /** A background tint of the app with the strong color the data is drawn in. */
 export type ShareTint = { key: string; ground: string; strong: string };
 
-export type ShareCardOptions = {
-    variant: 'chart' | 'summary';
+/** The metric to draw, and how: in which tint, for whom, over which period, signed how. */
+export type ShareCardOptions = Omit<ShareMetricOption, 'caption'> & {
     tint: ShareTint;
     /** The workspace or channel the numbers belong to. */
     subject: string;
-    /** What the number is: "Followers". */
-    metric: string;
     /** The period, as the page prints it. */
     range: string;
-    figure: string;
-    change: ShareChange | null;
-    comparison: string | null;
-    points: SharePoint[];
-    shape: ShareShape;
-    tiles: ShareTile[];
     /** The signature: "Made with TryPost", translated. */
     mark: string;
 };
@@ -148,25 +141,6 @@ const ellipsise = (
     return `${kept}…`;
 };
 
-const roundedRect = (
-    context: CanvasRenderingContext2D,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    radius: number,
-): void => {
-    const r = Math.min(radius, width / 2, Math.abs(height) / 2);
-
-    context.beginPath();
-    context.moveTo(x + r, y);
-    context.arcTo(x + width, y, x + width, y + height, r);
-    context.arcTo(x + width, y + height, x, y + height, r);
-    context.arcTo(x, y + height, x, y, r);
-    context.arcTo(x, y, x + width, y, r);
-    context.closePath();
-};
-
 /**
  * The covers' background: the flat tint with the home hero's dot grid in the
  * top-right and bottom-left corners only, fading toward the middle.
@@ -215,7 +189,8 @@ const paintPanel = (
         height: height - PANEL.y - PANEL_BOTTOM,
     };
 
-    roundedRect(context, panel.x, panel.y, panel.width, panel.height, PANEL.radius);
+    context.beginPath();
+    context.roundRect(panel.x, panel.y, panel.width, panel.height, PANEL.radius);
     context.fillStyle = '#ffffff';
     context.fill();
     context.strokeStyle = INK;
@@ -376,36 +351,51 @@ const domain = (values: number[], shape: ShareShape): [number, number] => {
     return [low - padding, high + padding];
 };
 
-/** A bar from the baseline to its value, rounded only at the data end, like unovis' `roundedCorners`. */
-const paintBar = (
+/**
+ * A bar from the baseline (`start`) to its value (`end`) along its axis,
+ * centred on `middle` across it and rounded only at the data end, like
+ * unovis' `roundedCorners`.
+ */
+const fillBar = (
     context: CanvasRenderingContext2D,
-    x: number,
-    zero: number,
-    width: number,
+    start: number,
     end: number,
+    middle: number,
+    thickness: number,
+    horizontal: boolean,
 ): void => {
-    const height = Math.abs(zero - end);
-    const radius = Math.min(CHART.barRadius, width / 2, height);
-    const up = end < zero;
+    const length = Math.abs(end - start);
+    const radius = Math.min(CHART.barRadius, thickness / 2, length);
+    /** The radius at the bar's low-coordinate edge and at its high one: only the data end is round. */
+    const [low, high] = end > start ? [0, radius] : [radius, 0];
 
     context.beginPath();
 
-    if (up) {
-        context.moveTo(x, zero);
-        context.lineTo(x, end + radius);
-        context.arcTo(x, end, x + radius, end, radius);
-        context.arcTo(x + width, end, x + width, end + radius, radius);
-        context.lineTo(x + width, zero);
+    if (horizontal) {
+        context.roundRect(Math.min(start, end), middle - thickness / 2, length, thickness, [low, high, high, low]);
     } else {
-        context.moveTo(x, zero);
-        context.lineTo(x, end - radius);
-        context.arcTo(x, end, x + radius, end, radius);
-        context.arcTo(x + width, end, x + width, end - radius, radius);
-        context.lineTo(x + width, zero);
+        context.roundRect(middle - thickness / 2, Math.min(start, end), thickness, length, [low, low, high, high]);
     }
 
-    context.closePath();
     context.fill();
+};
+
+/** A chart's value axis: round ticks from its bottom to its top, and where a value sits between them, 0 to 1. */
+const valueAxis = (
+    values: number[],
+    shape: ShareShape,
+): { ticks: number[]; at: (value: number) => number; zero: number } => {
+    const [low, high] = domain(values, shape);
+    const step = Math.max(1, niceStep(high - low || 1, 4));
+    const bottom = Math.floor(low / step) * step;
+    const top = Math.ceil(high / step) * step;
+    const at = (value: number): number => (value - bottom) / (top - bottom || 1);
+
+    return {
+        ticks: Array.from({ length: Math.round((top - bottom) / step) + 1 }, (_, index) => bottom + step * index),
+        at,
+        zero: at(Math.max(0, bottom)),
+    };
 };
 
 /** The line through the points as a monotone cubic, d3's `curveMonotoneX` the page's charts use. */
@@ -504,15 +494,10 @@ const paintRows = (
         .sort((a, b) => Math.abs(b.value) - Math.abs(a.value))
         .slice(0, MAX_ROWS)
         .sort((a, b) => a.index - b.index);
-    const values = ranked.map((point) => point.value);
-    const [low, high] = domain(values, 'bar');
-    const step = Math.max(1, niceStep(high - low || 1, 4));
-    const top = Math.ceil(high / step) * step;
-    const bottom = Math.floor(low / step) * step;
-    const span = top - bottom || 1;
+    const axis = valueAxis(ranked.map((point) => point.value), 'bar');
     const labelWidth = 220;
     const plot = { x: area.x + labelWidth, width: area.width - labelWidth, y: area.y, height: area.height - 44 };
-    const x = (value: number): number => plot.x + ((value - bottom) / span) * plot.width;
+    const x = (fraction: number): number => plot.x + fraction * plot.width;
     const rowHeight = plot.height / Math.max(ranked.length, 1);
     const thickness = Math.min(rowHeight * 0.55, 28);
     const labelSize = Math.min(22, Math.max(14, rowHeight * 0.55));
@@ -523,18 +508,17 @@ const paintRows = (
     context.textAlign = 'center';
     context.fillStyle = MUTED;
 
-    for (let value = bottom; value <= top + step / 1000; value += step) {
-        context.strokeStyle = CHART.grid;
+    context.strokeStyle = CHART.grid;
+
+    axis.ticks.forEach((value) => {
         context.beginPath();
-        context.moveTo(x(value), plot.y);
-        context.lineTo(x(value), plot.y + plot.height);
+        context.moveTo(x(axis.at(value)), plot.y);
+        context.lineTo(x(axis.at(value)), plot.y + plot.height);
         context.stroke();
-        context.fillText(formatNumberCompact(value), x(value), plot.y + plot.height + 36);
-    }
+        context.fillText(formatNumberCompact(value), x(axis.at(value)), plot.y + plot.height + 36);
+    });
 
     context.setLineDash([]);
-
-    const zero = x(Math.max(0, bottom));
 
     ranked.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
@@ -550,31 +534,8 @@ const paintRows = (
             return;
         }
 
-        const end = x(point.value);
-        const length = Math.abs(end - zero);
-        const radius = Math.min(CHART.barRadius, thickness / 2, length);
-        const startX = Math.min(end, zero);
-        const topY = centre - thickness / 2;
-
         context.fillStyle = resolveColor(point.color, options.tint.strong);
-        context.beginPath();
-
-        if (end > zero) {
-            context.moveTo(startX, topY);
-            context.lineTo(end - radius, topY);
-            context.arcTo(end, topY, end, topY + radius, radius);
-            context.arcTo(end, topY + thickness, end - radius, topY + thickness, radius);
-            context.lineTo(startX, topY + thickness);
-        } else {
-            context.moveTo(zero, topY);
-            context.lineTo(end + radius, topY);
-            context.arcTo(end, topY, end, topY + radius, radius);
-            context.arcTo(end, topY + thickness, end + radius, topY + thickness, radius);
-            context.lineTo(zero, topY + thickness);
-        }
-
-        context.closePath();
-        context.fill();
+        fillBar(context, x(axis.zero), x(axis.at(point.value)), centre, thickness, true);
     });
 };
 
@@ -587,7 +548,7 @@ const paintChart = (
     const right = panel.x + panel.width - PANEL.padding;
     const textLimit = panel.width - PANEL.padding * 2 - 380;
 
-    paintIdentity(context, options, left, panel.y + 40, textLimit, `${options.metric} · ${options.range}`);
+    paintIdentity(context, options, left, panel.y + 40, textLimit, `${options.label} · ${options.range}`);
 
     context.textAlign = 'right';
     context.fillStyle = INK;
@@ -625,12 +586,8 @@ const paintChart = (
         return;
     }
 
-    const [low, high] = domain(values, options.shape);
-    const step = Math.max(1, niceStep(high - low || 1, 4));
-    const top = Math.ceil(high / step) * step;
-    const bottom = Math.floor(low / step) * step;
-    const span = top - bottom || 1;
-    const y = (value: number): number => plot.y + plot.height - ((value - bottom) / span) * plot.height;
+    const axis = valueAxis(values, options.shape);
+    const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
 
@@ -640,15 +597,16 @@ const paintChart = (
     context.setLineDash(CHART.gridDash);
     context.lineWidth = CHART.gridWidth;
 
-    for (let value = bottom; value <= top + step / 1000; value += step) {
-        context.strokeStyle = CHART.grid;
+    context.strokeStyle = CHART.grid;
+    context.fillStyle = MUTED;
+
+    axis.ticks.forEach((value) => {
         context.beginPath();
         context.moveTo(plot.x, y(value));
         context.lineTo(plot.x + plot.width, y(value));
         context.stroke();
-        context.fillStyle = MUTED;
         context.fillText(formatNumberCompact(value), plot.x - 18, y(value));
-    }
+    });
 
     context.setLineDash([]);
     context.textBaseline = 'alphabetic';
@@ -657,7 +615,7 @@ const paintChart = (
 
     if (options.shape === 'bar') {
         const barWidth = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
-        const zero = y(Math.max(0, bottom));
+        const zero = plot.y + plot.height - axis.zero * plot.height;
 
         context.fillStyle = color;
 
@@ -666,7 +624,7 @@ const paintChart = (
                 return;
             }
 
-            paintBar(context, x(index) - barWidth / 2, zero, barWidth, y(point.value));
+            fillBar(context, zero, y(point.value), x(index), barWidth, false);
         });
     } else {
         const known = options.points
@@ -802,7 +760,7 @@ export const drawShareCard = (
 
     const panel = paintPanel(context, width, height);
 
-    if (options.variant === 'summary') {
+    if (options.shape === 'tiles') {
         paintSummary(context, options, panel);
     } else {
         paintChart(context, options, panel);
@@ -811,11 +769,8 @@ export const drawShareCard = (
     paintMark(context, options, width, height);
 };
 
-/** The card at download resolution, off screen, as a PNG file. */
-export const shareCardFile = (
-    options: ShareCardOptions,
-    filename: string,
-): Promise<File> =>
+/** The card at download resolution, off screen, as a PNG named after its metric and today: `trypost-followers-2026-10-31.png`. */
+export const shareCardFile = (options: ShareCardOptions): Promise<File> =>
     new Promise((resolve, reject) => {
         const canvas = document.createElement('canvas');
 
@@ -827,6 +782,12 @@ export const shareCardFile = (
                 return;
             }
 
-            resolve(new File([blob], filename, { type: 'image/png' }));
+            resolve(
+                new File(
+                    [blob],
+                    `trypost-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`,
+                    { type: 'image/png' },
+                ),
+            );
         }, 'image/png');
     });

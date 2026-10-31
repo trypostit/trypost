@@ -180,6 +180,7 @@ export const summaryShareOption = (
     shareOption({
         key: 'summary',
         label: trans('analytics.dashboard.summary'),
+        shape: 'tiles',
         tiles,
         caption: caption(channel, true, {
             range,

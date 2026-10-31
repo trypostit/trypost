@@ -294,7 +294,6 @@ const changeMode = (value: string): void => {
     >
         <template v-if="share" #actions>
             <ShareChartButton
-                variant="chart"
                 :subject="channel"
                 :range="share.range"
                 :build="share.build"

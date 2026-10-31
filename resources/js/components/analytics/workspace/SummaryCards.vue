@@ -129,7 +129,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
     >
         <template #actions>
             <ShareChartButton
-                variant="summary"
                 :subject="shareSubject"
                 :range="shareRangeLabel"
                 :build="buildShareOptions"
