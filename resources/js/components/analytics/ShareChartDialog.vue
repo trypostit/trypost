@@ -186,10 +186,6 @@ const chooseTint = (swatch: ShareTint): void => {
     tint.value = swatch;
 };
 
-const closeDialog = (): void => {
-    open.value = false;
-};
-
 const createPost = async (): Promise<void> => {
     posting.value = true;
 
@@ -315,14 +311,6 @@ const createPost = async (): Promise<void> => {
             </div>
 
             <DialogFooter>
-                <Button
-                    type="button"
-                    variant="ghost"
-                    class="max-sm:flex-1"
-                    @click="closeDialog"
-                >
-                    {{ $t('common.cancel') }}
-                </Button>
                 <Button
                     type="button"
                     variant="outline"
