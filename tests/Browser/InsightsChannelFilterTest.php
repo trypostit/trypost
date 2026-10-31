@@ -133,7 +133,7 @@ test('the follower bar tooltip shows the verified mark of an X channel', functio
         ->assertNoJavaScriptErrors();
 });
 
-test('the follower bars print each channel’s number in one column before the bars, and only Line keeps the legend', function () {
+test('the followers chart prints each channel’s number next to its bar or at the end of its line, with no legend', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -154,9 +154,16 @@ test('the follower bars print each channel’s number in one column before the b
         ->assertMissing('@analytics-followers-legend');
 
     $page->click('@followers-line');
-    waitFor($page, '@analytics-followers-legend');
+    waitForText($page, '@analytics-line-end-value', '120');
 
-    $page->assertVisible('@analytics-followers-legend')
+    $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).sort().join(",")', '120,30')
+        ->assertScript('(() => { const chart = document.querySelector("[data-testid=followers-unovis-chart]").getBoundingClientRect(); return Array.from(document.querySelectorAll("[data-testid=followers-line-end]")).every((label) => label.getBoundingClientRect().left >= chart.left + chart.width / 2); })()', true)
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->hover('[data-testid="followers-line-end"] >> nth=0');
+    waitForState($page, '@followers-unovis-chart', "element.querySelectorAll('[data-dimmed=true]').length > 0");
+
+    $page->assertScript('document.querySelectorAll("[data-testid=followers-unovis-chart] [data-dimmed=true]").length > 0', true)
         ->assertNoJavaScriptErrors();
 });
 

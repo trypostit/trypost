@@ -19,7 +19,6 @@ import {
 } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
-import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import FollowerHistoryLineChart from './charts/FollowerHistoryLineChart.vue';
@@ -124,14 +123,6 @@ const barChart = computed(() => {
         formatValue: rows.format,
     };
 });
-/** A channel's followers in the Line view's legend. */
-const legendValue = (value: number | null): string => {
-    if (value === null) {
-        return '—';
-    }
-
-    return formatNumberCompact(value);
-};
 const shownChannels = computed(() =>
     props.channelFiltered &&
     props.totalChannels &&
@@ -221,39 +212,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
                     :detail="barDetail"
                     :format-value="barChart.formatValue"
                 />
-            </div>
-            <div
-                v-if="mode === 'line'"
-                data-testid="analytics-followers-legend"
-                class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
-            >
-                <div
-                    v-for="account in followers.accounts"
-                    :key="account.social_account_key"
-                    class="-mx-2 flex min-h-9 min-w-0 items-center justify-between gap-2 rounded-md px-2 transition-control hover:bg-accent/60"
-                >
-                    <AccountIdentity
-                        :account="account"
-                        :color="colors[account.social_account_key]"
-                        with-avatar
-                        :avatar-size="24"
-                    />
-                    <span class="flex shrink-0 items-center gap-2">
-                        <span class="text-sm font-medium text-foreground tabular-nums">
-                            {{ legendValue(account.value) }}
-                        </span>
-                        <span
-                            v-if="account.provenance === 'carried_forward'"
-                            class="text-[11px] text-muted-foreground"
-                            :title="
-                                $t('analytics.dashboard.carried_forward_hint')
-                            "
-                            >{{
-                                $t('analytics.dashboard.carried_forward')
-                            }}</span
-                        >
-                    </span>
-                </div>
             </div>
         </div>
     </AnalyticsSection>
