@@ -1,6 +1,7 @@
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
 import {
+    distinctCountLabels,
     formatCountChange,
     formatNumberCompact,
     formatPercent,
@@ -12,6 +13,7 @@ import type {
     DateRange,
     FollowerGrowthRate,
     MetricSeriesPoint,
+    PublicationPeriod,
     SeriesMetric,
 } from '@/types/analytics';
 
@@ -320,24 +322,73 @@ export const definedValues = (
         .map((point) => point.values[metric])
         .filter((value): value is number => typeof value === 'number');
 
+/** The period a chart mode reads its one figure from: the previous one in Comparison, else the current. */
+export const shownPeriod = (mode: ChartMode): PublicationPeriod => {
+    if (mode === 'previous') {
+        return 'previous';
+    }
+
+    return 'current';
+};
+
+/** The periods a chart mode draws: both in Both, else the one it shows. */
+export const chartPeriods = (mode: ChartMode): PublicationPeriod[] => {
+    if (mode === 'both') {
+        return ['current', 'previous'];
+    }
+
+    return [shownPeriod(mode)];
+};
+
+/**
+ * An axis' domain for the metrics drawn on it: from zero unless it only holds
+ * followers, in hundredths for a rate; none when no metric uses the axis.
+ */
+export const axisDomain = (
+    metrics: SeriesMetric[],
+    values: number[],
+): { min: number; max: number } | null => {
+    if (metrics.length === 0) {
+        return null;
+    }
+
+    return niceDomain(
+        values,
+        metrics.some((metric) => metric !== 'followers'),
+        metrics.some(isPercentMetric),
+    );
+};
+
+/** An axis' tick labels, bottom up: in percent for a rate, else compact but never two alike. */
+export const axisTickLabels = (
+    domain: { min: number; max: number },
+    metrics: SeriesMetric[],
+): string[] => {
+    const values = Array.from(
+        { length: AXIS_STEPS + 1 },
+        (_, step) => domain.min + (step / AXIS_STEPS) * (domain.max - domain.min),
+    );
+    const rate = metrics.find(isPercentMetric);
+
+    if (rate) {
+        return values.map((value) => formatSeriesValue(value, rate));
+    }
+
+    return distinctCountLabels(values);
+};
+
 export const hasEnoughHistory = (
     series: ChannelMetricSeries,
     specs: SeriesSpec[],
     mode: ChartMode,
-): boolean => {
-    const periods =
-        mode === 'both'
-            ? [series.current, series.previous]
-            : [mode === 'previous' ? series.previous : series.current];
-
-    return specs.some((spec) =>
-        periods.some(
-            (points) =>
-                definedValues(points, spec.metric).length >=
+): boolean =>
+    specs.some((spec) =>
+        chartPeriods(mode).some(
+            (period) =>
+                definedValues(series[period], spec.metric).length >=
                 (isLevelMetric(spec.metric) ? 2 : 1),
         ),
     );
-};
 
 export const formatSeriesValue = (
     value: number | null | undefined,
@@ -362,10 +413,16 @@ export const bucketLabel = (
         return monthLabel(point.start);
     }
 
-    return resolution === 'weekly' && point.start !== point.end
-        ? `${date.formatMonthDay(point.start)} – ${date.formatMonthDay(point.end)}`
-        : date.formatDayMonthYear(point.start);
+    if (resolution === 'weekly' && point.start !== point.end) {
+        return weekLabel(point);
+    }
+
+    return date.formatDayMonthYear(point.start);
 };
+
+/** The days a week covers: "5 Oct – 11 Oct". */
+const weekLabel = (week: DateRange): string =>
+    `${date.formatMonthDay(week.start)} – ${date.formatMonthDay(week.end)}`;
 
 export const monthLabel = (day: string): string => {
     const [year, month] = day.split('-').map(Number);
@@ -394,7 +451,7 @@ export const bucketRangeLabel = (
         return axisBucketLabel(bucket, resolution);
     }
 
-    return `${date.formatMonthDay(bucket.start)} – ${date.formatMonthDay(bucket.end)}`;
+    return weekLabel(bucket);
 };
 
 const direction = (

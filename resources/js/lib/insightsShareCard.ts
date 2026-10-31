@@ -1,16 +1,20 @@
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
-import { AXIS_STEPS, isPercentMetric, niceDomain, type ChartMode } from '@/lib/channelMetrics';
+import {
+    AXIS_STEPS,
+    axisDomain,
+    axisTickLabels,
+    chartPeriods,
+    type ChartMode,
+} from '@/lib/channelMetrics';
 import { spreadLabels } from '@/lib/labelLayout';
 import {
     canvasToFile,
-    distinctCountLabels,
     formatNumberCompact,
-    formatPercent,
     MISSING_VALUE,
     resolveCssColor,
 } from '@/lib/utils';
-import type { SeriesMetric } from '@/types/analytics';
+import type { PublicationPeriod, SeriesMetric } from '@/types/analytics';
 import type { VerifiedBadge } from '@/types/social-account';
 
 /**
@@ -1063,19 +1067,6 @@ const comboBarWidth = (slot: number, bars: number): number => {
     return Math.max(Math.min(room / bars, COMBO.barMaxWidth), 2);
 };
 
-/** The periods a chart mode shows, as the page's chart toggle sets them. */
-const comboPeriods = (mode: ChartMode): ('current' | 'previous')[] => {
-    if (mode === 'both') {
-        return ['current', 'previous'];
-    }
-
-    if (mode === 'previous') {
-        return ['previous'];
-    }
-
-    return ['current'];
-};
-
 /** The page's hatch for a previous period's bars: stripes of the color over a light wash of it. */
 const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasPattern | string => {
     const tile = document.createElement('canvas');
@@ -1108,7 +1099,7 @@ const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasP
 };
 
 /** The page's fill for a period's bars: the previous period always hatched. */
-const periodFill = (context: CanvasRenderingContext2D, color: string, period: 'current' | 'previous'): CanvasPattern | string => {
+const periodFill = (context: CanvasRenderingContext2D, color: string, period: PublicationPeriod): CanvasPattern | string => {
     if (period === 'previous') {
         return hatchPattern(context, color);
     }
@@ -1117,7 +1108,7 @@ const periodFill = (context: CanvasRenderingContext2D, color: string, period: 'c
 };
 
 /** The page's stroke for a period's line: the previous period always dashed. */
-const periodDash = (period: 'current' | 'previous'): number[] => {
+const periodDash = (period: PublicationPeriod): number[] => {
     if (period === 'previous') {
         return COMBO.dash;
     }
@@ -1126,38 +1117,49 @@ const periodDash = (period: 'current' | 'previous'): number[] => {
 };
 
 /** A legend swatch like the page's: solid for this period, hatched (bars) or a dashed outline (lines) for the previous one. */
-const paintLegendSwatch = (context: CanvasRenderingContext2D, series: ShareSeries, color: string, previous: boolean, at: Point): void => {
+/** The legend swatch's corner, and the dashed outline that stands for a previous period's line. */
+const SWATCH = { radius: 4, dash: [4, 3], outline: 3 };
+
+const paintLegendSwatch = (context: CanvasRenderingContext2D, series: ShareSeries, color: string, period: PublicationPeriod, at: Point): void => {
     context.save();
     context.beginPath();
-    context.roundRect(at.x, at.y, COMBO.swatch, COMBO.swatch, 4);
+    context.roundRect(at.x, at.y, COMBO.swatch, COMBO.swatch, SWATCH.radius);
 
-    if (previous && series.kind === 'line') {
-        context.setLineDash([4, 3]);
-        context.lineWidth = 3;
+    if (period === 'previous' && series.kind === 'line') {
+        context.setLineDash(SWATCH.dash);
+        context.lineWidth = SWATCH.outline;
         context.strokeStyle = color;
         context.stroke();
-    } else {
-        context.fillStyle = periodFill(context, color, previous ? 'previous' : 'current');
-        context.fill();
+        context.restore();
+
+        return;
     }
 
+    context.fillStyle = periodFill(context, color, period);
+    context.fill();
     context.restore();
 };
 
 /** What a legend item prints in a chart mode: the previous period alone in Comparison, both periods in Both. */
-const legendEntries = (series: ShareSeries, mode: ChartMode): { figure: string; previous: boolean }[] => {
-    if (mode === 'previous') {
-        return [{ figure: series.previousFigure, previous: true }];
+const legendEntries = (series: ShareSeries, mode: ChartMode): { figure: string; period: PublicationPeriod }[] =>
+    chartPeriods(mode).map((period) => ({ figure: periodFigure(series, period), period }));
+
+/** A metric's figure over one period. */
+export const periodFigure = (series: ShareSeries, period: PublicationPeriod): string => {
+    if (period === 'previous') {
+        return series.previousFigure;
     }
 
-    if (mode === 'both') {
-        return [
-            { figure: series.figure, previous: false },
-            { figure: series.previousFigure, previous: true },
-        ];
+    return series.figure;
+};
+
+/** A legend figure's ink: the previous period's is muted next to the current one in Both, like the page's. */
+const legendFigureColor = (period: PublicationPeriod, mode: ChartMode): string => {
+    if (period === 'previous' && mode === 'both') {
+        return MUTED;
     }
 
-    return [{ figure: series.figure, previous: false }];
+    return INK;
 };
 
 /** How wide a legend item's change is drawn; none without one. */
@@ -1182,7 +1184,6 @@ const legendChange = (series: ShareSeries, mode: ChartMode): ShareChange | null 
 const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number): number => {
     const labelFont = sans(500, COMBO.labelSize);
     const figureFont = heading(500, COMBO.figureSize);
-    const both = options.chartMode === 'both';
     let edge = right;
 
     [...options.series].reverse().forEach((series) => {
@@ -1203,8 +1204,8 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         writeText(context, series.label, { x: left, y: top + COMBO.labelSize }, { font: labelFont, color: MUTED });
 
         entries.forEach((entry, position) => {
-            paintLegendSwatch(context, series, color, entry.previous, { x: cursor, y: baseline - COMBO.figureSize * 0.55 });
-            writeText(context, entry.figure, { x: cursor + COMBO.swatch + COMBO.swatchGap, y: baseline }, { font: figureFont, color: entry.previous && both ? MUTED : INK });
+            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - COMBO.figureSize * 0.55 });
+            writeText(context, entry.figure, { x: cursor + COMBO.swatch + COMBO.swatchGap, y: baseline }, { font: figureFont, color: legendFigureColor(entry.period, options.chartMode) });
             cursor += entryWidths[position] + COMBO.changeGap;
         });
 
@@ -1219,30 +1220,21 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
     return right - edge - COMBO.legendGap;
 };
 
-/** An axis' domain over the periods shown, the page's `niceDomain`: from zero unless it only holds followers. */
-const comboDomain = (series: ShareSeries[], periods: ('current' | 'previous')[]): { min: number; max: number } | null => {
-    if (series.length === 0) {
-        return null;
-    }
+/** The metrics drawn on an axis of the channel chart. */
+const axisSeries = (options: ShareCardOptions, axis: ShareSeries['axis']): ShareSeries[] =>
+    options.series.filter((series) => series.axis === axis);
 
-    const values = series.flatMap((metric) => periods.flatMap((period) => metric[period].filter((value): value is number => value !== null)));
-
-    return niceDomain(
-        values,
-        series.some((metric) => metric.metric !== 'followers'),
-        series.some((metric) => isPercentMetric(metric.metric)),
+/** An axis' domain over the periods shown, by the page's rule. */
+const comboDomain = (series: ShareSeries[], periods: PublicationPeriod[]): { min: number; max: number } | null =>
+    axisDomain(
+        series.map((metric) => metric.metric),
+        series.flatMap((metric) => periods.flatMap((period) => metric[period].filter((value): value is number => value !== null))),
     );
-};
 
-/** An axis' tick labels, compact and never two alike, or in percent for a rate. */
-const comboTickLabels = (domain: { min: number; max: number }, percent: boolean): string[] => {
-    const values = Array.from({ length: AXIS_STEPS + 1 }, (_, step) => domain.min + (step / AXIS_STEPS) * (domain.max - domain.min));
-
-    if (percent) {
-        return values.map((value) => formatPercent(value));
-    }
-
-    return distinctCountLabels(values);
+/** Where an axis' tick labels sit: right-aligned before the plot on the left, left-aligned after it on the right. */
+const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (plot: Box) => number; direction: number }> = {
+    left: { align: 'right', edge: (plot) => plot.x, direction: -1 },
+    right: { align: 'left', edge: (plot) => plot.x + plot.width, direction: 1 },
 };
 
 /**
@@ -1258,10 +1250,10 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     /** The legend names the metrics, so the line under the name keeps only the period. */
     paintIdentity(context, options.subject, options.range, { x: left, y: panel.y + IDENTITY.top }, right - left - legendWidth - COMBO.legendGap);
 
-    const periods = comboPeriods(options.chartMode);
+    const periods = chartPeriods(options.chartMode);
     const domains = {
-        left: comboDomain(options.series.filter((series) => series.axis === 'left'), periods),
-        right: comboDomain(options.series.filter((series) => series.axis === 'right'), periods),
+        left: comboDomain(axisSeries(options, 'left'), periods),
+        right: comboDomain(axisSeries(options, 'right'), periods),
     };
     const plot = {
         x: left + PLOT.gutter,
@@ -1295,11 +1287,11 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
             return;
         }
 
-        const labels = comboTickLabels(domain, options.series.some((series) => series.axis === axis && isPercentMetric(series.metric)));
-        const labelX = axis === 'left' ? plot.x - PLOT.tickGap : plot.x + plot.width + PLOT.tickGap;
+        const side = AXIS_SIDES[axis];
+        const labels = axisTickLabels(domain, axisSeries(options, axis).map((series) => series.metric));
 
         labels.forEach((label, step) => {
-            writeText(context, label, { x: labelX, y: gridY(step) }, { font: CHART.tickFont, color: MUTED, align: axis === 'left' ? 'right' : 'left', baseline: 'middle' });
+            writeText(context, label, { x: side.edge(plot) + side.direction * PLOT.tickGap, y: gridY(step) }, { font: CHART.tickFont, color: MUTED, align: side.align, baseline: 'middle' });
         });
     });
 

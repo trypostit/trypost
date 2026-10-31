@@ -53,6 +53,7 @@ import {
     monthLabel,
     POST_TOTAL_METRICS,
     seriesDelta,
+    shownPeriod,
     seriesFor,
     type ChartMode,
     type PresetKey,
@@ -267,10 +268,8 @@ const share = computed(
         };
     },
 );
-const shownTotals = computed(() =>
-    chartMode.value === 'previous'
-        ? chartSeries.value?.totals.previous
-        : chartSeries.value?.totals.current,
+const shownTotals = computed(
+    () => chartSeries.value?.totals[shownPeriod(chartMode.value)],
 );
 /** How each shown metric moved since the previous period; the Comparison view shows the previous period itself. */
 const deltas = computed(() => {

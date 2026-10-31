@@ -9,16 +9,18 @@ import {
     formatSeriesValue,
     type SeriesSpec,
     seriesDelta,
+    shownPeriod,
 } from '@/lib/channelMetrics';
-import type {
-    ShareChange,
-    ShareChannel,
-    ShareLine,
-    ShareMetricOption,
-    ShareSeries,
-    SharePoint,
-    ShareShape,
-    ShareTile,
+import {
+    periodFigure,
+    type ShareChange,
+    type ShareChannel,
+    type ShareLine,
+    type ShareMetricOption,
+    type ShareSeries,
+    type SharePoint,
+    type ShareShape,
+    type ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatCountChange, formatNumberCompact, formatPercentChange } from '@/lib/utils';
 import {
@@ -27,7 +29,6 @@ import {
     type ChannelMetricSeries,
     type FollowerAccount,
     type FollowersChartMode,
-    type MetricSeriesPoint,
     type PostsChartMode,
     type SeriesMetric,
     type WorkspaceAnalyticsReport,
@@ -303,15 +304,6 @@ const seriesChange = (series: ChannelMetricSeries, metric: SeriesMetric): ShareC
     return { label: delta.label, direction: changeDirection(delta.value) };
 };
 
-/** The points the chart runs over in a chart mode: the previous period's in Comparison. */
-const chartPoints = (series: ChannelMetricSeries, mode: ChartMode): MetricSeriesPoint[] => {
-    if (mode === 'previous') {
-        return series.previous;
-    }
-
-    return series.current;
-};
-
 /** One metric of the channel chart as the card draws it. */
 const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: string): ShareSeries => {
     const current = series.totals.current[spec.metric];
@@ -344,26 +336,17 @@ export const channelChartShareOption = (
     range: string,
 ): ShareMetricOption => {
     const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric] ?? ''));
-    const numbers = drawn.map((metric) => ({ label: metric.label, figure: legendFigureOf(metric, mode) }));
+    const numbers = drawn.map((metric) => ({ label: metric.label, figure: periodFigure(metric, shownPeriod(mode)) }));
 
     return shareOption({
         key: 'channel',
         label: listOf(drawn.map((metric) => metric.label)),
-        points: chartPoints(series, mode).map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
+        points: series[shownPeriod(mode)].map((point) => ({ label: axisBucketLabel(point, series.resolution), value: null })),
         shape: 'combo',
         series: drawn,
         chartMode: mode,
         caption: summaryCaption(channel, numbers, range),
     });
-};
-
-/** The figure a metric's legend shows in a chart mode: the previous period's in Comparison. */
-const legendFigureOf = (metric: ShareSeries, mode: ChartMode): string => {
-    if (mode === 'previous') {
-        return metric.previousFigure;
-    }
-
-    return metric.figure;
 };
 
 /** Every number of the Summary in one card, as the cards print them. */
