@@ -106,12 +106,12 @@ const listOf = (labels: string[]): string =>
 const summaryList = (tiles: CaptionNumber[]): string =>
     listOf(
         tiles
-            .filter((tile): tile is CaptionNumber & { figure: string } => tile.figure !== null)
+            .filter((tile) => !tile.missing)
             .map((tile) => `${tile.label} ${tile.figure}`),
     );
 
 /** A number the post text lists, by its label; one without a value is left out. */
-type CaptionNumber = Pick<ShareTile, 'label' | 'figure'>;
+type CaptionNumber = Pick<ShareTile, 'label' | 'figure' | 'missing'>;
 
 /** The post text for the Summary: every number with a value, in one line. */
 const summaryCaption = (
@@ -303,14 +303,12 @@ const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: strin
     };
 };
 
-/** A metric's figure for the post text over one period; null when it has no value there, so the text leaves it out. */
-const captionFigure = (series: ChannelMetricSeries, metric: ShareSeries, period: PublicationPeriod): string | null => {
-    if (series.totals[period][metric.metric] == null) {
-        return null;
-    }
-
-    return periodFigure(metric, period);
-};
+/** A metric's number for the post text over one period; `missing` when it has no value there, so the text leaves it out. */
+const captionNumber = (series: ChannelMetricSeries, metric: ShareSeries, period: PublicationPeriod): CaptionNumber => ({
+    label: metric.label,
+    figure: periodFigure(metric, period),
+    missing: series.totals[period][metric.metric] == null,
+});
 
 /**
  * The channel's metrics chart exactly as the page shows it: the metrics it
@@ -326,7 +324,7 @@ export const channelChartShareOption = (
 ): ShareMetricOption => {
     const drawn = specs.map((spec) => chartSeries(series, spec, labels[spec.metric]));
     const period = shownPeriod(mode);
-    const numbers = drawn.map((metric) => ({ label: metric.label, figure: captionFigure(series, metric, period) }));
+    const numbers = drawn.map((metric) => captionNumber(series, metric, period));
 
     return shareOption({
         key: 'channel',

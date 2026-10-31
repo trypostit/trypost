@@ -1,3 +1,4 @@
+import { ink, muted, surface } from './colors';
 import { paintChange } from './draw';
 import { ellipsise, writeText } from './text';
 import {
@@ -5,14 +6,11 @@ import {
     heading,
     HEADLINE,
     IDENTITY,
-    INK,
-    MUTED,
     PANEL,
     PLOT,
     sans,
     SHARE_CARD_SIZE,
     type ShareTint,
-    SURFACE,
 } from './theme';
 import type { Box, Point, ShareCardOptions, SharePoint } from './types';
 
@@ -20,7 +18,7 @@ import type { Box, Point, ShareCardOptions, SharePoint } from './types';
 const DOTS = { gap: 24, radius: 1.4, opacity: 0.22, reach: 0.38 };
 
 /** The covers' background: the flat tint with the dot grid in the top-right and bottom-left corners. */
-export const paintGround = (context: CanvasRenderingContext2D, tint: ShareTint): void => {
+const drawGround = (context: CanvasRenderingContext2D, tint: ShareTint): void => {
     const { width, height } = SHARE_CARD_SIZE;
     const reach = Math.hypot(width, height) * DOTS.reach;
 
@@ -44,6 +42,46 @@ export const paintGround = (context: CanvasRenderingContext2D, tint: ShareTint):
     }
 };
 
+/** Each tint's ground, drawn once and kept until a canvas of another pixel density asks for it. */
+const grounds = new Map<string, { pixels: number; canvas: HTMLCanvasElement }>();
+
+/** The ground for `tint` at the canvas' pixel density, drawn the first time it is asked for at that density. */
+const groundFor = (tint: ShareTint, pixels: number): HTMLCanvasElement | null => {
+    const known = grounds.get(tint.key);
+
+    if (known && known.pixels === pixels) {
+        return known.canvas;
+    }
+
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        return null;
+    }
+
+    canvas.width = SHARE_CARD_SIZE.width * pixels;
+    canvas.height = SHARE_CARD_SIZE.height * pixels;
+    context.setTransform(pixels, 0, 0, pixels, 0, 0);
+    drawGround(context, tint);
+    grounds.set(tint.key, { pixels, canvas });
+
+    return canvas;
+};
+
+/** Paints the tint and its dots under the panel, from the drawn ground when the browser can keep one. */
+export const paintGround = (context: CanvasRenderingContext2D, tint: ShareTint): void => {
+    const ground = groundFor(tint, context.getTransform().a);
+
+    if (!ground) {
+        drawGround(context, tint);
+
+        return;
+    }
+
+    context.drawImage(ground, 0, 0, SHARE_CARD_SIZE.width, SHARE_CARD_SIZE.height);
+};
+
 /** A white surface with the ink border and no shadow. */
 export const paintPanel = (context: CanvasRenderingContext2D): Box => {
     const { width, height } = SHARE_CARD_SIZE;
@@ -56,9 +94,9 @@ export const paintPanel = (context: CanvasRenderingContext2D): Box => {
 
     context.beginPath();
     context.roundRect(panel.x, panel.y, panel.width, panel.height, PANEL.radius);
-    context.fillStyle = SURFACE;
+    context.fillStyle = surface();
     context.fill();
-    context.strokeStyle = INK;
+    context.strokeStyle = ink();
     context.lineWidth = BORDER;
     context.stroke();
 
@@ -81,7 +119,7 @@ const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): 
     context.beginPath();
     context.arc(at.x + size / 2, at.y + size / 2, size / 2, 0, Math.PI * 2);
     context.clip();
-    context.fillStyle = SURFACE;
+    context.fillStyle = surface();
     context.fillRect(at.x, at.y, size, size);
     context.translate(at.x, at.y);
     context.scale(size / LOGO_GRID, size / LOGO_GRID);
@@ -107,7 +145,7 @@ export const paintMark = (context: CanvasRenderingContext2D, mark: string): void
     const start = (SHARE_CARD_SIZE.width - (MARK.logo + MARK.gap + context.measureText(mark).width)) / 2;
 
     paintLogo(context, { x: start, y: centre - MARK.logo / 2 }, MARK.logo);
-    writeText(context, mark, { x: start + MARK.logo + MARK.gap, y: centre + 1 }, { font, color: INK, baseline: 'middle' });
+    writeText(context, mark, { x: start + MARK.logo + MARK.gap, y: centre + 1 }, { font, color: ink(), baseline: 'middle' });
 };
 
 /** The workspace or channel name, with what and when under it. */
@@ -121,8 +159,8 @@ export const paintIdentity = (
     const nameFont = heading(600, IDENTITY.nameSize);
     const detailFont = sans(500, IDENTITY.detailSize);
 
-    writeText(context, ellipsise(context, subject, nameFont, limit), { x: at.x, y: at.y + IDENTITY.name }, { font: nameFont, color: INK });
-    writeText(context, ellipsise(context, detail, detailFont, limit), { x: at.x, y: at.y + IDENTITY.detail }, { font: detailFont, color: MUTED });
+    writeText(context, ellipsise(context, subject, nameFont, limit), { x: at.x, y: at.y + IDENTITY.name }, { font: nameFont, color: ink() });
+    writeText(context, ellipsise(context, detail, detailFont, limit), { x: at.x, y: at.y + IDENTITY.detail }, { font: detailFont, color: muted() });
 };
 
 /** The subject and what and when on the left, the figure with its change on the right. */
@@ -132,7 +170,7 @@ export const paintHeadline = (context: CanvasRenderingContext2D, options: ShareC
     const limit = panel.width - PANEL.padding * 2 - HEADLINE.reserve;
 
     paintIdentity(context, options.subject, `${options.label} · ${options.range}`, { x: left, y: panel.y + IDENTITY.top }, limit);
-    writeText(context, options.figure, { x: right, y: panel.y + HEADLINE.figure }, { font: heading(500, HEADLINE.figureSize), color: INK, align: 'right' });
+    writeText(context, options.figure, { x: right, y: panel.y + HEADLINE.figure }, { font: heading(500, HEADLINE.figureSize), color: ink(), align: 'right' });
 
     if (options.change) {
         paintChange(context, options.change, { x: right, y: panel.y + HEADLINE.change }, HEADLINE.changeSize, 'right');

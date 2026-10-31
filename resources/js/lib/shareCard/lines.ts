@@ -1,11 +1,13 @@
 import { spreadLabels } from '@/lib/labelLayout';
+import { distinctCountLabels } from '@/lib/utils';
 
 import { paintChannel } from './channel';
-import { definedRuns, paintDates, paintGrid, strokeCurve } from './draw';
+import { ink } from './colors';
+import { besideTicks, definedRuns, paintDates, paintGrid, strokeCurve } from './draw';
 import { headlinePlot, paintHeadline } from './frame';
 import { evenDates, linearTicks, shareOf, spread } from './scale';
 import { writeText } from './text';
-import { CHART, INK, PLOT, sans } from './theme';
+import { CHART, PLOT, sans } from './theme';
 import type { Box, Point, ShareCardOptions, ShareImages, ShareLine } from './types';
 
 /**
@@ -46,16 +48,17 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         return;
     }
 
-    const plot = { ...area, width: area.width - LINE_ENDS.rail };
     const low = Math.min(...values);
     const high = Math.max(...values);
+    const ticks = linearTicks(low, high, CHART.valueTicks);
+    const plot = besideTicks(context, { ...area, width: area.width - LINE_ENDS.rail }, distinctCountLabels(ticks));
     const x = (index: number): number => plot.x + spread(index, options.points.length) * plot.width;
     const y = (value: number): number => plot.y + plot.height - shareOf(value, low, high) * plot.height;
     const lineEnd = plot.x + plot.width;
 
     paintGrid(
         context,
-        linearTicks(low, high, CHART.valueTicks),
+        ticks,
         (value) => [{ x: plot.x, y: y(value) }, { x: lineEnd, y: y(value) }],
         (value) => ({ x: plot.x - PLOT.tickGap, y: y(value) }),
         { align: 'right', baseline: 'middle' },
@@ -94,7 +97,7 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         }
 
         paintChannel(context, line.channel, images, { x: labelX, y: labelY - avatarSize / 2 }, avatarSize);
-        writeText(context, line.figure, { x: labelX + avatarSize + LINE_ENDS.gap, y: labelY }, { font, color: INK, baseline: 'middle' });
+        writeText(context, line.figure, { x: labelX + avatarSize + LINE_ENDS.gap, y: labelY }, { font, color: ink(), baseline: 'middle' });
     });
 };
 

@@ -1,31 +1,22 @@
 import type { MetricDelta } from '@/lib/channelMetrics';
-import { MISSING_VALUE } from '@/lib/utils';
 
+import { ink, muted } from './colors';
 import { CHANGE_ICON, changeWidth, paintChange, strokeLine } from './draw';
 import { paintIdentity } from './frame';
 import { ellipsise, writeText } from './text';
-import { BORDER, heading, IDENTITY, INK, MUTED, PANEL, sans } from './theme';
+import { BORDER, heading, IDENTITY, PANEL, sans } from './theme';
 import type { Box, Point, ShareCardOptions, ShareTile } from './types';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
 const SUMMARY = { top: 168, tileHeight: 185, inset: 36, crowdedInset: 24, crowdedColumns: 5, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24, changeBelow: 12, minTextShare: 0.7, figureOverhang: 2, crowdedFigure: 52, singleRowFigure: 84, figure: 64, crowdedFrom: 4 };
 
-/** A tile's number, or the dash the page prints when the metric has no value yet. */
-const tileFigureText = (tile: ShareTile): string => {
-    if (tile.figure === null) {
-        return MISSING_VALUE;
-    }
-
-    return tile.figure;
-};
-
 /** A tile's number in ink, or muted when the metric has no value yet. */
 const tileFigureColor = (tile: ShareTile): string => {
-    if (tile.figure === null) {
-        return MUTED;
+    if (tile.missing) {
+        return muted();
     }
 
-    return INK;
+    return ink();
 };
 
 /** How many columns the Summary's numbers take, like the page's grid. */
@@ -112,7 +103,7 @@ export const paintSummary = (context: CanvasRenderingContext2D, options: ShareCa
     const changeSize = SUMMARY.changeSize * fit;
     const under = changesUnderFigures(context, tiles, heading(500, figureSize), changeSize, SUMMARY.changeGap * fit, tileLimit);
 
-    context.strokeStyle = INK;
+    context.strokeStyle = ink();
     context.lineWidth = BORDER;
 
     for (let row = 0; row < rows; row += 1) {
@@ -131,11 +122,11 @@ export const paintSummary = (context: CanvasRenderingContext2D, options: ShareCa
         const left = grid.x + tileWidth(index) * (index % columns) + inset;
         const limit = tileLimit(index);
         const labelLine = grid.y + tileHeight * row + SUMMARY.label * fit;
-        const figureText = tileFigureText(tile);
+        const figureText = tile.figure;
         const figureFont = heading(500, fittingSize(context, figureText, (size) => heading(500, size), figureSize, limit));
         const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
 
-        writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
+        writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: muted() });
         writeText(context, figureText, { x: left - SUMMARY.figureOverhang * fit, y: baseline }, {
             font: figureFont,
             color: tileFigureColor(tile),
@@ -185,7 +176,7 @@ const changesUnderFigures = (
 
         context.font = figureFont;
 
-        return context.measureText(tileFigureText(tile)).width + gap + changeWidth(context, tile.change, changeSize) > limit(index);
+        return context.measureText(tile.figure).width + gap + changeWidth(context, tile.change, changeSize) > limit(index);
     });
 
 /** A tile's change: beside its number with its icon on the number's baseline, like the page's cards, or under it. */

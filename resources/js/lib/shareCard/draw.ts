@@ -1,9 +1,10 @@
 import type { MetricDelta } from '@/lib/channelMetrics';
 import { distinctCountLabels } from '@/lib/utils';
 
+import { changeColor, gridColor, muted } from './colors';
 import { traceMonotone } from './curve';
-import { type TextStyle, writeText } from './text';
-import { CHANGE_COLORS, CHANGE_ICONS, CHART, MUTED, PLOT, sans } from './theme';
+import { type TextStyle, widest, writeText } from './text';
+import { CHANGE_ICONS, CHANGE_TOKENS, CHART, PLOT, sans } from './theme';
 import type { Box, Point, SharePoint } from './types';
 
 export const strokeLine = (context: CanvasRenderingContext2D, from: Point, to: Point): void => {
@@ -20,7 +21,7 @@ export const CHANGE_ICON = { scale: 1.15, gap: 0.3, stroke: 2.5, grid: 24 };
 const ALIGN_SHIFT = { left: 0, right: 1 } as const;
 
 /** Which way a change points: up for a gain, down for a loss, flat when nothing moved. */
-const changeDirection = (change: MetricDelta): keyof typeof CHANGE_COLORS => {
+const changeDirection = (change: MetricDelta): keyof typeof CHANGE_TOKENS => {
     if (change.value > 0) {
         return 'up';
     }
@@ -48,7 +49,7 @@ export const paintChange = (
     align: 'left' | 'right',
 ): void => {
     const direction = changeDirection(change);
-    const color = CHANGE_COLORS[direction];
+    const color = changeColor(direction);
     const font = sans(600, size);
     const icon = size * CHANGE_ICON.scale;
     const gap = size * CHANGE_ICON.gap;
@@ -67,19 +68,30 @@ export const paintChange = (
     writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
 };
 
+/** How much room tick labels take beside the plot: their widest and the gap to the plot, at least the gutter's width. */
+export const tickRoom = (context: CanvasRenderingContext2D, labels: string[]): number =>
+    Math.max(PLOT.gutter, widest(context, labels, CHART.tickFont) + PLOT.tickGap);
+
+/** The plot moved past its value ticks' labels, so a long one ("1,234,560") never runs over the panel's edge. */
+export const besideTicks = (context: CanvasRenderingContext2D, plot: Box, labels: string[]): Box => {
+    const extra = tickRoom(context, labels) - PLOT.gutter;
+
+    return { ...plot, x: plot.x + extra, width: plot.width - extra };
+};
+
 /** The page's dashed grid lines. */
 export const strokeGrid = (context: CanvasRenderingContext2D, lines: [Point, Point][]): void => {
     context.save();
     context.setLineDash(CHART.gridDash);
     context.lineWidth = CHART.gridWidth;
-    context.strokeStyle = CHART.grid;
+    context.strokeStyle = gridColor();
     lines.forEach((line) => strokeLine(context, ...line));
     context.restore();
 };
 
 /** A muted tick label of an axis. */
 export const writeTick = (context: CanvasRenderingContext2D, label: string, at: Point, style: Pick<TextStyle, 'align' | 'baseline'>): void => {
-    writeText(context, label, at, { font: CHART.tickFont, color: MUTED, ...style });
+    writeText(context, label, at, { font: CHART.tickFont, color: muted(), ...style });
 };
 
 /** The dashed value grid: one line per tick, with the tick's value at `label`. */

@@ -33,7 +33,7 @@ export const formatNumber = (value: number): string => {
 };
 
 /** What a number reads while it has no value. */
-export const MISSING_VALUE = '—';
+const MISSING_VALUE = '—';
 
 /** A number that may have no value yet; the formatters below read it as a dash. */
 type MaybeNumber = number | null | undefined;
@@ -63,14 +63,14 @@ const MAX_COMPACT_DIGITS = 2;
 
 /**
  * Compact labels for a run of axis values, with the fewest decimals that
- * round none of them ("2.5", "9.33K"), else the exact counts when two would
- * still read the same.
+ * round none of them ("2.5", "9.33K"), else the exact values when two would
+ * still read the same ("1,000.5" next to "1,001", never two "1,001").
  */
 export const distinctCountLabels = (values: number[]): string[] => {
     const precise = values.map((value) => formatNumberCompact(value, MAX_COMPACT_DIGITS));
 
     if (new Set(precise).size !== precise.length) {
-        return values.map((value) => formatFullNumber(Math.round(value)));
+        return values.map((value) => formatFullNumber(value));
     }
 
     for (let digits = 0; digits < MAX_COMPACT_DIGITS; digits += 1) {
@@ -190,24 +190,6 @@ export const downloadFile = (file: File): void => {
 export const copyImageToClipboard = async (image: Promise<Blob>): Promise<void> =>
     navigator.clipboard.write([new ClipboardItem({ 'image/png': image })]);
 
-/**
- * The value any CSS color stands for in the light theme (`var(--series-3)`,
- * `oklch(…)`, a name), as the browser computes it, even on a dark page: a
- * canvas cannot read CSS variables, and what it draws is always light.
- */
-export const resolveLightCssColor = (color: string): string => {
-    const probe = document.createElement('span');
-
-    probe.dataset.lightTheme = '';
-    probe.style.color = color;
-    document.body.append(probe);
-
-    const value = getComputedStyle(probe).color;
-
-    probe.remove();
-
-    return value;
-};
 
 /** Mirrors ContentSanitizer::stripHtml(): the text a network receives for an HTML caption. */
 export const htmlToPlainText = (html: string): string => {

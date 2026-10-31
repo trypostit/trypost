@@ -1,12 +1,13 @@
 import { AVATAR, avatarSpace, paintChannel, rowColor } from './channel';
+import { ink, muted } from './colors';
 import { fillBar, paintGrid } from './draw';
 import { headlinePlot, paintHeadline, pointValues } from './frame';
 import { valueAxis } from './scale';
 import { ellipsise, widest, writeText } from './text';
-import { CHART, INK, MUTED, PLOT, sans } from './theme';
+import { CHART, PLOT, sans } from './theme';
 import type { Box, ShareCardOptions, ShareImages, SharePoint } from './types';
 
-/** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
+/** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. Bars take 60% of a row, 40px at most: the page's 20px at 2x. */
 const ROWS = {
     max: 12,
     nameMax: 320,
@@ -14,8 +15,8 @@ const ROWS = {
     labelGap: 24,
     axis: 44,
     valuesGap: 36,
-    thickness: 28,
-    thicknessShare: 0.55,
+    thickness: 40,
+    thicknessShare: 0.6,
     label: { min: 14, max: 22, share: 0.55 },
     figure: { min: 16, max: 26, share: 0.6 },
 };
@@ -67,10 +68,10 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
     rows.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
 
-        writeText(context, ellipsise(context, point.label, labelFont, nameWidth), { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
+        writeText(context, ellipsise(context, point.label, labelFont, nameWidth), { x: area.x, y: centre }, { font: labelFont, color: muted(), baseline: 'middle' });
 
         if (point.figure) {
-            writeText(context, point.figure, { x: area.x + nameWidth + ROWS.figureGap + figureWidth, y: centre }, { font: figureFont, color: INK, align: 'right', baseline: 'middle' });
+            writeText(context, point.figure, { x: area.x + nameWidth + ROWS.figureGap + figureWidth, y: centre }, { font: figureFont, color: ink(), align: 'right', baseline: 'middle' });
         }
 
         if (point.channel) {

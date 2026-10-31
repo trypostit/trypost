@@ -1,7 +1,8 @@
 import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import type { VerifiedBadge } from '@/types/social-account';
 
-import { type ShareTint, SURFACE } from './theme';
+import { surface } from './colors';
+import { type ShareTint } from './theme';
 import type { Point, ShareChannel, ShareImages, SharePoint } from './types';
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
@@ -50,7 +51,7 @@ const paintTile = (context: CanvasRenderingContext2D, image: HTMLImageElement, a
     context.save();
     context.beginPath();
     context.roundRect(at.x, at.y, size, size, size * AVATAR.radius);
-    context.fillStyle = SURFACE;
+    context.fillStyle = surface();
     context.fill();
     context.clip();
     drawCover(context, image, at, size);
@@ -65,7 +66,7 @@ const paintNetworkBadge = (context: CanvasRenderingContext2D, logo: HTMLImageEle
 
     context.beginPath();
     context.roundRect(at.x - ring, at.y - ring, badge + ring * 2, badge + ring * 2, (badge + ring * 2) * AVATAR.radius);
-    context.fillStyle = SURFACE;
+    context.fillStyle = surface();
     context.fill();
     paintTile(context, logo, at, badge);
 };
@@ -77,7 +78,7 @@ const paintVerified = (context: CanvasRenderingContext2D, badge: VerifiedBadge, 
 
     context.beginPath();
     context.arc(at.x + mark / 2, at.y + mark / 2, mark * VERIFIED.backing, 0, Math.PI * 2);
-    context.fillStyle = SURFACE;
+    context.fillStyle = surface();
     context.fill();
 
     context.save();

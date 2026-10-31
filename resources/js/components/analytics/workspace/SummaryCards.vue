@@ -152,15 +152,6 @@ const display = (value: number | null, percent: boolean): string => {
     return formatNumberCompact(value);
 };
 
-/** A number for the share card: null while the metric has no value, so the card draws it muted. */
-const tileFigure = (value: number | null, percent: boolean): string | null => {
-    if (value === null) {
-        return null;
-    }
-
-    return display(value, percent);
-};
-
 const rangeLabel = computed(() =>
     date.formatDayMonthYearRange(props.report.range),
 );
@@ -168,7 +159,8 @@ const buildShareOption = (): ShareMetricOption =>
     summaryShareOption(
         cards.value.map((card) => ({
             label: trans(card.label),
-            figure: tileFigure(card.metric.value, card.percent),
+            figure: display(card.metric.value, card.percent),
+            missing: card.metric.value === null,
             change: card.change,
         })),
         props.channel ?? null,

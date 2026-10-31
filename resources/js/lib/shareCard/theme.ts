@@ -18,28 +18,28 @@ export const SHARE_TINTS = [
     { key: 'neutral', ground: '#f4f1ec', strong: '#292928' },
 ] as const;
 
+/** One of the card's tints. */
 export type ShareTint = (typeof SHARE_TINTS)[number];
 
+/** The card's size, 16:9, in the units every painter draws in. */
 export const SHARE_CARD_SIZE = { width: 1200, height: 675 };
 
+/** How many pixels the exported file draws per card unit, for sharp text on high-density screens. */
 export const SHARE_EXPORT_SCALE = 2;
 
-/** The white the panel, the logo's disc and the avatars' rings are drawn on. */
-export const SURFACE = '#ffffff';
-
-export const INK = '#292928';
-
-export const MUTED = '#5a5a59';
-
+/** The ink border of the panel and the Summary's rules, like a cover's settings panel. */
 export const BORDER = 2.5;
 
+/** The app's body face, for labels and ticks. */
 const SANS = "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
 /** The app's heading face (`--font-heading`), for names and numbers. */
 const HEADING = "Outfit, Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 
+/** A body font at `weight` and `size`. */
 export const sans = (weight: number, size: number): string => `${weight} ${size}px ${SANS}`;
 
+/** A heading font at `weight` and `size`. */
 export const heading = (weight: number, size: number): string => `${weight} ${size}px ${HEADING}`;
 
 /**
@@ -49,7 +49,6 @@ export const heading = (weight: number, size: number): string => `${weight} ${si
  * with a dot on each point.
  */
 export const CHART = {
-    grid: '#eae8e5',
     gridDash: [6, 6],
     gridWidth: 2,
     tickFont: sans(500, 22),
@@ -65,9 +64,10 @@ export const CHART = {
     maxDates: 6,
 };
 
-/** `MetricChange`: `--success-text`, `--destructive-text` or muted, with Tabler's trending icons. */
-export const CHANGE_COLORS = { up: '#337046', down: '#7f0f00', flat: MUTED } as const;
+/** `MetricChange`'s tones, as the app's text tokens. */
+export const CHANGE_TOKENS = { up: 'var(--success-text)', down: 'var(--destructive-text)', flat: 'var(--muted-foreground)' } as const;
 
+/** Tabler's trending icons on their 24px grid, as `MetricChange` draws them. */
 export const CHANGE_ICONS = {
     up: ['M3 17l6 -6l4 4l8 -8', 'M14 7l7 0l0 7'],
     down: ['M3 7l6 6l4 -4l8 8', 'M21 10l0 7l-7 0'],

@@ -62,8 +62,8 @@ export type ShareSeries = {
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
 export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
-/** One number of the Summary, as its card prints it; null while it has no value. */
-export type ShareTile = { label: string; figure: string | null; change: MetricDelta | null };
+/** One number of the Summary, as its card prints it; `missing` while the metric has no value, which the card draws muted and the post leaves out. */
+export type ShareTile = { label: string; figure: string; missing: boolean; change: MetricDelta | null };
 
 /** What a share option draws, which names its file: one metric of a series, the channel's chart, or the whole Summary. */
 type ShareMetricKey = SeriesMetric | 'channel' | 'summary';

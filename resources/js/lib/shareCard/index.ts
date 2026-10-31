@@ -11,8 +11,8 @@
 
 import date from '@/date';
 import { canvasToFile } from '@/lib/canvasFile';
-import { resolveLightCssColor } from '@/lib/utils';
 
+import { lightColor } from './colors';
 import { paintCombo } from './combo';
 import { paintGround, paintMark, paintPanel } from './frame';
 import { prepareShareCard } from './images';
@@ -46,44 +46,39 @@ const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: 
     tiles: (context, options, _images, panel) => paintSummary(context, options, panel),
 };
 
-/** A CSS color resolved once per paint: a column per day times every channel is many segments. */
-const colorResolver = (): ((color: string) => string) => {
-    const resolved = new Map<string, string>();
-
-    return (color) => {
-        const known = resolved.get(color) ?? resolveLightCssColor(color);
-
-        resolved.set(color, known);
-
-        return known;
-    };
-};
-
 /**
  * The card with every color as the browser computes it: a canvas cannot read
  * CSS variables, so the theme's colors are resolved once before painting.
  */
 const withResolvedColors = (options: ShareCardOptions): ShareCardOptions => {
-    const resolve = colorResolver();
 
     return {
         ...options,
         points: options.points.map((point) => ({
             ...point,
-            color: point.color && resolve(point.color),
-            segments: point.segments?.map((segment) => ({ ...segment, color: resolve(segment.color) })),
+            color: point.color && lightColor(point.color),
+            segments: point.segments?.map((segment) => ({ ...segment, color: lightColor(segment.color) })),
         })),
-        lines: options.lines.map((line) => ({ ...line, color: resolve(line.color) })),
-        series: options.series.map((series) => ({ ...series, color: resolve(series.color) })),
+        lines: options.lines.map((line) => ({ ...line, color: lightColor(line.color) })),
+        series: options.series.map((series) => ({ ...series, color: lightColor(series.color) })),
     };
 };
 
 /**
- * Paints the card; `images` comes from `prepareShareCard`, since a canvas only
- * draws images already loaded. The card is laid out left to right in every
- * language, so the preview inside a right-to-left page and the exported file
- * read the same.
+ * The direction the reader's language writes in. The card keeps its layout
+ * left to right in every language (every text is placed by a side, never by
+ * `start`), and each text runs in this direction, so an Arabic line with a
+ * Latin name reads in the right order, in the preview and the file alike.
  */
+const readingDirection = (): CanvasDirection => {
+    if (document.documentElement.dir === 'rtl') {
+        return 'rtl';
+    }
+
+    return 'ltr';
+};
+
+/** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
 export const drawShareCard = (
     canvas: HTMLCanvasElement,
     options: ShareCardOptions,
@@ -100,7 +95,7 @@ export const drawShareCard = (
     }
 
     context.setTransform(scale, 0, 0, scale, 0, 0);
-    context.direction = 'ltr';
+    context.direction = readingDirection();
     paintGround(context, options.tint);
 
     const panel = paintPanel(context);

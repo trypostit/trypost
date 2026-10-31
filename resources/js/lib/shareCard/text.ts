@@ -3,7 +3,8 @@ import type { Point } from './types';
 export type TextStyle = {
     font: string;
     color: string;
-    align?: CanvasTextAlign;
+    /** Always a side, never `start` or `end`, so a right-to-left text keeps the card's left-to-right layout. */
+    align?: 'left' | 'right' | 'center';
     baseline?: CanvasTextBaseline;
 };
 

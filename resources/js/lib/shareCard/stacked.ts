@@ -1,7 +1,10 @@
+import { distinctCountLabels } from '@/lib/utils';
+
+import { surface } from './colors';
 import { barWidth } from './combo';
-import { fillBar, paintDates, paintGrid } from './draw';
+import { besideTicks, fillBar, paintDates, paintGrid } from './draw';
 import { headlinePlot, paintHeadline, pointValues } from './frame';
-import { valueAxis } from './scale';
+import { fittingColumns, valueAxis } from './scale';
 import { widest } from './text';
 import { CHART, PLOT } from './theme';
 import type { Box, ShareCardOptions, SharePoint, ShareSegment } from './types';
@@ -12,6 +15,15 @@ type Column = { middle: number; width: number };
  * A column split by channel, bottom up in the page's order, with only its top
  * rounded like unovis' stacked bars.
  */
+/** The page's Posts columns at 2x: 28px at most, each channel's part set apart by a 1.5px line of the card's white. */
+const STACKED = { barMaxWidth: 56, separator: 3 };
+
+/** The card's white line between two channels' parts of a column, where the lower one ends. */
+const paintSeparator = (context: CanvasRenderingContext2D, column: Column, at: number): void => {
+    context.fillStyle = surface();
+    context.fillRect(column.middle - column.width / 2, at - STACKED.separator / 2, column.width, STACKED.separator);
+};
+
 const paintStack = (
     context: CanvasRenderingContext2D,
     segments: ShareSegment[],
@@ -34,6 +46,14 @@ const paintStack = (
 
         base = top;
     });
+
+    parts.slice(0, -1).reduce((boundary, segment) => {
+        const top = boundary + segment.value;
+
+        paintSeparator(context, column, y(top));
+
+        return top;
+    }, 0);
 };
 
 /** One column per bucket from zero, split by channel in each channel's color. */
@@ -44,7 +64,7 @@ const paintBars = (
     x: (index: number) => number,
     y: (value: number) => number,
 ): void => {
-    const width = barWidth(plot.width / options.points.length, 1);
+    const width = barWidth(plot.width / options.points.length, 1, STACKED.barMaxWidth);
 
     options.points.forEach((point, index) => {
         if (point.segments && point.value) {
@@ -60,11 +80,7 @@ const paintBars = (
  */
 const columnDates = (context: CanvasRenderingContext2D, points: SharePoint[], width: number): number[] => {
     const room = widest(context, points.map((point) => point.label), CHART.tickFont) + PLOT.dateGap;
-    const fitting = Math.max(Math.floor(width / room), 1);
-
-    const step = Math.ceil(points.length / fitting);
-
-    return points.map((_, index) => index).filter((index) => index % step === 0);
+    return fittingColumns(points.length, Math.floor(width / room));
 };
 
 /** The headline over one column per bucket, split by channel. */
@@ -77,8 +93,8 @@ export const paintStackedCard = (context: CanvasRenderingContext2D, options: Sha
         return;
     }
 
-    const plot = headlinePlot(panel);
     const axis = valueAxis(values, CHART.valueTicks);
+    const plot = besideTicks(context, headlinePlot(panel), distinctCountLabels(axis.ticks));
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
     const y = (value: number): number => plot.y + plot.height - axis.at(value) * plot.height;

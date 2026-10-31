@@ -461,7 +461,7 @@ test('a long channel name is cut between whole characters, never inside an emoji
     $page->assertNoJavaScriptErrors();
 });
 
-test('in a right-to-left language the card is still written left to right, preview and file alike', function () {
+test('in a right-to-left language every text of the card runs right to left, preview and file alike', function () {
     [$user] = insightsShareBrowserUser();
     $user->update(['locale' => Locale::Arabic]);
     $this->actingAs($user);
@@ -475,7 +475,8 @@ test('in a right-to-left language the card is still written left to right, previ
     waitForCondition($page, "window.__drawn.length > {$preview}");
 
     expect($page->script('document.documentElement.dir'))->toBe('rtl')
-        ->and($page->script('[...new Set(window.__drawn.map((entry) => entry.direction))]'))->toBe(['ltr']);
+        ->and($page->script('[...new Set(window.__drawn.map((entry) => entry.direction))]'))->toBe(['rtl'])
+        ->and($page->script('window.__drawn.every((entry) => ["left", "right", "center"].includes(entry.align))'))->toBeTrue();
     $page->assertNoJavaScriptErrors();
 });
 

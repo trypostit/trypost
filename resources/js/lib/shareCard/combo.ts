@@ -8,6 +8,7 @@ import {
 } from '@/lib/channelMetrics';
 import type { PublicationPeriod } from '@/types/analytics';
 
+import { ink, muted } from './colors';
 import {
     changeWidth,
     definedRuns,
@@ -16,15 +17,20 @@ import {
     paintDates,
     strokeCurve,
     strokeGrid,
+    tickRoom,
     writeTick,
 } from './draw';
 import { paintIdentity } from './frame';
-import { evenDates, shareOf } from './scale';
+import { comboDates, shareOf } from './scale';
 import { widest, writeText } from './text';
-import { CHART, heading, IDENTITY, INK, MUTED, PANEL, PLOT, sans } from './theme';
+import { CHART, heading, IDENTITY, PANEL, PLOT, sans } from './theme';
 import type { Box, Point, ShareCardOptions, ShareSeries } from './types';
 
-/** The previous period's hatch: a tile of the color's light wash with one stripe across it, turned 45°. */
+/**
+ * The previous period's hatch: a tile of the color's light wash with one
+ * stripe across it, turned 45°, drawn at the canvas' own pixel density so the
+ * exported file's stripes stay sharp.
+ */
 const HATCH = { size: 10, wash: 0.12, stripe: 0.4, angle: 45 };
 
 /**
@@ -32,8 +38,8 @@ const HATCH = { size: 10, wash: 0.12, stripe: 0.4, angle: 45 };
  * periods, two bars side by side that fill the day with a small gap between
  * them instead of halving a single bar.
  */
-export const barWidth = (slot: number, bars: number): number =>
-    Math.max(Math.min(barsRoom(slot, bars) / bars, CHART.barMaxWidth), CHART.barMinWidth);
+export const barWidth = (slot: number, bars: number, maxWidth: number = CHART.barMaxWidth): number =>
+    Math.max(Math.min(barsRoom(slot, bars) / bars, maxWidth), CHART.barMinWidth);
 
 /** The room a slot's bars share: a single bar keeps the page's padding, a pair fills the day but for the gap between them. */
 const barsRoom = (slot: number, bars: number): number => {
@@ -45,12 +51,13 @@ const barsRoom = (slot: number, bars: number): number => {
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, identityShare: 0.5, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
+const COMBO = { legendGap: 56, identityShare: 0.5, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
 
 /** The page's hatch for a previous period's bars: stripes of the color over a light wash of it. */
 const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasPattern | string => {
     const tile = document.createElement('canvas');
-    const size = HATCH.size;
+    const pixels = context.getTransform().a;
+    const size = HATCH.size * pixels;
 
     tile.width = size;
     tile.height = size;
@@ -73,7 +80,7 @@ const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasP
         return color;
     }
 
-    pattern.setTransform(new DOMMatrix().rotate(HATCH.angle));
+    pattern.setTransform(new DOMMatrix().rotate(HATCH.angle).scale(1 / pixels));
 
     return pattern;
 };
@@ -136,10 +143,10 @@ export const periodFigure = (series: ShareSeries, period: PublicationPeriod): st
 /** A legend figure's ink: the previous period's is muted next to the current one in Both, like the page's. */
 const legendFigureColor = (period: PublicationPeriod, mode: ChartMode): string => {
     if (period === 'previous' && mode === 'both') {
-        return MUTED;
+        return muted();
     }
 
-    return INK;
+    return ink();
 };
 
 /** How wide a legend item's change is drawn; none without one. */
@@ -160,18 +167,27 @@ const legendChange = (series: ShareSeries, mode: ChartMode): MetricDelta | null 
     return series.change;
 };
 
-/**
- * The page's legend on the headline's right: each metric's name over its
- * swatches and figures, its change under them, at `fit` of its full size.
- * Returns how wide it is.
- */
-const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number, fit: number): number => {
-    const size = (value: number): number => value * fit;
-    const labelFont = sans(500, size(COMBO.labelSize));
-    const figureFont = heading(500, size(COMBO.figureSize));
-    let edge = right;
+/** One metric of the legend laid out at a size: its period figures, their widths, its change and how wide it all is. */
+type LegendItem = {
+    series: ShareSeries;
+    entries: { figure: string; period: PublicationPeriod }[];
+    entryWidths: number[];
+    change: MetricDelta | null;
+    width: number;
+};
 
-    [...options.series].reverse().forEach((series) => {
+/** The legend's fonts and gaps at `fit` of their full size. */
+const legendSizes = (fit: number): { size: (value: number) => number; labelFont: string; figureFont: string } => ({
+    size: (value: number): number => value * fit,
+    labelFont: sans(500, COMBO.labelSize * fit),
+    figureFont: heading(500, COMBO.figureSize * fit),
+});
+
+/** The legend's items at `fit` of their full size, measured but not drawn. */
+const legendLayout = (context: CanvasRenderingContext2D, options: ShareCardOptions, fit: number): LegendItem[] => {
+    const { size, labelFont, figureFont } = legendSizes(fit);
+
+    return options.series.map((series) => {
         const entries = legendEntries(series, options.chartMode);
         const change = legendChange(series, options.chartMode);
 
@@ -180,51 +196,67 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         const figuresWidth = entryWidths.reduce((total, width) => total + width, 0) + size(COMBO.changeGap) * (entries.length - 1);
         const changeRoom = legendChangeWidth(context, change, size(COMBO.changeSize));
         context.font = labelFont;
-        const width = Math.max(context.measureText(series.label).width, figuresWidth, changeRoom);
-        const left = edge - width;
+
+        return { series, entries, entryWidths, change, width: Math.max(context.measureText(series.label).width, figuresWidth, changeRoom) };
+    });
+};
+
+/** How wide the legend's items run side by side, with the gaps between them. */
+const legendWidth = (items: LegendItem[], fit: number): number =>
+    items.reduce((total, item) => total + item.width, 0) + COMBO.legendGap * fit * Math.max(items.length - 1, 0);
+
+/**
+ * The page's legend on the headline's right: each metric's name over its
+ * swatches and figures, its change under them, at `fit` of its full size.
+ * Returns how wide it is.
+ */
+const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number, fit: number): number => {
+    const { size, labelFont, figureFont } = legendSizes(fit);
+    const items = legendLayout(context, options, fit);
+    let edge = right;
+
+    [...items].reverse().forEach((item) => {
+        const left = edge - item.width;
         const baseline = top + size(COMBO.labelSize + COMBO.figureLine);
-        const color = series.color;
         let cursor = left;
 
-        writeText(context, series.label, { x: left, y: top + size(COMBO.labelSize) }, { font: labelFont, color: MUTED });
+        writeText(context, item.series.label, { x: left, y: top + size(COMBO.labelSize) }, { font: labelFont, color: muted() });
 
-        entries.forEach((entry, position) => {
-            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - size(COMBO.figureSize * COMBO.swatchRise) }, size(COMBO.swatch));
+        item.entries.forEach((entry, position) => {
+            paintLegendSwatch(context, item.series, item.series.color, entry.period, { x: cursor, y: baseline - size(COMBO.figureSize * COMBO.swatchRise) }, size(COMBO.swatch));
             writeText(context, entry.figure, { x: cursor + size(COMBO.swatch + COMBO.swatchGap), y: baseline }, { font: figureFont, color: legendFigureColor(entry.period, options.chartMode) });
-            cursor += entryWidths[position] + size(COMBO.changeGap);
+            cursor += item.entryWidths[position] + size(COMBO.changeGap);
         });
 
-        if (change) {
-            paintChange(context, change, { x: left, y: baseline + size(COMBO.changeBelow) }, size(COMBO.changeSize), 'left');
+        if (item.change) {
+            paintChange(context, item.change, { x: left, y: baseline + size(COMBO.changeBelow) }, size(COMBO.changeSize), 'left');
         }
 
         edge = left - size(COMBO.legendGap);
     });
 
-    return right - edge - size(COMBO.legendGap);
+    return legendWidth(items, fit);
 };
 
 /**
- * How much of its full size the legend keeps: all of it while it leaves room
- * for the channel's name and period, else smaller, so a wide legend (both
- * periods, large figures) never cuts them. The name keeps at most
- * `COMBO.identityShare` of the headline, so the legend never vanishes.
+ * The legend's size and the room it leaves the channel's name and period: the
+ * legend keeps its full size while they fit beside it, else it shrinks so they
+ * do. The name keeps at most `COMBO.identityShare` of the headline, so the
+ * legend never vanishes, and that room is given to it whole, so a name that
+ * fits is never cut by a rounding at the edge.
  */
-const legendFit = (options: ShareCardOptions, headline: number): number => {
-    const scratch = document.createElement('canvas').getContext('2d');
-
-    if (!scratch) {
-        return 1;
-    }
-
-    const identity = Math.max(
-        widest(scratch, [options.subject], heading(600, IDENTITY.nameSize)),
-        widest(scratch, [options.range], sans(500, IDENTITY.detailSize)),
+const legendFit = (context: CanvasRenderingContext2D, options: ShareCardOptions, headline: number): { fit: number; identity: number } => {
+    const identity = Math.min(
+        Math.max(
+            widest(context, [options.subject], heading(600, IDENTITY.nameSize)),
+            widest(context, [options.range], sans(500, IDENTITY.detailSize)),
+        ),
+        headline * COMBO.identityShare,
     );
-    const full = paintComboLegend(scratch, options, headline, 0, 1);
-    const room = headline - Math.min(identity, headline * COMBO.identityShare) - COMBO.legendGap;
+    const full = legendWidth(legendLayout(context, options, 1), 1);
+    const room = headline - identity - COMBO.legendGap;
 
-    return Math.min(1, room / full);
+    return { fit: Math.min(1, room / full), identity };
 };
 
 /** The metrics drawn on an axis of the channel chart. */
@@ -251,17 +283,26 @@ const domainOrUnit = (domain: { min: number; max: number } | null): { min: numbe
     return domain;
 };
 
-/** The room the right axis' labels take; none when no metric uses it. */
-const rightAxisRoom = (domain: { min: number; max: number } | null): number => {
-    if (domain) {
-        return COMBO.rightGutter;
+/** An axis' tick labels, bottom up; none when no metric uses it. */
+const axisLabels = (options: ShareCardOptions, domain: { min: number; max: number } | null, axis: ShareSeries['axis']): string[] => {
+    if (!domain) {
+        return [];
     }
 
-    return 0;
+    return axisTickLabels(domain, axisSeries(options, axis).map((series) => series.metric));
+};
+
+/** The room the right axis' labels take, measured like the left one's; none when no metric uses it. */
+const rightAxisRoom = (context: CanvasRenderingContext2D, labels: string[]): number => {
+    if (labels.length === 0) {
+        return 0;
+    }
+
+    return tickRoom(context, labels);
 };
 
 /** Where an axis' tick labels sit: right-aligned before the plot on the left, left-aligned after it on the right. */
-const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (plot: Box) => number; direction: number }> = {
+const AXIS_SIDES: Record<ShareSeries['axis'], { align: 'left' | 'right'; edge: (plot: Box) => number; direction: number }> = {
     left: { align: 'right', edge: (plot) => plot.x, direction: -1 },
     right: { align: 'left', edge: (plot) => plot.x + plot.width, direction: 1 },
 };
@@ -275,19 +316,22 @@ const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (p
 export const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
-    const legendWidth = paintComboLegend(context, options, right, panel.y + IDENTITY.top, legendFit(options, right - left));
+    const legend = legendFit(context, options, right - left);
+    const drawnLegend = paintComboLegend(context, options, right, panel.y + IDENTITY.top, legend.fit);
 
-    paintIdentity(context, options.subject, options.range, { x: left, y: panel.y + IDENTITY.top }, right - left - legendWidth - COMBO.legendGap);
+    paintIdentity(context, options.subject, options.range, { x: left, y: panel.y + IDENTITY.top }, Math.max(right - left - drawnLegend - COMBO.legendGap, legend.identity));
 
     const periods = chartPeriods(options.chartMode);
     const domains = {
         left: comboDomain(axisSeries(options, 'left'), periods),
         right: comboDomain(axisSeries(options, 'right'), periods),
     };
+    const labels = { left: axisLabels(options, domains.left, 'left'), right: axisLabels(options, domains.right, 'right') };
+    const leftRoom = tickRoom(context, labels.left);
     const plot = {
-        x: left + PLOT.gutter,
+        x: left + leftRoom,
         y: panel.y + PLOT.top,
-        width: right - left - PLOT.gutter - rightAxisRoom(domains.right),
+        width: right - left - leftRoom - rightAxisRoom(context, labels.right),
         height: panel.height - PLOT.top - PLOT.bottom,
     };
     const count = Math.max(options.points.length, 1);
@@ -305,16 +349,9 @@ export const paintCombo = (context: CanvasRenderingContext2D, options: ShareCard
     strokeGrid(context, steps.map((step) => [{ x: plot.x, y: gridY(step) }, { x: plot.x + plot.width, y: gridY(step) }]));
 
     (['left', 'right'] as const).forEach((axis) => {
-        const domain = domains[axis];
-
-        if (!domain) {
-            return;
-        }
-
         const side = AXIS_SIDES[axis];
-        const labels = axisTickLabels(domain, axisSeries(options, axis).map((series) => series.metric));
 
-        labels.forEach((label, step) => {
+        labels[axis].forEach((label, step) => {
             writeTick(context, label, { x: side.edge(plot) + side.direction * PLOT.tickGap, y: gridY(step) }, { align: side.align, baseline: 'middle' });
         });
     });
@@ -349,5 +386,5 @@ export const paintCombo = (context: CanvasRenderingContext2D, options: ShareCard
         });
     });
 
-    paintDates(context, options.points, evenDates(count), x, plot);
+    paintDates(context, options.points, comboDates(count), x, plot);
 };
