@@ -15,13 +15,14 @@ import dayjs from '@/dayjs';
 import type {
     AnalyticsFilters,
     AnalyticsRangePreset,
+    DateRange,
 } from '@/types/analytics';
 
 const props = defineProps<{
     filters: AnalyticsFilters;
     bounds: { min: string | null; max: string | null };
     url: string;
-    range: { start: string; end: string };
+    range: DateRange;
     keep?: Record<string, string | string[]>;
 }>();
 

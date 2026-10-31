@@ -133,11 +133,14 @@ const clearFocus = (): void => {
 const isDimmed = (index: number): boolean =>
     focusedLine.value !== null && focusedLine.value !== index;
 
-const lineAttributes = (index: number) => ({
+/** The attributes unovis sets on a component's elements, by selector. */
+type ChartAttributes = Record<string, Record<string, string>>;
+
+const lineAttributes = (index: number): ChartAttributes => ({
     [VisLineSelectors.line]: { 'data-dimmed': String(isDimmed(index)) },
 });
 
-const pointAttributes = (index: number) => ({
+const pointAttributes = (index: number): ChartAttributes => ({
     [VisScatterSelectors.point]: { 'data-dimmed': String(isDimmed(index)) },
 });
 

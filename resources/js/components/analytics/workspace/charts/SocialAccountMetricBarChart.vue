@@ -25,7 +25,7 @@ import {
 import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { accountColor } from '@/lib/analyticsColors';
 import { formatNumberCompact } from '@/lib/utils';
-import type { AccountIdentityData } from '@/types/analytics';
+import type { AccountMetricRow } from '@/types/analytics';
 
 import AxisChannelRow from './AxisChannelRow.vue';
 import {
@@ -35,10 +35,7 @@ import {
 
 const props = withDefaults(
     defineProps<{
-        rows: {
-            account: AccountIdentityData;
-            value: number | null;
-        }[];
+        rows: AccountMetricRow[];
         colors: Record<string, string>;
         detail?: (index: number) => ChartTooltipDetail[];
         /** How each channel's number reads in the column before its bar. */
@@ -66,7 +63,8 @@ const rowColor = (point: BarPoint): string => {
     const key = props.rows[point.index]?.account.social_account_key;
     return (key && props.colors[key]) || accountColor(point.index);
 };
-const rowAt = (index: number) => props.rows[Math.round(index)];
+const rowAt = (index: number): AccountMetricRow | undefined =>
+    props.rows[Math.round(index)];
 /** The axis draws no text: each row's channel and number are laid over it as HTML. */
 const blankTick = (): string => '';
 const categoryTicks = computed(() => props.rows.map((_, index) => index));

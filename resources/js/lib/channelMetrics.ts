@@ -9,6 +9,7 @@ import {
 import type {
     BucketResolution,
     ChannelMetricSeries,
+    DateRange,
     FollowerGrowthRate,
     MetricSeriesPoint,
     SeriesMetric,
@@ -386,7 +387,7 @@ export const axisBucketLabel = (
 
 /** A bucket as its column's label: the month, the day, or the days a week covers. */
 export const bucketRangeLabel = (
-    bucket: { start: string; end: string },
+    bucket: DateRange,
     resolution: BucketResolution,
 ): string => {
     if (resolution === 'monthly' || bucket.start === bucket.end) {

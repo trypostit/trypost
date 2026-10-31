@@ -63,7 +63,11 @@ import {
     channelChartShareOption,
 } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
-import type { ChannelMetricSeries, SeriesMetric } from '@/types/analytics';
+import type {
+    ChannelMetricSeries,
+    DateRange,
+    SeriesMetric,
+} from '@/types/analytics';
 
 import ChannelMetricsChart from './ChannelMetricsChart.vue';
 
@@ -230,7 +234,7 @@ const rangeCaption = computed(() => {
     return date.formatDayMonthYearRange(props.series.range);
 });
 /** The period the chart shows: the previous one in the Comparison view. */
-const shownRange = (series: ChannelMetricSeries): { start: string; end: string } => {
+const shownRange = (series: ChannelMetricSeries): DateRange => {
     if (chartMode.value === 'previous') {
         return series.previous_range;
     }

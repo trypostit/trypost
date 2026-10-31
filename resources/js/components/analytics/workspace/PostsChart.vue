@@ -3,14 +3,14 @@ import { computed, ref } from 'vue';
 
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
-import {
-    POSTS_ROWS,
-    type PostsChartMode,
-    postsShareOption,
-} from '@/lib/insightsShare';
+import { POSTS_ROWS, postsShareOption } from '@/lib/insightsShare';
 import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact } from '@/lib/utils';
-import type { WorkspaceAnalyticsReport } from '@/types/analytics';
+import type {
+    AccountMetricRow,
+    PostsChartMode,
+    WorkspaceAnalyticsReport,
+} from '@/types/analytics';
 
 import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
@@ -43,7 +43,7 @@ const shownChannels = computed(() =>
         : null,
 );
 /** One bar per channel with the posts it sent. */
-const barRows = computed(() =>
+const barRows = computed((): AccountMetricRow[] =>
     props.posts.accounts.map((account) => ({
         account,
         value: POSTS_ROWS.value(account),

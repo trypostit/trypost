@@ -9,7 +9,6 @@ import date from '@/date';
 import { activeLocale } from '@/language';
 import {
     FOLLOWERS_ROWS,
-    type FollowersChartMode,
     followersNet,
     followersShareOption,
 } from '@/lib/insightsShare';
@@ -20,7 +19,11 @@ import {
     formatPercentChange,
     formatSignedNumber,
 } from '@/lib/utils';
-import type { WorkspaceAnalyticsReport } from '@/types/analytics';
+import type {
+    AccountMetricRow,
+    FollowersChartMode,
+    WorkspaceAnalyticsReport,
+} from '@/types/analytics';
 
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
@@ -111,7 +114,12 @@ const barDetail = (index: number): ChartTooltipDetail[] => {
     ];
 };
 /** One bar per channel with its number: its followers (Bar) or its change over the period (Growth); none in Line. */
-const barChart = computed(() => {
+type BarChart = {
+    rows: AccountMetricRow[];
+    formatValue: (value: number | null) => string;
+};
+
+const barChart = computed((): BarChart | null => {
     if (mode.value === 'line') {
         return null;
     }

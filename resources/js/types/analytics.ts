@@ -10,6 +10,12 @@ export interface Comparison {
     change: number | null;
 }
 
+/** A span of days, both ends included, as `Y-m-d` dates. */
+export interface DateRange {
+    start: string;
+    end: string;
+}
+
 export interface AccountIdentityData {
     social_account_key: string;
     platform: string;
@@ -36,6 +42,18 @@ export const accountLabel = (
     return getPlatformLabel(account.platform);
 };
 
+/** A channel with one number of its own, as a bar chart's row. */
+export interface AccountMetricRow {
+    account: AccountIdentityData;
+    value: number | null;
+}
+
+/** How the Followers card is drawn: per channel, over time, or the change per channel. */
+export type FollowersChartMode = 'bar' | 'line' | 'growth';
+
+/** How the Posts card is drawn: per channel, or over time split by channel. */
+export type PostsChartMode = 'bar' | 'stacked';
+
 /** How long one bar of a chart over time covers. */
 export type BucketResolution = 'daily' | 'weekly' | 'monthly';
 
@@ -52,9 +70,7 @@ export interface PostAccount extends AccountIdentityData {
     count: number;
 }
 
-export interface PostBucket {
-    start: string;
-    end: string;
+export interface PostBucket extends DateRange {
     accounts: Record<string, number>;
     total: number;
 }
@@ -117,8 +133,8 @@ export interface CoverageRow {
 
 export interface AnalyticsReport {
     bounds: { min: string | null; max: string | null };
-    range: { start: string; end: string };
-    previous_range: { start: string; end: string };
+    range: DateRange;
+    previous_range: DateRange;
     summary: {
         posts: Comparison;
         followers: Comparison;
@@ -216,7 +232,7 @@ export interface FollowerGrowthMonth {
 }
 
 export interface FollowerGrowthRate {
-    range: { start: string; end: string };
+    range: DateRange;
     months: FollowerGrowthMonth[];
     latest: number | null;
     previous: number | null;
@@ -225,8 +241,8 @@ export interface FollowerGrowthRate {
 export interface ChannelMetricSeries {
     resolution: BucketResolution;
     metrics: SeriesMetric[];
-    range: { start: string; end: string };
-    previous_range: { start: string; end: string };
+    range: DateRange;
+    previous_range: DateRange;
     current: MetricSeriesPoint[];
     previous: MetricSeriesPoint[];
     totals: { current: SeriesValues; previous: SeriesValues };

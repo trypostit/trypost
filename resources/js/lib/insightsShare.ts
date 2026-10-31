@@ -26,7 +26,9 @@ import {
     accountLabel,
     type ChannelMetricSeries,
     type FollowerAccount,
+    type FollowersChartMode,
     type MetricSeriesPoint,
+    type PostsChartMode,
     type SeriesMetric,
     type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
@@ -39,9 +41,6 @@ import {
 type Followers = WorkspaceAnalyticsReport['followers'];
 
 type Posts = WorkspaceAnalyticsReport['posts'];
-
-/** How the page's Followers card is drawn: per channel, over time, or the change per channel. */
-export type FollowersChartMode = 'bar' | 'line' | 'growth';
 
 /** The share card draws each mode of the Followers card the way the page does. */
 const FOLLOWERS_SHAPES: Record<FollowersChartMode, ShareShape> = {
@@ -64,9 +63,6 @@ export const FOLLOWERS_ROWS: Record<
     bar: { value: (account) => account.value, format: formatNumberCompact },
     growth: { value: (account) => account.growth, format: formatCountChange },
 };
-
-/** How the page's Posts card is drawn: per channel, or over time split by channel. */
-export type PostsChartMode = 'bar' | 'stacked';
 
 const POSTS_SHAPES: Record<PostsChartMode, ShareShape> = {
     bar: 'rows',

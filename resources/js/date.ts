@@ -1,6 +1,7 @@
 import dayjs from '@/dayjs';
 import { activeLocale } from '@/language';
 import { timeFormat, userTimezone } from '@/preferences';
+import type { DateRange } from '@/types/analytics';
 
 /**
  * A dayjs instance bound to the current language. `dayjs.locale()` is global and
@@ -32,7 +33,7 @@ const userNow = () =>
  * that zone, so an `Intl` date shows the year only when it is not obvious.
  */
 /** A period's first day with only what its last day does not already say. */
-const rangeStart = (range: { start: string; end: string }): string => {
+const rangeStart = (range: DateRange): string => {
     const start = localized(range.start);
     const end = localized(range.end);
 
@@ -47,7 +48,7 @@ const rangeStart = (range: { start: string; end: string }): string => {
     return start.format('D');
 };
 
-const dayMonthYearRange = (range: { start: string; end: string }): string =>
+const dayMonthYearRange = (range: DateRange): string =>
     `${rangeStart(range)} – ${localized(range.end).format('D MMM YYYY')}`;
 
 const yearUnlessCurrent = (
@@ -217,7 +218,7 @@ export default {
      * ends share them: "25 – 31 Oct 2026", "28 Sep – 4 Oct 2026",
      * "28 Dec 2025 – 3 Jan 2026".
      */
-    formatDayMonthYearRange(range: { start: string; end: string }): string {
+    formatDayMonthYearRange(range: DateRange): string {
         return dayMonthYearRange(range);
     },
 
@@ -226,8 +227,8 @@ export default {
      * the same one: "18 – 24 Oct" next to "25 – 31 Oct 2026".
      */
     formatComparedRange(
-        range: { start: string; end: string },
-        current: { start: string; end: string },
+        range: DateRange,
+        current: DateRange,
     ): string {
         if (localized(range.end).year() !== localized(current.end).year()) {
             return dayMonthYearRange(range);

@@ -8,13 +8,12 @@ import {
     TooltipTrigger,
 } from '@/components/ui/tooltip';
 import date from '@/date';
-
-type Range = { start: string; end: string };
+import type { DateRange } from '@/types/analytics';
 
 const props = defineProps<{
-    range: Range;
+    range: DateRange;
     /** The period the changes are measured against. */
-    previous: Range;
+    previous: DateRange;
 }>();
 
 const previousLabel = computed(() =>
