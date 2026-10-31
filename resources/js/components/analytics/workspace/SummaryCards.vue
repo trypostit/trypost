@@ -6,11 +6,12 @@ import MetricChange from '@/components/analytics/MetricChange.vue';
 import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
 import {
-    countChange,
-    percentChange,
-    summaryShareOption,
-} from '@/lib/insightsShare';
-import type { ShareChange, ShareMetricOption } from '@/lib/insightsShareCard';
+    countDelta,
+    type MetricDelta,
+    percentDelta,
+} from '@/lib/channelMetrics';
+import { summaryShareOption } from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact, formatPercent } from '@/lib/utils';
 import type { AnalyticsReport, SummaryMetric } from '@/types/analytics';
 
@@ -58,19 +59,17 @@ const defaultCards = computed(() => [
     },
 ]);
 
-/** A card's change, labelled like the share card, with the raw value `MetricChange` colors by. */
-type CardChange = ShareChange & { value: number };
-
-const cardChange = (key: string, change: number | null): CardChange | null => {
+/** A card's change as the page and the share card label it: followers as a count, the rest as a percentage. */
+const cardChange = (key: string, change: number | null): MetricDelta | null => {
     if (change === null) {
         return null;
     }
 
     if (key === 'followers') {
-        return { value: change, ...countChange(change) };
+        return countDelta(change);
     }
 
-    return { value: change, ...percentChange(change) };
+    return percentDelta(change);
 };
 
 const listedCards = computed(() => {

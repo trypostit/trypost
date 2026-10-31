@@ -143,17 +143,20 @@ export const isPercentMetric = (metric: SeriesMetric): boolean =>
 /** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
 const COUNTED_METRICS: readonly SeriesMetric[] = ['net_followers'];
 
-/** How a metric moved since the previous period: the signed value and how the page labels it. */
-export type SeriesDelta = { value: number; label: string };
+/** How a number moved: the signed value, which picks its tone, and how the page labels it. */
+export type MetricDelta = { value: number; label: string };
 
 /** A count's change as the page labels it: "+7", "-3". */
-const countDelta = (change: number): SeriesDelta => ({ value: change, label: formatCountChange(change) });
+export const countDelta = (change: number): MetricDelta => ({ value: change, label: formatCountChange(change) });
+
+/** A change as a percentage of the previous value, as the page labels it: "+8.5%". */
+export const percentDelta = (change: number): MetricDelta => ({ value: change, label: formatPercentChange(change) });
 
 /**
  * The followers gained or lost within the period, from its first reading to
  * its last, like the workspace's Followers card; null without two readings.
  */
-const followersDelta = (series: ChannelMetricSeries): SeriesDelta | null => {
+const followersDelta = (series: ChannelMetricSeries): MetricDelta | null => {
     const readings = definedValues(series.current, 'followers');
 
     if (readings.length < 2) {
@@ -170,7 +173,7 @@ const followersDelta = (series: ChannelMetricSeries): SeriesDelta | null => {
  * loss shrinking reads as a rise. Null for a rate, which has no previous
  * period, or when there is nothing to compare.
  */
-export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): SeriesDelta | null => {
+export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): MetricDelta | null => {
     if (metric === 'followers') {
         return followersDelta(series);
     }
@@ -190,9 +193,7 @@ export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): 
         return null;
     }
 
-    const change = ((current - previous) / Math.abs(previous)) * 100;
-
-    return { value: change, label: formatPercentChange(change) };
+    return percentDelta(((current - previous) / Math.abs(previous)) * 100);
 };
 
 /**

@@ -8,12 +8,13 @@ import {
     type ChartMode,
     formatSeriesValue,
     type SeriesSpec,
+    countDelta,
+    type MetricDelta,
     seriesDelta,
     shownPeriod,
 } from '@/lib/channelMetrics';
 import {
     periodFigure,
-    type ShareChange,
     type ShareChannel,
     type ShareLine,
     type ShareMetricOption,
@@ -22,7 +23,7 @@ import {
     type ShareShape,
     type ShareTile,
 } from '@/lib/insightsShareCard';
-import { formatCountChange, formatNumberCompact, formatPercentChange } from '@/lib/utils';
+import { formatCountChange, formatNumberCompact } from '@/lib/utils';
 import {
     type AccountIdentityData,
     accountLabel,
@@ -78,30 +79,6 @@ export const POSTS_ROWS: ChannelRowsSpec<Posts['accounts'][number]> = {
 
 const sum = (values: number[]): number =>
     values.reduce((total, value) => total + value, 0);
-
-const changeDirection = (change: number): ShareChange['direction'] => {
-    if (change > 0) {
-        return 'up';
-    }
-
-    if (change < 0) {
-        return 'down';
-    }
-
-    return 'flat';
-};
-
-/** A change in a count, the way the page labels it: "+12". */
-export const countChange = (change: number): ShareChange => ({
-    label: formatCountChange(change),
-    direction: changeDirection(change),
-});
-
-/** A change as a percentage of the previous value, the way the page labels it: "+8.5%". */
-export const percentChange = (change: number): ShareChange => ({
-    label: formatPercentChange(change),
-    direction: changeDirection(change),
-});
 
 /** The post text for one metric across the workspace's channels. */
 const metricCaption = (replacements: { metric: string; value: string; range: string }): string =>
@@ -261,14 +238,14 @@ export const followersNet = (followers: Followers): number | null => {
     return sum(nets);
 };
 
-const followersChange = (followers: Followers): ShareChange | null => {
+const followersChange = (followers: Followers): MetricDelta | null => {
     const net = followersNet(followers);
 
     if (net === null) {
         return null;
     }
 
-    return countChange(net);
+    return countDelta(net);
 };
 
 /** The workspace's followers the way the page's Followers card draws them in `mode`. */
@@ -293,17 +270,6 @@ export const followersShareOption = (
     });
 };
 
-/** A channel metric's change, as the card draws it. */
-const seriesChange = (series: ChannelMetricSeries, metric: SeriesMetric): ShareChange | null => {
-    const delta = seriesDelta(series, metric);
-
-    if (!delta) {
-        return null;
-    }
-
-    return { label: delta.label, direction: changeDirection(delta.value) };
-};
-
 /** One metric of the channel chart as the card draws it. */
 const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: string): ShareSeries => {
     const current = series.totals.current[spec.metric];
@@ -319,7 +285,7 @@ const chartSeries = (series: ChannelMetricSeries, spec: SeriesSpec, label: strin
         previous: series.previous.map((point) => point.values[spec.metric] ?? null),
         figure: formatSeriesValue(current, spec.metric),
         previousFigure: formatSeriesValue(previous, spec.metric),
-        change: seriesChange(series, spec.metric),
+        change: seriesDelta(series, spec.metric),
     };
 };
 

@@ -6,6 +6,7 @@ import {
     axisTickLabels,
     chartPeriods,
     type ChartMode,
+    type MetricDelta,
 } from '@/lib/channelMetrics';
 import { spreadLabels } from '@/lib/labelLayout';
 import {
@@ -27,7 +28,6 @@ import type { VerifiedBadge } from '@/types/social-account';
 /** A line, columns or columns split by channel over time, one bar per channel, or the Summary's numbers. */
 export type ShareShape = 'lines' | 'combo' | 'stacked' | 'rows' | 'tiles';
 
-export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
 /** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
 export type ShareChannel = {
@@ -78,14 +78,14 @@ export type ShareSeries = {
     /** The period's totals as the page's legend prints them, and how the metric moved. */
     figure: string;
     previousFigure: string;
-    change: ShareChange | null;
+    change: MetricDelta | null;
 };
 
 /** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
 type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
 /** One number of the Summary, as its card prints it; null while it has no value. */
-export type ShareTile = { label: string; figure: string | null; change: ShareChange | null };
+export type ShareTile = { label: string; figure: string | null; change: MetricDelta | null };
 
 /** What a share option draws, which names its file: one metric of a series, the channel's chart, or the whole Summary. */
 type ShareMetricKey = SeriesMetric | 'channel' | 'summary';
@@ -95,7 +95,7 @@ export type ShareMetricOption = {
     key: ShareMetricKey;
     label: string;
     figure: string;
-    change: ShareChange | null;
+    change: MetricDelta | null;
     points: SharePoint[];
     shape: ShareShape;
     /** Every number of the Summary, for the summary card. */
@@ -175,6 +175,7 @@ const CHART = {
     gridWidth: 2,
     tickFont: sans(500, 22),
     barMaxWidth: 32,
+    barMinWidth: 2,
     barPadding: 0.35,
     /** The page's bars round their data end 4px on 20px bars: the radius keeps that share of a bar's thickness. */
     barRoundness: 4 / 20,
@@ -203,7 +204,7 @@ const PANEL = { x: 56, y: 48, radius: 24, padding: 48, band: 92 };
 const IDENTITY = { top: 40, name: 34, detail: 76 };
 
 /** The chart card's headline: the figure at the top right and its change under it. */
-const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26 };
+const HEADLINE = { reserve: 380, figure: 100, figureSize: 68, change: 116, changeSize: 26 };
 
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, dateGap: 24 };
@@ -221,10 +222,21 @@ const TICK_FACTORS: [number, number][] = [
  * a 6px gap and the number in 12px medium), 24px between labels, 16px above
  * the plot the labels may use, 5 value ticks and up to 6 dates.
  */
-const LINE_ENDS = { rail: 224, leader: 64, avatar: 40, gap: 12, height: 48, fontSize: 24, headroom: 32 };
+const LINE_ENDS = { rail: 224, leader: 64, leaderWidth: 3, leaderInset: 8, leaderTip: 4, avatar: 40, avatarShare: 0.85, gap: 12, height: 48, fontSize: 24, fontShare: 0.6, headroom: 32 };
 
 /** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
-const ROWS = { max: 12, nameMax: 320, figureGap: 32, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+const ROWS = {
+    max: 12,
+    nameMax: 320,
+    figureGap: 32,
+    labelGap: 24,
+    axis: 44,
+    valuesGap: 36,
+    thickness: 28,
+    thicknessShare: 0.55,
+    label: { min: 14, max: 22, share: 0.55 },
+    figure: { min: 16, max: 26, share: 0.6 },
+};
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
 const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };
@@ -235,7 +247,7 @@ const VERIFIED_PATH =
     'M12.01 2.011a3.2 3.2 0 0 1 2.113 .797l.154 .145l.698 .698a1.2 1.2 0 0 0 .71 .341l.135 .008h1a3.2 3.2 0 0 1 3.195 3.018l.005 .182v1c0 .27 .092 .533 .258 .743l.09 .1l.697 .698a3.2 3.2 0 0 1 .147 4.382l-.145 .154l-.698 .698a1.2 1.2 0 0 0 -.341 .71l-.008 .135v1a3.2 3.2 0 0 1 -3.018 3.195l-.182 .005h-1a1.2 1.2 0 0 0 -.743 .258l-.1 .09l-.698 .697a3.2 3.2 0 0 1 -4.382 .147l-.154 -.145l-.698 -.698a1.2 1.2 0 0 0 -.71 -.341l-.135 -.008h-1a3.2 3.2 0 0 1 -3.195 -3.018l-.005 -.182v-1a1.2 1.2 0 0 0 -.258 -.743l-.09 -.1l-.697 -.698a3.2 3.2 0 0 1 -.147 -4.382l.145 -.154l.698 -.698a1.2 1.2 0 0 0 .341 -.71l.008 -.135v-1l.005 -.182a3.2 3.2 0 0 1 3.013 -3.013l.182 -.005h1a1.2 1.2 0 0 0 .743 -.258l.1 -.09l.698 -.697a3.2 3.2 0 0 1 2.269 -.944zm3.697 7.282a1 1 0 0 0 -1.414 0l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.32 1.497l2 2l.094 .083a1 1 0 0 0 1.32 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
-const SUMMARY = { top: 168, tileHeight: 185, inset: 36, crowdedInset: 24, crowdedColumns: 5, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24, changeBelow: 12, minTextShare: 0.7 };
+const SUMMARY = { top: 168, tileHeight: 185, inset: 36, crowdedInset: 24, crowdedColumns: 5, label: 50, labelSize: 24, figureGap: 6, changeGap: 16, changeSize: 24, changeBelow: 12, minTextShare: 0.7, figureOverhang: 2, crowdedFigure: 52, singleRowFigure: 84, figure: 64, crowdedFrom: 4 };
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
 const loadFonts = async (): Promise<void> => {
@@ -449,19 +461,20 @@ const paintLogo = (context: CanvasRenderingContext2D, at: Point, size: number): 
     context.restore();
 };
 
+/** The signature's logo, the gap after it and its text size. */
+const MARK = { logo: 32, gap: 12, size: 24 };
+
 /** The signature, centred in the band under the panel: whoever sees the post sees where it came from. */
 const paintMark = (context: CanvasRenderingContext2D, mark: string): void => {
-    const logo = 32;
-    const gap = 12;
-    const font = sans(600, 24);
+    const font = sans(600, MARK.size);
     const centre = SHARE_CARD_SIZE.height - PANEL.band / 2;
 
     context.font = font;
 
-    const start = (SHARE_CARD_SIZE.width - (logo + gap + context.measureText(mark).width)) / 2;
+    const start = (SHARE_CARD_SIZE.width - (MARK.logo + MARK.gap + context.measureText(mark).width)) / 2;
 
-    paintLogo(context, { x: start, y: centre - logo / 2 }, logo);
-    writeText(context, mark, { x: start + logo + gap, y: centre + 1 }, { font, color: INK, baseline: 'middle' });
+    paintLogo(context, { x: start, y: centre - MARK.logo / 2 }, MARK.logo);
+    writeText(context, mark, { x: start + MARK.logo + MARK.gap, y: centre + 1 }, { font, color: INK, baseline: 'middle' });
 };
 
 /** The workspace or channel name, with what and when under it. */
@@ -479,36 +492,55 @@ const paintIdentity = (
     writeText(context, ellipsise(context, detail, detailFont, limit), { x: at.x, y: at.y + IDENTITY.detail }, { font: detailFont, color: MUTED });
 };
 
+/** `MetricChange`'s trend icon: its size and the gap after it as shares of the label's, and its stroke on the 24px icon grid. */
+const CHANGE_ICON = { scale: 1.15, gap: 0.3, stroke: 2.5, grid: 24 };
+
+/** How far an anchor sits from a change's left edge, as a share of its width. */
+const ALIGN_SHIFT = { left: 0, right: 1 } as const;
+
+/** Which way a change points: up for a gain, down for a loss, flat when nothing moved. */
+const changeDirection = (change: MetricDelta): keyof typeof CHANGE_COLORS => {
+    if (change.value > 0) {
+        return 'up';
+    }
+
+    if (change.value < 0) {
+        return 'down';
+    }
+
+    return 'flat';
+};
+
 /** How wide a change is drawn at `size`: its trend icon, a gap, then its label. */
-const changeWidth = (context: CanvasRenderingContext2D, change: ShareChange, size: number): number => {
+const changeWidth = (context: CanvasRenderingContext2D, change: MetricDelta, size: number): number => {
     context.font = sans(600, size);
 
-    return size * 1.15 + size * 0.3 + context.measureText(change.label).width;
+    return size * (CHANGE_ICON.scale + CHANGE_ICON.gap) + context.measureText(change.label).width;
 };
 
 /** The change as the page's `MetricChange`: the trending icon and the label, in the tone's color. */
 const paintChange = (
     context: CanvasRenderingContext2D,
-    change: ShareChange,
+    change: MetricDelta,
     anchor: Point,
     size: number,
     align: 'left' | 'right',
 ): void => {
-    const color = CHANGE_COLORS[change.direction];
+    const direction = changeDirection(change);
+    const color = CHANGE_COLORS[direction];
     const font = sans(600, size);
-    const icon = size * 1.15;
-    const gap = size * 0.3;
-    const width = changeWidth(context, change, size);
-    const left = align === 'right' ? anchor.x - width : anchor.x;
+    const icon = size * CHANGE_ICON.scale;
+    const gap = size * CHANGE_ICON.gap;
+    const left = anchor.x - changeWidth(context, change, size) * ALIGN_SHIFT[align];
 
     context.save();
     context.translate(left, anchor.y);
-    context.scale(icon / 24, icon / 24);
+    context.scale(icon / CHANGE_ICON.grid, icon / CHANGE_ICON.grid);
     context.strokeStyle = color;
-    context.lineWidth = 2.5;
+    context.lineWidth = CHANGE_ICON.stroke;
     context.lineCap = 'round';
     context.lineJoin = 'round';
-    CHANGE_ICONS[change.direction].forEach((path) => context.stroke(new Path2D(path)));
+    CHANGE_ICONS[direction].forEach((path) => context.stroke(new Path2D(path)));
     context.restore();
 
     writeText(context, change.label, { x: left + icon + gap, y: anchor.y + icon / 2 + 1 }, { font, color, baseline: 'middle' });
@@ -534,6 +566,21 @@ const valueAxis = (values: number[], tickCount: number): ValueAxis => {
     return { ticks: linearTicks(low, high, tickCount), at, zero: at(0) };
 };
 
+/** The page's dashed grid lines. */
+const strokeGrid = (context: CanvasRenderingContext2D, lines: [Point, Point][]): void => {
+    context.save();
+    context.setLineDash(CHART.gridDash);
+    context.lineWidth = CHART.gridWidth;
+    context.strokeStyle = CHART.grid;
+    lines.forEach((line) => strokeLine(context, ...line));
+    context.restore();
+};
+
+/** A muted tick label of an axis. */
+const writeTick = (context: CanvasRenderingContext2D, label: string, at: Point, style: Pick<TextStyle, 'align' | 'baseline'>): void => {
+    writeText(context, label, at, { font: CHART.tickFont, color: MUTED, ...style });
+};
+
 /** The dashed value grid: one line per tick, with the tick's value at `label`. */
 const paintGrid = (
     context: CanvasRenderingContext2D,
@@ -542,23 +589,15 @@ const paintGrid = (
     label: (value: number) => Point,
     style: Pick<TextStyle, 'align' | 'baseline'>,
 ): void => {
-    context.save();
-    context.setLineDash(CHART.gridDash);
-    context.lineWidth = CHART.gridWidth;
-    context.strokeStyle = CHART.grid;
-
-    ticks.forEach((value) => {
-        strokeLine(context, ...line(value));
-        writeText(context, formatNumberCompact(value), label(value), { font: CHART.tickFont, color: MUTED, ...style });
-    });
-
-    context.restore();
+    strokeGrid(context, ticks.map(line));
+    ticks.forEach((value) => writeTick(context, formatNumberCompact(value), label(value), style));
 };
 
 /**
  * A bar from the baseline (`start`) to its value (`end`) along its axis,
  * centred on `middle` across it and rounded only at the data end, like
- * unovis' `roundedCorners`.
+ * unovis' `roundedCorners`: the radius goes on the bar's low-coordinate edge
+ * or its high one, whichever is the data end.
  */
 const fillBar = (
     context: CanvasRenderingContext2D,
@@ -570,7 +609,6 @@ const fillBar = (
 ): void => {
     const length = Math.abs(end - start);
     const radius = Math.min(thickness * CHART.barRoundness, length);
-    /** The radius at the bar's low-coordinate edge and at its high one: only the data end is round. */
     const [low, high] = end > start ? [0, radius] : [radius, 0];
 
     context.beginPath();
@@ -767,6 +805,10 @@ const rankedRows = (points: SharePoint[]): RankedPoint[] =>
         .slice(0, ROWS.max)
         .sort((a, b) => a.index - b.index);
 
+/** A row's text size: its share of the row's height, kept between the size's bounds. */
+const rowTextSize = (size: { min: number; max: number; share: number }, rowHeight: number): number =>
+    Math.min(size.max, Math.max(size.min, rowHeight * size.share));
+
 /**
  * One horizontal bar per channel from zero, losses to the left, in each
  * channel's color, after its name, its number and its avatar in a fixed
@@ -777,9 +819,9 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
     const axis = valueAxis(rows.map((point) => point.value), CHART.valueTicks);
     const plotHeight = area.height - ROWS.axis;
     const rowHeight = plotHeight / Math.max(rows.length, 1);
-    const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
-    const labelFont = sans(500, Math.min(22, Math.max(14, rowHeight * 0.55)));
-    const figureFont = sans(600, Math.min(26, Math.max(16, rowHeight * 0.6)));
+    const thickness = Math.min(rowHeight * ROWS.thicknessShare, ROWS.thickness);
+    const labelFont = sans(500, rowTextSize(ROWS.label, rowHeight));
+    const figureFont = sans(600, rowTextSize(ROWS.figure, rowHeight));
     const avatarSize = Math.min(AVATAR.size, rowHeight * AVATAR.fill);
     const nameWidth = Math.min(ROWS.nameMax, widest(context, rows.map((point) => point.label), labelFont));
     const figureWidth = widest(context, rows.map((point) => point.figure ?? ''), figureFont);
@@ -825,7 +867,7 @@ const paintHeadline = (context: CanvasRenderingContext2D, options: ShareCardOpti
     const limit = panel.width - PANEL.padding * 2 - HEADLINE.reserve;
 
     paintIdentity(context, options.subject, `${options.label} · ${options.range}`, { x: left, y: panel.y + IDENTITY.top }, limit);
-    writeText(context, options.figure, { x: right, y: panel.y + HEADLINE.figure }, { font: heading(500, 68), color: INK, align: 'right' });
+    writeText(context, options.figure, { x: right, y: panel.y + HEADLINE.figure }, { font: heading(500, HEADLINE.figureSize), color: INK, align: 'right' });
 
     if (options.change) {
         paintChange(context, options.change, { x: right, y: panel.y + HEADLINE.change }, HEADLINE.changeSize, 'right');
@@ -876,6 +918,23 @@ const colorResolver = (): ((color: string) => string) => {
     };
 };
 
+/**
+ * How wide each bar of a `slot` is: one bar like the page's, or, with both
+ * periods, two bars side by side that fill the day with a small gap between
+ * them instead of halving a single bar.
+ */
+const barWidth = (slot: number, bars: number): number =>
+    Math.max(Math.min(barsRoom(slot, bars) / bars, CHART.barMaxWidth), CHART.barMinWidth);
+
+/** The room a slot's bars share: a single bar keeps the page's padding, a pair fills the day but for the gap between them. */
+const barsRoom = (slot: number, bars: number): number => {
+    if (bars === 1) {
+        return slot * (1 - CHART.barPadding);
+    }
+
+    return slot * (1 - COMBO.groupPadding) - COMBO.pairGap * (bars - 1);
+};
+
 /** One column per bucket from zero, split by channel in each channel's color. */
 const paintBars = (
     context: CanvasRenderingContext2D,
@@ -884,8 +943,7 @@ const paintBars = (
     x: (index: number) => number,
     y: (value: number) => number,
 ): void => {
-    const slot = plot.width / options.points.length;
-    const width = Math.max(Math.min(slot * (1 - CHART.barPadding), CHART.barMaxWidth), 2);
+    const width = barWidth(plot.width / options.points.length, 1);
     const colorOf = colorResolver();
 
     options.points.forEach((point, index) => {
@@ -924,17 +982,29 @@ const linearTicks = (start: number, stop: number, count: number): number[] => {
     return Array.from({ length: last - first + 1 }, (_, index) => (first + index) * step);
 };
 
-/** One channel's line in its color, with a dot on each known point. */
-const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
-    const known = line.values.flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(value) }]));
-    const color = resolveCssColor(line.color);
-
+/** The page's 2px monotone line through `points`, dashed when `dash` says so. */
+const strokeCurve = (context: CanvasRenderingContext2D, points: Point[], color: string, dash: number[] = []): void => {
+    context.save();
     context.strokeStyle = color;
     context.lineWidth = CHART.lineWidth;
     context.lineJoin = 'round';
     context.lineCap = 'round';
-    traceMonotone(context, known);
+    context.setLineDash(dash);
+    traceMonotone(context, points);
     context.stroke();
+    context.restore();
+};
+
+/** The points of a line that have a value, where the plot draws them. */
+const knownPoints = (values: (number | null)[], x: (index: number) => number, y: (value: number) => number): Point[] =>
+    values.flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(value) }]));
+
+/** One channel's line in its color, with a dot on each known point. */
+const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (index: number) => number, y: (value: number) => number): Point[] => {
+    const known = knownPoints(line.values, x, y);
+    const color = resolveCssColor(line.color);
+
+    strokeCurve(context, known, color);
 
     context.fillStyle = color;
     known.forEach((point) => {
@@ -949,7 +1019,8 @@ const strokeSeries = (context: CanvasRenderingContext2D, line: ShareLine, x: (in
 /**
  * One line per channel, like the page's Line view: each ends in the channel's
  * avatar and latest number on the right, spread apart with a leader in the
- * line's color where lines end close together.
+ * line's color where lines end close together. The labels may use from just
+ * above the plot down to the zero line; with many channels they shrink to fit.
  */
 const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
     const values = options.lines.flatMap((line) => line.values.filter((value): value is number => value !== null));
@@ -973,13 +1044,7 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
         { align: 'right', baseline: 'middle' },
     );
 
-    linearTicks(0, options.points.length - 1, Math.min(options.points.length, CHART.maxDates)).forEach((index) => {
-        writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, {
-            font: CHART.tickFont,
-            color: MUTED,
-            align: 'center',
-        });
-    });
+    paintDates(context, options.points, evenDates(options.points.length), x, plot);
 
     const ends = options.lines.flatMap((line) => {
         const known = strokeSeries(context, line, x, y);
@@ -987,11 +1052,10 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
         return last ? [{ line, lineY: last.y }] : [];
     });
-    /** Like the page: from just above the plot down to the zero line; with many channels they shrink to fit. */
     const room = { top: plot.y - LINE_ENDS.headroom, bottom: Math.min(y(0), plot.y + plot.height) };
     const step = Math.min(LINE_ENDS.height, (room.bottom - room.top) / Math.max(ends.length, 1));
-    const avatarSize = Math.min(LINE_ENDS.avatar, step * 0.85);
-    const font = sans(500, Math.min(LINE_ENDS.fontSize, step * 0.6));
+    const avatarSize = Math.min(LINE_ENDS.avatar, step * LINE_ENDS.avatarShare);
+    const font = sans(500, Math.min(LINE_ENDS.fontSize, step * LINE_ENDS.fontShare));
     const labels = spreadLabels(
         ends.map((end) => end.lineY),
         { gap: step, ...room },
@@ -1003,12 +1067,12 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
         if (Math.abs(labelY - lineY) > 1) {
             context.strokeStyle = resolveCssColor(line.color);
-            context.lineWidth = 3;
+            context.lineWidth = LINE_ENDS.leaderWidth;
             context.lineJoin = 'round';
             context.beginPath();
-            context.moveTo(lineEnd + 8, lineY);
+            context.moveTo(lineEnd + LINE_ENDS.leaderInset, lineY);
             context.lineTo(lineEnd + LINE_ENDS.leader / 2, lineY);
-            context.lineTo(labelX - 4, labelY);
+            context.lineTo(labelX - LINE_ENDS.leaderTip, labelY);
             context.stroke();
         }
 
@@ -1021,51 +1085,34 @@ const paintLines = (context: CanvasRenderingContext2D, options: ShareCardOptions
  * The columns that get a date: every one, like the page's Posts chart, unless
  * the card is too narrow for them all, then as many as fit, evenly spread.
  */
-const shownDates = (context: CanvasRenderingContext2D, options: ShareCardOptions, plot: Box): number[] => {
-    const count = options.points.length;
-    const room = widest(context, options.points.map((point) => point.label), CHART.tickFont) + PLOT.dateGap;
-    const fitting = Math.max(Math.floor(plot.width / room), 1);
+const columnDates = (context: CanvasRenderingContext2D, points: SharePoint[], width: number): number[] => {
+    const room = widest(context, points.map((point) => point.label), CHART.tickFont) + PLOT.dateGap;
+    const fitting = Math.max(Math.floor(width / room), 1);
 
-    if (count <= fitting) {
-        return options.points.map((_, index) => index);
+    if (points.length <= fitting) {
+        return points.map((_, index) => index);
     }
 
-    return linearTicks(0, count - 1, fitting);
+    return linearTicks(0, points.length - 1, fitting);
 };
 
-/** The dates under the columns. */
+/** Up to `CHART.maxDates` dates evenly spread over a line, like the page's date axes. */
+const evenDates = (count: number): number[] => linearTicks(0, count - 1, Math.min(count, CHART.maxDates));
+
+/** The dates of the points at `indexes`, under the plot. */
 const paintDates = (
     context: CanvasRenderingContext2D,
-    options: ShareCardOptions,
-    plot: Box,
+    points: SharePoint[],
+    indexes: number[],
     x: (index: number) => number,
+    plot: Box,
 ): void => {
-    shownDates(context, options, plot).forEach((index) => {
-        writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, {
-            font: CHART.tickFont,
-            color: MUTED,
-            align: 'center',
-        });
-    });
+    indexes.forEach((index) => writeTick(context, points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, { align: 'center' }));
 };
 
 /** The channel chart at 2x: its legend's label, figure and swatch, and its 16px bars. */
-const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, barMaxWidth: 32, barPadding: 0.35, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
+const COMBO = { legendGap: 56, labelSize: 22, figureSize: 52, figureLine: 52, swatchRise: 0.55, swatch: 18, swatchGap: 12, changeSize: 22, changeGap: 14, changeBelow: 14, rightGutter: 72, groupPadding: 0.1, pairGap: 4, dash: [10, 8] };
 
-/**
- * How wide each bar is: one bar per day like the page's, or, with both
- * periods, two bars side by side that fill the day with a small gap between
- * them instead of halving a single bar.
- */
-const comboBarWidth = (slot: number, bars: number): number => {
-    if (bars === 1) {
-        return Math.max(Math.min(slot * (1 - COMBO.barPadding), COMBO.barMaxWidth), 2);
-    }
-
-    const room = slot * (1 - COMBO.groupPadding) - COMBO.pairGap * (bars - 1);
-
-    return Math.max(Math.min(room / bars, COMBO.barMaxWidth), 2);
-};
 
 /** The page's hatch for a previous period's bars: stripes of the color over a light wash of it. */
 const hatchPattern = (context: CanvasRenderingContext2D, color: string): CanvasPattern | string => {
@@ -1163,7 +1210,7 @@ const legendFigureColor = (period: PublicationPeriod, mode: ChartMode): string =
 };
 
 /** How wide a legend item's change is drawn; none without one. */
-const legendChangeWidth = (context: CanvasRenderingContext2D, change: ShareChange | null): number => {
+const legendChangeWidth = (context: CanvasRenderingContext2D, change: MetricDelta | null): number => {
     if (!change) {
         return 0;
     }
@@ -1172,7 +1219,7 @@ const legendChangeWidth = (context: CanvasRenderingContext2D, change: ShareChang
 };
 
 /** The change a legend item shows: none in Comparison, which shows the previous period itself. */
-const legendChange = (series: ShareSeries, mode: ChartMode): ShareChange | null => {
+const legendChange = (series: ShareSeries, mode: ChartMode): MetricDelta | null => {
     if (mode === 'previous') {
         return null;
     }
@@ -1180,7 +1227,7 @@ const legendChange = (series: ShareSeries, mode: ChartMode): ShareChange | null 
     return series.change;
 };
 
-/** The page's legend on the headline's right: each metric's name over its swatches, figures and change. */
+/** The page's legend on the headline's right: each metric's name over its swatches and figures, its change under them. */
 const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardOptions, right: number, top: number): number => {
     const labelFont = sans(500, COMBO.labelSize);
     const figureFont = heading(500, COMBO.figureSize);
@@ -1204,13 +1251,12 @@ const paintComboLegend = (context: CanvasRenderingContext2D, options: ShareCardO
         writeText(context, series.label, { x: left, y: top + COMBO.labelSize }, { font: labelFont, color: MUTED });
 
         entries.forEach((entry, position) => {
-            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - COMBO.figureSize * 0.55 });
+            paintLegendSwatch(context, series, color, entry.period, { x: cursor, y: baseline - COMBO.figureSize * COMBO.swatchRise });
             writeText(context, entry.figure, { x: cursor + COMBO.swatch + COMBO.swatchGap, y: baseline }, { font: figureFont, color: legendFigureColor(entry.period, options.chartMode) });
             cursor += entryWidths[position] + COMBO.changeGap;
         });
 
         if (change) {
-            /** Under the figures, like the page's legend and the workspace's Followers card. */
             paintChange(context, change, { x: left, y: baseline + COMBO.changeBelow }, COMBO.changeSize, 'left');
         }
 
@@ -1240,14 +1286,14 @@ const AXIS_SIDES: Record<ShareSeries['axis'], { align: CanvasTextAlign; edge: (p
 /**
  * The channel chart as the page shows it: its metrics' bars and lines on a
  * left and a right axis, for the periods its toggle shows, the previous
- * period's bars hatched and its lines dashed, under the page's legend.
+ * period's bars hatched and its lines dashed, under the page's legend. The
+ * legend names the metrics, so the line under the name keeps only the period.
  */
 const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     const left = panel.x + PANEL.padding;
     const right = panel.x + panel.width - PANEL.padding;
     const legendWidth = paintComboLegend(context, options, right, panel.y + IDENTITY.top);
 
-    /** The legend names the metrics, so the line under the name keeps only the period. */
     paintIdentity(context, options.subject, options.range, { x: left, y: panel.y + IDENTITY.top }, right - left - legendWidth - COMBO.legendGap);
 
     const periods = chartPeriods(options.chartMode);
@@ -1271,14 +1317,9 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
     };
     const gridY = (step: number): number => plot.y + plot.height - (step / AXIS_STEPS) * plot.height;
 
-    context.save();
-    context.setLineDash(CHART.gridDash);
-    context.lineWidth = CHART.gridWidth;
-    context.strokeStyle = CHART.grid;
-    for (let step = 0; step <= AXIS_STEPS; step += 1) {
-        strokeLine(context, { x: plot.x, y: gridY(step) }, { x: plot.x + plot.width, y: gridY(step) });
-    }
-    context.restore();
+    const steps = Array.from({ length: AXIS_STEPS + 1 }, (_, step) => step);
+
+    strokeGrid(context, steps.map((step) => [{ x: plot.x, y: gridY(step) }, { x: plot.x + plot.width, y: gridY(step) }]));
 
     (['left', 'right'] as const).forEach((axis) => {
         const domain = domains[axis];
@@ -1291,12 +1332,12 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
         const labels = axisTickLabels(domain, axisSeries(options, axis).map((series) => series.metric));
 
         labels.forEach((label, step) => {
-            writeText(context, label, { x: side.edge(plot) + side.direction * PLOT.tickGap, y: gridY(step) }, { font: CHART.tickFont, color: MUTED, align: side.align, baseline: 'middle' });
+            writeTick(context, label, { x: side.edge(plot) + side.direction * PLOT.tickGap, y: gridY(step) }, { align: side.align, baseline: 'middle' });
         });
     });
 
-    const barWidth = comboBarWidth(slot, periods.length);
-    const barStep = barWidth + COMBO.pairGap * (periods.length - 1);
+    const width = barWidth(slot, periods.length);
+    const barStep = width + COMBO.pairGap * (periods.length - 1);
 
     options.series.filter((series) => series.kind === 'bar').forEach((series) => {
         const color = resolveCssColor(series.color);
@@ -1312,62 +1353,63 @@ const paintCombo = (context: CanvasRenderingContext2D, options: ShareCardOptions
 
                 const middle = x(index) + (position - (periods.length - 1) / 2) * barStep;
 
-                fillBar(context, zero, y(series.axis, value), middle, barWidth, false);
+                fillBar(context, zero, y(series.axis, value), middle, width, false);
             });
         });
     });
 
     options.series.filter((series) => series.kind === 'line').forEach((series) => {
         periods.forEach((period) => {
-            const known = series[period].flatMap((value, index) => (value === null ? [] : [{ x: x(index), y: y(series.axis, value) }]));
+            const known = knownPoints(series[period], x, (value) => y(series.axis, value));
 
-            context.save();
-            context.strokeStyle = resolveCssColor(series.color);
-            context.lineWidth = CHART.lineWidth;
-            context.lineJoin = 'round';
-            context.lineCap = 'round';
-            context.setLineDash(periodDash(period));
-            traceMonotone(context, known);
-            context.stroke();
-            context.restore();
+            strokeCurve(context, known, resolveCssColor(series.color), periodDash(period));
         });
     });
 
-    linearTicks(0, count - 1, Math.min(count, CHART.maxDates)).forEach((index) => {
-        writeText(context, options.points[index]?.label ?? '', { x: x(index), y: plot.y + plot.height + PLOT.dates }, { font: CHART.tickFont, color: MUTED, align: 'center' });
-    });
+    paintDates(context, options.points, evenDates(count), x, plot);
 };
 
-/** The headline over a line, columns or one bar per channel. */
-const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box): void => {
+/** The plot under the headline, past the gutter for the value ticks. */
+const headlinePlot = (panel: Box): Box => ({
+    x: panel.x + PANEL.padding + PLOT.gutter,
+    y: panel.y + PLOT.top,
+    width: panel.width - PANEL.padding * 2 - PLOT.gutter,
+    height: panel.height - PLOT.top - PLOT.bottom,
+});
+
+/** The values of the points that have one. */
+const pointValues = (points: SharePoint[]): number[] => points.flatMap((point) => (point.value === null ? [] : [point.value]));
+
+/** The headline over one line per channel. */
+const paintLinesCard = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box): void => {
+    paintHeadline(context, options, panel);
+    paintLines(context, options, images, headlinePlot(panel));
+};
+
+/** The headline over one bar per channel, which takes the gutter for its names and numbers. */
+const paintRowsCard = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box): void => {
     paintHeadline(context, options, panel);
 
-    const left = panel.x + PANEL.padding;
-    const right = panel.x + panel.width - PANEL.padding;
-    const plot = {
-        x: left + PLOT.gutter,
-        y: panel.y + PLOT.top,
-        width: right - left - PLOT.gutter,
-        height: panel.height - PLOT.top - PLOT.bottom,
-    };
-    if (options.shape === 'lines') {
-        paintLines(context, options, images, plot);
-
+    if (pointValues(options.points).length === 0) {
         return;
     }
 
-    const values = options.points.flatMap((point) => (point.value === null ? [] : [point.value]));
+    const plot = headlinePlot(panel);
+
+    paintRows(context, options, images, { x: plot.x - PLOT.gutter, y: plot.y, width: plot.width + PLOT.gutter, height: plot.height + PLOT.dates });
+};
+
+/** The headline over one column per bucket, split by channel. */
+const paintStackedCard = (context: CanvasRenderingContext2D, options: ShareCardOptions, _images: ShareImages, panel: Box): void => {
+    paintHeadline(context, options, panel);
+
+    const values = pointValues(options.points);
 
     if (values.length === 0) {
         return;
     }
 
-    if (options.shape === 'rows') {
-        paintRows(context, options, images, { x: left, y: plot.y, width: right - left, height: plot.height + PLOT.dates });
-
-        return;
-    }
-
+    const plot = headlinePlot(panel);
     const axis = valueAxis(values, CHART.valueTicks);
     const slot = plot.width / options.points.length;
     const x = (index: number): number => plot.x + slot * (index + 0.5);
@@ -1381,7 +1423,7 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
         { align: 'right', baseline: 'middle' },
     );
     paintBars(context, options, plot, x, y);
-    paintDates(context, options, plot, x);
+    paintDates(context, options.points, columnDates(context, options.points, plot.width), x, plot);
 };
 
 /** How many columns the Summary's numbers take, like the page's grid. */
@@ -1398,7 +1440,11 @@ const tileColumns = (count: number): number => {
         return 3;
     }
 
-    return count <= 8 ? 4 : 5;
+    if (count <= 8) {
+        return 4;
+    }
+
+    return 5;
 };
 
 /** The space inside a tile's border: tighter in the five-column grid, whose tiles are the narrowest. */
@@ -1412,14 +1458,31 @@ const tileInset = (columns: number): number => {
 
 /** A tile's figure size before it shrinks to fit: smaller in a crowded grid, largest in a single row. */
 const tileFigureSize = (columns: number, rows: number): number => {
-    if (columns >= 4) {
-        return 52;
+    if (columns >= SUMMARY.crowdedFrom) {
+        return SUMMARY.crowdedFigure;
     }
 
-    return rows === 1 ? 84 : 64;
+    if (rows === 1) {
+        return SUMMARY.singleRowFigure;
+    }
+
+    return SUMMARY.figure;
 };
 
-/** Every number of the Summary, split by ink rules like a cover's settings panel. */
+/** How many tiles a row of the Summary holds: full rows, and the rest stretched over the last one so no tile is left empty. */
+const tilesInRow = (row: number, rows: number, columns: number, count: number): number => {
+    if (row < rows - 1) {
+        return columns;
+    }
+
+    return count - columns * (rows - 1);
+};
+
+/**
+ * Every number of the Summary, split by ink rules like a cover's settings
+ * panel. More rows shrink every tile instead of dropping numbers, and every
+ * label shares one size, the one they all fit in the narrowest tile.
+ */
 const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
     paintIdentity(
         context,
@@ -1434,15 +1497,12 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
     const rows = Math.ceil(tiles.length / columns);
     const grid = { x: panel.x, y: panel.y + SUMMARY.top, width: panel.width, height: panel.height - SUMMARY.top };
     const tileHeight = grid.height / Math.max(rows, 1);
-    /** More rows shrink every tile instead of dropping numbers. */
     const fit = Math.min(1, tileHeight / SUMMARY.tileHeight);
     const figureSize = tileFigureSize(columns, rows) * fit;
-    /** The last row stretches its tiles over the whole width, so no tile is left empty. */
-    const rowSize = (row: number): number => (row < rows - 1 ? columns : tiles.length - columns * (rows - 1));
+    const rowSize = (row: number): number => tilesInRow(row, rows, columns, tiles.length);
     const inset = tileInset(columns) * fit;
     const tileWidth = (index: number): number => grid.width / rowSize(Math.floor(index / columns));
     const tileLimit = (index: number): number => tileWidth(index) - inset * 2;
-    /** One label size for the whole grid, the one every label fits in the narrowest tile. */
     const labelSize = Math.min(
         ...tiles.map((tile) => fittingSize(context, tile.label, (size) => sans(500, size), SUMMARY.labelSize * fit, grid.width / columns - inset * 2)),
     );
@@ -1474,7 +1534,7 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
         const baseline = labelLine + figureSize + SUMMARY.figureGap * fit;
 
         writeText(context, ellipsise(context, tile.label, labelFont, limit), { x: left, y: labelLine }, { font: labelFont, color: MUTED });
-        writeText(context, figureText, { x: left - 2 * fit, y: baseline }, {
+        writeText(context, figureText, { x: left - SUMMARY.figureOverhang * fit, y: baseline }, {
             font: figureFont,
             color: tile.figure === null ? MUTED : INK,
         });
@@ -1529,7 +1589,7 @@ const changesUnderFigures = (
 /** A tile's change: beside its number with its icon on the number's baseline, like the page's cards, or under it. */
 const paintTileChange = (
     context: CanvasRenderingContext2D,
-    change: ShareChange,
+    change: MetricDelta,
     figureAt: Point,
     tile: { figureFont: string; figure: string; changeSize: number; fit: number; under: boolean },
 ): void => {
@@ -1540,9 +1600,18 @@ const paintTileChange = (
     }
 
     context.font = tile.figureFont;
-    const besideFigure = figureAt.x - 2 * tile.fit + context.measureText(tile.figure).width + SUMMARY.changeGap * tile.fit;
+    const besideFigure = figureAt.x - SUMMARY.figureOverhang * tile.fit + context.measureText(tile.figure).width + SUMMARY.changeGap * tile.fit;
 
-    paintChange(context, change, { x: besideFigure, y: figureAt.y - tile.changeSize * 1.15 }, tile.changeSize, 'left');
+    paintChange(context, change, { x: besideFigure, y: figureAt.y - tile.changeSize * CHANGE_ICON.scale }, tile.changeSize, 'left');
+};
+
+/** What draws each shape inside the panel. */
+const PAINTERS: Record<ShareShape, (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box) => void> = {
+    lines: paintLinesCard,
+    rows: paintRowsCard,
+    stacked: paintStackedCard,
+    combo: (context, options, _images, panel) => paintCombo(context, options, panel),
+    tiles: (context, options, _images, panel) => paintSummary(context, options, panel),
 };
 
 /** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
@@ -1566,14 +1635,7 @@ export const drawShareCard = (
 
     const panel = paintPanel(context);
 
-    if (options.shape === 'combo') {
-        paintCombo(context, options, panel);
-    } else if (options.shape === 'tiles') {
-        paintSummary(context, options, panel);
-    } else {
-        paintChart(context, options, images, panel);
-    }
-
+    PAINTERS[options.shape](context, options, images, panel);
     paintMark(context, options.mark);
 };
 
