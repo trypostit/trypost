@@ -164,8 +164,8 @@ const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, compa
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
 
-/** One bar per channel: the avatar and name in a column on the left, the values under the bars. */
-const ROWS = { max: 12, labelWidth: 420, figureWidth: 120, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+/** One bar per channel after a column of its name, number and avatar, as wide as they need; a name past `nameMax` is trimmed. */
+const ROWS = { max: 12, nameMax: 320, figureGap: 32, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
 
 /** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
 const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };
@@ -270,6 +270,13 @@ const writeText = (
 };
 
 /** The text cut with an ellipsis to fit `limit` in `font`. */
+/** The width of the widest of `texts` in `font`. */
+const widest = (context: CanvasRenderingContext2D, texts: string[], font: string): number => {
+    context.font = font;
+
+    return Math.max(0, ...texts.map((text) => context.measureText(text).width));
+};
+
 const ellipsise = (
     context: CanvasRenderingContext2D,
     text: string,
@@ -730,18 +737,18 @@ const rankedRows = (points: SharePoint[]): RankedPoint[] =>
 const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
     const rows = rankedRows(options.points);
     const axis = valueAxis(rows.map((point) => point.value), 'bar');
-    const plot = {
-        x: area.x + ROWS.labelWidth,
-        y: area.y,
-        width: area.width - ROWS.labelWidth,
-        height: area.height - ROWS.axis,
-    };
-    const x = (value: number): number => plot.x + axis.at(value) * plot.width;
-    const rowHeight = plot.height / Math.max(rows.length, 1);
+    const plotHeight = area.height - ROWS.axis;
+    const rowHeight = plotHeight / Math.max(rows.length, 1);
     const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
     const labelFont = sans(500, Math.min(22, Math.max(14, rowHeight * 0.55)));
     const figureFont = sans(600, Math.min(26, Math.max(16, rowHeight * 0.6)));
     const avatarSize = Math.min(AVATAR.size, rowHeight * AVATAR.fill);
+    const nameWidth = Math.min(ROWS.nameMax, widest(context, rows.map((point) => point.label), labelFont));
+    const figureWidth = widest(context, rows.map((point) => point.figure ?? ''), figureFont);
+    const channelWidth = Math.max(0, ...rows.map((point) => avatarSpace(point, avatarSize)));
+    const column = nameWidth + ROWS.figureGap + figureWidth + channelWidth + ROWS.labelGap;
+    const plot = { x: area.x + column, y: area.y, width: area.width - column, height: plotHeight };
+    const x = (value: number): number => plot.x + axis.at(value) * plot.width;
 
     paintGrid(
         context,
@@ -753,14 +760,11 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
 
     rows.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
-        const channelSpace = avatarSpace(point, avatarSize);
-        const figureRight = plot.x - ROWS.labelGap - channelSpace;
-        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap - channelSpace - ROWS.figureWidth);
 
-        writeText(context, label, { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
+        writeText(context, ellipsise(context, point.label, labelFont, nameWidth), { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
 
         if (point.figure) {
-            writeText(context, point.figure, { x: figureRight, y: centre }, { font: figureFont, color: INK, align: 'right', baseline: 'middle' });
+            writeText(context, point.figure, { x: area.x + nameWidth + ROWS.figureGap + figureWidth, y: centre }, { font: figureFont, color: INK, align: 'right', baseline: 'middle' });
         }
 
         if (point.channel) {
