@@ -14,9 +14,11 @@ withDefaults(
         title: string;
         testId: string;
         showHeader?: boolean;
+        /** The drag handle at the top, for a sheet that has no header. */
+        handle?: boolean;
         contentClass?: string;
     }>(),
-    { showHeader: true, contentClass: '' },
+    { showHeader: true, handle: false, contentClass: '' },
 );
 
 const open = defineModel<boolean>('open', { required: true });
@@ -51,6 +53,11 @@ const open = defineModel<boolean>('open', { required: true });
                 </SheetClose>
             </div>
             <SheetTitle v-else class="sr-only">{{ title }}</SheetTitle>
+            <div
+                v-if="handle"
+                class="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-border-strong"
+                aria-hidden="true"
+            />
             <slot />
         </SheetContent>
     </Sheet>

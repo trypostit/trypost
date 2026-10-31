@@ -54,13 +54,10 @@ const close = (): void => {
         v-model:open="open"
         :title="title"
         :show-header="false"
+        handle
         :test-id="testId"
         :content-class="sheetClass"
     >
-        <div
-            class="mx-auto mt-3 mb-2 h-1 w-10 shrink-0 rounded-full bg-border-strong"
-            aria-hidden="true"
-        />
         <ReuseContent />
     </BottomSheet>
 </template>
