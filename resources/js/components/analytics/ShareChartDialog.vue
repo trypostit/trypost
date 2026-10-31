@@ -288,7 +288,7 @@ const createPost = async (): Promise<void> => {
                         $t('analytics.share.color')
                     }}</span>
                     <div
-                        class="grid grid-cols-6 gap-2 sm:grid-cols-12"
+                        class="flex flex-wrap items-center gap-2.5 p-1"
                         role="radiogroup"
                         :aria-label="$t('analytics.share.color')"
                     >
@@ -299,24 +299,17 @@ const createPost = async (): Promise<void> => {
                             role="radio"
                             :aria-checked="tint.key === swatch.key"
                             :aria-label="$t(`analytics.share.colors.${swatch.key}`)"
-                            class="flex aspect-square cursor-pointer items-center justify-center rounded-md border transition-control focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                            class="size-7 shrink-0 cursor-pointer rounded-md transition-[box-shadow] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
                             :style="{
                                 backgroundColor: swatch.ground,
-                                borderColor:
+                                boxShadow:
                                     tint.key === swatch.key
-                                        ? swatch.strong
-                                        : swatch.ground,
+                                        ? `0 0 0 2px var(--background), 0 0 0 3.5px ${swatch.strong}`
+                                        : 'inset 0 0 0 1px rgb(0 0 0 / 0.06)',
                             }"
                             :data-testid="`share-chart-color-${swatch.key}`"
                             @click="chooseTint(swatch)"
-                        >
-                            <IconCheck
-                                v-if="tint.key === swatch.key"
-                                class="size-4"
-                                :style="{ color: swatch.strong }"
-                                aria-hidden="true"
-                            />
-                        </button>
+                        />
                     </div>
                 </div>
             </div>
