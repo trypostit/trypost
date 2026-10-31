@@ -8,6 +8,7 @@ use App\Http\Controllers\App\BillingController;
 use App\Http\Controllers\App\CanvaController;
 use App\Http\Controllers\App\ChangelogEntryReactionController;
 use App\Http\Controllers\App\ChangelogEntryViewController;
+use App\Http\Controllers\App\ChannelAvatarController;
 use App\Http\Controllers\App\ChannelController;
 use App\Http\Controllers\App\ChannelPostingScheduleController;
 use App\Http\Controllers\App\ChannelQueueController;
@@ -230,6 +231,7 @@ Route::middleware(['auth', EnsureAccountReady::class, EnsureHasWorkspace::class]
         ->whereIn('format', ExportFormat::values())
         ->name('app.channels.insights.download');
     Route::get('channels/{account}/settings', [ChannelController::class, 'settings'])->name('app.channels.settings');
+    Route::get('channels/{account}/avatar', [ChannelAvatarController::class, 'show'])->name('app.channels.avatar');
     Route::put('channels/{account}/posting-schedule', [ChannelPostingScheduleController::class, 'update'])->name('app.channels.posting-schedule.update');
     Route::post('channels/{account}/posting-schedule/copy', [ChannelPostingScheduleController::class, 'copy'])->name('app.channels.posting-schedule.copy');
     Route::put('channels/{account}/queue/order', [ChannelQueueController::class, 'reorder'])->name('app.channels.queue.order');

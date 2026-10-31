@@ -1,3 +1,4 @@
+import { getPlatformLogo } from '@/composables/usePlatformLogo';
 import date from '@/date';
 import {
     canvasToFile,
@@ -5,6 +6,7 @@ import {
     resolveCssColor,
 } from '@/lib/utils';
 import type { SeriesMetric } from '@/types/analytics';
+import type { VerifiedBadge } from '@/types/social-account';
 
 /**
  * The Insights share card: a chart or a headline number drawn on a canvas, to
@@ -19,8 +21,24 @@ export type ShareShape = 'line' | 'bar' | 'rows' | 'tiles';
 
 export type ShareChange = { label: string; direction: 'up' | 'down' | 'flat' };
 
+/** The channel a `rows` bar belongs to, drawn next to its name like the page's chart. */
+export type ShareChannel = {
+    platform: string;
+    /** Served from the app's own origin, so drawing it keeps the canvas exportable. */
+    avatar: string | null;
+    verified: VerifiedBadge | null;
+};
+
 /** A bucket over time, or a channel for `rows`, which may bring its own color. */
-export type SharePoint = { label: string; value: number | null; color?: string };
+export type SharePoint = {
+    label: string;
+    value: number | null;
+    color?: string;
+    channel?: ShareChannel;
+};
+
+/** The images a card draws, loaded before painting: a canvas only draws images already loaded. */
+export type ShareImages = ReadonlyMap<string, HTMLImageElement>;
 
 /** One number of the Summary, as its card prints it; null while it has no value. */
 export type ShareTile = { label: string; figure: string | null; change: ShareChange | null };
@@ -138,14 +156,22 @@ const HEADLINE = { reserve: 380, figure: 100, change: 116, changeSize: 26, compa
 /** The plot under the headline, with a gutter for the value ticks and room for the dates under it. */
 const PLOT = { top: 212, bottom: 76, gutter: 72, tickGap: 18, dates: 40, maxDates: 5 };
 
-/** One bar per channel: the name in a column on the left, the values under the bars. */
-const ROWS = { max: 12, labelWidth: 220, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+/** One bar per channel: the avatar and name in a column on the left, the values under the bars. */
+const ROWS = { max: 12, labelWidth: 280, labelGap: 24, axis: 44, valuesGap: 36, thickness: 28 };
+
+/** A channel's avatar beside its name, at most the page's 24px at 2x, with the network badge at its corner. */
+const AVATAR = { size: 48, fill: 0.8, radius: 0.25, gap: 14, badge: 0.5, verified: 0.42 };
+
+/** `VerifiedBadge`'s colors, with the filled rosette Tabler draws it with. */
+const VERIFIED_COLORS: Record<VerifiedBadge, string> = { blue: '#1d9bf0', business: '#e2b719', government: '#829aab' };
+const VERIFIED_PATH =
+    'M12.01 2.011a3.2 3.2 0 0 1 2.113 .797l.154 .145l.698 .698a1.2 1.2 0 0 0 .71 .341l.135 .008h1a3.2 3.2 0 0 1 3.195 3.018l.005 .182v1c0 .27 .092 .533 .258 .743l.09 .1l.697 .698a3.2 3.2 0 0 1 .147 4.382l-.145 .154l-.698 .698a1.2 1.2 0 0 0 -.341 .71l-.008 .135v1a3.2 3.2 0 0 1 -3.018 3.195l-.182 .005h-1a1.2 1.2 0 0 0 -.743 .258l-.1 .09l-.698 .697a3.2 3.2 0 0 1 -4.382 .147l-.154 -.145l-.698 -.698a1.2 1.2 0 0 0 -.71 -.341l-.135 -.008h-1a3.2 3.2 0 0 1 -3.195 -3.018l-.005 -.182v-1a1.2 1.2 0 0 0 -.258 -.743l-.09 -.1l-.697 -.698a3.2 3.2 0 0 1 -.147 -4.382l.145 -.154l.698 -.698a1.2 1.2 0 0 0 .341 -.71l.008 -.135v-1l.005 -.182a3.2 3.2 0 0 1 3.013 -3.013l.182 -.005h1a1.2 1.2 0 0 0 .743 -.258l.1 -.09l.698 -.697a3.2 3.2 0 0 1 2.269 -.944zm3.697 7.282a1 1 0 0 0 -1.414 0l-3.293 3.292l-1.293 -1.292l-.094 -.083a1 1 0 0 0 -1.32 1.497l2 2l.094 .083a1 1 0 0 0 1.32 -.083l4 -4l.083 -.094a1 1 0 0 0 -.083 -1.32z';
 
 /** The Summary's grid under the identity; a tile is drawn for `tileHeight` and shrinks to fit. */
 const SUMMARY = { top: 168, tileHeight: 185, inset: 36, label: 50, labelSize: 24, figureGap: 6, changeGap: 22, changeSize: 24 };
 
 /** Canvas draws in the fallback face unless the page's fonts are loaded first. */
-export const loadShareFonts = async (): Promise<void> => {
+const loadFonts = async (): Promise<void> => {
     if (!('fonts' in document)) {
         return;
     }
@@ -154,6 +180,63 @@ export const loadShareFonts = async (): Promise<void> => {
         [sans(500, 24), sans(600, 24), heading(500, 64), heading(600, 36)].map(
             (face) => document.fonts.load(face).catch(() => []),
         ),
+    );
+};
+
+/** Each image once per page: the preview repaints on every tint or metric change. */
+const loadedImages = new Map<string, Promise<HTMLImageElement | null>>();
+
+/** An image ready to draw, or null when it cannot load, so a missing avatar never stops the card. */
+const loadImage = (url: string): Promise<HTMLImageElement | null> => {
+    const cached = loadedImages.get(url);
+
+    if (cached) {
+        return cached;
+    }
+
+    const image = new Image();
+
+    image.crossOrigin = 'anonymous';
+    image.src = url;
+
+    const loading = image.decode().then(
+        () => image,
+        () => null,
+    );
+
+    loadedImages.set(url, loading);
+
+    return loading;
+};
+
+/** A channel's avatar, when it has one, and its network's logo. */
+const channelImageUrls = (channel: ShareChannel): string[] => {
+    const logo = getPlatformLogo(channel.platform);
+
+    if (!channel.avatar) {
+        return [logo];
+    }
+
+    return [channel.avatar, logo];
+};
+
+type LoadedImage = { url: string; image: HTMLImageElement };
+
+/** Waits for the fonts and loads the images a card draws, before it is painted. */
+export const prepareShareCard = async (options: ShareCardOptions): Promise<ShareImages> => {
+    const channels = options.points
+        .map((point) => point.channel)
+        .filter((channel): channel is ShareChannel => channel !== undefined);
+    const urls = [...new Set(channels.flatMap(channelImageUrls))];
+    const [, images] = await Promise.all([
+        loadFonts(),
+        Promise.all(urls.map(async (url) => ({ url, image: await loadImage(url) }))),
+    ]);
+
+    return new Map(
+        images
+            .filter((loaded): loaded is LoadedImage => loaded.image !== null)
+            .map(({ url, image }) => [url, image]),
     );
 };
 
@@ -521,6 +604,105 @@ const rowColor = (point: SharePoint, tint: ShareTint): string => {
     return resolveCssColor(point.color);
 };
 
+const avatarImage = (channel: ShareChannel, images: ShareImages): HTMLImageElement | undefined => {
+    if (!channel.avatar) {
+        return undefined;
+    }
+
+    return images.get(channel.avatar);
+};
+
+/** An image scaled to cover a square, cropped to its middle, inside the current clip. */
+const drawCover = (context: CanvasRenderingContext2D, image: HTMLImageElement, at: Point, size: number): void => {
+    const scale = size / Math.min(image.naturalWidth, image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+
+    context.drawImage(image, at.x + (size - width) / 2, at.y + (size - height) / 2, width, height);
+};
+
+/** An image in a rounded square, on a white ground so a transparent logo reads on any tint. */
+const paintTile = (context: CanvasRenderingContext2D, image: HTMLImageElement, at: Point, size: number): void => {
+    context.save();
+    context.beginPath();
+    context.roundRect(at.x, at.y, size, size, size * AVATAR.radius);
+    context.fillStyle = '#ffffff';
+    context.fill();
+    context.clip();
+    drawCover(context, image, at, size);
+    context.restore();
+};
+
+/** The network's logo on the avatar's bottom-end corner, ringed in white like `ChannelAvatar`'s badge. */
+const paintNetworkBadge = (context: CanvasRenderingContext2D, logo: HTMLImageElement, avatar: Point, size: number): void => {
+    const badge = size * AVATAR.badge;
+    const ring = Math.max(1.5, badge * 0.12);
+    const at = { x: avatar.x + size - badge * 0.66, y: avatar.y + size - badge * 0.8 };
+
+    context.beginPath();
+    context.roundRect(at.x - ring, at.y - ring, badge + ring * 2, badge + ring * 2, (badge + ring * 2) * AVATAR.radius);
+    context.fillStyle = '#ffffff';
+    context.fill();
+    paintTile(context, logo, at, badge);
+};
+
+/** The verified rosette on the avatar's top-end corner, on a white disc like `VerifiedBadge`. */
+const paintVerified = (context: CanvasRenderingContext2D, badge: VerifiedBadge, avatar: Point, size: number): void => {
+    const mark = size * AVATAR.verified;
+    const at = { x: avatar.x + size - mark * 0.7, y: avatar.y - mark * 0.3 };
+
+    context.beginPath();
+    context.arc(at.x + mark / 2, at.y + mark / 2, mark * 0.42, 0, Math.PI * 2);
+    context.fillStyle = '#ffffff';
+    context.fill();
+
+    context.save();
+    context.translate(at.x, at.y);
+    context.scale(mark / 24, mark / 24);
+    context.fillStyle = VERIFIED_COLORS[badge];
+    context.fill(new Path2D(VERIFIED_PATH));
+    context.restore();
+};
+
+/**
+ * The channel as the page's chart shows it: its avatar with the network's logo
+ * at the corner and the verified mark when it has one; a channel without an
+ * avatar shows the network's logo in its place.
+ */
+const paintChannel = (
+    context: CanvasRenderingContext2D,
+    channel: ShareChannel,
+    images: ShareImages,
+    at: Point,
+    size: number,
+): void => {
+    const logo = images.get(getPlatformLogo(channel.platform));
+    const avatar = avatarImage(channel, images);
+
+    if (avatar) {
+        paintTile(context, avatar, at, size);
+
+        if (logo) {
+            paintNetworkBadge(context, logo, at, size);
+        }
+    } else if (logo) {
+        paintTile(context, logo, at, size);
+    }
+
+    if (channel.verified) {
+        paintVerified(context, channel.verified, at, size);
+    }
+};
+
+/** The room a row's avatar takes before its name: none when the row has no channel. */
+const avatarSpace = (point: SharePoint, avatarSize: number): number => {
+    if (!point.channel) {
+        return 0;
+    }
+
+    return avatarSize + AVATAR.gap;
+};
+
 type RankedPoint = SharePoint & { index: number; value: number };
 
 /** The channels with the largest values when they do not all fit, kept in the page's order. */
@@ -536,7 +718,7 @@ const rankedRows = (points: SharePoint[]): RankedPoint[] =>
  * One horizontal bar per channel from zero, losses to the left, in each
  * channel's color, like the page's Bar and Growth views.
  */
-const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, area: Box): void => {
+const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, area: Box): void => {
     const rows = rankedRows(options.points);
     const axis = valueAxis(rows.map((point) => point.value), 'bar');
     const plot = {
@@ -549,6 +731,7 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
     const rowHeight = plot.height / Math.max(rows.length, 1);
     const thickness = Math.min(rowHeight * 0.55, ROWS.thickness);
     const labelFont = sans(500, Math.min(22, Math.max(14, rowHeight * 0.55)));
+    const avatarSize = Math.min(AVATAR.size, rowHeight * AVATAR.fill);
 
     paintGrid(
         context,
@@ -560,9 +743,14 @@ const paintRows = (context: CanvasRenderingContext2D, options: ShareCardOptions,
 
     rows.forEach((point, row) => {
         const centre = plot.y + rowHeight * (row + 0.5);
-        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap);
+        const labelX = area.x + avatarSpace(point, avatarSize);
+        const label = ellipsise(context, point.label, labelFont, ROWS.labelWidth - ROWS.labelGap - (labelX - area.x));
 
-        writeText(context, label, { x: area.x, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
+        if (point.channel) {
+            paintChannel(context, point.channel, images, { x: area.x, y: centre - avatarSize / 2 }, avatarSize);
+        }
+
+        writeText(context, label, { x: labelX, y: centre }, { font: labelFont, color: MUTED, baseline: 'middle' });
 
         if (point.value === 0) {
             return;
@@ -696,7 +884,7 @@ const paintDates = (
 };
 
 /** The headline over a line, columns or one bar per channel. */
-const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions, panel: Box): void => {
+const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions, images: ShareImages, panel: Box): void => {
     paintHeadline(context, options, panel);
 
     const left = panel.x + PANEL.padding;
@@ -714,7 +902,7 @@ const paintChart = (context: CanvasRenderingContext2D, options: ShareCardOptions
     }
 
     if (options.shape === 'rows') {
-        paintRows(context, options, { x: left, y: plot.y, width: right - left, height: plot.height + PLOT.dates });
+        paintRows(context, options, images, { x: left, y: plot.y, width: right - left, height: plot.height + PLOT.dates });
 
         return;
     }
@@ -824,9 +1012,11 @@ const paintSummary = (context: CanvasRenderingContext2D, options: ShareCardOptio
     });
 };
 
+/** Paints the card; `images` comes from `prepareShareCard`, since a canvas only draws images already loaded. */
 export const drawShareCard = (
     canvas: HTMLCanvasElement,
     options: ShareCardOptions,
+    images: ShareImages,
     scale = SHARE_EXPORT_SCALE,
 ): void => {
     canvas.width = SHARE_CARD_SIZE.width * scale;
@@ -846,18 +1036,18 @@ export const drawShareCard = (
     if (options.shape === 'tiles') {
         paintSummary(context, options, panel);
     } else {
-        paintChart(context, options, panel);
+        paintChart(context, options, images, panel);
     }
 
     paintMark(context, options.mark);
 };
 
 /** The card at download resolution, off screen, as a PNG named after its metric and today: `trypost-followers-2026-10-31.png`. */
-export const shareCardFile = (options: ShareCardOptions): Promise<File> => {
+export const shareCardFile = async (options: ShareCardOptions): Promise<File> => {
     const canvas = document.createElement('canvas');
     const name = `trypost-${options.key.replaceAll('_', '-')}-${date.userNow().format('YYYY-MM-DD')}.png`;
 
-    drawShareCard(canvas, options);
+    drawShareCard(canvas, options, await prepareShareCard(options));
 
     return canvasToFile(canvas, name, 'image/png');
 };

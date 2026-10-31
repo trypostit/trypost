@@ -28,7 +28,7 @@ import {
 import { openPostComposer } from '@/composables/useGlobalPostComposer';
 import {
     drawShareCard,
-    loadShareFonts,
+    prepareShareCard,
     SHARE_CARD_SIZE,
     SHARE_TINTS,
     shareCardFile,
@@ -104,13 +104,18 @@ const previewScale = (preview: HTMLCanvasElement): number => {
 
 const paint = async (): Promise<void> => {
     await nextTick();
-    await loadShareFonts();
+
+    if (!card.value) {
+        return;
+    }
+
+    const images = await prepareShareCard(card.value);
 
     if (!canvas.value || !card.value) {
         return;
     }
 
-    drawShareCard(canvas.value, card.value, previewScale(canvas.value));
+    drawShareCard(canvas.value, card.value, images, previewScale(canvas.value));
     painted.value = true;
 };
 

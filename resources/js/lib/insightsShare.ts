@@ -11,6 +11,7 @@ import type {
     ShareTile,
 } from '@/lib/insightsShareCard';
 import { formatCountChange, formatPercentChange } from '@/lib/utils';
+import { avatar } from '@/routes/app/channels';
 import {
     accountLabel,
     type ChannelMetricSeries,
@@ -153,6 +154,15 @@ const followersOverTime = (followers: Followers): SharePoint[] => {
     });
 };
 
+/** A channel's avatar served from the app, so the card can draw it; none for a channel no longer connected. */
+const channelAvatar = (account: FollowerAccount): string | null => {
+    if (!account.social_account_id || !account.avatar_url) {
+        return null;
+    }
+
+    return avatar.url(account.social_account_id);
+};
+
 /** One row per channel in its color, showing what `mode` shows. */
 const followersPerChannel = (
     followers: Followers,
@@ -163,6 +173,11 @@ const followersPerChannel = (
         label: accountLabel(account),
         value: FOLLOWERS_ROW_VALUES[mode](account),
         color: colors[account.social_account_key],
+        channel: {
+            platform: account.platform,
+            avatar: channelAvatar(account),
+            verified: account.verified_badge ?? null,
+        },
     }));
 
 const followersPoints = (
