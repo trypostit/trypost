@@ -1,3 +1,5 @@
+import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { channelName } from '@/types/channel';
 import type { MediaItem } from '@/types/media';
 import type { VerifiedBadge } from '@/types/social-account';
 import type { SocialAccountStatusValue } from '@/types/social-account-status';
@@ -17,6 +19,25 @@ export interface AccountIdentityData {
     status?: SocialAccountStatusValue | null;
     verified_badge?: VerifiedBadge | null;
 }
+
+/**
+ * A channel's name in Insights by the app's one rule, `channelName`, as the
+ * sidebar shows it; its network for a row that kept neither name nor handle.
+ */
+export const accountLabel = (
+    account: Pick<AccountIdentityData, 'username' | 'name' | 'platform'>,
+): string => {
+    const name = channelName({ display_name: account.name, username: account.username });
+
+    if (name) {
+        return name;
+    }
+
+    return getPlatformLabel(account.platform);
+};
+
+/** How long one bar of a chart over time covers. */
+export type BucketResolution = 'daily' | 'weekly' | 'monthly';
 
 export interface FollowerAccount extends AccountIdentityData {
     social_account_id: string | null;
@@ -123,7 +144,9 @@ export interface AnalyticsReport {
         series: { date: string; accounts: Record<string, number | null> }[];
     };
     posts: {
-        resolution: string;
+        resolution: BucketResolution;
+        /** Every post the channels sent over the period. */
+        total: number;
         accounts: PostAccount[];
         buckets: PostBucket[];
     };
@@ -200,7 +223,7 @@ export interface FollowerGrowthRate {
 }
 
 export interface ChannelMetricSeries {
-    resolution: 'daily' | 'weekly' | 'monthly';
+    resolution: BucketResolution;
     metrics: SeriesMetric[];
     range: { start: string; end: string };
     previous_range: { start: string; end: string };

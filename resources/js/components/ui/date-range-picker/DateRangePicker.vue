@@ -31,12 +31,28 @@ const props = withDefaults(defineProps<{
   disabled?: boolean
   align?: "start" | "center" | "end"
   sheetBelowSm?: boolean
+  /** Opened only through `v-model:open`, as from a menu item, with no button of its own. */
+  withoutTrigger?: boolean
 }>(), {
   align: "end",
   sheetBelowSm: false,
+  withoutTrigger: false,
 })
 
 const [DefinePanel, ReusePanel] = createReusableTemplate()
+const [DefineMonth, ReuseMonth] = createReusableTemplate<{ fill?: boolean }>()
+
+/** The phone sheet's month: every day stretched over the card, like the calendar's period sheet. */
+const FILLED_MONTH = [
+  "w-full p-0",
+  "[&_[data-slot=range-calendar-header]]:justify-start [&_[data-slot=range-calendar-header]]:gap-2",
+  "[&_[data-slot=range-calendar-heading]]:order-first [&_[data-slot=range-calendar-heading]]:me-auto [&_[data-slot=range-calendar-heading]]:text-base",
+  "[&_[data-slot=range-calendar-grid]]:w-full",
+  "[&_[data-slot=range-calendar-head-cell]]:flex-1 [&_[data-slot=range-calendar-head-cell]]:text-xs",
+  "[&_[data-slot=range-calendar-grid-row]]:mt-1",
+  "[&_[data-slot=range-calendar-cell]]:flex [&_[data-slot=range-calendar-cell]]:flex-1 [&_[data-slot=range-calendar-cell]]:justify-center",
+  "[&_[data-slot=range-calendar-trigger]]:size-10 [&_[data-slot=range-calendar-trigger]]:text-base",
+].join(" ")
 const belowSm = useBelowBreakpoint("sm")
 const asSheet = computed(() => props.sheetBelowSm && belowSm.value)
 
@@ -150,6 +166,18 @@ watch(
 </script>
 
 <template>
+  <DefineMonth v-slot="{ fill }">
+    <RangeCalendar
+      v-model="value"
+      initial-focus
+      :class="{ [FILLED_MONTH]: fill }"
+      :locale="calendarLocale"
+      :number-of-months="numberOfMonths"
+      :min-value="minimum"
+      :max-value="maximum"
+    />
+  </DefineMonth>
+
   <DefinePanel>
       <div class="flex flex-col sm:flex-row">
         <div class="hidden flex-col border-b border-border py-2 sm:flex sm:w-[170px] sm:shrink-0 sm:border-r sm:border-b-0">
@@ -172,20 +200,13 @@ watch(
         </div>
 
         <div class="flex shrink-0 justify-center">
-          <RangeCalendar
-            v-model="value"
-            initial-focus
-            :locale="calendarLocale"
-            :number-of-months="numberOfMonths"
-            :min-value="minimum"
-            :max-value="maximum"
-          />
+          <ReuseMonth />
         </div>
       </div>
   </DefinePanel>
 
   <Popover v-model:open="isOpen">
-    <PopoverTrigger as-child>
+    <PopoverTrigger v-if="!withoutTrigger" as-child>
       <slot name="trigger">
         <Button
           variant="outline"
@@ -221,9 +242,16 @@ watch(
     v-if="asSheet"
     v-model:open="isOpen"
     :title="$t('common.date_range_picker.placeholder')"
+    :show-header="false"
+    handle
     test-id="date-range-picker-sheet"
-    content-class="pb-[max(1rem,env(safe-area-inset-bottom))]"
+    content-class="bg-muted px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))]"
   >
-    <ReusePanel />
+    <p class="mb-4 text-center text-base font-emphasis text-foreground">
+      {{ $t('common.date_range_picker.placeholder') }}
+    </p>
+    <div class="rounded-xl bg-card p-4" data-testid="date-range-picker-month">
+      <ReuseMonth :fill="true" />
+    </div>
   </BottomSheet>
 </template>

@@ -924,6 +924,7 @@ return [
         'title' => '게시',
         'all_channels' => '모든 채널',
         'tabs' => [
+            'label' => '상태',
             'queue' => '대기열',
             'approvals' => '승인',
             'drafts' => '임시 저장',

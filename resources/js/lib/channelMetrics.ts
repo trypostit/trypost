@@ -1,7 +1,13 @@
 import date from '@/date';
 import { accountColor } from '@/lib/analyticsColors';
-import { formatNumberCompact, formatPercent } from '@/lib/utils';
+import {
+    formatCountChange,
+    formatNumberCompact,
+    formatPercent,
+    formatPercentChange,
+} from '@/lib/utils';
 import type {
+    BucketResolution,
     ChannelMetricSeries,
     FollowerGrowthRate,
     MetricSeriesPoint,
@@ -130,6 +136,61 @@ export const isLevelMetric = (metric: SeriesMetric): boolean =>
 
 export const isPercentMetric = (metric: SeriesMetric): boolean =>
     PERCENT_METRICS.includes(metric);
+
+/** Metrics the page counts rather than measures: their change is a difference, never a percentage. */
+const COUNTED_METRICS: readonly SeriesMetric[] = ['net_followers'];
+
+/** How a metric moved since the previous period: the signed value and how the page labels it. */
+export type SeriesDelta = { value: number; label: string };
+
+/** A count's change as the page labels it: "+7", "-3". */
+const countDelta = (change: number): SeriesDelta => ({ value: change, label: formatCountChange(change) });
+
+/**
+ * The followers gained or lost within the period, from its first reading to
+ * its last, like the workspace's Followers card; null without two readings.
+ */
+const followersDelta = (series: ChannelMetricSeries): SeriesDelta | null => {
+    const readings = definedValues(series.current, 'followers');
+
+    if (readings.length < 2) {
+        return null;
+    }
+
+    return countDelta(readings[readings.length - 1] - readings[0]);
+};
+
+/**
+ * How a channel metric moved: followers by what the period gained or lost,
+ * net new followers by the difference with the previous period ("+7"), the
+ * rest by a percentage of the previous period ("+8.5%"), kept positive so a
+ * loss shrinking reads as a rise. Null for a rate, which has no previous
+ * period, or when there is nothing to compare.
+ */
+export const seriesDelta = (series: ChannelMetricSeries, metric: SeriesMetric): SeriesDelta | null => {
+    if (metric === 'followers') {
+        return followersDelta(series);
+    }
+
+    const current = series.totals.current[metric];
+    const previous = series.totals.previous[metric];
+
+    if (isPercentMetric(metric) || current == null || previous == null) {
+        return null;
+    }
+
+    if (COUNTED_METRICS.includes(metric)) {
+        return countDelta(current - previous);
+    }
+
+    if (previous === 0) {
+        return null;
+    }
+
+    const change = ((current - previous) / Math.abs(previous)) * 100;
+
+    return { value: change, label: formatPercentChange(change) };
+};
 
 /**
  * The metrics the menu offers, in menu order: followers, the network's audience metric (reach where it is
@@ -281,13 +342,11 @@ export const formatSeriesValue = (
     value: number | null | undefined,
     metric?: SeriesMetric,
 ): string => {
-    if (value === null || value === undefined) {
-        return '—';
+    if (metric && isPercentMetric(metric)) {
+        return formatPercent(value);
     }
 
-    return metric && isPercentMetric(metric)
-        ? formatPercent(value)
-        : formatNumberCompact(value);
+    return formatNumberCompact(value);
 };
 
 export const bucketLabel = (
@@ -311,6 +370,18 @@ export const monthLabel = (day: string): string => {
     const [year, month] = day.split('-').map(Number);
 
     return date.formatMonthYear(month, year);
+};
+
+/** A bucket on the chart's time axis: the month for monthly buckets, else the day it starts. */
+export const axisBucketLabel = (
+    bucket: { start: string },
+    resolution: BucketResolution,
+): string => {
+    if (resolution === 'monthly') {
+        return monthLabel(bucket.start);
+    }
+
+    return date.formatMonthDay(bucket.start);
 };
 
 const direction = (

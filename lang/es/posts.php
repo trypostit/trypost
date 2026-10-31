@@ -925,6 +925,7 @@ return [
         'title' => 'Publicar',
         'all_channels' => 'Todos los canales',
         'tabs' => [
+            'label' => 'Estado',
             'queue' => 'Cola',
             'approvals' => 'Aprobaciones',
             'drafts' => 'Borradores',

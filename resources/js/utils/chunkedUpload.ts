@@ -1,6 +1,7 @@
 import { classifyBy, MediaType } from '@/lib/mediaType';
 import { uuid } from '@/lib/uuid';
 import { probeVideoDuration } from '@/lib/videoDuration';
+import type { MediaItem } from '@/types/media';
 
 interface ChunkedUploadOptions {
     file: File;
@@ -15,15 +16,6 @@ interface ChunkedUploadOptions {
     onError?: (error: any) => void;
 }
 
-interface ChunkedUploadResult {
-    id: string;
-    path?: string;
-    url: string;
-    type: MediaType;
-    mime_type?: string;
-    original_filename: string;
-    [key: string]: any;
-}
 
 /** The server answered a chunk with an error status; `message` is its first validation message, when it sent one. */
 export class ChunkedUploadError extends Error {
@@ -106,7 +98,8 @@ const sendChunk = (
         xhr.send(chunk);
     });
 
-export const uploadChunked = async (options: ChunkedUploadOptions): Promise<ChunkedUploadResult> => {
+/** Uploads the file in chunks; the last answer is the server's MediaResource, returned as the media item. */
+export const uploadChunked = async (options: ChunkedUploadOptions): Promise<MediaItem> => {
     const {
         file,
         url,
@@ -158,7 +151,11 @@ export const uploadChunked = async (options: ChunkedUploadOptions): Promise<Chun
 
             if (data.done) {
                 onComplete?.(data);
-                return data;
+
+                const media: MediaItem & { done?: boolean } = { ...data };
+                delete media.done;
+
+                return media;
             }
         }
 

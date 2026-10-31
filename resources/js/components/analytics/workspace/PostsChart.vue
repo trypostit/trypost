@@ -1,7 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
 import date from '@/date';
+import {
+    POSTS_ROWS,
+    type PostsChartMode,
+    postsShareOption,
+} from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
 import { formatNumberCompact } from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
@@ -19,7 +26,7 @@ const props = defineProps<{
     channelFiltered?: boolean;
     totalChannels?: number;
 }>();
-const mode = ref<'bar' | 'stacked'>('bar');
+const mode = ref<PostsChartMode>('bar');
 const buttons = [
     { mode: 'bar', label: 'analytics.dashboard.chart_bar', test: 'posts-bar' },
     {
@@ -35,10 +42,17 @@ const shownChannels = computed(() =>
         ? props.posts.accounts.length
         : null,
 );
-const rangeLabel = computed(
-    () =>
-        `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
+/** One bar per channel with the posts it sent. */
+const barRows = computed(() =>
+    props.posts.accounts.map((account) => ({
+        account,
+        value: POSTS_ROWS.value(account),
+    })),
 );
+const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
+const buildShareOptions = (): ShareMetricOption[] => [
+    postsShareOption(props.posts, rangeLabel.value, mode.value, props.colors),
+];
 </script>
 
 <template>
@@ -64,6 +78,12 @@ const rangeLabel = computed(
                 label="analytics.dashboard.posts_chart_mode"
                 :options="buttons"
             />
+            <ShareChartButton
+                v-if="posts.accounts.length > 0"
+                :range="rangeLabel"
+                :build="buildShareOptions"
+                test-id="share-posts"
+            />
         </template>
 
         <div
@@ -80,17 +100,22 @@ const rangeLabel = computed(
             }}
         </div>
         <div v-else class="min-w-0">
+            <div class="mb-5 flex flex-wrap items-baseline gap-2">
+                <span
+                    class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
+                    data-testid="analytics-posts-total"
+                    >{{ formatNumberCompact(posts.total) }}</span
+                >
+                <span class="text-sm text-muted-foreground">{{
+                    $t('analytics.dashboard.total_posts')
+                }}</span>
+            </div>
             <div class="min-w-0">
                 <SocialAccountMetricBarChart
                     v-if="mode === 'bar'"
-                    :rows="
-                        posts.accounts.map((account) => ({
-                            account,
-                            value: account.count,
-                        }))
-                    "
+                    :rows="barRows"
+                    :format-value="POSTS_ROWS.format"
                     :colors="colors"
-                    :value-label="$t('analytics.dashboard.posts_sent_axis')"
                 />
                 <PostsOverTimeStackedBarChart
                     v-else
@@ -98,10 +123,11 @@ const rangeLabel = computed(
                     :buckets="posts.buckets"
                     :resolution="posts.resolution"
                     :colors="colors"
-                    :value-label="$t('analytics.dashboard.posts')"
                 />
             </div>
             <div
+                v-if="mode === 'stacked'"
+                data-testid="analytics-posts-legend"
                 class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
             >
                 <div

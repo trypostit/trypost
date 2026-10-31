@@ -118,7 +118,57 @@ test('the channel filter scopes the dashboard and keeps the channel in the url',
         ->assertNoJavaScriptErrors();
 });
 
-test('the follower bar tooltip shows a series swatch and the toolbar fits a 390px viewport', function () {
+test('the follower bar tooltip shows the verified mark of an X channel', function () {
+    [$user, $accounts] = insightsChannelFilterFixture();
+    $accounts[0]->update(['platform' => Platform::X, 'meta' => ['x_verified_type' => 'blue']]);
+    AnalyticsAccountDailySnapshot::query()->where('social_account_id', $accounts[0]->id)->update(['platform' => Platform::X, 'network' => Platform::X->network()]);
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsChannelTestId($page, 'analytics-account-bar');
+    $page->hover('[data-testid="analytics-account-bar"] >> nth=1');
+    waitFor($page, '@analytics-chart-tooltip [data-verified="blue"]');
+
+    $page->assertPresent('[data-testid="analytics-chart-tooltip"] [data-verified="blue"]')
+        ->assertNoJavaScriptErrors();
+});
+
+test('the followers chart prints each channel’s number next to its bar or at the end of its line, with no legend', function () {
+    [$user] = insightsChannelFilterFixture();
+    $this->actingAs($user);
+
+    $page = visit(route('app.insights'));
+    waitForInsightsChannelTestId($page, 'analytics-account-value');
+
+    $values = 'Array.from(document.querySelector("[data-testid=accounts-unovis-bar-chart]").querySelectorAll("[data-testid=analytics-account-value]"), (value) => value.innerText).sort().join(",")';
+    $aligned = '(() => { const chart = document.querySelector("[data-testid=accounts-unovis-bar-chart]"); const edges = Array.from(chart.querySelectorAll("[data-testid=analytics-account-value]"), (value) => Math.round(value.getBoundingClientRect().right)); const barStart = Math.min(...Array.from(chart.querySelectorAll("[data-testid=analytics-account-bar]"), (bar) => bar.getBoundingClientRect().left)); return new Set(edges).size === 1 && edges[0] < barStart; })()';
+
+    $page->assertScript($values, '120,30')
+        ->assertSeeIn('@analytics-followers-change', '+20')
+        ->assertScript($aligned, true)
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->click('@followers-growth');
+    waitForText($page, '@analytics-account-value', '+10');
+
+    $page->assertScript($values, '+10,+10')
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->click('@followers-line');
+    waitForText($page, '@analytics-line-end-value', '120');
+
+    $page->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-line-end-value]"), (value) => value.innerText).sort().join(",")', '120,30')
+        ->assertScript('(() => { const chart = document.querySelector("[data-testid=followers-unovis-chart]").getBoundingClientRect(); return Array.from(document.querySelectorAll("[data-testid=followers-line-end]")).every((label) => label.getBoundingClientRect().left >= chart.left + chart.width / 2); })()', true)
+        ->assertMissing('@analytics-followers-legend');
+
+    $page->hover('[data-testid="followers-line-end"] >> nth=0');
+    waitForState($page, '@followers-unovis-chart', "element.querySelectorAll('[data-dimmed=true]').length > 0");
+
+    $page->assertScript('document.querySelectorAll("[data-testid=followers-unovis-chart] [data-dimmed=true]").length > 0', true)
+        ->assertNoJavaScriptErrors();
+});
+
+test('the follower bar tooltip lists where the channel started and the toolbar fits a 390px viewport', function () {
     [$user] = insightsChannelFilterFixture();
     $this->actingAs($user);
 
@@ -126,13 +176,13 @@ test('the follower bar tooltip shows a series swatch and the toolbar fits a 390p
     waitForInsightsChannelTestId($page, 'analytics-account-bar');
 
     $page->assertScript('document.querySelector("[data-testid=followers-bar]")?.getAttribute("aria-pressed")', 'true')
-        ->assertScript('document.querySelectorAll("[data-testid=analytics-legend-swatch]").length >= 2', true)
         ->hover('[data-testid="analytics-account-bar"] >> nth=0');
-    waitForInsightsChannelTestId($page, 'analytics-tooltip-swatch');
+    waitForInsightsChannelTestId($page, 'analytics-tooltip-detail');
 
-    $page->assertPresent('@analytics-tooltip-swatch')
+    $page->assertMissing('@analytics-tooltip-swatch')
         ->assertScript('document.querySelector("[data-testid=analytics-tooltip-value]")?.innerText', '120')
-        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail]")?.innerText.includes("110")', true)
+        ->assertScript('document.querySelectorAll("[data-testid=analytics-tooltip-detail] dt").length', 2)
+        ->assertScript('document.querySelector("[data-testid=analytics-tooltip-detail] dd")?.innerText', '110')
         ->assertNoJavaScriptErrors();
 
     $page->resize(390, 844);
@@ -142,6 +192,11 @@ test('the follower bar tooltip shows a series swatch and the toolbar fits a 390p
         ->assertScript('document.querySelector("[data-testid=insights-range-custom]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.querySelector("[data-testid=analytics-channel-filter]").getBoundingClientRect().right <= window.innerWidth', true)
         ->assertScript('document.documentElement.scrollWidth <= window.innerWidth + 2', true)
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=analytics-account-name]")).every((name) => name.offsetParent === null)', true)
+        ->assertScript('(() => { const grid = document.querySelector("[data-testid=analytics-summary]").getBoundingClientRect(); const last = document.querySelector("[data-testid=analytics-summary] > :last-child").getBoundingClientRect(); return Math.abs(last.width - grid.width) < 2; })()', true)
+        ->assertScript('(() => { const value = document.querySelector("[data-testid=analytics-summary-engagement_rate-value]").getBoundingClientRect(); const change = document.querySelector("[data-testid=analytics-summary-engagement_rate-change]")?.getBoundingClientRect(); return !change || Math.abs((change.top + change.bottom) / 2 - (value.top + value.bottom) / 2) < 8; })()', true)
+        ->assertScript('(() => { const card = document.querySelector("[data-testid=analytics-summary-posts]"); const change = card.querySelector("[data-testid=analytics-summary-posts-change]"); const value = card.querySelector("[data-testid=analytics-summary-posts-value]"); return !change || change.getBoundingClientRect().top >= value.getBoundingClientRect().bottom - 1; })()', true)
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=accounts-unovis-bar-chart] [data-testid=analytics-account-value]")).every((value) => value.offsetParent !== null)', true)
         ->assertNoJavaScriptErrors();
 });
 

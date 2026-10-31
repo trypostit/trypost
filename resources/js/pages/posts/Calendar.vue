@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, router, usePage } from '@inertiajs/vue3';
 import {
+    IconCheck,
     IconLayoutSidebarRightCollapse,
     IconLayoutSidebarRightExpand,
     IconPlus,
@@ -285,6 +286,12 @@ watch(
 const toggleUndated = (): void => {
     undatedOpen.value = !undatedOpen.value;
     reload(['undatedDrafts'], ['undatedDrafts']);
+};
+
+/** On a phone the undated drafts open from the filter menu, which closes first. */
+const openUndatedFromMenu = (close: () => void): void => {
+    close();
+    toggleUndated();
 };
 
 const closeUndated = (): void => {
@@ -658,13 +665,14 @@ const goToDay = (key: string): void => {
                 />
 
                 <div
-                    class="flex shrink-0 items-center gap-1 md:ms-auto md:gap-0"
+                    class="flex shrink-0 items-center gap-2 md:ms-auto md:gap-0"
                     data-testid="calendar-filters"
                 >
                     <PostChannelFilter
                         v-if="scope === 'all' && filterAccounts.length"
                         v-model="selectedChannelIds"
                         :channels="filterAccounts"
+                        sheet-below-sm
                     />
                     <div class="shrink-0 max-md:hidden">
                         <LabelFilter
@@ -687,8 +695,27 @@ const goToDay = (key: string): void => {
                         "
                         @update:timezone="setTimezone"
                         @update:show-slots="toggleSlots"
-                    />
-                    <AppHeaderActions>
+                    >
+                        <template
+                            v-if="!isDesktop"
+                            #compact-items="{ rowClass, close }"
+                        >
+                            <button
+                                type="button"
+                                :aria-pressed="undatedOpen"
+                                :class="rowClass"
+                                data-testid="calendar-no-date-menu"
+                                @click="openUndatedFromMenu(close)"
+                            >
+                                {{ $t('calendar.undated.title') }}
+                                <IconCheck
+                                    v-if="undatedOpen"
+                                    class="ms-auto size-4"
+                                />
+                            </button>
+                        </template>
+                    </PublishFilterMenu>
+                    <AppHeaderActions :on-phones="!channel">
                         <ScheduleViewSwitch
                             active-view="calendar"
                             :list-href="listHref"
@@ -704,7 +731,7 @@ const goToDay = (key: string): void => {
                     </AppHeaderActions>
                     <Button
                         variant="ghost"
-                        class="shrink-0 max-xl:size-8 max-xl:px-0 max-sm:border max-sm:border-border-strong"
+                        class="shrink-0 max-xl:size-8 max-xl:px-0 max-md:hidden"
                         :class="{ 'bg-accent': undatedOpen }"
                         :aria-pressed="undatedOpen"
                         data-testid="calendar-no-date"

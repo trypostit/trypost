@@ -2,13 +2,26 @@
 import { trans } from 'laravel-vue-i18n';
 import { computed, ref } from 'vue';
 
+import MetricChange from '@/components/analytics/MetricChange.vue';
+import ShareChartButton from '@/components/analytics/ShareChartButton.vue';
+import type { ChartTooltipDetail } from '@/components/ui/chart';
 import date from '@/date';
 import { activeLocale } from '@/language';
-import { accountColor } from '@/lib/analyticsColors';
-import { formatNumberCompact, formatPercentChange } from '@/lib/utils';
+import {
+    FOLLOWERS_ROWS,
+    type FollowersChartMode,
+    followersNet,
+    followersShareOption,
+} from '@/lib/insightsShare';
+import type { ShareMetricOption } from '@/lib/insightsShareCard';
+import {
+    formatCountChange,
+    formatNumberCompact,
+    formatPercentChange,
+    formatSignedNumber,
+} from '@/lib/utils';
 import type { WorkspaceAnalyticsReport } from '@/types/analytics';
 
-import AccountIdentity from './AccountIdentity.vue';
 import AnalyticsModeToggle from './AnalyticsModeToggle.vue';
 import AnalyticsSection from './AnalyticsSection.vue';
 import FollowerHistoryLineChart from './charts/FollowerHistoryLineChart.vue';
@@ -22,7 +35,7 @@ const props = defineProps<{
     channelFiltered?: boolean;
     totalChannels?: number;
 }>();
-const mode = ref<'bar' | 'line' | 'growth'>('bar');
+const mode = ref<FollowersChartMode>('bar');
 const buttons = [
     {
         mode: 'bar',
@@ -41,45 +54,80 @@ const buttons = [
     },
 ] as const;
 
-const barDetail = (index: number): string | null => {
+/** A change's tone in the tooltip: green for a gain, red for a loss, none when flat. */
+const changeTone = (change: number): ChartTooltipDetail['tone'] => {
+    if (change > 0) {
+        return 'up';
+    }
+
+    if (change < 0) {
+        return 'down';
+    }
+
+    return undefined;
+};
+
+const changeLabel = (change: number): string => {
+    if (change < 0) {
+        return trans('analytics.dashboard.followers_lost_in_range');
+    }
+
+    return trans('analytics.dashboard.followers_gained_in_range');
+};
+
+/** What a channel gained or lost over the period, with its share of where it started when it started above zero. */
+const changeDetail = (change: number, start: number): ChartTooltipDetail => {
+    const label = changeLabel(change);
+    const value = formatSignedNumber(change);
+
+    if (start <= 0) {
+        return { label, value, tone: changeTone(change) };
+    }
+
+    return {
+        label,
+        value: `${value} (${formatPercentChange((change / start) * 100)})`,
+        tone: changeTone(change),
+    };
+};
+
+/** The tooltip's rows under a channel in Bar view: where it started, and what it gained or lost. */
+const barDetail = (index: number): ChartTooltipDetail[] => {
     const account = props.followers.accounts[index];
     const change = account?.net ?? null;
 
-    if (
-        mode.value !== 'bar' ||
-        !account ||
-        account.value === null ||
-        change === null
-    ) {
-        return null;
+    if (mode.value !== 'bar' || !account || account.value === null || change === null) {
+        return [];
     }
 
     const start = account.value - change;
-    const count = (value: number): string =>
-        value.toLocaleString(activeLocale.value);
 
-    return trans(
-        change < 0
-            ? 'analytics.dashboard.followers_lost_detail'
-            : 'analytics.dashboard.followers_gained_detail',
+    return [
         {
-            start: count(start),
-            change: count(Math.abs(change)),
-            percent:
-                start > 0 ? formatPercentChange((change / start) * 100) : '—',
+            label: trans('analytics.dashboard.followers_at_start'),
+            value: start.toLocaleString(activeLocale.value),
         },
-    );
+        changeDetail(change, start),
+    ];
 };
-const hasGains = computed(() =>
-    props.followers.accounts.some((account) => (account.net ?? 0) > 0),
-);
-const legendColor = computed(() => {
-    const first = props.followers.accounts[0];
+/** One bar per channel with its number: its followers (Bar) or its change over the period (Growth); none in Line. */
+const barChart = computed(() => {
+    if (mode.value === 'line') {
+        return null;
+    }
 
-    return first
-        ? (props.colors[first.social_account_key] ?? accountColor(0))
-        : accountColor(0);
+    const rows = FOLLOWERS_ROWS[mode.value];
+
+    return {
+        rows: props.followers.accounts.map((account) => ({
+            account,
+            value: rows.value(account),
+        })),
+        formatValue: rows.format,
+    };
 });
+/** What the period added or took away across every channel, as the share card shows it. */
+const net = computed(() => followersNet(props.followers));
 const shownChannels = computed(() =>
     props.channelFiltered &&
     props.totalChannels &&
@@ -87,10 +135,15 @@ const shownChannels = computed(() =>
         ? props.followers.accounts.length
         : null,
 );
-const rangeLabel = computed(
-    () =>
-        `${date.formatDayMonthYear(props.range.start)} – ${date.formatDayMonthYear(props.range.end)}`,
-);
+const rangeLabel = computed(() => date.formatDayMonthYearRange(props.range));
+const buildShareOptions = (): ShareMetricOption[] => [
+    followersShareOption(
+        props.followers,
+        rangeLabel.value,
+        mode.value,
+        props.colors,
+    ),
+];
 </script>
 
 <template>
@@ -116,6 +169,11 @@ const rangeLabel = computed(
                 label="analytics.dashboard.followers_chart_mode"
                 :options="buttons"
             />
+            <ShareChartButton
+                :range="rangeLabel"
+                :build="buildShareOptions"
+                test-id="share-followers"
+            />
         </template>
 
         <div
@@ -132,18 +190,23 @@ const rangeLabel = computed(
             }}
         </div>
         <div v-else class="min-w-0">
-            <div class="mb-5 flex flex-wrap items-baseline gap-2">
-                <span
-                    class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
-                    >{{
-                        followers.total === null
-                            ? '—'
-                            : formatNumberCompact(followers.total)
-                    }}</span
-                >
-                <span class="text-sm text-muted-foreground">{{
-                    $t('analytics.dashboard.total_followers')
-                }}</span>
+            <div class="mb-5 grid gap-1">
+                <div class="flex flex-wrap items-baseline gap-2">
+                    <span
+                        class="font-heading text-[28px] leading-[35px] font-medium text-foreground tabular-nums"
+                        >{{ formatNumberCompact(followers.total) }}</span
+                    >
+                    <span class="text-sm text-muted-foreground">{{
+                        $t('analytics.dashboard.total_followers')
+                    }}</span>
+                </div>
+                <MetricChange
+                    v-if="net !== null"
+                    class="justify-self-start"
+                    data-testid="analytics-followers-change"
+                    :change="net"
+                    :label="formatCountChange(net)"
+                />
             </div>
             <div class="min-w-0">
                 <FollowerHistoryLineChart
@@ -153,82 +216,12 @@ const rangeLabel = computed(
                     :colors="colors"
                 />
                 <SocialAccountMetricBarChart
-                    v-else
-                    :rows="
-                        followers.accounts.map((account) =>
-                            mode === 'growth'
-                                ? { account, value: account.growth }
-                                : {
-                                      account,
-                                      value: account.value,
-                                      gained: Math.max(account.net ?? 0, 0),
-                                  },
-                        )
-                    "
+                    v-else-if="barChart"
+                    :rows="barChart.rows"
                     :colors="colors"
                     :detail="barDetail"
+                    :format-value="barChart.formatValue"
                 />
-            </div>
-            <div
-                v-if="mode === 'bar' && hasGains"
-                class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground"
-                data-testid="analytics-followers-split-legend"
-            >
-                <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-                    <span
-                        class="size-2.5 rounded-[3px]"
-                        :style="{
-                            backgroundColor: `color-mix(in srgb, ${legendColor} 40%, var(--card))`,
-                        }"
-                    />
-                    {{ $t('analytics.dashboard.followers_at_start') }}
-                </span>
-                <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
-                    <span
-                        class="size-2.5 rounded-[3px]"
-                        :style="{ backgroundColor: legendColor }"
-                    />
-                    {{ $t('analytics.dashboard.followers_gained_in_range') }}
-                </span>
-            </div>
-            <div
-                class="mt-5 grid gap-x-8 gap-y-1 border-t border-border pt-4 sm:grid-cols-2 xl:grid-cols-3"
-            >
-                <div
-                    v-for="account in followers.accounts"
-                    :key="account.social_account_key"
-                    class="-mx-2 flex min-h-9 min-w-0 items-center justify-between gap-2 rounded-md px-2 transition-control hover:bg-accent/60"
-                >
-                    <AccountIdentity
-                        :account="account"
-                        :color="colors[account.social_account_key]"
-                        with-avatar
-                        :avatar-size="24"
-                    />
-                    <span class="flex shrink-0 items-center gap-2">
-                        <span class="text-sm font-medium text-foreground tabular-nums">
-                            {{
-                                mode === 'growth'
-                                    ? account.growth === null
-                                        ? '—'
-                                        : `${account.growth > 0 ? '+' : ''}${formatNumberCompact(account.growth)}`
-                                    : account.value === null
-                                      ? '—'
-                                      : formatNumberCompact(account.value)
-                            }}
-                        </span>
-                        <span
-                            v-if="account.provenance === 'carried_forward'"
-                            class="text-[11px] text-muted-foreground"
-                            :title="
-                                $t('analytics.dashboard.carried_forward_hint')
-                            "
-                            >{{
-                                $t('analytics.dashboard.carried_forward')
-                            }}</span
-                        >
-                    </span>
-                </div>
             </div>
         </div>
     </AnalyticsSection>

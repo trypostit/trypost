@@ -37,22 +37,8 @@ const editedItem = async (change: MediaEditChange): Promise<MediaItem> => {
         file: change.file,
         url: mediaStoreChunked.url(),
     });
-    if (!uploaded.id || !uploaded.path || !uploaded.url) {
-        throw new Error('Incomplete asset upload');
-    }
 
-    return {
-        id: uploaded.id,
-        path: uploaded.path,
-        url: uploaded.url,
-        type: uploaded.type,
-        mime_type: uploaded.mime_type ?? change.file.type,
-        original_filename: uploaded.original_filename,
-        size: uploaded.size,
-        meta,
-        upload_token: uploaded.upload_token ?? null,
-        created_at: uploaded.created_at,
-    } as MediaItem;
+    return { ...uploaded, meta };
 };
 
 /**

@@ -28,15 +28,15 @@ import {
     type PerformanceMetric,
     usePerformanceColumns,
 } from '@/composables/usePerformanceColumns';
-import date from '@/date';
 import {
     formatNumberCompact,
     formatPercent,
     formatPercentChange,
 } from '@/lib/utils';
-import type {
-    PerformanceRow,
-    WorkspaceAnalyticsReport,
+import {
+    accountLabel,
+    type PerformanceRow,
+    type WorkspaceAnalyticsReport,
 } from '@/types/analytics';
 
 import AccountIdentity from './AccountIdentity.vue';
@@ -48,8 +48,6 @@ const props = defineProps<{
     previousRange: WorkspaceAnalyticsReport['previous_range'];
     filtered?: boolean;
 }>();
-const span = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 const { columns, toggleColumn } = usePerformanceColumns();
 type SortKey = PerformanceMetric | 'channel';
 type SortDirection = 'asc' | 'desc';
@@ -61,13 +59,11 @@ const sortKey = computed<SortKey>(() =>
         ? sortBy.value
         : columns.value[0],
 );
-const channelName = (row: PerformanceRow): string =>
-    row.username ?? row.name ?? row.platform;
 const compareRows = (a: PerformanceRow, b: PerformanceRow): number => {
     const key = sortKey.value;
 
     if (key === 'channel') {
-        return channelName(a).localeCompare(channelName(b));
+        return accountLabel(a).localeCompare(accountLabel(b));
     }
 
     const left = a[key].value;
@@ -106,17 +102,14 @@ const ariaSort = (key: SortKey): 'ascending' | 'descending' | 'none' =>
             : 'descending'
         : 'none';
 const display = (row: PerformanceRow, key: PerformanceMetric): string => {
-    const value = row[key].value;
-    return value === null
-        ? '—'
-        : key === 'engagement_rate'
-          ? formatPercent(value)
-          : formatNumberCompact(value);
+    if (key === 'engagement_rate') {
+        return formatPercent(row[key].value);
+    }
+
+    return formatNumberCompact(row[key].value);
 };
-const change = (row: PerformanceRow, key: PerformanceMetric): string => {
-    const value = row[key].change;
-    return value === null ? '—' : formatPercentChange(value);
-};
+const change = (row: PerformanceRow, key: PerformanceMetric): string =>
+    formatPercentChange(row[key].change);
 </script>
 
 <template>
@@ -124,12 +117,8 @@ const change = (row: PerformanceRow, key: PerformanceMetric): string => {
         :title="$t('analytics.dashboard.performance')"
         :info="$t('analytics.insights.about.performance')"
         info-testid="analytics-performance-about"
-        :subtitle="
-            $t('analytics.ranges.compared_to', {
-                current: span(range),
-                previous: span(previousRange),
-            })
-        "
+        :range="range"
+        :previous-range="previousRange"
         subtitle-testid="analytics-performance-caption"
         flush
     >

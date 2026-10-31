@@ -231,29 +231,15 @@ export const useMediaUpload = (options: {
         active.add(entry.key);
 
         try {
-            const uploaded = await uploadChunked({
-                file: entry.file,
-                url: storeChunked.url(),
-                signal: entry.controller.signal,
-                onProgress: (progress) => setProgress(entry.key, progress),
-            });
-            if (!uploaded.id || !uploaded.url) {
-                throw new Error('Incomplete upload');
-            }
-
-            finished.set(entry.key, {
-                id: uploaded.id,
-                path: uploaded.path,
-                url: uploaded.url,
-                type: uploaded.type,
-                mime_type: uploaded.mime_type ?? entry.file.type,
-                original_filename:
-                    uploaded.original_filename ?? entry.file.name,
-                size: uploaded.size ?? entry.file.size,
-                meta: uploaded.meta,
-                upload_token: uploaded.upload_token ?? null,
-                created_at: uploaded.created_at,
-            });
+            finished.set(
+                entry.key,
+                await uploadChunked({
+                    file: entry.file,
+                    url: storeChunked.url(),
+                    signal: entry.controller.signal,
+                    onProgress: (progress) => setProgress(entry.key, progress),
+                }),
+            );
         } catch (error) {
             if (!entry.controller.signal.aborted && find(entry.key)) {
                 replace(entry.key, failure(entry, error));

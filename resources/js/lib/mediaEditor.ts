@@ -10,6 +10,7 @@ import {
     type SourceRect,
 } from '@/lib/imageCrop';
 import { isGif, isImage, isVideo } from '@/lib/mediaType';
+import { canvasToFile } from '@/lib/utils';
 import type { MediaItem, MediaUserTag } from '@/types/media';
 
 export type CropPresetValue =
@@ -348,29 +349,12 @@ export const renderImageEdit = (
 
     const mime = resolveOutputMime(output.mimeType);
 
-    return new Promise((resolve, reject) => {
-        canvas.toBlob(
-            (blob) => {
-                if (!blob) {
-                    reject(new Error('Image could not be encoded'));
-
-                    return;
-                }
-
-                resolve({
-                    file: new File(
-                        [blob],
-                        resolveOutputFileName(output.fileName, mime),
-                        { type: mime },
-                    ),
-                    width,
-                    height,
-                });
-            },
-            mime,
-            0.92,
-        );
-    });
+    return canvasToFile(
+        canvas,
+        resolveOutputFileName(output.fileName, mime),
+        mime,
+        0.92,
+    ).then((file) => ({ file, width, height }));
 };
 
 export const renderMediaEdit = (

@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3';
 import { IconCheck, IconChevronDown } from '@tabler/icons-vue';
-import { ref, watch } from 'vue';
+import { nextTick, ref, watch } from 'vue';
 
 import { DateRangePicker } from '@/components/ui/date-range-picker';
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
+    DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import dayjs from '@/dayjs';
@@ -39,6 +40,7 @@ const toDates = (start: string, end: string): { start: Date; end: Date } => ({
 });
 const mobileTriggerLabelKey = (): string => `analytics.ranges.${props.filters.range}`;
 const selectedRange = ref(toDates(props.range.start, props.range.end));
+const customOpen = ref(false);
 
 watch(
     () => [props.range.start, props.range.end],
@@ -49,6 +51,12 @@ watch(
 
 const choose = (preset: AnalyticsRangePreset): void => {
     router.get(props.url, { ...props.keep, range: preset });
+};
+
+/** On a phone, Custom is the menu's last option and opens the calendar sheet once the menu has closed. */
+const openCustom = async (): Promise<void> => {
+    await nextTick();
+    customOpen.value = true;
 };
 
 const changeRange = (range: { start: Date; end: Date }): void => {
@@ -102,28 +110,30 @@ const changeRange = (range: { start: Date; end: Date }): void => {
                                 class="ms-auto size-4 text-primary-text"
                             />
                         </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                            data-testid="insights-range-mobile-custom"
+                            :aria-checked="filters.range === 'custom'"
+                            :disabled="!bounds.min"
+                            @select="openCustom"
+                        >
+                            {{ $t('analytics.ranges.custom') }}
+                            <IconCheck
+                                v-if="filters.range === 'custom'"
+                                class="ms-auto size-4 text-primary-text"
+                            />
+                        </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
                 <DateRangePicker
+                    v-model:open="customOpen"
                     :model-value="selectedRange"
                     :min-date="bounds.min ? dayjs(bounds.min).toDate() : undefined"
                     :max-date="bounds.max ? dayjs(bounds.max).toDate() : undefined"
                     sheet-below-sm
+                    without-trigger
                     @update:model-value="changeRange"
-                >
-                    <template #trigger>
-                        <button
-                            type="button"
-                            data-testid="insights-range-mobile-custom"
-                            class="inline-flex h-8 shrink-0 items-center rounded-lg border border-border-strong px-3 text-sm font-medium whitespace-nowrap transition-control disabled:cursor-not-allowed disabled:text-subtle-foreground disabled:hover:bg-transparent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                            :class="buttonClass('custom')"
-                            :aria-pressed="filters.range === 'custom'"
-                            :disabled="!bounds.min"
-                        >
-                            {{ $t('analytics.ranges.custom') }}
-                        </button>
-                    </template>
-                </DateRangePicker>
+                />
             </div>
             <div
                 class="hidden max-w-full flex-wrap items-center gap-1 rounded-lg border border-border-strong p-1 sm:inline-flex sm:flex-nowrap"

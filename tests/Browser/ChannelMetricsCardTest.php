@@ -126,6 +126,9 @@ test('the metrics card loads after the page and opens on content impact', functi
         ->assertVisible('@insights-preset-visibility')
         ->assertVisible('@insights-preset-follower_growth_rate')
         ->assertSeeIn('@insights-metrics-legend-posts-value', '6')
+        ->assertSeeIn('@insights-metrics-legend-posts-change', '+500%')
+        ->assertSeeIn('@insights-metrics-legend-followers-change', '+145')
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=insights-metrics-chart] svg text"), (text) => text.textContent).some((text) => text === "Posts" || text === "Followers")', false)
         ->assertVisible('@insights-metrics-legend-followers')
         ->assertPresent('@insights-metrics-table')
         ->assertScript('document.querySelectorAll("[data-testid=insights-metrics-bar]").length > 0', true)
@@ -279,7 +282,7 @@ test('the mode toggle shows the comparison period and both periods', function ()
 
     $page->assertSeeIn('@insights-metrics-legend-posts-value', '1')
         ->assertMissing('@insights-metrics-legend-posts-previous')
-        ->assertScript('document.querySelector("[data-testid=insights-metrics-chart]").textContent.includes("Posts (comparison)")', true)
+        ->assertMissing('@insights-metrics-legend-posts-change')
         ->assertNoJavaScriptErrors();
 });
 
@@ -359,5 +362,29 @@ test('the column chooser hides and adds columns and remembers the choice', funct
 
     $page->assertMissing('@insights-sort-views')
         ->assertVisible('@insights-sort-reactions')
+        ->assertNoJavaScriptErrors();
+});
+
+test('a chart whose metrics have nothing in the previous period offers no comparison', function () {
+    $fresh = SocialAccount::factory()->create([
+        'workspace_id' => $this->instagram->workspace_id,
+        'platform' => Platform::Instagram,
+    ]);
+    $today = CarbonImmutable::today('UTC');
+
+    foreach (range(0, 9) as $daysAgo) {
+        metricsCardFollowers($fresh, $today->subDays($daysAgo), 500 - $daysAgo);
+    }
+
+    $page = visit(route('app.channels.insights', $fresh));
+    waitForMetricsCardTestId($page, 'insights-metric-menu');
+    $page->click('@insights-metric-menu');
+    waitForMetricsCardTestId($page, 'insights-metric-option-followers');
+    $page->click('@insights-metric-option-followers');
+    waitForMetricsCardTestId($page, 'insights-metrics-legend-followers');
+
+    $page->assertMissing('@insights-metrics-mode-current')
+        ->assertMissing('@insights-metrics-mode-both')
+        ->assertSeeIn('@insights-metrics-legend-followers-change', '+9')
         ->assertNoJavaScriptErrors();
 });

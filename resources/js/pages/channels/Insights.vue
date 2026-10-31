@@ -16,7 +16,6 @@ import LabelFilter from '@/components/labels/LabelFilter.vue';
 import PublishHeader from '@/components/publish/PublishHeader.vue';
 import { useAnalyticsCoveragePoll } from '@/composables/useAnalyticsCoveragePoll';
 import { getPlatformLabel } from '@/composables/usePlatformLogo';
-import date from '@/date';
 import AppLayout from '@/layouts/AppLayout.vue';
 import { showsPostTypeFilter } from '@/lib/channelInsights';
 import { insights } from '@/routes/app/channels';
@@ -52,8 +51,6 @@ useAnalyticsCoveragePoll(() => props.report?.coverage, {
 });
 
 const url = computed(() => insights.url(props.channel.id));
-const span = (range: { start: string; end: string }): string =>
-    `${date.formatDayMonthYear(range.start)} – ${date.formatDayMonthYear(range.end)}`;
 const selectedLabelIds = ref<string[]>(props.filters?.labels ?? []);
 const selectedUntagged = ref<boolean>(props.filters?.untagged ?? false);
 const selectedTypes = ref<string[]>(props.filters?.types ?? []);
@@ -208,6 +205,7 @@ watch(selectedTypes, applyFilters, { deep: true });
                             v-model:untagged="selectedUntagged"
                             :labels="labels ?? []"
                             test-id="insights-label"
+                            sheet-below-sm
                         />
                         <PostTypeFilter
                             v-if="showsTypeFilter"
@@ -245,14 +243,9 @@ watch(selectedTypes, applyFilters, { deep: true });
                     <SummaryCards
                         :report="report"
                         :available-metrics="availableMetrics ?? []"
-                        :subtitle="
-                            $t('analytics.ranges.compared_to', {
-                                current: span(report.range),
-                                previous: span(report.previous_range),
-                            })
-                        "
                         subtitle-testid="insights-range-caption"
                         :network="getPlatformLabel(channel.platform)"
+                        :channel="channelName(channel)"
                     />
                     <ChannelPublicationTable
                         v-if="filters"
@@ -264,7 +257,10 @@ watch(selectedTypes, applyFilters, { deep: true });
                         :url="url"
                         :platform="channel.platform"
                     />
-                    <ChannelMetricsCard :series="metricSeries" />
+                    <ChannelMetricsCard
+                        :series="metricSeries"
+                        :channel="channelName(channel)"
+                    />
                 </template>
             </template>
         </div>

@@ -51,13 +51,15 @@ const formats = computed(() => [
         <DropdownMenuTrigger as-child>
             <Button
                 variant="outline"
-                class="data-[state=open]:bg-accent"
+                class="data-[state=open]:bg-accent max-sm:size-8 max-sm:px-0"
                 data-testid="insights-export"
             >
                 <IconDownload aria-hidden="true" />
-                {{ $t('analytics.insights.export.button') }}
+                <span class="max-sm:sr-only">{{
+                    $t('analytics.insights.export.button')
+                }}</span>
                 <IconChevronDown
-                    class="text-muted-foreground"
+                    class="text-muted-foreground max-sm:hidden"
                     aria-hidden="true"
                 />
             </Button>

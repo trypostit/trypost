@@ -6,7 +6,7 @@ import {
     getPlatformLabel,
     getPlatformLogo,
 } from '@/composables/usePlatformLogo';
-import type { AccountIdentityData } from '@/types/analytics';
+import { type AccountIdentityData, accountLabel } from '@/types/analytics';
 
 const props = defineProps<{
     account: AccountIdentityData;
@@ -16,16 +16,7 @@ const props = defineProps<{
     /** The name on top and the @handle below it. */
     withName?: boolean;
 }>();
-const label = computed(() =>
-    props.account.username
-        ? `@${props.account.username}`
-        : props.account.name || getPlatformLabel(props.account.platform),
-);
-const name = computed(
-    () =>
-        props.account.name ||
-        label.value,
-);
+const label = computed(() => accountLabel(props.account));
 const handle = computed(() =>
     props.account.name && props.account.username
         ? `@${props.account.username}`
@@ -48,7 +39,7 @@ const handle = computed(() =>
             v-if="withAvatar"
             :platform="account.platform"
             :src="account.avatar_url"
-            :name="withName ? name : label"
+            :name="label"
             ring="card"
             :size="avatarSize ?? 32"
             :status="account.status"
@@ -63,7 +54,7 @@ const handle = computed(() =>
         />
         <span v-if="withName" class="flex min-w-0 flex-col">
             <span class="truncate text-xs font-emphasis text-foreground">{{
-                name
+                label
             }}</span>
             <span
                 v-if="handle"

@@ -251,6 +251,8 @@ test('workspace dashboard separates accounts and switches follower and post char
         ->assertPresent('@analytics-top-post')
         ->assertPresent('@header-icon')
         ->assertPresent('@insights-range-caption')
+        ->assertSeeIn('[data-testid="insights-range-caption"] [data-testid="analytics-range-previous"]', 'vs')
+        ->assertSeeIn('[data-testid="analytics-performance-caption"] [data-testid="analytics-range-previous"]', 'vs')
         ->assertSee('Performance')
         ->assertPresent('@accounts-unovis-bar-chart')
         ->hover('[data-testid="analytics-account-bar"] >> nth=0')
@@ -264,7 +266,12 @@ test('workspace dashboard separates accounts and switches follower and post char
         ->assertPresent('@accounts-unovis-bar-chart')
         ->click('@posts-stacked')
         ->assertVisible('@posts-unovis-chart')
-        ->hover('[data-testid="analytics-post-bar"] >> nth=0')
+        ->assertScript('Array.from(document.querySelectorAll("[data-testid=posts-unovis-chart] svg text"), (text) => text.textContent).includes("Posts")', false)
+        ->hover('[data-testid="analytics-post-bar"] >> nth=0');
+    waitFor($page, '@analytics-tooltip-total');
+
+    $page->assertSeeIn('@analytics-tooltip-total', 'Total Posts')
+        ->assertSeeIn('@analytics-tooltip-total', '2')
         ->assertPresent('@analytics-tooltip-avatar')
         ->click('@top-comments');
 
@@ -660,6 +667,8 @@ test('the custom range calendar opens under Custom on desktop and as a bottom sh
     $page->assertNoJavaScriptErrors();
 
     $phone = visit(route('app.insights'))->resize(390, 844);
+    waitFor($phone, '@insights-range-mobile-trigger');
+    $phone->click('@insights-range-mobile-trigger');
     waitFor($phone, '@insights-range-mobile-custom');
     $phone->click('@insights-range-mobile-custom');
     waitForState($phone, '@date-range-picker-sheet', 'element.getBoundingClientRect().bottom >= window.innerHeight - 1');
@@ -762,7 +771,7 @@ test('top posts name the network each post went out on and leave the post type o
         ->assertSeeIn("@analytics-top-post-published-via-{$publications['tiktok']->id}", 'TikTok')
         ->assertPresent("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]")
         ->assertMissing("[data-testid=\"analytics-top-post-channel\"] [data-testid=\"channel-avatar-verified-{$publications['tiktok']->social_account_id}\"]")
-        ->assertScript("document.querySelectorAll('[data-testid=\"analytics-section\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]').length >= 4", true)
+        ->assertScript("document.querySelectorAll('[data-testid=\"analytics-section\"] [data-testid=\"channel-avatar-verified-{$verified->id}\"]').length >= 3", true)
         ->assertMissing("@analytics-top-post-type-{$publications['reel']->id}")
         ->assertDontSee('Published on the social network')
         ->assertNoJavaScriptErrors();

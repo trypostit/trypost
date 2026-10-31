@@ -924,6 +924,7 @@ return [
         'title' => 'Publiceren',
         'all_channels' => 'Alle kanalen',
         'tabs' => [
+            'label' => 'Status',
             'queue' => 'Wachtrij',
             'approvals' => 'Goedkeuringen',
             'drafts' => 'Concepten',

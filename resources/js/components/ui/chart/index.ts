@@ -1,6 +1,8 @@
 import { createContext } from 'reka-ui';
 import type { Ref } from 'vue';
 
+import type { VerifiedBadge } from '@/types/social-account';
+
 export {
     VisCrosshair as ChartCrosshair,
     VisTooltip as ChartTooltip,
@@ -14,9 +16,21 @@ export type ChartConfig = Record<
     {
         label: string;
         color: string;
-        avatar?: { platform: string; name: string; src: string | null };
+        avatar?: {
+            platform: string;
+            name: string;
+            src: string | null;
+            verified?: VerifiedBadge | null;
+        };
     }
 >;
+
+/** One labelled number under an entry of the tooltip; a tone colors a gain or a loss. */
+export type ChartTooltipDetail = {
+    label: string;
+    value: string;
+    tone?: 'up' | 'down';
+};
 
 interface ChartContext {
     id: string;

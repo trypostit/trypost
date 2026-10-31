@@ -6,46 +6,50 @@ import {
     VisStackedBarSelectors,
     VisXYContainer,
 } from '@unovis/vue';
-import { computed, getCurrentInstance, h, onBeforeUnmount, render } from 'vue';
+import {
+    computed,
+    getCurrentInstance,
+    h,
+    onBeforeUnmount,
+    render,
+    useTemplateRef,
+} from 'vue';
 
-import ChannelAvatar from '@/components/ChannelAvatar.vue';
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
+    type ChartTooltipDetail,
     componentToString,
 } from '@/components/ui/chart';
-import { getPlatformLabel } from '@/composables/usePlatformLogo';
+import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import { accountColor } from '@/lib/analyticsColors';
+import { formatNumberCompact } from '@/lib/utils';
 import type { AccountIdentityData } from '@/types/analytics';
 
+import AxisChannelRow from './AxisChannelRow.vue';
 import {
     formatCountTick,
     socialAccountChartConfig,
 } from './socialAccountChart';
 
-const props = defineProps<{
-    rows: {
-        account: AccountIdentityData;
-        value: number | null;
-        gained?: number | null;
-    }[];
-    colors: Record<string, string>;
-    valueLabel?: string;
-    detail?: (index: number) => string | null;
-}>();
-
-type BarPoint = { index: number; value: number; base: number; gained: number };
-const split = computed(() =>
-    props.rows.some((row) => row.gained !== undefined),
+const props = withDefaults(
+    defineProps<{
+        rows: {
+            account: AccountIdentityData;
+            value: number | null;
+        }[];
+        colors: Record<string, string>;
+        detail?: (index: number) => ChartTooltipDetail[];
+        /** How each channel's number reads in the column before its bar. */
+        formatValue?: (value: number | null) => string;
+    }>(),
+    { detail: undefined, formatValue: formatNumberCompact },
 );
-const chartData = computed<BarPoint[]>(() =>
-    props.rows.map((row, index) => {
-        const value = row.value ?? 0;
-        const gained = Math.min(Math.max(row.gained ?? 0, 0), value);
 
-        return { index, value, base: value - gained, gained };
-    }),
+type BarPoint = { index: number; value: number };
+const chartData = computed<BarPoint[]>(() =>
+    props.rows.map((row, index) => ({ index, value: row.value ?? 0 })),
 );
 const chartConfig = computed(() =>
     socialAccountChartConfig(
@@ -58,35 +62,23 @@ const chartHeight = computed(
 );
 const indexAccessor = (point: BarPoint): number => point.index;
 const valueAccessor = (point: BarPoint): number => point.value;
-const splitAccessors = [
-    (point: BarPoint): number => point.base,
-    (point: BarPoint): number => point.gained,
-];
 const rowColor = (point: BarPoint): string => {
     const key = props.rows[point.index]?.account.social_account_key;
     return (key && props.colors[key]) || accountColor(point.index);
 };
-const colorAccessor = (point: BarPoint, stack: number): string =>
-    split.value && stack === 0 && point.gained > 0
-        ? `color-mix(in srgb, ${rowColor(point)} 40%, var(--card))`
-        : rowColor(point);
-const formatAccount = (tick: number | Date): string => {
-    const index = typeof tick === 'number' ? Math.round(tick) : 0;
-    const account = props.rows[index]?.account;
-    if (!account) return '';
-
-    const label = account.username
-        ? `@${account.username}`
-        : account.name || getPlatformLabel(account.platform);
-    return label.length > 12 ? `${label.slice(0, 11)}…` : label;
-};
+const rowAt = (index: number) => props.rows[Math.round(index)];
+/** The axis draws no text: each row's channel and number are laid over it as HTML. */
+const blankTick = (): string => '';
 const categoryTicks = computed(() => props.rows.map((_, index) => index));
-const detailFormatter = (key: string): string | null =>
-    props.detail?.(Number(key.replace('account_', ''))) ?? null;
+const detailFormatter = (key: string): ChartTooltipDetail[] =>
+    props.detail?.(Number(key.replace('account_', ''))) ?? [];
 const tooltipTemplate = computed(() =>
-    componentToString(chartConfig.value, ChartTooltipContent, {
-        detailFormatter,
-    }),
+    componentToString(
+        chartConfig.value,
+        ChartTooltipContent,
+        { detailFormatter },
+        appContext,
+    ),
 );
 const tooltipTriggers = computed(() => ({
     [VisStackedBarSelectors.bar]: (bar: {
@@ -103,72 +95,92 @@ const tickAttributes = {
         'data-account-tick': (tick: number): string => String(Math.round(tick)),
     },
 };
-const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
 const AVATAR_SIZE = 24;
-const AVATAR_OVERHANG = 4;
-const AVATAR_GAP = 8;
+/** Between a row's number and the start of its bar. */
+const COLUMN_GAP = 12;
+/** Name, number and avatar before the bars; a phone drops the name so the bars keep the room. */
+const belowSm = useBelowBreakpoint('sm');
+const columnWidth = computed(() => (belowSm.value ? 80 : 240));
+/** The bars start after the rows' column; the axis itself draws no text to make room for. */
+const chartPadding = computed(() => ({
+    top: 12,
+    right: 16,
+    bottom: 0,
+    left: columnWidth.value + COLUMN_GAP,
+}));
 const appContext = getCurrentInstance()?.appContext ?? null;
 const avatarHosts: HTMLElement[] = [];
-
-const accountLabel = (account: AccountIdentityData): string =>
-    account.username
-        ? `@${account.username}`
-        : account.name || getPlatformLabel(account.platform);
+const avatarLayer = useTemplateRef<HTMLDivElement>('avatarLayer');
 
 const unmountAvatars = (): void => {
-    avatarHosts.splice(0).forEach((host) => render(null, host));
+    avatarHosts.splice(0).forEach((host) => {
+        render(null, host);
+        host.remove();
+    });
 };
 
-const buildAxisChannel = (account: AccountIdentityData): SVGElement => {
-    const box = AVATAR_SIZE + AVATAR_OVERHANG * 2;
-    const frame = document.createElementNS(SVG_NAMESPACE, 'foreignObject');
-    frame.setAttribute('x', String(-AVATAR_SIZE - AVATAR_GAP - AVATAR_OVERHANG));
-    frame.setAttribute('y', String(-AVATAR_SIZE / 2 - AVATAR_OVERHANG));
-    frame.setAttribute('width', String(box));
-    frame.setAttribute('height', String(box));
-    frame.setAttribute('data-account-logo', '');
-    frame.setAttribute('data-testid', 'analytics-axis-channel');
-    frame.setAttribute('data-platform', account.platform);
-    frame.style.overflow = 'visible';
+/**
+ * The row's channel and number, as HTML laid over the chart at the tick's
+ * position. Not a `<foreignObject>` inside the SVG: WebKit (every browser on
+ * iOS) ignores the tick's transform there and draws every row at the chart's
+ * corner.
+ */
+const placeAxisChannel = (
+    layer: HTMLDivElement,
+    svgOffset: { x: number; y: number },
+    tick: SVGGElement,
+    row: (typeof props.rows)[number],
+): void => {
+    const origin = tick.getCTM();
+
+    if (!origin) {
+        return;
+    }
 
     const host = document.createElement('div');
-    host.style.padding = `${AVATAR_OVERHANG}px`;
-    host.style.lineHeight = '0';
+    const width = columnWidth.value;
 
-    const avatar = h(ChannelAvatar, {
-        platform: account.platform,
-        src: account.avatar_url,
-        name: accountLabel(account),
-        size: AVATAR_SIZE,
-        ring: 'card',
-        status: account.status ?? null,
-        accountId: account.social_account_key,
-        verified: account.verified_badge ?? null,
-        reserveSpace: false,
+    host.className = 'absolute';
+    host.dataset.testid = 'analytics-axis-channel';
+    host.dataset.platform = row.account.platform;
+    host.style.left = `${svgOffset.x}px`;
+    host.style.top = `${svgOffset.y + origin.f - AVATAR_SIZE / 2}px`;
+    host.style.width = `${width}px`;
+    host.style.height = `${AVATAR_SIZE}px`;
+
+    const content = h(AxisChannelRow, {
+        account: row.account,
+        value: props.formatValue(row.value),
     });
-    avatar.appContext = appContext;
-    render(avatar, host);
+    content.appContext = appContext;
+    render(content, host);
     avatarHosts.push(host);
-    frame.appendChild(host);
-
-    return frame;
+    layer.appendChild(host);
 };
 
 const decorateTicks = (svg: SVGSVGElement): void => {
     unmountAvatars();
-    svg.querySelectorAll('[data-account-logo]').forEach((logo) =>
-        logo.remove(),
-    );
+
+    const layer = avatarLayer.value;
+
+    if (!layer) {
+        return;
+    }
+
+    const svgBox = svg.getBoundingClientRect();
+    const layerBox = layer.getBoundingClientRect();
+    const svgOffset = {
+        x: svgBox.left - layerBox.left,
+        y: svgBox.top - layerBox.top,
+    };
+
     svg.querySelectorAll<SVGGElement>('g[data-account-tick]').forEach(
         (tick) => {
-            const index = Number(tick.getAttribute('data-account-tick'));
-            const account = props.rows[index]?.account;
+            const row = rowAt(Number(tick.getAttribute('data-account-tick')));
 
-            if (!account) {
-                return;
+            if (row) {
+                placeAxisChannel(layer, svgOffset, tick, row);
             }
-
-            tick.appendChild(buildAxisChannel(account));
         },
     );
 };
@@ -182,20 +194,25 @@ const barAttributes = {
 <template>
     <ChartContainer
         :config="chartConfig"
-        class="w-full"
+        class="relative w-full"
         :style="{ height: chartHeight }"
         data-testid="accounts-unovis-bar-chart"
     >
+        <div
+            ref="avatarLayer"
+            class="pointer-events-none absolute inset-0 z-10"
+            aria-hidden="true"
+        />
         <VisXYContainer
             :data="chartData"
             y-direction="south"
-            :padding="{ top: 12, right: 16, bottom: 0, left: 0 }"
+            :padding="chartPadding"
             :on-render-complete="decorateTicks"
         >
             <VisStackedBar
                 :x="indexAccessor"
-                :y="split ? splitAccessors : valueAccessor"
-                :color="colorAccessor"
+                :y="valueAccessor"
+                :color="rowColor"
                 orientation="horizontal"
                 :rounded-corners="4"
                 :bar-padding="0.4"
@@ -206,18 +223,15 @@ const barAttributes = {
                 type="x"
                 :tick-format="formatCountTick"
                 :num-ticks="5"
-                :label="valueLabel"
-                label-font-size="11px"
-                label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
             />
             <VisAxis
                 type="y"
-                :tick-format="formatAccount"
+                :tick-format="blankTick"
                 :tick-values="categoryTicks"
-                :tick-padding="AVATAR_SIZE + AVATAR_GAP + 6"
+                :duration="0"
                 :attributes="tickAttributes"
                 :grid-line="false"
                 :domain-line="false"
