@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Нет данных о подписчиках выбранных каналов за этот период. Выберите другой диапазон дат или сбросьте фильтр каналов.',
         'filtered_no_data_title' => 'Ничего не найдено по этим фильтрам',
         'filtered_no_data_body' => 'У выбранных каналов пока нет данных аналитики. Выберите другие каналы или сбросьте фильтры.',
-        'posts_sent_axis' => 'Отправлено публикаций',
         'followers_gained_detail' => 'Начало: :start · прирост :change (:percent)',
         'followers_lost_detail' => 'Начало: :start · потеря :change (:percent)',
         'followers_at_start' => 'На старте',

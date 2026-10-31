@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Δεν υπάρχουν δεδομένα ακολούθων για τα επιλεγμένα κανάλια σε αυτή την περίοδο. Δοκιμάστε άλλο εύρος ημερομηνιών ή καθαρίστε το φίλτρο καναλιών.',
         'filtered_no_data_title' => 'Τίποτα δεν ταιριάζει με αυτά τα φίλτρα',
         'filtered_no_data_body' => 'Τα επιλεγμένα κανάλια δεν έχουν ακόμη δεδομένα ανάλυσης. Επιλέξτε άλλα κανάλια ή καθαρίστε τα φίλτρα.',
-        'posts_sent_axis' => 'Δημοσιεύσεις που στάλθηκαν',
         'followers_gained_detail' => 'Αρχή :start · κέρδος :change (:percent)',
         'followers_lost_detail' => 'Αρχή :start · απώλεια :change (:percent)',
         'followers_at_start' => 'Στην αρχή',

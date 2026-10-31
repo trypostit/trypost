@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Bu dönemde seçili kanallar için takipçi verisi yok. Başka bir tarih aralığı deneyin veya kanal filtresini temizleyin.',
         'filtered_no_data_title' => 'Bu filtrelerle eşleşen bir şey yok',
         'filtered_no_data_body' => 'Seçili kanalların henüz analiz verisi yok. Başka kanallar seçin veya filtreleri temizleyin.',
-        'posts_sent_axis' => 'Gönderilen gönderiler',
         'followers_gained_detail' => 'Başlangıç :start · :change kazanıldı (:percent)',
         'followers_lost_detail' => 'Başlangıç :start · :change kaybedildi (:percent)',
         'followers_at_start' => 'Başlangıçta',

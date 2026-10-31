@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Brak danych o obserwujących dla wybranych kanałów w tym okresie. Wybierz inny zakres dat lub wyczyść filtr kanałów.',
         'filtered_no_data_title' => 'Nic nie pasuje do tych filtrów',
         'filtered_no_data_body' => 'Wybrane kanały nie mają jeszcze danych analitycznych. Wybierz inne kanały lub wyczyść filtry.',
-        'posts_sent_axis' => 'Wysłane posty',
         'followers_gained_detail' => 'Początkowo :start · zyskano :change (:percent)',
         'followers_lost_detail' => 'Początkowo :start · stracono :change (:percent)',
         'followers_at_start' => 'Na starcie',

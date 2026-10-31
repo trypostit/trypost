@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'No hay datos de seguidores de los canales seleccionados en este período. Prueba otro rango de fechas o borra el filtro de canales.',
         'filtered_no_data_title' => 'Nada coincide con estos filtros',
         'filtered_no_data_body' => 'Los canales seleccionados aún no tienen datos de analítica. Elige otros canales o borra los filtros.',
-        'posts_sent_axis' => 'Publicaciones enviadas',
         'followers_gained_detail' => 'Empezó con :start · ganó :change (:percent)',
         'followers_lost_detail' => 'Empezó con :start · perdió :change (:percent)',
         'followers_at_start' => 'Al inicio',

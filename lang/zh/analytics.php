@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => '此期间所选频道没有粉丝数据。请尝试其他日期范围或清除频道筛选。',
         'filtered_no_data_title' => '没有符合这些筛选条件的内容',
         'filtered_no_data_body' => '所选频道还没有分析数据。请选择其他频道或清除筛选条件。',
-        'posts_sent_axis' => '已发送帖子',
         'followers_gained_detail' => '起始 :start · 增加 :change（:percent）',
         'followers_lost_detail' => '起始 :start · 减少 :change（:percent）',
         'followers_at_start' => '期初',

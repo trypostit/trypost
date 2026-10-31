@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Geen volgersgegevens voor de geselecteerde kanalen in deze periode. Probeer een ander datumbereik of wis het kanaalfilter.',
         'filtered_no_data_title' => 'Niets komt overeen met deze filters',
         'filtered_no_data_body' => 'De geselecteerde kanalen hebben nog geen analysegegevens. Kies andere kanalen of wis de filters.',
-        'posts_sent_axis' => 'Verzonden berichten',
         'followers_gained_detail' => 'Begonnen met :start · :change gewonnen (:percent)',
         'followers_lost_detail' => 'Begonnen met :start · :change verloren (:percent)',
         'followers_at_start' => 'Bij de start',

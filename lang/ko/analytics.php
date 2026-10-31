@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => '이 기간에 선택한 채널의 팔로워 데이터가 없습니다. 다른 기간을 선택하거나 채널 필터를 지우세요.',
         'filtered_no_data_title' => '이 필터와 일치하는 항목이 없습니다',
         'filtered_no_data_body' => '선택한 채널에 아직 분석 데이터가 없습니다. 다른 채널을 선택하거나 필터를 지우세요.',
-        'posts_sent_axis' => '보낸 게시물',
         'followers_gained_detail' => '시작 :start · :change 증가 (:percent)',
         'followers_lost_detail' => '시작 :start · :change 감소 (:percent)',
         'followers_at_start' => '기간 시작',

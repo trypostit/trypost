@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'No follower data for the selected channels in this period. Try another date range or clear the channel filter.',
         'filtered_no_data_title' => 'Nothing matches these filters',
         'filtered_no_data_body' => 'The selected channels have no analytics data yet. Pick other channels or clear the filters.',
-        'posts_sent_axis' => 'Posts sent',
         'followers_gained_detail' => 'Started at :start · gained :change (:percent)',
         'followers_lost_detail' => 'Started at :start · lost :change (:percent)',
         'followers_at_start' => 'At range start',

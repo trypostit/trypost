@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'Немає даних про підписників вибраних каналів за цей період. Виберіть інший діапазон дат або скиньте фільтр каналів.',
         'filtered_no_data_title' => 'Нічого не відповідає цим фільтрам',
         'filtered_no_data_body' => 'Вибрані канали ще не мають даних аналітики. Виберіть інші канали або скиньте фільтри.',
-        'posts_sent_axis' => 'Надіслано дописів',
         'followers_gained_detail' => 'Початок: :start · приріст :change (:percent)',
         'followers_lost_detail' => 'Початок: :start · втрата :change (:percent)',
         'followers_at_start' => 'На старті',

@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'لا توجد بيانات متابعين للقنوات المحددة في هذه الفترة. جرّب نطاق تاريخ آخر أو امسح عامل تصفية القنوات.',
         'filtered_no_data_title' => 'لا شيء يطابق عوامل التصفية هذه',
         'filtered_no_data_body' => 'لا تحتوي القنوات المحددة على بيانات تحليلات بعد. اختر قنوات أخرى أو امسح عوامل التصفية.',
-        'posts_sent_axis' => 'المنشورات المرسلة',
         'followers_gained_detail' => 'البداية :start · زيادة :change (:percent)',
         'followers_lost_detail' => 'البداية :start · خسارة :change (:percent)',
         'followers_at_start' => 'في البداية',

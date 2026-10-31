@@ -109,7 +109,6 @@ const buildShareOptions = (): ShareMetricOption[] => [
                         }))
                     "
                     :colors="colors"
-                    :value-label="$t('analytics.dashboard.posts_sent_axis')"
                 />
                 <PostsOverTimeStackedBarChart
                     v-else

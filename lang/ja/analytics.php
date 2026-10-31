@@ -80,7 +80,6 @@ return [
         'filtered_no_followers' => 'この期間、選択したチャンネルのフォロワーデータはありません。別の期間を試すか、チャンネルフィルターをクリアしてください。',
         'filtered_no_data_title' => 'このフィルターに一致するものはありません',
         'filtered_no_data_body' => '選択したチャンネルにはまだ分析データがありません。別のチャンネルを選ぶか、フィルターをクリアしてください。',
-        'posts_sent_axis' => '送信した投稿',
         'followers_gained_detail' => '開始時 :start · :change 増加 (:percent)',
         'followers_lost_detail' => '開始時 :start · :change 減少 (:percent)',
         'followers_at_start' => '期間開始時',

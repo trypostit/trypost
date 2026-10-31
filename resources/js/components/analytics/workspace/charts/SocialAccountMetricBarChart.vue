@@ -37,7 +37,6 @@ const props = defineProps<{
         gained?: number | null;
     }[];
     colors: Record<string, string>;
-    valueLabel?: string;
     detail?: (index: number) => string | null;
 }>();
 
@@ -244,9 +243,6 @@ const barAttributes = {
                 type="x"
                 :tick-format="formatCountTick"
                 :num-ticks="5"
-                :label="valueLabel"
-                label-font-size="11px"
-                label-color="var(--muted-foreground)"
                 :grid-line="true"
                 :domain-line="false"
                 :tick-line="false"
