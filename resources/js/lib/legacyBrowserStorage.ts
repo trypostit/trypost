@@ -22,7 +22,6 @@ type LegacyItem<Storage> = {
     };
 }[keyof Storage];
 
-
 /** An earlier JSON value, typed as the item it becomes: its reader checks the shape before use. */
 const parsed = <Value>(raw: string): Value | undefined => {
     try {
