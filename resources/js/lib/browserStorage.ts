@@ -1,40 +1,27 @@
 import type { BrowserStorage } from '@/types/browser-storage';
 
-/**
- * The user's one localStorage key (`types/browser-storage.ts` has its shape).
- * A missing, unreadable or other-version value reads as empty, and a browser
- * without storage keeps working on the defaults.
- */
 export const browserStorageKey = (userId: string): string => `trypost:${userId}`;
 
 const empty = (): BrowserStorage => ({ version: 1, user: {}, workspaces: {} });
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-    typeof value === 'object' && value !== null && !Array.isArray(value);
-
-const isBrowserStorage = (value: unknown): value is BrowserStorage =>
-    isRecord(value) &&
-    value.version === 1 &&
-    isRecord(value.user) &&
-    isRecord(value.workspaces);
-
+/** The user's stored value; a missing, unreadable or other-version one reads as empty. */
 export const readBrowserStorage = (userId: string): BrowserStorage => {
     try {
-        const stored: unknown = JSON.parse(
+        const stored = JSON.parse(
             window.localStorage.getItem(browserStorageKey(userId)) ?? 'null',
-        );
+        ) as BrowserStorage | null;
 
-        if (isBrowserStorage(stored)) {
+        if (stored?.version === 1) {
             return stored;
         }
-
-        return empty();
     } catch {
         return empty();
     }
+
+    return empty();
 };
 
-/** Reads the key again before writing, so two tabs never write back each other's stale copy. */
+/** Reads the value again before writing, so two tabs never write back each other's stale copy. */
 export const updateBrowserStorage = (
     userId: string,
     update: (storage: BrowserStorage) => BrowserStorage,

@@ -18,13 +18,12 @@ export const useUserStorage = <Key extends keyof UserStorage>(
     key: Key,
     fallback: UserStorage[Key],
 ): WritableComputedRef<UserStorage[Key]> => {
-    const page = usePage<SharedData>();
-    const userId = (): string => page.props.auth.user.id;
-    const read = (): UserStorage[Key] => readBrowserStorage(userId()).user[key] ?? fallback;
+    const userId = usePage<SharedData>().props.auth.user.id;
+    const read = (): UserStorage[Key] => readBrowserStorage(userId).user[key] ?? fallback;
     const stored = shallowRef<UserStorage[Key]>(read());
 
     const followOtherTabs = (event: StorageEvent): void => {
-        if (event.key === browserStorageKey(userId())) {
+        if (event.key === browserStorageKey(userId)) {
             stored.value = read();
         }
     };
@@ -35,7 +34,7 @@ export const useUserStorage = <Key extends keyof UserStorage>(
         get: () => stored.value,
         set: (value) => {
             stored.value = value;
-            updateBrowserStorage(userId(), (storage) => ({
+            updateBrowserStorage(userId, (storage) => ({
                 ...storage,
                 user: { ...storage.user, [key]: value },
             }));

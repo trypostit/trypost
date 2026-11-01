@@ -116,6 +116,31 @@ test('an unreadable or older browser storage value reads as empty and is replace
     'an older version' => ['{"version":0,"user":{"mcp.promptDismissed":true},"workspaces":{}}'],
 ]);
 
+test('a browser that refuses storage still shows the card and closes it, on the defaults', function () {
+    $this->actingAs(mcpPromptUser());
+
+    $page = visit(route('app.calendar'))->resize(1280, 900);
+    waitFor($page, '@app-header');
+    $page->script(<<<'JS'
+        (() => {
+            const refuse = () => { throw new DOMException('denied', 'SecurityError'); };
+            Storage.prototype.getItem = refuse;
+            Storage.prototype.setItem = refuse;
+        })()
+    JS);
+    $page->click('@sidebar-logo');
+    waitForPath($page, route('app.posts.index', absolute: false));
+    waitFor($page, '@mcp-prompt');
+
+    expect($page->script("(() => { try { localStorage.getItem('x'); return 'allowed'; } catch { return 'refused'; } })()"))->toBe('refused');
+
+    $page->click('@mcp-prompt-close');
+    waitForGone($page, '@mcp-prompt');
+
+    $page->assertMissing('@mcp-prompt')
+        ->assertNoJavaScriptErrors();
+});
+
 test('the Claude button opens its steps on the page, which close once the AI connects', function () {
     $user = mcpPromptUser();
     $this->actingAs($user);
