@@ -9,7 +9,6 @@ import { useBelowBreakpoint } from '@/composables/useBreakpoint';
 import {
     mcpAppLogos,
     mcpClients,
-    otherMcpClient,
     type McpAppLogo,
     type McpClient,
     type McpClientId,
@@ -193,27 +192,6 @@ onBeforeUnmount(() => {
                     >
                         <component :is="client.logo" class="size-4 fill-current" />
                         {{ client.label }}
-                    </Button>
-                </div>
-
-                <div class="mt-3 flex items-center justify-between">
-                    <Button
-                        type="button"
-                        variant="link"
-                        class="h-auto p-0 text-muted-foreground"
-                        data-testid="mcp-prompt-connect-other"
-                        @click="connect(otherMcpClient)"
-                    >
-                        {{ $t(otherMcpClient.label) }}
-                    </Button>
-                    <Button
-                        type="button"
-                        variant="link"
-                        class="h-auto p-0 text-muted-foreground"
-                        data-testid="mcp-prompt-dismiss"
-                        @click="dismiss"
-                    >
-                        {{ $t('mcp.prompt.not_now') }}
                     </Button>
                 </div>
             </section>

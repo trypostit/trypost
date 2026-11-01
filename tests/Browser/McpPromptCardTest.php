@@ -29,7 +29,7 @@ function mcpPromptAvatars(mixed $page): array
     return $page->script("[...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => avatar.dataset.testid.replace('mcp-prompt-avatar-', ''))");
 }
 
-test('a new user is invited to connect an AI, and Not now or the close button hide it for good in that browser', function (string $dismiss) {
+test('a new user is invited to connect an AI, and closing it hides it for good in that browser', function () {
     $this->actingAs(mcpPromptUser());
 
     $page = visit(route('app.calendar'))->resize(1280, 900);
@@ -39,7 +39,7 @@ test('a new user is invited to connect an AI, and Not now or the close button hi
         ->and($page->script("(() => { const layers = [...document.querySelectorAll('[data-testid^=\"mcp-prompt-avatar-\"]')].map((avatar) => Number(getComputedStyle(avatar).zIndex)); return layers.every((layer, index) => index === 0 || layer < layers[index - 1]); })()"))->toBeTrue();
 
     $page->assertSeeIn('@mcp-prompt', __('mcp.prompt.title'))
-        ->click($dismiss);
+        ->click('@mcp-prompt-close');
     waitForGone($page, '@mcp-prompt');
 
     $page->navigate(route('app.posts.index'));
@@ -48,7 +48,7 @@ test('a new user is invited to connect an AI, and Not now or the close button hi
 
     $page->assertMissing('@mcp-prompt')
         ->assertNoJavaScriptErrors();
-})->with(['not now' => '@mcp-prompt-dismiss', 'close' => '@mcp-prompt-close']);
+});
 
 test('the Claude button opens its steps on the page, which close once the AI connects', function () {
     $user = mcpPromptUser();
@@ -70,18 +70,6 @@ test('the Claude button opens its steps on the page, which close once the AI con
     $page->assertMissing('@mcp-dialog')
         ->assertMissing('@mcp-prompt')
         ->assertPathIs($calendarPath)
-        ->assertNoJavaScriptErrors();
-});
-
-test('Other apps opens the steps for any app that supports MCP', function () {
-    $this->actingAs(mcpPromptUser());
-
-    $page = visit(route('app.calendar'))->resize(1280, 900);
-    waitFor($page, '@mcp-prompt-connect-other');
-    $page->click('@mcp-prompt-connect-other');
-    waitFor($page, '@mcp-dialog');
-
-    $page->assertSeeIn('@mcp-dialog', __('mcp.other_dialog_title'))
         ->assertNoJavaScriptErrors();
 });
 
